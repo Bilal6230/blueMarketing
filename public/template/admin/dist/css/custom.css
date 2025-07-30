@@ -1,0 +1,181 @@
+.avatar {
+    vertical-align: middle;
+    width: 50px;
+    height: 50px;
+    border-radius: 15%;
+  }
+
+.fbox
+{
+    margin-top: 1rem;
+    margin-bottom: 0rem;
+
+}
+
+.badge-parpal {
+    color: #fff;
+    background-color: #6f42c1;
+  }
+
+  .lead-customer
+  {
+    text-transform: uppercase;
+    color: #6f42c1;
+
+  }
+
+  .follow_time
+  {
+    margin-left: 250px;
+  }
+
+  .message
+  {
+    background-color: #eee;
+    border-radius: 5px;
+    overflow: auto;
+  }
+  .message-success
+  {
+    box-shadow: rgb(4 13 192 / 92%) 0px 5px 15px;
+  }
+
+  .message-error
+  {
+    box-shadow: rgba(232, 20, 5, 0.92) 0px 5px 15px;
+  }
+
+  .message-alert-success
+  {
+    color: rgb(128, 30, 0);
+
+  }
+
+  #wordingAmount {
+    background-color: #343A40;
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+  }
+
+.cash-in {
+  font-size: 1.5em; 
+  color: #fff; 
+  background-color: #6f42c1; 
+  padding: 10px; 
+  display: inline-block; 
+  border-radius: 8px; 
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 8.1);
+}
+
+.cash-out {
+  font-size: 1.5em; 
+  color: #fff; 
+  background-color: #8c0613; 
+  padding: 10px; 
+  display: inline-block; 
+  border-radius: 8px; 
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 8.1);
+}
+
+.info-cash-in {
+  padding: 15px;
+  border: 1px solid var(--black); /* Bootstrap primary color */
+  border-top-left-radius: 50px 50px;
+  margin-top: 15px; /* Top margin for spacing */
+  box-shadow: 0 0 10px rgba(0, 0, 0, 10.1); /* Subtle shadow */
+  background-color: #6f42c1;
+  height:200px;
+}
+
+.info-cash-in textarea , .party-info{
+  margin-top: 25px;
+}
+
+
+.info-cash-out {
+  padding: 15px;
+  border: 1px solid var(--red); /* Bootstrap primary color */
+  border-top-left-radius: 50px 50px;
+  margin-top: 15px; /* Top margin for spacing */
+  box-shadow: 0 0 10px rgba(0, 0, 0, 10.1); /* Subtle shadow */
+  background-color: #8c0613;
+  height:200px;
+}
+.info-cash-out textarea , .party-info{
+  margin-top: 15px;
+}
+
+/* Styling for labels */
+.info-label {
+  font-weight: bold;
+  color: #fff; /* Dark green color for labels */
+  margin-top: 5px;
+}
+
+/* Styling for data */
+.info-data {
+  color: #333; /* Dark text color */
+  margin-top: 5px;
+}
+
+.info-set{
+  margin-top: 5px;
+}
+
+/* Add some margin for spacing between label and data */
+.info-container strong {
+  margin-right: 5px;
+}
+
+.select2-container--bootstrap4 .select2-search--dropdown .select2-search__field {
+  background-color: #6c757d;
+  color: white;
+}
+
+.buttons-pdf{
+  color: #ed4c78;
+  background-color:#feedf1;
+  border-color: #feedf1;
+}
+.buttons-excel {
+  color: #08c8a6;
+  background-color: #ecfaf6;
+  border-color: #ecfaf6;
+}
+.buttons-csv {
+  color: #4f46e5;
+  background-color: #f1eaff;
+  border-color: #f1eaff;
+}
+.buttons-copy {
+  color: #387cff;
+  background-color: #ecf2ff;
+  border-color: #ecf2ff;
+}
+
+.buttons-colvis,
+.buttons-print {
+  color: #fff;
+  background-color: #17a2b8;
+  border-color: #17a2b8;
+  box-shadow: none;
+}
+
+/* .small-font {
+  
+} */
+
+.small-rows td, .small-rows th {
+  height: 10px; /* Adjust the height as needed */
+  padding: 0.5rem;
+  
+}
+
+.small-rows tbody, .small-rows tfoot , .small-rows thead{
+  font-size: 12px;
+}

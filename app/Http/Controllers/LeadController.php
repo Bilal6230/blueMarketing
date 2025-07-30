@@ -1,0 +1,345 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Lead;
+use App\Models\User;
+use App\Models\Work;
+use Illuminate\Http\Request;
+
+
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Spatie\Permission\Models\Role;
+use RealRashid\SweetAlert\Facades\Alert;
+use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Support\Facades\Auth;
+use App\Repository\Lead\LeadRepository AS lead_repo;
+use App\Models\Project;
+
+class LeadController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index(Request $request)
+    {
+
+        $power = Auth::user()->roles[0]->name;
+
+        $x['title']     = 'Lead SetUp';
+        $x['data']      = lead_repo::getLeadsList(Auth::user()->id, $request->filter);
+        $x['role']      = Role::get();
+        $x['users']      = User::get();
+        $x['power']     = $power;
+        $projects = Project::get();
+        $x['projects'] = $projects;
+        return view('admin.crm.lead', $x);
+    }
+
+
+    public function store(Request $request)
+    {
+        // dd($request->all());
+        $validator = Validator::make($request->all(), [
+            'first_name'      => ['required', 'string', 'max:25'],
+            'last_name'       => ['required', 'string',  'max:25'],
+            'gender'          => ['required'],
+            //'nic_number'     => [ 'numeric'],
+            'phone_number'     => ['required', 'numeric',  'unique:leads'],
+            'mobile_number'     => 'nullable|unique:leads|digits:11',
+            'area_id'         => ['required','numeric'],
+            'type'          =>   ['required','numeric'],
+            'office_address'     => ['required'],
+            'assign_id'     => ['required'],
+            'follow_id'     => ['required'],
+            'projects_id'     => ['required','numeric'],
+
+
+        ]);
+        if ($validator->fails()) {
+            return back()->withErrors($validator)
+                ->withInput();
+        }
+
+
+        try {
+            $data = Lead::create([
+
+                'first_name' => $request->first_name,
+                'last_name' => $request->last_name,
+                'relate' => $request->relate,
+                'father_name' => $request->father_name,
+                'gender' => $request->gender,
+                'nic_number' => $request->nic_number,
+                'phone_number' => $request->phone_number,
+                'mobile_number' => $request->mobile_number,
+                'area_id' => $request->area_id,
+                'type' => $request->type,
+                'business' => $request->business,
+                'zone_id' => $request->zone_id,
+                'home_address' => $request->home_address,
+                'designation' => $request->designation,
+                'is_active' => $request->is_active,
+                'follow_id' => $request->follow_id,
+                'is_active' => $request->is_active,
+                
+                'project_id' => $request->projects_id,
+
+                'create_by' =>Auth::user()->id
+
+            ]);
+
+            $roleIds = $request->assign_id;
+            $data->users()->sync($roleIds);
+
+            Alert::success('Notification', 'Data <b>' . $data->project . '</b> Save successfully ')->toToast()->toHtml();
+        } catch (\Throwable $th) {
+            DB::rollback();
+            Alert::error('Notification', 'Data <b>' .  $th->getMessage())->toToast()->toHtml();
+        }
+        return back();
+    }
+
+
+
+    public function show(Request $request)
+    {
+        $data_list = Lead::where(['id' => $request->id])->first();
+
+
+        return response()->json([
+            'status'    => Response::HTTP_OK,
+            'message'   => 'Data Project by id',
+            'data'      => $data_list
+        ], Response::HTTP_OK);
+    }
+
+
+
+
+    public function update(Request $request)
+    {
+        $rules = [
+            'first_name'      => ['required', 'string', 'max:25'],
+            'last_name'     => ['required', 'string',  'max:25'],
+            'gender'          => ['required'],
+            //'nic_number'     => [ 'numeric'],
+            'phone_number'     => ['required', 'numeric',  'unique:leads'],
+            'area_id'         => ['required','numeric'],
+            'type'          =>   ['required','numeric'],
+            'office_address'     => ['required'],
+            'projects_id'     => ['required','numeric'],
+
+            'assign_id'     => ['required'],
+            'follow_id'     => ['required']
+        ];
+
+        if ($request->phone_number != $request->old_phone) {
+            $rules['phone_number'] = ['required', 'numeric',  'unique:leads'];
+            $validator = Validator::make($request->all(), $rules);
+        } else {
+            $rules['phone_number'] = ['required', 'numeric'];
+            $validator = Validator::make($request->all(), $rules);
+        }
+
+        if ($validator->fails()) {
+            return back()->withErrors($validator)
+                ->withInput();
+        }
+        $data = [
+            'first_name' => $request->first_name,
+            'last_name' => $request->last_name,
+            'relate' => $request->relate,
+            'father_name' => $request->father_name,
+            'gender' => $request->gender,
+            'nic_number' => $request->nic_number,
+            'phone_number' => $request->phone_number,
+            'mobile_number' => $request->mobile_number,
+            'area_id' => $request->area_id,
+            'type' => $request->type,
+            'business' => $request->business,
+            'zone_id' => $request->zone_id,
+            'home_address' => $request->home_address,
+            'office_address' => $request->office_address,
+            'designation' => $request->designation,
+            'is_active' => $request->is_active,
+            'follow_id' => $request->follow_id,
+            'is_active' => $request->is_active,
+            'project_id' => $request->projects_id,
+        ];
+
+        //dd($data);
+
+        DB::beginTransaction();
+        try {
+            $result = Lead::find($request->id);
+            $result->update($data);
+            $roleIds = $request->assign_id;
+            $result->users()->sync($roleIds);
+            //$result->syncRoles($request->role);
+            DB::commit();
+            Alert::success('Notification', 'Data <b>' . $result->name . '</b> berhasil disimpan')->toToast()->toHtml();
+        } catch (\Throwable $th) {
+            DB::rollback();
+            Alert::error('Notification', 'Data <b>' . $result->name . '</b> gagal disimpan : ' . $th->getMessage())->toToast()->toHtml();
+        }
+        return back();
+    }
+
+
+    public function destroy(Lead $lead)
+    {
+        //
+    }
+
+    public function assign(Request $request)
+    {
+        $data_list = Lead::where(['id' => $request->id])->first();
+
+
+        return response()->json([
+            'status'    => Response::HTTP_OK,
+            'message'   => 'Data Project by id',
+            'data'      => $data_list
+        ], Response::HTTP_OK);
+    }
+
+    public function details(Request $request)
+    {
+        $user = Auth::user();
+        $power = $user->roles[0]->name;
+        
+
+        if(isset($request->user))
+        {
+            $user_id = $request->user;
+        }
+        else
+        {
+            $user_id = $user->id;
+        }
+
+        if(isset($request->id))
+        {
+            $leadID = $request->id;
+        }
+        else
+        {
+            $leadID = null;
+        }
+
+        if(isset($request->status))
+        {
+            $status = null;
+        }
+        else
+        {
+            $status = true;
+        }
+        //dd($user);
+
+
+        $data = lead_repo::getActiveList($user_id,$status,$leadID,$power);
+        if(count($data) == 0)
+        {
+            echo "No More Leads";
+            exit;
+        }
+
+
+
+
+
+        $x['title']     = 'Start Work';
+        $x['data']      = $data[0];
+        $x['user']      = $user;
+        $x['role']      = Role::get();
+        $x['register_date'] = $data[0]->created_at;
+        return view('admin.crm.details', $x);
+    }
+
+    public function logUpdate(Request $request)
+    {
+        //dd($request->all());
+        $validator = Validator::make($request->all(), [
+            'call_status'      => ['required'],
+            'call_duration'     => ['required','numeric'],
+            'comment'     => ['required'],
+            'lead_id'       => ['required','numeric'],
+            'type'       => ['required','numeric'],
+
+
+        ]);
+        if ($validator->fails()) {
+            return back()->withErrors($validator)
+                ->withInput();
+        }
+
+        try {
+            $data = Work::create([
+
+                'lead_id' => $request->lead_id,
+                'comment' => $request->comment,
+                'call_duration' => $request->call_duration,
+                'call_status' => $request->call_status,
+                'type' => $request->type,
+                'user_id' =>Auth::user()->id,
+                'follow_up' => $request->follow_up,
+
+            ]);
+            Lead::where('id',$request->lead_id)->update(['follow_status'=>$request->call_status,'follow_up'=>$request->follow_up ]);
+
+
+            // $roleIds = $request->assign_id;
+            // $data->users()->sync($roleIds);
+
+            Alert::success('Notification', 'Data <b>' . $data->project . '</b> Save successfully ')->toToast()->toHtml();
+        } catch (\Throwable $th) {
+            DB::rollback();
+            Alert::error('Notification', 'Data <b>' .  $th->getMessage())->toToast()->toHtml();
+        }
+        return back();
+    }
+
+    public function search(Request $request)
+    {
+        if(isset($request->number))
+        {
+            $data = lead_repo::getLeadByNumber($request->number);
+
+            if(!empty($data))
+            {
+                $projectDetails = getProjectDetails($data->project_id);
+
+                $result['active'] = "Already Register";
+                $result['name'] = $data->first_name.' '.$data->last_name;
+                $result['created_at'] = $data->created_at;
+                $result['assignTo'] = $data->users;
+                $result['project'] = $projectDetails['project'];
+                $result['status'] = 'success';
+                $result['follow_status'] =  $data->follow_status;
+
+                return response()->json([
+                    'status'    => Response::HTTP_OK,
+                    'message'   => 'Data Project by id',
+                    'data'      => $result
+                ], Response::HTTP_OK);
+
+            }
+            else
+            {
+
+                return response()->json(['error' => 'No Record Found'], 404);
+            }
+
+
+
+        }
+
+        # code...
+    }
+
+}

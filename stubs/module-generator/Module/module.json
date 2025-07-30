@@ -1,0 +1,23 @@
+{
+    "name": "{Module}",
+    "label": "{Module}",
+    "alias": "{module}",
+    "description": "manage all {module}",
+    "keywords": ["{module}"],
+    "priority": 0,
+    "providers": [
+        "Modules\\{Module}\\Providers\\{Module}ServiceProvider"
+    ],
+    "aliases": {},
+    "files": [],
+    "requires": [],
+    "menus": [
+        {
+            "icon": "fas fa-circle",
+            "name": "{Module}",
+            "route": "{module}.index",
+            "permission": "read {module}"
+        }
+    ],
+    "permissions": ["{module}"]
+}
