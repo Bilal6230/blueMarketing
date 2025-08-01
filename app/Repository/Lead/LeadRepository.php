@@ -91,6 +91,22 @@ class LeadRepository {
             'leads' => $leads,
         ];
     }
+    public static function getAllLeads($project_id = null)
+    {
+        // Base query for active leads
+        $leadsQuery = Lead::whereDate('created_at', '<=', Carbon::today());
+        // Filter by project ID if provided
+        if (!is_null($project_id)) {
+            $leadsQuery = $leadsQuery->where('project_id', $project_id);
+        }
+
+        $totalLeadsCount=$leadsQuery->count();
+        // Return both leads and total count
+        return [
+            'total_leads' => $totalLeadsCount,
+        ];
+    }
+    
 
 
     public static function getLeadsByUsers2($project_id = null, $filter = null, $user_id = null)
