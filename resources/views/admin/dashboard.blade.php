@@ -1,7 +1,6 @@
 @extends('admin.layouts.master')
 @section('content')
     <div class="content-wrapper">
-        <!-- Content Header (Page header) -->
         <div class="content-header">
             <div class="container-fluid">
                 <div class="row mb-2">
@@ -17,9 +16,6 @@
                 </div><!-- /.row -->
             </div><!-- /.container-fluid -->
         </div>
-        <!-- /.content-header -->
-
-        <!-- Main content -->
         <section class="content">
             <div class="container-fluid">
                 <!-- Small boxes (Stat box) -->
@@ -32,7 +28,7 @@
                                 <p>New Leads Add Today</p>
                             </div>
                             <div class="icon">
-                                <i class="fas fa-smile"></i>
+                                <i class="fas fa-user"></i>
                             </div>
                             <a href="{{ route('dashboard.leads_by_users_report') }}" class="small-box-footer">More info <i
                                     class="fas fa-arrow-circle-right"></i></a>
@@ -63,10 +59,10 @@
                                 <p>Pending Works</p>
                             </div>
                             <div class="icon">
-                                <i class="fas fa-unlock"></i>
+                                <i class="fas fa-tasks"></i>
                             </div>
-                            <a href="{{ route('report.lead.index') }}" class="small-box-footer">More info <i
-                                    class="fas fa-arrow-circle-right"></i></a>
+                            <a href="{{ route('report.lead.index') }}" class="small-box-footer"
+                                style="color: #fff !important;">More info <i class="fas fa-arrow-circle-right"></i></a>
                         </div>
                     </div>
                     <div class="col-lg-3 col-6">
@@ -74,17 +70,180 @@
                         <div class="small-box bg-primary">
                             <div class="inner">
                                 <h3>{{ $total_blance }}</h3>
-
                                 <p>Total Balance</p>
                             </div>
                             <div class="icon">
-                                <i class="fas fa-unlock"></i>
+                                <i class="fas fa-wallet"></i>
                             </div>
                             <a href="{{ route('finance.reports.show_ledger') }}" class="small-box-footer">More info <i
                                     class="fas fa-arrow-circle-right"></i></a>
                         </div>
                     </div>
                     <!-- ./col -->
+                </div>
+                @canany(['lead search', 'lead details', 'read attendance'])
+                    <div class="row">
+                        @can('lead search')
+                            <div class="col-md-6 mb-4">
+                                <div class="custom_card h-100">
+                                    <div class="card-body">
+                                        <div class="mb-3 d-flex align-items-center justify-content-between">
+                                            <h5 class="text-lg font-semibold">Search Lead By Number</h5>
+                                        </div>
+                                        <div class="form-group">
+                                            <div class="input-group input-group-sm">
+                                                @csrf
+                                                <input type="text" class="form-control" name="number" id="number"
+                                                    maxlength="11" size="11">
+                                                <span class="input-group-append">
+                                                    <button type="submit" class="btn btn-info btn-flat"
+                                                        id="search_number"><i class="fas fa-search mr-1"></i> Search</button>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="">
+                                            <div id="msg" class="message message-success ">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endcan
+
+                        @can('read attendance')
+                            <div class="col-md-6 mb-4">
+                                <div class="custom_card h-100">
+                                    <div class="card-body">
+                                        <form action="/admin/punch" method="POST" enctype="multipart/form-data">
+                                            <div class="mb-3 d-flex align-items-center justify-content-between">
+                                                <h5 class="text-lg font-semibold">Employee Attendance</h5>
+                                                <button class="btn btn-sm custom_btn_outline primary" id="punch_button">
+                                                    <i class="fas fa-plus mr-1"></i> Punch In
+                                                </button>
+                                            </div>
+
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    @csrf
+                                                    <select class="form-control" name="user_id">
+                                                        @foreach ($users_list as $u)
+                                                            <option value="{{ $u->id }}"> {{ $u->name }}
+                                                            </option>
+                                                        @endforeach
+
+                                                    </select>
+                                                </div>
+
+                                                @if ($display_date)
+                                                    <div class="col-md-6">
+                                                        <input type="datetime-local" class="form-control" name="punch_time"
+                                                            id="date_time">
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        </form>
+                                        <div class="form-group row">
+                                            <div id="msg" class="message message-success ">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endcan
+
+
+                    </div>
+                @endcanany
+                {{-- Financial Summary --}}
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <div class="custom_card h-100">
+                            <div class="card-body">
+                                <div class="row justify-content-center">
+                                    <div class="col-12 text-center mb-4">
+                                        <h4 class="text-lg">Financial Summary</h4>
+                                    </div>
+
+                                    <!-- Hand Cash Total -->
+                                    <div class="col-md-4 mb-4 mb-md-0">
+                                        <div class="financial-circle bg_success">
+                                            <div class="circle-content">
+                                                <h6>Hand Cash</h6>
+                                                <h4 class="mt-2">{{ number_format($total_blance, 2) }}</h4>
+                                            </div>
+                                        </div>
+                                        <p class="text-muted mt-2 text-center">Available Cash Balance</p>
+                                    </div>
+
+                                    <!-- Bank Account Total -->
+                                    <div class="col-md-4">
+                                        <div class="financial-circle bg_danger">
+                                            <div class="circle-content">
+                                                <h6>Bank Account</h6>
+                                                <h4 class="mt-2">{{ number_format($total_bank_account_data, 2) }}
+                                                </h4>
+                                            </div>
+                                        </div>
+                                        <p class="text-muted mt-2 text-center">Current Bank Balance</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <div class="custom_card h-100">
+                            <div class="card-body">
+                                <div class="mb-3 d-flex align-items-center justify-content-between">
+                                    <h5 class="text-lg font-semibold">Dasticash Summary</h5>
+                                    <button class="btn btn-sm custom_btn_outline primary" data-toggle="modal"
+                                        data-target="#addDasticashModal">
+                                        <i class="fas fa-plus mr-1"></i> Add Dasticash
+                                    </button>
+                                </div>
+                                <!-- DataTable -->
+                                <div class="table-responsive">
+                                    <table class="table table-hover" id="dasticashTable">
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Name</th>
+                                                <th>Amount</th>
+                                                <th>Description</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach ($dasticashData as $key => $item)
+                                                <tr>
+                                                    <td>{{ $key + 1 }}</td>
+                                                    <td>{{ $item->name }}</td>
+                                                    <td>{{ $item->amount }}</td>
+                                                    <td>{{ $item->description }}</td>
+                                                    <td>
+                                                        <a href="javascript:void(0)" class="btn btn-sm btn-info edit-btn"
+                                                            data-id="{{ $item->id }}"
+                                                            data-name="{{ $item->name }}"
+                                                            data-amount="{{ $item->amount }}"
+                                                            data-description="{{ $item->description }}">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        <form action="{{ route('dasticash.destroy', $item->id) }}"
+                                                            method="POST" style="display:inline-block">
+                                                            @csrf @method('DELETE')
+                                                            <button class="btn btn-sm btn-danger"
+                                                                onclick="return confirm('Delete this record?')"><i
+                                                                    class="fas fa-trash"></i></button>
+                                                        </form>
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <!-- /.row (main row) -->
 
@@ -110,237 +269,65 @@
                         </div>
                       <!-- /.card -->
                     </div> --}}
-                @canany(['lead search', 'lead details', 'read attendance'])
-                    <div class="row">
-                        @can('lead search')
-                            <div class="col-md-6">
-                                <div class="card card-info">
-                                    <div class="card-header">
-                                        <h3 class="card-title">Search Lead By Number</h3>
-                                    </div>
-                                    <!-- /.card-header -->
-                                    <!-- form start -->
-                                    <div class="card-body pt-5">
-                                        <div class="form-group row">
-                                            <div class="input-group input-group-sm">
-                                                @csrf
-                                                <input type="text" class="form-control" name="number" id="number"
-                                                    maxlength="11" size="11">
-                                                <span class="input-group-append">
-                                                    <button type="submit" class="btn btn-info btn-flat"
-                                                        id="search_number">Go!</button>
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div class="form-group row">
-                                            <div id="msg" class="message message-success col-lg-12 col-12">
-
-                                            </div>
-
-                                        </div>
-
-
-                                    </div>
-
-                                </div>
-                                <!-- /.col -->
-                            </div>
-                        @endcan
-
-                        @can('read attendance')
-                            <div class="col-md-6">
-                                <div class="card card-danger">
-                                    <div class="card-header">
-                                        <h3 class="card-title">Employee Attendance</h3>
-                                    </div>
-                                    <!-- /.card-header -->
-                                    <!-- form start -->
-                                    <div class="card-body">
-                                        <div class="form-group">
-                                            <div class=" input-group-sm">
-                                                <form action="/admin/punch" method="POST" enctype="multipart/form-data">
-                                                    <div class="row">
-                                                        <div class="col-md-6">
-                                                            @csrf
-                                                            <select class="form-control" name="user_id">
-                                                                @foreach ($users_list as $u)
-                                                                    <option value="{{ $u->id }}"> {{ $u->name }}
-                                                                    </option>
-                                                                @endforeach
-
-
-
-                                                            </select>
-                                                        </div>
-
-                                                        @if ($display_date)
-                                                            <div class="col-md-6">
-                                                                <input type="datetime-local" class="form-control" name="punch_time"
-                                                                    id="date_time">
-                                                            </div>
-                                                        @endif
-
-
-                                                    </div>
-
-
-                                                    <span class="input-group-append">
-                                                        <button type="submit" class="btn btn-info btn-flat"
-                                                            id="punch_button">Punch</button>
-                                                    </span>
-
-                                                </form>
-
-                                            </div>
-                                        </div>
-                                        <div class="form-group row">
-                                            <div id="msg" class="message message-success col-lg-12 col-12">
-
-                                            </div>
-
-                                        </div>
-
-
-                                    </div>
-
-                                </div>
-                                <!-- /.col -->
-                            </div>
-                        @endcan
-
-
-                    </div>
-                @endcanany
-                <div class="row">
-                    <!-- Hand Cash Card -->
-                    <div class="col-md-6">
-                        <div class="card card-success">
-                            <div class="card-header">
-                                <h3 class="card-title">Hand Cash</h3>
-                            </div>
-                            <div class="card-body">
-                                <div class="row text-center">
-                                    <div class="col-md-4">
-                                        <h5>Hand Cash Total</h5>
-                                        <p><strong>{{ number_format($total_blance, 2) }}</strong></p>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <h5>Bank Account Total</h5>
-                                        <p><strong>{{ number_format($total_bank_account_data, 2) }}</strong></p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card card-primary">
-                            <div class="card-header">
-                                <h3 class="card-title">Dasticash Records</h3>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-12">
-                                        <div class="d-flex justify-content-end mb-2">
-                                            <button class="btn btn-sm btn-primary" data-toggle="modal"
-                                                data-target="#addDasticashModal">
-                                                <i class="fas fa-plus-circle"></i> Add Dasticash
-                                            </button>
-                                        </div>
-
-                                        <!-- DataTable -->
-                                        <table class="table table-bordered table-striped" id="dasticashTable">
-                                            <thead>
-                                                <tr>
-                                                    <th>ID</th>
-                                                    <th>Name</th>
-                                                    <th>Amount</th>
-                                                    <th>Description</th>
-                                                    <th>Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach ($dasticashData as $key => $item)
-                                                    <tr>
-                                                        <td>{{ $key + 1 }}</td>
-                                                        <td>{{ $item->name }}</td>
-                                                        <td>{{ $item->amount }}</td>
-                                                        <td>{{ $item->description }}</td>
-                                                        <td>
-                                                            <a href="javascript:void(0)"
-                                                                class="btn btn-sm btn-info edit-btn"
-                                                                data-id="{{ $item->id }}"
-                                                                data-name="{{ $item->name }}"
-                                                                data-amount="{{ $item->amount }}"
-                                                                data-description="{{ $item->description }}">
-                                                                Edit
-                                                            </a>
-                                                            <form action="{{ route('dasticash.destroy', $item->id) }}"
-                                                                method="POST" style="display:inline-block">
-                                                                @csrf @method('DELETE')
-                                                                <button class="btn btn-sm btn-danger"
-                                                                    onclick="return confirm('Delete this record?')">Delete</button>
-                                                            </form>
-                                                        </td>
-                                                    </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-
 
 
                 @canany(['read attendance'])
-                    <div class="col-md-12">
-                        <h4>Punch-in Records for Today</h4>
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>User Name</th>
-                                    <th>Punch In</th>
-                                    <th>Punch Out</th>
-                                    <th>Total Hours</th>
+                    <div class="col-md-12 mb-4">
+                        <div class="custom_card h-100">
+                            <div class="card-body">
+                                <div class="mb-3 d-flex align-items-center justify-content-between">
+                                    <h5 class="text-lg font-semibold">Punch-in Records for Today</h5>
 
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($today_punches as $punch)
-                                    <tr>
-                                        <td>{{ date('Y-m-d', strtotime($punch->punch_in)) }}</td>
-                                        <td>{{ $punch->user->name }}</td>
-                                        <td>{{ date('H:i:s', strtotime($punch->punch_in)) }}</td>
-                                        <td>{{ $punch->punch_out ? date('H:i:s', strtotime($punch->punch_out)) : 'N/A' }}</td>
+                                </div>
+                                <div class="table-resposive">
 
-                                        <td>
-                                            @if ($punch->punch_out)
-                                                <?php
-                                                $punchInTime = strtotime($punch->punch_in);
-                                                $punchOutTime = strtotime($punch->punch_out);
-                                                $totalSeconds = $punchOutTime - $punchInTime;
-                                                $hours = floor($totalSeconds / 3600);
-                                                $minutes = floor(($totalSeconds % 3600) / 60);
-                                                $seconds = $totalSeconds % 60;
-                                                ?>
-                                                {{ $hours }}h {{ $minutes }}m {{ $seconds }}s
-                                            @else
-                                                N/A
-                                            @endif
-                                        </td>
+                                    <table class="table table-hover ">
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>User Name</th>
+                                                <th>Punch In</th>
+                                                <th>Punch Out</th>
+                                                <th>Total Hours</th>
 
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach ($today_punches as $punch)
+                                                <tr>
+                                                    <td>{{ date('Y-m-d', strtotime($punch->punch_in)) }}</td>
+                                                    <td>{{ $punch->user->name }}</td>
+                                                    <td>{{ date('H:i:s', strtotime($punch->punch_in)) }}</td>
+                                                    <td>{{ $punch->punch_out ? date('H:i:s', strtotime($punch->punch_out)) : 'N/A' }}
+                                                    </td>
+
+                                                    <td>
+                                                        @if ($punch->punch_out)
+                                                            <?php
+                                                            $punchInTime = strtotime($punch->punch_in);
+                                                            $punchOutTime = strtotime($punch->punch_out);
+                                                            $totalSeconds = $punchOutTime - $punchInTime;
+                                                            $hours = floor($totalSeconds / 3600);
+                                                            $minutes = floor(($totalSeconds % 3600) / 60);
+                                                            $seconds = $totalSeconds % 60;
+                                                            ?>
+                                                            {{ $hours }}h {{ $minutes }}m
+                                                            {{ $seconds }}s
+                                                        @else
+                                                            N/A
+                                                        @endif
+                                                    </td>
+
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 @endcanany
-
-
 
                 <!-- Add Dasticash Modal -->
                 <div class="modal fade" id="addDasticashModal" tabindex="-1" role="dialog"
@@ -418,13 +405,8 @@
                     </div>
                 </div>
 
-
-
-            </div><!-- /.container-fluid -->
+            </div>
         </section>
-
-
-        <!-- /.content -->
     </div>
 @endsection
 @section('js')

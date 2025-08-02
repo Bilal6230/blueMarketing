@@ -1,0 +1,73 @@
+:root {
+  --primary-color: #1E73BE;
+  --secondary-color: #858796;
+  --success-color: #1cc88a;
+  --info-color: #36b9cc;
+  --warning-color: #f6c23e;
+  --danger-color: #e74a3b;
+  --light-color: #f8f9fc;
+  --dark-color: #5a5c69;
+  --gray-color: #4A4E56;
+}
+
+.navbar-dark,
+.main-sidebar {
+  background-color: #0e1726;
+  border-color: #262d38;
+}
+
+.sidebar-dark-primary .nav-sidebar>.nav-item>.nav-link,
+.sidebar-light-primary .nav-sidebar>.nav-item>.nav-link {
+  color: #506690;
+}
+
+.sidebar-dark-primary .nav-sidebar>.nav-item>.nav-link.active,
+.sidebar-light-primary .nav-sidebar>.nav-item>.nav-link.active,
+.sidebar-dark-primary .nav-sidebar>.nav-item:hover>.nav-link,
+.sidebar-light-primary .nav-sidebar>.nav-item:hover>.nav-link {
+  background-color: #181f32 !important;
+  color: #888EA8 !important;
+}
+
+[class*=sidebar-dark-] .nav-sidebar>.nav-item.menu-open>.nav-link,
+[class*=sidebar-dark-] .nav-sidebar>.nav-item:hover>.nav-link,
+[class*=sidebar-dark-] .nav-sidebar>.nav-item>.nav-link:focus {
+  background-color: #181f32 !important;
+  color: #888EA8 !important;
+}
+
+[class*=sidebar-dark-] .nav-treeview>.nav-item>.nav-link:focus,
+[class*=sidebar-dark-] .nav-treeview>.nav-item>.nav-link:hover {
+  background-color: #181f32 !important;
+  color: #888EA8 !important;
+}
+
+[class*=sidebar-dark-] .nav-treeview>.nav-item>.nav-link {
+  color: #888EA8 !important;
+  font-size: 14px;
+}
+
+[class*=sidebar-dark-] .nav-treeview>.nav-item>.nav-link.active,
+[class*=sidebar-dark-] .nav-treeview>.nav-item>.nav-link.active:focus,
+[class*=sidebar-dark-] .nav-treeview>.nav-item>.nav-link.active:hover {
+    background-color: #181f32 !important;
+  color: #888EA8 !important;
+}
+
+.nav-sidebar>.nav-item .nav-icon.far {
+  font-size: 0.8rem;
+}
+
+/* dark mode */
+.dark-mode .main-content .content-wrapper {
+  background-color: #060818;
+}
+
+.dark-mode .navbar-dark,
+.dark-mode .main-sidebar {
+  background-color: #0e1726;
+  border-color: #262d38;
+}
+.dark-mode .card, .dark-mode .custom_card {
+    background-color: #0e1726 !important; 
+}
