@@ -23,6 +23,7 @@ use App\Models\SubheadAccounting;
 use Carbon\Carbon;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Log;
+
 class BookingController extends Controller
 {
     /**
@@ -34,7 +35,7 @@ class BookingController extends Controller
     {
         $projectId      = getSelectedTown();
         $x['title']     = 'Plots Sale List';
-        $x['data']      = Booking::with('customer', 'plot', 'project','broker')->where('project_id', $projectId)->get();
+        $x['data']      = Booking::with('customer', 'plot', 'project', 'broker')->where('project_id', $projectId)->get();
         $x['role']      = Role::get();
 
         // Calculate the sum of the sale amount
@@ -59,8 +60,8 @@ class BookingController extends Controller
                 $query->whereDate('due_date', '<=', $today);
             }
         ])
-        ->where('project_id', getSelectedTown())
-        ->get();
+            ->where('project_id', getSelectedTown())
+            ->get();
 
         // Calculate the sum of Due Amounts and Received
         $x['sum_due_amount'] = $x['data']->sum(function ($booking) {
@@ -89,12 +90,12 @@ class BookingController extends Controller
         $x['data']      = Plot::get();
         $x['role']      = Role::get();
         $x['installments'] = Installment::get();
-        $projects = Project::where('id', getSelectedTown() )->get();
+        $projects = Project::where('id', getSelectedTown())->get();
         $x['projects'] = $projects;
         // Retrieve the joined data from project_head_subheads and subhead_accountings
         $brokers = ProjectHeadSubhead::where('head_accounting_id', 6)
-        ->join('subhead_accountings', 'project_head_subheads.subhead_accounting_id', '=', 'subhead_accountings.id')
-        ->get();
+            ->join('subhead_accountings', 'project_head_subheads.subhead_accounting_id', '=', 'subhead_accountings.id')
+            ->get();
 
         $x['brokers'] = $brokers;
 
@@ -108,9 +109,9 @@ class BookingController extends Controller
      * @return \Illuminate\Http\Response
      */
 
-     public function store(Request $request)
+    public function store(Request $request)
     {
-        
+
         // Validate the incoming request data
         $validator = Validator::make($request->all(), [
             'project_id' => 'required|exists:projects,id',
@@ -174,7 +175,7 @@ class BookingController extends Controller
                 'plot_id' => $booking->plot_id,
                 'amount_in' => $booking->total_price,
                 'amount_out' => 0,
-                'description' => 'Booking for plot '.$plotType . $plotName,
+                'description' => 'Booking for plot ' . $plotType . $plotName,
                 'date' => $booking->booking_date,
                 'is_approve' => 1,
                 'is_active' => 1,
@@ -182,7 +183,7 @@ class BookingController extends Controller
 
             // Create subhead accounting
             $subheadAccounting = SubheadAccounting::create([
-                'name' => '(' .$plotType. $plotName . ') ' . $customer->first_name . ' ' . $customer->last_name,
+                'name' => '(' . $plotType . $plotName . ') ' . $customer->first_name . ' ' . $customer->last_name,
                 'is_active' => 1,
                 'cnic' => $customer->nic_number ?? '00000',
                 'phone' => $customer->phone_number ?? '00000',
@@ -196,8 +197,8 @@ class BookingController extends Controller
                 'plot_id' => $booking->plot_id,
                 'customer_id' => $booking->customer_id,
             ]);
-            
-            
+
+
 
             // Create ledger entry
             $lastId = getLastLedgerIdByType("BO");
@@ -210,17 +211,17 @@ class BookingController extends Controller
                 'amount_out' => $booking->total_price,
                 'is_active' => 1,
                 'date' => $booking->booking_date,
-                'detail' => 'Booking for plot ' .$plotType . $plotName,
+                'detail' => 'Booking for plot ' . $plotType . $plotName,
                 'update_by' => Auth::user()->id,
                 'create_by' => Auth::user()->id,
                 'status' => 0,
             ]);
-            
+
             // Ensure credit account exists
             $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', 16)
-            ->where('project_id', $booking->project_id)
-            ->where('subhead_accounting_id', 123)
-            ->value('id');
+                ->where('project_id', $booking->project_id)
+                ->where('subhead_accounting_id', 123)
+                ->value('id');
 
             if (!$creditAccountId) {
                 throw new \Exception('Credit account ID not found.');
@@ -235,7 +236,7 @@ class BookingController extends Controller
                 'amount_out' => 0.00,
                 'is_active' => 1,
                 'date' => $booking->booking_date,
-                'detail' => 'Booking for plot ' .$plotType. $plotName,
+                'detail' => 'Booking for plot ' . $plotType . $plotName,
                 'update_by' => Auth::user()->id,
                 'create_by' => Auth::user()->id,
                 'status' => 0,
@@ -253,7 +254,7 @@ class BookingController extends Controller
         return back();
     }
 
-   
+
 
     public function show(Request $request)
     {
@@ -267,19 +268,19 @@ class BookingController extends Controller
         ], Response::HTTP_OK);
     }
 
-    
+
     public function edit(Plot $plot)
     {
         //
     }
 
-    
+
     public function update(Request $request, Plot $plot)
     {
         //
     }
 
- 
+
     public function destroy(Request $request)
     {
         $data = [
@@ -335,8 +336,8 @@ class BookingController extends Controller
 
         // Query the database to get customers associated with the project
         $customers  = Lead::join('bookings', 'leads.id', '=', 'bookings.customer_id')->where('leads.project_id', $projectId)
-        ->select('leads.*') // Select all columns from the leads table
-        ->get();
+            ->select('leads.*') // Select all columns from the leads table
+            ->get();
 
         dd($customers);
 
@@ -376,7 +377,7 @@ class BookingController extends Controller
     {
         $plot_type = $request->input('plot_type');
         $projectId = $request->input('project_id');
-        
+
         $customers = Plot::where('type', $plot_type)->where('project_id', $projectId)->where('sold', 0)->get();
 
         // Return customers as JSON response
@@ -387,14 +388,26 @@ class BookingController extends Controller
     {
         $projectId = $request->input('project_id');
         $customerId = $request->input('customer_id');
-        
-        $customers = Plot::join('bookings', 'plots.id', '=', 'bookings.plot_id')
-                        ->where('plots.project_id', $projectId)
-                        ->where('bookings.customer_id', $customerId)
-                        ->get();
 
-            // Return customers as JSON response
+        $customers = Plot::join('bookings', 'plots.id', '=', 'bookings.plot_id')
+            ->where('plots.project_id', $projectId)
+            ->where('bookings.customer_id', $customerId)
+            ->get();
+
+        // Return customers as JSON response
         return response()->json($customers);
+    }
+    public function getPlotCustomer(Request $request)
+    {
+        $plotId = $request->input('plot_id');
+
+        $customer = Plot::join('bookings', 'plots.id', '=', 'bookings.plot_id')
+            ->join('leads', 'bookings.customer_id', '=', 'leads.id') // if you want customer data
+            ->where('plots.id', $plotId)
+            ->select('leads.*') // select customer info only
+            ->first(); // use `first()` for a single record
+
+        return response()->json($customer);
     }
 
     public function scheduleForm(Request $request, $id)
@@ -520,13 +533,13 @@ class BookingController extends Controller
         $x['class']      =   'cash-in';
         $x['bg_voucher'] = 'info-cash-in';
 
-        $data = CustomerLedger::with('customer_list','plot_list')->where('transaction_type', 'PPR')->where('is_active', '1')->where('project_id', getSelectedTown())->get();
-        
+        $data = CustomerLedger::with('customer_list', 'plot_list')->where('transaction_type', 'CR')->where('is_active', '1')->where('project_id', getSelectedTown())->get();
+
         $x['data'] = $data;
-        
-        $projects = Project::where('id', getSelectedTown() )->get();
+
+        $projects = Project::where('id', getSelectedTown())->get();
         $x['projects'] = $projects;
-        
+
         return view('admin.booking.receive', $x);
     }
 
@@ -540,7 +553,7 @@ class BookingController extends Controller
         return view('admin.reports.bookings.customer_report', $x);
     }
 
-    
+
     public function deposit(Request $request)
     {
         // dd($request->input());
@@ -553,32 +566,27 @@ class BookingController extends Controller
             'amount' => 'required',
             'detail' => 'required',
             'payment_type' => 'required',
-            'reference' =>'required',
-          
-        ]);
-        ;
+            'reference' => 'required',
+
+        ]);;
 
         $action = $request->input('action');
         $customer_id = $request->input('customer_id');
         $x['today'] = date("d-m-Y");
-        
-        try{
-            switch($action)
-            {
-                
+
+        try {
+            switch ($action) {
+
                 case 'deposit':
+
                     // Create entry in customer ledger
                     // dd($request->input());
                     $payment_type = $request->input('payment_type');
-                    if($payment_type ==  1)
-                    {
+                    if ($payment_type ==  1) {
                         $t_number = $bank_id =   null;
-                    }
-                    else
-                    {  
+                    } else {
                         $t_number = $request->input('t_number');
                         $bank_id = $request->input('bank_id');
-
                     }
                     $plotName = Plot::where('id', $request->input('plot_id'))->value('name');
                     $data = CustomerLedger::create([
@@ -603,10 +611,10 @@ class BookingController extends Controller
 
                     // Ensure credit account exists
                     $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', 16)
-                    ->where('project_id', $request->input('project_id'))
-                    ->where('plot_id', $request->input('plot_id'))
-                    ->where('customer_id', $customer_id)
-                    ->value('id');
+                        ->where('project_id', $request->input('project_id'))
+                        ->where('plot_id', $request->input('plot_id'))
+                        ->where('customer_id', $customer_id)
+                        ->value('id');
 
                     if (!$creditAccountId) {
                         throw new \Exception('Credit account ID not found.');
@@ -615,7 +623,7 @@ class BookingController extends Controller
                     $plotName = Plot::where('id', $request->input('plot_id'))->value('name');
 
                     $lastId = getLastLedgerIdByType("CR");
-        
+
                     Ledger::create([
                         'type' => 'CR',
                         'type_id' => $lastId + 1,
@@ -625,7 +633,7 @@ class BookingController extends Controller
                         'amount_out' => 0.00,
                         'is_active' => 1,
                         'date' => $request->input('date'), // Assuming booking date is the transaction date
-                        'detail' => '(Cash slip#' .$request->input('reference').') '.$request->input('detail'),
+                        'detail' => '(Cash slip#' . $request->input('reference') . ') ' . $request->input('detail'),
                         'update_by' => Auth::user()->id,
                         'create_by' => Auth::user()->id,
                         'status' => 0,
@@ -635,14 +643,12 @@ class BookingController extends Controller
                     Alert::success('Notification', 'Data <b></b> Save successfully ')->toToast()->toHtml();
 
 
-                break;
+                    break;
             }
-
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             return back()->withErrors(['msg' => $e->getMessage()]);
         }
         return back();
-
     }
 
     public function customer_report_display(Request $request)
@@ -651,73 +657,72 @@ class BookingController extends Controller
         $validatedData = $request->validate([
             'customer_id' => 'required',
             'action' => 'required',
-          
+
         ]);
 
         $action = $request->input('action');
         $customer_id = $request->input('customer_id');
         $x['today'] = date("d-m-Y");
 
-        try{
-            switch($action)
-            {
+        try {
+            switch ($action) {
                 case 'customer_report':
                     $x['title']     = 'Customer Report';
                     $x['data']      = CustomerLedger::with('customer_list', 'plot_list', 'project_list')
-                                    ->where('customer_id', $customer_id)->where('is_active', 1)->where('is_approve', 1)
-                                    ->when($request->input('plot_id'), function ($query) use ($request) {
-                                        return $query->where('plot_id', $request->input('plot_id'));
-                                    })
-                                    ->orderBy('plot_id')
-                                    ->orderBy('id')
-                                    ->get();
+                        ->where('customer_id', $customer_id)->where('is_active', 1)->where('is_approve', 1)
+                        ->when($request->input('plot_id'), function ($query) use ($request) {
+                            return $query->where('plot_id', $request->input('plot_id'));
+                        })
+                        ->orderBy('plot_id')
+                        ->orderBy('id')
+                        ->get();
 
                     // dd( $x['data']);
                     return view('admin.reports.bookings.customer', $x);
 
-                break;
+                    break;
 
                 case 'booking_file':
 
                     $validatedData = $request->validate([
                         'plot_id' => 'required',
-                      
+
                     ]);
 
                     $plot_id = $request->input('plot_id');
                     $x['title']     = 'Payment Plan';
                     $x['data']      = $booking = Booking::with('customer', 'plot', 'project', 'bookingDetails')
-                                        ->where('customer_id', $customer_id)
-                                        ->where('plot_id', $plot_id)
-                                        ->first();
+                        ->where('customer_id', $customer_id)
+                        ->where('plot_id', $plot_id)
+                        ->first();
 
                     // dd($x['data']);
                     return view('admin.reports.bookings.booking', $x);
-                    
 
-                break;
+
+                    break;
 
                 case 'recovery_report':
 
                     $validatedData = $request->validate([
                         'plot_id' => 'required',
-                      
+
                     ]);
 
                     $today = Carbon::today()->toDateString();
-                    
+
 
                     $plot_id = $request->input('plot_id');
                     $x['title']     = 'Customer Recovery Report';
                     $x['data']       = Booking::with(['customer', 'plot', 'project', 'bookingDetails' => function ($query) use ($today) {
-                                            $query->whereDate('due_date', '<=', $today);
-                                        }])
-                                        ->where('customer_id', $customer_id)
-                                        ->where('plot_id', $plot_id)
-                                        ->first();
+                        $query->whereDate('due_date', '<=', $today);
+                    }])
+                        ->where('customer_id', $customer_id)
+                        ->where('plot_id', $plot_id)
+                        ->first();
 
                     // dd($x['data']);
-                    $customerLedgers = CustomerLedger::where('customer_id', $customer_id)->where('is_active' , 1)
+                    $customerLedgers = CustomerLedger::where('customer_id', $customer_id)->where('is_active', 1)
                         ->when($request->input('plot_id'), function ($query) use ($request) {
                             return $query->where('plot_id', $request->input('plot_id'));
                         })
@@ -732,44 +737,44 @@ class BookingController extends Controller
                     $x['total_recovery']    = $sumAmountOut;
 
                     return view('admin.reports.bookings.customer_recovery', $x);
-                    
 
-                break;
+
+                    break;
 
                 case 'recovery_report_details':
 
                     $validatedData = $request->validate([
                         'plot_id' => 'required',
                     ]);
-                
+
                     $today = Carbon::today()->toDateString();
                     $plot_id = $request->input('plot_id');
-                    
+
                     $x['title'] = 'Customer Payment Report';
                     $booking = Booking::with(['customer', 'plot', 'project', 'bookingDetails' => function ($query) use ($today) {
-                                            $query->whereDate('due_date', '<=', $today);
-                                        }])
-                                        ->where('customer_id', $customer_id)
-                                        ->where('plot_id', $plot_id)
-                                        ->first();
+                        $query->whereDate('due_date', '<=', $today);
+                    }])
+                        ->where('customer_id', $customer_id)
+                        ->where('plot_id', $plot_id)
+                        ->first();
                     $x['data'] = $booking;
-                
+
                     $customerLedgers = CustomerLedger::where('customer_id', $customer_id)
-                                        ->where('is_active', 1)
-                                        ->where('transaction_type', "PPR")
-                                        ->when($request->input('plot_id'), function ($query) use ($request) {
-                                            return $query->where('plot_id', $request->input('plot_id'));
-                                        })
-                                        ->orderBy('plot_id')
-                                        ->orderBy('id')
-                                        ->get();
+                        ->where('is_active', 1)
+                        ->where('transaction_type', "PPR")
+                        ->when($request->input('plot_id'), function ($query) use ($request) {
+                            return $query->where('plot_id', $request->input('plot_id'));
+                        })
+                        ->orderBy('plot_id')
+                        ->orderBy('id')
+                        ->get();
                     $bookingDetails = BookingDetail::where('booking_id', $booking->id)->whereDate('due_date', '<=', $today)->get();
-                    
+
                     $customer_ledger_record = [];
 
 
                     // Combine data from $customerLedgers and $bookingDetails
-                    
+
 
                     foreach ($bookingDetails as $detail) {
                         $customer_ledger_record[] = [
@@ -783,7 +788,7 @@ class BookingController extends Controller
                     foreach ($customerLedgers as $ledger) {
                         $customer_ledger_record[] = [
                             'date' => $ledger->date, // Assuming `date` is a column in the `CustomerLedger` model
-                            'details' => 'Slip:'.$ledger->reference.' '.$ledger->description, // Assuming `details` is a column in the `CustomerLedger` model
+                            'details' => 'Slip:' . $ledger->reference . ' ' . $ledger->description, // Assuming `details` is a column in the `CustomerLedger` model
                             'amount_in' => $ledger->amount_in, // Assuming `amount_in` is a column in the `CustomerLedger` model
                             'amount_out' => $ledger->amount_out, // Assuming `amount_out` is a column in the `CustomerLedger` model
                         ];
@@ -794,45 +799,45 @@ class BookingController extends Controller
                         return strtotime($a['date']) - strtotime($b['date']);
                     });
 
-                    
+
                     return view('admin.reports.bookings.customer_recovery_by_details', array_merge($x, ['customer_ledger_record' => $customer_ledger_record]));
-                
-                break;
+
+                    break;
 
                 case 'customer_ledger':
 
                     $validatedData = $request->validate([
                         'plot_id' => 'required',
                     ]);
-                
+
                     $today = Carbon::today()->toDateString();
                     $plot_id = $request->input('plot_id');
-                    
+
                     $x['title'] = 'Customer Payment Report';
                     $booking = Booking::with(['customer', 'plot', 'project', 'bookingDetails' => function ($query) use ($today) {
-                                            $query->whereDate('due_date', '<=', $today);
-                                        }])
-                                        ->where('customer_id', $customer_id)
-                                        ->where('plot_id', $plot_id)
-                                        ->first();
+                        $query->whereDate('due_date', '<=', $today);
+                    }])
+                        ->where('customer_id', $customer_id)
+                        ->where('plot_id', $plot_id)
+                        ->first();
                     $x['data'] = $booking;
-                
+
                     $customerLedgers = CustomerLedger::where('customer_id', $customer_id)
-                                        ->where('is_active', 1)
-                                        ->where('transaction_type', "PPR")
-                                        ->when($request->input('plot_id'), function ($query) use ($request) {
-                                            return $query->where('plot_id', $request->input('plot_id'));
-                                        })
-                                        ->orderBy('plot_id')
-                                        ->orderBy('id')
-                                        ->get();
+                        ->where('is_active', 1)
+                        ->where('transaction_type', "PPR")
+                        ->when($request->input('plot_id'), function ($query) use ($request) {
+                            return $query->where('plot_id', $request->input('plot_id'));
+                        })
+                        ->orderBy('plot_id')
+                        ->orderBy('id')
+                        ->get();
                     $bookingDetails = BookingDetail::where('booking_id', $booking->id)->get();
-                    
+
                     $customer_ledger_record = [];
 
 
                     // Combine data from $customerLedgers and $bookingDetails
-                    
+
 
                     foreach ($bookingDetails as $detail) {
                         $customer_ledger_record[] = [
@@ -846,7 +851,7 @@ class BookingController extends Controller
                     foreach ($customerLedgers as $ledger) {
                         $customer_ledger_record[] = [
                             'date' => $ledger->date, // Assuming `date` is a column in the `CustomerLedger` model
-                            'details' => 'Slip:'.$ledger->reference.' '.$ledger->description, // Assuming `details` is a column in the `CustomerLedger` model
+                            'details' => 'Slip:' . $ledger->reference . ' ' . $ledger->description, // Assuming `details` is a column in the `CustomerLedger` model
                             'amount_in' => $ledger->amount_in, // Assuming `amount_in` is a column in the `CustomerLedger` model
                             'amount_out' => $ledger->amount_out, // Assuming `amount_out` is a column in the `CustomerLedger` model
                         ];
@@ -857,21 +862,19 @@ class BookingController extends Controller
                         return strtotime($a['date']) - strtotime($b['date']);
                     });
 
-                    
-                    return view('admin.reports.bookings.customer_recovery_by_details', array_merge($x, ['customer_ledger_record' => $customer_ledger_record]));
-                
-                break;
-            }
 
-        }catch(\Exception $e){
+                    return view('admin.reports.bookings.customer_recovery_by_details', array_merge($x, ['customer_ledger_record' => $customer_ledger_record]));
+
+                    break;
+            }
+        } catch (\Exception $e) {
             return back()->withErrors(['msg' => $e->getMessage()]);
         }
-
     }
 
     public function fatch_voucher(Request $request)
     {
-        $data_list = CustomerLedger::with('customer_list','plot_list')->where(['id' => $request->id])->first();
+        $data_list = CustomerLedger::with('customer_list', 'plot_list')->where(['id' => $request->id])->first();
 
 
 
@@ -912,7 +915,6 @@ class BookingController extends Controller
                 'message' => 'Booking price updated successfully!',
                 'data' => $booking,
             ], 200);
-
         } catch (\Exception $e) {
             // Return an error response in JSON format
             return response()->json([
@@ -926,7 +928,7 @@ class BookingController extends Controller
     public function destroy_booking(Request $request)
     {
         $booking = Booking::findOrFail($request->id);
-        
+
         // Get the plot linked to this booking
         $plot = Plot::find($booking->plot_id);
 
@@ -961,11 +963,4 @@ class BookingController extends Controller
 
         return response()->json(['message' => 'Booking deleted successfully.']);
     }
-
-
-
-
-
-    
-
 }

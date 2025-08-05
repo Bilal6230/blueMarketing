@@ -58,7 +58,7 @@
                         <div class="inner">
                             <h3>{{ count($permission) }}</h3>
 
-                            <p>Permission</p>
+                            <p>Pending Work</p>
                         </div>
                         <div class="icon">
                             <i class="fas fa-unlock"></i>
@@ -93,7 +93,7 @@
                       <!-- /.card -->
                     </div> --}}
                     @canany(['lead search', 'lead details','read attendance'])
-                        
+
                         <div class="row">
                             @can('lead search')
                                 <div class="col-md-6">
@@ -147,29 +147,29 @@
                                                                     @foreach ($users_list as $u )
                                                                         <option value="{{ $u->id }}"> {{ $u->name }}</option>
                                                                     @endforeach
-                                                                    
+
 
 
                                                                 </select>
                                                             </div>
 
                                                             @if($display_date)
-                                                            
+
                                                             <div class="col-md-6">
                                                                 <input type="datetime-local" class="form-control" name="punch_time" id="date_time">
                                                             </div>
                                                             @endif
 
-                                                            
+
                                                         </div>
-                                                        
+
 
                                                         <span class="input-group-append">
                                                         <button type="submit" class="btn btn-info btn-flat" id="punch_button">Punch</button>
                                                         </span>
 
                                                     </form>
-                                                        
+
                                                 </div>
                                                 </div>
                                                 <div class="form-group row">
@@ -187,10 +187,10 @@
                                 </div>
                             @endcan
 
-                            
+
                         </div>
-                        
-                    @endcanany 
+
+                    @endcanany
 
                     @canany(['read attendance'])
                         <div class="col-md-12">
@@ -235,12 +235,12 @@
                                 </tbody>
                             </table>
                         </div>
-                    @endcanany   
+                    @endcanany
 
-                        
 
-                    
-                  
+
+
+
             </div><!-- /.container-fluid -->
         </section>
         <!-- /.content -->

@@ -21,7 +21,7 @@
                 <div class="row">
                     <div class="col-12">
                         <div class="card">
-                            
+
 
                             <div class="card-body table-responsive">
                                 <table id="your-datatable-id" class="table table-striped table-bordered " style="width:100%">
@@ -29,7 +29,7 @@
                                         <tr>
                                             <th>ID</th>
                                             <th>Date</th>
-                                            {{-- <th>Project</th> --}}
+                                            <th>Accountent</th>
                                             <th>Head Account</th>
                                             <th>Party Account</th>
                                             <th style="width: 5px">Ref</th>
@@ -78,14 +78,14 @@
             columns: [
                 { data: 'id', name: 'id',orderable: false  },
                 { data: 'date', name: 'date' ,orderable: false},
-                // { data: 'project_name', name: 'project_head_subheads.project.project' ,orderable: false  },
+                { data: 'accountent_name', name: 'createdBy.name' ,orderable: false  },
                 { data: 'head_account_name', name: 'project_head_subheads.headAccounting.name' ,orderable: false  },
                 { data: 'subhead_account_name', name: 'project_head_subheads.subheadAccounting.name' ,orderable: false },
                 { data: 'reference', name: 'reference' ,orderable: false  },
                 { data: 'detail', name: 'detail' ,orderable: false  },
                 { data: 'amount_in', name: 'amount_in' , orderable: false },
                 { data: 'amount_out', name: 'amount_out' ,orderable: false  },
-                { 
+                {
                     // New column for balance amount
                     data: null,
                     name: 'balance_amount',
@@ -130,8 +130,8 @@
                     text: 'PDF',
                     className: 'btn btn-danger-light'
                 },
-                { 
-                    extend: 'print', 
+                {
+                    extend: 'print',
                     text: 'Print me!',
                     className: 'btn btn-info'
                 },
@@ -143,7 +143,7 @@
                     extend: 'colvis',
                     className: 'btn btn-info'
                 },
-                
+
             ],
             columnDefs: [
                 // { targets: [3, 4], visible: false } // Indexes of columns to hide (0-indexed)
@@ -194,7 +194,7 @@
 
                 $(api.column(5).footer()).html('Total In: ' + amountInSumAll.toFixed(2) + '<br> Total Out:' +  amountOutSumAll.toFixed(2) + '<hr>Balance: '+balance);
 
-                
+
             }
 
         });

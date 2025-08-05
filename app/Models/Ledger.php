@@ -29,4 +29,8 @@ class Ledger extends Model
     {
         return $this->belongsTo(ProjectHeadSubhead::class, 'project_head_subheads_id');
     }
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'create_by', 'id');
+    }
 }
