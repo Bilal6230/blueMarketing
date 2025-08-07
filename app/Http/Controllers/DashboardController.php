@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Dasticash;
+use App\Models\Ledger;
 use App\Models\Punch;
 use App\Models\User;
 use App\Models\Work;
@@ -12,8 +14,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
-use App\Repository\Lead\LeadRepository AS lead_repo;
+use App\Repository\Lead\LeadRepository as lead_repo;
 use Carbon\Carbon;
+use Termwind\Components\Raw;
 
 class DashboardController extends Controller
 {
@@ -21,7 +24,7 @@ class DashboardController extends Controller
     {
         $create_by = null;
         $selectedProjectId = getSelectedTown();
-        $post_by  = Auth::user()->id;
+        $post_by = Auth::user()->id;
         $power = Auth::user()->roles[0]->name;
 
         $x['title'] = 'Dashboard';
@@ -34,7 +37,7 @@ class DashboardController extends Controller
 
         // Build the users_list query
         $usersListQuery = User::where('project_id', $selectedProjectId)
-                            ->where('status_id', 1);
+            ->where('status_id', 1);
 
         // Apply the additional condition if the user is not a superadmin
         if ($power !== 'superadmin') {
@@ -46,11 +49,39 @@ class DashboardController extends Controller
 
         // Get the users list
         $x['users_list'] = $usersListQuery->get();
+        $data = Ledger::with('projectHeadSubhead.project', 'projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting')->where('is_active', 1)->whereHas('projectHeadSubhead', function ($query) use ($selectedProjectId) {
+            $query->where('project_id', $selectedProjectId);
+        })->select(DB::raw('SUM(amount_in) as total_in, SUM(amount_out) as total_out, SUM(amount_in - amount_out) as balance'))
+            ->first();
 
+        $Bankaccountdata = Ledger::with([
+            'projectHeadSubhead.project',
+            'projectHeadSubhead.headAccounting',
+            'projectHeadSubhead.subheadAccounting'
+        ])
+            ->where('is_active', 1)
+            ->whereHas('projectHeadSubhead', function ($query) use ($selectedProjectId) {
+                $query->where('project_id', $selectedProjectId);
+            })
+            ->whereHas('projectHeadSubhead.headAccounting', function ($query) {
+                $query->where('id', 32); // Filter Head Accounting by ID 32
+            })
+            ->select(DB::raw('SUM(amount_in) as total_in, SUM(amount_out) as total_out, SUM(amount_in - amount_out) as balance'))
+            ->first();
         // Get today's punch records
-        $x['today_punches'] = Punch::whereDate('punch_in', now()->toDateString()) ->where('project_id', $selectedProjectId)->get();
+        $x['today_punches'] = Punch::whereDate('punch_in', now()->toDateString())->where('project_id', $selectedProjectId)->get();
         // Fetch all active leads for a specific project created today
-        $lead_response = lead_repo::getLeadsToday($selectedProjectId, 'today',$create_by);
+        $dasticash=Dasticash::all();
+        $getalllead = lead_repo::getAllLeads($selectedProjectId);
+        $lead_response = lead_repo::getLeadsToday($selectedProjectId, 'today', $create_by);
+        $x['get_all_lead'] = $getalllead['total_leads'];
+        $x['total_blance'] = $data->balance;
+        $x['handCashOut'] = $data->total_out;
+        $x['handCashIn'] = $data->total_in;
+        $x['bankIn'] = $Bankaccountdata->total_in;
+        $x['bankOut'] = $Bankaccountdata->total_out;
+        $x['dasticashData'] = $dasticash;
+        $x['total_bank_account_data'] = $Bankaccountdata->balance;
         $x['today_leads'] = $lead_response['total_leads'];
 
         return view('admin.dashboard', $x);
@@ -121,18 +152,18 @@ class DashboardController extends Controller
     {
         $selectedProjectId = getSelectedTown();
 
-        $post_by  = Auth::user()->id;
+        $post_by = Auth::user()->id;
         $power = Auth::user()->roles[0]->name;
         $create_by = null;
 
         if ($power !== 'superadmin') {
-            
+
             $create_by = $post_by;
 
         }
 
         // Retrieve leads grouped by users
-        $leadsByUsers = lead_repo::getLeadsByUsers($selectedProjectId, 'today',$create_by);
+        $leadsByUsers = lead_repo::getLeadsByUsers($selectedProjectId, 'today', $create_by);
         //dd($leadsByUsers);
 
         // Pass data to the Blade template
@@ -152,12 +183,12 @@ class DashboardController extends Controller
 
         // Get the date range from the request (e.g., "2025-01-01 to 2025-01-05")
         $dateRange = $request->input('date_range');
-        
+
         // Default start and end dates (if no date range is provided)
         $fromDate = Carbon::now()->startOfDay();
         $toDate = Carbon::now()->endOfDay();
-        
-        
+
+
 
         // If date range is provided, parse it
         if ($dateRange) {
@@ -215,19 +246,21 @@ class DashboardController extends Controller
             ->groupBy(['user_id', 'lead_id']); // Group by user_id and lead_id
 
         // Fetch all users with their works count for the given date range
-        $allUsers = User::withCount(['works' => function ($query) use ($fromDate, $toDate) {
-            $query->whereBetween('created_at', [$fromDate->startOfDay(), $toDate->endOfDay()]);
-        }])
-        ->having('works_count', '>', 0) // Only include users with works in the date range (count > 0)
-        ->get();
+        $allUsers = User::withCount([
+            'works' => function ($query) use ($fromDate, $toDate) {
+                $query->whereBetween('created_at', [$fromDate->startOfDay(), $toDate->endOfDay()]);
+            }
+        ])
+            ->having('works_count', '>', 0) // Only include users with works in the date range (count > 0)
+            ->get();
 
         // Pass data to the view
         return view('dashboard.today_lead_work_report', compact('todayWorkReport', 'allUsers'));
     }
 
 
-    
-    
+
+
 
 
 

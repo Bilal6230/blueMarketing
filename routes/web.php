@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DastiCashController;
 use App\Http\Controllers\FileManagerController;
 use App\Http\Controllers\ModuleController;
 use App\Http\Controllers\PermissionController;
@@ -213,6 +214,14 @@ Route::prefix('admin')->middleware(['auth','check.user.status'])->group(function
 
 
     });
+
+Route::controller(DastiCashController::class)->prefix('dasticash')->name('dasticash.')->group(function () {
+    Route::post('/store', 'store')->middleware(['permission:create dasticash'])->name('store');
+    Route::get('/{id}/edit', 'edit')->middleware(['permission:update dasticash'])->name('edit');
+    Route::put('/{id}', 'update')->middleware(['permission:update dasticash'])->name('update');
+    Route::delete('/{id}', 'destroy')->middleware(['permission:delete dasticash'])->name('destroy');
+});
+
 
     Route::controller(App\Http\Controllers\LedgerController::class)->group(function () {
 
