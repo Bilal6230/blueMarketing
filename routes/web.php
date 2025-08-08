@@ -3,10 +3,12 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DastiCashController;
 use App\Http\Controllers\FileManagerController;
+use App\Http\Controllers\LabourController;
 use App\Http\Controllers\ModuleController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SettingController;
+use App\Http\Controllers\StockController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -28,16 +30,16 @@ Route::get('/', function () {
 })->name('index');
 
 Auth::routes([
-    'register'  => false,
-    'reset'     => false,
-    'confirm'   => false
+    'register' => false,
+    'reset' => false,
+    'confirm' => false
 ]);
 
 
 
 Route::middleware(['auth'])->get('/home', [DashboardController::class, 'index'])->name('home');
 
-Route::prefix('admin')->middleware(['auth','check.user.status'])->group(function () {
+Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('admin');
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('punch', [DashboardController::class, 'punch']);
@@ -130,8 +132,8 @@ Route::prefix('admin')->middleware(['auth','check.user.status'])->group(function
 
 
     });
-    
-    
+
+
 
     Route::controller(App\Http\Controllers\LeadController::class)->group(function () {
         Route::get('crm/lead', 'index')->middleware(['permission:read lead'])->name('crm.lead.index');
@@ -153,7 +155,7 @@ Route::prefix('admin')->middleware(['auth','check.user.status'])->group(function
         Route::post('report/check', 'check_report')->middleware(['permission:cheque report'])->name('report.check.post');
         Route::put('report/check', 'bank_posting_check')->middleware(['permission:pass cheque'])->name('report.check.bank.posting');
         Route::get('reports/check-history/{id}', 'checkHistory')->name('admin.reports.check_history');
-        
+
 
     });
 
@@ -162,8 +164,8 @@ Route::prefix('admin')->middleware(['auth','check.user.status'])->group(function
         //accounting routes
 
         Route::post('accounting', 'store')->middleware(['permission:create accounting'])->name('accounting.store');
-        
-        
+
+
         Route::post('get_accounts_by_project', 'get_accounts_by_project')->middleware(['permission:read voucher'])->name('get_accounts_by_project');
         Route::post('get_subaccounts_by_project', 'get_subaccounts_by_project')->middleware(['permission:read voucher'])->name('get_subaccounts_by_project');
         Route::post('get_account', 'get_account')->middleware(['permission:read voucher'])->name('get_account');
@@ -215,21 +217,26 @@ Route::prefix('admin')->middleware(['auth','check.user.status'])->group(function
 
     });
 
-Route::controller(DastiCashController::class)->prefix('dasticash')->name('dasticash.')->group(function () {
-    Route::post('/store', 'store')->middleware(['permission:create dasticash'])->name('store');
-    Route::get('/{id}/edit', 'edit')->middleware(['permission:update dasticash'])->name('edit');
-    Route::put('/{id}', 'update')->middleware(['permission:update dasticash'])->name('update');
-    Route::delete('/{id}', 'destroy')->middleware(['permission:delete dasticash'])->name('destroy');
-});
+    Route::controller(DastiCashController::class)->prefix('dasticash')->name('dasticash.')->group(function () {
+        Route::post('/store', 'store')->middleware(['permission:create dasticash'])->name('store');
+        Route::get('/{id}/edit', 'edit')->middleware(['permission:update dasticash'])->name('edit');
+        Route::put('/{id}', 'update')->middleware(['permission:update dasticash'])->name('update');
+        Route::delete('/{id}', 'destroy')->middleware(['permission:delete dasticash'])->name('destroy');
+    });
+
+    Route::resource('labours', LabourController::class);
+    Route::patch('/labours/{labour}/status', [App\Http\Controllers\LabourController::class, 'updateStatus'])
+    ->name('labours.updateStatus');
+    Route::resource('stocks', StockController::class);
 
 
     Route::controller(App\Http\Controllers\LedgerController::class)->group(function () {
 
         Route::post('get-subaccount-details', 'getSubaccountDetails')->middleware(['permission:read voucher'])->name('get-subaccount-details');
-        
+
         Route::get('finance/reports/ledger', 'show_ledger')->middleware(['permission:report cashbook'])->name('finance.reports.show_ledger');
         Route::post('fetch-data-url', 'fetch_data_url')->middleware(['permission:master report'])->name('fetch-data-url');
-        
+
         Route::post('accounting/ledger/show', 'show')->name('ledger.show');
         Route::post('accounting/ledger/store', 'store')->middleware(['permission:create voucher'])->name('ledger.store');
         Route::put('accounting/ledger/update', 'update')->middleware(['permission:update voucher'])->name('ledger.update');
@@ -243,7 +250,7 @@ Route::controller(DastiCashController::class)->prefix('dasticash')->name('dastic
 
 
 
-        
+
     });
 
     Route::controller(App\Http\Controllers\BookingController::class)->group(function () {
@@ -253,7 +260,7 @@ Route::controller(DastiCashController::class)->prefix('dasticash')->name('dastic
 
         Route::get('booking/price/update/{id}', 'PriceForm')->middleware(['permission:read plot'])->name('booking.price.update');
         Route::post('booking/price/update/store', 'booking_price_update')->name('payment_price_update.store');
-        
+
 
         Route::get('booking/plot/schedule/{id}', 'scheduleForm')->middleware(['permission:read plot'])->name('booking.schedule.form');
         Route::post('booking/plot/schedule/store', 'storePaymentSchedule')->middleware(['permission:create plot'])->name('payment_schedule.store');
@@ -261,7 +268,7 @@ Route::controller(DastiCashController::class)->prefix('dasticash')->name('dastic
         Route::get('booking/customer/report/form', 'customer_report_form')->middleware(['permission:view booking report'])->name('booking.customer.report.form');
         Route::post('booking/customer/report/display', 'customer_report_display')->middleware(['permission:view booking report'])->name('booking.customer.report.display');
 
-        
+
         Route::post('/get-customers', 'getCustomers')->middleware(['permission:read plot'])->name('get-customers');
         Route::post('/get-customers-byplot', 'getCustomersbyPlot')->middleware(['permission:view booking report'])->name('get-customers-byplot');
         Route::post('/get-plots', 'getPlots')->middleware(['permission:read plot'])->name('get-plots');
@@ -277,7 +284,7 @@ Route::controller(DastiCashController::class)->prefix('dasticash')->name('dastic
 
         Route::delete('booking/destroy/{id}', 'destroy_booking')->middleware(['permission:delete booking'])->name('booking.destroy');
         Route::get('booking/plot/destroy_list', 'destroy_list')->middleware(['permission:delete booking'])->name('booking.destroy_list');
-        
+
 
 
 
