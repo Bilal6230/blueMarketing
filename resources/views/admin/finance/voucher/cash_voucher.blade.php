@@ -449,6 +449,12 @@
             document.getElementById('voucherForm').submit();
         }
 
+        function saveAsDraft() {
+            const form = document.getElementById('voucherForm');
+            form.action = "{{ route('ledger.save_as_draft') }}";
+            // form.submit();
+        }
+
 
         $(document).ready(function() {
 
@@ -486,9 +492,9 @@
                             });
                             if ($matchingOptionacc.length > 0) {
                                 $optionsacc.prop('selected',
-                                    false); // clear previous selections
+                                false); // clear previous selections
                                 $matchingOptionacc.prop('selected',
-                                    true); // select matching one
+                                true); // select matching one
                                 $matchingOptionacc.detach().appendTo($selectacc);
                             }
                             // $('#accounts_id').val(response.headId).trigger('change');
