@@ -676,17 +676,17 @@
                 }
             });
 
-            $('#e_projects_id').change(function() {
-                var e_projectID = $(this).val();
+            $('#e_acct_type').change(function() {
+                var acctType = $(this).val();
 
-                console.log(e_projectID);
-                if (e_projectID) {
+                // console.log(e_projectID);
+                if (acctType) {
                     $.ajax({
                         url: '{{ route('get_account') }}',
                         type: 'POST',
                         dataType: 'json',
                         data: {
-                            projectID: e_projectID,
+                            acct_type: acctType,
                             action: 'get_head',
                             _token: '{{ csrf_token() }}'
                         },
@@ -700,12 +700,11 @@
 
                             $('#e_accounts_id').append(
                                 '<option value="">Select an option</option>');
-                            $.each(e_filteredData, function(key, value) {
+                            $.each(data, function(key, value) {
                                 $('#e_accounts_id').append('<option value="' + value
                                     .head_accounting_id + '">' + value
                                     .head_accounting.name + '</option>');
                             });
-
                         }
                     });
                 } else {
@@ -716,7 +715,6 @@
 
             $('#e_accounts_id').change(function() {
                 var accountID = $(this).val();
-                var projectID = $('#e_projects_id').val();
 
 
                 if (accountID) {
@@ -725,7 +723,6 @@
                         type: 'POST',
                         dataType: 'json',
                         data: {
-                            projectID: projectID,
                             accountID: accountID,
                             action: 'get_child',
 
@@ -755,7 +752,6 @@
 
 
             $(document).on("click", '.btn-edit', function() {
-                debugger;
                 let id = $(this).attr("data-id");
                 $('#modal-loading').modal({
                     backdrop: 'static',
@@ -771,11 +767,9 @@
                         _token: "{{ csrf_token() }}"
                     },
                     success: function(data) {
-                        debugger;
                         var data = data.data;
-                        $("#id").val(data.id);
                         $("#reference").val(data.reference);
-                        $('#e_projects_id').val(data.project_head_subhead.project_id).trigger(
+                        $('#e_acct_type').val(data.project_head_subhead.head_accounting.acct_type).trigger(
                             'change');
 
                         flatpickr('#date', {
@@ -796,14 +790,54 @@
                         }
 
                         $("#detail").val(data.detail);
-                        console.log(data.detail);
 
+                        // let acct_type = data.project_head_subhead.head_accounting.acct_type;
+                        // // Update the UI based on the response
+                        // let $selectacc = $('#e_acct_type');
+                        // let $optionsacc = $selectacc.find('option');
+                        // let $matchingOptionacc = $optionsacc.filter(function() {
+                        //     return $(this).val() == acct_type;
+                        // });
+                        // if ($matchingOptionacc.length > 0) {
+                        //     $optionsacc.prop('selected',
+                        //     false); // clear previous selections
+                        //     $matchingOptionacc.prop('selected',
+                        //     true); // select matching one
+                        //     $matchingOptionacc.detach().appendTo($selectacc);
+                        // }
+                        console.log('1 done');
                         $('#modal-loading').modal('hide');
                         $('#modal-edit').modal({
                             backdrop: 'static',
                             keyboard: false,
                             show: true
                         });
+                        console.log('1 done');
+                         let headId = data.project_head_subhead.head_accounting.id;
+                        // Update the UI based on the response
+                        let $select = $('#e_accounts_id');
+                        console.log('2 done');
+                        let $options = $select.find('option');
+                        let $matchingOption = $options.filter(function() {
+                            return $(this).val() == headId;
+                        });
+                        if ($matchingOption.length > 0) {
+                            $options.prop('selected', false); // clear previous selections
+                            $matchingOption.prop('selected', true); // select matching one
+                            $matchingOption.detach().appendTo($select);
+                        }
+                        let subheadId = data.project_head_subhead.subhead_accounting.id;
+                        // Update the UI based on the response
+                        let $selectsub = $('#e_subaccounts_id');
+                        let $optionssub = $selectsub.find('option');
+                        let $matchingOptionsub = $optionssub.filter(function() {
+                            return $(this).val() == subheadId;
+                        });
+                        if ($matchingOptionsub.length > 0) {
+                            $optionssub.prop('selected', false); // clear previous selections
+                            $matchingOptionsub.prop('selected', true); // select matching one
+                            $matchingOptionsub.detach().appendTo($selectsub);
+                        }
                     },
                 });
             });
@@ -868,19 +902,7 @@
                                 <div class="row">
                                     <div class="col-sm-3">
                                         <div class="input-group">
-                                            <label class="fbox">Voucher No.</label>
-                                            <div class="input-group">
-                                                <input type="text" value="1" name="action" hidden />
-                                                <input id="voucher" type="text" class="form-control "
-                                                    name="voucher" autocomplete="off" readonly>
-
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-sm-3">
-                                        <div class="input-group">
-                                            <label class="fbox">Reference</label>
+                                            <label class="fbox">Serial No.</label>
                                             <div class="input-group">
 
                                                 <input id="reference" type="text"
@@ -892,7 +914,17 @@
                                             </div>
                                         </div>
                                     </div>
+                                    <div class="col-sm-3">
+                                        <div class="input-group">
+                                            <label class="fbox">Reference No.</label>
+                                            <div class="input-group">
+                                                <input type="text" value="1" name="action" hidden />
+                                                <input id="voucher" type="text" class="form-control "
+                                                    name="voucher" autocomplete="off" readonly>
 
+                                            </div>
+                                        </div>
+                                    </div>
                                     <div class="col-sm-6">
                                         <div class="input-group">
                                             <label class="fbox">Date</label>
@@ -915,16 +947,18 @@
                                 <div class="row">
                                     <div class="col-sm-6">
                                         <div class="input-group">
-                                            <label class="fbox">Projects</label>
+                                            <label class="fbox">Account Type</label>
                                             <div class="input-group">
-                                                <select class="js-tomselect" name="projects_id"
-                                                    id="e_projects_id">
-                                                    <option value="">Select an option</option>
-
-                                                    @foreach ($projects as $v)
-                                                        <option value="{{ $v->id }}">{{ $v->project }}</option>
-                                                    @endforeach
-                                                </select>
+                                                    <select class="form-control select2" name="acct_type"
+                                                        id="e_acct_type">
+                                                        <option value="">Select an option</option>
+                                                        <option value="0">Update Please</option>
+                                                        <option value="1">Assets</option>
+                                                        <option value="2">Owner</option>
+                                                        <option value="3">Recovery</option>
+                                                        <option value="4">Expence</option>
+                                                        <option value="5">Amanat Pyments</option>
+                                                    </select>
                                                 @error('projects_id')
                                                     <div class="invalid-feedback">{{ $message }}</div>
                                                 @enderror
@@ -938,7 +972,10 @@
                                                 <select class="js-tomselect" name="accounts_id"
                                                     id="e_accounts_id">
                                                     <option value="">Select an option</option>
-
+                                                    @foreach ($headaccounts as $v)
+                                                        <option value="{{ $v->head_accounting_id }}">
+                                                            {{ $v->headAccounting->name ?? '' }}</option>
+                                                    @endforeach
                                                     {{-- @foreach ($headaccounts as $v)
                                                         <option value="{{ $v->id }}">{{ $v->name }}</option>
                                                     @endforeach --}}
@@ -956,11 +993,25 @@
                                 <div class="row">
                                     <div class="col-sm-6">
                                         <div class="input-group">
-                                            <label class="fbox">Party Account</label>
+                                            <label class="fbox">Child Account</label>
                                             <div class="input-group">
                                                 <select class="js-tomselect" name="subaccounts_id"
                                                     id="e_subaccounts_id">
                                                     <option value="">Select an option</option>
+                                                    @foreach ($partyaccounts as $v)
+                                                        @php
+                                                            $balance = $v->balance ?? 0;
+                                                            $balanceClass =
+                                                                $balance < 0
+                                                                    ? 'text-danger'
+                                                                    : 'text-success';
+                                                        @endphp
+                                                        <option value="{{ $v->subhead_accounting_id }}">
+                                                            {{ $v->subheadAccounting->name ?? '' }} &
+                                                            Balance = <span
+                                                                class="{{ $balanceClass }}">{{ number_format($balance, 2) }}</span>
+                                                        </option>
+                                                    @endforeach
                                                 </select>
                                                 @error('subaccounts_id')
                                                     <div class="invalid-feedback">{{ $message }}</div>
