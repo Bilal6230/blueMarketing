@@ -693,11 +693,19 @@
                         success: function(data) {
                             $('#e_accounts_id').empty();
                             $('#e_subaccounts_id').empty();
-                            console.log(data);
-                            var e_filteredData = data.filter(function(item) {
-                                return item.project_id == e_projectID;
-                            });
+                            // Filter data to match selected project ID
+                            // var e_filteredData = data.filter(function(item) {
+                            //     return item.project_id == e_projectID;
+                            // });
 
+                            // Append filtered head accounting options to 'Accounts' dropdown
+                            // $('#e_accounts_id').append(
+                            //     '<option value="">Select an option</option>');
+                            // $.each(e_filteredData, function(key, value) {
+                            //     $('#e_accounts_id').append('<option value="' + value
+                            //         .head_accounting_id + '">' + value
+                            //         .head_accounting.name + '</option>');
+                            // });
                             $('#e_accounts_id').append(
                                 '<option value="">Select an option</option>');
                             $.each(data, function(key, value) {
@@ -705,6 +713,8 @@
                                     .head_accounting_id + '">' + value
                                     .head_accounting.name + '</option>');
                             });
+                            console.log('done');
+                            // You may implement a similar AJAX call to fetch subheadaccounts based on the selected account
                         }
                     });
                 } else {
