@@ -8,8 +8,9 @@ use App\Models\User;
 use App\Models\Ledger;
 use App\Models\Project;
 
-use Illuminate\Http\Request;
+use App\Models\DraftLedger;
 
+use Illuminate\Http\Request;
 use App\Models\CustomerLedger;
 use App\Models\HeadAccounting;
 use App\Models\SubheadAccounting;
@@ -27,8 +28,6 @@ class LedgerController extends Controller
 {
     public function store(Request $request)
     {
-
-
         $validator = Validator::make($request->all(), [
             'amount' => ['required'],
             'detail' => ['required'],
@@ -137,22 +136,109 @@ class LedgerController extends Controller
         }
         return back();
     }
+    public function saveAsDraft(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'amount' => ['required'],
+            'detail' => ['required'],
+            'plot_id' => 'required',
+            'customer_id' => 'required',
+            'accounts_id' => ['required'],
+            'payment_type' => 'required',
+            'subaccounts_id' => ['required'],
+            'reference' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return back()->withErrors($validator)
+                ->withInput();
+        }
+        $selectedProjectId = getSelectedTown();
+        $action = $request->input('action');
+        $customer_id = $request->input('customer_id');
+        $x['today'] = date("d-m-Y");
+        $cleanAmount = str_replace(',', '', $request->amount);
+        $voucherValue = $request->input('voucher');
+        $firstTwoDigits = substr($voucherValue, 0, 2);
+        $amount_in = $amount_out = 0;
+        if ($firstTwoDigits === 'CR') {
+            $amount_in = $cleanAmount;
+        } elseif ($firstTwoDigits === 'CP') {
+            $amount_out = $cleanAmount;
+        }
+        try {
+            $payment_type = $request->input('payment_type');
+            if ($payment_type ==  1) {
+                $t_number = $bank_id =   null;
+            } else {
+                $t_number = $request->input('t_number');
+                $bank_id = $request->input('bank_id');
+            }
+            $projectHeadSubhead = ProjectHeadSubhead::where('head_accounting_id', $request->accounts_id)
+                ->where('subhead_accounting_id', $request->subaccounts_id)
+                ->where('project_id', $selectedProjectId)
+                ->first();
+
+            if (!$projectHeadSubhead) {
+                throw new \Exception('Credit account ID not found.');
+            }
+
+            DraftLedger::create([
+                // Customer Ledger Fields
+                'customer_id' => $customer_id,
+                'transaction_type' => $firstTwoDigits,
+                'type_id' => get_new_typeID($firstTwoDigits),
+                'reference' => $request->input('reference'),
+                'project_id' => $selectedProjectId,
+                'plot_id' => $request->input('plot_id'),
+                'amount_in' => $amount_in,
+                'amount_out' => $amount_out,
+                'description' => $request->input('detail'),
+                'date' => $request->input('date'),
+                'payment_type' => $request->input('payment_type'),
+                't_number' => $t_number,
+                'bank_id' => $bank_id,
+                'is_active' => 0, // As Draft
+                'is_approve' => 0,
+                'passing_date' => $request->input('passing_date'),
+                'check_history' => $request->input('check_history'),
+                'note' => $request->input('note'),
+                'bank_post_at' => $request->input('bank_post_at'),
+
+                // Ledger Fields
+                'type' => $firstTwoDigits,
+                'project_head_subheads_id' => $projectHeadSubhead->id,
+                'detail' => $request->input('detail'),
+                'create_by' => Auth::user()->id,
+                'update_by' => Auth::user()->id,
+                'status' => 'draft', // you can set string status
+
+                // Timestamps auto-handled
+            ]);
+        } catch (\Throwable $th) {
+            return $th->getMessage();
+            DB::rollback();
+            Alert::error('Notification', 'Data <b>' .  $th->getMessage())->toToast()->toHtml();
+        }
+        return back();
+        return response()->json(['message' => 'Draft saved successfully.']);
+    }
 
     public function getSubaccountDetails(Request $request)
     {
         $subaccountId = $request->input('subaccounts_id');
         $selectedProjectId = getSelectedTown();
         $subaccount = ProjectHeadSubhead::with(['subheadAccounting', 'headAccounting'])
-                        ->withSum('ledgers as total_in', 'amount_in')
-                        ->withSum('ledgers as total_out', 'amount_out')
-                        ->where(['subhead_accounting_id' => $subaccountId])
-                        ->where(['project_id' => $selectedProjectId])
-                        ->get()
-                        ->map(function ($item) {
-                            $item->balance = ($item->total_in ?? 0) - ($item->total_out ?? 0);
-                            return $item;
-                        });
-                        // dd($subaccount);
+            ->withSum('ledgers as total_in', 'amount_in')
+            ->withSum('ledgers as total_out', 'amount_out')
+            ->where(['subhead_accounting_id' => $subaccountId])
+            ->where(['project_id' => $selectedProjectId])
+            ->get()
+            ->map(function ($item) {
+                $item->balance = ($item->total_in ?? 0) - ($item->total_out ?? 0);
+                return $item;
+            });
+        // dd($subaccount);
         return response()->json([
             'headId' => $subaccount[0]->headAccounting->id,
             'headName' => $subaccount[0]->headAccounting->name,

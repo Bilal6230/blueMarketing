@@ -145,10 +145,15 @@
                                                                         @foreach ($partyaccounts as $v)
                                                                             @php
                                                                                 $balance = $v->balance ?? 0;
-                                                                                $balanceClass = $balance < 0 ? 'text-danger' : 'text-success';
+                                                                                $balanceClass =
+                                                                                    $balance < 0
+                                                                                        ? 'text-danger'
+                                                                                        : 'text-success';
                                                                             @endphp
                                                                             <option value="{{ $v->subhead_accounting_id }}">
-                                                                                {{ $v->subheadAccounting->name ?? '' }} & Balance = <span class="{{ $balanceClass }}">{{ number_format($balance, 2) }}</span>
+                                                                                {{ $v->subheadAccounting->name ?? '' }} &
+                                                                                Balance = <span
+                                                                                    class="{{ $balanceClass }}">{{ number_format($balance, 2) }}</span>
                                                                             </option>
                                                                         @endforeach
                                                                     </select>
@@ -352,7 +357,10 @@
 
 
                                                     <div class="col-sm-3">
-                                                        <div class="modal-footer justify-content-between">
+                                                        <div class="d-flex justify-content-between">
+                                                            <button  type="button" class="btn btn-primary btn-lg btn-block"
+                                                                data-toggle="modal" data-target="#confirmModal"
+                                                                onclick="saveAsDraft()">Save as Draft</button>
                                                             <button type="button" class="btn btn-primary btn-lg btn-block"
                                                                 data-toggle="modal" data-target="#confirmModal">Save</button>
 
@@ -466,6 +474,12 @@
             document.getElementById('voucherForm').submit();
         }
 
+        function saveAsDraft() {
+            const form = document.getElementById('voucherForm');
+            form.action = "{{ route('ledger.save_as_draft') }}";
+            // form.submit();
+        }
+
 
         $(document).ready(function() {
 
@@ -502,8 +516,10 @@
                                 return $(this).val() == acct_type;
                             });
                             if ($matchingOptionacc.length > 0) {
-                                $optionsacc.prop('selected', false); // clear previous selections
-                                $matchingOptionacc.prop('selected', true); // select matching one
+                                $optionsacc.prop('selected',
+                                false); // clear previous selections
+                                $matchingOptionacc.prop('selected',
+                                true); // select matching one
                                 $matchingOptionacc.detach().appendTo($selectacc);
                             }
                             // $('#accounts_id').val(response.headId).trigger('change');
@@ -590,7 +606,9 @@
                             $.each(filteredData, function(key, value) {
                                 $('#subaccounts_id').append('<option value="' + value
                                     .subhead_accounting_id + '">' + value
-                                    .subhead_accounting.name + '& Balance = <span class="">' + value.balance + '</span></option>');
+                                    .subhead_accounting.name +
+                                    '& Balance = <span class="">' + value.balance +
+                                    '</span></option>');
                             });
                             let acct_type = filteredData[0].head_accounting.acct_type;
                             // Update the UI based on the response
