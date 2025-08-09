@@ -10,437 +10,462 @@
                         <span class="{{ $class }}">
                             {{ $title }}
                         </span>
-                    </div>
+                    </div><!-- /.col -->
                     <div class="col-sm-6">
                         <ol class="breadcrumb float-sm-right">
                             <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
                             <li class="breadcrumb-item active">{{ $title }}</li>
                         </ol>
-                    </div>
-                </div>
+                    </div><!-- /.col -->
+                </div><!-- /.row -->
             </div>
+            <!-- /.container-fluid -->
         </div>
+        <!-- /.content-header -->
 
         <!-- Main content -->
         <section class="content">
             <div class="container-fluid">
                 <div class="row">
-                    <div class="col-md-12 mb-4">
-                        <div class="custom_card h-100">
-                            <div class="card-body">
-                                <div class="mb-3 d-flex align-items-center justify-content-between">
-                                    <h5 class="text-lg font-semibold">Cash In Voucher</h5>
-                                </div>
-                                {{-- form --}}
-                                @can('create voucher')
-                                    <form action="{{ route('ledger.store') }}" method="POST" enctype="multipart/form-data"
-                                        id="voucherForm">
-                                        @csrf
-                                        <div class="row">
-                                            <div class="col-sm-12">
-                                                <div class="row">
-                                                    <div class="col-sm-3">
-                                                        <div class="input-group">
-                                                            <label class="fbox">Serial No.</label>
+                    <div class="col-12">
+                        <div class="card">
+                            @can('create voucher')
+                                <div class="card-header">
+                                    <div>
+                                        <form action="{{ route('ledger.store') }}" method="POST" enctype="multipart/form-data"
+                                            id="voucherForm">
+                                            @csrf
+
+                                            <div class="row">
+
+                                                <div class="col-sm-12">
+                                                    <div class="row">
+                                                        <div class="col-sm-3">
                                                             <div class="input-group">
-                                                                <input type="text" value="1" name="action" hidden />
-                                                                <input type="text"
-                                                                    class="form-control @error('reference') is-invalid @enderror"
-                                                                    name="reference" value="{{ old('reference') }}"
-                                                                    autocomplete="off">
+                                                                <label class="fbox">Serial No.</label>
+                                                                <div class="input-group">
+                                                                    <input type="text" value="1" name="action"
+                                                                        hidden />
+                                                                    <input type="text"
+                                                                        class="form-control @error('reference') is-invalid @enderror"
+                                                                        name="reference" value="{{ old('reference') }}"
+                                                                        autocomplete="off">
 
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div class="col-sm-3">
-                                                        <div class="input-group">
-                                                            <label class="fbox">Reference No</label>
-                                                            <div class="input-group">
-                                                                <input type="text" class="form-control " name="voucher"
-                                                                    value="{{ $type }}-{{ get_new_voucher_number($type) }}"
-                                                                    autocomplete="off" readonly>
-                                                                @error('reference')
-                                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                                @enderror
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div class="col-sm-6">
-                                                        <div class="input-group">
-                                                            <label class="fbox">Date</label>
-                                                            <div class="input-group">
-                                                                <input type="text" name="date" class="date form-control"
-                                                                    data-input>
-                                                                <input type="hidden" id="hiddenDate" name="hiddenDate">
-                                                                @error('date')
-                                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                                @enderror
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                        </div>
-
-                                        <div class="row">
-                                            <div class="col-sm-6">
-                                                <div class="row">
-                                                    <div class="col-sm-6">
-                                                        <div class="input-group">
-                                                            <label class="fbox">Account Type</label>
-                                                            <div class="input-group">
-                                                                <select class="form-control select2" name="acct_type"
-                                                                    id="acct_type">
-                                                                    <option value="">Select an option</option>
-                                                                    <option value="0">Update Please</option>
-                                                                    <option value="1">Assets</option>
-                                                                    <option value="2">Owner</option>
-                                                                    <option value="3">Recovery</option>
-                                                                    <option value="4">Expence</option>
-                                                                    <option value="5">Amanat Pyments</option>
-                                                                </select>
-                                                                @error('is_active')
-                                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                                @enderror
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-sm-6">
-                                                        <div class="input-group">
-                                                            <label class="fbox">Accounts</label>
-                                                            <div class="input-group">
-                                                                <select class="form-control select2" name="accounts_id"
-                                                                    id="accounts_id">
-                                                                    <option value="">Select an option</option>
-                                                                    @foreach ($headaccounts as $v)
-                                                                        <option value="{{ $v->head_accounting_id }}">
-                                                                            {{ $v->headAccounting->name ?? '' }}</option>
-                                                                    @endforeach
-                                                                </select>
-                                                                @error('accounts_id')
-                                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                                @enderror
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                </div>
-                                            </div>
-                                            <div class="col-sm-6">
-                                                <div class="row">
-                                                    <div class="col-sm-6">
-                                                        <div class="input-group">
-                                                            <label class="fbox">Child Account</label>
-                                                            <div class="input-group">
-                                                                <select class="form-control select2" name="subaccounts_id"
-                                                                    id="subaccounts_id">
-                                                                    <option value="">Select an option</option>
-                                                                    @foreach ($partyaccounts as $v)
-                                                                        @php
-                                                                            $balance = $v->balance ?? 0;
-                                                                            $balanceClass =
-                                                                                $balance < 0
-                                                                                    ? 'text-danger'
-                                                                                    : 'text-success';
-                                                                        @endphp
-                                                                        <option value="{{ $v->subhead_accounting_id }}">
-                                                                            {{ $v->subheadAccounting->name ?? '' }} &
-                                                                            Balance = <span
-                                                                                class="{{ $balanceClass }}">{{ number_format($balance, 2) }}</span>
-                                                                        </option>
-                                                                    @endforeach
-                                                                </select>
-                                                                @error('subaccounts_id')
-                                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                                @enderror
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-sm-6">
-                                                        <div class="input-group">
-                                                            <label class="fbox">Amount</label>
-                                                            <div class="input-group">
-                                                                <input id="numberInput" oninput="formatAmount(this)"
-                                                                    type="text"
-                                                                    class="form-control @error('amount') is-invalid @enderror"
-                                                                    placeholder="Amount" name="amount"
-                                                                    value="{{ old('amount') }}">
-                                                                @error('amount')
-                                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                                @enderror
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-sm-12">
-                                                <div id="wordingAmount"></div>
-                                            </div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-sm-6">
-                                                <div class="input-group">
-                                                    <label class="fbox">Customer</label>
-                                                    <div class="input-group">
-                                                        <select class="form-control select2" name="customer_id"
-                                                            id="customer_id">
-                                                            <option value="">Select Customer</option>
-                                                            @foreach ($customers as $v)
-                                                                <option value="{{ $v->id }}"
-                                                                    data-phone="{{ $v->mobile_number }}"
-                                                                    data-nic_number="{{ $v->nic_number }}"
-                                                                    data-home_address="{{ $v->home_address }}">
-                                                                    {{ $v->first_name }} {{ $v->last_name }}
-                                                                    {{ $v->relate }} {{ $v->father_name }} -
-                                                                    {{ $v->phone_number }}</option>
-                                                            @endforeach
-                                                        </select>
-                                                        @error('customer_id')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-sm-6">
-                                                <div class="input-group">
-                                                    <label class="fbox">Plot No.</label>
-                                                    <div class="input-group">
-                                                        <select class="form-control select2" name="plot_id" id="plot_id">
-                                                            <option value="">Select Plot</option>
-                                                            @foreach ($plots as $v)
-                                                                @php
-                                                                    $plotType = $v->type == 1 ? 'R- ' : 'C- ';
-                                                                    $plotName = $plotType . $v->name;
-                                                                @endphp
-                                                                <option value="{{ $v->plot_id }}">
-                                                                    {{ $plotName ?? '' }}
-                                                                </option>
-                                                            @endforeach
-                                                        </select>
-                                                        @error('plot_id')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-sm-3">
-                                                <div class="input-group">
-                                                    <label class="fbox">Payment Type</label>
-                                                    <div class="input-group">
-                                                        <select class="form-control select2" name="payment_type"
-                                                            id="payment_type">
-                                                            <option value="1">Cash</option>
-                                                            <option value="2">Online</option>
-                                                            <option value="3">Check</option>
-                                                        </select>
-                                                        @error('payment_type')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-sm-3">
-                                                <div class="input-group bank_group" style="display: none">
-                                                    <label class="fbox">Number</label>
-                                                    <div class="input-group">
-                                                        <input id="t_number" type="text"
-                                                            class="form-control @error('t_number') is-invalid @enderror"
-                                                            placeholder="Transaction Number" name="t_number"
-                                                            value="{{ old('t_number') }}">
-                                                        @error('amount')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-sm-3">
-                                                <div class="input-group bank_group" style="display: none">
-                                                    <label class="fbox">Bank</label>
-                                                    <div class="input-group">
-                                                        <select class="form-control select2" name="bank_id" id="bank_id">
-                                                            <option value="">Bank</option>
-                                                            @foreach (getPakistanBanks() as $v)
-                                                                <option value="{{ $v['id'] }}">{{ $v['name'] }}
-                                                                </option>
-                                                            @endforeach
-                                                        </select>
-                                                    </div>
-
-                                                </div>
-                                            </div>
-                                            <div class="col-sm-3">
-                                                <div class="input-group bank_group" style="display: none">
-                                                    <label class="fbox">Passing Date</label>
-                                                    <div class="input-group">
-                                                        <input type="text" name="passing_date" class="date form-control"
-                                                            data-input>
-                                                        @error('passing_date')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-sm-12">
-                                                <div class="row">
-                                                    <div class="col-sm-6">
-                                                        <div class="input-group {{ $bg_voucher }}">
-                                                            <div class="input-group">
-                                                                <textarea class="form-control @error('detail') is-invalid @enderror" placeholder="Detail" name="detail"
-                                                                    style=" height: 150px;" maxlength="255">{{ old('detail') }}</textarea>
-                                                                @error('detail')
-                                                                    <div class="invalid-feedback">{{ $message }}
-                                                                    </div>
-                                                                @enderror
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-sm-6">
-                                                        <div class="{{ $bg_voucher }}">
-                                                            <div class="party-info">
-
-                                                                <div class="info-set">
-                                                                    <strong class="info-label">Phone:</strong>
-                                                                    <span id="phone" class="info-data"></span><br>
                                                                 </div>
+                                                            </div>
+                                                        </div>
 
-                                                                <div class="info-set">
-                                                                    <strong class="info-label">Address:</strong>
-                                                                    <span id="address" class="info-data"></span><br>
+                                                        <div class="col-sm-3">
+                                                            <div class="input-group">
+                                                                <label class="fbox">Reference No</label>
+                                                                <div class="input-group">
+                                                                    <input type="text" class="form-control " name="voucher"
+                                                                        value="{{ $type }}-{{ get_new_voucher_number($type) }}"
+                                                                        autocomplete="off" readonly>
+                                                                    @error('reference')
+                                                                        <div class="invalid-feedback">{{ $message }}</div>
+                                                                    @enderror
                                                                 </div>
+                                                            </div>
+                                                        </div>
 
-                                                                <div class="info-set">
-                                                                    <strong class="info-label">CNIC:</strong>
-                                                                    <span id="cnic" class="info-data"></span><br>
-                                                                </div>
-
-                                                                <div class="info-set">
-                                                                    <strong class="info-label">Balance:</strong>
-                                                                    <span id="balance" class="info-data"></span>
+                                                        <div class="col-sm-6">
+                                                            <div class="input-group">
+                                                                <label class="fbox">Date</label>
+                                                                <div class="input-group">
+                                                                    <input type="text" name="date"
+                                                                        class="date form-control" data-input>
+                                                                    <!-- Add a hidden input to store the selected date in a format you want -->
+                                                                    <input type="hidden" id="hiddenDate" name="hiddenDate">
+                                                                    {{-- <input type="text" id="datepicker" class="form-control @error('date') is-invalid @enderror" name="date" value="{{ old('date') ?: date('d-m-yy') }}" autocomplete="off"> --}}
+                                                                    @error('date')
+                                                                        <div class="invalid-feedback">{{ $message }}</div>
+                                                                    @enderror
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-sm-12">
 
+                                            </div>
+
+                                            <div class="row">
+                                                <div class="col-sm-6">
+                                                    <div class="row">
+                                                        <div class="col-sm-6">
+                                                            <div class="input-group">
+                                                                <label class="fbox">Account Type</label>
+                                                                <div class="input-group">
+                                                                    <select class="form-control select2" name="acct_type"
+                                                                        id="acct_type">
+                                                                        <option value="">Select an option</option>
+                                                                        <option value="0">Update Please</option>
+                                                                        <option value="1">Assets</option>
+                                                                        <option value="2">Owner</option>
+                                                                        <option value="3">Recovery</option>
+                                                                        <option value="4">Expence</option>
+                                                                        <option value="5">Amanat Pyments</option>
+                                                                    </select>
+                                                                    @error('is_active')
+                                                                        <div class="invalid-feedback">{{ $message }}</div>
+                                                                    @enderror
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-sm-6">
+                                                            <div class="input-group">
+                                                                <label class="fbox">Accounts</label>
+                                                                <div class="input-group">
+                                                                    <select class="form-control select2" name="accounts_id"
+                                                                        id="accounts_id">
+                                                                        <option value="">Select an option</option>
+                                                                        @foreach ($headaccounts as $v)
+                                                                            <option value="{{ $v->head_accounting_id }}">
+                                                                                {{ $v->headAccounting->name ?? '' }}</option>
+                                                                        @endforeach
+                                                                    </select>
+                                                                    @error('accounts_id')
+                                                                        <div class="invalid-feedback">{{ $message }}</div>
+                                                                    @enderror
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+                                                <div class="col-sm-6">
+                                                    <div class="row">
+                                                        <div class="col-sm-6">
+                                                            <div class="input-group">
+                                                                <label class="fbox">Child Account</label>
+                                                                <div class="input-group">
+                                                                    <select class="form-control select2" name="subaccounts_id"
+                                                                        id="subaccounts_id">
+                                                                        <option value="">Select an option</option>
+                                                                        @foreach ($partyaccounts as $v)
+                                                                            @php
+                                                                                $balance = $v->balance ?? 0;
+                                                                                $balanceClass =
+                                                                                    $balance < 0
+                                                                                        ? 'text-danger'
+                                                                                        : 'text-success';
+                                                                            @endphp
+                                                                            <option value="{{ $v->subhead_accounting_id }}">
+                                                                                {{ $v->subheadAccounting->name ?? '' }} &
+                                                                                Balance = <span
+                                                                                    class="{{ $balanceClass }}">{{ number_format($balance, 2) }}</span>
+                                                                            </option>
+                                                                        @endforeach
+                                                                    </select>
+                                                                    @error('subaccounts_id')
+                                                                        <div class="invalid-feedback">{{ $message }}</div>
+                                                                    @enderror
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-sm-6">
+                                                            <div class="input-group">
+                                                                <label class="fbox">Amount</label>
+                                                                <div class="input-group">
+                                                                    <input id="numberInput" oninput="formatAmount(this)"
+                                                                        type="text"
+                                                                        class="form-control @error('amount') is-invalid @enderror"
+                                                                        placeholder="Amount" name="amount"
+                                                                        value="{{ old('amount') }}">
+                                                                    @error('amount')
+                                                                        <div class="invalid-feedback">{{ $message }}</div>
+                                                                    @enderror
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+
+                                                    </div>
+                                                </div>
+
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-sm-12">
+                                                    <div id="wordingAmount"></div>
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-sm-6">
+                                                    <div class="input-group">
+                                                        <label class="fbox">Customer</label>
+                                                        <div class="input-group">
+                                                            <select class="form-control select2" name="customer_id"
+                                                                id="customer_id">
+                                                                <option value="">Select Customer</option>
+                                                                @foreach ($customers as $v)
+                                                                    <option value="{{ $v->id }}"
+                                                                        data-phone="{{ $v->mobile_number }}"
+                                                                        data-nic_number="{{ $v->nic_number }}"
+                                                                        data-home_address="{{ $v->home_address }}">
+                                                                        {{ $v->first_name }} {{ $v->last_name }}
+                                                                        {{ $v->relate }} {{ $v->father_name }} -
+                                                                        {{ $v->phone_number }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                            @error('customer_id')
+                                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                            @enderror
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-sm-6">
+                                                    <div class="input-group">
+                                                        <label class="fbox">Plot No.</label>
+                                                        <div class="input-group">
+                                                            <select class="form-control select2" name="plot_id"
+                                                                id="plot_id">
+                                                                <option value="">Select Plot</option>
+                                                                @foreach ($plots as $v)
+                                                                    @php
+                                                                        $plotType = $v->type == 1 ? 'R- ' : 'C- ';
+                                                                        $plotName = $plotType . $v->name;
+                                                                    @endphp
+                                                                    <option value="{{ $v->plot_id }}">
+                                                                        {{ $plotName ?? '' }}
+                                                                    </option>
+                                                                @endforeach
+                                                            </select>
+                                                            @error('plot_id')
+                                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                            @enderror
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-sm-3">
+                                                    <div class="input-group">
+                                                        <label class="fbox">Payment Type</label>
+                                                        <div class="input-group">
+                                                            <select class="form-control select2" name="payment_type"
+                                                                id="payment_type">
+                                                                <option value="1">Cash</option>
+                                                                <option value="2">Online</option>
+                                                                <option value="3">Check</option>
+                                                            </select>
+                                                            @error('payment_type')
+                                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                            @enderror
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-sm-3">
+                                                    <div class="input-group bank_group" style="display: none">
+                                                        <label class="fbox">Number</label>
+                                                        <div class="input-group">
+                                                            <input id="t_number" type="text"
+                                                                class="form-control @error('t_number') is-invalid @enderror"
+                                                                placeholder="Transaction Number" name="t_number"
+                                                                value="{{ old('t_number') }}">
+                                                            @error('amount')
+                                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                            @enderror
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-sm-3">
+                                                    <div class="input-group bank_group" style="display: none">
+                                                        <label class="fbox">Bank</label>
+                                                        <div class="input-group">
+                                                            <select class="form-control select2" name="bank_id"
+                                                                id="bank_id">
+                                                                <option value="">Bank</option>
+
+                                                                @foreach (getPakistanBanks() as $v)
+                                                                    <option value="{{ $v['id'] }}">{{ $v['name'] }}
+                                                                    </option>
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
 
                                                 <div class="col-sm-3">
-                                                    <div class="modal-footer justify-content-between">
-                                                        <button type="button" class="btn btn-primary btn-lg btn-block"
-                                                            data-toggle="modal" data-target="#confirmModal">Save</button>
-
-
+                                                    <div class="input-group bank_group" style="display: none">
+                                                        <label class="fbox">Passing Date</label>
+                                                        <div class="input-group">
+                                                            <input type="text" name="passing_date"
+                                                                class="date form-control" data-input>
+                                                            <!-- Add a hidden input to store the selected date in a format you want -->
+                                                            @error('passing_date')
+                                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                            @enderror
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </form>
-                                @endcan
-                            </div>
-                        </div>
-                    </div>
-                    {{-- details table --}}
-                    <div class="col-md-12 mb-4">
-                        <div class="custom_card h-100">
-                            <div class="card-body">
-                                <div class="mb-3 d-flex align-items-center justify-content-between">
-                                    <h5 class="text-lg font-semibold">Cash Voucher</h5>
+                                            <div class="row">
+
+                                                <div class="col-sm-12">
+                                                    <div class="row">
+                                                        <div class="col-sm-6">
+                                                            <div class="input-group {{ $bg_voucher }}">
+                                                                <div class="input-group">
+                                                                    <textarea class="form-control @error('detail') is-invalid @enderror" placeholder="Detail" name="detail"
+                                                                        style=" height: 150px;" maxlength="255">{{ old('detail') }}</textarea>
+                                                                    @error('detail')
+                                                                        <div class="invalid-feedback">{{ $message }}
+                                                                        </div>
+                                                                    @enderror
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="col-sm-6">
+                                                            <div class="{{ $bg_voucher }}">
+                                                                <div class="party-info">
+
+                                                                    <div class="info-set">
+                                                                        <strong class="info-label">Phone:</strong>
+                                                                        <span id="phone" class="info-data"></span><br>
+                                                                    </div>
+
+                                                                    <div class="info-set">
+                                                                        <strong class="info-label">Address:</strong>
+                                                                        <span id="address" class="info-data"></span><br>
+                                                                    </div>
+
+                                                                    <div class="info-set">
+                                                                        <strong class="info-label">CNIC:</strong>
+                                                                        <span id="cnic" class="info-data"></span><br>
+                                                                    </div>
+
+                                                                    <div class="info-set">
+                                                                        <strong class="info-label">Balance:</strong>
+                                                                        <span id="balance" class="info-data"></span>
+                                                                    </div>
+                                                                </div>
+
+
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+
+
+
+
+
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-sm-12">
+
+
+                                                    <div class="col-sm-3">
+                                                        <div class="d-flex justify-content-between">
+                                                            <button  type="button" class="btn btn-primary btn-lg btn-block"
+                                                                data-toggle="modal" data-target="#confirmModal"
+                                                                onclick="saveAsDraft()">Save as Draft</button>
+                                                            <button type="button" class="btn btn-primary btn-lg btn-block"
+                                                                data-toggle="modal" data-target="#confirmModal">Save</button>
+
+
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
                                 </div>
-                                @can('read voucher')
-                                    <div class=" table-responsive">
-                                        <table id="example1" class="table table-bordered table-striped">
-                                            <thead>
+                            @endcan
+                            <!-- /.card-header -->
+                            @can('read voucher')
+                                <div class="card-body table-responsive">
+                                    <table id="example1" class="table table-bordered table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Date</th>
+                                                <th>Project</th>
+                                                <th>Head Account</th>
+                                                <th>Sub Head Account</th>
+                                                <th>Detail</th>
+                                                <th>Amount</th>
+
+                                                @canany(['update voucher', 'delete voucher'])
+                                                    <th>Action</th>
+                                                @endcanany
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach ($data as $i)
                                                 <tr>
-                                                    <th>#</th>
-                                                    <th>Date</th>
-                                                    <th>Project</th>
-                                                    <th>Head Account</th>
-                                                    <th>Sub Head Account</th>
-                                                    <th>Detail</th>
-                                                    <th>Amount</th>
+                                                    <td>{{ $loop->iteration }}</td>
+                                                    <td>
+                                                        {{ $i->date ?? '' }}
+                                                    </td>
+                                                    <td>
+                                                        {{ $i->projectHeadSubhead->project->project ?? '' }}
+                                                    </td>
+                                                    <td>
+                                                        {{ $i->projectHeadSubhead->headAccounting->name ?? '' }}
+                                                    </td>
+                                                    <td>
+                                                        {{ $i->projectHeadSubhead->subheadAccounting->name ?? '' }}
+
+                                                    </td>
+                                                    <td>
+                                                        {{ $i->detail }}
+                                                    </td>
+                                                    <td>
+                                                        {{ $i->amount }}
+                                                    </td>
+
 
                                                     @canany(['update voucher', 'delete voucher'])
-                                                        <th>Action</th>
+                                                        <td>
+
+                                                            <div class="btn-group">
+                                                                @if ($i->type != 'BO')
+                                                                    @can('update voucher')
+                                                                        <button class="btn btn-sm btn-primary btn-edit"
+                                                                            data-id="{{ $i->id }}"><i
+                                                                                class="fas fa-pencil-alt"></i></button>
+                                                                    @endcan
+                                                                    @can('delete voucher')
+                                                                        <button class="btn btn-sm btn-danger btn-delete"
+                                                                            data-id="{{ $i->id }}"
+                                                                            data-name="{{ $i->name }}"><i
+                                                                                class="fas fa-trash"></i></button>
+                                                                    @endcan
+                                                                @else
+                                                                    Plot Booking Invoice
+                                                                @endif
+
+                                                            </div>
+                                                        </td>
                                                     @endcanany
                                                 </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach ($data as $i)
-                                                    <tr>
-                                                        <td>{{ $loop->iteration }}</td>
-                                                        <td>
-                                                            {{ $i->date ?? '' }}
-                                                        </td>
-                                                        <td>
-                                                            {{ $i->projectHeadSubhead->project->project ?? '' }}
-                                                        </td>
-                                                        <td>
-                                                            {{ $i->projectHeadSubhead->headAccounting->name ?? '' }}
-                                                        </td>
-                                                        <td>
-                                                            {{ $i->projectHeadSubhead->subheadAccounting->name ?? '' }}
-
-                                                        </td>
-                                                        <td>
-                                                            {{ $i->detail }}
-                                                        </td>
-                                                        <td>
-                                                            {{ $i->amount }}
-                                                        </td>
+                                            @endforeach
 
 
-                                                        @canany(['update voucher', 'delete voucher'])
-                                                            <td>
-
-                                                                <div class="btn-group">
-                                                                    @if ($i->type != 'BO')
-                                                                        @can('update voucher')
-                                                                            <button class="btn btn-sm btn-primary btn-edit"
-                                                                                data-id="{{ $i->id }}"><i
-                                                                                    class="fas fa-pencil-alt"></i></button>
-                                                                        @endcan
-                                                                        @can('delete voucher')
-                                                                            <button class="btn btn-sm btn-danger btn-delete"
-                                                                                data-id="{{ $i->id }}"
-                                                                                data-name="{{ $i->name }}"><i
-                                                                                    class="fas fa-trash"></i></button>
-                                                                        @endcan
-                                                                    @else
-                                                                        Plot Booking Invoice
-                                                                    @endif
-
-                                                                </div>
-                                                            </td>
-                                                        @endcanany
-                                                    </tr>
-                                                @endforeach
+                                        </tbody>
 
 
-                                            </tbody>
+                                    </table>
+                                </div>
+                            @endcan
 
-
-                                        </table>
-                                    </div>
-                                @endcan
-
-                            </div>
+                            <!-- /.card-body -->
                         </div>
+                        <!-- /.card -->
+
+
                     </div>
+                    <!-- /.col -->
                 </div>
-            </div>
+                <!-- /.row -->
+            </div><!-- /.container-fluid -->
         </section>
+        <!-- /.content -->
     </div>
+
+
 @endsection
 
 @section('js')
