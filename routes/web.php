@@ -3,10 +3,12 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DastiCashController;
 use App\Http\Controllers\FileManagerController;
+use App\Http\Controllers\LabourController;
 use App\Http\Controllers\ModuleController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SettingController;
+use App\Http\Controllers\StockController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -28,16 +30,16 @@ Route::get('/', function () {
 })->name('index');
 
 Auth::routes([
-    'register'  => false,
-    'reset'     => false,
-    'confirm'   => false
+    'register' => false,
+    'reset' => false,
+    'confirm' => false
 ]);
 
 
 
 Route::middleware(['auth'])->get('/home', [DashboardController::class, 'index'])->name('home');
 
-Route::prefix('admin')->middleware(['auth','check.user.status'])->group(function () {
+Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('admin');
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('punch', [DashboardController::class, 'punch']);
@@ -216,12 +218,17 @@ Route::prefix('admin')->middleware(['auth','check.user.status'])->group(function
 
     });
 
-Route::controller(DastiCashController::class)->prefix('dasticash')->name('dasticash.')->group(function () {
-    Route::post('/store', 'store')->middleware(['permission:create dasticash'])->name('store');
-    Route::get('/{id}/edit', 'edit')->middleware(['permission:update dasticash'])->name('edit');
-    Route::put('/{id}', 'update')->middleware(['permission:update dasticash'])->name('update');
-    Route::delete('/{id}', 'destroy')->middleware(['permission:delete dasticash'])->name('destroy');
-});
+    Route::controller(DastiCashController::class)->prefix('dasticash')->name('dasticash.')->group(function () {
+        Route::post('/store', 'store')->middleware(['permission:create dasticash'])->name('store');
+        Route::get('/{id}/edit', 'edit')->middleware(['permission:update dasticash'])->name('edit');
+        Route::put('/{id}', 'update')->middleware(['permission:update dasticash'])->name('update');
+        Route::delete('/{id}', 'destroy')->middleware(['permission:delete dasticash'])->name('destroy');
+    });
+
+    Route::resource('labours', LabourController::class);
+    Route::patch('/labours/{labour}/status', [App\Http\Controllers\LabourController::class, 'updateStatus'])
+    ->name('labours.updateStatus');
+    Route::resource('stocks', StockController::class);
 
 
     Route::controller(App\Http\Controllers\LedgerController::class)->group(function () {
