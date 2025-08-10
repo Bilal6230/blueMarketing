@@ -7,6 +7,7 @@ use App\Models\Plot;
 use App\Models\User;
 use App\Models\Ledger;
 use App\Models\Project;
+use App\Models\DraftLedger;
 use Illuminate\Http\Request;
 use App\Models\HeadAccounting;
 use App\Models\AccountingExpense;
@@ -173,5 +174,64 @@ class VoucherController extends Controller
         $x['projects'] = $projects;
 
         return view('admin.finance.voucher.cash_voucher', $x);
+    }
+    public function cash_draft()
+    {
+        $power = Auth::user()->roles[0]->name;
+        $x['title']     = 'Draft Vouchers';
+        $x['role']      = Role::get();
+        $x['users']      = User::get();
+        $x['power']     = $power;
+        $x['type']      =   'CR';
+        $x['class']      =   'cash-out';
+        $x['bg_voucher'] = 'info-cash-out';
+
+        // Get selected town's project_id
+        $selectedProjectId = getSelectedTown();
+
+
+        $data = DraftLedger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project')
+            ->where('is_active', 1)
+            ->whereIn('type', ['CP', 'BO', 'CR'])  // Use whereIn to check for either 'CP' or 'BO'
+            ->whereHas('projectHeadSubhead', function ($query) use ($selectedProjectId) {
+                $query->where('project_id', $selectedProjectId);
+            })
+            ->get();
+
+        $data = $data->map(function ($item) {
+            $item['amount'] = floatval($item['amount_out']);
+            return $item;
+        });
+        $x['data'] = $data;
+        $x['headaccounts'] = ProjectHeadSubhead::select('project_id', 'head_accounting_id')
+            ->distinct()
+            ->with('headAccounting')
+            ->where(['project_id' => $selectedProjectId])
+            ->get();
+        $x['partyaccounts'] = ProjectHeadSubhead::with('subheadAccounting')
+            ->withSum('ledgers as total_in', 'amount_in')
+            ->withSum('ledgers as total_out', 'amount_out')
+            ->whereIn('head_accounting_id', $x['headaccounts']->pluck('head_accounting_id'))
+            ->where('project_id', $selectedProjectId)
+            ->get()
+            ->map(function ($item) {
+                $item->balance = ($item->total_in ?? 0) - ($item->total_out ?? 0);
+                return $item;
+            });
+        $x['customers'] = Lead::join('bookings', 'leads.id', '=', 'bookings.customer_id')
+            ->where('leads.project_id', $selectedProjectId)
+            ->whereNull('bookings.deleted_at') // Exclude soft-deleted bookings
+            ->select('leads.*') // Select all columns from the leads table
+            ->distinct() // Ensure uniqueness by lead id
+            ->get();
+        $x['plots'] = Plot::join('bookings', 'plots.id', '=', 'bookings.plot_id')
+            ->where('plots.project_id', $selectedProjectId)
+            ->get();
+        $x['selectedProjectId'] = $selectedProjectId;
+
+        $projects = Project::where('id', $selectedProjectId)->get();
+        $x['projects'] = $projects;
+
+        return view('admin.finance.voucher.draft_voucher', $x);
     }
 }
