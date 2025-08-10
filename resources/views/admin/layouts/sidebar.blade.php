@@ -108,7 +108,7 @@
                                     </a>
                                 </li>
                             @endcan
-                           
+
                         </ul>
                     </li>
                 @endcanany
@@ -167,7 +167,7 @@
                             <p>Vouchers<i class="right fas fa-angle-left"></i></p>
                         </a>
                         <ul class="nav nav-treeview" style="display: {{ request()->routeIs('finance.voucher*') ? 'block':'none' }};">
-                            
+
 
                             @can('read voucher')
                                 <li class="nav-item">
@@ -182,10 +182,16 @@
                                         <p>Cash out</p>
                                     </a>
                                 </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('finance.voucher.draft') }}" class="nav-link {{ request()->routeIs('finance.voucher.draft') ? 'active':'' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Draft Voucher</p>
+                                    </a>
+                                </li>
 
-                                
 
-                                
+
+
                                 {{-- <li class="nav-item">
                                     <a href="{{ route('finance.voucher.index') }}" class="nav-link {{ request()->routeIs('finance.voucher.index') ? 'active':'' }}">
                                         <i class="far fa-circle nav-icon"></i>
@@ -210,7 +216,7 @@
                                 </li>
                             @endcan
 
-                            
+
                         </ul>
                     </li>
                 @endcanany
@@ -222,7 +228,7 @@
                             <p>Finance Reports<i class="right fas fa-angle-left"></i></p>
                         </a>
                         <ul class="nav nav-treeview" style="display: {{ request()->routeIs('finance.reports*') ? 'block':'none' }};">
-                            
+
                             @can('report party_ledger')
                                 <li class="nav-item">
                                     <a href="{{ route('finance.reports.details_index') }}" class="nav-link {{ request()->routeIs('finance.reports.details_index') ? 'active':'' }}">
@@ -263,7 +269,7 @@
                                     </a>
                                 </li>
                             @endcan
-                            
+
                         </ul>
                     </li>
                 @endcanany
@@ -321,14 +327,14 @@
                                     </a>
                                 </li>
                             @endcan
-                            
+
                         </ul>
                     </li>
                 @endcanany
 
-                
 
-               
+
+
                 @canany(['read project', 'read sector' , 'read area', 'read plot','view inventory'])
                     <li class="nav-item">
                         <a href="#" class="nav-link {{ request()->routeIs('booking*') ? 'active':'' }}">
@@ -344,7 +350,7 @@
                                     </a>
                                 </li>
                             @endcan
-                            
+
                             @can('read plot')
                                 <li class="nav-item">
                                     <a href="{{ route('booking.customer.report.form') }}" class="nav-link {{ request()->routeIs('booking.customer.report.form') ? 'active':'' }}">
@@ -477,10 +483,10 @@
                     </li>
                 @endcanany
 
-                
 
 
-               
+
+
 
                 <li class="nav-header"></li>
                 <li class="nav-item">

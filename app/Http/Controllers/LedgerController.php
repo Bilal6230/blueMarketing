@@ -127,7 +127,10 @@ class LedgerController extends Controller
             $lastSubmitDate = $request->date; // Adjust this according to your actual form field
             session(['last_submit_date' => $lastSubmitDate]);
 
-
+            if ($request->id) {
+               DraftLedger::find($request->input('id'))->delete();
+            }
+            DB::commit();
             // Alert::success('Notification', 'Data <b></b> Save successfully ')->toToast()->toHtml();
             Alert::success('Notification', 'Data <b>' . $data->project . '</b> Save successfully ')->toToast()->toHtml();
         } catch (\Throwable $th) {
@@ -138,6 +141,7 @@ class LedgerController extends Controller
     }
     public function saveAsDraft(Request $request)
     {
+        // dd('draft',$request->all());
         $validator = Validator::make($request->all(), [
             'amount' => ['required'],
             'detail' => ['required'],
@@ -182,8 +186,9 @@ class LedgerController extends Controller
             if (!$projectHeadSubhead) {
                 throw new \Exception('Credit account ID not found.');
             }
+            $draftLedger = DraftLedger::find($request->input('id'));
 
-            DraftLedger::create([
+            $data = [
                 // Customer Ledger Fields
                 'customer_id' => $customer_id,
                 'transaction_type' => $firstTwoDigits,
@@ -198,7 +203,7 @@ class LedgerController extends Controller
                 'payment_type' => $request->input('payment_type'),
                 't_number' => $t_number,
                 'bank_id' => $bank_id,
-                'is_active' => 0, // As Draft
+                'is_active' => 1, // As Draft
                 'is_approve' => 0,
                 'passing_date' => $request->input('passing_date'),
                 'check_history' => $request->input('check_history'),
@@ -209,12 +214,16 @@ class LedgerController extends Controller
                 'type' => $firstTwoDigits,
                 'project_head_subheads_id' => $projectHeadSubhead->id,
                 'detail' => $request->input('detail'),
-                'create_by' => Auth::user()->id,
                 'update_by' => Auth::user()->id,
                 'status' => 'draft', // you can set string status
+            ];
 
-                // Timestamps auto-handled
-            ]);
+            if ($draftLedger) {
+                $draftLedger->update($data);
+            } else {
+                $data['create_by'] = Auth::user()->id;
+                DraftLedger::create($data);
+            }
         } catch (\Throwable $th) {
             return $th->getMessage();
             DB::rollback();
@@ -252,6 +261,15 @@ class LedgerController extends Controller
     public function show(Request $request)
     {
         $data_list = Ledger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project')->where(['id' => $request->id])->first();
+        return response()->json([
+            'status'    => Response::HTTP_OK,
+            'message'   => 'Data Project by id',
+            'data'      => $data_list
+        ], Response::HTTP_OK);
+    }
+    public function draftShow(Request $request)
+    {
+        $data_list = DraftLedger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project')->where(['id' => $request->id])->first();
         return response()->json([
             'status'    => Response::HTTP_OK,
             'message'   => 'Data Project by id',
@@ -299,6 +317,23 @@ class LedgerController extends Controller
         DB::beginTransaction();
         try {
             $result = Ledger::find($request->id);
+            $result->update($data);
+            DB::commit();
+            Alert::success('Notification', 'Data <b>' . $result->name . '</b> Deleted')->toToast()->toHtml();
+        } catch (\Throwable $th) {
+            DB::rollback();
+            Alert::error('Notification', 'Data <b>' . $result->name . '</b> failed to delete: ' . $th->getMessage())->toToast()->toHtml();
+        }
+        return back();
+    }
+    public function draftDestroy(Request $request)
+    {
+        $data = [
+            'is_active' => "0",
+        ];
+        DB::beginTransaction();
+        try {
+            $result = DraftLedger::find($request->id);
             $result->update($data);
             DB::commit();
             Alert::success('Notification', 'Data <b>' . $result->name . '</b> Deleted')->toToast()->toHtml();

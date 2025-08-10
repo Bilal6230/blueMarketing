@@ -11,6 +11,12 @@
   --transition: all 0.3s ease;
 }
 
+.ts-wrapper.single .ts-control, .ts-wrapper.single .ts-control input {
+    cursor: text !important;
+}
+.ts-control::after {
+    display: contents ;
+}
 
 .main-content .content-wrapper {
   background: #ecf0fa;
@@ -156,7 +162,7 @@
   height: 50px;
   border-radius: 15%;
 }
- 
+
 
 .badge-parpal {
   color: #fff;
