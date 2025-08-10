@@ -102,7 +102,7 @@
                                             </div>
                                         </div>
                                         <div class="">
-                                            <div id="msg" class="message message-success ">
+                                            <div id="msg" class="message  ">
                                             </div>
                                         </div>
                                     </div>
@@ -143,7 +143,7 @@
                                             </div>
                                         </form>
                                         <div class="form-group row">
-                                            <div id="msg" class="message message-success ">
+                                            <div id="msg" class="message  ">
                                             </div>
                                         </div>
                                     </div>

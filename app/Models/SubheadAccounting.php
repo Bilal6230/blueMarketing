@@ -19,4 +19,8 @@ class SubheadAccounting extends Model
     {
         return $this->belongsTo(HeadAccounting::class);
     }
+    public function headAccountings()
+    {
+        return $this->belongsToMany(HeadAccounting::class, 'project_head_subheads');
+    }
 }

@@ -200,8 +200,7 @@
                             <i class="nav-icon fas fa-ticket-alt"></i>
                             <p>Vouchers<i class="right fas fa-angle-left"></i></p>
                         </a>
-                        <ul class="nav nav-treeview"
-                            style="display: {{ request()->routeIs('finance.voucher*') ? 'block' : 'none' }};">
+                        <ul class="nav nav-treeview" style="display: {{ request()->routeIs('finance.voucher*') ? 'block':'none' }};">
 
 
                             @can('read voucher')
@@ -217,6 +216,12 @@
                                         class="nav-link {{ request()->routeIs('finance.voucher.out') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Cash out</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('finance.voucher.draft') }}" class="nav-link {{ request()->routeIs('finance.voucher.draft') ? 'active':'' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Draft Voucher</p>
                                     </a>
                                 </li>
 
@@ -260,8 +265,7 @@
                             <i class="fas fa-print nav-icon"></i>
                             <p>Finance Reports<i class="right fas fa-angle-left"></i></p>
                         </a>
-                        <ul class="nav nav-treeview"
-                            style="display: {{ request()->routeIs('finance.reports*') ? 'block' : 'none' }};">
+                        <ul class="nav nav-treeview" style="display: {{ request()->routeIs('finance.reports*') ? 'block':'none' }};">
 
                             @can('report party_ledger')
                                 <li class="nav-item">
@@ -378,7 +382,7 @@
 
 
 
-                @canany(['read project', 'read sector', 'read area', 'read plot', 'view inventory'])
+                @canany(['read project', 'read sector' , 'read area', 'read plot','view inventory'])
                     <li class="nav-item">
                         <a href="#" class="nav-link {{ request()->routeIs('booking*') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-chart-pie"></i>

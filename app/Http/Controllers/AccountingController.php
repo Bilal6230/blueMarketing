@@ -61,13 +61,13 @@ class AccountingController extends Controller
             'subaccounts_id' => ['required'],
             'projects_id' => ['required'],
         ]);
-        
+
         if ($validator->fails()) {
             return back()->withErrors($validator)
-            ->withInput();
+                ->withInput();
         }
-        
-        if(isset($request->cash_in)){
+
+        if (isset($request->cash_in)) {
             if (is_null($request->cash_in)) {
                 $request->cash_in = 0;
             } elseif ($request->cash_in === 'on') {
@@ -78,16 +78,16 @@ class AccountingController extends Controller
             // dd($request->cash_in);
 
             $projectHeadSubhead = ProjectHeadSubhead::where('head_accounting_id', $request->accounts_id)
-            ->where('subhead_accounting_id', $request->subaccounts_id)
-            ->where('project_id', $request->projects_id)
-            ->first();
+                ->where('subhead_accounting_id', $request->subaccounts_id)
+                ->where('project_id', $request->projects_id)
+                ->first();
             $data = AccountingExpense::create([
 
                 'price' => $request->price,
                 'detail' => $request->detail,
                 'cash_in' => $request->cash_in,
                 'project_head_subheads_id' => $projectHeadSubhead->id,
-                'create_by' =>Auth::user()->id
+                'create_by' => Auth::user()->id
 
             ]);
 
@@ -109,38 +109,47 @@ class AccountingController extends Controller
         return $data_list;
     }
 
-    public function get_account(Request $request) {
+    public function get_account(Request $request)
+    {
 
         $action = $request->input('action');
-
+        $selectedProjectId = getSelectedTown();
         try {
 
             switch ($action) {
 
                 case 'get_head':
 
-                    $data_list = ProjectHeadSubhead::select('project_id','head_accounting_id')
+                    $data_list = ProjectHeadSubhead::select('project_id', 'head_accounting_id')
                         ->distinct()
+                        ->whereHas('headAccounting', function ($query) use ($request) {
+                            $query->where('acct_type', $request->acct_type);
+                        })
+                        ->where(['project_id' => $selectedProjectId])
                         ->with('headAccounting')
-                        ->where(['project_id' => $request->projectID])
                         ->get();
 
                     $response = $data_list;
-                break;
+                    break;
 
                 case 'get_child':
 
-                    $data_list = ProjectHeadSubhead::with('subheadAccounting')
+                    $data_list = ProjectHeadSubhead::with(['subheadAccounting', 'headAccounting'])
+                        ->withSum('ledgers as total_in', 'amount_in')
+                        ->withSum('ledgers as total_out', 'amount_out')
                         ->where(['head_accounting_id' => $request->accountID])
-                        ->where(['project_id' => $request->projectID])
+                        ->where(['project_id' => $selectedProjectId])
                         ->get();
+                    $data_list = $data_list->map(function ($item) {
+                            $item->balance = ($item->total_in ?? 0) - ($item->total_out ?? 0);
+                            return $item;
+                        });
 
 
                     $response = $data_list;
-                break;
+                    break;
             }
             return $response;
-
         } catch (Exception $ex) {
             dd("asdas");
             //$response['msg'] = AppRepo::create_error_log("Tag", "get_slide_html_($action)_by_$app_user_id", $ex, $app_user_id);
@@ -190,7 +199,7 @@ class AccountingController extends Controller
                 'name' => $request->name,
                 'is_active' => $request->is_active,
                 'acct_type' => $request->acct_type,
-                'create_by' =>Auth::user()->id
+                'create_by' => Auth::user()->id
 
             ]);
 
@@ -227,7 +236,7 @@ class AccountingController extends Controller
         $validator = Validator::make($request->all(), $rules);
         if ($validator->fails()) {
             return back()->withErrors($validator)
-            ->withInput();
+                ->withInput();
         }
         $data = [
             'name' => $request->name,
@@ -294,7 +303,7 @@ class AccountingController extends Controller
                 'is_active' => $request->is_active,
                 'cnic' => $request->cnic,
                 'phone' => $request->phone,
-                'create_by' =>Auth::user()->id
+                'create_by' => Auth::user()->id
 
             ]);
 
@@ -332,7 +341,7 @@ class AccountingController extends Controller
         $validator = Validator::make($request->all(), $rules);
         if ($validator->fails()) {
             return back()->withErrors($validator)
-            ->withInput();
+                ->withInput();
         }
         $data = [
             'name' => $request->name,
@@ -375,20 +384,20 @@ class AccountingController extends Controller
 
         $query = AccountingExpense::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project');
 
-        if(isset($request->accounts_id)){
-            $query->whereHas('projectHeadSubhead.headAccounting', function($q) use ($request) {
+        if (isset($request->accounts_id)) {
+            $query->whereHas('projectHeadSubhead.headAccounting', function ($q) use ($request) {
                 $q->where('id', $request->accounts_id);
             });
         }
 
-        if(isset($request->subaccounts_id)){
-            $query->whereHas('projectHeadSubhead.subheadAccounting', function($q) use ($request) {
+        if (isset($request->subaccounts_id)) {
+            $query->whereHas('projectHeadSubhead.subheadAccounting', function ($q) use ($request) {
                 $q->where('id', $request->subaccounts_id);
             });
         }
 
-        if(isset($request->projects_id)){
-            $query->whereHas('projectHeadSubhead.project', function($q) use ($request) {
+        if (isset($request->projects_id)) {
+            $query->whereHas('projectHeadSubhead.project', function ($q) use ($request) {
                 $q->where('id', $request->projects_id);
             });
         }
@@ -405,7 +414,7 @@ class AccountingController extends Controller
         $x['total_price'] = $totalPrice;
 
         // $projects = Project::get();
-        $projects = Project::where('id', $selectedProjectId )->get();
+        $projects = Project::where('id', $selectedProjectId)->get();
         // $headaccounts = HeadAccounting::get();
         // $subheadaccounts = SubheadAccounting::get();
 
@@ -514,13 +523,13 @@ class AccountingController extends Controller
 
         // Calculate the opening balance
         $openingBalance = Ledger::whereIn('project_head_subheads_id', $projectHeadSubheads)
-            ->where('date', '<', $request->fdate)->where('is_active',1)
+            ->where('date', '<', $request->fdate)->where('is_active', 1)
             ->selectRaw('SUM(amount_in) - SUM(amount_out) as opening_balance')
             ->value('opening_balance');
 
         // Fetch ledger details
         $ledgerDetails = Ledger::whereIn('project_head_subheads_id', $projectHeadSubheads)
-            ->whereBetween('date', [$request->fdate, $request->tdate])->where('is_active',1)
+            ->whereBetween('date', [$request->fdate, $request->tdate])->where('is_active', 1)
             ->get();
 
         // Fetch party details
@@ -540,7 +549,7 @@ class AccountingController extends Controller
         $projectName = Project::find($request->projects_id)->project ?? 'N/A';
         // Return the Blade view with data
         return view('admin.finance.reports.party_ledger_report', [
-            'reportTitle'=> "Ledger Report",
+            'reportTitle' => "Ledger Report",
             'fdate' => $request->fdate,
             'tdate' => $request->tdate,
             'projectName' => $projectName,
@@ -549,10 +558,4 @@ class AccountingController extends Controller
             'party_details' => $partyDetails,
         ]);
     }
-
-
-
-
-
-
 }

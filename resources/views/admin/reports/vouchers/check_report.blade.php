@@ -74,7 +74,7 @@
                                         </div>
                                     </div>
 
-                                    
+
                                 </div>
                                 <div class="row">
 
@@ -90,7 +90,7 @@
                                                     @endforeach
                                                 </select>
                                             </div>
-                                            
+
                                         </div>
                                     </div>
                                     <div class="col-sm-3" >
@@ -100,10 +100,10 @@
                                                 <select class="form-control select2" name="bank_id" id="bank_id">
                                                     <option value="">Payment Type</option>
 
-                                                    
+
                                                 </select>
                                             </div>
-                                            
+
                                         </div>
                                     </div>
 
@@ -153,8 +153,8 @@
                                     </div>
                                 </div>
                             </div>
-                            
-                    
+
+
                             <!-- /.card-header -->
                             <div class="card-body table-responsive">
                                 <table id="example1" class="table table-bordered table-striped">
@@ -165,6 +165,7 @@
                                             <th>Phone</th>
                                             <th>Plot</th>
                                             <th>Type</th>
+                                            <th>Transaction Type</th>
                                             <th>Bank</th>
                                             <th>Cheque No.</th>
                                             <th>Amount</th>
@@ -190,6 +191,7 @@
                                                         {{ getPaymentTypeDetails($i->payment_type)['name'] }}
                                                     </span>
                                                 </td>
+                                                <td>{{ $i->transaction_type ?? 'N/A' }}</td>
                                                 <td>{{ getBankNameById($i->bank_id) }}</td>
                                                 <td>
                                                     <a href="{{ route('admin.reports.check_history', ['id' => $i->id]) }}" target="_blank" class="btn btn-link">
@@ -197,7 +199,7 @@
                                                     </a>
                                                 </td>
                                                 <td>{{ Setting::formatAmount($i->amount_out) }}</td>
-                                                
+
                                                 <td>
                                                     <span class="badge {{ collect(check_status())->firstWhere('id', $i->passing_status)['badge'] }}" style="width: 80px">
                                                         {{ collect(check_status())->firstWhere('id', $i->passing_status)['name'] }}
@@ -213,11 +215,11 @@
                                                                 @can('pass cheque')
                                                                     <button class="btn btn-sm btn-primary btn-edit" data-id="{{ $i->id }}"><i class="fas fa-pencil-alt"></i></button>
                                                                 @endcan
-                                                            
+
                                                             </div>
                                                         @endif
-                                                        
-                                                        
+
+
                                                     </td>
                                                 @endcanany
                                             </tr>
@@ -241,7 +243,7 @@
 @endsection
 
 @section('js')
-    
+
 
     <script>
         // Define a JavaScript variable to hold installment options
@@ -266,7 +268,7 @@
                 });
             }
 
-            $('#customer_id').change(function (e) { 
+            $('#customer_id').change(function (e) {
                 e.preventDefault();
                 var customerId = $(this).val();
 
@@ -277,7 +279,7 @@
                     $('#plot_id').empty();
                     $('#plot_id').append('<option value="">Select plots</option>');
                 }
-                    
+
             });
 
             function fetchPlots(customerId) {
@@ -320,7 +322,7 @@
                         $("#reference").val(data.reference);
                         $('#e_projects_id').val(data.project_head_subhead.project_id).trigger('change');
                         // $('#e_accounts_id').val(data.project_head_subhead.head_accounting_id).trigger('change');
-                        
+
                         // Set the default date in the date input field using flatpickr
                         flatpickr('#date', {
                             enableTime: false,
@@ -329,15 +331,15 @@
                         });
 
                         $("#voucher").val(data.type+'-0000'+data.type_id);
-                        
+
                         if (data.type == 'CR') {
                             $("#amount").val(data.amount_in);
-                            
+
                         } else if(data.type == 'CP') {
                             $("#amount").val(data.amount_out);
-                            
+
                         }
-                      
+
                         $("#detail").val(data.detail);
                         console.log(data.detail);
 
@@ -415,9 +417,9 @@
                                     <div class="input-group">
                                         <label class="fbox">Voucher No.</label>
                                         <div class="input-group">
-                                            <input type="text" value="1" name="action" hidden /> 
+                                            <input type="text" value="1" name="action" hidden />
                                             <input type="text"  class="form-control " name="voucher" value="{{'BR'}}-{{get_new_voucher_number('BR')}}" autocomplete="off" readonly>
-                                            
+
                                         </div>
                                     </div>
                                 </div>
@@ -453,7 +455,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                     </div>
 
                     <div class="row">
@@ -466,7 +468,7 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
-                                
+
                             </div>
                         </div>
                     </div>
@@ -488,7 +490,7 @@
                                 @enderror
                             </div>
                         </div>
-    
+
                         <div class="col-sm-6">
                             <div class="input-group">
                                 <label class="fbox">Party Account</label>
@@ -506,8 +508,8 @@
                     </div>
 
 
-                    
-                    
+
+
                     <div class="modal-footer justify-content-between">
                         <input type="hidden" name="id" id="id">
                         <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
@@ -522,5 +524,5 @@
 </div>
 
 
-    
+
 @endsection

@@ -30,285 +30,6 @@
                                 <div class="mb-3 d-flex align-items-center justify-content-between">
                                     <h5 class="text-lg font-semibold"> {{ $title }}</h5>
                                 </div>
-
-                                @can('create voucher')
-                                    <form action="{{ route('ledger.store') }}" method="POST" enctype="multipart/form-data"
-                                        id="voucherForm">
-                                        @csrf
-                                        <div class="row">
-
-                                            <div class="mb-3 col-sm-3">
-                                                <div class="input-group">
-                                                    <label class="fbox">Serial No.</label>
-                                                    <div class="input-group">
-                                                        <input type="text" value="1" name="action" hidden />
-                                                        <input type="text"
-                                                            class="form-control @error('reference') is-invalid @enderror"
-                                                            name="reference" value="{{ old('reference') }}" autocomplete="off">
-
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div class="mb-3 col-sm-3">
-                                                <div class="input-group">
-                                                    <label class="fbox">Reference No</label>
-                                                    <div class="input-group">
-                                                        <input type="text" class="form-control " name="voucher"
-                                                            value="{{ $type }}-{{ get_new_voucher_number($type) }}"
-                                                            autocomplete="off" readonly>
-                                                        @error('reference')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div class="mb-3 col-sm-6">
-                                                <div class="input-group">
-                                                    <label class="fbox">Date</label>
-                                                    <div class="input-group">
-                                                        <input type="text" name="date" class="date form-control"
-                                                            data-input>
-                                                        <input type="hidden" id="hiddenDate" name="hiddenDate">
-                                                        @error('date')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="mb-3 col-sm-6">
-                                                <div class="input-group">
-                                                    <label class="fbox">Account Type</label>
-                                                    <div class="input-group">
-                                                        <select class="js-tomselect" placeholder="Select an option..."
-                                                            autocomplete="off" name="acct_type" id="acct_type">
-                                                            <option value="">Select an option</option>
-                                                            <option value="0">Update Please</option>
-                                                            <option value="1">Assets</option>
-                                                            <option value="2">Owner</option>
-                                                            <option value="3">Recovery</option>
-                                                            <option value="4">Expence</option>
-                                                            <option value="5">Amanat Pyments</option>
-                                                        </select>
-                                                        @error('is_active')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="mb-3 col-sm-6">
-                                                <div class="input-group">
-                                                    <label class="fbox">Accounts</label>
-                                                    <div class="input-group">
-                                                        <select class="js-tomselect" name="accounts_id" id="accounts_id">
-                                                            <option value="">Select an option</option>
-                                                            @foreach ($headaccounts as $v)
-                                                                <option value="{{ $v->head_accounting_id }}">
-                                                                    {{ $v->headAccounting->name ?? '' }}</option>
-                                                            @endforeach
-                                                        </select>
-                                                        @error('accounts_id')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div class="mb-3 col-sm-6">
-                                                <div class="input-group">
-                                                    <label class="fbox">Child Account</label>
-                                                    <div class="input-group">
-                                                        <select class="js-tomselect" name="subaccounts_id" id="subaccounts_id">
-                                                            <option value="">Select an option</option>
-                                                            @foreach ($partyaccounts as $v)
-                                                                @php
-                                                                    $balance = $v->balance ?? 0;
-                                                                    $balanceClass =
-                                                                        $balance < 0 ? 'text-danger' : 'text-success';
-                                                                @endphp
-                                                                <option value="{{ $v->subhead_accounting_id }}">
-                                                                    {{ $v->subheadAccounting->name ?? '' }} &
-                                                                    Balance = <span
-                                                                        class="{{ $balanceClass }}">{{ number_format($balance, 2) }}</span>
-                                                                </option>
-                                                            @endforeach
-                                                        </select>
-                                                        @error('subaccounts_id')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="mb-3 col-sm-6">
-                                                <div class="input-group">
-                                                    <label class="fbox">Amount</label>
-                                                    <div class="input-group">
-                                                        <input id="numberInput" oninput="formatAmount(this)" type="text"
-                                                            class="form-control @error('amount') is-invalid @enderror"
-                                                            placeholder="Amount" name="amount" value="{{ old('amount') }}">
-                                                        @error('amount')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="mb-3 col-sm-12">
-                                                <div id="wordingAmount"></div>
-                                            </div>
-                                            <div class="mb-3 col-sm-6">
-                                                <div class="input-group">
-                                                    <label class="fbox">Customer</label>
-                                                    <div class="input-group">
-                                                        <select class="js-tomselect" name="customer_id" id="customer_id">
-                                                            <option value="">Select Customer</option>
-                                                            @foreach ($customers as $v)
-                                                                <option value="{{ $v->id }}"
-                                                                    data-phone="{{ $v->mobile_number }}"
-                                                                    data-nic_number="{{ $v->nic_number }}"
-                                                                    data-home_address="{{ $v->home_address }}">
-                                                                    {{ $v->first_name }} {{ $v->last_name }}
-                                                                    {{ $v->relate }} {{ $v->father_name }} -
-                                                                    {{ $v->phone_number }}</option>
-                                                            @endforeach
-                                                        </select>
-                                                        @error('customer_id')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="mb-3 col-sm-6">
-                                                <div class="input-group">
-                                                    <label class="fbox">Plot No.</label>
-                                                    <div class="input-group">
-                                                        <select class="js-tomselect" name="plot_id" id="plot_id">
-                                                            <option value="">Select an option</option>
-                                                            @foreach ($plots as $v)
-                                                                @php
-                                                                    $plotType = $v->type == 1 ? 'R- ' : 'C- ';
-                                                                    $plotName = $plotType . $v->name;
-                                                                @endphp
-                                                                <option value="{{ $v->plot_id }}">
-                                                                    {{ $plotName ?? '' }}
-                                                                </option>
-                                                            @endforeach
-                                                        </select>
-                                                        @error('plot_id')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="mb-3 col-sm-3">
-                                                <div class="input-group">
-                                                    <label class="fbox">Payment Type</label>
-                                                    <div class="input-group">
-                                                        <select class="js-tomselect" name="payment_type" id="payment_type">
-                                                            <option value="1">Cash</option>
-                                                            <option value="2">Online</option>
-                                                            <option value="3">Check</option>
-                                                        </select>
-                                                        @error('payment_type')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="mb-3 col-sm-3">
-                                                <div class="input-group bank_group" style="display: none">
-                                                    <label class="fbox">Number</label>
-                                                    <div class="input-group">
-                                                        <input id="t_number" type="text"
-                                                            class="form-control @error('t_number') is-invalid @enderror"
-                                                            placeholder="Transaction Number" name="t_number"
-                                                            value="{{ old('t_number') }}">
-                                                        @error('amount')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="mb-3 col-sm-3">
-                                                <div class="input-group bank_group" style="display: none">
-                                                    <label class="fbox">Bank</label>
-                                                    <div class="input-group">
-                                                        <select class="js-tomselect" name="bank_id" id="bank_id">
-                                                            <option value="">Bank</option>
-
-                                                            @foreach (getPakistanBanks() as $v)
-                                                                <option value="{{ $v['id'] }}">{{ $v['name'] }}
-                                                                </option>
-                                                            @endforeach
-                                                        </select>
-                                                    </div>
-
-                                                </div>
-                                            </div>
-                                            <div class="mb-3 col-sm-3">
-                                                <div class="input-group bank_group" style="display: none">
-                                                    <label class="fbox">Passing Date</label>
-                                                    <div class="input-group">
-                                                        <input type="text" name="passing_date" class="date form-control"
-                                                            data-input>
-                                                        @error('passing_date')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div class="col-md-6">
-                                                <div class="info-card ">
-                                                    <h3 class="info-card-title"> Details</h3>
-                                                    <div class="input-field  ">
-                                                        <textarea id="detail" class="text-area @error('detail') input-error @enderror"
-                                                            placeholder="Enter your details here..." name="detail" maxlength="255">{{ old('detail') }}</textarea>
-                                                        @error('detail')
-                                                            <div class="error-message">{{ $message }}</div>
-                                                        @enderror
-                                                        <div class="char-counter"><span id="char-count">0</span>/255
-                                                            characters</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div class="col-md-6">
-                                                <div class="info-card ">
-                                                    <h3 class="info-card-title">Party Information</h3>
-                                                    <div class="info-grid">
-                                                        <div class="info-item">
-                                                            <span class="info-label">Phone:</span>
-                                                            <span id="phone" class="info-value">Not
-                                                                provided</span>
-                                                        </div>
-                                                        <div class="info-item">
-                                                            <span class="info-label">Address:</span>
-                                                            <span id="address" class="info-value">Not
-                                                                provided</span>
-                                                        </div>
-                                                        <div class="info-item">
-                                                            <span class="info-label">CNIC:</span>
-                                                            <span id="cnic" class="info-value">Not
-                                                                provided</span>
-                                                        </div>
-                                                        <div class="info-item">
-                                                            <span class="info-label">Balance:</span>
-                                                            <span id="balance" class="info-value">$0.00</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="d-flex justify-content-end mt-5" style="gap: 10px">
-                                            <button type="button" class="btn btn-secondary" data-toggle="modal"
-                                                data-target="#confirmModal" onclick="saveAsDraft()">Save as Draft</button>
-                                            <button type="button" class="btn btn-primary " data-toggle="modal"
-                                                data-target="#confirmModal">Save</button>
-                                        </div>
-                                    </form>
-                                @endcan
                             </div>
                         </div>
                     </div>
@@ -316,7 +37,7 @@
                         <div class="custom_card h-100">
                             <div class="card-body">
                                 <div class="mb-3 d-flex align-items-center justify-content-between">
-                                    <h5 class="text-lg font-semibold">Cash Voucher List</h5>
+                                    <h5 class="text-lg font-semibold">Draft Voucher List</h5>
                                 </div>
                                 @can('read voucher')
                                     <div class=" table-responsive">
@@ -330,6 +51,7 @@
                                                     <th>Sub Head Account</th>
                                                     <th>Detail</th>
                                                     <th>Amount</th>
+                                                    <th>Type</th>
 
                                                     @canany(['update voucher', 'delete voucher'])
                                                         <th>Action</th>
@@ -359,6 +81,13 @@
                                                         <td>
                                                             {{ $i->amount }}
                                                         </td>
+                                                        <td>
+                                                            @if ($i->type == 'CR')
+                                                                <span class="text-success">Cash In</span>
+                                                            @elseif($i->type == 'CP')
+                                                                <span class="text-danger">Cash Out</span>
+                                                            @endif
+                                                        </td>
 
 
                                                         @canany(['update voucher', 'delete voucher'])
@@ -368,6 +97,7 @@
                                                                     @if ($i->type != 'BO')
                                                                         @can('update voucher')
                                                                             <button class="btn btn-sm btn-primary btn-edit"
+                                                                                vocherType="{{ $i->type }}"
                                                                                 data-id="{{ $i->id }}"><i
                                                                                     class="fas fa-pencil-alt"></i></button>
                                                                         @endcan
@@ -449,16 +179,12 @@
             document.getElementById('voucherForm').submit();
         }
 
-        function saveAsDraft() {
-            const form = document.getElementById('voucherForm');
-            form.action = "{{ route('ledger.save_as_draft') }}";
+        function saveAsLedger() {
+            const form = document.getElementById('editForm');
+            form.action = "{{ route('ledger.store') }}";
         }
 
         $(document).ready(function() {
-
-
-
-
             $('#acct_type').change(function() {
                 var acctType = $(this).val();
 
@@ -510,6 +236,7 @@
                 } else {
                     let tsAccounts = $('#accounts_id')[0].tomselect;
                     let tsSubAccounts = $('#subaccounts_id')[0].tomselect;
+
                     if (tsAccounts) tsAccounts.clearOptions();
                     if (tsSubAccounts) tsSubAccounts.clearOptions();
                 }
@@ -615,6 +342,7 @@
                 }
 
             });
+
             $('#plot_id').change(function(e) {
                 e.preventDefault();
                 var plotId = $(this).val();
@@ -688,12 +416,12 @@
                     }
                 });
             }
+
             $('#payment_type').change(function(e) {
 
                 e.preventDefault();
 
                 if ($(this).val() != '1') {
-
                     $('.bank_group').css('display', 'block');
                 } else {
 
@@ -704,7 +432,7 @@
             $('#e_acct_type').change(function() {
                 var acctType = $(this).val();
 
-                console.log(acctType);
+                // console.log(e_projectID);
                 if (acctType) {
                     $.ajax({
                         url: '{{ route('get_account') }}',
@@ -716,6 +444,8 @@
                             _token: '{{ csrf_token() }}'
                         },
                         success: function(data) {
+                            // $('#e_accounts_id').empty();
+                            // $('#e_subaccounts_id').empty();
                             let accountsEl = $('#e_accounts_id')[0]; // DOM element
                             let tsAccounts = accountsEl.tomselect; // TomSelect instance
 
@@ -744,21 +474,24 @@
                                 tsSubAccounts.setValue('', true);
                                 tsSubAccounts.clearOptions(); // also clear subaccounts
                             }
-                        },
-                        error: function() {
-                            console.log('Error fetching accounts');
+                            // You may implement a similar AJAX call to fetch subheadaccounts based on the selected account
                         }
                     });
                 } else {
-                    let tsAccounts = $('#e_accounts_id')[0].tomselect;
-                    let tsSubAccounts = $('#e_subaccounts_id')[0].tomselect;
-                    if (tsAccounts) tsAccounts.clearOptions();
-                    if (tsSubAccounts) tsSubAccounts.clearOptions();
+                    if (tsAccounts) {
+                        tsAccounts.setValue('', true);
+                        tsAccounts.clearOptions(); // also clear subaccounts
+                    }
+                    if (tsSubAccounts) {
+                        tsSubAccounts.setValue('', true);
+                        tsSubAccounts.clearOptions(); // also clear subaccounts
+                    }
                 }
             });
 
             $('#e_accounts_id').change(function() {
                 var accountID = $(this).val();
+
 
                 if (accountID) {
                     $.ajax({
@@ -768,72 +501,28 @@
                         data: {
                             accountID: accountID,
                             action: 'get_child',
+
                             _token: '{{ csrf_token() }}'
                         },
                         success: function(data) {
-                            let subAccountsSelect = $('#e_subaccounts_id')[0].tomselect;
-
-                            // Filter only matching items
-                            let filteredData = $.grep(data, function(item) {
+                            $('#e_subaccounts_id').empty();
+                            console.log(data);
+                            var filteredData = data.filter(function(item) {
                                 return item.head_accounting_id == accountID;
                             });
+                            $('#e_subaccounts_id').append(
+                                '<option value="">Select an option</option>');
 
-                            // Clear and add placeholder
-                            subAccountsSelect.addOption({
-                                value: '',
-                                text: 'Select an option'
-                            });
-                            subAccountsSelect.setValue('', true);
-                            subAccountsSelect.clearOptions();
-
-                            // Append new options
                             $.each(filteredData, function(key, value) {
-                                subAccountsSelect.addOption({
-                                    value: value.subhead_accounting_id,
-                                    text: value.subhead_accounting.name +
-                                        ' — Balance: ' + value.balance
-                                });
+                                $('#e_subaccounts_id').append('<option value="' + value
+                                    .subhead_accounting_id + '">' + value
+                                    .subhead_accounting.name + '</option>');
                             });
 
-                            // Refresh TomSelect dropdown
-                            subAccountsSelect.refreshOptions(false);
-
-                            // Auto-select acct_type if found
-                            if (filteredData.length > 0) {
-                                let acct_type = filteredData[0].head_accounting.acct_type;
-                                let acctTypeSelect = $('#e_acct_type')[0].tomselect;
-                                acctTypeSelect.setValue(acct_type, true);
-                            }
                         }
                     });
                 } else {
-                    $('#e_subaccounts_id')[0].tomselect.clearOptions();
-                }
-            });
-
-            $('#e_subaccounts_id').change(function() {
-                var subaccountId = $(this).val();
-
-                if (subaccountId !== '') {
-                    $.ajax({
-                        url: '{{ route('get-subaccount-details') }}',
-                        type: 'POST',
-                        data: {
-                            subaccounts_id: subaccountId,
-                            _token: '{{ csrf_token() }}'
-                        },
-                        success: function(response) {
-                            let headId = response.headId;
-                            let acctSelect = $('#e_accounts_id')[0].tomselect;
-                            acctSelect.setValue(headId, true);
-                            let acct_type = response.acct_type;
-                            let acctTypeSelect = $('#e_acct_type')[0].tomselect;
-                            acctTypeSelect.setValue(acct_type, true);
-                        },
-                        error: function(error) {
-                            console.log(error);
-                        }
-                    });
+                    $('#e_subaccounts_id').empty();
                 }
             });
 
@@ -841,13 +530,21 @@
             $(document).on("click", '.btn-edit', function() {
                 let id = $(this).attr("data-id");
                 $('#id').val(id);
+                let vocherType = $(this).attr("vocherType");
+                if (vocherType == 'CP') {
+                    $('.pass-class').removeClass('cash-in');
+                    $('.pass-class').addClass('cash-out');
+                } else if (vocherType == 'CR') {
+                    $('.pass-class').removeClass('cash-out');
+                    $('.pass-class').addClass('cash-in');
+                }
                 $('#modal-loading').modal({
                     backdrop: 'static',
                     keyboard: false,
                     show: true
                 });
                 $.ajax({
-                    url: "{{ route('ledger.show') }}",
+                    url: "{{ route('draft.ledger.show') }}",
                     type: "POST",
                     dataType: "JSON",
                     data: {
@@ -924,6 +621,44 @@
                         let subheadId = data.project_head_subhead.subhead_accounting.id;
                         let eSubAccSelect = $('#e_subaccounts_id')[0].tomselect;
                         eSubAccSelect.setValue(subheadId, true);
+
+                        let customerId = data.customer_id;
+                        let customerSelect = $('#e_customer_id')[0].tomselect;
+                        customerSelect.setValue(customerId, true);
+
+                        let plotId = data.plot_id;
+                        let plotSelect = $('#e_plot_id')[0].tomselect;
+                        plotSelect.setValue(plotId, true);
+
+                        let paymentType = data.payment_type;
+                        let paymentTypeSelect = $('#e_payment_type')[0].tomselect;
+                        paymentTypeSelect.setValue(paymentType, true);
+                        if (paymentType != '1') {
+                            $('.bank_group').css('display', 'block');
+                        } else {
+
+                            $('.bank_group').css('display', 'none');
+                        }
+                        let bank_id = data.bank_id;
+                        let bankSelect = $('#e_bank_id')[0].tomselect;
+                        bankSelect.setValue(bank_id, true);
+
+                        let t_number = data.t_number;
+                        $('#e_t_number').val(t_number);
+
+                        let passing_date = data.passing_date;
+                        $('#e_passing_date').val(passing_date);
+                        // Update the UI based on the response
+                        // let $selectsub = $('#e_subaccounts_id');
+                        // let $optionssub = $selectsub.find('option');
+                        // let $matchingOptionsub = $optionssub.filter(function() {
+                        //     return $(this).val() == subheadId;
+                        // });
+                        // if ($matchingOptionsub.length > 0) {
+                        //     $optionssub.prop('selected', false); // clear previous selections
+                        //     $matchingOptionsub.prop('selected', true); // select matching one
+                        //     $matchingOptionsub.detach().appendTo($selectsub);
+                        // }
                     },
                 });
             });
@@ -972,18 +707,16 @@
     <div class="modal fade" id="modal-edit">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header {{ $class }}">
+                <div class="modal-header pass-class">
                     <h4 class="modal-title">Edit Voucher</h4>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div class="modal-body">
-                    <form action="{{ route('ledger.update') }}" method="POST" enctype="multipart/form-data">
+                    <form action="{{ route('ledger.save_as_draft') }}" method="POST" enctype="multipart/form-data" id="editForm">
                         @csrf
-                        @method('PUT')
                         <div class="row">
-
                             <div class="col-sm-12">
                                 <div class="row">
                                     <div class="col-sm-3">
@@ -1005,8 +738,8 @@
                                             <label class="fbox">Reference No.</label>
                                             <div class="input-group">
                                                 <input type="text" value="1" name="action" hidden />
-                                                <input id="e_voucher" type="text" class="form-control "
-                                                    name="voucher" autocomplete="off" readonly>
+                                                <input id="e_voucher" type="text" class="form-control " name="voucher"
+                                                    autocomplete="off" readonly>
 
                                             </div>
                                         </div>
@@ -1117,6 +850,116 @@
 
                                 </div>
                             </div>
+                            <div class="col-sm-12">
+                                <div class="row">
+                                    <div class="mb-3 col-sm-12">
+                                        <div id="wordingAmount"></div>
+                                    </div>
+                                    <div class="mb-3 col-sm-6">
+                                        <div class="input-group">
+                                            <label class="fbox">Customer</label>
+                                            <div class="input-group">
+                                                <select class="js-tomselect" name="customer_id" id="e_customer_id">
+                                                    <option value="">Select Customer</option>
+                                                    @foreach ($customers as $v)
+                                                        <option value="{{ $v->id }}"
+                                                            data-phone="{{ $v->mobile_number }}"
+                                                            data-nic_number="{{ $v->nic_number }}"
+                                                            data-home_address="{{ $v->home_address }}">
+                                                            {{ $v->first_name }} {{ $v->last_name }}
+                                                            {{ $v->relate }} {{ $v->father_name }} -
+                                                            {{ $v->phone_number }}</option>
+                                                    @endforeach
+                                                </select>
+                                                @error('customer_id')
+                                                    <div class="invalid-feedback">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3 col-sm-6">
+                                        <div class="input-group">
+                                            <label class="fbox">Plot No.</label>
+                                            <div class="input-group">
+                                                <select class="js-tomselect" name="plot_id" id="e_plot_id">
+                                                    <option value="">Select an option</option>
+                                                    @foreach ($plots as $v)
+                                                        @php
+                                                            $plotType = $v->type == 1 ? 'R- ' : 'C- ';
+                                                            $plotName = $plotType . $v->name;
+                                                        @endphp
+                                                        <option value="{{ $v->plot_id }}">
+                                                            {{ $plotName ?? '' }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                                @error('plot_id')
+                                                    <div class="invalid-feedback">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3 col-sm-3">
+                                        <div class="input-group">
+                                            <label class="fbox">Payment Type</label>
+                                            <div class="input-group">
+                                                <select class="js-tomselect" name="payment_type" id="e_payment_type">
+                                                    <option value="1">Cash</option>
+                                                    <option value="2">Online</option>
+                                                    <option value="3">Check</option>
+                                                </select>
+                                                @error('payment_type')
+                                                    <div class="invalid-feedback">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3 col-sm-3">
+                                        <div class="input-group bank_group" style="display: none">
+                                            <label class="fbox">Number</label>
+                                            <div class="input-group">
+                                                <input id="e_t_number" type="text"
+                                                    class="form-control @error('t_number') is-invalid @enderror"
+                                                    placeholder="Transaction Number" name="t_number"
+                                                    value="{{ old('t_number') }}">
+                                                @error('amount')
+                                                    <div class="invalid-feedback">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3 col-sm-3">
+                                        <div class="input-group bank_group" style="display: none">
+                                            <label class="fbox">Bank</label>
+                                            <div class="input-group">
+                                                <select class="js-tomselect" name="bank_id" id="e_bank_id">
+                                                    <option value="">Bank</option>
+
+                                                    @foreach (getPakistanBanks() as $v)
+                                                        <option value="{{ $v['id'] }}">{{ $v['name'] }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+
+                                        </div>
+                                    </div>
+                                    <div class="mb-3 col-sm-3">
+                                        <div class="input-group bank_group" style="display: none">
+                                            <label class="fbox">Passing Date</label>
+                                            <div class="input-group">
+                                                <input type="text" id="e_passing_date" name="passing_date" class="date form-control"
+                                                    data-input>
+                                                @error('passing_date')
+                                                    <div class="invalid-feedback">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+
                         </div>
                         <div class="row">
                             <div class="col-sm-12">
@@ -1137,7 +980,10 @@
                         <div class="modal-footer justify-content-between">
                             <input type="hidden" name="id" id="id">
                             <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                            <button type="submit" class="btn btn-primary">Update</button>
+                            <div class="update-buttons">
+                                <button type="submit" class="btn btn-primary">Update</button>
+                                <button type="submit" class="btn btn-primary" onclick="saveAsLedger()">Save as Voucher</button>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -1155,7 +1001,7 @@
                     </button>
                 </div>
                 <div class="modal-body">
-                    <form action="{{ route('ledger.destroy') }}" method="POST" enctype="multipart/form-data">
+                    <form action="{{ route('draft.ledger.destroy') }}" method="POST" enctype="multipart/form-data">
                         @csrf
                         @method('DELETE')
                         <p class="modal-text">Are you sure you want to delete? <b id="delete-data"></b></p>

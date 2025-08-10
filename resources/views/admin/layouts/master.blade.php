@@ -37,10 +37,12 @@
     <link rel="stylesheet"
         href="{{ asset('template/admin/plugins/bootstrap-colorpicker/css/bootstrap-colorpicker.min.css') }}">
 
-    <!-- Select2 -->
-    <link rel="stylesheet" href="{{ asset('template/admin/plugins/select2/css/select2.min.css') }}">
-    <link rel="stylesheet"
+        
+        <!-- Select2 -->
+        <link rel="stylesheet" href="{{ asset('template/admin/plugins/select2/css/select2.min.css') }}">
+        <link rel="stylesheet"
         href="{{ asset('template/admin/plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css') }}">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css">
 
     <!-- Bootstrap4 Duallistbox -->
     <link rel="stylesheet"
@@ -49,8 +51,6 @@
     <link rel="stylesheet" href="{{ asset('template/admin/plugins/bs-stepper/css/bs-stepper.min.css') }}">
     <!-- dropzonejs -->
     <link rel="stylesheet" href="{{ asset('template/admin/plugins/dropzone/min/dropzone.min.css') }}">
-
-
 
     <!-- Custom style -->
     <link rel="stylesheet" href="{{ asset('template/admin/dist/css/custom.css') }}?v={{ time() }}">
@@ -122,11 +122,11 @@
 
         <!-- Content Wrapper. Contains page content -->
         <div class="main-content page-content">
-        @yield('content')
-      </div>
+            @yield('content')
+        </div>
         <!-- /.content-wrapper -->
 
-          @yield('modal')
+        @yield('modal')
         @include('admin.layouts.modal')
         @include('sweetalert::alert')
         @include('admin.layouts.footer')
@@ -160,6 +160,7 @@
     <script src="{{ asset('template/admin/plugins/raphael/raphael.min.js') }}"></script>
     <script src="{{ asset('template/admin/plugins/jquery-mapael/jquery.mapael.min.js') }}"></script>
     {{-- <script src="{{ asset('template/admin/plugin/jquery-mapael/maps/usa_states.min.js') }}"></script> --}}
+    <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
 
     <!-- Select2 -->
     <script src="{{ asset('template/admin/plugins/select2/js/select2.full.min.js') }}"></script>

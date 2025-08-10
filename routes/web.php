@@ -213,6 +213,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::get('finance/voucher', 'index')->middleware(['permission:read voucher'])->name('finance.voucher.index');
         Route::get('finance/voucher/in', 'cash_in')->middleware(['permission:read voucher'])->name('finance.voucher.in');
         Route::get('finance/voucher/out', 'cash_out')->middleware(['permission:read voucher'])->name('finance.voucher.out');
+        Route::get('finance/voucher/draft', 'cash_draft')->middleware(['permission:read voucher'])->name('finance.voucher.draft');
 
 
     });
@@ -238,9 +239,13 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::post('fetch-data-url', 'fetch_data_url')->middleware(['permission:master report'])->name('fetch-data-url');
 
         Route::post('accounting/ledger/show', 'show')->name('ledger.show');
+        Route::post('accounting/draft/ledger/show', 'draftShow')->name('draft.ledger.show');
         Route::post('accounting/ledger/store', 'store')->middleware(['permission:create voucher'])->name('ledger.store');
+        Route::post('accounting/ledger/save_as_draft', 'saveAsDraft')->middleware(['permission:create voucher'])->name('ledger.save_as_draft');
         Route::put('accounting/ledger/update', 'update')->middleware(['permission:update voucher'])->name('ledger.update');
+        Route::put('accounting/draf/ledger/update', 'draftUpdate')->middleware(['permission:update voucher'])->name('draft.ledger.update');
         Route::delete('accounting/ledger/destroy', 'destroy')->middleware(['permission:delete voucher'])->name('ledger.destroy');
+        Route::delete('accounting/draft/ledger/destroy', 'draftDestroy')->middleware(['permission:delete voucher'])->name('draft.ledger.destroy');
 
         Route::get('finance/reports/ledger/party', 'show_ledger_party')->middleware(['permission:report party_report'])->name('finance.reports.show_ledger_party');
         Route::get('finance/reports/ledger/head', 'show_ledger_head')->middleware(['permission:report party_report'])->name('finance.reports.show_ledger_head');
@@ -273,6 +278,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::post('/get-customers-byplot', 'getCustomersbyPlot')->middleware(['permission:view booking report'])->name('get-customers-byplot');
         Route::post('/get-plots', 'getPlots')->middleware(['permission:read plot'])->name('get-plots');
         Route::post('/get-plots-list', 'getCustomerPlots')->middleware(['permission:read plot'])->name('get-plots-list');
+        Route::post('/get-plot-customer', 'getPlotCustomer')->middleware(['permission:read plot'])->name('get-plot-customer');
 
         Route::post('booking/plot/voucher/', 'store')->middleware(['permission:create voucher'])->name('ledger.store');
         Route::post('booking/plot/voucher/', 'deposit')->middleware(['permission:create plot'])->name('booking.customer.deposit');
