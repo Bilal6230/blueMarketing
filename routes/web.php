@@ -236,7 +236,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::post('get-subaccount-details', 'getSubaccountDetails')->middleware(['permission:read voucher'])->name('get-subaccount-details');
 
         Route::get('finance/reports/ledger', 'show_ledger')->middleware(['permission:report cashbook'])->name('finance.reports.show_ledger');
-        Route::post('fetch-data-url', 'fetch_data_url')->middleware(['permission:master report'])->name('fetch-data-url');
+        Route::match(['get', 'post'], 'fetch-data-url', 'fetch_data_url')->middleware(['permission:master report'])->name('fetch-data-url');
 
         Route::post('accounting/ledger/show', 'show')->name('ledger.show');
         Route::post('accounting/draft/ledger/show', 'draftShow')->name('draft.ledger.show');
