@@ -151,7 +151,7 @@ class AccountingController extends Controller
             }
             return $response;
         } catch (Exception $ex) {
-            dd("asdas");
+            dd($ex);
             //$response['msg'] = AppRepo::create_error_log("Tag", "get_slide_html_($action)_by_$app_user_id", $ex, $app_user_id);
         }
     }
