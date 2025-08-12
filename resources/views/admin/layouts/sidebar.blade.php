@@ -81,25 +81,7 @@
                     @endif
                 @endforeach
 
-                @canany(['read user', 'read role', 'read permission'])
-                    <li class="nav-item">
-                        <a href="{{ route('labours.index') }}"
-                            class="nav-link {{ request()->routeIs('labours') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-user"></i> {{-- Labour icon --}}
-                            <p>Labour</p>
-                        </a>
-                    </li>
-                @endcanany
 
-                @canany(['read user', 'read role', 'read permission'])
-                    <li class="nav-item">
-                        <a href="{{ route('stocks.index') }}"
-                            class="nav-link {{ request()->routeIs('stocks') ? 'active' : '' }}">
-                            <i class="nav-icon fas fa-boxes"></i> {{-- Stock icon --}}
-                            <p>Stock</p>
-                        </a>
-                    </li>
-                @endcanany
 
                 @canany(['read user', 'read role', 'read permission'])
                     <li class="nav-item">
@@ -200,7 +182,8 @@
                             <i class="nav-icon fas fa-ticket-alt"></i>
                             <p>Vouchers<i class="right fas fa-angle-left"></i></p>
                         </a>
-                        <ul class="nav nav-treeview" style="display: {{ request()->routeIs('finance.voucher*') ? 'block':'none' }};">
+                        <ul class="nav nav-treeview"
+                            style="display: {{ request()->routeIs('finance.voucher*') ? 'block' : 'none' }};">
 
 
                             @can('read voucher')
@@ -219,7 +202,8 @@
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('finance.voucher.draft') }}" class="nav-link {{ request()->routeIs('finance.voucher.draft') ? 'active':'' }}">
+                                    <a href="{{ route('finance.voucher.draft') }}"
+                                        class="nav-link {{ request()->routeIs('finance.voucher.draft') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Draft Voucher</p>
                                     </a>
@@ -265,7 +249,8 @@
                             <i class="fas fa-print nav-icon"></i>
                             <p>Finance Reports<i class="right fas fa-angle-left"></i></p>
                         </a>
-                        <ul class="nav nav-treeview" style="display: {{ request()->routeIs('finance.reports*') ? 'block':'none' }};">
+                        <ul class="nav nav-treeview"
+                            style="display: {{ request()->routeIs('finance.reports*') ? 'block' : 'none' }};">
 
                             @can('report party_ledger')
                                 <li class="nav-item">
@@ -382,7 +367,7 @@
 
 
 
-                @canany(['read project', 'read sector' , 'read area', 'read plot','view inventory'])
+                @canany(['read project', 'read sector', 'read area', 'read plot', 'view inventory'])
                     <li class="nav-item">
                         <a href="#" class="nav-link {{ request()->routeIs('booking*') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-chart-pie"></i>
@@ -468,6 +453,25 @@
                                 </li>
                             @endcan
                         </ul>
+                    </li>
+                @endcanany
+                @canany(['read user', 'read role', 'read permission'])
+                    <li class="nav-item">
+                        <a href="{{ route('labours.index') }}"
+                            class="nav-link {{ request()->routeIs('labours') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-user"></i> {{-- Labour icon --}}
+                            <p>Labour</p>
+                        </a>
+                    </li>
+                @endcanany
+
+                @canany(['read user', 'read role', 'read permission'])
+                    <li class="nav-item">
+                        <a href="{{ route('stocks.index') }}"
+                            class="nav-link {{ request()->routeIs('stocks') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-boxes"></i> {{-- Stock icon --}}
+                            <p>Stock</p>
+                        </a>
                     </li>
                 @endcanany
 
