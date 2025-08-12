@@ -97,40 +97,51 @@
     </div>
 
     <!-- Add Modal -->
-    <div class="modal fade" id="addLabourModal" tabindex="-1">
-        <div class="modal-dialog">
+    <div class="modal fade" id="addLabourModal" tabindex="-1" aria-labelledby="addStockModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
             <form action="{{ route('labours.store') }}" method="POST" class="modal-content">
                 @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title">Add Labour</h5>
-                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="addStockModalLabel">
+                        <i class="fas fa-plus-circle me-2"></i> Add Labour
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-dismiss="modal"
+                        aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     @include('admin.labours.form')
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-success">Save</button>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-success px-4">
+                        <i class="fas fa-save me-1"></i> Save
+                    </button>
+                    <button type="button" class="btn btn-secondary px-4" data-dismiss="modal">
+                        <i class="fas fa-times me-1"></i> Close
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- Edit Modal -->
-    <div class="modal fade" id="editLabourModal" tabindex="-1">
-        <div class="modal-dialog">
+    <div class="modal fade" id="editLabourModal" tabindex="-1" tabindex="-1" aria-labelledby="editStockModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
             <form method="POST" id="editLabourForm" class="modal-content">
                 @csrf @method('PUT')
                 <div class="modal-header">
-                    <h5 class="modal-title">Edit Labour</h5>
+                    <h5 class="modal-title"> <i class="fas fa-edit me-2"> Edit Labour</h5>
                     <button type="button" class="close" data-dismiss="modal">&times;</button>
                 </div>
                 <div class="modal-body">
                     @include('admin.labours.form')
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-success">Update</button>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-success px-4">
+                        <i class="fas fa-check me-1"></i> Update
+                    </button>
+                    <button type="button" class="btn btn-secondary px-4" data-dismiss="modal">
+                        <i class="fas fa-times me-1"></i> Close
+                    </button>
                 </div>
             </form>
         </div>
