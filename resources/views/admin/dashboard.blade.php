@@ -230,8 +230,7 @@
                                                         <form action="{{ route('dasticash.destroy', $item->id) }}"
                                                             method="POST" style="display:inline-block">
                                                             @csrf @method('DELETE')
-                                                            <button class="btn btn-sm btn-danger"
-                                                                onclick="return confirm('Delete this record?')"><i
+                                                            <button class="btn btn-sm btn-danger"><i
                                                                     class="fas fa-trash"></i></button>
                                                         </form>
                                                     </td>

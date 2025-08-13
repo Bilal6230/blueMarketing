@@ -70,8 +70,7 @@
                                         <form action="{{ route('labours.destroy', $labour) }}" method="POST"
                                             style="display:inline-block">
                                             @csrf @method('DELETE')
-                                            <button class="btn btn-danger btn-sm"
-                                                onclick="return confirm('Delete this labour?')">Delete</button>
+                                            <button class="btn btn-danger btn-sm">Delete</button>
                                         </form>
                                     </td>
                                 </tr>
@@ -125,7 +124,7 @@
 
     <!-- Edit Modal -->
     <div class="modal fade" id="editLabourModal" tabindex="-1" tabindex="-1" aria-labelledby="editStockModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-lg">     
             <form method="POST" id="editLabourForm" class="modal-content">
                 @csrf @method('PUT')
                 <div class="modal-header">
