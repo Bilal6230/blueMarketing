@@ -9,8 +9,9 @@ class LabourController extends Controller
 {
     public function index()
     {
+        $selectedProjectId = getSelectedTown();
         $x['title'] = 'Labour';
-        $x['labours'] = Labour::all();
+        $x['labours'] = Labour::where('project_id', $selectedProjectId)->get();
         return view('admin.labours.index', $x);
     }
 
@@ -21,7 +22,8 @@ class LabourController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $selectedProjectId = getSelectedTown();
+        $validated =$request->validate([
             'name' => 'required|string|max:255',
             'cnic' => 'required|string|max:20|unique:labours,cnic',
             'phone' => 'nullable|string|max:20',
@@ -29,7 +31,9 @@ class LabourController extends Controller
             'join_date' => 'required|date',
             'status' => 'required|in:active,inactive',
         ]);
-        Labour::create($request->all());
+        $validated['project_id'] = $selectedProjectId;
+
+        Labour::create($validated);
 
         return redirect()->route('labours.index')->with('success', 'Labour created successfully.');
     }

@@ -20,6 +20,10 @@ return new class extends Migration {
             $table->decimal('daily_wage', 10, 2);
             $table->date('join_date');
             $table->enum('status', ['active', 'inactive'])->default('active');
+            $table->unsignedBigInteger('project_id');
+            $table->foreign('project_id')
+                ->references('id')->on('projects')
+                ->onDelete('cascade');
             $table->timestamps();
         });
     }

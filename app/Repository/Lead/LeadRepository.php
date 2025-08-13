@@ -94,7 +94,7 @@ class LeadRepository {
     public static function getAllLeads($project_id = null)
     {
         // Base query for active leads
-        $leadsQuery = Lead::whereDate('created_at', '<=', Carbon::today());
+        $leadsQuery = Lead::whereDate('follow_up', '<=', Carbon::today());
         // Filter by project ID if provided
         if (!is_null($project_id)) {
             $leadsQuery = $leadsQuery->where('project_id', $project_id);
