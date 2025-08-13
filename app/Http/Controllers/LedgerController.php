@@ -346,17 +346,16 @@ class LedgerController extends Controller
 
     public function update(Request $request)
     {
+        // return $request->all();
         $rules = [
             'amount' => ['required'],
             'detail' => ['required'],
             'accounts_id' => ['required'],
             'subaccounts_id' => ['required'],
-            'projects_id' => ['required'],
-
         ];
 
 
-
+        $selectedProjectId = getSelectedTown();
         $validator = Validator::make($request->all(), $rules);
         if ($validator->fails()) {
             return back()->withErrors($validator)
@@ -375,7 +374,7 @@ class LedgerController extends Controller
 
         $projectHeadSubhead = ProjectHeadSubhead::where('head_accounting_id', $request->accounts_id)
             ->where('subhead_accounting_id', $request->subaccounts_id)
-            ->where('project_id', $request->projects_id)
+            ->where('project_id', $selectedProjectId)
             ->first();
 
         $data = [
@@ -398,7 +397,6 @@ class LedgerController extends Controller
             DB::commit();
             Alert::success('Notification', 'Data <b>' . $result->name . '</b> berhasil disimpan')->toToast()->toHtml();
         } catch (\Throwable $th) {
-            // dd($th);
             DB::rollback();
             Alert::error('Notification', 'Data <b>' . $result->name . '</b> gagal disimpan : ' . $th->getMessage())->toToast()->toHtml();
         }
