@@ -19,14 +19,35 @@
         <section class="content">
             <div class="container-fluid">
                 <div class="row">
-                    <div class="col-12">
-                        <div class="card">
+                    <div class="col-md-12 mb-3">
+                        <div class="custom_card">
+                            <div class="card-body">
+                                <div class="card_header mb-3 d-flex align-items-center ">
+                                    <i class="fa fa-filter mr-2"></i>
+                                    <h4 class="mb-0"> Filter </h4>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4 col-xl-3 mb-3 mb-md-0">
+                                        <label for="startdate" class="form-label"> Start Date </label>
+                                        <input type="date" class="form-control" name="startdate" id="startdate"
+                                            placeholder="Start Date">
+                                    </div>
+                                    <div class="col-md-4 col-xl-3">
+                                        <label for="enddate" class="form-label"> End Date </label>
+                                        <input type="date" class="form-control" name="enddate" id="enddate"
+                                            placeholder="End Date">
+                                    </div>
+                                </div>
+                            </div>
 
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="custom_card">
                             <div class="card-body table-responsive">
                                 <table id="your-datatable-id" class="table table-striped table-bordered "
                                     style="width:100%">
-                                    <input type="date" name="startdate" id="startdate" placeholder="Start Date">
-                                    <input type="date" name="enddate" id="enddate" placeholder="End Date">
+
                                     <thead>
                                         <tr>
                                             <th>ID</th>
@@ -195,10 +216,10 @@
                         // Skip adding input for the "ID" column
                         if (column.index() == 1 || column.index() == 5) {
                             var input = document.createElement("input");
-                            $(input).appendTo($(column.header())).on('keyup change',
+                            $(input).addClass('form-control').appendTo($(column.header())).on('keyup change',
                                 function() {
                                     column.search($(this).val()).draw();
-                                }).css('width', '150px'); // Adjust the width as needed
+                                }).css('width', '100px'); // Adjust the width as needed
                         }
                     });
                 },
@@ -279,6 +300,5 @@
 
             return columnIndex;
         }
-
     </script>
 @endsection
