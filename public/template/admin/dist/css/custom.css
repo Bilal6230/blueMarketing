@@ -11,11 +11,13 @@
   --transition: all 0.3s ease;
 }
 
-.ts-wrapper.single .ts-control, .ts-wrapper.single .ts-control input {
-    cursor: text !important;
+.ts-wrapper.single .ts-control,
+.ts-wrapper.single .ts-control input {
+  cursor: text !important;
 }
+
 .ts-control::after {
-    display: contents ;
+  display: contents;
 }
 
 .main-content .content-wrapper {
@@ -109,11 +111,21 @@
   border-color: #1E73BE;
 }
 
+
 .custom_btn_outline.primary:hover {
   background-color: #1E73BE;
   color: #fff;
 }
-
+.custom_btn.primary {
+  color: #fff;
+  border-color: #1E73BE;
+  background: #1E73BE;
+}
+.custom_btn.primary:hover {
+  background-color: #1b66a7;
+  border-color: #1b66a7;
+  color: #fff;
+}
 .custom_btn_outline.danger:hover {
   background-color: #e74c3c;
   color: #fff;
@@ -124,32 +136,50 @@
   color: #fff;
 }
 
+.btn-close {
+  border-radius: 50%;
+  height: 30px;
+  width: 30px;
+  border: 0;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-close:hover {
+  background-color: #f8f9fa;
+  color: #1E73BE;
+}
 .table thead th {
   border-bottom: 1px solid #dee2e6;
+  background: aliceblue;
 }
+
 .ts-wrapper {
-    position: relative;
-    width: 100%;
+  position: relative;
+  width: 100%;
 }
 
 
 .ts-control {
-    position: relative;
-    padding-right: 30px !important; /* space for arrow */
+  position: relative;
+  padding-right: 30px !important;
+  /* space for arrow */
 }
 
 .ts-control::after {
-    content: "";
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    width: 0;
-    height: 0;
-    pointer-events: none;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 6px solid #555; /* arrow color */
-    transform: translateY(-50%);
+  content: "";
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid #555;
+  /* arrow color */
+  transform: translateY(-50%);
 }
 
 
