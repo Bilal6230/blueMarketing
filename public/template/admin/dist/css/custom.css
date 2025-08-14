@@ -528,8 +528,7 @@ div.dt-button-collection {
 @media (min-width: 1280px) {
   .dataTables_filter {
     position: absolute;
-    right: 0;
-    width: 30%;
+    right: 0; 
     top: 0;
   }
 }
