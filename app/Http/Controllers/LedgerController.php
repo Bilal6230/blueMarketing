@@ -128,7 +128,7 @@ class LedgerController extends Controller
             session(['last_submit_date' => $lastSubmitDate]);
 
             if ($request->id) {
-               DraftLedger::find($request->input('id'))->delete();
+                DraftLedger::find($request->input('id'))->delete();
             }
             DB::commit();
             // Alert::success('Notification', 'Data <b></b> Save successfully ')->toToast()->toHtml();
@@ -289,7 +289,7 @@ class LedgerController extends Controller
 
         $selectedProjectId = getSelectedTown();
 
-        $data = Ledger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project')
+            $data = Ledger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project')
             ->where('is_active', 1) // Add this condition to filter by is_active
             ->where('type', 'CR')
             ->whereHas('projectHeadSubhead', function ($query) use ($selectedProjectId) {
@@ -346,17 +346,16 @@ class LedgerController extends Controller
 
     public function update(Request $request)
     {
+        // return $request->all();
         $rules = [
             'amount' => ['required'],
             'detail' => ['required'],
             'accounts_id' => ['required'],
             'subaccounts_id' => ['required'],
-            'projects_id' => ['required'],
-
         ];
 
 
-
+        $selectedProjectId = getSelectedTown();
         $validator = Validator::make($request->all(), $rules);
         if ($validator->fails()) {
             return back()->withErrors($validator)
@@ -375,7 +374,7 @@ class LedgerController extends Controller
 
         $projectHeadSubhead = ProjectHeadSubhead::where('head_accounting_id', $request->accounts_id)
             ->where('subhead_accounting_id', $request->subaccounts_id)
-            ->where('project_id', $request->projects_id)
+            ->where('project_id', $selectedProjectId)
             ->first();
 
         $data = [
@@ -398,7 +397,6 @@ class LedgerController extends Controller
             DB::commit();
             Alert::success('Notification', 'Data <b>' . $result->name . '</b> berhasil disimpan')->toToast()->toHtml();
         } catch (\Throwable $th) {
-            // dd($th);
             DB::rollback();
             Alert::error('Notification', 'Data <b>' . $result->name . '</b> gagal disimpan : ' . $th->getMessage())->toToast()->toHtml();
         }
@@ -410,11 +408,28 @@ class LedgerController extends Controller
         // Get selected town's project_id
         $selectedProjectId = getSelectedTown();
 
-        $data = Ledger::with('projectHeadSubhead.project', 'projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'createdBy:id,name')->where('is_active', 1)->whereHas('projectHeadSubhead', function ($query) use ($selectedProjectId) {
+        $query = Ledger::with('projectHeadSubhead.project', 'projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'createdBy:id,name')->where('is_active', 1)->whereHas('projectHeadSubhead', function ($query) use ($selectedProjectId) {
             $query->where('project_id', $selectedProjectId);
         });
 
-        return DataTables::eloquent($data)
+                // If only start date → from start date to all
+        if (!empty($request->start_date) && empty($request->end_date)) {
+            $query->whereDate('created_at', '>=', $request->start_date);
+        }
+
+        // If only end date → from start to end date
+        if (empty($request->start_date) && !empty($request->end_date)) {
+            $query->whereDate('created_at', '<=', $request->end_date);
+        }
+
+        // If both → between start and end
+        if (!empty($request->start_date) && !empty($request->end_date)) {
+            $query->whereBetween('created_at', [$request->start_date, $request->end_date]);
+        }
+
+        // $data = $query->get();
+
+        return DataTables::eloquent($query)
             ->addColumn('project_name', function ($ledger) {
                 // Access the project name from the relationship
                 return $ledger->projectHeadSubhead->project->project ?? '';
