@@ -25,4 +25,9 @@ class Plot extends Model
         'create_by',
 
     ];
+
+    public function holdPlots()
+    {
+        return $this->hasOne(HoldPlot::class);
+    }
 }

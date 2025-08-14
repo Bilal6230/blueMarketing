@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\HoldPlot;
 use App\Models\Plot;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -29,6 +30,14 @@ class PlotController extends Controller
         // dd($x['data']);
         return view('admin.plots.index', $x);
     }
+    public function holdPlots()
+    {
+        $x['title']     = "Hold's Plots List";
+        $x['data']      = Plot::with('holdPlots')->whereHas('holdPlots')->where(['project_id' => getSelectedTown()])->get();
+        $x['role']      = Role::get();
+        // dd($x['data']);
+        return view('admin.plots.hold_plots', $x);
+    }
 
     /**
      * Show the form for creating a new resource.
@@ -49,7 +58,7 @@ class PlotController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name'      => ['required', 'string', 'max:255' ,'unique:plots'],
+            'name'      => ['required', 'string', 'max:255', 'unique:plots'],
             'name'      => ['required', 'string', 'max:255'],
             'type'      => ['required', 'string',  'max:255'],
             'size'      => ['required', 'numeric',  'max:255'],
@@ -78,8 +87,34 @@ class PlotController extends Controller
                 'facing_id'         => $request->facing_id,
                 'description'         => $request->description,
                 'is_active'     => $request->is_active,
-                'create_by'     =>Auth::user()->id
+                'create_by'     => Auth::user()->id
 
+            ]);
+            Alert::success('Notification', 'Data <b>' . $data->project . '</b> Save successfully ')->toToast()->toHtml();
+        } catch (\Throwable $th) {
+            DB::rollback();
+            Alert::error('Notification', 'Data <b>' .  $th->getMessage())->toToast()->toHtml();
+        }
+        return back();
+    }
+
+    public function hold(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'plot_id'      => ['required'],
+            'reason'      => ['required', 'string'],
+
+        ]);
+        if ($validator->fails()) {
+            return back()->withErrors($validator)
+                ->withInput();
+        }
+
+        try {
+            $data = HoldPlot::create([
+                'plot_id'         => $request->plot_id,
+                'reason'     => $request->reason,
+                'user_id'     => Auth::user()->id
             ]);
             Alert::success('Notification', 'Data <b>' . $data->project . '</b> Save successfully ')->toToast()->toHtml();
         } catch (\Throwable $th) {
@@ -129,7 +164,7 @@ class PlotController extends Controller
             'size'      => ['required', 'numeric'],
             'unit'      => ['required', 'string'],
             'is_corner' => ['required', 'boolean'],
-            'project_id'=> ['required', 'integer'],
+            'project_id' => ['required', 'integer'],
             'road_id'   => ['required', 'integer'],
             'facing_id' => ['required', 'integer'],
             'description' => ['nullable', 'string'], // Adjust if this should be required
@@ -161,7 +196,7 @@ class PlotController extends Controller
                 'description'   => $request->description,
                 'is_active'     => (bool) $request->is_active,
             ]);
-    
+
             Alert::success('Notification', 'Data <b>' . $plot->name . '</b> updated successfully!')->toToast()->toHtml();
         } catch (\Throwable $th) {
             return back()->withErrors('An error occurred while updating the plot: ' . $th->getMessage())->withInput();
@@ -191,7 +226,7 @@ class PlotController extends Controller
 
                 // Update plot_size in all related bookings
                 Booking::where('plot_id', $plot->id)
-                ->update(['plot_size' => $validatedData['plot_size_update']]);
+                    ->update(['plot_size' => $validatedData['plot_size_update']]);
 
                 // Return a successful response
                 return response()->json([
@@ -220,6 +255,32 @@ class PlotController extends Controller
     {
         // Find the plot by ID where sold is not 1
         $plot = Plot::where('id', $request->id)->where('sold', '!=', 1)->first();
+
+        // Check if the plot exists and is not sold
+        if (!$plot) {
+            Alert::error('Error', 'Plot not found or it is already sold!')->toToast()->toHtml();
+            return back();
+        }
+
+        DB::beginTransaction();
+
+        try {
+            // Delete the plot
+            $plot->delete();
+
+            DB::commit();
+            Alert::success('Notification', 'Plot <b>' . $plot->name . '</b> deleted successfully!')->toToast()->toHtml();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            Alert::error('Error', 'An error occurred while deleting the plot: ' . $th->getMessage())->toToast()->toHtml();
+        }
+
+        return back();
+    }
+    public function unHold(Request $request)
+    {
+        // Find the plot by ID where sold is not 1
+        $plot = HoldPlot::where('plot_id', $request->id)->first();
 
         // Check if the plot exists and is not sold
         if (!$plot) {
@@ -295,11 +356,16 @@ class PlotController extends Controller
         ];
 
         return view('admin.plots.inventory', compact(
-            'soldPlots', 'unsoldPlots',
-            'soldResidential', 'unsoldResidential',
-            'soldShops', 'unsoldShops',
-            'chartData', 'sizeChartData',
-            'residentialChartData', 'shopsChartData'
+            'soldPlots',
+            'unsoldPlots',
+            'soldResidential',
+            'unsoldResidential',
+            'soldShops',
+            'unsoldShops',
+            'chartData',
+            'sizeChartData',
+            'residentialChartData',
+            'shopsChartData'
         ))->with('title', 'Plots Inventory');
     }
 
@@ -312,13 +378,4 @@ class PlotController extends Controller
 
         return view('admin.plots.history', compact('plot', 'plotHistory'))->with('title', 'Plot Booking History');
     }
-
-
-  
-
-
-
-
-
-
 }

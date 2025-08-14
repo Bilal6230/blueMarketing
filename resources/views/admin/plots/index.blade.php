@@ -60,7 +60,7 @@
                                                         {{ $i->name }}
                                                     </a>
                                                 </td>
-                                                
+
                                                 <td>{{ $i->size }} {{ Setting::getUnitTypes($i->unit) }}</td>
                                                 <td>{{ Setting::getRoadSide($i->road_id) }} </td>
                                                 <td>{{ Setting::sale_status($i->sold) }}</td>
@@ -77,7 +77,7 @@
                                                                 @endcan
                                                             </div>
                                                         @endif
-                                                        
+
                                                     </td>
                                                 @endcanany
                                             </tr>
