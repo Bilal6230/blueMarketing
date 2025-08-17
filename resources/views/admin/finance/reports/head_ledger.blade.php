@@ -21,9 +21,7 @@
             <div class="container-fluid">
                 <div class="row">
                     <div class="col-12">
-                        <div class="card">
-
-
+                        <div class="custom_card">
                             <div class="card-body table-responsive">
                                 <table id="your-datatable-id" class="table table-striped table-bordered small-rows"
                                     style="width:100%">

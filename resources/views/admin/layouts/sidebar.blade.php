@@ -170,6 +170,13 @@
                                         <p>Plots</p>
                                     </a>
                                 </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('project.plot.hold_plot') }}"
+                                        class="nav-link {{ request()->routeIs('project.plot.hold_plot') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Hold Plots</p>
+                                    </a>
+                                </li>
                             @endcan
 
                         </ul>
