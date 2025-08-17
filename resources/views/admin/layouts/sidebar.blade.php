@@ -280,10 +280,18 @@
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('finance.reports.show_ledger_head') }}"
-                                        class="nav-link {{ request()->routeIs('finance.reports.show_ledger_head') ? 'active' : '' }}">
+                                    <a href="{{ route('finance.reports.show_ledger_head', ['name' => 'Head Wise', 'type' => 'Head']) }}"
+                                        class="nav-link {{ request()->routeIs('finance.reports.show_ledger_head') && request('name') === 'Head Wise' ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Head Wise Report</p>
+                                    </a>
+                                </li>
+
+                                <li class="nav-item">
+                                    <a href="{{ route('finance.reports.show_ledger_head', ['name' => 'Account type Balance Ledger', 'type' => 'account']) }}"
+                                        class="nav-link {{ request()->routeIs('finance.reports.show_ledger_head') && request('name') === 'Account type Balance Ledger' ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Account type Balance Report</p>
                                     </a>
                                 </li>
                             @endcan

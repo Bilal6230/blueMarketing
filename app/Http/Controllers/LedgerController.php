@@ -63,8 +63,8 @@ class LedgerController extends Controller
 
             //
             $payment_type = $request->input('payment_type');
-            if ($payment_type ==  1) {
-                $t_number = $bank_id =   null;
+            if ($payment_type == 1) {
+                $t_number = $bank_id = null;
             } else {
                 $t_number = $request->input('t_number');
                 $bank_id = $request->input('bank_id');
@@ -75,7 +75,7 @@ class LedgerController extends Controller
                 'transaction_type' => $firstTwoDigits,
                 'type_id' => get_new_typeID($firstTwoDigits),
                 'reference' => $request->input('reference'),
-                'project_id' =>  $selectedProjectId,
+                'project_id' => $selectedProjectId,
                 'plot_id' => $request->input('plot_id'),
                 'amount_in' => 0,
                 'amount_out' => str_replace(',', '', $request->input('amount')),
@@ -135,7 +135,7 @@ class LedgerController extends Controller
             Alert::success('Notification', 'Data <b>' . $data->project . '</b> Save successfully ')->toToast()->toHtml();
         } catch (\Throwable $th) {
             DB::rollback();
-            Alert::error('Notification', 'Data <b>' .  $th->getMessage())->toToast()->toHtml();
+            Alert::error('Notification', 'Data <b>' . $th->getMessage())->toToast()->toHtml();
         }
         return back();
     }
@@ -172,8 +172,8 @@ class LedgerController extends Controller
         }
         try {
             $payment_type = $request->input('payment_type');
-            if ($payment_type ==  1) {
-                $t_number = $bank_id =   null;
+            if ($payment_type == 1) {
+                $t_number = $bank_id = null;
             } else {
                 $t_number = $request->input('t_number');
                 $bank_id = $request->input('bank_id');
@@ -227,7 +227,7 @@ class LedgerController extends Controller
         } catch (\Throwable $th) {
             return $th->getMessage();
             DB::rollback();
-            Alert::error('Notification', 'Data <b>' .  $th->getMessage())->toToast()->toHtml();
+            Alert::error('Notification', 'Data <b>' . $th->getMessage())->toToast()->toHtml();
         }
         return back();
         return response()->json(['message' => 'Draft saved successfully.']);
@@ -262,34 +262,34 @@ class LedgerController extends Controller
     {
         $data_list = Ledger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project')->where(['id' => $request->id])->first();
         return response()->json([
-            'status'    => Response::HTTP_OK,
-            'message'   => 'Data Project by id',
-            'data'      => $data_list
+            'status' => Response::HTTP_OK,
+            'message' => 'Data Project by id',
+            'data' => $data_list
         ], Response::HTTP_OK);
     }
     public function draftShow(Request $request)
     {
         $data_list = DraftLedger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project')->where(['id' => $request->id])->first();
         return response()->json([
-            'status'    => Response::HTTP_OK,
-            'message'   => 'Data Project by id',
-            'data'      => $data_list
+            'status' => Response::HTTP_OK,
+            'message' => 'Data Project by id',
+            'data' => $data_list
         ], Response::HTTP_OK);
     }
 
     public function show_ledger()
     {
         $power = Auth::user()->roles[0]->name;
-        $x['title']     = 'Cash Book';
-        $x['role']      = Role::get();
-        $x['users']      = User::get();
-        $x['power']     = $power;
-        $x['type']      =   'CR';
-        $x['class']      =   'cash-in';
+        $x['title'] = 'Cash Book';
+        $x['role'] = Role::get();
+        $x['users'] = User::get();
+        $x['power'] = $power;
+        $x['type'] = 'CR';
+        $x['class'] = 'cash-in';
 
         $selectedProjectId = getSelectedTown();
 
-            $data = Ledger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project')
+        $data = Ledger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project')
             ->where('is_active', 1) // Add this condition to filter by is_active
             ->where('type', 'CR')
             ->whereHas('projectHeadSubhead', function ($query) use ($selectedProjectId) {
@@ -412,7 +412,7 @@ class LedgerController extends Controller
             $query->where('project_id', $selectedProjectId);
         });
 
-                // If only start date → from start date to all
+        // If only start date → from start date to all
         if (!empty($request->start_date) && empty($request->end_date)) {
             $query->whereDate('created_at', '>=', $request->start_date);
         }
@@ -456,12 +456,12 @@ class LedgerController extends Controller
     public function show_ledger_party()
     {
         $power = Auth::user()->roles[0]->name;
-        $x['title']     = 'Party wise ledger';
-        $x['role']      = Role::get();
-        $x['users']      = User::get();
-        $x['power']     = $power;
-        $x['type']      =   'CR';
-        $x['class']      =   'cash-in';
+        $x['title'] = 'Party wise ledger';
+        $x['role'] = Role::get();
+        $x['users'] = User::get();
+        $x['power'] = $power;
+        $x['type'] = 'CR';
+        $x['class'] = 'cash-in';
 
 
         $data = Ledger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project')
@@ -484,12 +484,13 @@ class LedgerController extends Controller
     public function show_ledger_head()
     {
         $power = Auth::user()->roles[0]->name;
-        $x['title']     = 'Head wise ledger';
-        $x['role']      = Role::get();
-        $x['users']      = User::get();
-        $x['power']     = $power;
-        $x['type']      =   'CR';
-        $x['class']      =   'cash-in';
+        $x['title'] = request('name') ?? 'Head wise ledger';
+        $x['role'] = Role::get();
+        $x['users'] = User::get();
+        $x['power'] = $power;
+        $x['type'] = 'CR';
+        $x['account_type'] = request('type') ?? 'head';
+        $x['class'] = 'cash-in';
 
 
         $data = Ledger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project')
@@ -551,7 +552,29 @@ class LedgerController extends Controller
     public function fetch_data_by_head(Request $request)
     {
         $selectedProjectId = getSelectedTown();
+        if ($request->account_type == 'account') {
+            $data = Ledger::query()
+                ->join('project_head_subheads', 'ledgers.project_head_subheads_id', '=', 'project_head_subheads.id')
+                ->join('head_accountings', 'project_head_subheads.head_accounting_id', '=', 'head_accountings.id')
+                ->where('ledgers.is_active', 1)
+                ->where('project_head_subheads.project_id', $selectedProjectId)
+                ->selectRaw('
+                head_accountings.acct_type as acct_type,
+                SUM(ledgers.amount_in) as total_amount_in,
+                SUM(ledgers.amount_out) as total_amount_out
+            ')
+                ->groupBy('head_accountings.acct_type'); // ✅ only group by acct_type
 
+            return DataTables::of($data)
+                ->addColumn('head_account_name', function ($ledger) {
+                    return $this->getAccountName($ledger->acct_type); // 👈 map acct_type → readable name
+                })
+                ->addColumn('total_amount_in', fn($ledger) => $ledger->total_amount_in ?? 0)
+                ->addColumn('total_amount_out', fn($ledger) => $ledger->total_amount_out ?? 0)
+                ->addColumn('balance_amount', fn($ledger) => ($ledger->total_amount_in ?? 0) - ($ledger->total_amount_out ?? 0))
+                ->toJson();
+
+        }
         $data = Ledger::query()
             ->join('project_head_subheads', 'ledgers.project_head_subheads_id', '=', 'project_head_subheads.id')
             ->join('head_accountings', 'project_head_subheads.head_accounting_id', '=', 'head_accountings.id')
@@ -576,5 +599,18 @@ class LedgerController extends Controller
                 return ($ledger->total_amount_in ?? 0) - ($ledger->total_amount_out ?? 0);
             })
             ->toJson();
+    }
+    private function getAccountName($typeId)
+    {
+        $map = [
+            0 => 'Pleas Update',
+            1 => 'Assets',
+            2 => 'Owner',
+            3 => 'Recovery',
+            4 => 'Expense',
+            5 => 'Amanat Payments',
+        ];
+
+        return $map[$typeId] ?? 'Unknown';
     }
 }
