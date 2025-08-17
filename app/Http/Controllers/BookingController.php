@@ -378,7 +378,7 @@ class BookingController extends Controller
         $plot_type = $request->input('plot_type');
         $projectId = $request->input('project_id');
 
-        $customers = Plot::where('type', $plot_type)->where('project_id', $projectId)->where('sold', 0)->get();
+        $customers = Plot::whereDoesntHave('holdPlots')->where('type', $plot_type)->where('project_id', $projectId)->where('sold', 0)->get();
 
         // Return customers as JSON response
         return response()->json($customers);

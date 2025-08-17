@@ -123,6 +123,9 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::post('plot/show', 'show')->middleware(['permission:read plot'])->name('project.plot.show');
         Route::put('plot', 'update')->middleware(['permission:update plot'])->name('project.plot.update');
         Route::delete('plot', 'destroy')->middleware(['permission:delete plot'])->name('project.plot.destroy');
+        Route::get('hold_plot', 'holdPlots')->middleware(['permission:read plot'])->name('project.plot.hold_plot');
+        Route::post('hold', 'hold')->middleware(['permission:create plot'])->name('project.plot.hold');
+        Route::delete('unhold', 'unHold')->middleware(['permission:delete plot'])->name('project.plot.unhold');
 
         Route::post('plot/number/update', 'update_plot_number')->name('update_plot_number.store');
         Route::get('plot/project/inventory', 'inventory')->middleware(['permission:view inventory'])->name('booking.plot.inventory');
