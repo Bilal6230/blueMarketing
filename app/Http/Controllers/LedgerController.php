@@ -142,26 +142,26 @@ class LedgerController extends Controller
     public function saveAsDraft(Request $request)
     {
         // dd('draft',$request->all());
-        $validator = Validator::make($request->all(), [
-            'amount' => ['required'],
-            'detail' => ['required'],
-            'plot_id' => 'required',
-            'customer_id' => 'required',
-            'accounts_id' => ['required'],
-            'payment_type' => 'required',
-            'subaccounts_id' => ['required'],
-            'reference' => 'required',
-        ]);
+        // $validator = Validator::make($request->all(), [
+        //     'amount' => ['required'],
+        //     'detail' => ['required'],
+        //     'plot_id' => 'required',
+        //     'customer_id' => 'required',
+        //     'accounts_id' => ['required'],
+        //     'payment_type' => 'required',
+        //     'subaccounts_id' => ['required'],
+        //     'reference' => 'required',
+        // ]);
 
-        if ($validator->fails()) {
-            return back()->withErrors($validator)
-                ->withInput();
-        }
+        // if ($validator->fails()) {
+        //     return back()->withErrors($validator)
+        //         ->withInput();
+        // }
         $selectedProjectId = getSelectedTown();
         $action = $request->input('action');
         $customer_id = $request->input('customer_id');
         $x['today'] = date("d-m-Y");
-        $cleanAmount = str_replace(',', '', $request->amount);
+        $cleanAmount = $request->amount ? str_replace(',', '', $request->amount) : 0;
         $voucherValue = $request->input('voucher');
         $firstTwoDigits = substr($voucherValue, 0, 2);
         $amount_in = $amount_out = 0;
@@ -183,9 +183,9 @@ class LedgerController extends Controller
                 ->where('project_id', $selectedProjectId)
                 ->first();
 
-            if (!$projectHeadSubhead) {
-                throw new \Exception('Credit account ID not found.');
-            }
+            // if (!$projectHeadSubhead) {
+            //     throw new \Exception('Credit account ID not found.');
+            // }
             $draftLedger = DraftLedger::find($request->input('id'));
 
             $data = [
@@ -196,8 +196,8 @@ class LedgerController extends Controller
                 'reference' => $request->input('reference'),
                 'project_id' => $selectedProjectId,
                 'plot_id' => $request->input('plot_id'),
-                'amount_in' => $amount_in,
-                'amount_out' => $amount_out,
+                'amount_in' => $amount_in ?? 0,
+                'amount_out' => $amount_out ?? 0,
                 'description' => $request->input('detail'),
                 'date' => $request->input('date'),
                 'payment_type' => $request->input('payment_type'),
@@ -212,7 +212,7 @@ class LedgerController extends Controller
 
                 // Ledger Fields
                 'type' => $firstTwoDigits,
-                'project_head_subheads_id' => $projectHeadSubhead->id,
+                'project_head_subheads_id' => $projectHeadSubhead?->id,
                 'detail' => $request->input('detail'),
                 'update_by' => Auth::user()->id,
                 'status' => 'draft', // you can set string status
