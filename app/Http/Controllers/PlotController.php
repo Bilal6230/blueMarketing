@@ -309,7 +309,15 @@ class PlotController extends Controller
         $projectId = getSelectedTown();
 
         // Fetch all active plots for the selected project
-        $plots = Plot::where([
+        $plots = Plot::whereDoesntHave('holdPlots')->where([
+            'project_id' => $projectId,
+            'is_active' => 1
+        ])->get();
+        $totalPlots = Plot::where([
+            'project_id' => $projectId,
+            'is_active' => 1
+        ])->get();
+        $holdPlots = Plot::whereHas('holdPlots')->where([
             'project_id' => $projectId,
             'is_active' => 1
         ])->get();
@@ -317,23 +325,29 @@ class PlotController extends Controller
         // Categorize plots
         $soldPlots = $plots->where('sold', 1);
         $unsoldPlots = $plots->where('sold', 0);
+        $holdPlots = $holdPlots->where('sold', 0);
 
         // Categorize by type
         $soldResidential = $soldPlots->where('type', 1);
         $unsoldResidential = $unsoldPlots->where('type', 1);
+        $holdResidential = $holdPlots->where('type', 1);
         $soldShops = $soldPlots->where('type', 2);
         $unsoldShops = $unsoldPlots->where('type', 2);
+        $holdShops = $holdPlots->where('type', 2);
 
         // Calculate total plot size
-        $totalSize = $plots->sum('size');
+        $totalSize = $totalPlots->sum('size');
         $soldSize = $soldPlots->sum('size');
         $unsoldSize = $unsoldPlots->sum('size');
+        $holdSize = $holdPlots->sum('size');
 
         // Chart Data: Total Plots
+
         $chartData = [
-            'total'  => $plots->count(),
+            'total'  => $totalPlots->count(),
             'sold'   => $soldPlots->count(),
             'unsold' => $unsoldPlots->count(),
+            'hold' => $holdPlots->count(),
         ];
 
         // Chart Data: Plot Size Distribution
@@ -341,27 +355,32 @@ class PlotController extends Controller
             'totalSize'  => $totalSize ?: 1, // Prevent division by zero
             'soldSize'   => $soldSize,
             'unsoldSize' => $unsoldSize,
+            'holdSize' => $holdSize,
         ];
 
         // Chart Data: Residential (Sold vs. Unsold)
         $residentialChartData = [
             'sold'   => $soldResidential->count(),
             'unsold' => $unsoldResidential->count(),
+            'hold' => $holdResidential->count(),
         ];
-
         // Chart Data: Shops (Sold vs. Unsold)
         $shopsChartData = [
             'sold'   => $soldShops->count(),
             'unsold' => $unsoldShops->count(),
+            'hold' => $holdShops->count(),
         ];
 
         return view('admin.plots.inventory', compact(
             'soldPlots',
             'unsoldPlots',
+            'holdPlots',
             'soldResidential',
             'unsoldResidential',
+            'holdResidential',
             'soldShops',
             'unsoldShops',
+            'holdShops',
             'chartData',
             'sizeChartData',
             'residentialChartData',
