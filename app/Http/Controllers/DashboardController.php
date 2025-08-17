@@ -71,7 +71,7 @@ class DashboardController extends Controller
         // Get today's punch records
         $x['today_punches'] = Punch::whereDate('punch_in', now()->toDateString())->where('project_id', $selectedProjectId)->get();
         // Fetch all active leads for a specific project created today
-        $dasticash=Dasticash::all();
+        $dasticash=Dasticash::where('project_id',$selectedProjectId)->get();
         $getalllead = lead_repo::getAllLeads($selectedProjectId);
         $lead_response = lead_repo::getLeadsToday($selectedProjectId, 'today', $create_by);
         $x['get_all_lead'] = $getalllead['total_leads'];

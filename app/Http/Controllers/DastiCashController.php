@@ -10,14 +10,14 @@ class DastiCashController extends Controller
     // Store new record
     public function store(Request $request)
     {
-        $request->validate([
+        $selectedProjectId = getSelectedTown();
+        $validater = $request->validate([
             'name' => 'required|string|max:255',
             'amount' => 'nullable|string|max:255',
             'description' => 'nullable|string',
         ]);
-
-        DastiCash::create($request->only('name', 'amount', 'description'));
-
+        $validater['project_id'] = $selectedProjectId;
+        DastiCash::create($validater);
         return redirect()->route('dashboard')->with('success', 'Record added successfully.');
     }
 

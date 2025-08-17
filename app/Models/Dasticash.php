@@ -14,5 +14,6 @@ class Dasticash extends Model
         'name',
         'amount',
         'description',
+        'project_id',
     ];
 }
