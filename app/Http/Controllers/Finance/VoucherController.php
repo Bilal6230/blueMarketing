@@ -191,11 +191,7 @@ class VoucherController extends Controller
 
 
         $data = DraftLedger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project')
-            ->where('is_active', 1)
-            ->whereIn('type', ['CP', 'BO', 'CR'])  // Use whereIn to check for either 'CP' or 'BO'
-            ->whereHas('projectHeadSubhead', function ($query) use ($selectedProjectId) {
-                $query->where('project_id', $selectedProjectId);
-            })
+            ->where('is_active', 1)  // Use whereIn to check for either 'CP' or 'BO'
             ->get();
 
         $data = $data->map(function ($item) {
