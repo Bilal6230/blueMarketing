@@ -414,17 +414,17 @@ class LedgerController extends Controller
 
                 // If only start date → from start date to all
         if (!empty($request->start_date) && empty($request->end_date)) {
-            $query->whereDate('created_at', '>=', $request->start_date);
+            $query->whereDate('date', '>=', $request->start_date);
         }
 
         // If only end date → from start to end date
         if (empty($request->start_date) && !empty($request->end_date)) {
-            $query->whereDate('created_at', '<=', $request->end_date);
+            $query->whereDate('date', '<=', $request->end_date);
         }
 
         // If both → between start and end
         if (!empty($request->start_date) && !empty($request->end_date)) {
-            $query->whereBetween('created_at', [$request->start_date, $request->end_date]);
+            $query->whereBetween('date', [$request->start_date, $request->end_date]);
         }
 
         // $data = $query->get();
