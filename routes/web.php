@@ -190,9 +190,9 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::put('finance/accounting/subhead_account', 'subhead_update')->middleware(['permission:update accounting'])->name('accounting.subhead_update');
         Route::delete('finance/accounting/subhead_account', 'subhead_destroy')->middleware(['permission:delete accounting'])->name('accounting.subhead_destroy');
 
-        //category accounts route
-
         Route::get('finance/accounting/category', 'category_index')->middleware(['permission:read accounting'])->name('accounting.category_index');
+        Route::get('finance/accounting/accountant', 'Accountant')->middleware(['permission:read accounting'])->name('accounting.Accountant');
+        Route::get('finance/accounting/{user}/ledgers', 'AccountantLedgers')->middleware(['permission:read accounting'])->name('accounting.Accountant.ledgers');
         Route::post('finance/accounting/category', 'category_store')->middleware(['permission:read accounting'])->name('accounting.category_store');
 
         // Route::post('accounting/category', 'category_store')->middleware(['permission:create accounting'])->name('accounting.category_store');

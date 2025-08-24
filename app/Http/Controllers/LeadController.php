@@ -120,25 +120,25 @@ class LeadController extends Controller
 
 
 
-    public function update(Request $request)
+     public function update(Request $request)
     {
         $rules = [
-            'first_name'      => ['required', 'string', 'max:25'],
-            'last_name'     => ['required', 'string',  'max:25'],
-            'gender'          => ['required'],
+            'first_name' => ['required', 'string', 'max:25'],
+            'last_name' => ['required', 'string', 'max:25'],
+            'gender' => ['required'],
             //'nic_number'     => [ 'numeric'],
-            'phone_number'     => ['required', 'numeric',  'unique:leads'],
-            'area_id'         => ['required','numeric'],
-            'type'          =>   ['required','numeric'],
-            'office_address'     => ['required'],
-            'projects_id'     => ['required','numeric'],
+            'phone_number' => ['required', 'numeric', 'unique:leads'],
+            'area_id' => ['required', 'numeric'],
+            'type' => ['required', 'numeric'],
+            'office_address' => ['required'],
+            'projects_id' => ['required', 'numeric'],
 
-            'assign_id'     => ['required'],
-            'follow_id'     => ['required']
+            'assign_id' => ['required'],
+            'follow_id' => ['required']
         ];
 
         if ($request->phone_number != $request->old_phone) {
-            $rules['phone_number'] = ['required', 'numeric',  'unique:leads'];
+            $rules['phone_number'] = ['required', 'numeric', 'unique:leads'];
             $validator = Validator::make($request->all(), $rules);
         } else {
             $rules['phone_number'] = ['required', 'numeric'];
@@ -176,7 +176,38 @@ class LeadController extends Controller
         DB::beginTransaction();
         try {
             $result = Lead::find($request->id);
+
+            // Track changes for each field
+            $changes = [];
+            foreach ($data as $key => $newValue) {
+                if ($result->$key != $newValue) {
+                    $changes[$key] = [
+                        'old' => $result->$key,
+                        'new' => $newValue,
+                    ];
+                }
+            }
             $result->update($data);
+
+            // Get the authenticated user who made the changes
+            $authUser = auth()->user();
+
+            // Log changes (you can save it in a separate log table or in the same record)
+            if (!empty($changes)) {
+                $comment = "User {$authUser->name} updated fields: ";
+                foreach ($changes as $field => $change) {
+                    $comment .= "{$field} (New: {$change['new']})";
+                }
+
+                // Optional: Save the log to a database table, assuming you have a Work or Activity log table
+                $newLog = new Work();
+                $newLog->lead_id = $result->id;
+                $newLog->comment = rtrim($comment, ', '); // Trim trailing comma
+                $newLog->user_id = $authUser->id; // Store the user ID of the one who made the change
+                $newLog->save();
+            }
+
+            // Sync related users (for roles or assignments)
             $roleIds = $request->assign_id;
             $result->users()->sync($roleIds);
             //$result->syncRoles($request->role);
@@ -248,7 +279,6 @@ class LeadController extends Controller
             echo "No More Leads";
             exit;
         }
-
 
 
 

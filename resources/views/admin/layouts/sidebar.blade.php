@@ -119,6 +119,15 @@
                                     </a>
                                 </li>
                             @endcan
+                            @can('read user')
+                                <li class="nav-item">
+                                    <a href="{{ route('accounting.Accountant') }}"
+                                        class="nav-link {{ request()->routeIs('accounting.Accountant') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Accountant</p>
+                                    </a>
+                                </li>
+                            @endcan
 
                         </ul>
                     </li>

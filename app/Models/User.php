@@ -61,4 +61,8 @@ class User extends Authenticatable
     {
         return $this->hasMany(Work::class);
     }
+    public function ledgers()
+    {
+        return $this->hasMany(Ledger::class,'create_by','id');
+    }
 }
