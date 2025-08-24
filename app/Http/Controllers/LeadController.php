@@ -196,7 +196,7 @@ class LeadController extends Controller
             if (!empty($changes)) {
                 $comment = "User {$authUser->name} updated fields: ";
                 foreach ($changes as $field => $change) {
-                    $comment .= "{$field} (Old: {$change['old']}, New: {$change['new']}), ";
+                    $comment .= "{$field} (New: {$change['new']})";
                 }
 
                 // Optional: Save the log to a database table, assuming you have a Work or Activity log table
