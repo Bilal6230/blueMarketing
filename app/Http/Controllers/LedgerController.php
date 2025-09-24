@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PendingUpdate;
 use Exception;
 use App\Models\Plot;
 use App\Models\User;
@@ -322,15 +323,18 @@ class LedgerController extends Controller
             if ($customerLedger) {
                 $customerLedger->update($data);
             }
+
             $result->update($data);
             DB::commit();
-            Alert::success('Notification', 'Data <b>' . $result->name . '</b> Deleted')->toToast()->toHtml();
+            Alert::info('Notification', 'Delete request for <b>' . $result->detail . '</b> is pending admin approval.')
+                ->toToast()->toHtml();
         } catch (\Throwable $th) {
-            DB::rollback();
-            Alert::error('Notification', 'Data <b>' . $result->name . '</b> failed to delete: ' . $th->getMessage())->toToast()->toHtml();
+            DB::rollBack();
+            Alert::error('Notification', 'Failed to delete voucher: ' . $th->getMessage())->toToast()->toHtml();
         }
         return back();
     }
+
     public function draftDestroy(Request $request)
     {
         $data = [
@@ -351,7 +355,6 @@ class LedgerController extends Controller
 
     public function update(Request $request)
     {
-        // return $request->all();
         $rules = [
             'amount' => ['required'],
             'detail' => ['required'],
@@ -359,18 +362,17 @@ class LedgerController extends Controller
             'subaccounts_id' => ['required'],
         ];
 
-
         $selectedProjectId = getSelectedTown();
         $validator = Validator::make($request->all(), $rules);
         if ($validator->fails()) {
-            return back()->withErrors($validator)
-                ->withInput();
+            return back()->withErrors($validator)->withInput();
         }
 
         $cleanAmount = str_replace(',', '', $request->amount);
         $voucherValue = $request->input('voucher');
         $firstTwoDigits = substr($voucherValue, 0, 2);
         $amount_in = $amount_out = 0;
+
         if ($firstTwoDigits === 'CR') {
             $amount_in = $cleanAmount;
         } elseif ($firstTwoDigits === 'CP') {
@@ -380,9 +382,9 @@ class LedgerController extends Controller
         $projectHeadSubhead = ProjectHeadSubhead::where('head_accounting_id', $request->accounts_id)
             ->where('subhead_accounting_id', $request->subaccounts_id)
             ->where('project_id', $selectedProjectId)
-            ->first();
+            ->firstOrFail();
 
-        $data = [
+        $newValues = [
             'project_head_subheads_id' => $projectHeadSubhead->id,
             'reference' => $request->reference,
             'amount_in' => $amount_in,
@@ -390,23 +392,54 @@ class LedgerController extends Controller
             'is_active' => 1,
             'date' => $request->date,
             'detail' => $request->detail,
-            'update_by' => Auth::user()->id,
-
         ];
 
         DB::beginTransaction();
         try {
-            $result = Ledger::find($request->id);
-            $result->update($data);
-            //$result->syncRoles($request->role);
+            $ledger = Ledger::findOrFail($request->id);
+            
+            $oldValues = $ledger->only(array_keys($newValues));
+            // ✅ Check permissions: Super Admin or direct-update
+            if (Auth::user()->hasRole('super-admin') || Auth::user()->can('direct-update')) {
+                // 🔓 Directly update the ledger
+                $ledger->update($newValues);
+
+                DB::commit();
+                return back()->with('success', 'Record updated successfully (direct update).');
+            }
+            // 🔒 For others: Create or update a pending update
+            $pendingUpdate = PendingUpdate::where('table_name', 'ledgers')
+                ->where('record_id', $ledger->id)
+                ->where('status', 'pending')
+                ->first();
+
+            if ($pendingUpdate) {
+                $pendingUpdate->update([
+                    'old_values' => json_encode($oldValues),
+                    'new_values' => json_encode($newValues),
+                    'submitted_by' => Auth::id(),
+                ]);
+            } else {
+                PendingUpdate::create([
+                    'table_name' => 'ledgers',
+                    'record_id' => $ledger->id,
+                    'old_values' => json_encode($oldValues),
+                    'new_values' => json_encode($newValues),
+                    'status' => 'pending',
+                    'submitted_by' => Auth::id(),
+                ]);
+            }
+
             DB::commit();
-            Alert::success('Notification', 'Data <b>' . $result->name . '</b> berhasil disimpan')->toToast()->toHtml();
+            return back()->with('success', 'Your changes have been submitted and are pending admin approval.');
         } catch (\Throwable $th) {
-            DB::rollback();
-            Alert::error('Notification', 'Data <b>' . $result->name . '</b> gagal disimpan : ' . $th->getMessage())->toToast()->toHtml();
+            DB::rollBack();
+            return back()->with('error', 'Failed to submit update: ' . $th->getMessage());
         }
-        return back();
     }
+
+
+
 
     public function fetch_data_url(Request $request)
     {
