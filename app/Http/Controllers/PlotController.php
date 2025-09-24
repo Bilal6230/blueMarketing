@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Validator;
 use RealRashid\SweetAlert\Facades\Alert;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 
 use Spatie\Permission\Models\Role;
@@ -58,8 +59,14 @@ class PlotController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name'      => ['required', 'string', 'max:255', 'unique:plots'],
-            'name'      => ['required', 'string', 'max:255'],
+            'name'      => [
+                                'required',
+                                'string',
+                                'max:255',
+                                Rule::unique('plots')->where(function ($query) use ($request) {
+                                    return $query->where('project_id', $request->project_id);
+                                }),
+                            ],
             'type'      => ['required', 'string',  'max:255'],
             'size'      => ['required', 'numeric',  'max:255'],
             'unit'      => ['required', 'string',  'max:255'],

@@ -78,7 +78,7 @@ class ReportController extends Controller
     public function check_report(Request $request)
     {
         $power = Auth::user()->roles[0]->name;
-        
+
         $x['title']     = 'Bankers Check Report';
         $x['role']      = Role::get();
         $x['users']      = User::get();
@@ -113,7 +113,7 @@ class ReportController extends Controller
                         ->where(['project_id' => $selectedProjectId])
                         ->get();
 
-        
+
         $x['data'] = $data;
         $x['old_bank_id'] = $old_bank_id;
         $x['old_fdate'] = $old_fdate;
@@ -209,7 +209,7 @@ class ReportController extends Controller
                     'status' => 0,
                 ]);
             }
-            
+
 
             DB::commit();
             Alert::success('Notification', 'Data updated successfully.')->toToast()->toHtml();

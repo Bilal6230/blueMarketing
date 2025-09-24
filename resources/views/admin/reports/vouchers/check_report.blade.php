@@ -208,20 +208,20 @@
 
                                                 <td>{{ Setting::getShortDate($i->passing_date) }}</td>
                                                 <td>{{ $i->note }}</td>
-                                                @canany(['pass cheque'])
+                                                {{-- @canany(['pass cheque']) --}}
                                                     <td>
-                                                        @if ($i->passing_status != 1)
+                                                        {{-- @if ($i->passing_status != 1) --}}
                                                             <div class="btn-group">
                                                                 @can('pass cheque')
                                                                     <button class="btn btn-sm btn-primary btn-edit" data-id="{{ $i->id }}"><i class="fas fa-pencil-alt"></i></button>
                                                                 @endcan
 
                                                             </div>
-                                                        @endif
+                                                        {{-- @endif --}}
 
 
                                                     </td>
-                                                @endcanany
+                                                {{-- @endcanany --}}
                                             </tr>
                                         @endforeach
                                     </tbody>

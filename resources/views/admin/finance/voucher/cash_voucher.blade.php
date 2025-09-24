@@ -1200,6 +1200,7 @@
                         @csrf
                         @method('DELETE')
                         <p class="modal-text">Are you sure you want to delete? <b id="delete-data"></b></p>
+                        <textarea name="delete_reason" id="" cols="60"></textarea>
                         <input type="hidden" name="id" id="did">
                 </div>
                 <div class="modal-footer justify-content-between">

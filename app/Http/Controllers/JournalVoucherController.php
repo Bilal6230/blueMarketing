@@ -48,7 +48,7 @@ class JournalVoucherController extends Controller
 
         // Get selected town's project_id
         $selectedProjectId = getSelectedTown();
-        
+
 
         $projects = Project::where('id', $selectedProjectId )->get();
         $x['projects'] = $projects;
@@ -57,8 +57,8 @@ class JournalVoucherController extends Controller
                         ->distinct()
                         ->with('headAccounting')
                         ->where(['project_id' => $selectedProjectId])
-                        ->get(); 
-                        
+                        ->get();
+
                         // dd($data_list[0]->headAccounting->name);
 
         $x['accounts'] = $data_list;
@@ -70,7 +70,7 @@ class JournalVoucherController extends Controller
     public function store(Request $request)
     {
         $lastVoucherId = getLastJvId();
-        
+
         $request->validate([
             'voucher_number' => 'required|string',
             'reference' => 'nullable|string',
@@ -104,11 +104,11 @@ class JournalVoucherController extends Controller
                 'created_by' => auth()->id(),
                 'project_id' => $selectedProjectId,
             ]);
-            
+
 
             // Add Ledger Entries
             foreach ($request->accounts as $index => $accountId) {
-                
+
                 $JvDetails = JournalVoucherDetail::create([
                     'journal_voucher_id' => $journalVoucher->id,
                     'account_id' => $request->sub_accounts[$index],
@@ -162,13 +162,13 @@ class JournalVoucherController extends Controller
     //                     ->distinct()
     //                     ->with('headAccounting')
     //                     ->where(['project_id' => $selectedProjectId])
-    //                     ->get(); 
-        
+    //                     ->get();
+
     //     $x['accounts'] = $Accounts;
 
     //     return view('admin.reports.vouchers.edit_journal_voucher', $x );
-                        
-        
+
+
     // }
 
     public function destroy($id)
@@ -194,10 +194,10 @@ class JournalVoucherController extends Controller
         $voucher = JournalVoucher::with('details')->findOrFail($id);
         $x = $this->getCommonData('Edit Journal Voucher');
         $x['voucher'] = $voucher;
-    
+
         // Get selected town's project_id
-        $selectedProjectId = getSelectedTown();
-    
+        $x['selectedProjectId'] =$selectedProjectId = getSelectedTown();
+
         // Fetch projects and accounts
         $x['projects'] = Project::where('id', $selectedProjectId)->get();
         $x['accounts'] = ProjectHeadSubhead::select('project_id', 'head_accounting_id')
@@ -205,7 +205,7 @@ class JournalVoucherController extends Controller
             ->with('headAccounting')
             ->where('project_id', $selectedProjectId)
             ->get();
-    
+
         return view('admin.reports.vouchers.edit_journal_voucher', $x);
     }
 
@@ -302,7 +302,7 @@ class JournalVoucherController extends Controller
         ];
     }
 
-    
+
 
 
 }

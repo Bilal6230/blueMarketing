@@ -2,27 +2,28 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Booking;
-use App\Models\BookingDetail;
-use App\Models\Plot;
-use App\Models\Installment;
+use Carbon\Carbon;
 use App\Models\Lead;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
-use RealRashid\SweetAlert\Facades\Alert;
-use Symfony\Component\HttpFoundation\Response;
-use Illuminate\Support\Facades\Auth;
-use App\Models\Project;
-use App\Models\ProjectHeadSubhead;
+use App\Models\Plot;
 use App\Models\User;
+use App\Models\Ledger;
+use App\Models\Booking;
+use App\Models\Project;
+use App\Models\ChargeType;
+use App\Models\Installment;
+use Illuminate\Http\Request;
+use App\Models\BookingDetail;
 use App\Models\CustomerLedger;
 use App\Models\HeadAccounting;
-use App\Models\Ledger;
 use App\Models\SubheadAccounting;
-use Carbon\Carbon;
+use App\Models\ProjectHeadSubhead;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use RealRashid\SweetAlert\Facades\Alert;
+use Illuminate\Support\Facades\Validator;
+use Symfony\Component\HttpFoundation\Response;
 
 class BookingController extends Controller
 {
@@ -167,7 +168,7 @@ class BookingController extends Controller
             $customer = Lead::findOrFail($booking->customer_id);
 
             // Create customer ledger entry
-            CustomerLedger::create([
+            $customerLedger = CustomerLedger::create([
                 'customer_id' => $booking->customer_id,
                 'transaction_type' => 'Bo',
                 'type_id' => get_new_typeID('Bo'),
@@ -203,6 +204,7 @@ class BookingController extends Controller
             // Create ledger entry
             $lastId = getLastLedgerIdByType("BO");
             Ledger::create([
+                'customer_ledger_id' => $customerLedger->id,
                 'type' => 'BO',
                 'type_id' => $lastId + 1,
                 'project_head_subheads_id' => $pivot->id,
@@ -542,6 +544,32 @@ class BookingController extends Controller
 
         return view('admin.booking.receive', $x);
     }
+    public function extraCharge()
+    {
+        $power = Auth::user()->roles[0]->name;
+        $x['title']     = 'Extra Charges';
+        $x['role']      = Role::get();
+        $x['users']      = User::get();
+        $x['power']     = $power;
+        $x['type']      =   'PPR';
+        $x['class']      =   'cash-in';
+        $x['bg_voucher'] = 'info-cash-in';
+        $projectId = getSelectedTown();
+        $data = CustomerLedger::with('customer_list', 'plot_list')->where('transaction_type', 'CR')->where('is_active', '1')->where('project_id', getSelectedTown())->get();
+        // Query the database to get unique customers associated with the project
+        $x['customers'] = Lead::join('bookings', 'leads.id', '=', 'bookings.customer_id')
+            ->where('leads.project_id', $projectId)
+            ->whereNull('bookings.deleted_at') // Exclude soft-deleted bookings
+            ->select('leads.*') // Select all columns from the leads table
+            ->distinct() // Ensure uniqueness by lead id
+            ->get();
+        $x['data'] = $data;
+
+        $chargeTypes = ChargeType::get();
+        $x['chargeTypes'] = $chargeTypes;
+
+        return view('admin.booking.extra_charge', $x);
+    }
 
     public function customer_report_form(Request $request)
     {
@@ -549,6 +577,16 @@ class BookingController extends Controller
         // $x['data']      = Booking::with('customer', 'plot', 'project')->findOrFail(1);
         $x['role']      = Role::get();
         // dd("asda");
+        $selectedProjectId = getSelectedTown();
+        $x['customers'] = Lead::join('bookings', 'leads.id', '=', 'bookings.customer_id')
+        ->where('leads.project_id', $selectedProjectId)
+        ->whereNull('bookings.deleted_at') // Exclude soft-deleted bookings
+        ->select('leads.*') // Select all columns from the leads table
+        ->distinct() // Ensure uniqueness by lead id
+        ->get();
+        $x['plots'] = Plot::join('bookings', 'plots.id', '=', 'bookings.plot_id')
+            ->where('plots.project_id', $selectedProjectId)
+            ->get();
 
         return view('admin.reports.bookings.customer_report', $x);
     }
@@ -559,9 +597,7 @@ class BookingController extends Controller
         // dd($request->input());
         // Validate the incoming request data
         $validatedData = $request->validate([
-            'project_id' => 'required',
             'customer_id' => 'required',
-            'plot_id' => 'required',
             'plot_id' => 'required',
             'amount' => 'required',
             'detail' => 'required',
@@ -571,6 +607,7 @@ class BookingController extends Controller
         ]);;
 
         $action = $request->input('action');
+        // dd($request->input());
         $customer_id = $request->input('customer_id');
         $x['today'] = date("d-m-Y");
 
@@ -589,7 +626,7 @@ class BookingController extends Controller
                         $bank_id = $request->input('bank_id');
                     }
                     $plotName = Plot::where('id', $request->input('plot_id'))->value('name');
-                    $data = CustomerLedger::create([
+                    $customerLedger = CustomerLedger::create([
                         'customer_id' => $customer_id,
                         'transaction_type' => 'PPR',
                         'type_id' => get_new_typeID('PPR'),
@@ -625,6 +662,7 @@ class BookingController extends Controller
                     $lastId = getLastLedgerIdByType("CR");
 
                     Ledger::create([
+                        'customer_ledger_id' => $customerLedger->id,
                         'type' => 'CR',
                         'type_id' => $lastId + 1,
                         'project_head_subheads_id' => $creditAccountId,
@@ -644,8 +682,107 @@ class BookingController extends Controller
 
 
                     break;
+
+                case 'extra_charge':
+                    $projectId = getSelectedTown();
+                    // dd($request->input());
+                    // Create entry in customer ledger
+                    // dd($request->input());
+                    $payment_type = $request->input('payment_type');
+                    if ($payment_type ==  1) {
+                        $t_number = $bank_id =   null;
+                    } else {
+                        $t_number = $request->input('t_number');
+                        $bank_id = $request->input('bank_id');
+                    }
+                    $plotName = Plot::where('id', $request->input('plot_id'))->value('name');
+                    $customerLedger = CustomerLedger::create([
+                        'customer_id' => $customer_id,
+                        'transaction_type' => 'PPR',
+                        'type_id' => get_new_typeID('PPR'),
+                        'reference' => $request->input('reference'),
+                        'project_id' => $projectId,
+                        'plot_id' => $request->input('plot_id'),
+                        'amount_in' => 0,
+                        'amount_out' => str_replace(',', '', $request->input('amount')),
+                        'description' => $request->input('detail'),
+                        'date' => $request->input('date'), // Assuming booking date is the transaction date
+                        'payment_type' => $request->input('payment_type'),
+                        't_number' => $t_number,
+                        'bank_id' => $bank_id,
+                        'is_active' => 1,
+                        'is_approve' => 0,
+                        'passing_date' => $request->input('passing_date'),
+                    ]);
+
+
+                    // Ensure credit account exists
+                    $extraChargeHeadAccountId = HeadAccounting::where('name', 'Extra Charges')->value('id');
+                    $extraChargeSubHeadAccountId = SubheadAccounting::where('name', 'Extra Charges')->value('id');
+                    $creditAccountId = ProjectHeadSubhead::where('project_id', $projectId)
+                        ->where('head_accounting_id', $extraChargeHeadAccountId)
+                        ->where('subhead_accounting_id', $extraChargeSubHeadAccountId)
+                        ->value('id');
+                    // dd($creditAccountId);
+                    if (!$creditAccountId) {
+                        throw new \Exception('Credit account ID not found.');
+                    }
+
+                    $plotName = Plot::where('id', $request->input('plot_id'))->value('name');
+
+                    $lastId = getLastLedgerIdByType("CR");
+
+                    Ledger::create([
+                        'charge_type_id' => $request->input('charge_type_id'),
+                        'customer_ledger_id' => $customerLedger->id,
+                        'type' => 'CR',
+                        'type_id' => $lastId + 1,
+                        'project_head_subheads_id' => $creditAccountId,
+                        'reference' => $request->input('voucher'),
+                        'amount_in' => str_replace(',', '', $request->input('amount')),
+                        'amount_out' => 0.00,
+                        'is_active' => 1,
+                        'date' => $request->input('date'), // Assuming booking date is the transaction date
+                        'detail' => '(Cash slip#' . $request->input('reference') . ') ' . $request->input('detail'),
+                        'update_by' => Auth::user()->id,
+                        'create_by' => Auth::user()->id,
+                        'status' => 0,
+                    ]);
+                    $debitAccountId = ProjectHeadSubhead::where('head_accounting_id', 16)
+                        ->where('project_id', $projectId)
+                        ->where('plot_id', $request->input('plot_id'))
+                        ->where('customer_id', $customer_id)
+                        ->value('id');
+
+                    if (!$debitAccountId) {
+                        throw new \Exception('Debit account ID not found.');
+                    }
+
+                    Ledger::create([
+                        'charge_type_id' => $request->input('charge_type_id'),
+                        'customer_ledger_id' => $customerLedger->id,
+                        'type' => 'CP',
+                        'type_id' => $lastId + 1,
+                        'project_head_subheads_id' => $debitAccountId,
+                        'reference' => $request->input('voucher'),
+                        'amount_in' => 0.00,
+                        'amount_out' => str_replace(',', '', $request->input('amount')),
+                        'is_active' => 1,
+                        'date' => $request->input('date'), // Assuming booking date is the transaction date
+                        'detail' => '(Cash slip#' . $request->input('reference') . ') ' . $request->input('detail'),
+                        'update_by' => Auth::user()->id,
+                        'create_by' => Auth::user()->id,
+                        'status' => 0,
+                    ]);
+
+
+                    Alert::success('Notification', 'Data <b></b> Save successfully ')->toToast()->toHtml();
+
+
+                    break;
             }
         } catch (\Exception $e) {
+            dd($e->getMessage());
             return back()->withErrors(['msg' => $e->getMessage()]);
         }
         return back();
@@ -962,5 +1099,13 @@ class BookingController extends Controller
         $booking->delete();
 
         return response()->json(['message' => 'Booking deleted successfully.']);
+    }
+
+    public function chargeTypeStore(Request $request)
+    {
+        $charge = ChargeType::create([
+            'name' => $request->name
+        ]);
+       return back();
     }
 }

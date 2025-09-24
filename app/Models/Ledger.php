@@ -14,6 +14,7 @@ class Ledger extends Model
         'type',
         'type_id',
         'project_head_subheads_id',
+        'customer_ledger_id',
         'reference',
         'amount_in',
         'amount_out',
@@ -23,6 +24,7 @@ class Ledger extends Model
         'is_active',
         'status',
         'date',
+        'delete_reason',
     ];
 
     public function projectHeadSubhead()
@@ -32,5 +34,9 @@ class Ledger extends Model
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'create_by', 'id');
+    }
+    public function customerLedger()
+    {
+        return $this->belongsTo(CustomerLedger::class);
     }
 }

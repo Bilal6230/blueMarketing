@@ -15,13 +15,14 @@ return new class extends Migration
     {
         Schema::create('ledgers', function (Blueprint $table) {
             $table->id();
-            $table->string('type')->nullable(); 
-            $table->integer('type_id')->nullable(); 
+            $table->string('type')->nullable();
+            $table->integer('type_id')->nullable();
             $table->unsignedBigInteger('project_head_subheads_id');
-            $table->string('reference')->nullable(); 
+            $table->string('reference')->nullable();
             $table->decimal('amount_in', 10, 2);
             $table->decimal('amount_out', 10, 2);
             $table->text('detail')->nullable();
+            $table->string('delete_reason')->nullable();
             $table->integer('create_by')->nullable();
             $table->integer('update_by')->nullable();
             $table->boolean('is_active')->default(true);

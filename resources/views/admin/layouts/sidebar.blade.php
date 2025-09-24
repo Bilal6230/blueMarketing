@@ -243,6 +243,13 @@
                                         <p>Receive Payment</p>
                                     </a>
                                 </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('payment_schedule.extra_charge') }}"
+                                        class="nav-link {{ request()->routeIs('payment_schedule.extra_charge') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Extra Charge</p>
+                                    </a>
+                                </li>
                             @endcan
 
 

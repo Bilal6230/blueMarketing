@@ -32,6 +32,7 @@ class CustomerLedger extends Model
         'is_approve',
         'note',
         'bank_post_at',
+        'delete_reason',
     ];
 
     protected $casts = [

@@ -24,6 +24,7 @@ return new class extends Migration
             $table->decimal('amount_out', 10, 2);
             $table->string('description')->nullable();
             $table->json('check_history')->nullable(); // Adding the check_history column
+            $table->string('delete_reason')->nullable();
             $table->timestamps();
         });
     }

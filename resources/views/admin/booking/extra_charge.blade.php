@@ -10,6 +10,7 @@
                         <span class="{{$class}}">
                             {{ $title }}
                         </span>
+                        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#modal-charge-type">Add Charge Type</button>
                     </div><!-- /.col -->
                     <div class="col-sm-6">
                         <ol class="breadcrumb float-sm-right">
@@ -43,7 +44,7 @@
                                                             <div class="input-group">
                                                                 <label class="fbox">Voucher No.</label>
                                                                 <div class="input-group">
-                                                                    <input type="text" value="deposit" name="action" hidden />
+                                                                    <input type="text" value="extra_charge" name="action" hidden />
                                                                     <input type="text"  class="form-control " name="voucher" value="{{$type}}-{{get_new_booking_voucher($type)}}" autocomplete="off" readonly>
 
                                                                 </div>
@@ -87,13 +88,12 @@
                                                     <div class="row">
                                                         <div class="col-sm-6">
                                                             <div class="input-group">
-                                                                <label class="fbox">Projects</label>
+                                                                <label class="fbox">Charge Type</label>
                                                                 <div class="input-group">
-                                                                    <select class="form-control select2" name="project_id" id="project_id">
+                                                                    <select class="form-control select2" name="charge_type_id" id="charge_type">
                                                                         <option value="">Select an option</option>
-
-                                                                        @foreach ($projects as $v)
-                                                                            <option value="{{ $v->id }}">{{ $v->project }}</option>
+                                                                        @foreach ($chargeTypes as $v)
+                                                                            <option value="{{ $v->id }}">{{ $v->name }}</option>
                                                                         @endforeach
                                                                     </select>
                                                                     @error('project_id')
@@ -109,10 +109,9 @@
                                                                 <div class="input-group">
                                                                     <select class="form-control select2" name="customer_id" id="customer_id">
                                                                         <option value="">Select Customer</option>
-
-                                                                        {{-- @foreach ($headaccounts as $v)
-                                                                            <option value="{{ $v->id }}">{{ $v->name }}</option>
-                                                                        @endforeach --}}
+                                                                        @foreach ($customers as $v)
+                                                                            <option value="{{ $v->id }}">{{ $v->first_name }} {{ $v->last_name }} {{ $v->relate }} {{ $v->father_name }} - {{ $v->phone_number }}</option>
+                                                                        @endforeach
                                                                     </select>
                                                                     @error('customer_id')
                                                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -405,6 +404,47 @@
 @section('modal')
 
     {{-- Modal Update --}}
+    <div class="modal fade" id="modal-charge-type">
+        <div class="modal-dialog modal-md">
+            <div class="modal-content">
+                <div class="modal-header {{$class}}">
+                    <h4 class="modal-title">Add Charge Type</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form action="{{ route('charge-type.store') }}" method="POST" enctype="multipart/form-data">
+                        @csrf
+                        <div class="row">
+
+                            <div class="col-sm-12">
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="input-group">
+                                            <label class="fbox">Name</label>
+                                            <div class="input-group">
+                                                <input id="name" type="text"  class="form-control " name="name" autocomplete="off" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                        <div class="modal-footer justify-content-between">
+                            <input type="hidden" name="id" id="id">
+                            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Save</button>
+                        </div>
+                    </form>
+                </div>
+                <!-- /.modal-content -->
+            </div>
+            <!-- /.modal-dialog -->
+        </div>
+    </div>
+    {{-- Modal Update --}}
     <div class="modal fade" id="modal-edit">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -475,8 +515,8 @@
                                                 <select class="form-control select2" name="projects_id" id="e_projects_id">
                                                     <option value="">Select an option</option>
 
-                                                    @foreach ($projects as $v)
-                                                        <option value="{{ $v->id }}">{{ $v->project }}</option>
+                                                    @foreach ($chargeTypes as $v)
+                                                        <option value="{{ $v->id }}">{{ $v->name }}</option>
                                                     @endforeach
                                                 </select>
                                                 @error('projects_id')

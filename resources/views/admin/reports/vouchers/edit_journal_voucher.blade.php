@@ -18,7 +18,7 @@
                                 <div class="input-group">
                                     <label class="fbox">Voucher No.</label>
                                     <div class="input-group">
-                                        <input type="text" value="1" name="action" hidden /> 
+                                        <input type="text" value="1" name="action" hidden />
                                         <input type="text" class="form-control" name="voucher_number" value="{{$type}}-{{get_jv_number($voucher->voucher_number)}}" autocomplete="off" readonly>
                                     </div>
                                 </div>
@@ -76,19 +76,29 @@
                                                 <select name="accounts[]" class="form-control select2 account-select" required>
                                                     <option value="">Select Account</option>
                                                     @foreach($accounts as $account)
-                                                        <option value="{{ $account->head_accounting_id }}" {{ $detail->account_id == $account->head_accounting_id ? 'selected' : '' }}>
+                                                        <option value="{{ $account->head_accounting_id }}" {{ $detail->account->head_accounting_id == $account->head_accounting_id ? 'selected' : '' }}>
                                                             {{ $account->headAccounting->name }}
                                                         </option>
                                                     @endforeach
                                                 </select>
                                             </td>
                                             <td>
+                                                @php
+                                                    $headSubHeadAccounts = App\Models\ProjectHeadSubhead::with(['subheadAccounting', 'headAccounting'])
+                                                            ->withSum('ledgers as total_in', 'amount_in')
+                                                            ->withSum('ledgers as total_out', 'amount_out')
+                                                            ->where(['head_accounting_id' => $detail->account->head_accounting_id])
+                                                            ->where(['project_id' => $selectedProjectId])
+                                                            ->get();
+                                                @endphp
                                                 <select name="sub_accounts[]" class="form-control select2 sub-account-select" required>
                                                     <option value="">Select Sub-Account</option>
                                                     @if($detail->account)
-                                                        <option value="{{ $detail->account_id }}" selected>
-                                                            {{ $detail->account->subheadAccounting->name ?? 'N/A' }}
-                                                        </option>
+                                                        @foreach($headSubHeadAccounts as $subheadaccount)
+                                                            <option value="{{ $subheadaccount->id }}" {{ $detail->account->subhead_accounting_id == $subheadaccount->subheadAccounting->id ? 'selected' : '' }}>
+                                                                {{ $subheadaccount->subheadAccounting->name ?? 'N/A' }}
+                                                            </option>
+                                                        @endforeach
                                                     @endif
                                                 </select>
                                             </td>
@@ -101,7 +111,7 @@
                                             <td>
                                                 <input type="number" name="debit[]" class="form-control" step="0.01" value="{{ $detail->debit }}">
                                             </td>
-                                            
+
                                             <td>
                                                 <button type="button" class="btn btn-success btn-sm add-row">
                                                     <i class="fas fa-plus"></i>

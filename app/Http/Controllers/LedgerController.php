@@ -70,7 +70,7 @@ class LedgerController extends Controller
                 $bank_id = $request->input('bank_id');
             }
             $plotName = Plot::where('id', $request->input('plot_id'))->value('name');
-            $data = CustomerLedger::create([
+            $customerLedger = CustomerLedger::create([
                 'customer_id' => $customer_id,
                 'transaction_type' => $firstTwoDigits,
                 'type_id' => get_new_typeID($firstTwoDigits),
@@ -109,7 +109,7 @@ class LedgerController extends Controller
                 throw new \Exception('Credit account ID not found.');
             }
             $data = Ledger::create([
-
+                'customer_ledger_id' => $customerLedger->id,
                 'type' => $firstTwoDigits,
                 'type_id' => $lastId + 1,
                 'project_head_subheads_id' => $projectHeadSubhead->id,
@@ -260,7 +260,7 @@ class LedgerController extends Controller
 
     public function show(Request $request)
     {
-        $data_list = Ledger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project')->where(['id' => $request->id])->first();
+        $data_list = Ledger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project','customerLedger')->where(['id' => $request->id])->first();
         return response()->json([
             'status'    => Response::HTTP_OK,
             'message'   => 'Data Project by id',
@@ -312,11 +312,16 @@ class LedgerController extends Controller
     public function destroy(Request $request)
     {
         $data = [
+            'delete_reason' => $request->delete_reason,
             'is_active' => "0",
         ];
         DB::beginTransaction();
         try {
             $result = Ledger::find($request->id);
+            $customerLedger = $result->customerLedger;
+            if ($customerLedger) {
+                $customerLedger->update($data);
+            }
             $result->update($data);
             DB::commit();
             Alert::success('Notification', 'Data <b>' . $result->name . '</b> Deleted')->toToast()->toHtml();
