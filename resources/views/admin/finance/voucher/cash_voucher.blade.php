@@ -82,9 +82,9 @@
                                                 <div class="input-group">
                                                     <label class="fbox">Account Type</label>
                                                     <div class="input-group">
-                                                        <select class="js-tomselect" placeholder=" " 
-                                                            autocomplete="off" name="acct_type" id="acct_type">
-                                                           <option value=""></option>
+                                                        <select class="js-tomselect" placeholder=" " autocomplete="off"
+                                                            name="acct_type" id="acct_type">
+                                                            <option value=""></option>
                                                             <option value="0">Update Please</option>
                                                             <option value="1">Assets</option>
                                                             <option value="2">Owner</option>
@@ -102,8 +102,9 @@
                                                 <div class="input-group">
                                                     <label class="fbox">Accounts</label>
                                                     <div class="input-group">
-                                                        <select class="js-tomselect" placeholder=" " name="accounts_id" id="accounts_id">
-                                                           <option value=""></option>
+                                                        <select class="js-tomselect" placeholder=" " name="accounts_id"
+                                                            id="accounts_id">
+                                                            <option value=""></option>
                                                             @foreach ($headaccounts as $v)
                                                                 <option value="{{ $v->head_accounting_id }}">
                                                                     {{ $v->headAccounting->name ?? '' }}</option>
@@ -120,8 +121,9 @@
                                                 <div class="input-group">
                                                     <label class="fbox">Child Account</label>
                                                     <div class="input-group">
-                                                        <select class="js-tomselect" placeholder=" " name="subaccounts_id" id="subaccounts_id">
-                                                           <option value=""></option>
+                                                        <select class="js-tomselect" placeholder=" " name="subaccounts_id"
+                                                            id="subaccounts_id">
+                                                            <option value=""></option>
                                                             @foreach ($partyaccounts as $v)
                                                                 @php
                                                                     $balance = $v->balance ?? 0;
@@ -161,7 +163,8 @@
                                                 <div class="input-group">
                                                     <label class="fbox">Customer</label>
                                                     <div class="input-group">
-                                                        <select class="js-tomselect" placeholder=" " name="customer_id" id="customer_id">
+                                                        <select class="js-tomselect" placeholder=" " name="customer_id"
+                                                            id="customer_id">
                                                             <option value="">Select Customer</option>
                                                             @foreach ($customers as $v)
                                                                 <option value="{{ $v->id }}"
@@ -183,8 +186,9 @@
                                                 <div class="input-group">
                                                     <label class="fbox">Plot No.</label>
                                                     <div class="input-group">
-                                                        <select class="js-tomselect" placeholder=" " name="plot_id" id="plot_id">
-                                                           <option value=""></option>
+                                                        <select class="js-tomselect" placeholder=" " name="plot_id"
+                                                            id="plot_id">
+                                                            <option value=""></option>
                                                             @foreach ($plots as $v)
                                                                 @php
                                                                     $plotType = $v->type == 1 ? 'R- ' : 'C- ';
@@ -205,7 +209,8 @@
                                                 <div class="input-group">
                                                     <label class="fbox">Payment Type</label>
                                                     <div class="input-group">
-                                                        <select class="js-tomselect" placeholder=" " name="payment_type" id="payment_type">
+                                                        <select class="js-tomselect" placeholder=" " name="payment_type"
+                                                            id="payment_type">
                                                             <option value="1">Cash</option>
                                                             <option value="2">Online</option>
                                                             <option value="3">Check</option>
@@ -234,7 +239,8 @@
                                                 <div class="input-group bank_group" style="display: none">
                                                     <label class="fbox">Bank</label>
                                                     <div class="input-group">
-                                                        <select class="js-tomselect" placeholder=" " name="bank_id" id="bank_id">
+                                                        <select class="js-tomselect" placeholder=" " name="bank_id"
+                                                            id="bank_id">
                                                             <option value="">Bank</option>
 
                                                             @foreach (getPakistanBanks() as $v)
@@ -305,8 +311,8 @@
                                         <div class="d-flex justify-content-end mt-5" style="gap: 10px">
                                             <button type="button" class="btn btn-secondary" data-toggle="modal"
                                                 data-target="#confirmModal" onclick="saveAsDraft()">Save as Draft</button>
-                                            <button type="button" class="btn btn-primary " data-toggle="modal" id="submit-button"
-                                                data-target="#confirmModal">Save</button>
+                                            <button type="button" class="btn btn-primary " data-toggle="modal"
+                                                id="submit-button" data-target="#confirmModal">Save</button>
                                         </div>
                                     </form>
                                 @endcan
@@ -321,7 +327,8 @@
                                 </div>
                                 @can('read voucher')
                                     <div class=" table-responsive">
-                                        <table id="example1" class="table table-bordered table-striped">
+                                        <table id="vouchersTable" class="table table-bordered table-striped"
+                                            data-source="{{ $table_data_route }}">
                                             <thead>
                                                 <tr>
                                                     <th>#</th>
@@ -338,60 +345,7 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                @foreach ($data as $i)
-                                                    <tr>
-                                                        <td>{{ $loop->iteration }}</td>
-                                                        <td>
-                                                            {{ $i->date ?? '' }}
-                                                        </td>
-                                                        <td>
-                                                            {{ $i->projectHeadSubhead->project->project ?? '' }}
-                                                        </td>
-                                                        <td>
-                                                            {{ $i->projectHeadSubhead->headAccounting->name ?? '' }}
-                                                        </td>
-                                                        <td>
-                                                            {{ $i->projectHeadSubhead->subheadAccounting->name ?? '' }}
-
-                                                        </td>
-                                                        <td>
-                                                            {{ $i->detail }}
-                                                        </td>
-                                                        <td>
-                                                            {{ $i->amount }}
-                                                        </td>
-
-
-                                                        @canany(['update voucher', 'delete voucher'])
-                                                            <td>
-
-                                                                <div class="btn-group">
-                                                                    @if ($i->type != 'BO')
-                                                                        @can('update voucher')
-                                                                            <button class="btn btn-sm btn-primary btn-edit"
-                                                                                data-id="{{ $i->id }}"><i
-                                                                                    class="fas fa-pencil-alt"></i></button>
-                                                                        @endcan
-                                                                        @can('delete voucher')
-                                                                            <button class="btn btn-sm btn-danger btn-delete"
-                                                                                data-id="{{ $i->id }}"
-                                                                                data-name="{{ $i->name }}"><i
-                                                                                    class="fas fa-trash"></i></button>
-                                                                        @endcan
-                                                                    @else
-                                                                        Plot Booking Invoice
-                                                                    @endif
-
-                                                                </div>
-                                                            </td>
-                                                        @endcanany
-                                                    </tr>
-                                                @endforeach
-
-
                                             </tbody>
-
-
                                         </table>
                                     </div>
                                 @endcan
@@ -402,10 +356,46 @@
             </div>
         </section>
     </div>
+    <!-- View Changes Modal -->
+    <div class="modal fade" id="viewChangesModal" tabindex="-1" aria-labelledby="viewChangesModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title" id="viewChangesModalLabel">
+                        <i class="fas fa-exchange-alt me-2"></i> Pending Changes
+                    </h5>
+                    <!-- Header close button removed -->
+                </div>
+                <div class="modal-body">
+                    <table class="table table-bordered table-hover">
+                        <thead>
+                            <tr>
+                                <th>Field</th>
+                                <th>Old Value</th>
+                                <th>New Value</th>
+                            </tr>
+                        </thead>
+                        <tbody id="changesTableBody">
+                            <!-- Dynamically filled by JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <!-- Footer close button remains -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+
 
 @endsection
 
 @section('js')
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.js-tomselect').forEach((el) => {
@@ -431,6 +421,64 @@
                 });
             });
         });
+        $(document).ready(function() {
+            $(document).on('click', '.btn-view-changes', function() {
+                const oldValues = $(this).data('old') || {};
+                const newValues = $(this).data('new') || {};
+                const submittedBy = $(this).data('submitted_by') || 'Unknown User';
+                const record_id = $(this).data('record_id') || $(this).data('id'); // fallback to id
+                const $tbody = $('#changesTableBody');
+                const $modalFooter = $('#viewChangesModal .modal-footer');
+
+                $tbody.empty();
+                $modalFooter.find('.btn-approve, .btn-reject').remove(); // Remove old buttons if any
+
+                // 🛑 Check if this is a delete request (only is_active changed to 0)
+                if (Object.keys(newValues).length === 2 && newValues.is_active == 0) {
+                    $tbody.html(`
+                <tr>
+                    <td colspan="3" class="text-center text-danger fw-bold">
+                        <i class="fas fa-trash-alt me-2"></i>
+                        User <span class="text-primary">${submittedBy}</span> has requested to <strong>delete</strong> the ledger.
+                        ${newValues.delete_reason ? `<br><strong>Reason:</strong> ${newValues.delete_reason}` : ''}
+                    </td>
+                </tr>
+            `);
+                } else {
+                    // 📝 Show normal field changes
+                    $.each(newValues, function(key, newVal) {
+                        const oldVal = oldValues[key] ?? '<em class="text-muted">N/A</em>';
+                        const safeNewVal = newVal ?? '<em class="text-muted">N/A</em>';
+                        $tbody.append(`
+                    <tr>
+                        <td><strong>${key}</strong></td>
+                        <td>${oldVal}</td>
+                        <td class="text-primary fw-semibold">${safeNewVal}</td>
+                    </tr>
+                `);
+                    });
+                }
+
+                // ✅ Add Approve and Reject buttons dynamically
+                const approveBtn = $(`
+            <button class="btn btn-outline-success btn-approve" data-id="${record_id}">
+                <i class="fas fa-check"></i> Approve
+            </button>
+        `);
+                const rejectBtn = $(`
+            <button class="btn btn-outline-danger btn-reject" data-id="${record_id}">
+                <i class="fas fa-times"></i> Reject
+            </button>
+        `);
+
+                // Append buttons before the Close button
+                $modalFooter.prepend(approveBtn, rejectBtn);
+
+                // Show Bootstrap modal
+                const modal = new bootstrap.Modal($('#viewChangesModal')[0]);
+                modal.show();
+            });
+        });
     </script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -445,6 +493,7 @@
             }
         });
     </script>
+
     <script>
         function submitForm() {
             document.getElementById('voucherForm').submit();
@@ -454,8 +503,229 @@
             const form = document.getElementById('voucherForm');
             form.action = "{{ route('ledger.save_as_draft') }}";
         }
+        $(document).ready(function() {
+            const $tbl = $('#vouchersTable');
+            const src = $tbl.data('source');
+
+            // Destroy existing instance if already initialized
+            if ($.fn.DataTable.isDataTable('#vouchersTable')) {
+                $tbl.DataTable().clear().destroy();
+            }
+
+            $tbl.DataTable({
+                destroy: true, // allow re-init if some other script touched it
+                processing: true,
+                serverSide: true,
+                paging: true,
+                pageLength: 10,
+                searching: true,
+                order: [
+                    [1, 'desc']
+                ],
+                ajax: {
+                    url: src,
+                    dataSrc: 'data',
+                    error: function(xhr, status, err) {
+                        console.error('DataTables AJAX error:', status, err, xhr.responseText);
+                        alert('Failed to load data. Check console for details.');
+                    }
+                },
+                columns: [{
+                        data: 'id',
+                        render: (_, __, ___, meta) => meta.row + meta.settings._iDisplayStart + 1
+                    },
+                    {
+                        data: 'date'
+                    },
+                    {
+                        data: 'project'
+                    },
+                    {
+                        data: 'head'
+                    },
+                    {
+                        data: 'subhead'
+                    },
+                    {
+                        data: 'detail'
+                    },
+                    {
+                        data: 'amount',
+                        render: d => Number(d).toLocaleString()
+                    },
+                    @canany(['update voucher', 'delete voucher'])
+                        {
+                            data: null,
+                            orderable: false,
+                            render: row => {
+                                if (row.type === 'BO') return 'Plot Booking Invoice';
+                                const canDirectUpdate =
+                                    {{ Auth::user()->hasRole('super-admin') || Auth::user()->can('direct-update') ? 'true' : 'false' }};
+                                // ✅ Always include Edit and Delete buttons
+                                let buttons = `
+                                    <div class="btn-group">
+                                        @can('update voucher')
+                                        <button class="btn btn-sm btn-primary btn-edit" data-id="${row.id}">
+                                            <i class="fas fa-pencil-alt"></i>
+                                        </button>
+                                        @endcan
+                                        
+                                        @can('delete voucher')
+                                        <button class="btn btn-sm btn-danger btn-delete" data-id="${row.id}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                        @endcan
+                                `;
+
+                                // ✅ Blade resolves permissions once, passed as a boolean for JS
+
+
+                                // ➡️ Show approval controls only for users with direct-update or super-admin
+                                if (canDirectUpdate === true || canDirectUpdate === 'true') {
+                                    if (row.status === 'Pending') {
+                                        buttons += `
+                                    <div class="d-flex admin_approval">
+                                        <button class="btn btn-sm btn-outline-info btn-view-changes"
+                                            data-old='${JSON.stringify(row.old_values)}'
+                                            data-new='${JSON.stringify(row.new_values)}'
+                                            data-submitted_by="${row.submitted_by}"
+                                            data-record_id="${row.id}">
+                                            <i class="fas fa-eye"></i> Approval Required
+                                        </button>
+                                    </div>`;
+                                    }
+                                }
+                                // ❗ For users without permission, show Needs Admin Approval badge if Pending
+                                else {
+                                    if (row.status === 'Pending') {
+                                        buttons += `
+                                    <span class="badge bg-secondary px-3 py-2" 
+                                        style="cursor: pointer;"
+                                        data-bs-toggle="tooltip"
+                                        title="Needs Admin Approval">
+                                        <i class="fas fa-lock me-1"></i>
+                                    </span>`;
+                                    }
+                                }
+
+                                buttons += '</div>';
+                                return buttons;
+                            }
+                        },
+                    @endcanany
+                ]
+            });
+
+        });
+
 
         $(document).ready(function() {
+
+            // Approve voucher
+            $(document).on('click', '.btn-approve', function(e) {
+                e.preventDefault();
+                const id = $(this).data('id');
+                const container = $(this).closest('.admin_approval'); // full container to remove
+
+                Swal.fire({
+                    title: 'Approve Voucher?',
+                    text: 'Are you sure you want to approve this voucher?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, Approve',
+                    cancelButtonText: 'Cancel',
+                    customClass: {
+                        confirmButton: 'btn btn-success me-2',
+                        cancelButton: 'btn btn-secondary'
+                    },
+                    buttonsStyling: false
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: "{{ route('finance.voucher.approve', ['id' => 'ID_PLACEHOLDER']) }}"
+                                .replace('ID_PLACEHOLDER', id),
+                            type: 'POST',
+                            data: {
+                                _token: '{{ csrf_token() }}'
+                            },
+                            success: function() {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Approved!',
+                                    text: 'Voucher approved successfully.',
+                                    timer: 100,
+                                    showConfirmButton: false
+                                });
+                                // 🗑 Remove container completely
+                                window.location.reload();
+
+                            },
+                            error: function(xhr) {
+                                const error = xhr.responseJSON?.message ||
+                                    'Something went wrong.';
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: error
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Reject voucher
+            $(document).on('click', '.btn-reject', function(e) {
+                e.preventDefault();
+                const id = $(this).data('id');
+                const container = $(this).closest('.admin_approval');
+
+                Swal.fire({
+                    title: 'Reject Voucher?',
+                    text: 'Are you sure you want to reject this voucher?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, Reject',
+                    cancelButtonText: 'Cancel',
+                    customClass: {
+                        confirmButton: 'btn btn-danger me-2',
+                        cancelButton: 'btn btn-secondary'
+                    },
+                    buttonsStyling: false
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: "{{ route('finance.voucher.reject', ['id' => 'ID_PLACEHOLDER']) }}"
+                                .replace('ID_PLACEHOLDER', id),
+                            type: 'POST',
+                            data: {
+                                _token: '{{ csrf_token() }}'
+                            },
+                            success: function() {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Rejected!',
+                                    text: 'Voucher rejected successfully.',
+                                    timer: 100,
+                                    showConfirmButton: false
+                                });
+                                // 🗑 Remove container completely
+                                window.location.reload();
+                            },
+                            error: function(xhr) {
+                                const error = xhr.responseJSON?.message ||
+                                    'Something went wrong.';
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: error
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+
 
 
 
@@ -943,7 +1213,7 @@
             $('#numberInput').on('input', function() {
                 convertToWords();
             });
-            $(document).on("click", "#submit-button",function(e) {
+            $(document).on("click", "#submit-button", function(e) {
                 e.preventDefault();
                 let isValid = true;
                 let messages = [];
@@ -1076,8 +1346,9 @@
                                         <div class="input-group">
                                             <label class="fbox">Account Type</label>
                                             <div class="input-group">
-                                                <select class="js-tomselect" placeholder=" " name="acct_type" id="e_acct_type">
-                                                   <option value=""></option>
+                                                <select class="js-tomselect" placeholder=" " name="acct_type"
+                                                    id="e_acct_type">
+                                                    <option value=""></option>
                                                     <option value="0">Update Please</option>
                                                     <option value="1">Assets</option>
                                                     <option value="2">Owner</option>
@@ -1095,8 +1366,9 @@
                                         <div class="input-group">
                                             <label class="fbox">Accounts</label>
                                             <div class="input-group">
-                                                <select class="js-tomselect" placeholder=" " name="accounts_id" id="e_accounts_id">
-                                                   <option value=""></option>
+                                                <select class="js-tomselect" placeholder=" " name="accounts_id"
+                                                    id="e_accounts_id">
+                                                    <option value=""></option>
                                                     @foreach ($headaccounts as $v)
                                                         <option value="{{ $v->head_accounting_id }}">
                                                             {{ $v->headAccounting->name ?? '' }}</option>
@@ -1120,8 +1392,9 @@
                                         <div class="input-group">
                                             <label class="fbox">Child Account</label>
                                             <div class="input-group">
-                                                <select class="js-tomselect" placeholder=" " name="subaccounts_id" id="e_subaccounts_id">
-                                                   <option value=""></option>
+                                                <select class="js-tomselect" placeholder=" " name="subaccounts_id"
+                                                    id="e_subaccounts_id">
+                                                    <option value=""></option>
                                                     @foreach ($partyaccounts as $v)
                                                         @php
                                                             $balance = $v->balance ?? 0;

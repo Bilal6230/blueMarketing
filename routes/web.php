@@ -216,7 +216,11 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::get('finance/voucher', 'index')->middleware(['permission:read voucher'])->name('finance.voucher.index');
         Route::get('finance/voucher/in', 'cash_in')->middleware(['permission:read voucher'])->name('finance.voucher.in');
         Route::get('finance/voucher/out', 'cash_out')->middleware(['permission:read voucher'])->name('finance.voucher.out');
+        Route::get('finance/voucher/data', 'cash_out_data')->middleware(['permission:read voucher'])->name('voucher.cash_out.data');
+        Route::get('finance/voucher/data/in', 'cash_in_data')->middleware(['permission:read voucher'])->name('voucher.cash_in.data');
         Route::get('finance/voucher/draft', 'cash_draft')->middleware(['permission:read voucher'])->name('finance.voucher.draft');
+        Route::post('finance/voucher/{id}/approve', 'approve')->middleware(['permission:read voucher'])->name('finance.voucher.approve');
+        Route::post('finance/voucher/{id}/reject', 'reject')->middleware(['permission:read voucher'])->name('finance.voucher.reject');
 
 
     });
