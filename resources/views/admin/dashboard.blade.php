@@ -96,8 +96,8 @@
                                                 <input type="text" class="form-control" name="number" id="number"
                                                     maxlength="11" size="11">
                                                 <span class="input-group-append">
-                                                    <button type="submit" class="btn btn-info btn-flat"
-                                                        id="search_number"><i class="fas fa-search mr-1"></i> Search</button>
+                                                    <button type="submit" class="btn btn-info btn-flat" id="search_number"><i
+                                                            class="fas fa-search mr-1"></i> Search</button>
                                                 </span>
                                             </div>
                                         </div>
@@ -169,12 +169,11 @@
                                         <div class="financial-circle bg_success">
                                             <div class="circle-content">
                                                 <h6>Hand Cash</h6>
-                                                <h4 class="mt-2">{{ number_format($total_blance, 2) }}</h4>
+                                                <h4 class="mt-2">{{ number_format($total_blance-$total_bank_account_data, 2) }}</h4>
                                             </div>
                                         </div>
-                                        <p class="text-muted mt-2 text-center">Available Cash Balance</p>
+                                        <p class="text-muted mt-2 text-center">Hand Cash Balance</p>
                                     </div>
-
                                     <!-- Bank Account Total -->
                                     <div class="col-md-4">
                                         <div class="financial-circle bg_danger">
@@ -185,6 +184,16 @@
                                             </div>
                                         </div>
                                         <p class="text-muted mt-2 text-center">Current Bank Balance</p>
+                                    </div>
+                                    <!-- Hand Cash Total -->
+                                    <div class="col-md-4 mb-4 mb-md-0">
+                                        <div class="financial-circle bg_success">
+                                            <div class="circle-content">
+                                                <h6>Total Cash</h6>
+                                                <h4 class="mt-2">{{ number_format($total_blance, 2) }}</h4>
+                                            </div>
+                                        </div>
+                                        <p class="text-muted mt-2 text-center">Available Cash Balance</p>
                                     </div>
                                 </div>
                             </div>
@@ -230,8 +239,7 @@
                                                         <form action="{{ route('dasticash.destroy', $item->id) }}"
                                                             method="POST" style="display:inline-block">
                                                             @csrf @method('DELETE')
-                                                            <button class="btn btn-sm btn-danger"
-                                                                onclick="return confirm('Delete this record?')"><i
+                                                            <button class="btn btn-sm btn-danger"><i
                                                                     class="fas fa-trash"></i></button>
                                                         </form>
                                                     </td>

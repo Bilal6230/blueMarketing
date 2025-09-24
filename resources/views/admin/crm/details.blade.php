@@ -1,192 +1,202 @@
 @extends('admin.layouts.master')
 @section('content')
 
-<div class="content-wrapper">
-    <!-- Content Header (Page header) -->
-    <section class="content-header">
-      <div class="container-fluid">
+    <div class="content-wrapper">
+        <!-- Content Header (Page header) -->
+        <section class="content-header">
+            <div class="container-fluid">
 
-      </div><!-- /.container-fluid -->
-    </section>
+            </div><!-- /.container-fluid -->
+        </section>
 
-    <!-- Main content -->
-    <section class="content">
-      <div class="container-fluid">
-        <div class="row">
-            <div class="col-md-12">
+        <!-- Main content -->
+        <section class="content">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-md-12">
 
-                <div class="card card-widget widget-user">
+                        <div class="card card-widget widget-user">
                     <div class="widget-user-header text-white"  style="background: url('https://adminlte.io/themes/v3/dist/img/photo1.png') center center;">
-                        <h3 class="widget-user-username text-right">{{ $data->users[0]->name }}</h3>
-                        <h5 class="widget-user-desc text-right">{{ $data->users[0]->department }}</h5>
-                    </div>
-                    <div class="widget-user-image">
+                                <h3 class="widget-user-username text-right">{{ $data->users[0]->name }}</h3>
+                                <h5 class="widget-user-desc text-right">{{ $data->users[0]->department }}</h5>
+                            </div>
+                            <div class="widget-user-image">
                         <img class="img-circle elevation-2" src="/storage/{{ $data->users[0]->avatar }}" alt="{{ $data->users[0]->name }}">
-                    </div>
-                    <div class="card-footer">
-                        <div class="row">
-                            <div class="col-sm-3 border-right">
-                                <div class="description-block">
-                                    <h5 class="description-header">Full Name</h5>
+                            </div>
+                            <div class="card-footer">
+                                <div class="row">
+                                    <div class="col-sm-3 border-right">
+                                        <div class="description-block">
+                                            <h5 class="description-header">Full Name</h5>
                                     <span class="description-text">{{ $data->first_name }}  {{ $data->last_name }}</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-sm-3 border-right">
+                                        <div class="description-block">
+                                            <h5 class="description-header">Phone Number</h5>
+                                            <span class="description-text">{{ $data->phone_number }}</span>
+                                        </div>
+
+                                    </div>
+
+                                    <div class="col-sm-3 border-right">
+                                        <div class="description-block">
+                                            <h5 class="description-header">Project</h5>
+                                            <span class="description-text"> ..</span>
+                                        </div>
+
+                                    </div>
+
+                                    <div class="col-sm-3">
+                                        <div class="description-block">
+                                            <h5 class="description-header">Register Date</h5>
+                                            <span
+                                                class="description-text">{{ Setting::getformatedDate($register_date) }}</span>
+                                        </div>
+
+                                    </div>
+
+
                                 </div>
+
+                                @if ($user->id == $data->users[0]->id)
+                                    <div class="card-header">
+                                        @can('create calllog')
+                                            <div class="row">
+                                                <div class="col-sm-6">
+                                                    <a class="btn btn-block bg-success">
+                                                        <i class="fas fa-comments"></i> Send Message
+                                                    </a>
+                                                </div>
+
+                                                <div class="col-sm-6">
+                                                    <a class="btn btn-block bg-info" data-toggle="modal"
+                                                        data-target="#modal-tambah" data-backdrop="static"
+                                                        data-keyboard="false">
+                                                        <i class="fas fa-plus"></i> Add Call Log
+                                                    </a>
+                                                </div>
+
+
+
+
+                                            </div>
+                                        @endcan
+                                        @can('send sms')
+                                        @endcan
+                                    </div>
+                                @endif
+
                             </div>
-
-                            <div class="col-sm-3 border-right">
-                                <div class="description-block">
-                                    <h5 class="description-header">Phone Number</h5>
-                                    <span class="description-text">{{ $data->phone_number }}</span>
-                                </div>
-
-                            </div>
-
-                            <div class="col-sm-3 border-right">
-                                <div class="description-block">
-                                    <h5 class="description-header">Project</h5>
-                                    <span class="description-text"> ..</span>
-                                </div>
-
-                            </div>
-
-                            <div class="col-sm-3">
-                                <div class="description-block">
-                                    <h5 class="description-header">Register Date</h5>
-                                    <span class="description-text">{{ Setting::getformatedDate($register_date) }}</span>
-                                </div>
-
-                            </div>
-                            
-
                         </div>
 
-                        @if ($user->id == $data->users[0]->id  )
-
-                            <div class="card-header">
-                                @can('create calllog')
-                                <div class="row">
-                                    <div class="col-sm-6">
-                                        <a class="btn btn-block bg-success">
-                                            <i class="fas fa-comments"></i> Send Message
-                                        </a>
-                                    </div>
-                                    
-                                    <div class="col-sm-6">
-                                        <a class="btn btn-block bg-info" data-toggle="modal" data-target="#modal-tambah" data-backdrop="static" data-keyboard="false">
-                                            <i class="fas fa-plus"></i> Add Call Log
-                                        </a>
-                                    </div>
-        
-                                    
-
-
-                                </div>
-                                
-
-                                @endcan
-                                @can('send sms')
-                                
-                                @endcan
-                            </div>
-        
-                        @endif
-
                     </div>
-                </div>
-
-                </div>
-
-          
-          
-          <!-- /.col -->
-          <div class="col-md-12">
-            <div class="card">
-              <div class="card-header p-2">
-                <ul class="nav nav-pills">
-                  <li class="nav-item"><a class="nav-link active" href="#timeline" data-toggle="tab">Time Line</a></li>
-                  <li class="nav-item"><a class="nav-link" href="#settings" data-toggle="tab">Proposal</a></li>
-                </ul>
-              </div><!-- /.card-header -->
-              <div class="card-body">
-                <div class="tab-content">
-
-                  <!-- /.tab-pane -->
-                  <div class="tab-pane active" id="timeline">
-                    <!-- The timeline -->
-                    <div class="timeline timeline-inverse">
-
-                      <!-- timeline item -->
-
-
-                      @foreach ($data->comments as $c )
-                      <div>
-                        <i class="fas {{  Setting::getLogtype($c->type)  }} "></i>
-
-                        <div class="timeline-item">
-                            <span class="time">
-                                <i class="far fa-clock"></i> {{ $c->user->name }}
-                            
-                            </span>
-
-                            
-
-                            <h3 class="timeline-header" style="{{ Setting::getColorCard($c->call_status) }}">
-                                <span class="badge {{ Setting::getColorClass($c->call_status) }}">{{ Setting::getCallStatus($c->call_status) }}</span>
-                                <span class="badge">{{ Setting::getformatedDate($c->created_at) }}</span>
-                                @if(in_array($c->call_status, [2,3,7]))
-                                <span class="badge {{ Setting::getColorClass($c->call_status) }} follow_time">{{ $c->follow_up }}</span>
-                                @endif
-                            </h3>
 
 
 
-                            <div class="timeline-body">
-                                <div class="row">
-                                    <div class="col-sm-2 col-2">
-                                        <img class="avatar" src="/storage/{{ $c->user->avatar }}" alt="{{ $c->user->name }}" style="height:90px; width:90px; border:3px solid;">
+                    <!-- /.col -->
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header p-2">
+                                <ul class="nav nav-pills">
+                                    <li class="nav-item"><a class="nav-link active" href="#timeline" data-toggle="tab">Time
+                                            Line</a></li>
+                                    <li class="nav-item"><a class="nav-link" href="#settings" data-toggle="tab">Proposal</a>
+                                    </li>
+                                </ul>
+                            </div><!-- /.card-header -->
+                            <div class="card-body">
+                                <div class="tab-content">
 
+                                    <!-- /.tab-pane -->
+                                    <div class="tab-pane active" id="timeline">
+                                        <!-- The timeline -->
+                                        <div class="timeline timeline-inverse">
+
+                                            <!-- timeline item -->
+
+                                            @foreach ($data->comments as $c)
+                                                <div>
+                                                    <i class="fas {{ Setting::getLogtype($c->type) }}"></i>
+
+                                                    <div class="timeline-item">
+                                                        <span class="time">
+                                                            <i class="far fa-clock"></i> {{ $c->user->name }}
+                                                        </span>
+
+                                                        <h3 class="timeline-header"
+                                                            style="{{ isset($c->call_status) && $c->call_status !== null ? Setting::getColorCard($c->call_status) : '' }}">
+                                                            <span
+                                                                class="badge {{ isset($c->call_status) && $c->call_status !== null ? Setting::getColorClass($c->call_status) : '' }}">
+                                                                {{ isset($c->call_status) && $c->call_status !== null ? Setting::getCallStatus($c->call_status) : 'N/A' }}
+                                                            </span>
+                                                            <span
+                                                                class="badge">{{ Setting::getformatedDate($c->created_at) }}</span>
+
+                                                            @if (isset($c->call_status) && in_array($c->call_status, [2, 3, 7]) && !empty($c->follow_up))
+                                                                <span
+                                                                    class="badge {{ isset($c->call_status) && $c->call_status !== null ? Setting::getColorClass($c->call_status) : '' }} follow_time">
+                                                                    {{ $c->follow_up }}
+                                                                </span>
+                                                            @endif
+                                                        </h3>
+
+                                                        <div class="timeline-body">
+                                                            <div class="row">
+                                                                <div class="col-sm-2 col-2">
+                                                                    <img class="avatar"
+                                                                        src="/storage/{{ $c->user->avatar }}"
+                                                                        alt="{{ $c->user->name }}"
+                                                                        style="height:90px; width:90px; border:3px solid;">
+                                                                </div>
+                                                                <div class="col-sm-10 col-10">
+                                                                    <div class="description-block ">
+                                                                        {{-- Safely handle comment data --}}
+                                                                        {{ is_array($c->comment) ? implode(', ', $c->comment) : $c->comment }}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="card-footer">
+                                                            <div class="row">
+                                                                <div class="col-sm-3 col-6">
+                                                                    {{-- {{ Setting::getCallStatus($c->call_status) }} --}}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+
+
+
+
+                                            <div>
+                                                <i class="far fa-clock bg-gray"></i>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="col-sm-10 col-10">
-                                        <div class="description-block">{{ $c->comment }}</div>
+                                    <!-- /.tab-pane -->
+
+                                    <div class="tab-pane" id="settings">
+                                        Comming Soon
                                     </div>
+                                    <!-- /.tab-pane -->
                                 </div>
-                            </div>
-
-                            <div class="card-footer">
-                                  <div class="row">
-                                      <div class="col-sm-3 col-6">
-                                        {{-- {{ Setting::getCallStatus($c->call_status) }} --}}
-                                      </div>
-                                  </div>
-
-                              </div>
-                          </div>
-                      </div>
-                      @endforeach
-                    
-                      <div>
-                        <i class="far fa-clock bg-gray"></i>
-                      </div>
+                                <!-- /.tab-content -->
+                            </div><!-- /.card-body -->
+                        </div>
+                        <!-- /.card -->
                     </div>
-                  </div>
-                  <!-- /.tab-pane -->
-
-                  <div class="tab-pane" id="settings">
-                    Comming Soon
-                  </div>
-                  <!-- /.tab-pane -->
+                    <!-- /.col -->
                 </div>
-                <!-- /.tab-content -->
-              </div><!-- /.card-body -->
-            </div>
-            <!-- /.card -->
-          </div>
-          <!-- /.col -->
-        </div>
-        <!-- /.row -->
-      </div><!-- /.container-fluid -->
-    </section>
-    <!-- /.content -->
-  </div>
+                <!-- /.row -->
+            </div><!-- /.container-fluid -->
+        </section>
+        <!-- /.content -->
+    </div>
 @endsection
 
 @section('js')
@@ -194,7 +204,11 @@
         $(document).ready(function() {
             $(document).on("click", '.btn-edit', function() {
                 let id = $(this).attr("data-id");
-                $('#modal-loading').modal({backdrop: 'static', keyboard: false, show: true});
+                $('#modal-loading').modal({
+                    backdrop: 'static',
+                    keyboard: false,
+                    show: true
+                });
                 $.ajax({
                     url: "{{ route('user.show') }}",
                     type: "POST",
@@ -219,7 +233,11 @@
 
                         $("#id").val(data.id);
                         $('#modal-loading').modal('hide');
-                        $('#modal-edit').modal({backdrop: 'static', keyboard: false, show: true});
+                        $('#modal-edit').modal({
+                            backdrop: 'static',
+                            keyboard: false,
+                            show: true
+                        });
                     },
                 });
             });
@@ -229,7 +247,11 @@
                 let name = $(this).attr("data-name");
                 $("#did").val(id);
                 $("#delete-data").html(name);
-                $('#modal-delete').modal({backdrop: 'static', keyboard: false, show: true});
+                $('#modal-delete').modal({
+                    backdrop: 'static',
+                    keyboard: false,
+                    show: true
+                });
             });
         });
     </script>
@@ -254,20 +276,20 @@
 
                         <div class="row">
                             <div class="col-sm-3">
-                                <input type="text" name="lead_id"  value="{{ $data->id }}" hidden="true">
+                                <input type="text" name="lead_id" value="{{ $data->id }}" hidden="true">
 
 
                                 <div class="input-group">
                                     <label class="fbox">Type</label>
                                     <div class="input-group">
                                         <select class="form-control" name="type">
-                                            <option >Select</option>
+                                            <option>Select</option>
                                             <option value="1">Call</option>
                                             <option value="2">Visit</option>
 
                                         </select>
                                         @error('type')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -281,7 +303,7 @@
                                     <label class="fbox">Call Status</label>
                                     <div class="input-group">
                                         <select class="form-control" name="call_status">
-                                            <option >Select</option>
+                                            <option>Select</option>
                                             <option value="1">Invalide Number</option>
                                             <option value="2">Interested</option>
                                             <option value="3">Schedule Later</option>
@@ -291,7 +313,7 @@
 
                                         </select>
                                         @error('call_status')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -303,9 +325,10 @@
                                 <div class="input-group">
                                     <label class="fbox">Schedule Time</label>
                                     <div class="input-group">
-                                        <input type="datetime-local" id="follow_up" name="follow_up" class="form-control" value="{{ old('follow_up') }}" >
+                                        <input type="datetime-local" id="follow_up" name="follow_up"
+                                            class="form-control" value="{{ old('follow_up') }}">
                                         @error('follow_up')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -316,10 +339,12 @@
                                 <div class="input-group">
                                     <label class="fbox">Call Duration</label>
                                     <div class="input-group">
-                                        <input type="text" autocomplete="false" class="form-control @error('call_duration') is-invalid @enderror" name="call_duration" value="{{ old('call_duration') }}">
+                                        <input type="text" autocomplete="false"
+                                            class="form-control @error('call_duration') is-invalid @enderror"
+                                            name="call_duration" value="{{ old('call_duration') }}">
 
                                         @error('call_duration')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -330,10 +355,13 @@
                                 <div class="input-group">
                                     <label class="fbox">Recording File</label>
                                     <div class="input-group">
-                                        <input type="file" class="form-control @error('recording_path') is-invalid @enderror" placeholder="recording_path" name="recording_path" value="{{ old('recording_path') }}">
+                                        <input type="file"
+                                            class="form-control @error('recording_path') is-invalid @enderror"
+                                            placeholder="recording_path" name="recording_path"
+                                            value="{{ old('recording_path') }}">
 
                                         @error('recording_path')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -358,9 +386,10 @@
                                     <label class="fbox">Details</label>
                                     <div class="input-group ">
                                         <div class="form-group col-sm-12">
-                                            <textarea class="form-control @error('comment') is-invalid @enderror" rows="3" placeholder="Enter ..." spellcheck="false" name="comment">{{ old('comment') }}</textarea>
+                                            <textarea class="form-control @error('comment') is-invalid @enderror" rows="3" placeholder="Enter ..."
+                                                spellcheck="false" name="comment">{{ old('comment') }}</textarea>
                                             @error('comment')
-                                            <div class="invalid-feedback">{{ $message }}</div>
+                                                <div class="invalid-feedback">{{ $message }}</div>
                                             @enderror
                                         </div>
 
@@ -399,22 +428,24 @@
                 <div class="modal-body">
                     <form action="{{ route('crm.lead.update') }}" method="POST" enctype="multipart/form-data">
                         @csrf
-                        @method("PUT")
+                        @method('PUT')
                         <div class="input-group">
                             <label>First Name</label>
                             <div class="input-group">
-                                <input type="text" class="form-control @error('name') is-invalid @enderror" placeholder="Name" name="name" id="name" value="{{ old('name') }}">
+                                <input type="text" class="form-control @error('name') is-invalid @enderror"
+                                    placeholder="Name" name="name" id="name" value="{{ old('name') }}">
                                 @error('name')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
                         <div class="input-group">
                             <label>Email</label>
                             <div class="input-group">
-                                <input type="email" class="form-control @error('email') is-invalid @enderror" placeholder="Email" name="email" id="email" value="{{ old('email') }}">
+                                <input type="email" class="form-control @error('email') is-invalid @enderror"
+                                    placeholder="Email" name="email" id="email" value="{{ old('email') }}">
                                 @error('email')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
@@ -427,25 +458,29 @@
                                     <option value="female">Female</option>
                                 </select>
                                 @error('gender')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
                         <div class="input-group">
                             <label>Nic Number</label>
                             <div class="input-group">
-                                <input type="number" class="form-control @error('nic_number') is-invalid @enderror" placeholder="NIC " name="nic_number" id="nic_number" value="{{ old('nic_number') }}">
+                                <input type="number" class="form-control @error('nic_number') is-invalid @enderror"
+                                    placeholder="NIC " name="nic_number" id="nic_number"
+                                    value="{{ old('nic_number') }}">
                                 @error('nic_number')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
                         <div class="input-group">
                             <label>Phone Number</label>
                             <div class="input-group">
-                                <input type="number" class="form-control @error('phone_number') is-invalid @enderror" placeholder="Phone Number" name="phone_number" id="phone_number" value="{{ old('phone_number') }}">
+                                <input type="number" class="form-control @error('phone_number') is-invalid @enderror"
+                                    placeholder="Phone Number" name="phone_number" id="phone_number"
+                                    value="{{ old('phone_number') }}">
                                 @error('phone_number')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
@@ -453,9 +488,11 @@
                         <div class="input-group">
                             <label>Department</label>
                             <div class="input-group">
-                                <input type="text" class="form-control @error('department') is-invalid @enderror" placeholder="Department" name="department" id="department" value="{{ old('department') }}">
+                                <input type="text" class="form-control @error('department') is-invalid @enderror"
+                                    placeholder="Department" name="department" id="department"
+                                    value="{{ old('department') }}">
                                 @error('department')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
@@ -463,9 +500,10 @@
                         <div class="input-group">
                             <label>Address</label>
                             <div class="input-group">
-                                <input type="text" class="form-control @error('address') is-invalid @enderror" placeholder="Address" name="address" id="address" value="{{ old('address') }}">
+                                <input type="text" class="form-control @error('address') is-invalid @enderror"
+                                    placeholder="Address" name="address" id="address" value="{{ old('address') }}">
                                 @error('address')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
@@ -473,9 +511,10 @@
                         <div class="input-group">
                             <label>Profile Image</label>
                             <div class="input-group">
-                                <input type="file" class="form-control @error('avatar') is-invalid @enderror" placeholder="avatar" name="avatar" value="{{ old('avatar') }}">
+                                <input type="file" class="form-control @error('avatar') is-invalid @enderror"
+                                    placeholder="avatar" name="avatar" value="{{ old('avatar') }}">
                                 @error('avatar')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
@@ -483,9 +522,10 @@
                         <div class="input-group">
                             <label>Password</label>
                             <div class="input-group">
-                                <input type="password" class="form-control @error('password') is-invalid @enderror" placeholder="Password" name="password" value="{{ old('password') }}">
+                                <input type="password" class="form-control @error('password') is-invalid @enderror"
+                                    placeholder="Password" name="password" value="{{ old('password') }}">
                                 @error('password')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
@@ -498,7 +538,7 @@
                                     @endforeach
                                 </select>
                                 @error('role')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>

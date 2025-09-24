@@ -71,3 +71,6 @@
 .dark-mode .card, .dark-mode .custom_card {
     background-color: #0e1726 !important; 
 }
+.dark-mode .table thead th { 
+    background: #343a40;
+}

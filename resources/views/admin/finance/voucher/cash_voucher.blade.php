@@ -82,9 +82,9 @@
                                                 <div class="input-group">
                                                     <label class="fbox">Account Type</label>
                                                     <div class="input-group">
-                                                        <select class="js-tomselect" placeholder="Select an option..."
+                                                        <select class="js-tomselect" placeholder=" " 
                                                             autocomplete="off" name="acct_type" id="acct_type">
-                                                            <option value="">Select an option</option>
+                                                           <option value=""></option>
                                                             <option value="0">Update Please</option>
                                                             <option value="1">Assets</option>
                                                             <option value="2">Owner</option>
@@ -102,8 +102,8 @@
                                                 <div class="input-group">
                                                     <label class="fbox">Accounts</label>
                                                     <div class="input-group">
-                                                        <select class="js-tomselect" name="accounts_id" id="accounts_id">
-                                                            <option value="">Select an option</option>
+                                                        <select class="js-tomselect" placeholder=" " name="accounts_id" id="accounts_id">
+                                                           <option value=""></option>
                                                             @foreach ($headaccounts as $v)
                                                                 <option value="{{ $v->head_accounting_id }}">
                                                                     {{ $v->headAccounting->name ?? '' }}</option>
@@ -120,8 +120,8 @@
                                                 <div class="input-group">
                                                     <label class="fbox">Child Account</label>
                                                     <div class="input-group">
-                                                        <select class="js-tomselect" name="subaccounts_id" id="subaccounts_id">
-                                                            <option value="">Select an option</option>
+                                                        <select class="js-tomselect" placeholder=" " name="subaccounts_id" id="subaccounts_id">
+                                                           <option value=""></option>
                                                             @foreach ($partyaccounts as $v)
                                                                 @php
                                                                     $balance = $v->balance ?? 0;
@@ -161,7 +161,7 @@
                                                 <div class="input-group">
                                                     <label class="fbox">Customer</label>
                                                     <div class="input-group">
-                                                        <select class="js-tomselect" name="customer_id" id="customer_id">
+                                                        <select class="js-tomselect" placeholder=" " name="customer_id" id="customer_id">
                                                             <option value="">Select Customer</option>
                                                             @foreach ($customers as $v)
                                                                 <option value="{{ $v->id }}"
@@ -183,8 +183,8 @@
                                                 <div class="input-group">
                                                     <label class="fbox">Plot No.</label>
                                                     <div class="input-group">
-                                                        <select class="js-tomselect" name="plot_id" id="plot_id">
-                                                            <option value="">Select an option</option>
+                                                        <select class="js-tomselect" placeholder=" " name="plot_id" id="plot_id">
+                                                           <option value=""></option>
                                                             @foreach ($plots as $v)
                                                                 @php
                                                                     $plotType = $v->type == 1 ? 'R- ' : 'C- ';
@@ -205,7 +205,7 @@
                                                 <div class="input-group">
                                                     <label class="fbox">Payment Type</label>
                                                     <div class="input-group">
-                                                        <select class="js-tomselect" name="payment_type" id="payment_type">
+                                                        <select class="js-tomselect" placeholder=" " name="payment_type" id="payment_type">
                                                             <option value="1">Cash</option>
                                                             <option value="2">Online</option>
                                                             <option value="3">Check</option>
@@ -234,7 +234,7 @@
                                                 <div class="input-group bank_group" style="display: none">
                                                     <label class="fbox">Bank</label>
                                                     <div class="input-group">
-                                                        <select class="js-tomselect" name="bank_id" id="bank_id">
+                                                        <select class="js-tomselect" placeholder=" " name="bank_id" id="bank_id">
                                                             <option value="">Bank</option>
 
                                                             @foreach (getPakistanBanks() as $v)
@@ -412,11 +412,11 @@
                 if (el.tomselect) return; // prevent double init
 
                 new TomSelect(el, {
-                    allowEmptyOption: true, // keep empty option
+                    allowEmptyOption: false, // keep empty option
                     create: false, // no free typing unless you want it
                     maxItems: el.multiple ? null : 1,
                     closeAfterSelect: !el.multiple,
-                    placeholder: el.getAttribute('placeholder') || 'Select an option',
+                    placeholder: el.getAttribute('placeholder') || '',
                     render: {
                         option_create: null // disable "Create" in dropdown
                     }
@@ -482,10 +482,10 @@
                             let tsSubAccounts = subAccountsEl.tomselect;
 
                             if (tsAccounts) {
-                                tsAccounts.addOption({
-                                    value: '',
-                                    text: 'Select an option'
-                                });
+                                // tsAccounts.addOption({
+                                //     value: '',
+                                //     text: 'Select an option'
+                                // });
                                 tsAccounts.setValue('', true);
                                 tsAccounts.clearOptions(); // clear old options
 
@@ -540,10 +540,10 @@
                             });
 
                             // Clear and add placeholder
-                            subAccountsSelect.addOption({
-                                value: '',
-                                text: 'Select an option'
-                            });
+                            // subAccountsSelect.addOption({
+                            //     value: '',
+                            //     text: 'Select an option'
+                            // });
                             subAccountsSelect.setValue('', true);
                             subAccountsSelect.clearOptions();
 
@@ -662,10 +662,10 @@
                         let plotEl = $('#plot_id')[0]; // DOM element
                         let tsPlot = plotEl.tomselect; // TomSelect instance
                         if (tsPlot) {
-                            tsPlot.addOption({
-                                value: '',
-                                text: 'Select an option'
-                            });
+                            // tsPlot.addOption({
+                            //     value: '',
+                            //     text: 'Select an option'
+                            // });
                             tsPlot.setValue('', true);
                             tsPlot.clearOptions(); // clear old options
 
@@ -724,10 +724,10 @@
                             let tsSubAccounts = subAccountsEl.tomselect;
 
                             if (tsAccounts) {
-                                tsAccounts.addOption({
-                                    value: '',
-                                    text: 'Select an option'
-                                });
+                                // tsAccounts.addOption({
+                                //     value: '',
+                                //     text: 'Select an option'
+                                // });
                                 tsAccounts.setValue('', true);
                                 tsAccounts.clearOptions(); // clear old options
 
@@ -780,10 +780,10 @@
                             });
 
                             // Clear and add placeholder
-                            subAccountsSelect.addOption({
-                                value: '',
-                                text: 'Select an option'
-                            });
+                            // subAccountsSelect.addOption({
+                            //     value: '',
+                            //     text: 'Select an option'
+                            // });
                             subAccountsSelect.setValue('', true);
                             subAccountsSelect.clearOptions();
 
@@ -1076,8 +1076,8 @@
                                         <div class="input-group">
                                             <label class="fbox">Account Type</label>
                                             <div class="input-group">
-                                                <select class="js-tomselect" name="acct_type" id="e_acct_type">
-                                                    <option value="">Select an option</option>
+                                                <select class="js-tomselect" placeholder=" " name="acct_type" id="e_acct_type">
+                                                   <option value=""></option>
                                                     <option value="0">Update Please</option>
                                                     <option value="1">Assets</option>
                                                     <option value="2">Owner</option>
@@ -1095,8 +1095,8 @@
                                         <div class="input-group">
                                             <label class="fbox">Accounts</label>
                                             <div class="input-group">
-                                                <select class="js-tomselect" name="accounts_id" id="e_accounts_id">
-                                                    <option value="">Select an option</option>
+                                                <select class="js-tomselect" placeholder=" " name="accounts_id" id="e_accounts_id">
+                                                   <option value=""></option>
                                                     @foreach ($headaccounts as $v)
                                                         <option value="{{ $v->head_accounting_id }}">
                                                             {{ $v->headAccounting->name ?? '' }}</option>
@@ -1120,8 +1120,8 @@
                                         <div class="input-group">
                                             <label class="fbox">Child Account</label>
                                             <div class="input-group">
-                                                <select class="js-tomselect" name="subaccounts_id" id="e_subaccounts_id">
-                                                    <option value="">Select an option</option>
+                                                <select class="js-tomselect" placeholder=" " name="subaccounts_id" id="e_subaccounts_id">
+                                                   <option value=""></option>
                                                     @foreach ($partyaccounts as $v)
                                                         @php
                                                             $balance = $v->balance ?? 0;

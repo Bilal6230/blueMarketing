@@ -27,10 +27,10 @@ class AccountingController extends Controller
     public function index(Request $request)
     {
         $power = Auth::user()->roles[0]->name;
-        $x['title']     = 'Accounts List';
-        $x['role']      = Role::get();
-        $x['users']      = User::get();
-        $x['power']     = $power;
+        $x['title'] = 'Accounts List';
+        $x['role'] = Role::get();
+        $x['users'] = User::get();
+        $x['power'] = $power;
         // $x['data']      = AccountingExpense::get();
 
 
@@ -94,7 +94,7 @@ class AccountingController extends Controller
             Alert::success('Notification', 'Data <b>' . $data->project . '</b> Save successfully ')->toToast()->toHtml();
         } catch (\Throwable $th) {
             DB::rollback();
-            Alert::error('Notification', 'Data <b>' .  $th->getMessage())->toToast()->toHtml();
+            Alert::error('Notification', 'Data <b>' . $th->getMessage())->toToast()->toHtml();
         }
         return back();
     }
@@ -107,6 +107,66 @@ class AccountingController extends Controller
 
 
         return $data_list;
+    }
+    public function Accountant(Request $request)
+    {
+        $x['title'] = 'Accountants List';
+        $selectedProjectId = getSelectedTown();
+        $accountants = User::query()
+            // include users in the project OR users with any ledger in the project
+            ->where(function ($q) use ($selectedProjectId) {
+                $q->where('users.project_id', $selectedProjectId)
+                    ->orWhereHas('ledgers.projectHeadSubhead', function ($qq) use ($selectedProjectId) {
+                        $qq->where('project_id', $selectedProjectId);
+                    });
+            })
+            // pick columns first (so withCount isn’t wiped)
+            ->select([
+                'users.id',
+                'users.name',
+                'users.phone_number',
+                'users.email',
+                'users.nic_number',
+                'users.project_id',
+            ])
+            // count only ledgers for this project
+            ->withCount([
+                'ledgers as matching_ledgers_count' => function ($q) use ($selectedProjectId) {
+                    $q->whereHas('projectHeadSubhead', function ($e) use ($selectedProjectId) {
+                        $e->where('project_id', $selectedProjectId);
+                    });
+                }
+            ])
+            ->orderByDesc('matching_ledgers_count')
+            ->orderBy('users.name')
+            ->get();
+        $x['accountants'] = $accountants;
+        return view('admin.finance.accountant.index', $x);
+    }
+    public function AccountantLedgers(User $user, Request $request)
+    {
+        $projectId = $request->integer('project_id') ?: getSelectedTown();
+
+        $ledgers = Ledger::query()
+            ->where('create_by', $user->id) // or ->where('user_id', $user->id) depending on your schema
+            ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $projectId))
+            ->with(['projectHeadSubhead:id,project_id,head_accounting_id,subhead_accounting_id,plot_id,customer_id'])
+            ->orderBy('date', 'asc')
+            ->get([
+                'id',
+                'type',
+                'type_id',
+                'project_head_subheads_id',
+                'reference',
+                'amount_in',
+                'amount_out',
+                'detail',
+                'create_by',
+                'date',
+                'created_at'
+            ]);
+
+        return response()->json(['ledgers' => $ledgers]);
     }
 
     public function get_account(Request $request)
@@ -141,9 +201,9 @@ class AccountingController extends Controller
                         ->where(['project_id' => $selectedProjectId])
                         ->get();
                     $data_list = $data_list->map(function ($item) {
-                            $item->balance = ($item->total_in ?? 0) - ($item->total_out ?? 0);
-                            return $item;
-                        });
+                        $item->balance = ($item->total_in ?? 0) - ($item->total_out ?? 0);
+                        return $item;
+                    });
 
 
                     $response = $data_list;
@@ -172,11 +232,11 @@ class AccountingController extends Controller
 
         $power = Auth::user()->roles[0]->name;
 
-        $x['title']     = 'Main Accounts';
-        $x['data']      = HeadAccounting::get();
-        $x['role']      = Role::get();
-        $x['users']      = User::get();
-        $x['power']     = $power;
+        $x['title'] = 'Main Accounts';
+        $x['data'] = HeadAccounting::get();
+        $x['role'] = Role::get();
+        $x['users'] = User::get();
+        $x['power'] = $power;
         return view('admin.finance.accounting.head_accounts', $x);
     }
 
@@ -185,7 +245,7 @@ class AccountingController extends Controller
     {
         //dd($request->all());
         $validator = Validator::make($request->all(), [
-            'name'      => ['required', 'string', 'max:25'],
+            'name' => ['required', 'string', 'max:25'],
         ]);
         if ($validator->fails()) {
             return back()->withErrors($validator)
@@ -206,7 +266,7 @@ class AccountingController extends Controller
             Alert::success('Notification', 'Data <b>' . $data->project . '</b> Save successfully ')->toToast()->toHtml();
         } catch (\Throwable $th) {
             DB::rollback();
-            Alert::error('Notification', 'Data <b>' .  $th->getMessage())->toToast()->toHtml();
+            Alert::error('Notification', 'Data <b>' . $th->getMessage())->toToast()->toHtml();
         }
         return back();
     }
@@ -218,9 +278,9 @@ class AccountingController extends Controller
 
 
         return response()->json([
-            'status'    => Response::HTTP_OK,
-            'message'   => 'Data Project by id',
-            'data'      => $data_list
+            'status' => Response::HTTP_OK,
+            'message' => 'Data Project by id',
+            'data' => $data_list
         ], Response::HTTP_OK);
     }
 
@@ -230,7 +290,7 @@ class AccountingController extends Controller
     public function head_update(Request $request)
     {
         $rules = [
-            'name'      => ['required', 'string', 'max:25']
+            'name' => ['required', 'string', 'max:25']
         ];
 
         $validator = Validator::make($request->all(), $rules);
@@ -275,11 +335,11 @@ class AccountingController extends Controller
 
         $power = Auth::user()->roles[0]->name;
 
-        $x['title']     = 'Child Accounts';
-        $x['data']      = SubheadAccounting::get();
-        $x['role']      = Role::get();
-        $x['users']      = User::get();
-        $x['power']     = $power;
+        $x['title'] = 'Child Accounts';
+        $x['data'] = SubheadAccounting::get();
+        $x['role'] = Role::get();
+        $x['users'] = User::get();
+        $x['power'] = $power;
         return view('admin.finance.accounting.child_accounts', $x);
     }
 
@@ -288,7 +348,7 @@ class AccountingController extends Controller
     {
         //dd($request->all());
         $validator = Validator::make($request->all(), [
-            'name'      => ['required', 'string', 'max:25'],
+            'name' => ['required', 'string', 'max:25'],
         ]);
         if ($validator->fails()) {
             return back()->withErrors($validator)
@@ -310,7 +370,7 @@ class AccountingController extends Controller
             Alert::success('Notification', 'Data <b>' . $data->project . '</b> Save successfully ')->toToast()->toHtml();
         } catch (\Throwable $th) {
             DB::rollback();
-            Alert::error('Notification', 'Data <b>' .  $th->getMessage())->toToast()->toHtml();
+            Alert::error('Notification', 'Data <b>' . $th->getMessage())->toToast()->toHtml();
         }
         return back();
     }
@@ -323,9 +383,9 @@ class AccountingController extends Controller
 
 
         return response()->json([
-            'status'    => Response::HTTP_OK,
-            'message'   => 'Data Project by id',
-            'data'      => $data_list
+            'status' => Response::HTTP_OK,
+            'message' => 'Data Project by id',
+            'data' => $data_list
         ], Response::HTTP_OK);
     }
 
@@ -335,7 +395,7 @@ class AccountingController extends Controller
     public function subhead_update(Request $request)
     {
         $rules = [
-            'name'      => ['required', 'string', 'max:25']
+            'name' => ['required', 'string', 'max:25']
         ];
 
         $validator = Validator::make($request->all(), $rules);
@@ -432,10 +492,10 @@ class AccountingController extends Controller
     {
 
         $power = Auth::user()->roles[0]->name;
-        $x['title']     = 'Category Details';
-        $x['role']      = Role::get();
-        $x['users']      = User::get();
-        $x['power']     = $power;
+        $x['title'] = 'Category Details';
+        $x['role'] = Role::get();
+        $x['users'] = User::get();
+        $x['power'] = $power;
         $headaccounts = HeadAccounting::get();
         $subheadaccounts = SubheadAccounting::get();
         $projects = Project::get();
@@ -450,9 +510,9 @@ class AccountingController extends Controller
     {
         // dd($request->all());
         $validator = Validator::make($request->all(), [
-            'projects_id'      => ['required'],
-            'accounts_id'      => ['required'],
-            'subaccounts_id'      => ['required'],
+            'projects_id' => ['required'],
+            'accounts_id' => ['required'],
+            'subaccounts_id' => ['required'],
 
         ]);
         if ($validator->fails()) {
@@ -484,7 +544,7 @@ class AccountingController extends Controller
             Alert::success('Notification', 'Data <b>' . '' . '</b> Save successfully ')->toToast()->toHtml();
         } catch (\Throwable $th) {
             DB::rollback();
-            Alert::error('Notification', 'Data <b>' .  $th->getMessage())->toToast()->toHtml();
+            Alert::error('Notification', 'Data <b>' . $th->getMessage())->toToast()->toHtml();
         }
         return back();
     }
