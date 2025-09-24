@@ -318,15 +318,27 @@ class LedgerController extends Controller
         ];
         DB::beginTransaction();
         try {
-            $result = Ledger::find($request->id);
-            $customerLedger = $result->customerLedger;
-            if ($customerLedger) {
-                $customerLedger->update($data);
+            $ledger = Ledger::findOrFail($request->id);
+
+            if (Auth::user()->hasRole('super-admin') || Auth::user()->can('direct-update')) {
+                $ledger->update(['is_active' => 0]);
+                DB::commit();
+
+                Alert::success('Notification', 'Voucher <b>' . $ledger->detail . '</b> deleted successfully.')
+                    ->toToast()->toHtml();
+                return back();
             }
 
-            $result->update($data);
+            PendingUpdate::create([
+                'table_name' => 'ledgers',
+                'record_id' => $ledger->id,
+                'old_values' => json_encode($ledger->toArray()),
+                'new_values' => json_encode($data),
+                'status' => 'pending',
+                'submitted_by' => Auth::id(),
+            ]);
             DB::commit();
-            Alert::info('Notification', 'Delete request for <b>' . $result->detail . '</b> is pending admin approval.')
+            Alert::info('Notification', 'Delete request for <b>' . $ledger->detail . '</b> is pending admin approval.')
                 ->toToast()->toHtml();
         } catch (\Throwable $th) {
             DB::rollBack();
