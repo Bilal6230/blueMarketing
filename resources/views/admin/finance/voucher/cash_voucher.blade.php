@@ -393,7 +393,6 @@
 @endsection
 
 @section('js')
-
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
@@ -569,7 +568,7 @@
                                             <i class="fas fa-pencil-alt"></i>
                                         </button>
                                         @endcan
-                                        
+
                                         @can('delete voucher')
                                         <button class="btn btn-sm btn-danger btn-delete" data-id="${row.id}">
                                             <i class="fas fa-trash"></i>
@@ -599,7 +598,7 @@
                                 else {
                                     if (row.status === 'Pending') {
                                         buttons += `
-                                    <span class="badge bg-secondary px-3 py-2" 
+                                    <span class="badge bg-secondary px-3 py-2"
                                         style="cursor: pointer;"
                                         data-bs-toggle="tooltip"
                                         title="Needs Admin Approval">
@@ -971,6 +970,18 @@
                     $('.bank_group').css('display', 'none');
                 }
             });
+            $('#e_payment_type').change(function(e) {
+
+                e.preventDefault();
+
+                if ($(this).val() != '1') {
+
+                    $('.e_bank_group').css('display', 'block');
+                } else {
+
+                    $('.e_bank_group').css('display', 'none');
+                }
+            });
 
             $('#e_acct_type').change(function() {
                 var acctType = $(this).val();
@@ -1130,9 +1141,6 @@
                         console.log(data);
 
                         $("#e_reference").val(data.reference);
-                        // $('#e_acct_type').val(data.project_head_subhead.head_accounting
-                        //     .acct_type).trigger(
-                        //     'change');
 
                         flatpickr('#e_date', {
                             enableTime: false,
@@ -1142,31 +1150,14 @@
                         });
 
                         $("#e_voucher").val(data.type + '-0000' + data.type_id);
-
+                        let amount = 0;
                         if (data.type == 'CR') {
-                            $("#e_amount").val(data.amount_in);
-
+                            amount = data.amount_in;
                         } else if (data.type == 'CP') {
-                            $("#e_amount").val(data.amount_out);
-
+                            amount = data.amount_out;
                         }
-
-                        $("#e_detail").val(data.detail);
-
-                        // let acct_type = data.project_head_subhead.head_accounting.acct_type;
-                        // // Update the UI based on the response
-                        // let $selectacc = $('#e_acct_type');
-                        // let $optionsacc = $selectacc.find('option');
-                        // let $matchingOptionacc = $optionsacc.filter(function() {
-                        //     return $(this).val() == acct_type;
-                        // });
-                        // if ($matchingOptionacc.length > 0) {
-                        //     $optionsacc.prop('selected',
-                        //     false); // clear previous selections
-                        //     $matchingOptionacc.prop('selected',
-                        //     true); // select matching one
-                        //     $matchingOptionacc.detach().appendTo($selectacc);
-                        // }
+                        $("#e_amount").val(amount);
+                        $('#eWordingAmount').text(numberToWords.toWords(amount));
                         $('#modal-loading').modal('hide');
                         $('#modal-edit').modal({
                             backdrop: 'static',
@@ -1177,24 +1168,42 @@
                         let eAccTypeSelect = $('#e_acct_type')[0].tomselect;
                         eAccTypeSelect.setValue(acct_type, true);
 
-
                         let headId = data.project_head_subhead.head_accounting.id;
                         let eAccSelect = $('#e_accounts_id')[0].tomselect;
                         eAccSelect.setValue(headId, true);
-                        // Update the UI based on the response
-                        // let $select = $('#e_accounts_id');
-                        // let $options = $select.find('option');
-                        // let $matchingOption = $options.filter(function() {
-                        //     return $(this).val() == headId;
-                        // });
-                        // if ($matchingOption.length > 0) {
-                        //     $options.prop('selected', false); // clear previous selections
-                        //     $matchingOption.prop('selected', true); // select matching one
-                        //     $matchingOption.detach().appendTo($select);
-                        // }
+
                         let subheadId = data.project_head_subhead.subhead_accounting.id;
                         let eSubAccSelect = $('#e_subaccounts_id')[0].tomselect;
                         eSubAccSelect.setValue(subheadId, true);
+
+                        // if (data.customer_ledger != null) {
+                            // $('.customer-detail').removeClass('d-none');
+                            let customerId = data.customer_ledger?.customer_id;
+                            let eCustomerSelect = $('#e_customer_id')[0].tomselect;
+                            eCustomerSelect.setValue(customerId, true);
+
+                            let plotId = data.customer_ledger?.plot_id;
+                            let ePlotSelect = $('#e_plot_id')[0].tomselect;
+                            ePlotSelect.setValue(plotId, true);
+
+                            let typeId = data.customer_ledger?.payment_type;
+                            let eTypeSelect = $('#e_payment_type')[0].tomselect;
+                            eTypeSelect.setValue(typeId, true);
+                            if (typeId == 1 || typeId == null || typeId == '') {
+                                $('.e_bank_group').css('display', 'none');
+                            }else{
+                                $('.e_bank_group').css('display', 'block');
+                                let bankId = data.customer_ledger?.bank_id;
+                                let eBankSelect = $('#e_bank_id')[0].tomselect;
+                                eBankSelect.setValue(bankId, true);
+                                let tNumber = data.customer_ledger?.t_number;
+                                $('#e_t_number').val(tNumber);
+                                let passingDate = data.customer_ledger?.passing_date;
+                                $('#e_passing_date').val(passingDate);
+                            }
+                        // }else{
+                        //     $('.customer-detail').addClass('d-none');
+                        // }
                     },
                 });
             });
@@ -1212,6 +1221,9 @@
 
             $('#numberInput').on('input', function() {
                 convertToWords();
+            });
+            $('#e_amount').on('input', function() {
+                eConvertToWords();
             });
             $(document).on("click", "#submit-button", function(e) {
                 e.preventDefault();
@@ -1266,6 +1278,15 @@
             var wordingAmount = numberToWords.toWords(numericValue);
 
             document.getElementById('wordingAmount').innerText = wordingAmount;
+        }
+        function eConvertToWords() {
+            var numberInput = document.getElementById('e_amount').value;
+
+            var numericValue = numberInput.replace(/,/g, '');
+
+            var wordingAmount = numberToWords.toWords(numericValue);
+
+            document.getElementById('eWordingAmount').innerText = wordingAmount;
         }
 
         function formatAmount(input) {
@@ -1428,7 +1449,112 @@
                                         </div>
                                     </div>
 
+                                </div>
+                            </div>
+                        </div>
+                        <div class="customer-detail row">
+                            <div class="mb-3 col-sm-12">
+                                <div id="eWordingAmount"></div>
+                            </div>
+                            <div class="mb-3 col-sm-6">
+                                <div class="input-group">
+                                    <label class="fbox">Customer</label>
+                                    <div class="input-group">
+                                        <select class="js-tomselect" placeholder=" " name="customer_id"
+                                            id="e_customer_id">
+                                            <option value="">Select Customer</option>
+                                            @foreach ($customers as $v)
+                                                <option value="{{ $v->id }}" data-phone="{{ $v->mobile_number }}"
+                                                    data-nic_number="{{ $v->nic_number }}"
+                                                    data-home_address="{{ $v->home_address }}">
+                                                    {{ $v->first_name }} {{ $v->last_name }}
+                                                    {{ $v->relate }} {{ $v->father_name }} -
+                                                    {{ $v->phone_number }}</option>
+                                            @endforeach
+                                        </select>
+                                        @error('customer_id')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3 col-sm-6">
+                                <div class="input-group">
+                                    <label class="fbox">Plot No.</label>
+                                    <div class="input-group">
+                                        <select class="js-tomselect" placeholder=" " name="plot_id" id="e_plot_id">
+                                            <option value=""></option>
+                                            @foreach ($plots as $v)
+                                                @php
+                                                    $plotType = $v->type == 1 ? 'R- ' : 'C- ';
+                                                    $plotName = $plotType . $v->name;
+                                                @endphp
+                                                <option value="{{ $v->plot_id }}">
+                                                    {{ $plotName ?? '' }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('plot_id')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3 col-sm-3">
+                                <div class="input-group">
+                                    <label class="fbox">Payment Type</label>
+                                    <div class="input-group">
+                                        <select class="js-tomselect" placeholder=" " name="payment_type"
+                                            id="e_payment_type">
+                                            <option value="1">Cash</option>
+                                            <option value="2">Online</option>
+                                            <option value="3">Check</option>
+                                        </select>
+                                        @error('payment_type')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3 col-sm-3">
+                                <div class="input-group e_bank_group" style="display: none">
+                                    <label class="fbox">Number</label>
+                                    <div class="input-group">
+                                        <input id="e_t_number" type="text"
+                                            class="form-control @error('t_number') is-invalid @enderror"
+                                            placeholder="Transaction Number" name="t_number"
+                                            value="{{ old('t_number') }}">
+                                        @error('amount')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3 col-sm-3">
+                                <div class="input-group e_bank_group" style="display: none">
+                                    <label class="fbox">Bank</label>
+                                    <div class="input-group">
+                                        <select class="js-tomselect" placeholder=" " name="bank_id" id="e_bank_id">
+                                            <option value="">Bank</option>
 
+                                            @foreach (getPakistanBanks() as $v)
+                                                <option value="{{ $v['id'] }}">{{ $v['name'] }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+
+                                </div>
+                            </div>
+                            <div class="mb-3 col-sm-3">
+                                <div class="input-group e_bank_group" style="display: none">
+                                    <label class="fbox">Passing Date</label>
+                                    <div class="input-group">
+                                        <input type="text" name="passing_date" class="date form-control" id="e_passing_date" data-input>
+                                        @error('passing_date')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
                                 </div>
                             </div>
                         </div>
