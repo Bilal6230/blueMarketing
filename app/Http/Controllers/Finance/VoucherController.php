@@ -128,42 +128,70 @@ class VoucherController extends Controller
 
         return view('admin.finance.voucher.cash_voucher', $x);
     }
-    public function approve($id)
+    public function approve($id, Request $request)
     {
+        // Whitelist allowed tables to prevent SQL injection
+        // $allowedTables = ['ledgers', 'customers', 'projects']; // add all tables you want to allow
+        // if (!in_array($request->table, $allowedTables)) {
+        //     abort(400, 'Invalid table name.');
+        // }
+
+        // Fetch pending update record
         $pending = PendingUpdate::where('record_id', $id)
-            ->where('table_name', 'ledgers')
+            ->where('table_name', $request->table)
             ->where('status', 'pending')
             ->firstOrFail();
+
+        // Authorization check
         if (!Auth::user()->hasRole('super-admin') && !Auth::user()->can('direct-update')) {
             abort(403, 'Unauthorized action.');
         }
-        $pendingNewChanges = json_decode($pending->new_values, true);
 
+
+        $pendingNewChanges = json_decode($pending->new_values, true);
         if (isset($pendingNewChanges['is_active']) && $pending->new_values == $pendingNewChanges['is_active']) {
-            $result = Ledger::findOrFail($pending->record_id);
-            $customerLedger = $result->customerLedger;
-            if ($customerLedger) {
-                $customerLedger->update($pendingNewChanges);
-            }
-            $result->update($pendingNewChanges);
+            DB::transaction(function () use ($pending, $pendingNewChanges, $request) {
+                $result = DB::table($request->table)::findOrFail($pending->record_id);
+                if ($request->table == 'ledgers') {
+                    $customerLedger = $result->customerLedger;
+                    if ($customerLedger) {
+                        $customerLedger->update($pendingNewChanges);
+                    }
+                }
+                $result->update($pendingNewChanges);
+            });
         }
 
-        DB::transaction(function () use ($pending, $pendingNewChanges) {
-            $ledger = Ledger::findOrFail($pending->record_id);
-            $ledger->update($pendingNewChanges);
+        DB::transaction(function () use ($pending, $pendingNewChanges, $request) {
+            // Check if record exists
+            $record = DB::table($request->table)
+                ->where('id', $pending->record_id)
+                ->first();
+
+            if (!$record) {
+                abort(404, 'Record not found.');
+            }
+
+            // Update record dynamically
+            DB::table($request->table)
+                ->where('id', $pending->record_id)
+                ->update($pendingNewChanges);
+
+            // Mark pending as approved
             $pending->update([
                 'status' => 'approved',
                 'approved_by' => Auth::id(),
             ]);
         });
 
-        return back()->with('success', 'Voucher approved successfully.');
+        return back()->with('success', 'Record approved successfully.');
     }
 
-    public function reject($id)
+
+    public function reject($id, Request $request)
     {
         $pending = PendingUpdate::where('record_id', $id)
-            ->where('table_name', 'ledgers')
+            ->where('table_name', $request->table)
             ->where('status', 'pending')
             ->firstOrFail();
 
@@ -302,7 +330,7 @@ class VoucherController extends Controller
                 'status' => $p ? ucfirst($p->status) : 'Approved',
                 'submitted_by' => $p?->submittedBy?->name ?? '',
                 'old_values' => json_decode($p?->old_values, true) ?? [],
-                'new_values' =>json_decode($p?->new_values, true) ?? [],
+                'new_values' => json_decode($p?->new_values, true) ?? [],
                 'id' => $i->id,
                 'type' => $i->type,
             ];
@@ -359,7 +387,7 @@ class VoucherController extends Controller
                 'status' => $p ? ucfirst($p->status) : 'Approved',
                 'submitted_by' => $p?->submittedBy?->name ?? '',
                 'old_values' => json_decode($p?->old_values, true) ?? [],
-                'new_values' =>json_decode($p?->new_values, true) ?? [],
+                'new_values' => json_decode($p?->new_values, true) ?? [],
                 'id' => $i->id,
                 'type' => $i->type,
             ];
@@ -394,6 +422,14 @@ class VoucherController extends Controller
 
         $data = $data->map(function ($item) {
             $item['amount'] = floatval($item['amount_out']);
+            $pending = PendingUpdate::where('table_name', 'draft_ledgers')
+                ->where('record_id', $item->id)
+                ->latest()
+                ->first();
+            $item['submitted_by'] = $pending ? $pending->submittedBy?->name : '';
+            $item['new_values'] = $pending ? json_decode($pending->new_values, true) : '';
+            $item['old_values'] = $pending ? json_decode($pending->old_values, true) : '';
+            $item['status'] = $pending ? ucfirst($pending->status) : 'Approved';
             return $item;
         });
         $x['data'] = $data;

@@ -107,6 +107,29 @@
                                                                                 data-name="{{ $i->name }}"><i
                                                                                     class="fas fa-trash"></i></button>
                                                                         @endcan
+                                                                        @if (Auth::user()->hasRole('super-admin') || Auth::user()->can('direct-update'))
+                                                                            @if ($i->status === 'Pending')
+                                                                                <div class="d-flex admin_approval">
+                                                                                    <button
+                                                                                        class="btn btn-sm btn-outline-info btn-view-changes"
+                                                                                        data-old='@json($i->old_values)'
+                                                                                        data-new='@json($i->new_values)'
+                                                                                        data-submitted_by='{{ addslashes($i->submitted_by) }}'
+                                                                                        data-record_id='{{ $i->id }}'>
+                                                                                        <i class="fas fa-eye"></i> Approval Required
+                                                                                    </button>
+                                                                                </div>
+                                                                            @endif
+                                                                        @else
+                                                                            @if ($i->status === 'Pending')
+                                                                                <span class="badge bg-secondary px-3 py-2"
+                                                                                    style="cursor: pointer;"
+                                                                                    data-bs-toggle="tooltip"
+                                                                                    title="Needs Admin Approval">
+                                                                                    <i class="fas fa-lock me-1"></i>
+                                                                                </span>
+                                                                            @endif
+                                                                        @endif
                                                                     @else
                                                                         Plot Booking Invoice
                                                                     @endif
@@ -131,10 +154,41 @@
             </div>
         </section>
     </div>
+    <div class="modal fade" id="viewChangesModal" tabindex="-1" aria-labelledby="viewChangesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title" id="viewChangesModalLabel">
+                        <i class="fas fa-exchange-alt me-2"></i> Pending Changes
+                    </h5>
+                    <!-- Header close button removed -->
+                </div>
+                <div class="modal-body">
+                    <table class="table table-bordered table-hover">
+                        <thead>
+                            <tr>
+                                <th>Field</th>
+                                <th>Old Value</th>
+                                <th>New Value</th>
+                            </tr>
+                        </thead>
+                        <tbody id="changesTableBody">
+                            <!-- Dynamically filled by JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <!-- Footer close button remains -->
+                </div>
+            </div>
+        </div>
+    </div>
 
 @endsection
 
 @section('js')
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.js-tomselect').forEach((el) => {
@@ -160,7 +214,174 @@
                 });
             });
         });
-    </script>
+        $(document).ready(function() {
+            $(document).on('click', '.btn-view-changes', function() {
+                const newValues = $(this).data('new') || '{}';
+                const oldValues = $(this).data('old');
+                const submittedBy = $(this).data('submitted_by') || 'Unknown User';
+                const record_id = $(this).data('record_id') || $(this).data('id');
+                const $tbody = $('#changesTableBody');
+                const $modalFooter = $('#viewChangesModal .modal-footer');
+
+                $tbody.empty();
+                $modalFooter.find('.btn-approve, .btn-reject').remove(); // Remove old buttons if any
+
+                // 🛑 Check if this is a delete request (only is_active changed to 0)
+                if (Object.keys(newValues).length === 1 && newValues.is_active == 0) {
+                    $tbody.html(`
+                <tr>
+                    <td colspan="3" class="text-center text-danger fw-bold">
+                        <i class="fas fa-trash-alt me-2"></i>
+                        User <span class="text-primary">${submittedBy}</span> has requested to <strong>delete</strong> the ledger.
+                        ${newValues.delete_reason ? `<br><strong>Reason:</strong> ${newValues.delete_reason}` : ''}
+                    </td>
+                </tr>
+            `);
+                } else {
+                    // 📝 Show normal field changes
+                    $.each(newValues, function(key, newVal) {
+                        const oldVal = oldValues[key] ?? '<em class="text-muted">N/A</em>';
+                        const safeNewVal = newVal ?? '<em class="text-muted">N/A</em>';
+                        $tbody.append(`
+                    <tr>
+                        <td><strong>${key}</strong></td>
+                        <td>${oldVal}</td>
+                        <td class="text-primary fw-semibold">${safeNewVal}</td>
+                    </tr>
+                `);
+                    });
+                }
+
+                const approveBtn = $(`
+            <button class="btn btn-outline-success btn-approve" data-id="${record_id}" data-table="draft_ledgers">
+                <i class="fas fa-check"></i> Approve
+            </button>
+        `);
+                const rejectBtn = $(`
+            <button class="btn btn-outline-danger btn-reject" data-id="${record_id}" data-table="draft_ledgers">
+                <i class="fas fa-times"></i> Reject
+            </button>
+        `);
+
+                // Append buttons before the Close button
+                $modalFooter.prepend(approveBtn, rejectBtn);
+
+                // Show Bootstrap modal
+                const modal = new bootstrap.Modal($('#viewChangesModal')[0]);
+                modal.show();
+            });
+            // Approve voucher
+            $(document).on('click', '.btn-approve', function(e) {
+                e.preventDefault();
+                const id = $(this).data('id');
+                const table = $(this).data('table');
+                const container = $(this).closest('.admin_approval'); // full container to remove
+
+                Swal.fire({
+                    title: 'Approve Voucher?',
+                    text: 'Are you sure you want to approve this voucher?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, Approve',
+                    cancelButtonText: 'Cancel',
+                    customClass: {
+                        confirmButton: 'btn btn-success me-2',
+                        cancelButton: 'btn btn-secondary'
+                    },
+                    buttonsStyling: false
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: "{{ route('finance.voucher.approve', ['id' => 'ID_PLACEHOLDER']) }}"
+                                .replace('ID_PLACEHOLDER', id),
+                            type: 'POST',
+                            data: {
+                                _token: '{{ csrf_token() }}',
+                                table:table
+                            },
+                            success: function() {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Approved!',
+                                    text: 'Voucher approved successfully.',
+                                    timer: 100,
+                                    showConfirmButton: false
+                                });
+                                // 🗑 Remove container completely
+                                window.location.reload();
+
+                            },
+                            error: function(xhr) {
+                                const error = xhr.responseJSON?.message ||
+                                    'Something went wrong.';
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: error
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Reject voucher
+            $(document).on('click', '.btn-reject', function(e) {
+                e.preventDefault();
+                const id = $(this).data('id');
+                const table = $(this).data('table');
+                const container = $(this).closest('.admin_approval');
+
+                Swal.fire({
+                    title: 'Reject Voucher?',
+                    text: 'Are you sure you want to reject this voucher?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, Reject',
+                    cancelButtonText: 'Cancel',
+                    customClass: {
+                        confirmButton: 'btn btn-danger me-2',
+                        cancelButton: 'btn btn-secondary'
+                    },
+                    buttonsStyling: false
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: "{{ route('finance.voucher.reject', ['id' => 'ID_PLACEHOLDER']) }}"
+                                .replace('ID_PLACEHOLDER', id),
+                            type: 'POST',
+                            data: {
+                                _token: '{{ csrf_token() }}',
+                                table: table,
+                            },
+                            success: function() {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Rejected!',
+                                    text: 'Voucher rejected successfully.',
+                                    timer: 100,
+                                    showConfirmButton: false
+                                });
+                                // 🗑 Remove container completely
+                                window.location.reload();
+                            },
+                            error: function(xhr) {
+                                const error = xhr.responseJSON?.message ||
+                                    'Something went wrong.';
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: error
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+
+        });
+   
+   </script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const textarea = document.querySelector('.text-area');
@@ -787,15 +1008,14 @@
 
 @section('modal')
     {{-- Modal Update --}}
-    <div class="modal fade"  tabindex="-1" id="modal-edit">
+    <div class="modal fade" tabindex="-1" id="modal-edit">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header bg-info text-white">
                     <h4 class="modal-title">Edit Voucher</h4>
-                      <button type="button" class="close text-white" data-dismiss="modal"
-                                        aria-label="Close">
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
                 <div class="modal-body">
                     <form action="{{ route('ledger.save_as_draft') }}" method="POST" enctype="multipart/form-data"
@@ -823,8 +1043,8 @@
                                             <label class="fbox">Reference No.</label>
                                             <div class="input-group">
                                                 <input type="text" value="1" name="action" hidden />
-                                                <input id="e_voucher" type="text" class="form-control " name="voucher"
-                                                    autocomplete="off" readonly>
+                                                <input id="e_voucher" type="text" class="form-control "
+                                                    name="voucher" autocomplete="off" readonly>
 
                                             </div>
                                         </div>
@@ -853,7 +1073,8 @@
                                         <div class="input-group">
                                             <label class="fbox">Account Type</label>
                                             <div class="input-group">
-                                                <select class="js-tomselect" placeholder=" " name="acct_type" id="e_acct_type">
+                                                <select class="js-tomselect" placeholder=" " name="acct_type"
+                                                    id="e_acct_type">
                                                     <option value=""></option>
                                                     <option value="0">Update Please</option>
                                                     <option value="1">Assets</option>
@@ -872,7 +1093,8 @@
                                         <div class="input-group">
                                             <label class="fbox">Accounts</label>
                                             <div class="input-group">
-                                                <select class="js-tomselect" placeholder=" " name="accounts_id" id="e_accounts_id">
+                                                <select class="js-tomselect" placeholder=" " name="accounts_id"
+                                                    id="e_accounts_id">
                                                     <option value=""></option>
                                                     @foreach ($headaccounts as $v)
                                                         <option value="{{ $v->head_accounting_id }}">
@@ -896,8 +1118,9 @@
                                     <div class="col-sm-8">
                                         <div class="input-group">
                                             <label class="fbox">Child Account</label>
-                                            <div class="input-group"> 
-                                                <select class="js-tomselect" placeholder=" " name="subaccounts_id" id="e_subaccounts_id">
+                                            <div class="input-group">
+                                                <select class="js-tomselect" placeholder=" " name="subaccounts_id"
+                                                    id="e_subaccounts_id">
                                                     <option value=""></option>
                                                     @foreach ($partyaccounts as $v)
                                                         @php
@@ -966,7 +1189,8 @@
                                         <div class="input-group">
                                             <label class="fbox">Plot No.</label>
                                             <div class="input-group">
-                                                <select class="js-tomselect" placeholder=" " name="plot_id" id="e_plot_id">
+                                                <select class="js-tomselect" placeholder=" " name="plot_id"
+                                                    id="e_plot_id">
                                                     <option value=""></option>
                                                     @foreach ($plots as $v)
                                                         @php
@@ -988,7 +1212,8 @@
                                         <div class="input-group">
                                             <label class="fbox">Payment Type</label>
                                             <div class="input-group">
-                                                <select class="js-tomselect" placeholder=" " name="payment_type" id="e_payment_type">
+                                                <select class="js-tomselect" placeholder=" " name="payment_type"
+                                                    id="e_payment_type">
                                                     <option value="1">Cash</option>
                                                     <option value="2">Online</option>
                                                     <option value="3">Check</option>

@@ -221,8 +221,6 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::get('finance/voucher/draft', 'cash_draft')->middleware(['permission:read voucher'])->name('finance.voucher.draft');
         Route::post('finance/voucher/{id}/approve', 'approve')->middleware(['permission:read voucher'])->name('finance.voucher.approve');
         Route::post('finance/voucher/{id}/reject', 'reject')->middleware(['permission:read voucher'])->name('finance.voucher.reject');
-
-
     });
 
     Route::controller(DastiCashController::class)->prefix('dasticash')->name('dasticash.')->group(function () {
@@ -278,6 +276,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::get('booking/plot/schedule/{id}', 'scheduleForm')->middleware(['permission:read plot'])->name('booking.schedule.form');
         Route::post('booking/plot/schedule/store', 'storePaymentSchedule')->middleware(['permission:create plot'])->name('payment_schedule.store');
         Route::get('booking/plot/voucher/', 'cash_in')->middleware(['permission:read slip'])->name('payment_schedule.cash');
+        Route::any('booking/plot/voucher/update/{id}', 'updateCashIn')->middleware(['permission:read slip'])->name('payment_schedule.cash.update');
         Route::get('extra_charge/', 'extraCharge')->middleware(['permission:read slip'])->name('payment_schedule.extra_charge');
         Route::get('booking/customer/report/form', 'customer_report_form')->middleware(['permission:view booking report'])->name('booking.customer.report.form');
         Route::post('booking/customer/report/display', 'customer_report_display')->middleware(['permission:view booking report'])->name('booking.customer.report.display');

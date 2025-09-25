@@ -461,12 +461,12 @@
 
                 // ✅ Add Approve and Reject buttons dynamically
                 const approveBtn = $(`
-            <button class="btn btn-outline-success btn-approve" data-id="${record_id}">
+            <button class="btn btn-outline-success btn-approve" data-id="${record_id}" data-table="ledgers">
                 <i class="fas fa-check"></i> Approve
             </button>
         `);
                 const rejectBtn = $(`
-            <button class="btn btn-outline-danger btn-reject" data-id="${record_id}">
+            <button class="btn btn-outline-danger btn-reject" data-id="${record_id}" data-table="ledgers">
                 <i class="fas fa-times"></i> Reject
             </button>
         `);
@@ -479,6 +479,7 @@
                 modal.show();
             });
         });
+    
     </script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -625,6 +626,7 @@
             $(document).on('click', '.btn-approve', function(e) {
                 e.preventDefault();
                 const id = $(this).data('id');
+                const table = $(this).data('table');
                 const container = $(this).closest('.admin_approval'); // full container to remove
 
                 Swal.fire({
@@ -646,7 +648,8 @@
                                 .replace('ID_PLACEHOLDER', id),
                             type: 'POST',
                             data: {
-                                _token: '{{ csrf_token() }}'
+                                _token: '{{ csrf_token() }}',
+                                 table:table
                             },
                             success: function() {
                                 Swal.fire({
@@ -678,6 +681,7 @@
             $(document).on('click', '.btn-reject', function(e) {
                 e.preventDefault();
                 const id = $(this).data('id');
+                const table = $(this).data('table');
                 const container = $(this).closest('.admin_approval');
 
                 Swal.fire({
@@ -699,7 +703,8 @@
                                 .replace('ID_PLACEHOLDER', id),
                             type: 'POST',
                             data: {
-                                _token: '{{ csrf_token() }}'
+                                _token: '{{ csrf_token() }}',
+                                table:table
                             },
                             success: function() {
                                 Swal.fire({
