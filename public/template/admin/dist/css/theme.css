@@ -74,3 +74,11 @@
 .dark-mode .table thead th { 
     background: #343a40;
 }
+.dark-mode .plot-tag{
+  color: #343a40;
+  background-color: #f8f9fc;
+}
+ 
+.dark-mode .section-title{
+  color: #f8f9fc;
+}
