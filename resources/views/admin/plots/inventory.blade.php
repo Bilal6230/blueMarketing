@@ -137,14 +137,14 @@
                             <div class="chart-body">
                                 <canvas id="plotsChart"></canvas>
                             </div>
-                            <div class="chart-footer">
+                            {{-- <div class="chart-footer">
                                 <div class="chart-stats">
                                     <span class="chart-stat"><i class="fas fa-circle text-primary"></i> Total: {{ $chartData['total'] }}</span>
                                     <span class="chart-stat"><i class="fas fa-circle text-success"></i> Sold: {{ $chartData['sold'] }}</span>
                                     <span class="chart-stat"><i class="fas fa-circle text-danger"></i> Unsold: {{ $chartData['unsold'] }}</span>
                                     <span class="chart-stat"><i class="fas fa-circle text-warning"></i> Hold: {{ $chartData['hold'] }}</span>
                                 </div>
-                            </div>
+                            </div> --}}
                         </div>
                     </div>
 
@@ -157,14 +157,14 @@
                             <div class="chart-body">
                                 <canvas id="sizeChart"></canvas>
                             </div>
-                            <div class="chart-footer">
+                            {{-- <div class="chart-footer">
                                 <div class="chart-stats">
                                     <span class="chart-stat"><i class="fas fa-circle text-primary"></i> Total: {{ $sizeChartData['totalSize'] }} sq.ft</span>
                                     <span class="chart-stat"><i class="fas fa-circle text-success"></i> Sold: {{ $sizeChartData['soldSize'] }} sq.ft</span>
                                     <span class="chart-stat"><i class="fas fa-circle text-danger"></i> Unsold: {{ $sizeChartData['unsoldSize'] }} sq.ft</span>
                                     <span class="chart-stat"><i class="fas fa-circle text-warning"></i> Hold: {{ $sizeChartData['holdSize'] }} sq.ft</span>
                                 </div>
-                            </div>
+                            </div> --}}
                         </div>
                     </div>
 
@@ -177,13 +177,13 @@
                             <div class="chart-body">
                                 <canvas id="residentialChart"></canvas>
                             </div>
-                            <div class="chart-footer">
+                            {{-- <div class="chart-footer">
                                 <div class="chart-stats">
                                     <span class="chart-stat"><i class="fas fa-circle text-success"></i> Sold: {{ $residentialChartData['sold'] }}</span>
                                     <span class="chart-stat"><i class="fas fa-circle text-danger"></i> Unsold: {{ $residentialChartData['unsold'] }}</span>
                                     <span class="chart-stat"><i class="fas fa-circle text-warning"></i> Hold: {{ $residentialChartData['hold'] }}</span>
                                 </div>
-                            </div>
+                            </div> --}}
                         </div>
                     </div>
 
@@ -196,13 +196,13 @@
                             <div class="chart-body">
                                 <canvas id="shopsChart"></canvas>
                             </div>
-                            <div class="chart-footer">
+                            {{-- <div class="chart-footer">
                                 <div class="chart-stats">
                                     <span class="chart-stat"><i class="fas fa-circle text-success"></i> Sold: {{ $shopsChartData['sold'] }}</span>
                                     <span class="chart-stat"><i class="fas fa-circle text-danger"></i> Unsold: {{ $shopsChartData['unsold'] }}</span>
                                     <span class="chart-stat"><i class="fas fa-circle text-warning"></i> Hold: {{ $shopsChartData['hold'] }}</span>
                                 </div>
-                            </div>
+                            </div> --}}
                         </div>
                     </div>
                 </div>

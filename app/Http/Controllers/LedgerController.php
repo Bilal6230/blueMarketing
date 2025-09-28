@@ -133,12 +133,12 @@ class LedgerController extends Controller
             }
             DB::commit();
             // Alert::success('Notification', 'Data <b></b> Save successfully ')->toToast()->toHtml();
-            Alert::success('Notification', 'Data <b>' . $data->project . '</b> Save successfully ')->toToast()->toHtml();
+            Alert::success('Notification', 'Data <b>' . $data->project . '</b> Save successfully ')->toToast();
         } catch (\Throwable $th) {
             DB::rollback();
             Alert::error('Notification', 'Data <b>' . $th->getMessage())->toToast()->toHtml();
         }
-        return back();
+        return redirect()->back();
     }
     public function saveAsDraft(Request $request)
     {

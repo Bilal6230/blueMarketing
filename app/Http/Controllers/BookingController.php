@@ -360,7 +360,6 @@ class BookingController extends Controller
             ->select('leads.*') // Select all columns from the leads table
             ->get();
 
-        dd($customers);
 
         // Return customers as JSON response
         return response()->json($customers);
@@ -618,7 +617,7 @@ class BookingController extends Controller
         $x['class'] = 'cash-in';
         $x['bg_voucher'] = 'info-cash-in';
         $projectId = getSelectedTown();
-        $data = CustomerLedger::with('customer_list', 'plot_list')->where('transaction_type', 'PPR')->where('is_active', '1')->where('project_id', getSelectedTown())->get();
+        $data = CustomerLedger::with('customer_list', 'plot_list')->where('transaction_type', 'null')->where('is_active', '1')->where('project_id', getSelectedTown())->get();
         // Query the database to get unique customers associated with the project
         $x['customers'] = Lead::join('bookings', 'leads.id', '=', 'bookings.customer_id')
             ->where('leads.project_id', $projectId)
@@ -857,7 +856,6 @@ class BookingController extends Controller
                     break;
             }
         } catch (\Exception $e) {
-            dd($e->getMessage());
             return back()->withErrors(['msg' => $e->getMessage()]);
         }
         return back();
