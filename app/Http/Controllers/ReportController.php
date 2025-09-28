@@ -195,6 +195,7 @@ class ReportController extends Controller
             if ($request->passing_status == 1)
             {
                 Ledger::create([
+                    'customer_ledger_id' => $request->id,
                     'type' => 'BR',
                     'type_id' => $lastId + 2,
                     'project_head_subheads_id' => $creditAccountId,
