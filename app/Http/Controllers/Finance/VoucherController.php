@@ -421,7 +421,7 @@ class VoucherController extends Controller
             ->get();
 
         $data = $data->map(function ($item) {
-            $item['amount'] = floatval($item['amount_out']);
+            $item['amount'] = $item['transaction_type'] === 'CR' ? floatval($item['amount_in']) : floatval($item['amount_out']);
             $pending = PendingUpdate::where('table_name', 'draft_ledgers')
                 ->where('record_id', $item->id)
                 ->latest()

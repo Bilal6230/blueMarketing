@@ -82,7 +82,7 @@
                                                 <div class="input-group">
                                                     <label class="fbox">Account Type</label>
                                                     <div class="input-group">
-                                                        <select class="js-tomselect" placeholder=" " autocomplete="off"
+                                                        <select class="js-tomselect @error('acct_type') is-invalid @enderror" placeholder=" " autocomplete="off"
                                                             name="acct_type" id="acct_type">
                                                             <option value=""></option>
                                                             <option value="0">Update Please</option>
@@ -102,7 +102,7 @@
                                                 <div class="input-group">
                                                     <label class="fbox">Accounts</label>
                                                     <div class="input-group">
-                                                        <select class="js-tomselect" placeholder=" " name="accounts_id"
+                                                        <select class="js-tomselect @error('accounts_id') is-invalid @enderror" placeholder=" " name="accounts_id"
                                                             id="accounts_id">
                                                             <option value=""></option>
                                                             @foreach ($headaccounts as $v)
@@ -311,8 +311,8 @@
                                         <div class="d-flex justify-content-end mt-5" style="gap: 10px">
                                             <button type="button" class="btn btn-secondary" data-toggle="modal"
                                                 data-target="#confirmModal" onclick="saveAsDraft()">Save as Draft</button>
-                                            <button type="button" class="btn btn-primary " data-toggle="modal"
-                                                id="submit-button" data-target="#confirmModal">Save</button>
+                                            <button type="button" class="btn btn-primary "
+                                                id="submit-button" >Save</button>
                                         </div>
                                     </form>
                                 @endcan
@@ -478,7 +478,7 @@
                 modal.show();
             });
         });
-    
+
     </script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -1268,6 +1268,9 @@
                 if (!isValid) {
                     e.preventDefault();
                     alert(messages.join("\n"));
+                    return;
+                }else{
+                    $('#confirmModal').modal('show');
                 }
             });
 
