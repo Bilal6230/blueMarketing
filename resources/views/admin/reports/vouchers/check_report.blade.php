@@ -318,6 +318,7 @@
                     success: function(data) {
                         debugger;
                         var data = data.data;
+                        console.log('data in the database  = ',data);
                         $("#id").val(data.id);
                         $("#reference").val(data.reference);
                         $('#e_projects_id').val(data.project_head_subhead.project_id).trigger('change');
@@ -423,12 +424,11 @@
                                         </div>
                                     </div>
                                 </div>
-
                                 <div class="col-md-3">
                                     <div class="form-group">
                                         <label for="customer">Status</label>
                                         <select class="form-control select2" name="passing_status" id="passing_status">
-                                            <option value=""> < All > </option>
+                                            <option value=""> All </option>
                                             @foreach (check_status() as $v)
                                                 <option value="{{ $v['id'] }}" {{ $old_passing_status == $v['id'] ? 'selected' : '' }}>{{ $v['name'] }}</option>
                                             @endforeach
