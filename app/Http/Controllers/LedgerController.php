@@ -332,7 +332,11 @@ class LedgerController extends Controller
             $ledger = Ledger::findOrFail($request->id);
 
             if (Auth::user()->hasRole('super-admin') || Auth::user()->can('direct-update')) {
-                $ledger->update(['is_active' => 0]);
+                $customerLedger = $ledger->customerLedger();
+                if ($customerLedger) {
+                    $customerLedger->update($data);
+                }
+                $ledger->update($$data);
                 DB::commit();
 
                 Alert::success('Notification', 'Voucher <b>' . $ledger->detail . '</b> deleted successfully.')
