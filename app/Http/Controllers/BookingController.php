@@ -360,7 +360,6 @@ class BookingController extends Controller
             ->select('leads.*') // Select all columns from the leads table
             ->get();
 
-        dd($customers);
 
         // Return customers as JSON response
         return response()->json($customers);
@@ -857,7 +856,6 @@ class BookingController extends Controller
                     break;
             }
         } catch (\Exception $e) {
-            dd($e->getMessage());
             return back()->withErrors(['msg' => $e->getMessage()]);
         }
         return back();
