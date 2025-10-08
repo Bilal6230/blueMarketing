@@ -332,11 +332,11 @@ class LedgerController extends Controller
             $ledger = Ledger::findOrFail($request->id);
 
             if (Auth::user()->hasRole('super-admin') || Auth::user()->can('direct-update')) {
-                $customerLedger = $ledger->customerLedger();
+                $customerLedger = $ledger->customerLedger;
                 if ($customerLedger) {
                     $customerLedger->update($data);
                 }
-                $ledger->update($$data);
+                $ledger->update($data);
                 DB::commit();
 
                 Alert::success('Notification', 'Voucher <b>' . $ledger->detail . '</b> deleted successfully.')
@@ -356,6 +356,7 @@ class LedgerController extends Controller
             Alert::info('Notification', 'Delete request for <b>' . $ledger->detail . '</b> is pending admin approval.')
                 ->toToast()->toHtml();
         } catch (\Throwable $th) {
+            dd($th);
             DB::rollBack();
             Alert::error('Notification', 'Failed to delete voucher: ' . $th->getMessage())->toToast()->toHtml();
         }
