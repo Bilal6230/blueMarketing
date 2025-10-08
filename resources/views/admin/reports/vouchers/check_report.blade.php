@@ -308,7 +308,7 @@
                 let id = $(this).attr("data-id");
                 $('#modal-loading').modal({backdrop: 'static', keyboard: false, show: true});
                 $.ajax({
-                    url: "{{ route('ledger.show') }}",
+                    url: "{{ route('customer.ledger.show') }}",
                     type: "POST",
                     dataType: "JSON",
                     data: {
@@ -321,7 +321,32 @@
                         console.log('data in the database  = ',data);
                         $("#id").val(data.id);
                         $("#reference").val(data.reference);
-                        $('#e_projects_id').val(data.project_head_subhead.project_id).trigger('change');
+                        $('#e_projects_id').val(data.project_id).trigger('change');
+                        $('#e_passing_status').val(data.passing_status).change();
+                        if (data.ledger) {
+                            $('#e_accounts_id')
+                                .val(data.ledger.project_head_subhead.head_accounting_id)
+                                .trigger('change');
+
+                            setTimeout(function() {
+                                $('#e_subaccounts_id')
+                                    .val(data.ledger.project_head_subhead.subhead_accounting_id)
+                                    .trigger('change');
+                            }, 1000);
+                        }else{
+                            $('#e_accounts_id')
+                                .val('')
+                                .trigger('change');
+
+                            setTimeout(function() {
+                                $('#e_subaccounts_id')
+                                    .val('')
+                                    .trigger('change');
+                            }, 1000);
+                        }
+                        // setTimeout(function() {
+                        //     $('#passing_status').val(data.passing_status).trigger('change');
+                        // }, 300);
                         // $('#e_accounts_id').val(data.project_head_subhead.head_accounting_id).trigger('change');
 
                         // Set the default date in the date input field using flatpickr
@@ -341,8 +366,8 @@
 
                         }
 
-                        $("#detail").val(data.detail);
-                        console.log(data.detail);
+                        $("#detail").val(data.description);
+                        console.log(data.description);
 
                         $('#modal-loading').modal('hide');
                         $('#modal-edit').modal({backdrop: 'static', keyboard: false, show: true});
@@ -427,7 +452,7 @@
                                 <div class="col-md-3">
                                     <div class="form-group">
                                         <label for="customer">Status</label>
-                                        <select class="form-control select2" name="passing_status" id="passing_status">
+                                        <select class="form-control select2" name="passing_status" id="e_passing_status">
                                             <option value=""> All </option>
                                             @foreach (check_status() as $v)
                                                 <option value="{{ $v['id'] }}" {{ $old_passing_status == $v['id'] ? 'selected' : '' }}>{{ $v['name'] }}</option>
@@ -497,6 +522,11 @@
                                 <div class="input-group">
                                     <select class="form-control select2" name="subaccounts_id" id="e_subaccounts_id">
                                         <option value="">Select an option</option>
+                                        @foreach ($subhead_account_list as $subhead_account)
+                                            <option value="{{ $subhead_account->subhead_accounting_id }}">
+                                                {{ $subhead_account->subheadAccounting->name }}
+                                            </option>
+                                        @endforeach
                                     </select>
                                     @error('subaccounts_id')
                                     <div class="invalid-feedback">{{ $message }}</div>

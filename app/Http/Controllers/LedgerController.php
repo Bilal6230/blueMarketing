@@ -279,6 +279,24 @@ class LedgerController extends Controller
             'data' => $data_list
         ], Response::HTTP_OK);
     }
+    public function customerLedgerShow(Request $request)
+    {
+            $data_list = CustomerLedger::with([
+                'ledger' => function ($q) {
+                    $q->with([
+                        'projectHeadSubhead.headAccounting',
+                        'projectHeadSubhead.subheadAccounting',
+                        'projectHeadSubhead.project'
+                    ]);
+                }
+            ])->where('id', $request->id)->first();
+        // $data_list = Ledger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project', 'customerLedger')->where(['id' => $request->id])->first();
+        return response()->json([
+            'status' => Response::HTTP_OK,
+            'message' => 'Data Project by id',
+            'data' => $data_list
+        ], Response::HTTP_OK);
+    }
     public function draftShow(Request $request)
     {
         $data_list = DraftLedger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project')->where(['id' => $request->id])->first();

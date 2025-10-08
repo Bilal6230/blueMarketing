@@ -244,6 +244,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::match(['get', 'post'], 'fetch-data-url', 'fetch_data_url')->middleware(['permission:master report'])->name('fetch-data-url');
 
         Route::post('accounting/ledger/show', 'show')->name('ledger.show');
+        Route::post('accounting/customer/ledger/show', 'customerLedgerShow')->name('customer.ledger.show');
         Route::post('accounting/draft/ledger/show', 'draftShow')->name('draft.ledger.show');
         Route::post('accounting/ledger/store', 'store')->middleware(['permission:create voucher'])->name('ledger.store');
         Route::post('accounting/ledger/save_as_draft', 'saveAsDraft')->middleware(['permission:create voucher'])->name('ledger.save_as_draft');

@@ -115,5 +115,9 @@ class CustomerLedger extends Model
                         ->whereDate('passing_date', '<=', $tdate);
         }
     }
+    public function ledger()
+    {
+        return $this->hasOne(Ledger::class, 'customer_ledger_id', 'id');
+    }
 
 }

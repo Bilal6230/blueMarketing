@@ -921,6 +921,49 @@
                     });
                 }
             });
+            $('#e_customer_id').change(function(e) {
+                e.preventDefault();
+                var customerId = $(this).val();
+
+                if (customerId) {
+                    eFetchPlots(customerId);
+                } else {
+                    $('#plot_id').empty();
+                    $('#plot_id').append('<option value="">Select an options</option>');
+                }
+
+            });
+            $('#e_plot_id').change(function(e) {
+                e.preventDefault();
+                var plotId = $(this).val();
+                if (plotId) {
+                    $.ajax({
+                        url: '/admin/get-plot-customer', // URL to your route
+                        type: 'POST', // Use POST method for sending data
+                        data: {
+                            _token: '{{ csrf_token() }}', // Add CSRF token
+                            plot_id: plotId // Pass project ID to server
+                        },
+                        success: function(data) {
+                            let customerId = data.id;
+                            // Update the UI based on the response
+                            // let headId = response.headId;
+                            let customerSelect = $('#e_customer_id')[0].tomselect;
+                            customerSelect.setValue(customerId, true);
+                            // let $select = $('#customer_id');
+                            // let $options = $select.find('option');
+                            // let $matchingOption = $options.filter(function() {
+                            //     return $(this).val() == customerId;
+                            // });
+                            // if ($matchingOption.length > 0) {
+                            //     $options.prop('selected', false); // clear previous selections
+                            //     $matchingOption.prop('selected', true); // select matching one
+                            //     $matchingOption.detach().appendTo($select);
+                            // }
+                        }
+                    });
+                }
+            });
 
 
             function fetchPlots(customerId) {
@@ -934,6 +977,46 @@
                     },
                     success: function(data) {
                         let plotEl = $('#plot_id')[0]; // DOM element
+                        let tsPlot = plotEl.tomselect; // TomSelect instance
+                        if (tsPlot) {
+                            // tsPlot.addOption({
+                            //     value: '',
+                            //     text: 'Select an option'
+                            // });
+                            tsPlot.setValue('', true);
+                            tsPlot.clearOptions(); // clear old options
+
+                            $.each(data, function(key, plot) {
+                                var plotType = (plot.type == 1) ? 'R- ' : 'C- ';
+                                tsPlot.addOption({
+                                    value: plot.plot_id,
+                                    text: plotType + ' ' + plot.name
+                                });
+                            });
+
+                            tsPlot.refreshOptions(false);
+                        }
+                        // $('#plot_id').empty();
+                        // $('#plot_id').append('<option value="">Select an options</option>');
+                        // $.each(data, function(key, plot) {
+                        //     var plotType = (plot.type == 1) ? 'R- ' : 'C- ';
+                        //     $('#plot_id').append('<option value="' + plot.plot_id + '">' +
+                        //         plotType + ' ' + plot.name + '  </option>');
+                        // });
+                    }
+                });
+            }
+            function eFetchPlots(customerId) {
+                $.ajax({
+                    url: '/admin/get-plots-list',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        project_id: '{{ getSelectedTown() }}',
+                        customer_id: customerId
+                    },
+                    success: function(data) {
+                        let plotEl = $('#e_plot_id')[0]; // DOM element
                         let tsPlot = plotEl.tomselect; // TomSelect instance
                         if (tsPlot) {
                             // tsPlot.addOption({

@@ -89,7 +89,7 @@ class ReportController extends Controller
         $old_bank_id = $old_fdate = $old_tdate  = null;
         $old_passing_status = 66;
 
-        $query = CustomerLedger::with('customer_list', 'plot_list')
+        $query = CustomerLedger::with('customer_list', 'plot_list','ledger')
         ->whereIn('payment_type', [3, 2])
         ->where('is_active', '1')
         ->where('project_id', getSelectedTown())
@@ -112,6 +112,11 @@ class ReportController extends Controller
                         ->with('headAccounting')
                         ->where(['project_id' => $selectedProjectId])
                         ->get();
+        $sub_data_list = ProjectHeadSubhead::select('project_id','subhead_accounting_id')
+                        ->distinct()
+                        ->with('subheadAccounting')
+                        ->where(['project_id' => $selectedProjectId])
+                        ->get();
 
 
         $x['data'] = $data;
@@ -120,6 +125,7 @@ class ReportController extends Controller
         $x['old_tdate'] = $old_tdate;
         $x['old_passing_status'] = $old_passing_status;
         $x['head_account_list'] = $data_list;
+        $x['subhead_account_list'] = $sub_data_list;
         $x['totalAmountOut'] = $totalAmountOut;  // Add the sum value to the array
 
 
