@@ -25,6 +25,7 @@ class ProjectController extends Controller
 
         $bookings = Booking::with(['customer', 'plot', 'project'])
             ->where('project_id', $request->project_id)
+            ->where('cancel_status', '0')
             ->whereHas('plot', function ($query) use ($request) {
                 $query->where('name', 'like', '%' . $request->searchvalue . '%');
             })
@@ -57,7 +58,7 @@ class ProjectController extends Controller
                     'project'     => $project->project,
                     'address'      => $project->address,
                     'logo'    => $project->logo,
-             
+
                 ];
 
                 $plotData = [
@@ -67,7 +68,7 @@ class ProjectController extends Controller
                     'is_corner'   => $plot->is_corner,
                     'plot_history'   => $plot->plot_history,
                     'sold'   => $plot->sold,
-             
+
                 ];
 
                 $bookingData = [
@@ -83,7 +84,7 @@ class ProjectController extends Controller
                     'booking_date'      => $booking->booking_date,
                     'status'            => $booking->status,
 
-             
+
                 ];
 
                 $customerLedgerSum = CustomerLedger::where('customer_id', $booking->customer_id)
@@ -109,7 +110,7 @@ class ProjectController extends Controller
                     'customer'     => $filteredCustomer,
                 ];
             });
-            
+
 
         return response()->json([
             'message' => 'Booking details retrieved successfully.',
@@ -118,7 +119,7 @@ class ProjectController extends Controller
     }
 
 
-  
+
 
     public function bookingList(Request $request)
     {
@@ -132,7 +133,7 @@ class ProjectController extends Controller
             // 'bookingDetails' => function ($query) use ($today) {
             //     $query->whereDate('due_date', '<=', $today);
             // }
-        ]);
+        ])->where('cancel_status', '0');
 
         // Optional filters based on request parameters
         if ($request->has('project_id')) {
@@ -195,11 +196,12 @@ class ProjectController extends Controller
             return getSumRecovery($booking->plot_id, 'amount_out'); // Your existing helper
         });
 
-        $totalSaleAmount = $data->sum('total_price'); 
+        $totalSaleAmount = $data->sum('total_price');
 
         // Retrieve unique customers associated with the given project_id
         $customers = Booking::with('customer')
         ->where('project_id', $request->input('project_id')) // Filter by project_id
+        ->where('cancel_status', '0')
         ->get()
         ->pluck('customer') // Get only the customer relationships
         ->filter() // Remove nulls (in case a booking has no linked customer)
@@ -219,7 +221,7 @@ class ProjectController extends Controller
         $brokers = ProjectHeadSubhead::where('head_accounting_id', 6)
         ->join('subhead_accountings', 'project_head_subheads.subhead_accounting_id', '=', 'subhead_accountings.id')
         ->get();
-        
+
 
         return response()->json([
             'message' => 'Recovery list retrieved successfully.',
@@ -248,7 +250,7 @@ class ProjectController extends Controller
             'bookingDetails' => function ($query) use ($today) {
                 $query->whereDate('due_date', '<=', $today);
             }
-        ]);
+        ])->where('cancel_status', '0');
 
         // Optional filters based on request parameters
         if ($request->has('project_id')) {
@@ -275,7 +277,7 @@ class ProjectController extends Controller
         // Fetch the filtered data
         $data = $query->get();
 
-        
+
 
         // Calculate the sum of Due Amounts and Received
         $sumDueAmount = $data->sum(function ($booking) {
@@ -286,7 +288,7 @@ class ProjectController extends Controller
             return getSumRecovery($booking->plot_id, 'amount_out'); // Your existing helper
         });
 
-        $totalSaleAmount = $data->sum('total_price'); 
+        $totalSaleAmount = $data->sum('total_price');
 
         return response()->json([
             'message' => 'Recovery list retrieved successfully.',

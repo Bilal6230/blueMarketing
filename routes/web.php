@@ -265,6 +265,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
     });
 
     Route::controller(App\Http\Controllers\BookingController::class)->group(function () {
+        Route::post('booking/cancel/{id}', 'cancel')->middleware(['permission:read plot'])->name('booking.cancel');
         Route::get('booking/plot', 'index')->middleware(['permission:read plot'])->name('booking.plot.index');
         Route::get('booking/plot/sale', 'sale')->middleware(['permission:read plot'])->name('booking.plot.sale');
         Route::post('booking/plot/sale', 'store')->middleware(['permission:create plot'])->name('bookings.store');

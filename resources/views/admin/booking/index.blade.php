@@ -35,7 +35,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Plots List Card -->
                     <div class="col-12">
                         <div class="card">
@@ -70,9 +70,9 @@
                                                 <td>{{ Setting::getShortDate($i->booking_date) }}</td>
                                                 <td>{{ $i->broker->name ?? "" }}</td>
                                                 {{-- <td>{{ Setting::getPlotTypeShort($i->plot_type) }} - <a href="#"> {{ $i->plot->name }}</a></td> --}}
-                                                
+
                                                 <td>
-                                                    {{ Setting::getPlotTypeShort($i->plot_type) }} - 
+                                                    {{ Setting::getPlotTypeShort($i->plot_type) }} -
                                                     <form action="{{ route('booking.customer.report.display') }}" method="POST" style="display: inline;">
                                                         @csrf
                                                         <input type="hidden" name="plot_id" value="{{ $i->plot->id }}">
@@ -84,12 +84,12 @@
                                                         </button>
                                                     </form>
                                                 </td>
-                                                
+
                                                 <td>{{ $i->customer->first_name.' '.$i->customer->last_name.' '.$i->customer->relate.' '.$i->customer->father_name }}</td>
                                                 <td>{{ $i->customer->phone_number }}</td>
                                                 <td>
                                                     @canany(['update plot number', 'update booking price'])
-                                                        <a href="{{ route('booking.price.update', ['id' => $i->id]) }}" 
+                                                        <a href="{{ route('booking.price.update', ['id' => $i->id]) }}"
                                                            class="btn btn-link">
                                                             {{ Setting::formatAmount($i->total_price) }}
                                                         </a>
@@ -102,26 +102,34 @@
                                                         <div class="btn-group">
                                                             @can('update plot')
                                                             @if (Setting::is_schedule($i->id) < 2)
-                                                            <a href="{{ route('booking.schedule.form', ['id' => $i->id]) }}" 
-                                                               class="btn btn-sm btn-primary btn-schedule" 
+                                                            <a href="{{ route('booking.schedule.form', ['id' => $i->id]) }}"
+                                                               class="btn btn-sm btn-primary btn-schedule"
                                                                title="Schedule a Plot">
                                                                 <i class="fas fa-plus"></i>
                                                             </a>
                                                             @else
-                                                            <a href="{{ route('booking.schedule.form', ['id' => $i->id]) }}" 
-                                                               class="btn btn-sm btn-success btn-schedule" 
+                                                            <a href="{{ route('booking.schedule.form', ['id' => $i->id]) }}"
+                                                               class="btn btn-sm btn-success btn-schedule"
                                                                title="Edit Schedule">
                                                                 <i class="fas fa-edit"></i>
                                                             </a>
+                                                            <button
+                                                                class="btn btn-sm btn-success btn-schedule  btn-cancel-booking"
+                                                                data-id="{{ $i->id }}"
+                                                                title="Edit Schedule"
+                                                                data-toggle="modal"
+                                                                data-target="#actionBookingModal">
+                                                                <i class="fas fa-eye"></i>
+                                                            </button>
                                                             @endif
                                                             @endcan
 
                                                             @can('delete booking')
                                                             <!-- Delete Button -->
-                                                            <button class="btn btn-sm btn-danger btn-delete-booking" 
-                                                                    data-id="{{ $i->id }}" 
-                                                                    data-plot="{{ $i->plot->name }}" 
-                                                                    data-toggle="modal" 
+                                                            <button class="btn btn-sm btn-danger btn-delete-booking"
+                                                                    data-id="{{ $i->id }}"
+                                                                    data-plot="{{ $i->plot->name }}"
+                                                                    data-toggle="modal"
                                                                     data-target="#deleteBookingModal">
                                                                 <i class="fas fa-trash"></i>
                                                             </button>
@@ -161,6 +169,12 @@
             $("#confirm_plot_number").val(""); // Clear input field
             $("#deleteError").hide(); // Hide error message
         });
+        $(".btn-cancel-booking").click(function () {
+            debugger;
+            let bookingId = $(this).data("id");
+
+            $("#cancel_booking_id").val(bookingId);
+        });
 
         // Handle form submission for deletion
         $("#deleteBookingForm").submit(function (e) {
@@ -185,6 +199,37 @@
                 },
                 success: function (response) {
                     $("#deleteBookingModal").modal("hide"); // Close modal
+                    location.reload(); // Reload page after deletion
+                },
+                error: function (xhr) {
+                    alert("Error deleting booking. Please try again!"); // Show error message
+                }
+            });
+        });
+        $("#actionBookingForm").submit(function (e) {
+            e.preventDefault(); // Prevent default form submission
+
+            //let enteredPlotName = $("#confirm_plot_number").val().trim(); // Trim spaces
+
+            //if (enteredPlotName !== plotName) {
+            //    $("#deleteError").show(); // Show error message
+            //    return false;
+            //}
+
+            let bookingId = $("#cancel_booking_id").val();
+            let reason = $("#reason").val();
+            let actionUrl = "{{ route('booking.cancel', ':id') }}".replace(':id', bookingId);
+
+            $.ajax({
+                url: actionUrl,
+                type: "POST",
+                data: {
+                    _token: "{{ csrf_token() }}", // CSRF token for security
+                    booking_id: bookingId,
+                    reason: reason
+                },
+                success: function (response) {
+                    $("#actionBookingModal").modal("hide"); // Close modal
                     location.reload(); // Reload page after deletion
                 },
                 error: function (xhr) {
@@ -222,6 +267,64 @@
                     <button type="submit" class="btn btn-danger">Confirm Delete</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="actionBookingModal" tabindex="-1" role="dialog" aria-labelledby="actionBookingModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="actionBookingModalLabel">Multiple Actions</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+           <form id="actionBookingForm" method="POST">
+                @csrf
+
+                <div class="modal-body">
+                    {{-- <p>Please enter the <strong>Plot Number</strong> to confirm Action:</p> --}}
+
+                    <input type="hidden" name="booking_id" id="cancel_booking_id">
+
+                    {{-- <input type="text" class="form-control mb-3" id="confirm_plot_number" name="confirm_plot_number" placeholder="Enter Plot Number">
+
+                    <small class="text-danger" id="deleteError" style="display: none;">Incorrect plot number!</small>
+
+                    <hr> --}}
+
+                    <label><strong>Select Action:</strong></label>
+                    <div class="row">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="action_type" id="action_cancel" value="Cancel" checked>
+                            <label class="form-check-label mr-2" for="action_cancel">Payment not received</label>
+                        </div>
+
+                        {{-- <div class="form-check">
+                            <input class="form-check-input" type="radio" name="action_type" id="action_transfer" value="File Transfer">
+                            <label class="form-check-label mr-2" for="action_transfer">File Transfer</label>
+                        </div>
+
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="action_type" id="action_resale" value="ReSale">
+                            <label class="form-check-label mr-2" for="action_resale">ReSale</label>
+                        </div> --}}
+
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="action_type" id="action_purchase" value="Plot Purchase">
+                            <label class="form-check-label mr-2" for="action_purchase">Plot Purchase</label>
+                        </div>
+                    </div>
+                    <label for="reason">Reason</label>
+                    <textarea name="reason" class="form-control" id="reason" cols="60" ></textarea>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Update</button>
+                </div>
+            </form>
+
         </div>
     </div>
 </div>

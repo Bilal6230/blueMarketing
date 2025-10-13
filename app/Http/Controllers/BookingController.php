@@ -37,7 +37,7 @@ class BookingController extends Controller
     {
         $projectId = getSelectedTown();
         $x['title'] = 'Plots Sale List';
-        $x['data'] = Booking::with('customer', 'plot', 'project', 'broker')->where('project_id', $projectId)->get();
+        $x['data'] = Booking::with('customer', 'plot', 'project', 'broker')->where('cancel_status', '0')->where('project_id', $projectId)->get();
         $x['role'] = Role::get();
 
         // Calculate the sum of the sale amount
@@ -63,6 +63,7 @@ class BookingController extends Controller
             }
         ])
             ->where('project_id', getSelectedTown())
+            ->where('cancel_status', '0')
             ->get();
 
         // Calculate the sum of Due Amounts and Received
@@ -434,7 +435,7 @@ class BookingController extends Controller
     {
         $booking_id = $id;
         $x['title'] = 'Plots Sale List';
-        $x['data'] = Booking::with('customer', 'plot', 'project')->findOrFail($booking_id);
+        $x['data'] = Booking::with('customer', 'plot', 'project')->where('cancel_status', '0')->findOrFail($booking_id);
         $x['role'] = Role::get();
 
         return view('admin.booking.schedule_form', $x);
@@ -444,7 +445,7 @@ class BookingController extends Controller
     {
         $booking_id = $id;
         $x['title'] = 'Plots Price Update';
-        $x['data'] = Booking::with('customer', 'plot', 'project')->findOrFail($booking_id);
+        $x['data'] = Booking::with('customer', 'plot', 'project')->where('cancel_status', '0')->findOrFail($booking_id);
         $x['role'] = Role::get();
 
         return view('admin.booking.price_form', $x);
@@ -902,6 +903,7 @@ class BookingController extends Controller
                     $plot_id = $request->input('plot_id');
                     $x['title'] = 'Payment Plan';
                     $x['data'] = $booking = Booking::with('customer', 'plot', 'project', 'bookingDetails')
+                        ->where('cancel_status', '0')
                         ->where('customer_id', $customer_id)
                         ->where('plot_id', $plot_id)
                         ->first();
@@ -933,6 +935,7 @@ class BookingController extends Controller
                         }
                     ])
                         ->where('customer_id', $customer_id)
+                        ->where('cancel_status', '0')
                         ->where('plot_id', $plot_id)
                         ->first();
 
@@ -975,6 +978,7 @@ class BookingController extends Controller
                         }
                     ])
                         ->where('customer_id', $customer_id)
+                        ->where('cancel_status', '0')
                         ->where('plot_id', $plot_id)
                         ->first();
                     $x['data'] = $booking;
@@ -1043,6 +1047,7 @@ class BookingController extends Controller
                         }
                     ])
                         ->where('customer_id', $customer_id)
+                        ->where('cancel_status', '0')
                         ->where('plot_id', $plot_id)
                         ->first();
                     $x['data'] = $booking;
@@ -1187,6 +1192,47 @@ class BookingController extends Controller
         $booking->delete();
 
         return response()->json(['message' => 'Booking deleted successfully.']);
+    }
+    public function cancel(Request $request)
+    {
+        $booking = Booking::find($request->id);
+
+        // Get the plot linked to this booking
+        $plot = Plot::find($booking->plot_id);
+        if ($plot) {
+            // Save current booking data to plot_history
+            $history = json_decode($plot->plot_history, true) ?? []; // Get existing history or empty array
+            $history[] = [
+                'booking_id' => $booking->id,
+                'customer_id' => $booking->customer_id,
+                'plot_id' => $booking->plot_id,
+                'plot_size' => $booking->plot_size,
+                'plot_rate' => $booking->plot_rate,
+                'total_price' => $booking->total_price,
+                'broker_id' => $booking->broker_id,
+                'booking_date' => $booking->booking_date,
+                'name' => $booking->customer->first_name . ' ' . $booking->customer->last_name,
+                'father_name' => $booking->customer->father_name,
+                'cnic' => $booking->customer->nic_number,
+                'phone_number' => $booking->customer->phone_number,
+                'cancel_reason' => $request->reason,
+                'deleted_at' => now(),
+            ];
+
+            // Save updated history back to plot
+            $plot->update([
+                'sold' => 0, // Reset sold status
+                'plot_history' => json_encode($history),
+            ]);
+        }
+
+        $booking->update([
+            'cancel_status' => 1, // Reset sold status
+            'reason' => $request->reason,
+        ]);
+
+
+        return response()->json(['message' => 'Booking canceled successfully.']);
     }
 
     public function chargeTypeStore(Request $request)
