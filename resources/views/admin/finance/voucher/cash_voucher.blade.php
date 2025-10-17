@@ -838,7 +838,11 @@
                             if (filteredData.length > 0) {
                                 let acct_type = filteredData[0].head_accounting.acct_type;
                                 let acctTypeSelect = $('#acct_type')[0].tomselect;
-                                acctTypeSelect.setValue(acct_type, true);
+
+                                // Only set value if it's different
+                                if (!acctTypeSelect.getValue()) {
+                                    acctTypeSelect.setValue(acct_type, true);
+                                }
                             }
                         }
                     });
@@ -861,10 +865,14 @@
                         success: function(response) {
                             let headId = response.headId;
                             let acctSelect = $('#accounts_id')[0].tomselect;
-                            acctSelect.setValue(headId, true);
+                            if (!acctSelect.getValue()) {
+                                acctSelect.setValue(headId, true);
+                            }
                             let acct_type = response.acct_type;
                             let acctTypeSelect = $('#acct_type')[0].tomselect;
-                            acctTypeSelect.setValue(acct_type, true);
+                            if (!acctTypeSelect.getValue()) {
+                                acctTypeSelect.setValue(acct_type, true);
+                            }
                             console.log(headId, acct_type);
 
                             // $('#accounts_id').val(response.headId).trigger('change');
@@ -1174,7 +1182,9 @@
                             if (filteredData.length > 0) {
                                 let acct_type = filteredData[0].head_accounting.acct_type;
                                 let acctTypeSelect = $('#e_acct_type')[0].tomselect;
-                                acctTypeSelect.setValue(acct_type, true);
+                                if(!acctTypeSelect.getValue()){
+                                    acctTypeSelect.setValue(acct_type, true);
+                                }
                             }
                         }
                     });
@@ -1197,10 +1207,14 @@
                         success: function(response) {
                             let headId = response.headId;
                             let acctSelect = $('#e_accounts_id')[0].tomselect;
-                            acctSelect.setValue(headId, true);
+                            if (!acctSelect.setValue()) {
+                                acctSelect.setValue(headId, true);
+                            }
                             let acct_type = response.acct_type;
                             let acctTypeSelect = $('#e_acct_type')[0].tomselect;
-                            acctTypeSelect.setValue(acct_type, true);
+                            if (!acctTypeSelect.setValue()) {
+                                acctTypeSelect.setValue(acct_type, true);
+                            }
                         },
                         error: function(error) {
                             console.log(error);
