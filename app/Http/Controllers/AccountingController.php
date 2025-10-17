@@ -240,7 +240,6 @@ class AccountingController extends Controller
         return view('admin.finance.accounting.head_accounts', $x);
     }
 
-
     public function head_store(Request $request)
     {
         //dd($request->all());
@@ -271,7 +270,6 @@ class AccountingController extends Controller
         return back();
     }
 
-
     public function head_show(Request $request)
     {
         $data_list = HeadAccounting::where(['id' => $request->id])->first();
@@ -284,38 +282,39 @@ class AccountingController extends Controller
         ], Response::HTTP_OK);
     }
 
-
-
-
     public function head_update(Request $request)
     {
         $rules = [
-            'name' => ['required', 'string', 'max:25']
+            'name' => ['required', 'string', 'max:25'],
+            'acct_type' => ['required'], // validate type as well
         ];
 
         $validator = Validator::make($request->all(), $rules);
         if ($validator->fails()) {
-            return back()->withErrors($validator)
-                ->withInput();
+            return back()->withErrors($validator)->withInput();
         }
-        $data = [
-            'name' => $request->name,
-            'is_active' => $request->is_active,
-        ];
 
         DB::beginTransaction();
         try {
-            $result = HeadAccounting::find($request->id);
-            $result->update($data);
-            //$result->syncRoles($request->role);
+            $result = HeadAccounting::findOrFail($request->id);
+
+            $result->update([
+                'name' => $request->name,
+                'is_active' => $request->is_active,
+                'acct_type' => $request->acct_type, // ✅ added this
+            ]);
+
             DB::commit();
-            Alert::success('Notification', 'Data <b>' . $result->name . '</b> berhasil disimpan')->toToast()->toHtml();
+
+            Alert::success('Notification', 'Data <b>' . $result->name . '</b> updated successfully')->toToast()->toHtml();
         } catch (\Throwable $th) {
             DB::rollback();
-            Alert::error('Notification', 'Data <b>' . $result->name . '</b> gagal disimpan : ' . $th->getMessage())->toToast()->toHtml();
+            Alert::error('Notification', 'Update failed: <b>' . $th->getMessage() . '</b>')->toToast()->toHtml();
         }
+
         return back();
     }
+
 
 
     public function head_destroy(Request $request)
@@ -335,7 +334,7 @@ class AccountingController extends Controller
 
         $power = Auth::user()->roles[0]->name;
 
-        $x['title'] = 'Child Accounts';
+        $x['title'] = 'Party Accounts';
         $x['data'] = SubheadAccounting::get();
         $x['role'] = Role::get();
         $x['users'] = User::get();
@@ -358,8 +357,8 @@ class AccountingController extends Controller
 
         try {
             $data = SubheadAccounting::create([
-
                 'name' => $request->name,
+                'urdu_name' => $request->urdu_name,
                 'is_active' => $request->is_active,
                 'cnic' => $request->cnic,
                 'phone' => $request->phone,
@@ -490,36 +489,49 @@ class AccountingController extends Controller
 
     public function category_index(Request $request)
     {
-
         $power = Auth::user()->roles[0]->name;
+
         $x['title'] = 'Category Details';
         $x['role'] = Role::get();
         $x['users'] = User::get();
         $x['power'] = $power;
-        $headaccounts = HeadAccounting::get();
-        $subheadaccounts = SubheadAccounting::get();
-        $projects = Project::get();
 
-        $x['headaccounts'] = $headaccounts;
-        $x['subheadaccounts'] = $subheadaccounts;
-        $x['projects'] = $projects;
+        $x['headaccounts'] = HeadAccounting::get();
+        $x['subheadaccounts'] = SubheadAccounting::get();
+        $x['projects'] = Project::get();
+        $selectedProjectId = getSelectedTown();
 
+        $x['categoryMappings'] = DB::table('project_head_subheads')
+            ->leftJoin('projects', 'projects.id', '=', 'project_head_subheads.project_id')
+            ->leftJoin('head_accountings', 'head_accountings.id', '=', 'project_head_subheads.head_accounting_id')
+            ->leftJoin('subhead_accountings', 'subhead_accountings.id', '=', 'project_head_subheads.subhead_accounting_id')
+            ->where('projects.id', $selectedProjectId)
+            ->select(
+                'project_head_subheads.subhead_accounting_id',
+                'projects.project as project_name',
+                'subhead_accountings.name as subhead_name',
+                DB::raw('GROUP_CONCAT(head_accountings.name ORDER BY head_accountings.name SEPARATOR ", ") as head_names'),
+                DB::raw('MAX(project_head_subheads.id) as id') // one representative ID
+            )
+            ->groupBy('project_head_subheads.subhead_accounting_id', 'projects.project', 'subhead_accountings.name')
+            ->orderBy('id', 'desc')
+            ->get();
         return view('admin.finance.accounting.category_index', $x);
     }
+
+
+
     public function category_store(Request $request)
     {
         // dd($request->all());
         $validator = Validator::make($request->all(), [
-            'projects_id' => ['required'],
             'accounts_id' => ['required'],
             'subaccounts_id' => ['required'],
-
         ]);
         if ($validator->fails()) {
             return back()->withErrors($validator)
                 ->withInput();
         }
-
 
         try {
             // $data = ProjectHeadSubhead::create([
@@ -533,7 +545,8 @@ class AccountingController extends Controller
 
 
             // Assuming you have fetched the instances of Project, HeadAccounting, and SubHeadAccounting
-            $project = Project::find($request->projects_id);
+            $selectedProjectId = getSelectedTown();
+            $project = Project::find($selectedProjectId);
             $headAccounting = HeadAccounting::find($request->accounts_id);
             $subheadAccounting = SubheadAccounting::find($request->subaccounts_id);
 
@@ -548,7 +561,162 @@ class AccountingController extends Controller
         }
         return back();
     }
+    public function category_edit($id)
+    {
+        // Get representative record
+        $record = DB::table('project_head_subheads as phs')
+            ->leftJoin('subhead_accountings as sh', 'sh.id', '=', 'phs.subhead_accounting_id')
+            ->select(
+                'phs.id',
+                'phs.project_id',
+                'phs.subhead_accounting_id',
+                'sh.name as subhead_name'
+            )
+            ->where('phs.id', $id)
+            ->first();
 
+        if (!$record) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Record not found'
+            ]);
+        }
+
+        // All head accounts
+        $allHeads = DB::table('head_accountings')
+            ->select('id', 'name')
+            ->orderBy('name')
+            ->get();
+
+        // Get all current pivot rows for this subhead/project
+        $pivotRows = DB::table('project_head_subheads')
+            ->where('project_id', $record->project_id)
+            ->where('subhead_accounting_id', $record->subhead_accounting_id)
+            ->select('id as pivot_id', 'head_accounting_id as head_id')
+            ->get();
+
+        // Extract selected head IDs
+        $selectedHeads = $pivotRows->pluck('head_id')->toArray();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'id' => $record->id,
+                'subhead_name' => $record->subhead_name,
+                'selected_heads' => $selectedHeads,
+                'pivots' => $pivotRows
+            ],
+            'heads' => $allHeads
+        ]);
+    }
+    public function category_update(Request $request, $id)
+    {
+        $request->validate([
+            'head_ids' => 'required|array|min:1'
+        ]);
+
+        $baseRecord = DB::table('project_head_subheads')->where('id', $id)->first();
+        if (!$baseRecord) {
+            return response()->json(['status' => 'error', 'message' => 'Record not found']);
+        }
+
+        $projectId = $baseRecord->project_id;
+        $subheadId = $baseRecord->subhead_accounting_id;
+        $newHeadIds = $request->head_ids;
+
+        // Get all existing pivot rows for this project+subhead
+        $existingPivots = DB::table('project_head_subheads')
+            ->where('project_id', $projectId)
+            ->where('subhead_accounting_id', $subheadId)
+            ->get();
+        $existingHeadIds = $existingPivots->pluck('head_accounting_id')->toArray();
+
+        // Compare
+        $toDelete = array_diff($existingHeadIds, $newHeadIds);
+        $toAdd = array_diff($newHeadIds, $existingHeadIds);
+        DB::beginTransaction();
+        try {
+            // 🧩 CASE 1: Remove heads that are no longer selected
+            if (!empty($toDelete)) {
+                foreach ($existingPivots as $pivot) {
+                    if (in_array($pivot->head_accounting_id, $toDelete)) {
+                        // Instead of deleting, just mark it as null or reuse it later if a new head added
+                        DB::table('project_head_subheads')
+                            ->where('id', $pivot->id)
+                            ->update([
+                                'head_accounting_id' => null,
+                                'updated_at' => now()
+                            ]);
+                    }
+                }
+            }
+
+            // 🧩 CASE 2: Reuse cleared pivot rows for new heads (if count matches)
+            $clearedRows = DB::table('project_head_subheads')
+                ->where('project_id', $projectId)
+                ->where('subhead_accounting_id', $subheadId)
+                ->whereNull('head_accounting_id')
+                ->get();
+
+            foreach ($toAdd as $headId) {
+                if ($clearedRows->isNotEmpty()) {
+                    // reuse first cleared row
+                    $reuse = $clearedRows->shift();
+                    DB::table('project_head_subheads')
+                        ->where('id', $reuse->id)
+                        ->update([
+                            'head_accounting_id' => $headId,
+                            'updated_at' => now()
+                        ]);
+                } else {
+                    // if no reusable row, insert new
+                    DB::table('project_head_subheads')->insert([
+                        'project_id' => $projectId,
+                        'head_accounting_id' => $headId,
+                        'subhead_accounting_id' => $subheadId,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                }
+            }
+
+            // 🧩 CASE 3: Cleanup any null rows left unused
+            DB::table('project_head_subheads')
+                ->where('project_id', $projectId)
+                ->where('subhead_accounting_id', $subheadId)
+                ->whereNull('head_accounting_id')
+                ->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Head Accounts updated successfully!'
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Error updating: ' . $e->getMessage()
+            ]);
+        }
+    }
+    public function category_delete($id)
+    {
+        try {
+            $mapping = DB::table('project_head_subheads')->where('id', $id)->first();
+
+            if (!$mapping) {
+                return response()->json(['status' => 'error', 'message' => 'Record not found']);
+            }
+
+            DB::table('project_head_subheads')->where('id', $id)->delete();
+
+            return response()->json(['status' => 'success', 'message' => 'Record deleted successfully!']);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => 'Something went wrong!']);
+        }
+    }
     public function details_party_ledger(Request $request)
     {
         // Validate the request

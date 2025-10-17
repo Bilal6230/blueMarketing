@@ -37,7 +37,7 @@
                                         @csrf
                                         <div class="row">
 
-                                            <div class="mb-3 col-sm-3">
+                                            <div class="mb-3 col-sm-4">
                                                 <div class="input-group">
                                                     <label class="fbox">Serial No.</label>
                                                     <div class="input-group">
@@ -51,7 +51,7 @@
                                                 </div>
                                             </div>
 
-                                            <div class="mb-3 col-sm-3">
+                                            <div class="mb-3 col-sm-4">
                                                 <div class="input-group">
                                                     <label class="fbox">Reference No</label>
                                                     <div class="input-group">
@@ -65,7 +65,7 @@
                                                 </div>
                                             </div>
 
-                                            <div class="mb-3 col-sm-6">
+                                            <div class="mb-3 col-sm-4">
                                                 <div class="input-group">
                                                     <label class="fbox">Date</label>
                                                     <div class="input-group">
@@ -78,12 +78,12 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="mb-3 col-sm-6">
+                                            <div class="mb-3 col-sm-4">
                                                 <div class="input-group">
                                                     <label class="fbox">Account Type</label>
                                                     <div class="input-group">
-                                                        <select class="js-tomselect @error('acct_type') is-invalid @enderror" placeholder=" " autocomplete="off"
-                                                            name="acct_type" id="acct_type">
+                                                        <select class="js-tomselect @error('acct_type') is-invalid @enderror"
+                                                            placeholder=" " autocomplete="off" name="acct_type" id="acct_type">
                                                             <option value=""></option>
                                                             <option value="0">Update Please</option>
                                                             <option value="1">Assets</option>
@@ -98,12 +98,12 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="mb-3 col-sm-6">
+                                            <div class="mb-3 col-sm-4">
                                                 <div class="input-group">
                                                     <label class="fbox">Accounts</label>
                                                     <div class="input-group">
-                                                        <select class="js-tomselect @error('accounts_id') is-invalid @enderror" placeholder=" " name="accounts_id"
-                                                            id="accounts_id">
+                                                        <select class="js-tomselect @error('accounts_id') is-invalid @enderror"
+                                                            placeholder=" " name="accounts_id" id="accounts_id">
                                                             <option value=""></option>
                                                             @foreach ($headaccounts as $v)
                                                                 <option value="{{ $v->head_accounting_id }}">
@@ -116,8 +116,7 @@
                                                     </div>
                                                 </div>
                                             </div>
-
-                                            <div class="mb-3 col-sm-6">
+                                            <div class="mb-3 col-sm-4">
                                                 <div class="input-group">
                                                     <label class="fbox">Child Account</label>
                                                     <div class="input-group">
@@ -143,23 +142,82 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="mb-3 col-sm-6">
-                                                <div class="input-group">
-                                                    <label class="fbox">Amount</label>
+                                                <div class="mb-3 col-sm-3">
                                                     <div class="input-group">
-                                                        <input id="numberInput" oninput="formatAmount(this)" type="text"
-                                                            class="form-control @error('amount') is-invalid @enderror"
-                                                            placeholder="Amount" name="amount" value="{{ old('amount') }}">
-                                                        @error('amount')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                        @enderror
+                                                        <label class="fbox">Amount</label>
+                                                        <div class="input-group">
+                                                            <input id="numberInput" oninput="formatAmount(this)"
+                                                                type="text"
+                                                                class="form-control @error('amount') is-invalid @enderror"
+                                                                placeholder="Amount" name="amount"
+                                                                value="{{ old('amount') }}">
+                                                            @error('amount')
+                                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                            @enderror
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                            <div class="mb-3 col-sm-12">
-                                                <div id="wordingAmount"></div>
-                                            </div>
-                                            <div class="mb-3 col-sm-6">
+                                                <div class="mb-3 col-sm-3">
+                                                    <div class="input-group">
+                                                        <label class="fbox">Payment Type</label>
+                                                        <div class="input-group">
+                                                            <select class="js-tomselect" placeholder=" " name="payment_type"
+                                                                id="payment_type">
+                                                                <option value="1">Cash</option>
+                                                                <option value="2">Online</option>
+                                                                <option value="3">Check</option>
+                                                            </select>
+                                                            @error('payment_type')
+                                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                            @enderror
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3 col-sm-3">
+                                                    <div class="input-group bank_group" style="display: none">
+                                                        <label class="fbox">Number</label>
+                                                        <div class="input-group">
+                                                            <input id="t_number" type="text"
+                                                                class="form-control @error('t_number') is-invalid @enderror"
+                                                                placeholder="Transaction Number" name="t_number"
+                                                                value="{{ old('t_number') }}">
+                                                            @error('amount')
+                                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                            @enderror
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3 col-sm-3">
+                                                    <div class="input-group bank_group" style="display: none">
+                                                        <label class="fbox">Bank</label>
+                                                        <div class="input-group">
+                                                            <select class="js-tomselect" placeholder=" " name="bank_id"
+                                                                id="bank_id">
+                                                                <option value="">Bank</option>
+
+                                                                @foreach (getPakistanBanks() as $v)
+                                                                    <option value="{{ $v['id'] }}">{{ $v['name'] }}
+                                                                    </option>
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3 col-sm-3">
+                                                    <div class="input-group bank_group" style="display: none">
+                                                        <label class="fbox">Passing Date</label>
+                                                        <div class="input-group">
+                                                            <input type="text" name="passing_date"
+                                                                class="date form-control" data-input>
+                                                            @error('passing_date')
+                                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                            @enderror
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                            {{-- <div class="mb-3 col-sm-6">
                                                 <div class="input-group">
                                                     <label class="fbox">Customer</label>
                                                     <div class="input-group">
@@ -204,67 +262,12 @@
                                                         @enderror
                                                     </div>
                                                 </div>
-                                            </div>
-                                            <div class="mb-3 col-sm-3">
-                                                <div class="input-group">
-                                                    <label class="fbox">Payment Type</label>
-                                                    <div class="input-group">
-                                                        <select class="js-tomselect" placeholder=" " name="payment_type"
-                                                            id="payment_type">
-                                                            <option value="1">Cash</option>
-                                                            <option value="2">Online</option>
-                                                            <option value="3">Check</option>
-                                                        </select>
-                                                        @error('payment_type')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="mb-3 col-sm-3">
-                                                <div class="input-group bank_group" style="display: none">
-                                                    <label class="fbox">Number</label>
-                                                    <div class="input-group">
-                                                        <input id="t_number" type="text"
-                                                            class="form-control @error('t_number') is-invalid @enderror"
-                                                            placeholder="Transaction Number" name="t_number"
-                                                            value="{{ old('t_number') }}">
-                                                        @error('amount')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="mb-3 col-sm-3">
-                                                <div class="input-group bank_group" style="display: none">
-                                                    <label class="fbox">Bank</label>
-                                                    <div class="input-group">
-                                                        <select class="js-tomselect" placeholder=" " name="bank_id"
-                                                            id="bank_id">
-                                                            <option value="">Bank</option>
+                                            </div> --}}
 
-                                                            @foreach (getPakistanBanks() as $v)
-                                                                <option value="{{ $v['id'] }}">{{ $v['name'] }}
-                                                                </option>
-                                                            @endforeach
-                                                        </select>
-                                                    </div>
 
-                                                </div>
+                                            <div class="mb-3 col-sm-12">
+                                                <div id="wordingAmount"></div>
                                             </div>
-                                            <div class="mb-3 col-sm-3">
-                                                <div class="input-group bank_group" style="display: none">
-                                                    <label class="fbox">Passing Date</label>
-                                                    <div class="input-group">
-                                                        <input type="text" name="passing_date" class="date form-control"
-                                                            data-input>
-                                                        @error('passing_date')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
-                                                </div>
-                                            </div>
-
                                             <div class="col-md-6">
                                                 <div class="info-card ">
                                                     <h3 class="info-card-title"> Details</h3>
@@ -311,8 +314,7 @@
                                         <div class="d-flex justify-content-end mt-5" style="gap: 10px">
                                             <button type="button" class="btn btn-secondary" data-toggle="modal"
                                                 data-target="#confirmModal" onclick="saveAsDraft()">Save as Draft</button>
-                                            <button type="button" class="btn btn-primary "
-                                                id="submit-button" >Save</button>
+                                            <button type="button" class="btn btn-primary " id="submit-button">Save</button>
                                         </div>
                                     </form>
                                 @endcan
@@ -478,7 +480,6 @@
                 modal.show();
             });
         });
-
     </script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -648,7 +649,7 @@
                             type: 'POST',
                             data: {
                                 _token: '{{ csrf_token() }}',
-                                 table:table
+                                table: table
                             },
                             success: function() {
                                 Swal.fire({
@@ -703,7 +704,7 @@
                             type: 'POST',
                             data: {
                                 _token: '{{ csrf_token() }}',
-                                table:table
+                                table: table
                             },
                             success: function() {
                                 Swal.fire({
@@ -1006,6 +1007,7 @@
                     }
                 });
             }
+
             function eFetchPlots(customerId) {
                 $.ajax({
                     url: '/admin/get-plots-list',
@@ -1265,30 +1267,30 @@
                         eSubAccSelect.setValue(subheadId, true);
 
                         // if (data.customer_ledger != null) {
-                            // $('.customer-detail').removeClass('d-none');
-                            let customerId = data.customer_ledger?.customer_id;
-                            let eCustomerSelect = $('#e_customer_id')[0].tomselect;
-                            eCustomerSelect.setValue(customerId, true);
+                        // $('.customer-detail').removeClass('d-none');
+                        let customerId = data.customer_ledger?.customer_id;
+                        let eCustomerSelect = $('#e_customer_id')[0].tomselect;
+                        eCustomerSelect.setValue(customerId, true);
 
-                            let plotId = data.customer_ledger?.plot_id;
-                            let ePlotSelect = $('#e_plot_id')[0].tomselect;
-                            ePlotSelect.setValue(plotId, true);
+                        let plotId = data.customer_ledger?.plot_id;
+                        let ePlotSelect = $('#e_plot_id')[0].tomselect;
+                        ePlotSelect.setValue(plotId, true);
 
-                            let typeId = data.customer_ledger?.payment_type;
-                            let eTypeSelect = $('#e_payment_type')[0].tomselect;
-                            eTypeSelect.setValue(typeId, true);
-                            if (typeId == 1 || typeId == null || typeId == '') {
-                                $('.e_bank_group').css('display', 'none');
-                            }else{
-                                $('.e_bank_group').css('display', 'block');
-                                let bankId = data.customer_ledger?.bank_id;
-                                let eBankSelect = $('#e_bank_id')[0].tomselect;
-                                eBankSelect.setValue(bankId, true);
-                                let tNumber = data.customer_ledger?.t_number;
-                                $('#e_t_number').val(tNumber);
-                                let passingDate = data.customer_ledger?.passing_date;
-                                $('#e_passing_date').val(passingDate);
-                            }
+                        let typeId = data.customer_ledger?.payment_type;
+                        let eTypeSelect = $('#e_payment_type')[0].tomselect;
+                        eTypeSelect.setValue(typeId, true);
+                        if (typeId == 1 || typeId == null || typeId == '') {
+                            $('.e_bank_group').css('display', 'none');
+                        } else {
+                            $('.e_bank_group').css('display', 'block');
+                            let bankId = data.customer_ledger?.bank_id;
+                            let eBankSelect = $('#e_bank_id')[0].tomselect;
+                            eBankSelect.setValue(bankId, true);
+                            let tNumber = data.customer_ledger?.t_number;
+                            $('#e_t_number').val(tNumber);
+                            let passingDate = data.customer_ledger?.passing_date;
+                            $('#e_passing_date').val(passingDate);
+                        }
                         // }else{
                         //     $('.customer-detail').addClass('d-none');
                         // }
@@ -1352,7 +1354,7 @@
                     e.preventDefault();
                     alert(messages.join("\n"));
                     return;
-                }else{
+                } else {
                     $('#confirmModal').modal('show');
                 }
             });
@@ -1370,6 +1372,7 @@
 
             document.getElementById('wordingAmount').innerText = wordingAmount;
         }
+
         function eConvertToWords() {
             var numberInput = document.getElementById('e_amount').value;
 
@@ -1641,7 +1644,8 @@
                                 <div class="input-group e_bank_group" style="display: none">
                                     <label class="fbox">Passing Date</label>
                                     <div class="input-group">
-                                        <input type="text" name="passing_date" class="date form-control" id="e_passing_date" data-input>
+                                        <input type="text" name="passing_date" class="date form-control"
+                                            id="e_passing_date" data-input>
                                         @error('passing_date')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
