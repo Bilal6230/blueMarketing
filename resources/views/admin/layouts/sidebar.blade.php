@@ -105,7 +105,7 @@
                                     <a href="{{ route('accounting.subhead_index') }}"
                                         class="nav-link {{ request()->routeIs('accounting.subhead_index') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
-                                        <p>Child Account</p>
+                                        <p>Party Account</p>
                                     </a>
                                 </li>
                             @endcan
@@ -241,6 +241,15 @@
                                         class="nav-link {{ request()->routeIs('journal.voucher.index') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>Journal Voucher</p>
+                                    </a>
+                                </li>
+                            @endcan
+                            @can('read jv')
+                                <li class="nav-item">
+                                    <a href="{{ route('commision.voucher.index') }}"
+                                        class="nav-link {{ request()->routeIs('commision.voucher.index') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Commision Voucher</p>
                                     </a>
                                 </li>
                             @endcan
