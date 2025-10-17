@@ -216,6 +216,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         //accounting routes
 
         Route::get('finance/voucher', 'index')->middleware(['permission:read voucher'])->name('finance.voucher.index');
+        Route::get('finance/voucher/pending_updates', 'pendingIndex')->middleware(['permission:read voucher'])->name('finance.voucher.pending_updates_index');
         Route::get('finance/voucher/in', 'cash_in')->middleware(['permission:read voucher'])->name('finance.voucher.in');
         Route::get('finance/voucher/out', 'cash_out')->middleware(['permission:read voucher'])->name('finance.voucher.out');
         Route::get('finance/voucher/data', 'cash_out_data')->middleware(['permission:read voucher'])->name('voucher.cash_out.data');
@@ -223,6 +224,8 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::get('finance/voucher/draft', 'cash_draft')->middleware(['permission:read voucher'])->name('finance.voucher.draft');
         Route::post('finance/voucher/{id}/approve', 'approve')->middleware(['permission:read voucher'])->name('finance.voucher.approve');
         Route::post('finance/voucher/{id}/reject', 'reject')->middleware(['permission:read voucher'])->name('finance.voucher.reject');
+        Route::post('finance/voucher/{id}/approveadmin', 'approveAdmin')->middleware(['permission:read voucher'])->name('finance.voucher.approveadmin');
+        Route::post('finance/voucher/{id}/rejectadmin', 'rejectAdmin')->middleware(['permission:read voucher'])->name('finance.voucher.rejectadmin');
     });
 
     Route::controller(DastiCashController::class)->prefix('dasticash')->name('dasticash.')->group(function () {

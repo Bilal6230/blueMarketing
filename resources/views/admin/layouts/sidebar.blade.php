@@ -224,6 +224,13 @@
                                         <p>Draft Voucher</p>
                                     </a>
                                 </li>
+                                <li class="nav-item">
+                                    <a href="{{ route('finance.voucher.pending_updates_index') }}"
+                                        class="nav-link {{ request()->routeIs('finance.voucher.pending_updates_index') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Admin Approvals Voucher</p>
+                                    </a>
+                                </li>
 
 
 

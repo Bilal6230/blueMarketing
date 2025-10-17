@@ -92,7 +92,7 @@ class JournalVoucherController extends Controller
         $selectedProjectId = getSelectedTown();
 
         DB::beginTransaction();
-        try {
+        // try {
             // Create Journal Voucher Record
             $journalVoucher = JournalVoucher::create([
                 'voucher_number' => $lastVoucherId+1,
@@ -135,10 +135,10 @@ class JournalVoucherController extends Controller
 
             DB::commit();
             return redirect()->route('journal.voucher.index')->with('success', 'Journal Voucher created successfully.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()->withErrors(['error' => $e->getMessage()]);
-        }
+        // } catch (\Exception $e) {
+        //     DB::rollBack();
+        //     return redirect()->back()->withErrors(['error' => $e->getMessage()]);
+        // }
     }
 
     // public function edit($id)

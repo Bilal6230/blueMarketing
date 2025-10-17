@@ -270,6 +270,7 @@
                 const modal = new bootstrap.Modal($('#viewChangesModal')[0]);
                 modal.show();
             });
+            
             // Approve voucher
             $(document).on('click', '.btn-approve', function(e) {
                 e.preventDefault();

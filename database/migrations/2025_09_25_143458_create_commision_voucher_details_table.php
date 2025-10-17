@@ -21,8 +21,8 @@ class CreateCommisionVoucherDetailsTable extends Migration
             $table->decimal('credit', 15, 2)->default(0); // Credit amount
             $table->text('description')->nullable(); // Line item description
             $table->timestamps(); // Created and updated timestamps
-
             // Foreign key constraints
+            $table->softDeletes(); // This creates a DATETIME `deleted_at` column
             $table->foreign('commision_voucher_id')->references('id')->on('commision_vouchers')->onDelete('cascade');
             // $table->foreign('account_id')->references('id')->on('project_head_subheads')->onDelete('cascade');
         });

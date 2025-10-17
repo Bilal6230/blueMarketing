@@ -154,8 +154,16 @@
 
 @section('js')
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    @if (session('error'))
+        <script>
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                html: `{!! session('error') !!}`
+            });
+        </script>
+    @endif
     <script>
-        
         $(function() {
             // initialize Select2 (ensure select2 CSS/JS loaded in layout)
             function initSelect2() {
@@ -312,6 +320,7 @@
                 autoWidth: false,
                 pageLength: 10
             });
+
         });
     </script>
 @endsection

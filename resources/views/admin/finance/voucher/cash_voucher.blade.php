@@ -479,6 +479,7 @@
                 const modal = new bootstrap.Modal($('#viewChangesModal')[0]);
                 modal.show();
             });
+       
         });
     </script>
     <script>

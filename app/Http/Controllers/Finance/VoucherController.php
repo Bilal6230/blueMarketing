@@ -55,6 +55,24 @@ class VoucherController extends Controller
         // $x['subheadaccounts'] = $subheadaccounts;
         return view('admin.finance.voucher.accounting_index', $x);
     }
+    public function pendingIndex()
+    {
+        $user = Auth::user();
+        $power = $user->roles[0]->name ?? 'User';
+
+        $x['title'] = 'Pending Admin Approvals';
+        $x['power'] = $power;
+        $x['users'] = User::get();
+
+        // Fetch only pending updates (you can show approved/rejected with filters later)
+        $x['pendingUpdates'] = PendingUpdate::with(['submittedBy', 'approvedBy'])
+            ->orderBy('created_at', 'desc')
+            ->where('status', 'pending')
+            ->get();
+
+        return view('admin.pending-approve.pending_updates_index', $x);
+    }
+
 
     public function cash_in()
     {
@@ -192,6 +210,82 @@ class VoucherController extends Controller
     {
         $pending = PendingUpdate::where('record_id', $id)
             ->where('table_name', $request->table)
+            ->where('status', 'pending')
+            ->firstOrFail();
+
+        if (!Auth::user()->hasRole('super-admin') && !Auth::user()->can('direct-update')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $pending->update([
+            'status' => 'rejected',
+            'approved_by' => Auth::id(),
+        ]);
+
+        return back()->with('success', 'Voucher rejected.');
+    }
+    public function approveAdmin($id, Request $request)
+    {
+        // Whitelist allowed tables to prevent SQL injection
+        // $allowedTables = ['ledgers', 'customers', 'projects']; // add all tables you want to allow
+        // if (!in_array($request->table, $allowedTables)) {
+        //     abort(400, 'Invalid table name.');
+        // }
+
+        // Fetch pending update record
+        $pending = PendingUpdate::where('id', $id)
+            ->where('status', 'pending')
+            ->firstOrFail();
+
+        // Authorization check
+        if (!Auth::user()->hasRole('super-admin') && !Auth::user()->can('direct-update')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+
+        $pendingNewChanges = json_decode($pending->new_values, true);
+        if (isset($pendingNewChanges['is_active']) && $pending->new_values == $pendingNewChanges['is_active']) {
+            DB::transaction(function () use ($pending, $pendingNewChanges, $request) {
+                $result = DB::table($request->table)::findOrFail($pending->record_id);
+                if ($request->table == 'ledgers') {
+                    $customerLedger = $result->customerLedger;
+                    if ($customerLedger) {
+                        $customerLedger->update($pendingNewChanges);
+                    }
+                }
+                $result->update($pendingNewChanges);
+            });
+        }
+
+        DB::transaction(function () use ($pending, $pendingNewChanges, $request) {
+            // Check if record exists
+            $record = DB::table($request->table)
+                ->where('id', $pending->record_id)
+                ->first();
+
+            if (!$record) {
+                abort(404, 'Record not found.');
+            }
+
+            // Update record dynamically
+            DB::table($request->table)
+                ->where('id', $pending->record_id)
+                ->update($pendingNewChanges);
+
+            // Mark pending as approved
+            $pending->update([
+                'status' => 'approved',
+                'approved_by' => Auth::id(),
+            ]);
+        });
+
+        return back()->with('success', 'Record approved successfully.');
+    }
+
+
+    public function rejectAdmin($id, Request $request)
+    {
+        $pending = PendingUpdate::where('id', $id)
             ->where('status', 'pending')
             ->firstOrFail();
 

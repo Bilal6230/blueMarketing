@@ -549,7 +549,10 @@ class AccountingController extends Controller
             $project = Project::find($selectedProjectId);
             $headAccounting = HeadAccounting::find($request->accounts_id);
             $subheadAccounting = SubheadAccounting::find($request->subaccounts_id);
-
+            $exist = ProjectHeadSubhead::where('subhead_accounting_id', $subheadAccounting->id)->where('head_accounting_id', $request->accounts_id)->first();
+            if ($exist) {
+                return redirect()->back()->with('error', 'Head Account already exists for this Child Account.');
+            }
             // Associating a HeadAccounting with a Project and SubHeadAccounting
             $project->headAccountings()->attach($headAccounting, ['subhead_accounting_id' => $subheadAccounting->id]);
 

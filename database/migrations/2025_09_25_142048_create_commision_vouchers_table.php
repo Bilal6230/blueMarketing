@@ -17,7 +17,6 @@ class CreateCommisionVouchersTable extends Migration
             $table->id(); // Primary key
             $table->string('voucher_number')->unique(); // Voucher number
             $table->unsignedBigInteger('project_id'); // Foreign key to JournalVoucher
-            $table->unsignedBigInteger('deleted_at'); // Foreign key to JournalVoucher
             $table->string('reference')->nullable(); // Reference
             $table->text('description')->nullable(); // Description
             $table->date('date'); // Voucher date
@@ -26,9 +25,10 @@ class CreateCommisionVouchersTable extends Migration
             $table->unsignedBigInteger('created_by'); // User who created
             $table->unsignedBigInteger('updated_by')->nullable(); // User who updated
             $table->foreign('project_id')->references('id')->on('projects')->onDelete('cascade');
-            $table->foreign('deleted_at')->references('id')->on('users')->onDelete('cascade');
             $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending'); // Status
             $table->timestamps(); // Created and updated timestamps
+            $table->softDeletes(); // This creates a DATETIME `deleted_at` column
+
         });
     }
 

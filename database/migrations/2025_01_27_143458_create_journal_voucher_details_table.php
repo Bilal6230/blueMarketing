@@ -21,6 +21,7 @@ class CreateJournalVoucherDetailsTable extends Migration
             $table->decimal('credit', 15, 2)->default(0); // Credit amount
             $table->text('description')->nullable(); // Line item description
             $table->timestamps(); // Created and updated timestamps
+            $table->softDeletes(); // This creates a DATETIME `deleted_at` column
 
             // Foreign key constraints
             $table->foreign('journal_voucher_id')->references('id')->on('journal_vouchers')->onDelete('cascade');
