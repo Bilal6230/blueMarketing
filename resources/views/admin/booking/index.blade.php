@@ -103,35 +103,40 @@
                                                             @can('update plot')
                                                             @if (Setting::is_schedule($i->id) < 2)
                                                             <a href="{{ route('booking.schedule.form', ['id' => $i->id]) }}"
-                                                               class="btn btn-sm btn-primary btn-schedule"
+                                                               class="btn btn-xs ml-1 btn-primary btn-schedule"
                                                                title="Schedule a Plot">
-                                                                <i class="fas fa-plus"></i>
+                                                                <i class="fas fa-plus fa-xs"></i>
                                                             </a>
                                                             @else
                                                             <a href="{{ route('booking.schedule.form', ['id' => $i->id]) }}"
-                                                               class="btn btn-sm btn-success btn-schedule"
+                                                               class="btn btn-xs ml-1 btn-success btn-schedule"
                                                                title="Edit Schedule">
-                                                                <i class="fas fa-edit"></i>
+                                                                <i class="fas fa-edit fa-xs"></i>
+                                                            </a>
+                                                            <a href="{{ route('booking.plot.file-transfer', ['id' => $i->id]) }}"
+                                                            class="btn btn-xs ml-1 btn-warning btn-file-transfer"
+                                                            title="File Transfer">
+                                                                <i class="fas fa-exchange-alt fa-xs"></i>
                                                             </a>
                                                             <button
-                                                                class="btn btn-sm btn-success btn-schedule  btn-cancel-booking"
+                                                                class="btn btn-xs ml-1 btn-danger btn-schedule  btn-cancel-booking"
                                                                 data-id="{{ $i->id }}"
-                                                                title="Edit Schedule"
+                                                                title="Payment not received"
                                                                 data-toggle="modal"
                                                                 data-target="#actionBookingModal">
-                                                                <i class="fas fa-eye"></i>
+                                                                <i class="fas fa-times fa-xs"></i>
                                                             </button>
                                                             @endif
                                                             @endcan
 
                                                             @can('delete booking')
                                                             <!-- Delete Button -->
-                                                            <button class="btn btn-sm btn-danger btn-delete-booking"
+                                                            <button class="btn btn-xs ml-1 btn-danger btn-delete-booking"
                                                                     data-id="{{ $i->id }}"
                                                                     data-plot="{{ $i->plot->name }}"
                                                                     data-toggle="modal"
                                                                     data-target="#deleteBookingModal">
-                                                                <i class="fas fa-trash"></i>
+                                                                <i class="fas fa-trash fa-xs"></i>
                                                             </button>
                                                             @endcan
 
