@@ -223,6 +223,8 @@
 
             let bookingId = $("#cancel_booking_id").val();
             let reason = $("#reason").val();
+            let actionType = $('input[name="action_type"]:checked').val();
+
             let actionUrl = "{{ route('booking.cancel', ':id') }}".replace(':id', bookingId);
 
             $.ajax({
@@ -231,7 +233,8 @@
                 data: {
                     _token: "{{ csrf_token() }}", // CSRF token for security
                     booking_id: bookingId,
-                    reason: reason
+                    reason: reason,
+                    action_type: actionType
                 },
                 success: function (response) {
                     $("#actionBookingModal").modal("hide"); // Close modal
@@ -279,7 +282,7 @@
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="actionBookingModalLabel">Multiple Actions</h5>
+                <h5 class="modal-title" id="actionBookingModalLabel">Plot Cancellation</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
@@ -301,23 +304,16 @@
                     <label><strong>Select Action:</strong></label>
                     <div class="row">
                         <div class="form-check">
-                            <input class="form-check-input" type="radio" name="action_type" id="action_cancel" value="Cancel" checked>
-                            <label class="form-check-label mr-2" for="action_cancel">Payment not received</label>
+                            <input class="form-check-input" type="radio" name="action_type" id="payment_not_received" value="payment_not_received" checked>
+                            <label class="form-check-label mr-2" for="payment_not_received">Payment not received</label>
                         </div>
-
-                        {{-- <div class="form-check">
-                            <input class="form-check-input" type="radio" name="action_type" id="action_transfer" value="File Transfer">
-                            <label class="form-check-label mr-2" for="action_transfer">File Transfer</label>
-                        </div>
-
                         <div class="form-check">
-                            <input class="form-check-input" type="radio" name="action_type" id="action_resale" value="ReSale">
-                            <label class="form-check-label mr-2" for="action_resale">ReSale</label>
-                        </div> --}}
-
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="action_type" id="action_purchase" value="Plot Purchase">
+                            <input class="form-check-input" type="radio" name="action_type" id="action_purchase" value="plot_purchase">
                             <label class="form-check-label mr-2" for="action_purchase">Plot Purchase</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="action_type" id="re_sale" value="re_sale">
+                            <label class="form-check-label mr-2" for="re_sale">ReSale</label>
                         </div>
                     </div>
                     <label for="reason">Reason</label>

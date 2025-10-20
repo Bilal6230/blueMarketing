@@ -184,12 +184,12 @@
                                     <div class="row">
                                         <div class="col-md-3">
                                             <div class="form-group">
-                                                <input type="text" oninput="formatAmount(this)" class="form-control" id="plot_rate" name="plot_rate" value="{{ $booking->plot_rate ?? '' }}" placeholder="Rate / Marla " readonly>
+                                                <input type="text" oninput="formatAmount(this)" class="form-control" id="plot_rate" name="plot_rate" value="{{ $booking->plot_rate ?? '' }}" placeholder="Rate / Marla " {{ $booking->plot_rate == 0 ? 'readonly' : '' }}>
                                             </div>
                                         </div>
                                         <div class="col-md-9">
                                             <div class="form-group">
-                                                <input type="text" class="form-control" id="sub_total_price" name="sub_total_price" value="{{ $booking->sub_total_price ?? '' }}" placeholder="Total Price" readonly >
+                                                <input type="text" class="form-control" id="sub_total_price" name="sub_total_price" @if($booking->sub_total_price > 0) value="{{ $booking->sub_total_price ?? '' }}" @endif placeholder="Total Price" readonly >
                                             </div>
                                         </div>
                                     </div>
@@ -204,7 +204,7 @@
                                         </div>
                                         <div class="col-md-9">
                                             <div class="form-group">
-                                                <input type="text" class="form-control" id="park_facing" name="park_facing" value="{{ $booking->park_facing ?? '' }}" placeholder="Park Facing Charges " {{ $booking->is_park == '0' ? 'readonly' : '' }}>
+                                                <input type="text" class="form-control" id="park_facing" name="park_facing" @if ($booking->park_facing > 0) value="{{ $booking->park_facing ?? '' }}" @endif  placeholder="Park Facing Charges " {{ $booking->is_park == '0' ? 'readonly' : '' }}>
                                             </div>
                                         </div>
                                     </div>
@@ -220,7 +220,7 @@
                                         </div>
                                         <div class="col-md-9">
                                             <div class="form-group">
-                                                <input type="text" class="form-control" id="carner_price" name="carner_price" value="{{ $booking->carner_price ?? '' }}" placeholder="Carner Charges " {{ $booking->is_corner == '0' ? 'readonly' : '' }} >
+                                                <input type="text" class="form-control" id="carner_price" name="carner_price" @if($booking->carner_price > 0) value="{{ $booking->carner_price ?? '' }}" @endif placeholder="Carner Charges " {{ $booking->is_corner == '0' ? 'readonly' : '' }} >
                                             </div>
                                         </div>
                                     </div>
@@ -409,8 +409,14 @@
     });
 
     // Event listener for plot size and plot rate change
-    $('#plot_size, #plot_rate').change(function() {
+    $('#plot_size, #plot_rate').on('input', function() {
+        plotTotalPrice();
+    });
+    plotTotalPrice();
+    function plotTotalPrice() {
         var numberInput = $('#plot_rate').val();
+        console.log(numberInput);
+
 
         // Remove commas for thousands separator
         var numericValue = numberInput.replace(/,/g, '');
@@ -428,10 +434,14 @@
             // Set the value of #total_price
             $('#sub_total_price').val(formattedPrice);
         }
-    });
+    }
 
     // Event listener for sub total price, park facing, and carner price change
     $('#sub_total_price, #park_facing, #carner_price , #discount_value').on('input', function() {
+        totalPrice();
+    });
+    totalPrice();
+    function totalPrice() {
         var subTotalPrice = parseFloat($('#sub_total_price').val().replace(/,/g, '')) || 0; // Remove commas for thousands separator
 
         // Retrieve park facing and ensure it defaults to 0 if empty
@@ -442,18 +452,18 @@
 
         var discount_value = parseFloat($('#discount_value').val().replace(/,/g, '')) || 0; // Remove commas for thousands separator
 
-            // Check if sub total price, park facing, and carner price are valid numbers
-            if ( !isNaN(parkFacing) && !isNaN(carnerPrice)) {
-                // Calculate total price by adding sub total price, park facing, and carner price
-                var totalPrice = (subTotalPrice + parkFacing + carnerPrice)-discount_value;
+        // Check if sub total price, park facing, and carner price are valid numbers
+        if ( !isNaN(parkFacing) && !isNaN(carnerPrice)) {
+            // Calculate total price by adding sub total price, park facing, and carner price
+            var totalPrice = (subTotalPrice + parkFacing + carnerPrice)-discount_value;
 
-                // Format totalPrice with commas for thousands separator
-                var formattedPrice = totalPrice.toLocaleString();
+            // Format totalPrice with commas for thousands separator
+            var formattedPrice = totalPrice.toLocaleString();
 
-                // Set the value of #total_price
-                $('#total_price').val(formattedPrice);
-            }
-    });
+            // Set the value of #total_price
+            $('#total_price').val(formattedPrice);
+        }
+    }
 
 
 

@@ -30,4 +30,13 @@ class Plot extends Model
     {
         return $this->hasOne(HoldPlot::class);
     }
+    public function bookings()
+    {
+        return $this->hasMany(Booking::class, 'plot_id', 'id');
+    }
+    public function projectHeadSubheads()
+    {
+        return $this->hasMany(ProjectHeadSubhead::class, 'plot_id', 'id');
+    }
+
 }
