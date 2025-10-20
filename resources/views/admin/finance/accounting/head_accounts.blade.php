@@ -175,6 +175,8 @@
                         var data = data.data;
                         $("#name").val(data.name);
                         $("#id").val(data.id);
+                        $("#acct_type").val(data
+                        .acct_type); // ✅ This sets the correct option selected
                         $('#modal-loading').modal('hide');
                         $('#modal-edit').modal({
                             backdrop: 'static',
@@ -291,7 +293,7 @@
                                 <div class="input-group">
                                     <label>Type</label>
                                     <div class="input-group">
-                                        <select class="form-control" name="acct_type">
+                                        <select class="form-control" id="acct_type" name="acct_type">
                                             <option value="1">Assets</option>
                                             <option value="2">Owner</option>
                                             <option value="3">Recovery</option>
