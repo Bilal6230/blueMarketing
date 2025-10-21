@@ -242,6 +242,7 @@ class LeadRepository {
     {
 
         $profile =  Lead::where('is_active', 1);
+
         if(!is_null($status)){
         $profile =  $profile->where('follow_up', '<', now()->toDateTimeString());
 
@@ -250,7 +251,6 @@ class LeadRepository {
             $profile =  $profile->where('phone_number', $number)->orWhere('mobile_number', $number);
 
         }
-
 
         $profile = $profile->first();
         return $profile;

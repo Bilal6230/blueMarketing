@@ -594,7 +594,7 @@ if (!function_exists('getLastJvId')) {
      */
     function getLastJvId()
     {
-        return \App\Models\JournalVoucher::withTrashed()->latest('created_at')->value('id');
+        return \App\Models\JournalVoucher::withTrashed()->max('id');
     }
 }
 

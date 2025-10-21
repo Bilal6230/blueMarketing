@@ -145,6 +145,8 @@
                                         <div class="form-group row">
                                             <div id="msg" class="message  ">
                                             </div>
+                                            <div id="soft-alert" class="alert" style="display:none;"></div>
+
                                         </div>
                                     </div>
                                 </div>
@@ -169,7 +171,8 @@
                                         <div class="financial-circle bg_success">
                                             <div class="circle-content">
                                                 <h6>Hand Cash</h6>
-                                                <h4 class="mt-2">{{ number_format($total_blance-$total_bank_account_data, 2) }}</h4>
+                                                <h4 class="mt-2">
+                                                    {{ number_format($total_blance - $total_bank_account_data, 2) }}</h4>
                                             </div>
                                         </div>
                                         <p class="text-muted mt-2 text-center">Hand Cash Balance</p>
@@ -435,5 +438,10 @@
                 $('#editDasticashModal').modal('show');
             });
         });
+        $(document).off('click', '#requestEditBtn').on('click',
+            '#requestEditBtn',
+            function() {
+                alert('Edit request sent to admin!');
+            });
     </script>
 @endsection

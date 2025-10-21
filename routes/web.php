@@ -144,6 +144,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::post('crm/lead/show', 'show')->middleware(['permission:read lead'])->name('crm.lead.show');
         Route::put('crm/lead', 'update')->middleware(['permission:update lead'])->name('crm.lead.update');
         Route::delete('crm/lead', 'destroy')->middleware(['permission:delete lead'])->name('crm.lead.destroy');
+        Route::post('crm/request-edit', 'requestEditBtn')->middleware(['permission:delete lead'])->name('request.edit.btn');
 
         Route::get('crm/lead/assign/', 'assign')->middleware(['permission:read lead'])->name('crm.lead.assign');
         Route::get('crm/lead/work/', 'details')->name('lead.work');

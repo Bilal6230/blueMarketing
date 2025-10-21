@@ -109,6 +109,7 @@
             $(document).on('click', '.approve-btn', function(e) {
                 e.preventDefault();
                 const id = $(this).data('id');
+                const table = $(this).data('table');
                 const container = $(this).closest('.admin_approval'); // full container to remove
 
                 Swal.fire({

@@ -158,7 +158,7 @@ class VoucherController extends Controller
         $pending = PendingUpdate::where('record_id', $id)
             ->where('table_name', $request->table)
             ->where('status', 'pending')
-            ->firstOrFail();
+            ->firstOrFail();       
 
         // Authorization check
         if (!Auth::user()->hasRole('super-admin') && !Auth::user()->can('direct-update')) {
@@ -240,6 +240,19 @@ class VoucherController extends Controller
         // Authorization check
         if (!Auth::user()->hasRole('super-admin') && !Auth::user()->can('direct-update')) {
             abort(403, 'Unauthorized action.');
+        }
+         if ($request->table == 'leads') {
+            DB::table('lead_user')->insert([
+                'lead_id' => $pending->record_id,
+                'user_id' => $pending->submitted_by,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $pending->update([
+                'status' => 'approved',
+                'approved_by' => Auth::id(),
+            ]);
+            return back()->with('success', 'Record approved successfully.');
         }
 
 
