@@ -30,6 +30,7 @@ class Booking extends Model
         'status',
         'user_id',
         'cancel_status',
+        'cancel_type',
         'reason',
     ];
 

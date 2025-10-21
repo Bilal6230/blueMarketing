@@ -261,6 +261,7 @@ class BookingController extends Controller
             }
 
             Ledger::create([
+                'customer_ledger_id' => $customerLedger->id,
                 'type' => 'CR',
                 'type_id' => $lastId + 2,
                 'project_head_subheads_id' => $creditAccountId,
@@ -1518,6 +1519,7 @@ class BookingController extends Controller
 
         $booking->update([
             'cancel_status' => 1, // Reset sold status
+            'cancel_type' => $request->action_type,
             'reason' => $request->reason,
         ]);
 

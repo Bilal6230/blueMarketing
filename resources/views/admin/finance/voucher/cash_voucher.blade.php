@@ -24,8 +24,35 @@
         <section class="content">
             <div class="container-fluid">
                 <div class="row">
+                    <!-- Cash Voucher Form -->
                     <div class="col-12 mb-4">
-                        <div class="custom_card h-100">
+                        <div class="d-flex gap-2 mb-3" style="gap: 10px;" id="voucher-tabs-container">
+                            <button class="btn btn-success btn-sm" id="add-new-voucher-btn">
+                                <i class="fas fa-plus"></i> Add New Cash Voucher
+                            </button>
+                            <div id="voucher-tabs" class="d-flex gap-2" style="gap: 10px;">
+                                <div class="voucher-tab-wrapper position-relative">
+                                    <button class="btn btn-primary btn-sm active voucher-tab" data-tab="1">Voucher#1</button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Loader -->
+                        <div id="voucher-loader" class="text-center" style="display: none;">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="sr-only">Loading...</span>
+                            </div>
+                            <p class="mt-2">Processing...</p>
+                        </div>
+
+                        <div class="custom_card">
+                            <!-- Form Card Loader -->
+                            <div id="form-card-loader" class="card-loader-overlay" style="display: none;">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="sr-only">Loading...</span>
+                                </div>
+                                <p class="mt-2">Processing...</p>
+                            </div>
+                            
                             <div class="card-body">
                                 <div class="mb-3 d-flex align-items-center justify-content-between">
                                     <h5 class="text-lg font-semibold"> {{ $title }}</h5>
@@ -142,80 +169,78 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                                <div class="mb-3 col-sm-3">
+                                            <div class="mb-3 col-sm-3">
+                                                <div class="input-group">
+                                                    <label class="fbox">Amount</label>
                                                     <div class="input-group">
-                                                        <label class="fbox">Amount</label>
-                                                        <div class="input-group">
-                                                            <input id="numberInput" oninput="formatAmount(this)"
-                                                                type="text"
-                                                                class="form-control @error('amount') is-invalid @enderror"
-                                                                placeholder="Amount" name="amount"
-                                                                value="{{ old('amount') }}">
-                                                            @error('amount')
-                                                                <div class="invalid-feedback">{{ $message }}</div>
-                                                            @enderror
-                                                        </div>
+                                                        <input id="numberInput" oninput="formatAmount(this)" type="text"
+                                                            class="form-control @error('amount') is-invalid @enderror"
+                                                            placeholder="Amount" name="amount" value="{{ old('amount') }}">
+                                                        @error('amount')
+                                                            <div class="invalid-feedback">{{ $message }}</div>
+                                                        @enderror
                                                     </div>
                                                 </div>
-                                                <div class="mb-3 col-sm-3">
+                                            </div>
+                                            <div class="mb-3 col-sm-3">
+                                                <div class="input-group">
+                                                    <label class="fbox">Payment Type</label>
                                                     <div class="input-group">
-                                                        <label class="fbox">Payment Type</label>
-                                                        <div class="input-group">
-                                                            <select class="js-tomselect" placeholder=" " name="payment_type"
-                                                                id="payment_type">
-                                                                <option value="1">Cash</option>
-                                                                <option value="2">Online</option>
-                                                                <option value="3">Check</option>
-                                                            </select>
-                                                            @error('payment_type')
-                                                                <div class="invalid-feedback">{{ $message }}</div>
-                                                            @enderror
-                                                        </div>
+                                                        <select class="js-tomselect" placeholder=" " name="payment_type"
+                                                            id="payment_type">
+                                                            <option value="1">Cash</option>
+                                                            <option value="2">Online</option>
+                                                            <option value="3">Check</option>
+                                                        </select>
+                                                        @error('payment_type')
+                                                            <div class="invalid-feedback">{{ $message }}</div>
+                                                        @enderror
                                                     </div>
                                                 </div>
-                                                <div class="mb-3 col-sm-3">
-                                                    <div class="input-group bank_group" style="display: none">
-                                                        <label class="fbox">Number</label>
-                                                        <div class="input-group">
-                                                            <input id="t_number" type="text"
-                                                                class="form-control @error('t_number') is-invalid @enderror"
-                                                                placeholder="Transaction Number" name="t_number"
-                                                                value="{{ old('t_number') }}">
-                                                            @error('amount')
-                                                                <div class="invalid-feedback">{{ $message }}</div>
-                                                            @enderror
-                                                        </div>
+                                            </div>
+                                            <div class="mb-3 col-sm-3">
+                                                <div class="input-group bank_group" style="display: none">
+                                                    <label class="fbox">Number</label>
+                                                    <div class="input-group">
+                                                        <input id="t_number" type="text"
+                                                            class="form-control @error('t_number') is-invalid @enderror"
+                                                            placeholder="Transaction Number" name="t_number"
+                                                            value="{{ old('t_number') }}">
+                                                        @error('amount')
+                                                            <div class="invalid-feedback">{{ $message }}</div>
+                                                        @enderror
                                                     </div>
                                                 </div>
-                                                <div class="mb-3 col-sm-3">
-                                                    <div class="input-group bank_group" style="display: none">
-                                                        <label class="fbox">Bank</label>
-                                                        <div class="input-group">
-                                                            <select class="js-tomselect" placeholder=" " name="bank_id"
-                                                                id="bank_id">
-                                                                <option value="">Bank</option>
+                                            </div>
+                                            <div class="mb-3 col-sm-3">
+                                                <div class="input-group bank_group" style="display: none">
+                                                    <label class="fbox">Bank</label>
+                                                    <div class="input-group">
+                                                        <select class="js-tomselect" placeholder=" " name="bank_id"
+                                                            id="bank_id">
+                                                            <option value="">Bank</option>
 
-                                                                @foreach (getPakistanBanks() as $v)
-                                                                    <option value="{{ $v['id'] }}">{{ $v['name'] }}
-                                                                    </option>
-                                                                @endforeach
-                                                            </select>
-                                                        </div>
+                                                            @foreach (getPakistanBanks() as $v)
+                                                                <option value="{{ $v['id'] }}">{{ $v['name'] }}
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
 
+                                                </div>
+                                            </div>
+                                            <div class="mb-3 col-sm-3">
+                                                <div class="input-group bank_group" style="display: none">
+                                                    <label class="fbox">Passing Date</label>
+                                                    <div class="input-group">
+                                                        <input type="text" name="passing_date" class="date form-control"
+                                                            data-input>
+                                                        @error('passing_date')
+                                                            <div class="invalid-feedback">{{ $message }}</div>
+                                                        @enderror
                                                     </div>
                                                 </div>
-                                                <div class="mb-3 col-sm-3">
-                                                    <div class="input-group bank_group" style="display: none">
-                                                        <label class="fbox">Passing Date</label>
-                                                        <div class="input-group">
-                                                            <input type="text" name="passing_date"
-                                                                class="date form-control" data-input>
-                                                            @error('passing_date')
-                                                                <div class="invalid-feedback">{{ $message }}</div>
-                                                            @enderror
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                            </div>
 
                                             {{-- <div class="mb-3 col-sm-6">
                                                 <div class="input-group">
@@ -321,6 +346,8 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Cash Voucher List -->
                     <div class="col-12 mb-4">
                         <div class="custom_card h-100">
                             <div class="card-body">
@@ -396,6 +423,57 @@
 
 @section('js')
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <style>
+        .card-loader-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            border-radius: 8px;
+        }
+        
+        .custom_card {
+            position: relative;
+        }
+        
+        .voucher-tab-wrapper {
+            position: relative;
+        }
+        
+        .voucher-tab-remove {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #dc3545;
+            color: white;
+            border: none;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+        
+        .voucher-tab-remove:hover {
+            background: #c82333;
+        }
+        
+        .voucher-tab-remove i {
+            font-size: 10px;
+        }
+    </style>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -479,7 +557,7 @@
                 const modal = new bootstrap.Modal($('#viewChangesModal')[0]);
                 modal.show();
             });
-       
+
         });
     </script>
     <script>
@@ -1183,7 +1261,7 @@
                             if (filteredData.length > 0) {
                                 let acct_type = filteredData[0].head_accounting.acct_type;
                                 let acctTypeSelect = $('#e_acct_type')[0].tomselect;
-                                if(!acctTypeSelect.getValue()){
+                                if (!acctTypeSelect.getValue()) {
                                     acctTypeSelect.setValue(acct_type, true);
                                 }
                             }
@@ -1405,6 +1483,182 @@
 
             input.value = value;
         }
+
+        // Voucher Tab Management
+        let voucherData = {}; // Array to store form data for each tab
+        let currentTab = 1;
+        let nextTabNumber = 2;
+
+        $(document).ready(function() {
+            // Initialize first tab data
+            voucherData[1] = {};
+
+            // Add New Voucher Button Click Handler
+            $('#add-new-voucher-btn').click(function() {
+                showFormCardLoader();
+
+                setTimeout(function() {
+                    hideFormCardLoader();
+                    addNewVoucherTab();
+                }, 800); // Simulate processing time
+            });
+
+            // Tab Click Handler
+            $(document).on('click', '.voucher-tab', function() {
+                const tabNumber = parseInt($(this).data('tab'));
+                if (tabNumber !== currentTab) {
+                    showFormCardLoader();
+
+                    setTimeout(function() {
+                        // Save current form data
+                        saveCurrentFormData();
+
+                        // Switch to clicked tab
+                        switchToTab(tabNumber);
+
+                        hideFormCardLoader();
+                    }, 500);
+                }
+            });
+
+            // Save Current Form Data
+            function saveCurrentFormData() {
+                const formData = {};
+                $('#voucherForm').find('input, select, textarea').each(function() {
+                    const name = $(this).attr('name');
+                    const value = $(this).val();
+                    if (name && value !== '') {
+                        formData[name] = value;
+                    }
+                });
+                voucherData[currentTab] = formData;
+            }
+
+            // Load Form Data for Tab
+            function loadFormDataForTab(tabNumber) {
+                const formData = voucherData[tabNumber] || {};
+
+                // Clear form first
+                $('#voucherForm')[0].reset();
+
+                // Load saved data
+                Object.keys(formData).forEach(function(name) {
+                    const element = $(`[name="${name}"]`);
+                    if (element.length) {
+                        element.val(formData[name]);
+
+                        // Handle TomSelect dropdowns
+                        if (element.hasClass('js-tomselect') && element[0].tomselect) {
+                            element[0].tomselect.setValue(formData[name], true);
+                        }
+                    }
+                });
+
+                // Trigger change events for dependent fields
+                $('#acct_type').trigger('change');
+                $('#accounts_id').trigger('change');
+                $('#subaccounts_id').trigger('change');
+                $('#payment_type').trigger('change');
+
+                // Update amount formatting and word conversion
+                if (formData.amount) {
+                    $('#numberInput').trigger('input');
+                }
+            }
+
+            // Switch to Tab
+            function switchToTab(tabNumber) {
+                // Remove active class from all tabs
+                $('.voucher-tab').removeClass('active');
+
+                // Add active class to clicked tab
+                $(`.voucher-tab[data-tab="${tabNumber}"]`).addClass('active');
+
+                // Update current tab
+                currentTab = tabNumber;
+
+                // Load form data for this tab
+                loadFormDataForTab(tabNumber);
+            }
+
+            // Add New Voucher Tab
+            function addNewVoucherTab() {
+                const newTabWrapper = $(`
+                    <div class="voucher-tab-wrapper position-relative">
+                        <button class="btn btn-primary btn-sm voucher-tab" data-tab="${nextTabNumber}">
+                            Voucher#${nextTabNumber}
+                        </button>
+                        <button class="voucher-tab-remove" data-tab="${nextTabNumber}" title="Remove Tab">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `);
+
+                $('#voucher-tabs').append(newTabWrapper);
+
+                // Initialize empty data for new tab
+                voucherData[nextTabNumber] = {};
+
+                // Switch to new tab
+                switchToTab(nextTabNumber);
+
+                nextTabNumber++;
+            }
+
+            // Remove Tab Handler
+            $(document).on('click', '.voucher-tab-remove', function(e) {
+                e.stopPropagation();
+                const tabNumber = parseInt($(this).data('tab'));
+                
+                // Don't allow removing the first tab
+                if (tabNumber === 1) {
+                    return;
+                }
+                
+                showFormCardLoader();
+                
+                setTimeout(function() {
+                    removeTab(tabNumber);
+                    hideFormCardLoader();
+                }, 300);
+            });
+
+            // Remove Tab Function
+            function removeTab(tabNumber) {
+                // Remove tab data
+                delete voucherData[tabNumber];
+                
+                // Remove tab element
+                $(`.voucher-tab-wrapper:has(.voucher-tab[data-tab="${tabNumber}"])`).remove();
+                
+                // If removed tab was active, switch to tab 1
+                if (currentTab === tabNumber) {
+                    switchToTab(1);
+                }
+            }
+
+            // Show Loader
+            function showLoader() {
+                $('#voucher-loader').show();
+                $('.custom_card').hide();
+            }
+
+            // Hide Loader
+            function hideLoader() {
+                $('#voucher-loader').hide();
+                $('.custom_card').show();
+            }
+
+            // Show Form Card Loader
+            function showFormCardLoader() {
+                $('#form-card-loader').show();
+            }
+
+            // Hide Form Card Loader
+            function hideFormCardLoader() {
+                $('#form-card-loader').hide();
+            }
+        });
     </script>
 @endsection
 

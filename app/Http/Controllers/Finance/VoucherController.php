@@ -392,7 +392,116 @@ class VoucherController extends Controller
 
         return view('admin.finance.voucher.cash_voucher', $x);
     }
-    public function cash_out_data()
+
+        public function cash_out_data()
+    {
+        $selectedProjectId = getSelectedTown();
+
+        // Build base query with only the necessary relationships and columns
+        $q = Ledger::with([
+            'projectHeadSubhead.headAccounting:id,name',
+            'projectHeadSubhead.subheadAccounting:id,name',
+            'projectHeadSubhead.project:id,project',
+            'projectHeadSubhead.plot.bookings' => function ($q) {
+                $q->where('cancel_type', 're_sale')
+                ->with(['plot.projectHeadSubheads' => function ($p) {
+                    // This ensures we only include project_head_subheads where
+                    // both plot_id and customer_id match any re_sale booking
+                    $p->whereExists(function ($sub) {
+                        $sub->selectRaw(1)
+                            ->from('bookings')
+                            ->whereColumn('bookings.plot_id', 'project_head_subheads.plot_id')
+                            ->whereColumn('bookings.customer_id', 'project_head_subheads.customer_id')
+                            ->where('bookings.cancel_type', 're_sale');
+                    });
+                }]);
+            },
+        ])
+        ->where('is_active', 1)
+        ->whereIn('type', ['CP', 'BO'])
+        ->whereHas('projectHeadSubhead', function ($q) use ($selectedProjectId) {
+            $q->where('project_id', $selectedProjectId);
+        });
+
+
+
+        // Get total count before pagination
+        $total = (clone $q)->count();
+
+        // Pagination parameters
+        $start = (int) request('start', 0);
+        $length = (int) request('length', 10);
+        $draw = (int) request('draw', 1);
+
+        // Fetch only paginated rows, ordered by latest
+        $rows = $q->orderByDesc('id')->skip($start)->take($length)->get();
+
+        // Transform result set
+        $data = $rows->map(function ($i) {
+            $amount = $i->type === 'CP' ? (float) $i->amount_out : (float) $i->amount_in;
+
+            // Latest pending update (if any)
+            $p = $i->latestPendingUpdate ?? PendingUpdate::where('table_name', 'ledgers')
+                ->where('record_id', $i->id)
+                ->latest()
+                ->first();
+
+            // ✅ Always start from a Collection
+            $bookings = collect(optional($i->projectHeadSubhead->plot)->bookings);
+
+
+            // ✅ Get all related subheads from resale bookings safely
+            $relatedSubheads = $bookings->flatMap(function ($booking) {
+                return collect(optional($booking->plot)->projectHeadSubheads);
+            });
+            // dd($relatedSubheads);
+
+            // ✅ Extract customer + head/subhead names safely
+            $customers = $relatedSubheads->map(function ($sh) {
+                // dd(optional($sh->subheadAccounting)->name);
+                return [
+                    'head' => optional($sh->headAccounting)->name,
+                    'subhead' => optional($sh->subheadAccounting)->name,
+                ];
+            })->filter(fn($c) => !empty($c['subhead']))
+            ->unique('subhead')
+            ->values()
+            ->toArray();
+
+            return [
+                'date' => $i->date,
+                'project' => optional($i->projectHeadSubhead->project)->project ?? '',
+                'head' => optional($i->projectHeadSubhead->headAccounting)->name ?? '',
+                'subhead' => trim(
+                        (optional($i->projectHeadSubhead->subheadAccounting)->name ?? '') .
+                        (
+                            count($customers) > 0
+                                ? ' <p style="font-size:12px;">(old customers: ' .
+                                e(collect($customers)->pluck('subhead')->implode(', ')) .
+                                ')</p>'
+                                : ''
+                        )
+                    ),
+                'detail' => $i->detail,
+                'amount' => $amount,
+                'status' => $p ? ucfirst($p->status) : 'Approved',
+                'submitted_by' => optional($p?->submittedBy)->name ?? '',
+                'old_values' => json_decode($p?->old_values, true) ?? [],
+                'new_values' => json_decode($p?->new_values, true) ?? [],
+                'customers' => $customers, // ✅ List of customers + head/subhead
+                'id' => $i->id,
+                'type' => $i->type,
+            ];
+        });
+
+        return response()->json([
+            'draw' => $draw,
+            'recordsTotal' => $total,
+            'recordsFiltered' => $total,
+            'data' => $data,
+        ]);
+    }
+    public function cash_out_data_old()
     {
         $selectedProjectId = getSelectedTown();
 

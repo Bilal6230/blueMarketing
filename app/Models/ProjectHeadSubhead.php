@@ -30,6 +30,10 @@ class ProjectHeadSubhead extends Model
     {
         return $this->belongsTo(Project::class, 'project_id');
     }
+    public function plot()
+    {
+        return $this->belongsTo(Plot::class, 'plot_id');
+    }
     public function ledgers()
     {
         return $this->hasMany(Ledger::class, 'project_head_subheads_id', 'id');
