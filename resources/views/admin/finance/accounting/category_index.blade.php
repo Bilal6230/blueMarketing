@@ -74,7 +74,7 @@
                                 @foreach ($categoryMappings as $index => $map)
                                     <tr>
                                         <td>{{ $index + 1 }}</td>
-                                        <td>{{ $map->head_names ?? 'N/A' }}</td>
+                                        <td>{{ $map->head_name ?? 'N/A' }}</td>
                                         <td>{{ $map->subhead_name ?? 'N/A' }}</td>
                                         <td>
                                             <button type="button" class="btn btn-warning btn-sm editBtn"
@@ -190,20 +190,19 @@
                             return;
                         }
 
-                        // expected response: data: { id, subhead_name, selected_heads, pivots }, heads: [...]
                         let data = res.data;
-                        let heads = res.heads || [];
+                        let heads = res.heads || []; // array of all heads
+                        let selectedId = data.selected_head_id || null;
 
                         $('#edit_id').val(data.id);
                         $('#edit_subhead').val(data.subhead_name || '');
 
-                        // populate select options and set selected ones
                         let $select = $('#edit_heads');
                         $select.empty();
 
+                        // Populate all head options, and mark the one that matches selectedId
                         $.each(heads, function(i, head) {
-                            let isSelected = (data.selected_heads || []).indexOf(head
-                                .id) !== -1;
+                            let isSelected = (String(head.id) === String(selectedId));
                             let opt = $('<option>', {
                                 value: head.id,
                                 text: head.name,
@@ -212,20 +211,11 @@
                             $select.append(opt);
                         });
 
-                        // refresh/select2
+                        // If you use Select2, refresh it and ensure selected value is set
                         if ($.fn.select2) {
-                            $select.trigger('change');
-                        }
-
-                        // Optional: display pivot rows (pivot_id -> head_id) for clarity
-                        if (data.pivots && data.pivots.length) {
-                            let html = data.pivots.map(function(p) {
-                                return 'pivot_id: ' + p.pivot_id + ' → head_id: ' + p
-                                    .head_id;
-                            }).join('<br>');
-                            $('#pivotList').html(html).show();
-                        } else {
-                            $('#pivotList').html('No pivot rows found').show();
+                            // set the value explicitly in case select2 needs it
+                            $select.val(selectedId ? String(selectedId) : null).trigger(
+                                'change');
                         }
 
                         $('#editModal').modal('show');
@@ -286,35 +276,97 @@
             // Delete button (unchanged)
             $(document).on('click', '.deleteBtn', function() {
                 let id = $(this).data('id');
+
                 Swal.fire({
-                    title: 'Are you sure?',
-                    text: "This record will be deleted permanently!",
+                    title: 'Delete or Reassign?',
+                    text: "Do you want to delete this record or assign it to another head/subhead?",
                     icon: 'warning',
                     showCancelButton: true,
-                    confirmButtonText: 'Yes, delete it!'
-                }).then((res) => {
-                    if (!res.isConfirmed) return;
-                    $.ajax({
-                        url: "{{ url('admin/finance/accounting/category/delete') }}/" + id,
-                        type: 'DELETE',
-                        data: {
-                            _token: "{{ csrf_token() }}"
-                        },
-                        success: function(r) {
-                            if (r.status === 'success') {
-                                Swal.fire('Deleted', r.message, 'success');
-                                setTimeout(() => location.reload(), 1200);
-                            } else {
-                                Swal.fire('Error', r.message || 'Delete failed',
+                    showDenyButton: true,
+                    confirmButtonText: '<span style="color:white;">Delete</span>',
+                    denyButtonText: '<span style="color:white;">Assign to Other</span>',
+                    cancelButtonText: 'Cancel',
+                    reverseButtons: true,
+                    customClass: {
+                        confirmButton: 'btn btn-danger', // 🔴 Delete (Red)
+                        denyButton: 'btn btn-success', // 🟢 Reassign (Green)
+                        cancelButton: 'btn btn-secondary'
+                    },
+                    buttonsStyling: false // Important to apply Bootstrap classes
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // === DELETE DIRECTLY ===
+                        $.ajax({
+                            url: "{{ url('admin/finance/accounting/category/delete') }}/" +
+                                id,
+                            type: 'DELETE',
+                            data: {
+                                _token: "{{ csrf_token() }}"
+                            },
+                            success: function(r) {
+                                Swal.fire(r.status === 'success' ? 'Deleted' : 'Error',
+                                    r.message, r.status);
+                                if (r.status === 'success') setTimeout(() => location
+                                    .reload(), 1000);
+                            },
+                            error: function() {
+                                Swal.fire('Error', 'Server error', 'error');
+                            }
+                        });
+                    } else if (result.isDenied) {
+                        $.ajax({
+                            url: "{{ url('admin/finance/accounting/category/edit') }}/" +
+                                id,
+                            type: 'GET',
+                            dataType: 'json',
+                            success: function(res) {
+                                if (res.status !== 'success') {
+                                    Swal.fire('Error', res.message ||
+                                        'Could not fetch data', 'error');
+                                    return;
+                                }
+
+                                let data = res.data;
+                                let heads = res.heads || []; // array of all heads
+                                let selectedId = data.selected_head_id || null;
+
+                                $('#edit_id').val(data.id);
+                                $('#edit_subhead').val(data.subhead_name || '');
+
+                                let $select = $('#edit_heads');
+                                $select.empty();
+
+                                // Populate all head options, and mark the one that matches selectedId
+                                $.each(heads, function(i, head) {
+                                    let isSelected = (String(head.id) ===
+                                        String(selectedId));
+                                    let opt = $('<option>', {
+                                        value: head.id,
+                                        text: head.name,
+                                        selected: isSelected
+                                    });
+                                    $select.append(opt);
+                                });
+
+                                // If you use Select2, refresh it and ensure selected value is set
+                                if ($.fn.select2) {
+                                    // set the value explicitly in case select2 needs it
+                                    $select.val(selectedId ? String(selectedId) : null)
+                                        .trigger(
+                                            'change');
+                                }
+
+                                $('#editModal').modal('show');
+                            },
+                            error: function(xhr) {
+                                Swal.fire('Error', 'Server error while fetching record',
                                     'error');
                             }
-                        },
-                        error: function() {
-                            Swal.fire('Error', 'Server error', 'error');
-                        }
-                    });
+                        });
+                    }
                 });
             });
+
             $('#categoryTable').DataTable({
                 responsive: true,
                 autoWidth: false,

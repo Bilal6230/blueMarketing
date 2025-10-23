@@ -32,8 +32,6 @@ class LedgerController extends Controller
         $validator = Validator::make($request->all(), [
             'amount' => ['required'],
             'detail' => ['required'],
-            'plot_id' => 'required',
-            'customer_id' => 'required',
             'accounts_id' => ['required'],
             'payment_type' => 'required',
             'subaccounts_id' => ['required'],
@@ -72,12 +70,10 @@ class LedgerController extends Controller
             }
             $plotName = Plot::where('id', $request->input('plot_id'))->value('name');
             $customerLedger = CustomerLedger::create([
-                'customer_id' => $customer_id,
                 'transaction_type' => $firstTwoDigits,
                 'type_id' => get_new_typeID($firstTwoDigits),
                 'reference' => $request->input('reference'),
                 'project_id' => $selectedProjectId,
-                'plot_id' => $request->input('plot_id'),
                 'amount_in' => 0,
                 'amount_out' => str_replace(',', '', $request->input('amount')),
                 'description' => $request->input('detail'),

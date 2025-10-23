@@ -1433,8 +1433,6 @@
                 checkField("[name='acct_type']", "Account Type is required.");
                 checkField("[name='accounts_id']", "Accounts is required.");
                 checkField("[name='subaccounts_id']", "Child Account is required.");
-                checkField("[name='customer_id']", "Customer is required.");
-                checkField("[name='plot_id']", "Plot selection is required.");
                 checkField("[name='detail']", "Details are required.");
 
                 // Amount special check

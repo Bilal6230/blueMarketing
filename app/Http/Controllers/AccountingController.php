@@ -499,6 +499,7 @@ class AccountingController extends Controller
         $x['headaccounts'] = HeadAccounting::get();
         $x['subheadaccounts'] = SubheadAccounting::get();
         $x['projects'] = Project::get();
+
         $selectedProjectId = getSelectedTown();
 
         $x['categoryMappings'] = DB::table('project_head_subheads')
@@ -507,17 +508,17 @@ class AccountingController extends Controller
             ->leftJoin('subhead_accountings', 'subhead_accountings.id', '=', 'project_head_subheads.subhead_accounting_id')
             ->where('projects.id', $selectedProjectId)
             ->select(
-                'project_head_subheads.subhead_accounting_id',
+                'project_head_subheads.id',
                 'projects.project as project_name',
-                'subhead_accountings.name as subhead_name',
-                DB::raw('GROUP_CONCAT(head_accountings.name ORDER BY head_accountings.name SEPARATOR ", ") as head_names'),
-                DB::raw('MAX(project_head_subheads.id) as id') // one representative ID
+                'head_accountings.name as head_name',
+                'subhead_accountings.name as subhead_name'
             )
-            ->groupBy('project_head_subheads.subhead_accounting_id', 'projects.project', 'subhead_accountings.name')
-            ->orderBy('id', 'desc')
+            ->orderBy('project_head_subheads.id', 'desc')
             ->get();
+
         return view('admin.finance.accounting.category_index', $x);
     }
+
 
 
 
@@ -566,13 +567,14 @@ class AccountingController extends Controller
     }
     public function category_edit($id)
     {
-        // Get representative record
+        // Get the record
         $record = DB::table('project_head_subheads as phs')
             ->leftJoin('subhead_accountings as sh', 'sh.id', '=', 'phs.subhead_accounting_id')
             ->select(
                 'phs.id',
                 'phs.project_id',
                 'phs.subhead_accounting_id',
+                'phs.head_accounting_id',
                 'sh.name as subhead_name'
             )
             ->where('phs.id', $id)
@@ -585,39 +587,31 @@ class AccountingController extends Controller
             ]);
         }
 
-        // All head accounts
+        // All head accounts (so user can change to any)
         $allHeads = DB::table('head_accountings')
             ->select('id', 'name')
             ->orderBy('name')
             ->get();
-
-        // Get all current pivot rows for this subhead/project
-        $pivotRows = DB::table('project_head_subheads')
-            ->where('project_id', $record->project_id)
-            ->where('subhead_accounting_id', $record->subhead_accounting_id)
-            ->select('id as pivot_id', 'head_accounting_id as head_id')
-            ->get();
-
-        // Extract selected head IDs
-        $selectedHeads = $pivotRows->pluck('head_id')->toArray();
 
         return response()->json([
             'status' => 'success',
             'data' => [
                 'id' => $record->id,
                 'subhead_name' => $record->subhead_name,
-                'selected_heads' => $selectedHeads,
-                'pivots' => $pivotRows
+                'selected_head_id' => $record->head_accounting_id, // just the id
             ],
-            'heads' => $allHeads
+            'heads' => $allHeads // array of {id, name}
         ]);
     }
+
+
     public function category_update(Request $request, $id)
     {
         $request->validate([
             'head_ids' => 'required|array|min:1'
         ]);
 
+        // Get the base record
         $baseRecord = DB::table('project_head_subheads')->where('id', $id)->first();
         if (!$baseRecord) {
             return response()->json(['status' => 'error', 'message' => 'Record not found']);
@@ -625,70 +619,58 @@ class AccountingController extends Controller
 
         $projectId = $baseRecord->project_id;
         $subheadId = $baseRecord->subhead_accounting_id;
-        $newHeadIds = $request->head_ids;
+        $newHeadIds = array_unique($request->head_ids); // Remove duplicates if any
 
-        // Get all existing pivot rows for this project+subhead
-        $existingPivots = DB::table('project_head_subheads')
-            ->where('project_id', $projectId)
-            ->where('subhead_accounting_id', $subheadId)
-            ->get();
-        $existingHeadIds = $existingPivots->pluck('head_accounting_id')->toArray();
-
-        // Compare
-        $toDelete = array_diff($existingHeadIds, $newHeadIds);
-        $toAdd = array_diff($newHeadIds, $existingHeadIds);
         DB::beginTransaction();
         try {
-            // 🧩 CASE 1: Remove heads that are no longer selected
-            if (!empty($toDelete)) {
-                foreach ($existingPivots as $pivot) {
-                    if (in_array($pivot->head_accounting_id, $toDelete)) {
-                        // Instead of deleting, just mark it as null or reuse it later if a new head added
-                        DB::table('project_head_subheads')
-                            ->where('id', $pivot->id)
-                            ->update([
-                                'head_accounting_id' => null,
-                                'updated_at' => now()
-                            ]);
-                    }
-                }
-            }
-
-            // 🧩 CASE 2: Reuse cleared pivot rows for new heads (if count matches)
-            $clearedRows = DB::table('project_head_subheads')
+            // Get existing head IDs for this project + subhead
+            $existingHeadIds = DB::table('project_head_subheads')
                 ->where('project_id', $projectId)
                 ->where('subhead_accounting_id', $subheadId)
-                ->whereNull('head_accounting_id')
-                ->get();
+                ->pluck('head_accounting_id')
+                ->toArray();
 
-            foreach ($toAdd as $headId) {
-                if ($clearedRows->isNotEmpty()) {
-                    // reuse first cleared row
-                    $reuse = $clearedRows->shift();
-                    DB::table('project_head_subheads')
-                        ->where('id', $reuse->id)
-                        ->update([
-                            'head_accounting_id' => $headId,
-                            'updated_at' => now()
-                        ]);
-                } else {
-                    // if no reusable row, insert new
+            // Filter new heads that don't already exist
+            $filteredHeads = array_diff($newHeadIds, $existingHeadIds);
+
+            if (empty($filteredHeads)) {
+                // If all already exist, just return success (no change)
+                DB::commit();
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'No new head accounts to update.'
+                ]);
+            }
+
+            // Use first new head to update existing record
+            $firstHeadId = array_shift($filteredHeads);
+
+            DB::table('project_head_subheads')
+                ->where('id', $id)
+                ->update([
+                    'head_accounting_id' => $firstHeadId,
+                    'updated_at' => now()
+                ]);
+
+            // Insert remaining heads (if any)
+            foreach ($filteredHeads as $headId) {
+                // Double-check again for duplicates (race condition safety)
+                $exists = DB::table('project_head_subheads')
+                    ->where('project_id', $projectId)
+                    ->where('subhead_accounting_id', $subheadId)
+                    ->where('head_accounting_id', $headId)
+                    ->exists();
+
+                if (!$exists) {
                     DB::table('project_head_subheads')->insert([
                         'project_id' => $projectId,
-                        'head_accounting_id' => $headId,
                         'subhead_accounting_id' => $subheadId,
+                        'head_accounting_id' => $headId,
                         'created_at' => now(),
                         'updated_at' => now()
                     ]);
                 }
             }
-
-            // 🧩 CASE 3: Cleanup any null rows left unused
-            DB::table('project_head_subheads')
-                ->where('project_id', $projectId)
-                ->where('subhead_accounting_id', $subheadId)
-                ->whereNull('head_accounting_id')
-                ->delete();
 
             DB::commit();
 
@@ -696,6 +678,7 @@ class AccountingController extends Controller
                 'status' => 'success',
                 'message' => 'Head Accounts updated successfully!'
             ]);
+
         } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json([
@@ -704,6 +687,7 @@ class AccountingController extends Controller
             ]);
         }
     }
+
     public function category_delete($id)
     {
         try {

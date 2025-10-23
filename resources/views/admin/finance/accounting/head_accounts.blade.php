@@ -55,6 +55,7 @@
                                                         <label>Type</label>
                                                         <div class="input-group">
                                                             <select class="form-control" name="acct_type">
+                                                                <option value="0">Update Please</option>
                                                                 <option value="1">Assets</option>
                                                                 <option value="2">Owner</option>
                                                                 <option value="3">Recovery</option>
@@ -176,7 +177,7 @@
                         $("#name").val(data.name);
                         $("#id").val(data.id);
                         $("#acct_type").val(data
-                        .acct_type); // ✅ This sets the correct option selected
+                            .acct_type); // ✅ This sets the correct option selected
                         $('#modal-loading').modal('hide');
                         $('#modal-edit').modal({
                             backdrop: 'static',
@@ -294,6 +295,7 @@
                                     <label>Type</label>
                                     <div class="input-group">
                                         <select class="form-control" id="acct_type" name="acct_type">
+                                            <option value="0">Update Please</option>
                                             <option value="1">Assets</option>
                                             <option value="2">Owner</option>
                                             <option value="3">Recovery</option>
