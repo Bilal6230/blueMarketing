@@ -143,6 +143,28 @@ class VoucherController extends Controller
         $projects = Project::where('id', $selectedProjectId)->get();
         $x['projects'] = $projects;
         $x['table_data_route'] = route('voucher.cash_in.data');
+        $numbers = Ledger::where('type', 'CR')
+            ->where('is_active', 1)
+            ->orderBy('voucher_number')
+            ->pluck('voucher_number')
+            ->toArray();
+
+        $nextNumber = 1; // default starting number
+
+        if (!empty($numbers)) {
+            $allNumbers = range(min($numbers), max($numbers));
+            $missing = array_diff($allNumbers, $numbers);
+
+            if (!empty($missing)) {
+                // Get the smallest missing number
+                $nextNumber = min($missing);
+            } else {
+                // If no missing numbers, continue from max
+                $nextNumber = max($numbers) + 1;
+            }
+        }
+
+        $x['latest_voucher_number'] = $nextNumber;
 
         return view('admin.finance.voucher.cash_voucher', $x);
     }
@@ -158,7 +180,7 @@ class VoucherController extends Controller
         $pending = PendingUpdate::where('record_id', $id)
             ->where('table_name', $request->table)
             ->where('status', 'pending')
-            ->firstOrFail();       
+            ->firstOrFail();
 
         // Authorization check
         if (!Auth::user()->hasRole('super-admin') && !Auth::user()->can('direct-update')) {
@@ -389,6 +411,28 @@ class VoucherController extends Controller
 
         $x['projects'] = Project::query()->select('id', 'project')->where('id', $selectedProjectId)->get();
         $x['table_data_route'] = route('voucher.cash_out.data');
+        $numbers = Ledger::where('type', 'CP')
+            ->where('is_active', 1)
+            ->orderBy('voucher_number')
+            ->pluck('voucher_number')
+            ->toArray();
+
+        $nextNumber = 1; // default starting number
+
+        if (!empty($numbers)) {
+            $allNumbers = range(min($numbers), max($numbers));
+            $missing = array_diff($allNumbers, $numbers);
+
+            if (!empty($missing)) {
+                // Get the smallest missing number
+                $nextNumber = min($missing);
+            } else {
+                // If no missing numbers, continue from max
+                $nextNumber = max($numbers) + 1;
+            }
+        }
+
+        $x['latest_voucher_number'] = $nextNumber;
 
         return view('admin.finance.voucher.cash_voucher', $x);
     }
