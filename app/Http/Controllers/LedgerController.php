@@ -33,7 +33,6 @@ class LedgerController extends Controller
             'amount' => ['required'],
             'detail' => ['required'],
             'accounts_id' => ['required'],
-            'payment_type' => 'required',
             'subaccounts_id' => ['required'],
             'reference' => 'required',
         ]);

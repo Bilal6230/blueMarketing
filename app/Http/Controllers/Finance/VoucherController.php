@@ -264,12 +264,7 @@ class VoucherController extends Controller
             abort(403, 'Unauthorized action.');
         }
          if ($request->table == 'leads') {
-            DB::table('lead_user')->insert([
-                'lead_id' => $pending->record_id,
-                'user_id' => $pending->submitted_by,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            DB::table('lead_user')->where('lead_id', $pending->record_id)->update(['user_id' => $pending->submitted_by, 'created_at' => now(), 'updated_at' => now()]);
             $pending->update([
                 'status' => 'approved',
                 'approved_by' => Auth::id(),
