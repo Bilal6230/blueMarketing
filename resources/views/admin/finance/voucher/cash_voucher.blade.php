@@ -25,7 +25,34 @@
             <div class="container-fluid">
                 <div class="row">
                     <div class="col-12 mb-4">
-                        <div class="custom_card h-100">
+                        <div class="d-flex gap-2 mb-3" style="gap: 10px;" id="voucher-tabs-container">
+                            <button class="btn btn-success btn-sm" id="add-new-voucher-btn">
+                                <i class="fas fa-plus"></i> Add New Cash Voucher
+                            </button>
+                            <div id="voucher-tabs" class="d-flex gap-2" style="gap: 10px;">
+                                <div class="voucher-tab-wrapper position-relative">
+                                    <button class="btn btn-primary btn-sm active voucher-tab"
+                                        data-tab="1">Voucher#1</button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Loader -->
+                        <div id="voucher-loader" class="text-center" style="display: none;">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="sr-only">Loading...</span>
+                            </div>
+                            <p class="mt-2">Processing...</p>
+                        </div>
+
+                        <div class="custom_card">
+                            <!-- Form Card Loader -->
+                            <div id="form-card-loader" class="card-loader-overlay" style="display: none;">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="sr-only">Loading...</span>
+                                </div>
+                                <p class="mt-2">Processing...</p>
+                            </div>
+
                             <div class="card-body">
                                 <div class="mb-3 d-flex align-items-center justify-content-between">
                                     <h5 class="text-lg font-semibold"> {{ $title }}</h5>
@@ -37,21 +64,22 @@
                                         @csrf
                                         <div class="row">
 
-                                            <div class="mb-3 col-sm-3">
-                                                <div class="input-group">
-                                                    <label class="fbox">Serial No.</label>
-                                                    <div class="input-group">
-                                                        <input type="text" value="1" name="action" hidden />
-                                                        <input type="text"
-                                                            class="form-control @error('reference') is-invalid @enderror"
-                                                            name="reference" value="{{ old('reference') }}" autocomplete="off"
-                                                            required>
 
+
+                                            <div class="mb-3 col-sm-4">
+                                                <div class="input-group">
+                                                    <label class="fbox">Voucher No</label>
+                                                    <div class="input-group">
+                                                        <input type="text" class="form-control " name="voucher_number"
+                                                            value="{{ $type }}-{{ $latest_voucher_number ?? '' }}"
+                                                            autocomplete="off" readonly>
+                                                        @error('reference')
+                                                            <div class="invalid-feedback">{{ $message }}</div>
+                                                        @enderror
                                                     </div>
                                                 </div>
                                             </div>
-
-                                            <div class="mb-3 col-sm-3">
+                                            <div class="mb-3 col-sm-4">
                                                 <div class="input-group">
                                                     <label class="fbox">Reference No</label>
                                                     <div class="input-group">
@@ -80,9 +108,22 @@
                                             </div>
                                             <div class="mb-3 col-sm-6">
                                                 <div class="input-group">
+                                                    <label class="fbox">Serial No.</label>
+                                                    <div class="input-group">
+                                                        <input type="text" value="1" name="action" hidden />
+                                                        <input type="text"
+                                                            class="form-control @error('reference') is-invalid @enderror"
+                                                            name="reference" value="{{ old('reference') }}" autocomplete="off"
+                                                            required>
+
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="mb-3 col-sm-4">
+                                                <div class="input-group">
                                                     <label class="fbox">Account Type</label>
                                                     <div class="input-group">
-                                                        <select class="js-tomselect" placeholder=" " 
+                                                        <select class="js-tomselect" placeholder=" "
                                                             autocomplete="off" name="acct_type" id="acct_type">
                                                            <option value=""></option>
                                                             <option value="0">Update Please</option>
@@ -115,8 +156,7 @@
                                                     </div>
                                                 </div>
                                             </div>
-
-                                            <div class="mb-3 col-sm-6">
+                                            <div class="mb-3 col-6">
                                                 <div class="input-group">
                                                     <label class="fbox">Child Account</label>
                                                     <div class="input-group">
@@ -141,7 +181,7 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="mb-3 col-sm-6">
+                                            <div class="mb-3 col-6">
                                                 <div class="input-group">
                                                     <label class="fbox">Amount</label>
                                                     <div class="input-group">
@@ -154,54 +194,7 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="mb-3 col-sm-12">
-                                                <div id="wordingAmount"></div>
-                                            </div>
-                                            <div class="mb-3 col-sm-6">
-                                                <div class="input-group">
-                                                    <label class="fbox">Customer</label>
-                                                    <div class="input-group">
-                                                        <select class="js-tomselect" placeholder=" " name="customer_id" id="customer_id">
-                                                            <option value="">Select Customer</option>
-                                                            @foreach ($customers as $v)
-                                                                <option value="{{ $v->id }}"
-                                                                    data-phone="{{ $v->mobile_number }}"
-                                                                    data-nic_number="{{ $v->nic_number }}"
-                                                                    data-home_address="{{ $v->home_address }}">
-                                                                    {{ $v->first_name }} {{ $v->last_name }}
-                                                                    {{ $v->relate }} {{ $v->father_name }} -
-                                                                    {{ $v->phone_number }}</option>
-                                                            @endforeach
-                                                        </select>
-                                                        @error('customer_id')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="mb-3 col-sm-6">
-                                                <div class="input-group">
-                                                    <label class="fbox">Plot No.</label>
-                                                    <div class="input-group">
-                                                        <select class="js-tomselect" placeholder=" " name="plot_id" id="plot_id">
-                                                           <option value=""></option>
-                                                            @foreach ($plots as $v)
-                                                                @php
-                                                                    $plotType = $v->type == 1 ? 'R- ' : 'C- ';
-                                                                    $plotName = $plotType . $v->name;
-                                                                @endphp
-                                                                <option value="{{ $v->plot_id }}">
-                                                                    {{ $plotName ?? '' }}
-                                                                </option>
-                                                            @endforeach
-                                                        </select>
-                                                        @error('plot_id')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="mb-3 col-sm-3">
+                                            {{-- <div class="mb-3 col-sm-3">
                                                 <div class="input-group">
                                                     <label class="fbox">Payment Type</label>
                                                     <div class="input-group">
@@ -257,7 +250,7 @@
                                                         @enderror
                                                     </div>
                                                 </div>
-                                            </div>
+                                            </div> --}}
 
                                             <div class="col-md-6">
                                                 <div class="info-card ">
@@ -406,6 +399,59 @@
 @endsection
 
 @section('js')
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        .card-loader-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            border-radius: 8px;
+        }
+
+        .custom_card {
+            position: relative;
+        }
+
+        .voucher-tab-wrapper {
+            position: relative;
+        }
+
+        .voucher-tab-remove {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #dc3545;
+            color: white;
+            border: none;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .voucher-tab-remove:hover {
+            background: #c82333;
+        }
+
+        .voucher-tab-remove i {
+            font-size: 10px;
+        }
+    </style>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.js-tomselect').forEach((el) => {
@@ -462,8 +508,6 @@
 
             $('#acct_type').change(function() {
                 var acctType = $(this).val();
-
-                console.log(acctType);
                 if (acctType) {
                     $.ajax({
                         url: '{{ route('get_account') }}',
@@ -589,8 +633,9 @@
                             acctSelect.setValue(headId, true);
                             let acct_type = response.acct_type;
                             let acctTypeSelect = $('#acct_type')[0].tomselect;
-                            acctTypeSelect.setValue(acct_type, true);
-                            console.log(headId, acct_type);
+                            if (!acctTypeSelect.getValue()) {
+                                acctTypeSelect.setValue(acct_type, true);
+                            }
 
                             // $('#accounts_id').val(response.headId).trigger('change');
                             $('#cnic').text(response['cnic']); // Access data using the keys
@@ -1005,6 +1050,371 @@
 
             input.value = value;
         }
+
+        // Voucher Tab Management with LocalStorage + full Tom Select option persistence
+        // Voucher Tabs with reliable saving on tab switch + new tab, including Tom Select options
+        (function($) {
+            const LS_KEY = 'paysavo_voucher_tabs_v1';
+            const FORM_ID = '#voucherForm';
+            const TS_SEL = '.js-tomselect';
+
+            // Store shape:
+            // { tabs: { [n]: { formData:{}, selects:{ [name]: {options:[{value,text,disabled}], selected:''} } } }, currentTab:1, nextTabNumber:2 }
+            let store = {
+                tabs: {
+                    1: {
+                        formData: {},
+                        selects: {}
+                    }
+                },
+                currentTab: 1,
+                nextTabNumber: 2
+            };
+            let currentTab = 1;
+            let nextTabNumber = 2;
+
+            // --- utils ---
+            const persist = () => localStorage.setItem(LS_KEY, JSON.stringify(store));
+            const hydrate = () => {
+                try {
+                    const raw = localStorage.getItem(LS_KEY);
+                    if (!raw) return;
+                    const parsed = JSON.parse(raw);
+                    if (parsed && parsed.tabs) {
+                        store = parsed;
+                        currentTab = store.currentTab || 1;
+                        nextTabNumber = store.nextTabNumber || 2;
+                    }
+                } catch (e) {
+                    console.warn('hydrate failed', e);
+                }
+            };
+            const ensureTab = n => {
+                if (!store.tabs[n]) store.tabs[n] = {
+                    formData: {},
+                    selects: {}
+                };
+            };
+
+            // throttle to avoid save storms
+            function throttle(fn, wait) {
+                let t, last = 0,
+                    pending = null;
+                return function() {
+                    const now = Date.now();
+                    const args = arguments,
+                        ctx = this;
+                    const run = () => {
+                        last = now;
+                        t = null;
+                        fn.apply(ctx, args);
+                    };
+                    if (now - last >= wait) {
+                        if (t) {
+                            clearTimeout(t);
+                            t = null;
+                        }
+                        run();
+                    } else {
+                        pending = () => run();
+                        if (!t) t = setTimeout(() => {
+                            pending && pending();
+                            pending = null;
+                        }, wait - (now - last));
+                    }
+                };
+            }
+
+            // Serialize form into store for a specific tab
+            function saveFormForTab(tabNo, $form) {
+                ensureTab(tabNo);
+                const formData = {};
+                const selects = {};
+                console.log(tabNo);
+
+
+                // inputs + textarea
+                $form.find('input, textarea').each(function() {
+                    const name = $(this).attr('name');
+                    // console.log(name);
+                    if (!name) return;
+                    formData[name] = $(this).val();
+                });
+
+                // selects (include options & selected)
+                $form.find('select').each(function() {
+                    const $el = $(this);
+                    const name = $el.attr('name');
+                    if (!name) return;
+
+                    const options = [];
+                    // console.log(name);
+                    $el.find('option').each(function() {
+
+                        options.push({
+                            value: $(this).attr('value') ?? '',
+                            text: $(this).text(),
+                            disabled: !!$(this).prop('disabled')
+                        });
+                    });
+
+                    // prefer tomselect-selected if present
+                    let selected = $el.val() ?? '';
+                    if ($el[0] && $el[0].tomselect) {
+                        const ts = $el[0].tomselect;
+                        selected = (ts.getValue && ts.getValue()) || '';
+                    }
+
+                    selects[name] = {
+                        options,
+                        selected: selected === null ? '' : String(selected)
+                    };
+                    formData[name] = selected;
+                });
+
+                store.tabs[tabNo].formData = formData;
+                store.tabs[tabNo].selects = selects;
+                store.currentTab = currentTab;
+            }
+
+            function withTomSelect($el, fn) {
+                if ($el[0] && $el[0].tomselect) {
+                    fn($el[0].tomselect);
+                }
+            }
+
+            // Rebuild options then set value
+            function restoreSelect($el, snap) {
+                if (!$el.length || !snap) return;
+                const selected = snap.selected ?? '';
+                const opts = snap.options || [];
+
+                if ($el[0].tomselect) {
+                    const ts = $el[0].tomselect;
+                    ts.clear(true);
+                    ts.clearOptions();
+                    opts.forEach(o => ts.addOption({
+                        value: String(o.value ?? ''),
+                        text: String(o.text ?? '')
+                    }));
+                    ts.refreshOptions(false);
+                    if (selected !== '') ts.setValue(String(selected), true);
+                } else {
+                    $el.empty();
+                    opts.forEach(o => $el.append($('<option/>').attr('value', o.value ?? '').prop('disabled', !!o
+                        .disabled).text(o.text ?? '')));
+                    if (selected !== '') $el.val(String(selected));
+                }
+                $el.trigger('change');
+            }
+
+            function resetFormUI($form) {
+                $form[0].reset();
+                $form.find('select').each(function() {
+                    const $el = $(this);
+                    if ($el[0].tomselect) {
+                        $el[0].tomselect.clear(true);
+                    }
+                });
+            }
+
+            function loadFormForTab(tabNo) {
+                ensureTab(tabNo);
+                const {
+                    formData = {}, selects = {}
+                } = store.tabs[tabNo];
+                const $form = $(FORM_ID);
+                console.log($form);
+
+                resetFormUI($form);
+
+                // restore selects first (options → value)
+                Object.keys(selects).forEach(name => {
+                    restoreSelect($form.find(`[name="${cssEscape(name)}"]`), selects[name]);
+                });
+
+                // restore other fields
+                Object.keys(formData).forEach(name => {
+                    const $el = $form.find(`[name="${cssEscape(name)}"]`);
+                    if (!$el.length) return;
+                    if ($el.is('select') && $el[0].tomselect) {
+                        // if not in selects snapshot, still set value
+                        if (!selects[name]) withTomSelect($el, ts => {
+                            try {
+                                ts.setValue(String(formData[name] ?? ''), true);
+                            } catch {}
+                        });
+                    } else {
+                        $el.val(formData[name] ?? '');
+                    }
+                });
+            }
+
+            function cssEscape(s) {
+                return String(s).replace(/"/g, '\\"');
+            }
+
+            function rebuildTabsUI() {
+                const $wrap = $('#voucher-tabs').empty();
+                const nums = Object.keys(store.tabs).map(n => parseInt(n, 10)).sort((a, b) => a - b);
+                nums.forEach(n => {
+                    const isActive = (n === store.currentTab);
+                    $wrap.append(`
+                <div class="voucher-tab-wrapper position-relative">
+                <button class="btn btn-primary btn-sm voucher-tab ${isActive?'active':''}" data-tab="${n}">Voucher#${n}</button>
+                ${n===1 ? '' : `<button class="voucher-tab-remove" data-tab="${n}" title="Remove Tab"><i class="fas fa-times"></i></button>`}
+                </div>
+            `);
+                });
+                currentTab = store.currentTab || 1;
+                nextTabNumber = store.nextTabNumber || (Math.max(...nums, 1) + 1);
+            }
+
+            function switchToTab(tabNo, opts = {}) {
+                const {
+                    ensureSaved = false
+                } = opts;
+                const $form = $(FORM_ID);
+                if (ensureSaved) {
+
+                    // Save against the *previous* tab before switching pointer
+                    const prevTab = currentTab;
+                    console.log('b',prevTab,tabNo);
+                    saveFormForTab(prevTab, $form);
+                    persist();
+                }
+
+                currentTab = tabNo;
+                store.currentTab = tabNo;
+                $('.voucher-tab').removeClass('active');
+                $(`.voucher-tab[data-tab="${tabNo}"]`).addClass('active');
+
+                loadFormForTab(tabNo);
+                persist();
+            }
+
+            // --- DOM ready ---
+            $(function() {
+                hydrate();
+                rebuildTabsUI();
+                switchToTab(currentTab, {
+                    ensureSaved: false
+                });
+
+                // Add voucher tab
+                $('#add-new-voucher-btn').off('click').on('click', function() {
+                    const $form = $(FORM_ID);
+
+                    // Save current tab **before** any reset
+                    const prevTab = currentTab;
+                    saveFormForTab(prevTab, $form);
+                    persist();
+
+                    // Create new tab in store
+                    const newNo = nextTabNumber;
+                    ensureTab(newNo);
+                    store.tabs[newNo] = {
+                        formData: {},
+                        selects: {}
+                    };
+                    store.nextTabNumber = newNo + 1;
+                    persist();
+
+                    // Reset visible form (fresh tab)
+                    resetFormUI($form);
+
+                    // UI: add button + activate
+                    $('#voucher-tabs').append(`
+                    <div class="voucher-tab-wrapper position-relative">
+                    <button class="btn btn-primary btn-sm voucher-tab active" data-tab="${newNo}">Voucher#${newNo}</button>
+                    <button class="voucher-tab-remove" data-tab="${newNo}" title="Remove Tab"><i class="fas fa-times"></i></button>
+                    </div>
+                    `);
+                    $('.voucher-tab').removeClass('active');
+                    $(`.voucher-tab[data-tab="${newNo}"]`).addClass('active');
+
+                    // Move pointer & load
+                    switchToTab(newNo, {
+                        ensureSaved: false
+                    });
+                });
+
+                // Tab click
+                $(document).on('click', '.voucher-tab', function() {
+                    const to = parseInt($(this).data('tab'), 10);
+                    console.log('a');
+
+                    if (to === currentTab) return;
+
+                    showFormCardLoader();
+                    setTimeout(function() {
+                        switchToTab(to, {
+                            ensureSaved: true
+                        });
+                        hideFormCardLoader();
+                    }, 200);
+                });
+
+                // Remove tab
+                $(document).on('click', '.voucher-tab-remove', function(e) {
+                    e.stopPropagation();
+                    const tabNo = parseInt($(this).data('tab'), 10);
+                    if (tabNo === 1) return;
+
+                    showFormCardLoader();
+                    setTimeout(function() {
+                        // Save current form for safety
+                        saveFormForTab(currentTab, $(FORM_ID));
+
+                        delete store.tabs[tabNo];
+                        persist();
+
+                        // If removing current tab, pick smallest existing (prefer 1)
+                        if (currentTab === tabNo) {
+                            const remaining = Object.keys(store.tabs).map(n => parseInt(n, 10))
+                                .sort((a, b) => a - b);
+                            const fallback = remaining.includes(1) ? 1 : remaining[0];
+                            switchToTab(fallback, {
+                                ensureSaved: false
+                            });
+                        }
+
+                        // Rebuild UI to reflect removal
+                        rebuildTabsUI();
+                        hideFormCardLoader();
+                    }, 150);
+                });
+
+                // --- Autosave binding (throttled) ---
+                const autoSave = throttle(function() {
+                    const $form = $(FORM_ID);
+                    // saveFormForTab(currentTab, $form);
+                    persist();
+                }, 250);
+
+                function bindAutoSaveEvents() {
+                    $(document)
+                        .off('input.voucherAutosave change.voucherAutosave blur.voucherAutosave')
+                        .on('input.voucherAutosave change.voucherAutosave blur.voucherAutosave',
+                            `${FORM_ID} input, ${FORM_ID} textarea, ${FORM_ID} select`, autoSave);
+
+                    // For Tom Select, also listen to its change
+                    $(document).off('change.voucherTS').on('change.voucherTS', TS_SEL, autoSave);
+                }
+                bindAutoSaveEvents();
+
+                // Keep your loaders (no-op wrappers here; replace with your own)
+                function showFormCardLoader() {
+                    $('#form-card-loader').show();
+                }
+
+                function hideFormCardLoader() {
+                    $('#form-card-loader').hide();
+                }
+            });
+        })(jQuery);
+
+        localStorage.removeItem('paysavo_voucher_tabs_v1'); // your key
     </script>
 @endsection
 

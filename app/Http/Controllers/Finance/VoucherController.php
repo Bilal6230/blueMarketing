@@ -112,9 +112,200 @@ class VoucherController extends Controller
         $x['selectedProjectId'] = $selectedProjectId;
         $projects = Project::where('id', $selectedProjectId)->get();
         $x['projects'] = $projects;
+        $x['table_data_route'] = route('voucher.cash_in.data');
+        $numbers = Ledger::where('type', 'CR')
+            ->where('is_active', 1)
+            ->orderBy('voucher_number')
+            ->pluck('voucher_number')
+            ->toArray();
+
+        $nextNumber = 1; // default starting number
+
+        if (!empty($numbers)) {
+            $allNumbers = range(min($numbers), max($numbers));
+            $missing = array_diff($allNumbers, $numbers);
+
+            if (!empty($missing)) {
+                // Get the smallest missing number
+                $nextNumber = min($missing);
+            } else {
+                // If no missing numbers, continue from max
+                $nextNumber = max($numbers) + 1;
+            }
+        }
+
+        $x['latest_voucher_number'] = $nextNumber;
 
         return view('admin.finance.voucher.cash_voucher', $x);
     }
+    public function approve($id, Request $request)
+    {
+        // Whitelist allowed tables to prevent SQL injection
+        // $allowedTables = ['ledgers', 'customers', 'projects']; // add all tables you want to allow
+        // if (!in_array($request->table, $allowedTables)) {
+        //     abort(400, 'Invalid table name.');
+        // }
+
+        // Fetch pending update record
+        $pending = PendingUpdate::where('record_id', $id)
+            ->where('table_name', $request->table)
+            ->where('status', 'pending')
+            ->firstOrFail();
+
+        // Authorization check
+        if (!Auth::user()->hasRole('super-admin') && !Auth::user()->can('direct-update')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+
+        $pendingNewChanges = json_decode($pending->new_values, true);
+        if (isset($pendingNewChanges['is_active']) && $pending->new_values == $pendingNewChanges['is_active']) {
+            DB::transaction(function () use ($pending, $pendingNewChanges, $request) {
+                $result = DB::table($request->table)::findOrFail($pending->record_id);
+                if ($request->table == 'ledgers') {
+                    $customerLedger = $result->customerLedger;
+                    if ($customerLedger) {
+                        $customerLedger->update($pendingNewChanges);
+                    }
+                }
+                $result->update($pendingNewChanges);
+            });
+        }
+
+        DB::transaction(function () use ($pending, $pendingNewChanges, $request) {
+            // Check if record exists
+            $record = DB::table($request->table)
+                ->where('id', $pending->record_id)
+                ->first();
+
+            if (!$record) {
+                abort(404, 'Record not found.');
+            }
+
+            // Update record dynamically
+            DB::table($request->table)
+                ->where('id', $pending->record_id)
+                ->update($pendingNewChanges);
+
+            // Mark pending as approved
+            $pending->update([
+                'status' => 'approved',
+                'approved_by' => Auth::id(),
+            ]);
+        });
+
+        return back()->with('success', 'Record approved successfully.');
+    }
+
+
+    public function reject($id, Request $request)
+    {
+        $pending = PendingUpdate::where('record_id', $id)
+            ->where('table_name', $request->table)
+            ->where('status', 'pending')
+            ->firstOrFail();
+
+        if (!Auth::user()->hasRole('super-admin') && !Auth::user()->can('direct-update')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $pending->update([
+            'status' => 'rejected',
+            'approved_by' => Auth::id(),
+        ]);
+
+        return back()->with('success', 'Voucher rejected.');
+    }
+    public function approveAdmin($id, Request $request)
+    {
+        // Whitelist allowed tables to prevent SQL injection
+        // $allowedTables = ['ledgers', 'customers', 'projects']; // add all tables you want to allow
+        // if (!in_array($request->table, $allowedTables)) {
+        //     abort(400, 'Invalid table name.');
+        // }
+
+        // Fetch pending update record
+        $pending = PendingUpdate::where('id', $id)
+            ->where('status', 'pending')
+            ->firstOrFail();
+
+        // Authorization check
+        if (!Auth::user()->hasRole('super-admin') && !Auth::user()->can('direct-update')) {
+            abort(403, 'Unauthorized action.');
+        }
+         if ($request->table == 'leads') {
+            DB::table('lead_user')->insert([
+                'lead_id' => $pending->record_id,
+                'user_id' => $pending->submitted_by,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $pending->update([
+                'status' => 'approved',
+                'approved_by' => Auth::id(),
+            ]);
+            return back()->with('success', 'Record approved successfully.');
+        }
+
+
+        $pendingNewChanges = json_decode($pending->new_values, true);
+        if (isset($pendingNewChanges['is_active']) && $pending->new_values == $pendingNewChanges['is_active']) {
+            DB::transaction(function () use ($pending, $pendingNewChanges, $request) {
+                $result = DB::table($request->table)::findOrFail($pending->record_id);
+                if ($request->table == 'ledgers') {
+                    $customerLedger = $result->customerLedger;
+                    if ($customerLedger) {
+                        $customerLedger->update($pendingNewChanges);
+                    }
+                }
+                $result->update($pendingNewChanges);
+            });
+        }
+
+        DB::transaction(function () use ($pending, $pendingNewChanges, $request) {
+            // Check if record exists
+            $record = DB::table($request->table)
+                ->where('id', $pending->record_id)
+                ->first();
+
+            if (!$record) {
+                abort(404, 'Record not found.');
+            }
+
+            // Update record dynamically
+            DB::table($request->table)
+                ->where('id', $pending->record_id)
+                ->update($pendingNewChanges);
+
+            // Mark pending as approved
+            $pending->update([
+                'status' => 'approved',
+                'approved_by' => Auth::id(),
+            ]);
+        });
+
+        return back()->with('success', 'Record approved successfully.');
+    }
+
+
+    public function rejectAdmin($id, Request $request)
+    {
+        $pending = PendingUpdate::where('id', $id)
+            ->where('status', 'pending')
+            ->firstOrFail();
+
+        if (!Auth::user()->hasRole('super-admin') && !Auth::user()->can('direct-update')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $pending->update([
+            'status' => 'rejected',
+            'approved_by' => Auth::id(),
+        ]);
+
+        return back()->with('success', 'Voucher rejected.');
+    }
+
 
     public function cash_out()
     {
@@ -170,8 +361,30 @@ class VoucherController extends Controller
             ->get();
         $x['selectedProjectId'] = $selectedProjectId;
 
-        $projects = Project::where('id', $selectedProjectId)->get();
-        $x['projects'] = $projects;
+        $x['projects'] = Project::query()->select('id', 'project')->where('id', $selectedProjectId)->get();
+        $x['table_data_route'] = route('voucher.cash_out.data');
+        $numbers = Ledger::where('type', 'CP')
+            ->where('is_active', 1)
+            ->orderBy('voucher_number')
+            ->pluck('voucher_number')
+            ->toArray();
+
+        $nextNumber = 1; // default starting number
+
+        if (!empty($numbers)) {
+            $allNumbers = range(min($numbers), max($numbers));
+            $missing = array_diff($allNumbers, $numbers);
+
+            if (!empty($missing)) {
+                // Get the smallest missing number
+                $nextNumber = min($missing);
+            } else {
+                // If no missing numbers, continue from max
+                $nextNumber = max($numbers) + 1;
+            }
+        }
+
+        $x['latest_voucher_number'] = $nextNumber;
 
         return view('admin.finance.voucher.cash_voucher', $x);
     }
