@@ -10,7 +10,7 @@
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <a href="{{ route('journal.voucher.create') }}" class="btn btn-success">
+                            <a href="{{ route('commision.voucher.create') }}" class="btn btn-success">
                                 <i class="fas fa-plus"></i> Add New Voucher
                             </a>
                         </div>
@@ -40,7 +40,7 @@
                                         @canany(['edit jv', 'delete jv', 'print jv'])
                                             <td>
                                                 @can('edit jv')
-                                                    <a href="{{ route('journal.voucher.edit', $voucher->id) }}"
+                                                    <a href="{{ route('commision.voucher.edit', $voucher->id) }}"
                                                         class="btn btn-sm btn-warning">
                                                         <i class="fas fa-edit"></i> Edit
                                                     </a>
@@ -52,7 +52,7 @@
                                                 @endcan
 
                                                 @can('print jv')
-                                                    <a href="{{ route('journal.voucher.print', $voucher->id) }}" target="_blank"
+                                                    <a href="{{ route('commision.voucher.print', $voucher->id) }}" target="_blank"
                                                         class="btn btn-sm btn-info">
                                                         <i class="fas fa-print"></i> Print
                                                     </a>
@@ -109,7 +109,7 @@
             // Delete Button Click
             $(document).on('click', '.delete-btn', function() {
                 const id = $(this).data('id');
-                const deleteUrl = `{{ route('journal.voucher.delete', ':id') }}`.replace(':id', id);
+                const deleteUrl = `{{ route('commision.voucher.delete', ':id') }}`.replace(':id', id);
                 $('#deleteForm').attr('action', deleteUrl);
                 $('#deleteModal').modal('show');
             });

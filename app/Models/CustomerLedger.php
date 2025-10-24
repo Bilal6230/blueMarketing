@@ -12,6 +12,7 @@ class CustomerLedger extends Model
     protected $table = 'customer_ledger';
 
     protected $fillable = [
+        'id',
         'customer_id',
         'project_id',
         'plot_id',
@@ -113,6 +114,10 @@ class CustomerLedger extends Model
             return $query->whereDate('passing_date', '>=', $fdate)
                         ->whereDate('passing_date', '<=', $tdate);
         }
+    }
+    public function ledger()
+    {
+        return $this->hasOne(Ledger::class, 'customer_ledger_id', 'id');
     }
 
 }

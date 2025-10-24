@@ -27,11 +27,13 @@
                     <div class="col-12">
                         <div class="card">
                             @can('create plot')
-                            <div class="card-header">
-                                <h3 class="card-title">
-                                    <a href="#" class="btn btn-sm btn-success" data-toggle="modal" data-target="#modal-tambah" data-backdrop="static" data-keyboard="false"><i class="fas fa-plus"></i> Add</a>
-                                </h3>
-                            </div>
+                                <div class="card-header">
+                                    <h3 class="card-title">
+                                        <a href="#" class="btn btn-sm btn-success" data-toggle="modal"
+                                            data-target="#modal-tambah" data-backdrop="static" data-keyboard="false"><i
+                                                class="fas fa-plus"></i> Add</a>
+                                    </h3>
+                                </div>
                             @endcan
                             <!-- /.card-header -->
                             <div class="card-body table-responsive">
@@ -65,15 +67,20 @@
                                                 <td>{{ Setting::getRoadSide($i->road_id) }} </td>
                                                 <td>{{ Setting::sale_status($i->sold) }}</td>
                                                 <td>{{ Setting::getStatus($i->is_active) }}</td>
-                                            @canany(['update plot', 'delete plot'])
+                                                @canany(['update plot', 'delete plot'])
                                                     <td>
                                                         @if ($i->sold == 0)
                                                             <div class="btn-group">
                                                                 @can('update plot')
-                                                                    <button class="btn btn-sm btn-primary btn-edit" data-id="{{ $i->id }}"><i class="fas fa-pencil-alt"></i></button>
+                                                                    <button class="btn btn-sm btn-primary btn-edit"
+                                                                        data-id="{{ $i->id }}"><i
+                                                                            class="fas fa-pencil-alt"></i></button>
                                                                 @endcan
                                                                 @can('delete plot')
-                                                                    <button class="btn btn-sm btn-danger btn-delete" data-id="{{ $i->id }}" data-name="{{ $i->name }}"><i class="fas fa-trash"></i></button>
+                                                                    <button class="btn btn-sm btn-danger btn-delete"
+                                                                        data-id="{{ $i->id }}"
+                                                                        data-name="{{ $i->name }}"><i
+                                                                            class="fas fa-trash"></i></button>
                                                                 @endcan
                                                             </div>
                                                         @endif
@@ -102,11 +109,23 @@
 @endsection
 
 @section('js')
+    @if ($errors->any())
+        <script>
+            $(document).ready(function() {
+                $('#modal-tambah').modal('show');
+            });
+        </script>
+    @endif
+
     <script>
         $(document).ready(function() {
             $(document).on("click", '.btn-edit', function() {
                 let id = $(this).attr("data-id");
-                $('#modal-loading').modal({backdrop: 'static', keyboard: false, show: true});
+                $('#modal-loading').modal({
+                    backdrop: 'static',
+                    keyboard: false,
+                    show: true
+                });
                 $.ajax({
                     url: "{{ route('project.plot.show') }}",
                     type: "POST",
@@ -131,7 +150,11 @@
 
                         $("#id").val(data.id);
                         $('#modal-loading').modal('hide');
-                        $('#modal-edit').modal({backdrop: 'static', keyboard: false, show: true});
+                        $('#modal-edit').modal({
+                            backdrop: 'static',
+                            keyboard: false,
+                            show: true
+                        });
                     },
                 });
             });
@@ -141,7 +164,11 @@
                 let name = $(this).attr("data-name");
                 $("#did").val(id);
                 $("#delete-data").html(name);
-                $('#modal-delete').modal({backdrop: 'static', keyboard: false, show: true});
+                $('#modal-delete').modal({
+                    backdrop: 'static',
+                    keyboard: false,
+                    show: true
+                });
             });
         });
     </script>
@@ -168,12 +195,12 @@
                                     <label class="fbox">Project</label>
                                     <div class="input-group">
                                         <select class="form-control" name="project_id">
-                                            @foreach (Setting::get_active_project( getSelectedTown() ) as $v )
+                                            @foreach (Setting::get_active_project(getSelectedTown()) as $v)
                                                 <option value="{{ $v->id }}">{{ $v->project }}</option>
                                             @endforeach
                                         </select>
                                         @error('project_id')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -187,7 +214,7 @@
                                             <option value="2">Commercial</option>
                                         </select>
                                         @error('type')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -199,9 +226,10 @@
                                 <div class="input-group">
                                     <label class="fbox">Unit Name</label>
                                     <div class="input-group">
-                                        <input type="text" class="form-control @error('name') is-invalid @enderror" placeholder="Unit Name" name="name" value="{{ old('name') }}" >
+                                        <input type="text" class="form-control @error('name') is-invalid @enderror"
+                                            placeholder="Unit Name" name="name" value="{{ old('name') }}">
                                         @error('name')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -212,9 +240,10 @@
                                 <div class="input-group">
                                     <label class="fbox">Unit Size</label>
                                     <div class="input-group">
-                                        <input type="text" class="form-control @error('size') is-invalid @enderror" placeholder="Unit Size" name="size" value="{{ old('size') }}">
+                                        <input type="text" class="form-control @error('size') is-invalid @enderror"
+                                            placeholder="Unit Size" name="size" value="{{ old('size') }}">
                                         @error('size')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -231,7 +260,7 @@
 
                                         </select>
                                         @error('unit')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -245,7 +274,7 @@
                                             <option value="0" selected>No</option>
                                         </select>
                                         @error('is_corner')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -258,13 +287,13 @@
                                     <label class="fbox">Road Size</label>
                                     <div class="input-group">
                                         <select class="form-control" name="road_id">
-                                            @foreach (Setting::get_active_roads() as $v )
+                                            @foreach (Setting::get_active_roads() as $v)
                                                 <option value="{{ $v->id }}">{{ $v->name }}</option>
                                             @endforeach
 
                                         </select>
                                         @error('road_id')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -276,12 +305,12 @@
                                     <label class="fbox">Front Facing</label>
                                     <div class="input-group">
                                         <select class="form-control" name="facing_id">
-                                            @foreach (Setting::get_active_facing() as $v )
+                                            @foreach (Setting::get_active_facing() as $v)
                                                 <option value="{{ $v->id }}">{{ $v->name }}</option>
                                             @endforeach
                                         </select>
                                         @error('facing_id')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -309,7 +338,7 @@
                                     <option value="0">Disable</option>
                                 </select>
                                 @error('is_active')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
@@ -338,20 +367,20 @@
                 <div class="modal-body">
                     <form action="{{ route('project.plot.update') }}" method="POST" enctype="multipart/form-data">
                         @csrf
-                        @method("PUT")
+                        @method('PUT')
                         <div class="row">
                             <div class="col-sm-6">
 
                                 <div class="input-group">
                                     <label class="fbox">Project</label>
                                     <div class="input-group">
-                                        <select class="form-control" name="project_id" id="project_id" >
-                                            @foreach (Setting::get_active_project() as $v )
+                                        <select class="form-control" name="project_id" id="project_id">
+                                            @foreach (Setting::get_active_project() as $v)
                                                 <option value="{{ $v->id }}">{{ $v->project }}</option>
                                             @endforeach
                                         </select>
                                         @error('project_id')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -365,7 +394,7 @@
                                             <option value="2">Commercial</option>
                                         </select>
                                         @error('type')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -377,9 +406,11 @@
                                 <div class="input-group">
                                     <label class="fbox">Unit Name</label>
                                     <div class="input-group">
-                                        <input readonly id="name" type="text" class="form-control @error('name') is-invalid @enderror" placeholder="Unit Name" name="name" value="{{ old('name') }}">
+                                        <input readonly id="name" type="text"
+                                            class="form-control @error('name') is-invalid @enderror"
+                                            placeholder="Unit Name" name="name" value="{{ old('name') }}">
                                         @error('name')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -390,9 +421,11 @@
                                 <div class="input-group">
                                     <label class="fbox">Unit Size</label>
                                     <div class="input-group">
-                                        <input id="size" type="text" class="form-control @error('size') is-invalid @enderror" placeholder="Unit Size" name="size" value="{{ old('size') }}">
+                                        <input id="size" type="text"
+                                            class="form-control @error('size') is-invalid @enderror"
+                                            placeholder="Unit Size" name="size" value="{{ old('size') }}">
                                         @error('size')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -409,7 +442,7 @@
 
                                         </select>
                                         @error('unit')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -423,7 +456,7 @@
                                             <option value="0" selected>No</option>
                                         </select>
                                         @error('is_corner')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -436,13 +469,13 @@
                                     <label class="fbox">Road Size</label>
                                     <div class="input-group">
                                         <select class="form-control" name="road_id" id="road_id">
-                                            @foreach (Setting::get_active_roads() as $v )
+                                            @foreach (Setting::get_active_roads() as $v)
                                                 <option value="{{ $v->id }}">{{ $v->name }}</option>
                                             @endforeach
 
                                         </select>
                                         @error('road_id')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -454,12 +487,12 @@
                                     <label class="fbox">Front Facing</label>
                                     <div class="input-group">
                                         <select class="form-control" name="facing_id" id="facing_id">
-                                            @foreach (Setting::get_active_facing() as $v )
+                                            @foreach (Setting::get_active_facing() as $v)
                                                 <option value="{{ $v->id }}">{{ $v->name }}</option>
                                             @endforeach
                                         </select>
                                         @error('facing_id')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -487,7 +520,7 @@
                                     <option value="0">Disable</option>
                                 </select>
                                 @error('is_active')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>

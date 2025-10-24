@@ -29,6 +29,9 @@ class Booking extends Model
         'profile_image',
         'status',
         'user_id',
+        'cancel_status',
+        'cancel_type',
+        'reason',
     ];
 
     protected $dates = ['deleted_at']; // Ensure deleted_at is treated as a date

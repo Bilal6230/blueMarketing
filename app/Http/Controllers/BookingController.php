@@ -10,9 +10,11 @@ use App\Models\Ledger;
 use App\Models\Booking;
 use App\Models\Project;
 use App\Models\ChargeType;
+use App\Models\DraftLedger;
 use App\Models\Installment;
 use Illuminate\Http\Request;
 use App\Models\BookingDetail;
+use App\Models\PendingUpdate;
 use App\Models\CustomerLedger;
 use App\Models\HeadAccounting;
 use App\Models\SubheadAccounting;
@@ -34,10 +36,10 @@ class BookingController extends Controller
      */
     public function index()
     {
-        $projectId      = getSelectedTown();
-        $x['title']     = 'Plots Sale List';
-        $x['data']      = Booking::with('customer', 'plot', 'project', 'broker')->where('project_id', $projectId)->get();
-        $x['role']      = Role::get();
+        $projectId = getSelectedTown();
+        $x['title'] = 'Plots Sale List';
+        $x['data'] = Booking::with('customer', 'plot', 'project', 'broker')->where('cancel_status', '0')->where('project_id', $projectId)->get();
+        $x['role'] = Role::get();
 
         // Calculate the sum of the sale amount
         $x['totalSaleAmount'] = $x['data']->sum('total_price'); // Sum of the total_price field
@@ -62,6 +64,7 @@ class BookingController extends Controller
             }
         ])
             ->where('project_id', getSelectedTown())
+            ->where('cancel_status', '0')
             ->get();
 
         // Calculate the sum of Due Amounts and Received
@@ -87,9 +90,9 @@ class BookingController extends Controller
      */
     public function sale()
     {
-        $x['title']     = 'New Booking invoice';
-        $x['data']      = Plot::get();
-        $x['role']      = Role::get();
+        $x['title'] = 'New Booking invoice';
+        $x['data'] = Plot::get();
+        $x['role'] = Role::get();
         $x['installments'] = Installment::get();
         $projects = Project::where('id', getSelectedTown())->get();
         $x['projects'] = $projects;
@@ -101,6 +104,33 @@ class BookingController extends Controller
         $x['brokers'] = $brokers;
 
         return view('admin.booking.sale', $x);
+    }
+    public function fileTransfer($id)
+    {
+        $x['title'] = 'File Transfer';
+        $x['data'] = Plot::get();
+        $x['role'] = Role::get();
+        $x['installments'] = Installment::get();
+        $projects = Project::where('id', getSelectedTown())->get();
+        $x['projects'] = $projects;
+        $x['booking'] = $booking = Booking::findOrFail($id);
+        $x['customers'] = Lead::where('project_id', getSelectedTown())->get();
+        $x['plots'] = Plot::whereDoesntHave('holdPlots')
+                        ->where('type', $booking->plot_type)
+                        ->where('project_id', getSelectedTown())
+                        ->where(function ($query) use ($booking) {
+                            $query->where('sold', 0)
+                                ->orWhere('id', $booking->plot_id); // include id = 2 even if sold = 1
+                        })
+                        ->get();
+        // Retrieve the joined data from project_head_subheads and subhead_accountings
+        $brokers = ProjectHeadSubhead::where('head_accounting_id', 6)
+            ->join('subhead_accountings', 'project_head_subheads.subhead_accounting_id', '=', 'subhead_accountings.id')
+            ->get();
+
+        $x['brokers'] = $brokers;
+
+        return view('admin.booking.file_transfer', $x);
     }
 
     /**
@@ -125,7 +155,6 @@ class BookingController extends Controller
             'booking_date' => 'required|date',
             'status' => 'required|numeric',
         ]);
-
         if ($validator->fails()) {
             return back()->withErrors($validator)->withInput();
         }
@@ -136,29 +165,31 @@ class BookingController extends Controller
         } elseif ($plotType == 2) {
             $plotType = 'C-';
         }
-
         DB::beginTransaction();
 
         try {
             // Create the booking
-            $booking = Booking::create([
-                'project_id' => $request->input('project_id'),
-                'customer_id' => $request->input('customer_id'),
-                'plot_id' => $request->input('plot_id'),
-                'plot_type' => $request->input('plot_type'),
-                'plot_size' => $request->input('plot_size'),
-                'plot_rate' => str_replace(',', '', $request->input('plot_rate')),
-                'is_corner' => $request->input('is_corner') ?? 0,
-                'is_park' => $request->input('is_park') ?? 0,
-                'park_facing' => $request->input('park_facing') ?? 0,
-                'carner_price' => $request->input('carner_price') ?? 0,
-                'dicount_value' => $request->input('discount_value') ?? 0,
-                'total_price' => str_replace(',', '', $request->input('total_price')),
-                'broker_id' => $request->input('broker_id'),
-                'booking_date' => $request->input('booking_date'),
-                'status' => $request->input('status'),
-                'user_id' => Auth::user()->id,
-            ]);
+            $booking = Booking::updateOrCreate(
+                ['id' => $request->id], // condition to check if booking exists
+                [
+                    'project_id'   => $request->input('project_id'),
+                    'customer_id'  => $request->input('customer_id'),
+                    'plot_id'      => $request->input('plot_id'),
+                    'plot_type'    => $request->input('plot_type'),
+                    'plot_size'    => $request->input('plot_size'),
+                    'plot_rate'    => str_replace(',', '', $request->input('plot_rate')),
+                    'is_corner'    => $request->input('is_corner') ?? 0,
+                    'is_park'      => $request->input('is_park') ?? 0,
+                    'park_facing'  => $request->input('park_facing') ?? 0,
+                    'carner_price' => $request->input('carner_price') ?? 0,
+                    'dicount_value'=> $request->input('discount_value') ?? 0,
+                    'total_price'  => str_replace(',', '', $request->input('total_price')),
+                    'broker_id'    => $request->input('broker_id'),
+                    'booking_date' => $request->input('booking_date'),
+                    'status'       => $request->input('status'),
+                    'user_id'      => Auth::id(),
+                ]
+            );
 
             // Update the plot status
             Plot::where('id', $booking->plot_id)->update(['sold' => 1]);
@@ -230,6 +261,7 @@ class BookingController extends Controller
             }
 
             Ledger::create([
+                'customer_ledger_id' => $customerLedger->id,
                 'type' => 'CR',
                 'type_id' => $lastId + 2,
                 'project_head_subheads_id' => $creditAccountId,
@@ -264,9 +296,9 @@ class BookingController extends Controller
 
 
         return response()->json([
-            'status'    => Response::HTTP_OK,
-            'message'   => 'Data Project by id',
-            'data'      => $data_list
+            'status' => Response::HTTP_OK,
+            'message' => 'Data Project by id',
+            'data' => $data_list
         ], Response::HTTP_OK);
     }
 
@@ -277,9 +309,270 @@ class BookingController extends Controller
     }
 
 
-    public function update(Request $request, Plot $plot)
+    public function update(Request $request)
     {
-        //
+            // Validate the incoming request data
+        $validator = Validator::make($request->all(), [
+            'project_id' => 'required|exists:projects,id',
+            'customer_id' => 'required|exists:leads,id',
+            'plot_id' => 'required|string',
+            'plot_type' => 'required',
+            'plot_size' => 'required',
+            'plot_rate' => 'required',
+            'total_price' => 'required',
+            'booking_date' => 'required|date',
+            'status' => 'required|numeric',
+        ]);
+        if ($validator->fails()) {
+            return back()->withErrors($validator)->withInput();
+        }
+
+        $plotType = $request->plot_type;
+        if ($plotType == 1) {
+            $plotType = 'R-';
+        } elseif ($plotType == 2) {
+            $plotType = 'C-';
+        }
+        DB::beginTransaction();
+
+        try {
+            // Create the booking
+            // return $request->all();
+            $booking = Booking::updateOrCreate(
+                ['id' => $request->id], // condition to check if booking exists
+                [
+                    'project_id'   => $request->input('project_id'),
+                    'customer_id'  => $request->input('customer_id'),
+                    'plot_id'      => $request->input('plot_id'),
+                    'plot_type'    => $request->input('plot_type'),
+                    'plot_size'    => $request->input('plot_size'),
+                    'plot_rate'    => str_replace(',', '', $request->input('plot_rate')),
+                    'is_corner'    => $request->input('is_corner') ?? 0,
+                    'is_park'      => $request->input('is_park') ?? 0,
+                    'park_facing'  => $request->input('park_facing') ?? 0,
+                    'carner_price' => $request->input('carner_price') ?? 0,
+                    'dicount_value'=> $request->input('discount_value') ?? 0,
+                    'total_price'  => str_replace(',', '', $request->input('total_price')),
+                    'broker_id'    => $request->input('broker_id'),
+                    'booking_date' => $request->input('booking_date'),
+                    'status'       => $request->input('status'),
+                    'user_id'      => Auth::id(),
+                ]
+            );
+
+            // Update the plot status
+            Plot::where('id', $booking->plot_id)->update(['sold' => 1]);
+
+            // Fetch plot and customer details
+            $plotName = Plot::where('id', $booking->plot_id)->value('name');
+            $customer = Lead::findOrFail($booking->customer_id);
+
+            // Create customer ledger entry
+            $customerLedger = CustomerLedger::updateOrCreate(
+                [
+                    'project_id' => $booking->project_id,
+                    'plot_id'    => $booking->plot_id,
+                ],
+                [
+                    'customer_id'       => $booking->customer_id,
+                    'transaction_type'  => 'Bo',
+                    'type_id'           => get_new_typeID('Bo'),
+                    'amount_in'         => $booking->total_price,
+                    'amount_out'        => 0,
+                    'description'       => 'Booking for plot ' . $plotType . $plotName,
+                    'date'              => $booking->booking_date,
+                    'is_approve'        => 1,
+                    'is_active'         => 1,
+                ]
+            );
+
+            // Create subhead accounting
+            $subheadAccounting = SubheadAccounting::create([
+                'name' => '(' . $plotType . $plotName . ') ' . $customer->first_name . ' ' . $customer->last_name,
+                'is_active' => 1,
+                'cnic' => $customer->nic_number ?? '00000',
+                'phone' => $customer->phone_number ?? '00000',
+                'create_by' => Auth::user()->id,
+            ]);
+
+            $pivot = ProjectHeadSubhead::create([
+                'project_id' => $booking->project_id,
+                'head_accounting_id' => 16,
+                'subhead_accounting_id' => $subheadAccounting->id,
+                'plot_id' => $booking->plot_id,
+                'customer_id' => $booking->customer_id,
+            ]);
+
+
+
+            // Create ledger entry
+            $lastId = getLastLedgerIdByType("BO");
+            $ledger = Ledger::where('type', 'BO')
+                ->where('reference', $booking->id)
+                ->first();
+
+            if ($ledger) {
+                // 🔹 Update existing record (don't touch type_id)
+                $ledger->update([
+                    'customer_ledger_id'       => $customerLedger->id,
+                    'project_head_subheads_id' => $pivot->id,
+                    'amount_in'                => 0.00,
+                    'amount_out'               => $booking->total_price,
+                    'is_active'                => 1,
+                    'date'                     => $booking->booking_date,
+                    'detail'                   => 'Booking for plot ' . $plotType . $plotName,
+                    'update_by'                => Auth::user()->id,
+                    'status'                   => 0,
+                ]);
+            } else {
+                // 🔹 Create new record (include type_id)
+                $ledger = Ledger::create([
+                    'type'                    => 'BO',
+                    'reference'               => $booking->id,
+                    'customer_ledger_id'      => $customerLedger->id,
+                    'type_id'                 => $lastId + 1, // only here
+                    'project_head_subheads_id'=> $pivot->id,
+                    'amount_in'               => 0.00,
+                    'amount_out'              => $booking->total_price,
+                    'is_active'               => 1,
+                    'date'                    => $booking->booking_date,
+                    'detail'                  => 'Booking for plot ' . $plotType . $plotName,
+                    'update_by'               => Auth::user()->id,
+                    'create_by'               => Auth::user()->id,
+                    'status'                  => 0,
+                ]);
+            }
+
+
+
+            // Ensure credit account exists
+            $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', 16)
+                ->where('project_id', $booking->project_id)
+                ->where('subhead_accounting_id', 123)
+                ->value('id');
+
+            if (!$creditAccountId) {
+                throw new \Exception('Credit account ID not found.');
+            }
+
+            $ledger = Ledger::where('reference', $booking->id)
+                ->where('type', '!=', 'BO')
+                ->first();
+
+            if ($ledger) {
+                // Update existing record
+                $ledger->update([
+                    'type'                    => 'CR',
+                    'project_head_subheads_id'=> $creditAccountId,
+                    'amount_in'               => $booking->total_price,
+                    'amount_out'              => 0.00,
+                    'is_active'               => 1,
+                    'date'                    => $booking->booking_date,
+                    'detail'                  => 'Booking for plot ' . $plotType . $plotName,
+                    'update_by'               => Auth::user()->id,
+                    'status'                  => 0,
+                ]);
+            } else {
+                // Create new record
+                $ledger = Ledger::create([
+                    'type'                    => 'CR',
+                    'type_id'                 => $lastId + 2,
+                    'project_head_subheads_id'=> $creditAccountId,
+                    'reference'               => $booking->id,
+                    'amount_in'               => $booking->total_price,
+                    'amount_out'              => 0.00,
+                    'is_active'               => 1,
+                    'date'                    => $booking->booking_date,
+                    'detail'                  => 'Booking for plot ' . $plotType . $plotName,
+                    'update_by'               => Auth::user()->id,
+                    'create_by'               => Auth::user()->id,
+                    'status'                  => 0,
+                ]);
+            }
+
+
+            if($request->has('party') && $request->input('party_fee') > 0)  {
+                if($request->input('party') == 'old') {
+                    $customer_id = $request->input('old_customer_id');
+                } else {
+                    $customer_id = $request->input('customer_id');
+                }
+
+                $t_number = $bank_id = null;
+
+                $plotName = Plot::where('id', $request->input('plot_id'))->value('name');
+                $customerLedger = CustomerLedger::create([
+                    'customer_id' => $customer_id,
+                    'transaction_type' => 'CP',
+                    'type_id' => get_new_typeID('CP'),
+                    'reference' => $request->input('reference'),
+                    'project_id' => $request->input('project_id'),
+                    'plot_id' => $request->input('plot_id'),
+                    'amount_in' => 0,
+                    'amount_out' => str_replace(',', '', $request->input('party_fee')),
+                    'description' => $request->input('details'),
+                    'date' => $request->input('booking_date'), // Assuming booking date is the transaction date
+                    'payment_type' => $request->input('payment_type') ?? '1',
+                    't_number' => $t_number,
+                    'bank_id' => $bank_id,
+                    'is_active' => 1,
+                    'is_approve' => 0,
+                    'passing_date' => $request->input('passing_date'),
+                ]);
+
+
+                $lastId = getLastLedgerIdByType('CP');
+
+
+                $projectHeadSubhead = ProjectHeadSubhead::where('head_accounting_id', 16)
+                    ->where('customer_id', $customer_id)
+                    ->where('plot_id', $request->input('plot_id'))
+                    ->where('project_id', $request->input('project_id'))
+                    ->first();
+                // dd($projectHeadSubhead->id);
+                // $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', $request->accounts_id)
+                //     ->where('subhead_accounting_id', $request->subaccounts_id)
+                //     ->where('project_id', $selectedProjectId)
+                //     ->where('plot_id', $request->input('plot_id'))
+                //     ->where('customer_id', $customer_id)
+                //     ->value('id');
+                //     dd($creditAccountId);
+                if (!$projectHeadSubhead) {
+                    throw new \Exception('Credit account ID not found.');
+                }
+                $data = Ledger::create([
+                    'customer_ledger_id' => $customerLedger->id,
+                    'type' => 'CP',
+                    'type_id' => $lastId + 1,
+                    'project_head_subheads_id' => $projectHeadSubhead->id,
+                    'reference' => $request->reference,
+                    'amount_in' => 0,
+                    'amount_out' => str_replace(',', '', $request->input('party_fee')),
+                    'is_active' => 1,
+                    'date' => $request->booking_date,
+                    'detail' => $request->details,
+                    'update_by' => Auth::user()->id,
+                    'create_by' => Auth::user()->id,
+                    'status' => 0,
+
+                ]);
+                $lastSubmitDate = $request->booking_date; // Adjust this according to your actual form field
+                session(['last_submit_date' => $lastSubmitDate]);
+
+                // if ($request->id) {
+                    // DraftLedger::find($request->input('id'))->delete();
+                // }
+            }
+            DB::commit();
+
+            Alert::success('Notification', 'Data updated successfully')->toToast()->toHtml();
+        } catch (\Throwable $th) {
+            DB::rollback();
+            Log::error('Error storing booking: ' . $th->getMessage());
+            Alert::error('Notification', 'An error occurred: ' . $th->getMessage())->toToast()->toHtml();
+        }
+
+        return back();
     }
 
 
@@ -290,13 +583,31 @@ class BookingController extends Controller
         ];
         DB::beginTransaction();
         try {
-            $result = CustomerLedger::find($request->id);
-            $result->update($data);
+            $ledger = CustomerLedger::find($request->id);
+
+            if (Auth::user()->hasRole('super-admin') || Auth::user()->can('direct-update')) {
+                $ledger->update(['is_active' => 0]);
+                DB::commit();
+
+                Alert::success('Notification', 'Voucher <b>' . $ledger->detail . '</b> deleted successfully.')
+                    ->toToast()->toHtml();
+                return back();
+            }
+
+            PendingUpdate::create([
+                'table_name' => 'customer_ledger',
+                'record_id' => $ledger->id,
+                'old_values' => json_encode($ledger->toArray()),
+                'new_values' => json_encode($data),
+                'status' => 'pending',
+                'submitted_by' => Auth::id(),
+            ]);
             DB::commit();
-            Alert::success('Notification', 'Data <b>' . $result->name . '</b> Deleted')->toToast()->toHtml();
+            Alert::info('Notification', 'Delete request for <b>' . $ledger->detail . '</b> is pending admin approval.')
+                ->toToast()->toHtml();
         } catch (\Throwable $th) {
             DB::rollback();
-            Alert::error('Notification', 'Data <b>' . $result->name . '</b> failed to delete: ' . $th->getMessage())->toToast()->toHtml();
+            Alert::error('Notification', 'Data <b>' . $ledger->name . '</b> failed to delete: ' . $th->getMessage())->toToast()->toHtml();
         }
         return back();
     }
@@ -337,11 +648,10 @@ class BookingController extends Controller
         $projectId = $request->input('project_id');
 
         // Query the database to get customers associated with the project
-        $customers  = Lead::join('bookings', 'leads.id', '=', 'bookings.customer_id')->where('leads.project_id', $projectId)
+        $customers = Lead::join('bookings', 'leads.id', '=', 'bookings.customer_id')->where('leads.project_id', $projectId)
             ->select('leads.*') // Select all columns from the leads table
             ->get();
 
-        dd($customers);
 
         // Return customers as JSON response
         return response()->json($customers);
@@ -414,20 +724,20 @@ class BookingController extends Controller
 
     public function scheduleForm(Request $request, $id)
     {
-        $booking_id     = $id;
-        $x['title']     = 'Plots Sale List';
-        $x['data']      = Booking::with('customer', 'plot', 'project')->findOrFail($booking_id);
-        $x['role']      = Role::get();
+        $booking_id = $id;
+        $x['title'] = 'Plots Sale List';
+        $x['data'] = Booking::with('customer', 'plot', 'project')->where('cancel_status', '0')->findOrFail($booking_id);
+        $x['role'] = Role::get();
 
         return view('admin.booking.schedule_form', $x);
     }
 
     public function PriceForm(Request $request, $id)
     {
-        $booking_id     = $id;
-        $x['title']     = 'Plots Price Update';
-        $x['data']      = Booking::with('customer', 'plot', 'project')->findOrFail($booking_id);
-        $x['role']      = Role::get();
+        $booking_id = $id;
+        $x['title'] = 'Plots Price Update';
+        $x['data'] = Booking::with('customer', 'plot', 'project')->where('cancel_status', '0')->findOrFail($booking_id);
+        $x['role'] = Role::get();
 
         return view('admin.booking.price_form', $x);
     }
@@ -464,7 +774,7 @@ class BookingController extends Controller
         foreach ($installmentNumbers as $key => $installmentNumber) {
             BookingDetail::create([
                 'booking_id' => $bookingId,
-                'installment_details' =>  $installmentNumber,
+                'installment_details' => $installmentNumber,
                 'amount' => $amounts[$key],
                 'due_date' => $dueDates[$key],
             ]);
@@ -527,16 +837,26 @@ class BookingController extends Controller
     public function cash_in()
     {
         $power = Auth::user()->roles[0]->name;
-        $x['title']     = 'Receive Plot Payment';
-        $x['role']      = Role::get();
-        $x['users']      = User::get();
-        $x['power']     = $power;
-        $x['type']      =   'PPR';
-        $x['class']      =   'cash-in';
+        $x['title'] = 'Receive Plot Payment';
+        $x['role'] = Role::get();
+        $x['users'] = User::get();
+        $x['power'] = $power;
+        $x['type'] = 'PPR';
+        $x['class'] = 'cash-in';
         $x['bg_voucher'] = 'info-cash-in';
 
         $data = CustomerLedger::with('customer_list', 'plot_list')->where('transaction_type', 'CR')->where('is_active', '1')->where('project_id', getSelectedTown())->get();
-
+        $data = $data->map(function ($item) {
+            $pending = PendingUpdate::where('table_name', 'customer_ledger') // 👈 dynamic table name
+                ->where('record_id', $item->id)
+                ->latest()
+                ->first();
+            $item['submitted_by'] = $pending ? $pending->submittedBy?->name : '';
+            $item['new_values'] = $pending ? json_decode($pending->new_values, true) : '';
+            $item['old_values'] = $pending ? json_decode($pending->old_values, true) : '';
+            $item['status'] = $pending ? ucfirst($pending->status) : 'Approved';
+            return $item;
+        });
         $x['data'] = $data;
 
         $projects = Project::where('id', getSelectedTown())->get();
@@ -544,18 +864,52 @@ class BookingController extends Controller
 
         return view('admin.booking.receive', $x);
     }
+    public function updateCashIn(Request $request, $id)
+    {
+        // Validate incoming fields (adjust rules as per your fields)
+        $validated = $request->validate([
+            'amount_out' => 'required',
+            'date' => 'required',
+            'description' => 'nullable',
+        ]);
+
+        // 🛑 Remove commas from amount_out
+        $validated['amount_out'] = str_replace(',', '', $validated['amount_out']);
+
+        DB::transaction(function () use ($validated, $id, $request) {
+            $ledger = CustomerLedger::where('id', $id)->first();
+
+            if (auth()->user()->cannot('direct-update')) {
+                PendingUpdate::create([
+                    'record_id' => $ledger->id,
+                    'table_name' => 'customer_ledger',
+                    'new_values' => json_encode($validated),
+                    'old_values' => json_encode($ledger->only(array_keys($validated))),
+                    'status' => 'pending',
+                    'submitted_by' => Auth::id(),
+                ]);
+            } else {
+                // Direct update
+                $ledger->update($validated);
+            }
+        });
+
+        return redirect()->back()->with('success', 'Ledger updated successfully!');
+    }
+
+
     public function extraCharge()
     {
         $power = Auth::user()->roles[0]->name;
-        $x['title']     = 'Extra Charges';
-        $x['role']      = Role::get();
-        $x['users']      = User::get();
-        $x['power']     = $power;
-        $x['type']      =   'PPR';
-        $x['class']      =   'cash-in';
+        $x['title'] = 'Extra Charges';
+        $x['role'] = Role::get();
+        $x['users'] = User::get();
+        $x['power'] = $power;
+        $x['type'] = 'PPR';
+        $x['class'] = 'cash-in';
         $x['bg_voucher'] = 'info-cash-in';
         $projectId = getSelectedTown();
-        $data = CustomerLedger::with('customer_list', 'plot_list')->where('transaction_type', 'CR')->where('is_active', '1')->where('project_id', getSelectedTown())->get();
+        $data = CustomerLedger::with('customer_list', 'plot_list')->where('transaction_type', 'null')->where('is_active', '1')->where('project_id', getSelectedTown())->get();
         // Query the database to get unique customers associated with the project
         $x['customers'] = Lead::join('bookings', 'leads.id', '=', 'bookings.customer_id')
             ->where('leads.project_id', $projectId)
@@ -563,6 +917,17 @@ class BookingController extends Controller
             ->select('leads.*') // Select all columns from the leads table
             ->distinct() // Ensure uniqueness by lead id
             ->get();
+        $data = $data->map(function ($item) {
+            $pending = PendingUpdate::where('table_name', 'customer_ledger') // 👈 dynamic table name
+                ->where('record_id', $item->id)
+                ->latest()
+                ->first();
+            $item['submitted_by'] = $pending ? $pending->submittedBy?->name : '';
+            $item['new_values'] = $pending ? json_decode($pending->new_values, true) : '';
+            $item['old_values'] = $pending ? json_decode($pending->old_values, true) : '';
+            $item['status'] = $pending ? ucfirst($pending->status) : 'Approved';
+            return $item;
+        });
         $x['data'] = $data;
 
         $chargeTypes = ChargeType::get();
@@ -573,17 +938,17 @@ class BookingController extends Controller
 
     public function customer_report_form(Request $request)
     {
-        $x['title']     = 'Customer Report';
+        $x['title'] = 'Customer Report';
         // $x['data']      = Booking::with('customer', 'plot', 'project')->findOrFail(1);
-        $x['role']      = Role::get();
+        $x['role'] = Role::get();
         // dd("asda");
         $selectedProjectId = getSelectedTown();
         $x['customers'] = Lead::join('bookings', 'leads.id', '=', 'bookings.customer_id')
-        ->where('leads.project_id', $selectedProjectId)
-        ->whereNull('bookings.deleted_at') // Exclude soft-deleted bookings
-        ->select('leads.*') // Select all columns from the leads table
-        ->distinct() // Ensure uniqueness by lead id
-        ->get();
+            ->where('leads.project_id', $selectedProjectId)
+            ->whereNull('bookings.deleted_at') // Exclude soft-deleted bookings
+            ->select('leads.*') // Select all columns from the leads table
+            ->distinct() // Ensure uniqueness by lead id
+            ->get();
         $x['plots'] = Plot::join('bookings', 'plots.id', '=', 'bookings.plot_id')
             ->where('plots.project_id', $selectedProjectId)
             ->get();
@@ -604,7 +969,8 @@ class BookingController extends Controller
             'payment_type' => 'required',
             'reference' => 'required',
 
-        ]);;
+        ]);
+        ;
 
         $action = $request->input('action');
         // dd($request->input());
@@ -619,8 +985,8 @@ class BookingController extends Controller
                     // Create entry in customer ledger
                     // dd($request->input());
                     $payment_type = $request->input('payment_type');
-                    if ($payment_type ==  1) {
-                        $t_number = $bank_id =   null;
+                    if ($payment_type == 1) {
+                        $t_number = $bank_id = null;
                     } else {
                         $t_number = $request->input('t_number');
                         $bank_id = $request->input('bank_id');
@@ -689,8 +1055,8 @@ class BookingController extends Controller
                     // Create entry in customer ledger
                     // dd($request->input());
                     $payment_type = $request->input('payment_type');
-                    if ($payment_type ==  1) {
-                        $t_number = $bank_id =   null;
+                    if ($payment_type == 1) {
+                        $t_number = $bank_id = null;
                     } else {
                         $t_number = $request->input('t_number');
                         $bank_id = $request->input('bank_id');
@@ -782,7 +1148,6 @@ class BookingController extends Controller
                     break;
             }
         } catch (\Exception $e) {
-            dd($e->getMessage());
             return back()->withErrors(['msg' => $e->getMessage()]);
         }
         return back();
@@ -804,8 +1169,8 @@ class BookingController extends Controller
         try {
             switch ($action) {
                 case 'customer_report':
-                    $x['title']     = 'Customer Report';
-                    $x['data']      = CustomerLedger::with('customer_list', 'plot_list', 'project_list')
+                    $x['title'] = 'Customer Report';
+                    $x['data'] = CustomerLedger::with('customer_list', 'plot_list', 'project_list')
                         ->where('customer_id', $customer_id)->where('is_active', 1)->where('is_approve', 1)
                         ->when($request->input('plot_id'), function ($query) use ($request) {
                             return $query->where('plot_id', $request->input('plot_id'));
@@ -827,8 +1192,9 @@ class BookingController extends Controller
                     ]);
 
                     $plot_id = $request->input('plot_id');
-                    $x['title']     = 'Payment Plan';
-                    $x['data']      = $booking = Booking::with('customer', 'plot', 'project', 'bookingDetails')
+                    $x['title'] = 'Payment Plan';
+                    $x['data'] = $booking = Booking::with('customer', 'plot', 'project', 'bookingDetails')
+                        ->where('cancel_status', '0')
                         ->where('customer_id', $customer_id)
                         ->where('plot_id', $plot_id)
                         ->first();
@@ -850,11 +1216,17 @@ class BookingController extends Controller
 
 
                     $plot_id = $request->input('plot_id');
-                    $x['title']     = 'Customer Recovery Report';
-                    $x['data']       = Booking::with(['customer', 'plot', 'project', 'bookingDetails' => function ($query) use ($today) {
-                        $query->whereDate('due_date', '<=', $today);
-                    }])
+                    $x['title'] = 'Customer Recovery Report';
+                    $x['data'] = Booking::with([
+                        'customer',
+                        'plot',
+                        'project',
+                        'bookingDetails' => function ($query) use ($today) {
+                            $query->whereDate('due_date', '<=', $today);
+                        }
+                    ])
                         ->where('customer_id', $customer_id)
+                        ->where('cancel_status', '0')
                         ->where('plot_id', $plot_id)
                         ->first();
 
@@ -870,8 +1242,8 @@ class BookingController extends Controller
                     $sumAmountOut = $customerLedgers->sum('amount_out');
                     // dd($sumAmountOut);
 
-                    $x['recovery']    = $sumAmountOut;
-                    $x['total_recovery']    = $sumAmountOut;
+                    $x['recovery'] = $sumAmountOut;
+                    $x['total_recovery'] = $sumAmountOut;
 
                     return view('admin.reports.bookings.customer_recovery', $x);
 
@@ -888,10 +1260,16 @@ class BookingController extends Controller
                     $plot_id = $request->input('plot_id');
 
                     $x['title'] = 'Customer Payment Report';
-                    $booking = Booking::with(['customer', 'plot', 'project', 'bookingDetails' => function ($query) use ($today) {
-                        $query->whereDate('due_date', '<=', $today);
-                    }])
+                    $booking = Booking::with([
+                        'customer',
+                        'plot',
+                        'project',
+                        'bookingDetails' => function ($query) use ($today) {
+                            $query->whereDate('due_date', '<=', $today);
+                        }
+                    ])
                         ->where('customer_id', $customer_id)
+                        ->where('cancel_status', '0')
                         ->where('plot_id', $plot_id)
                         ->first();
                     $x['data'] = $booking;
@@ -951,10 +1329,16 @@ class BookingController extends Controller
                     $plot_id = $request->input('plot_id');
 
                     $x['title'] = 'Customer Payment Report';
-                    $booking = Booking::with(['customer', 'plot', 'project', 'bookingDetails' => function ($query) use ($today) {
-                        $query->whereDate('due_date', '<=', $today);
-                    }])
+                    $booking = Booking::with([
+                        'customer',
+                        'plot',
+                        'project',
+                        'bookingDetails' => function ($query) use ($today) {
+                            $query->whereDate('due_date', '<=', $today);
+                        }
+                    ])
                         ->where('customer_id', $customer_id)
+                        ->where('cancel_status', '0')
                         ->where('plot_id', $plot_id)
                         ->first();
                     $x['data'] = $booking;
@@ -1016,9 +1400,9 @@ class BookingController extends Controller
 
 
         return response()->json([
-            'status'    => Response::HTTP_OK,
-            'message'   => 'Data Project by id',
-            'data'      => $data_list
+            'status' => Response::HTTP_OK,
+            'message' => 'Data Project by id',
+            'data' => $data_list
         ], Response::HTTP_OK);
     }
 
@@ -1100,12 +1484,54 @@ class BookingController extends Controller
 
         return response()->json(['message' => 'Booking deleted successfully.']);
     }
+    public function cancel(Request $request)
+    {
+        $booking = Booking::find($request->id);
+
+        // Get the plot linked to this booking
+        $plot = Plot::find($booking->plot_id);
+        if ($plot) {
+            // Save current booking data to plot_history
+            $history = json_decode($plot->plot_history, true) ?? []; // Get existing history or empty array
+            $history[] = [
+                'booking_id' => $booking->id,
+                'customer_id' => $booking->customer_id,
+                'plot_id' => $booking->plot_id,
+                'plot_size' => $booking->plot_size,
+                'plot_rate' => $booking->plot_rate,
+                'total_price' => $booking->total_price,
+                'broker_id' => $booking->broker_id,
+                'booking_date' => $booking->booking_date,
+                'name' => $booking->customer->first_name . ' ' . $booking->customer->last_name,
+                'father_name' => $booking->customer->father_name,
+                'cnic' => $booking->customer->nic_number,
+                'phone_number' => $booking->customer->phone_number,
+                'cancel_reason' => $request->reason,
+                'deleted_at' => now(),
+            ];
+
+            // Save updated history back to plot
+            $plot->update([
+                'sold' => 0, // Reset sold status
+                'plot_history' => json_encode($history),
+            ]);
+        }
+
+        $booking->update([
+            'cancel_status' => 1, // Reset sold status
+            'cancel_type' => $request->action_type,
+            'reason' => $request->reason,
+        ]);
+
+
+        return response()->json(['message' => 'Booking canceled successfully.']);
+    }
 
     public function chargeTypeStore(Request $request)
     {
         $charge = ChargeType::create([
             'name' => $request->name
         ]);
-       return back();
+        return back();
     }
 }

@@ -233,6 +233,7 @@ class PlotController extends Controller
 
                 // Update plot_size in all related bookings
                 Booking::where('plot_id', $plot->id)
+                    ->where('cancel_status', '0')
                     ->update(['plot_size' => $validatedData['plot_size_update']]);
 
                 // Return a successful response

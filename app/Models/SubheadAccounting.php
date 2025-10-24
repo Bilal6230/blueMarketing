@@ -10,6 +10,7 @@ class SubheadAccounting extends Model
     use HasFactory;
     protected $fillable = [
         'name',
+        'urdu_name',
         'is_active',
         'create_by',
         'cnic',

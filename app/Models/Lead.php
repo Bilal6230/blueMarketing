@@ -48,11 +48,11 @@ class Lead extends Model
         return $this->hasMany(Work::class)->orderBy("id", "desc");
     }
 
-    
+
     // Fetch only active bookings by default
     public function bookings()
     {
-        return $this->hasMany(Booking::class)->orderBy("id", "desc");
+        return $this->hasMany(Booking::class)->where('cancel_status', '0')->orderBy("id", "desc");
     }
 
     // Fetch bookings including soft-deleted ones
@@ -66,6 +66,10 @@ class Lead extends Model
     {
         return $this->hasMany(Booking::class)->onlyTrashed()->orderBy("id", "desc");
     }
+    public function cancelledBookings()
+    {
+        return $this->hasMany(Booking::class)->where('cancel_status', '1')->orderBy("id", "desc");
+    }
 
 
     public function project()
@@ -73,6 +77,6 @@ class Lead extends Model
         return $this->belongsTo(Project::class);
     }
 
-    
+
 }
 

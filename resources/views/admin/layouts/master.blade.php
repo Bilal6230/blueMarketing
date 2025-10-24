@@ -37,12 +37,12 @@
     <link rel="stylesheet"
         href="{{ asset('template/admin/plugins/bootstrap-colorpicker/css/bootstrap-colorpicker.min.css') }}">
 
-        
-        <!-- Select2 -->
-        <link rel="stylesheet" href="{{ asset('template/admin/plugins/select2/css/select2.min.css') }}">
-        <link rel="stylesheet"
+
+    <!-- Select2 -->
+    <link rel="stylesheet" href="{{ asset('template/admin/plugins/select2/css/select2.min.css') }}">
+    <link rel="stylesheet"
         href="{{ asset('template/admin/plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css') }}">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css">
 
     <!-- Bootstrap4 Duallistbox -->
     <link rel="stylesheet"
@@ -219,53 +219,52 @@
                 "autoWidth": false,
                 "buttons": ["copy", "csv", "excel", "pdf", "print", "colvis"]
             }).buttons().container().appendTo('#example1_wrapper .col-md-6:eq(0)');
-
         });
 
-
         $(function() {
-            //Initialize Select2 Elements
-            $('.select2').select2()
+            // Initialize Select2 Elements
+            $('.select2').select2();
 
-            //Initialize Select2 Elements
             $('.select2bs4').select2({
                 theme: 'bootstrap4'
-            })
+            });
 
-            //Datemask dd/mm/yyyy
+            // Datemask dd/mm/yyyy
             $('#datemask').inputmask('dd/mm/yyyy', {
                 'placeholder': 'dd/mm/yyyy'
-            })
-            //Datemask2 mm/dd/yyyy
+            });
+            // Datemask2 mm/dd/yyyy
             $('#datemask2').inputmask('mm/dd/yyyy', {
                 'placeholder': 'mm/dd/yyyy'
-            })
-            //Money Euro
-            $('[data-mask]').inputmask()
+            });
+            // Money Euro
+            $('[data-mask]').inputmask();
 
-            //Date picker
+            // Date picker
             $('#reservationdate').datetimepicker({
                 format: 'L'
             });
 
-            //Date and time picker
+            // Date and time picker
             $('#reservationdatetime').datetimepicker({
                 icons: {
                     time: 'far fa-clock'
                 }
             });
 
-            //Date range picker
-            $('#reservation').daterangepicker()
-            //Date range picker with time picker
+            // Date range picker
+            $('#reservation').daterangepicker();
+
+            // Date range picker with time picker
             $('#reservationtime').daterangepicker({
                 timePicker: true,
                 timePickerIncrement: 30,
                 locale: {
                     format: 'MM/DD/YYYY hh:mm A'
                 }
-            })
-            //Date range as a button
+            });
+
+            // Date range as a button
             $('#daterange-btn').daterangepicker({
                     ranges: {
                         'Today': [moment(), moment()],
@@ -281,34 +280,34 @@
                 },
                 function(start, end) {
                     $('#reportrange span').html(start.format('MMMM D, YYYY') + ' - ' + end.format(
-                        'MMMM D, YYYY'))
+                        'MMMM D, YYYY'));
                 }
-            )
+            );
 
-            //Timepicker
+            // Timepicker
             $('#timepicker').datetimepicker({
                 format: 'LT'
-            })
+            });
 
-            //Bootstrap Duallistbox
-            $('.duallistbox').bootstrapDualListbox()
+            // Bootstrap Duallistbox
+            $('.duallistbox').bootstrapDualListbox();
 
-            //Colorpicker
-            $('.my-colorpicker1').colorpicker()
-            //color picker with addon
-            $('.my-colorpicker2').colorpicker()
+            // Colorpicker
+            $('.my-colorpicker1').colorpicker();
+            $('.my-colorpicker2').colorpicker();
 
             $('.my-colorpicker2').on('colorpickerChange', function(event) {
                 $('.my-colorpicker2 .fa-square').css('color', event.color.toString());
-            })
+            });
 
             $('#search_number').click(function() {
                 var number = $("#number").val();
+
                 $.ajax({
                     type: "post",
                     url: "{{ route('lead.search') }}",
                     data: {
-                        'number': number,
+                        number: number,
                         _token: "{{ csrf_token() }}"
                     },
                     dataType: "JSON",
@@ -316,37 +315,122 @@
                         $("#msg").html("");
                         var data = response.data;
                         let text = "";
-                        console.log(data);
-
-                        var msg = '<span class="message-alert"><b>Name:</b> ' + data.name +
-                            '</span> <br> ' +
-                            '<span class="message-alert"><b>Project:</b> ' + data.project +
-                            '</span> <br> ' +
-                            '<b>Created At: </b>' + data.created_at + ' <br>';
-                        const assigne = data.assignTo;
-                        @can('lead details')
-                            msg = msg + '<b>Assign To</b>';
-                            assigne.forEach(myFunction);
-                        @endcan
-
-                        function myFunction(item, index) {
-                            text += ": " + item['name'] + "<br>";
+                        if (!data) {
+                            $('#msg')
+                                .html("No record found")
+                                .addClass('message-error')
+                                .removeClass('message-success');
+                            return;
                         }
-                        $('#msg').append(msg + text);
-                        $('#msg').addClass('message-success');
-                        $('#msg').removeClass('message-error');
+
+                        var msg =
+                            '<span class="message-alert"><b>Name:</b> ' + data.name +
+                            '</span><br>' +
+                            '<span class="message-alert"><b>Project:</b> ' + data.project +
+                            '</span><br>' +
+                            '<b>Created At:</b> ' + data.created_at + '<br>' +
+                            '<b>Updated At:</b> ' + data.updated_at + '<br>';
+
+                        const assigne = data.assignTo || [];
+                        if (assigne.length > 0) {
+                            msg += "<b>Assign To:</b><br>";
+                            assigne.forEach(function(item) {
+                                text += "- " + item.name + "<br>";
+                            });
+                        }
+
+                        msg += text;
+
+                        const currentUserId = {{ Auth::id() }};
+                        const isSuperAdmin =
+                            {{ Auth::user()->hasRole('super-admin') ? 'true' : 'false' }};
+                        const assignedIds = data.assignTo ? data.assignTo.map(a => a.id) : [];
+
+                        if (isSuperAdmin || assignedIds.includes(currentUserId)) {
+                            const editUrl =
+                                "{{ url(config('adminPrefix') . 'admin/crm/lead') }}";
+                            msg +=
+                                '<br><button class="btn btn-primary" id="editLeadBtn" data-url="' +
+                                editUrl + '">Edit Lead</button>';
+                        } else {
+                            msg +=
+                                '<br><button class="btn btn-warning" id="requestEditBtn">Request Edit</button>';
+                        }
+
+                        $('#msg')
+                            .html(msg)
+                            .addClass('message-success')
+                            .removeClass('message-error');
+
+                        $(document).off('click', '#editLeadBtn').on('click', '#editLeadBtn',
+                            function() {
+                                window.location.href = $(this).data('url');
+                            });
+
+                        $(document).off('click', '#requestEditBtn').on('click',
+                            '#requestEditBtn',
+                            function(e) {
+                                e.preventDefault(); // stop form submission or reload
+
+                                $.ajax({
+                                    url: "{{ route('request.edit.btn') }}",
+                                    type: "POST",
+                                    data: {
+                                        table_name: "leads",
+                                        record_id: data.id,
+                                        _token: "{{ csrf_token() }}"
+                                    },
+                                    success: function(response) {
+                                        let alertBox = $('#soft-alert');
+
+                                        // Reset alert classes
+                                        alertBox.removeClass(
+                                            'alert-success alert-warning alert-danger'
+                                            );
+
+                                        if (response.status === "exists") {
+                                            alertBox.addClass('alert-warning')
+                                                .text(response.message);
+                                        } else if (response.status ===
+                                            "success") {
+                                            alertBox.addClass('alert-success')
+                                                .text(response.message);
+                                        } else {
+                                            alertBox.addClass('alert-danger')
+                                                .text("Unexpected response.");
+                                        }
+
+                                        // Show and auto-hide
+                                        alertBox.fadeIn(300).delay(2500)
+                                            .fadeOut(500);
+                                    },
+                                    error: function(xhr) {
+                                        let alertBox = $('#soft-alert');
+                                        alertBox.removeClass(
+                                                'alert-success alert-warning')
+                                            .addClass('alert-danger');
+                                        alertBox.text(
+                                                "Something went wrong. Please try again."
+                                                )
+                                            .fadeIn(300).delay(2500).fadeOut(
+                                                500);
+                                    }
+                                });
+                            });
+
                     },
                     error: function() {
                         $("#msg").html("");
-                        $('#msg').append("No Record Found");
-                        $('#msg').addClass('message-error');
-                        $('#msg').removeClass('message-success');
+                        $('#msg')
+                            .html("No Record Found")
+                            .addClass('message-error')
+                            .removeClass('message-success');
                     }
                 });
-
             });
-        })
+        });
     </script>
+
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {

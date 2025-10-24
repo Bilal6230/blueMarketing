@@ -30,6 +30,8 @@ return new class extends Migration
             $table->timestamp('booking_date');
             $table->enum('status', ['active', 'inactive'])->default('active');
             $table->foreignId('user_id')->constrained(); // Assuming you have a users table
+            $table->enum('cancel_status', ['0', '1'])->default('0');
+            $table->longText('reason')->nullable();
             $table->timestamps();
         });
     }

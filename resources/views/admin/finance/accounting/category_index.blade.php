@@ -1,4 +1,5 @@
 @extends('admin.layouts.master')
+
 @section('content')
     <div class="content-wrapper">
         <div class="content-header">
@@ -16,119 +17,361 @@
                 </div>
             </div>
         </div>
+
         <section class="content">
             <div class="container-fluid">
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card">
-                            @can('create lead')
-                                <div class="card-header">
-                                    <div>
-                                        <form action="{{ route('accounting.category_store') }}" method="POST" enctype="multipart/form-data">
-                                            @csrf
-                                            <div class="row">
-                                                <div class="col-sm-4">
-                                                    <div class="input-group">
-                                                        <label class="fbox">Accounts</label>
-                                                        <div class="input-group">
-                                                            <select class="form-control select2" name="accounts_id" id="accounts_id">
-                                                                <option value="">Select an account</option>
-                                                                @foreach ($headaccounts as $v)
-                                                                    <option value="{{ $v->id }}">{{ $v->name }}</option>
-                                                                @endforeach
-                                                            </select>
-                                                            @error('accounts_id')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                            @enderror
-                                                        </div>
-                                                    </div>
-                                                </div>
+                <div class="card">
 
-                                                <div class="col-sm-4">
-                                                    <div class="input-group">
-                                                        <label class="fbox">SubAccounts</label>
-                                                        <div class="input-group">
-                                                            <select class="form-control select2" name="subaccounts_id" id="subaccounts_id">
-                                                                <option value="">Select a sub account</option>
-                                                                @foreach ($subheadaccounts as $v)
-                                                                    <option value="{{ $v->id }}">{{ $v->name }}</option>
-                                                                @endforeach
-                                                            </select>
-                                                            @error('subaccounts_id')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                            @enderror
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="col-sm-4">
-                                                    <div class="input-group">
-                                                        <label class="fbox">Projects</label>
-                                                        <div class="input-group">
-                                                            <select class="form-control select2" name="projects_id" id="projects_id">
-                                                                <option value="">Select a project</option>
-                                                                @foreach ($projects as $v)
-                                                                    <option value="{{ $v->id }}">{{ $v->project }}</option>
-                                                                @endforeach
-                                                            </select>
-                                                            @error('projects_id')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                            @enderror
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div class="modal-footer justify-content-between">
-                                                <button type="submit" class="btn btn-primary">Save</button>
-                                            </div>
-                                        </form>
-                                    </div>
-                                </div>
-                            @endcan
-                            {{-- <div class="card-body table-responsive">
-                                <table id="example1" class="table table-bordered table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Head Account</th>
-                                            <th>Sub Head Account</th>
-                                            <th>Price</th>
-                                            <th>Project</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach ($data as $i)
-                                            <tr>
-                                                <td>{{ $loop->iteration }}</td>
-                                                <td>
-                                                    {{ $i->head_accounting_name }}
-                                                </td>
-                                                <td>
-                                                    {{ $i->subhead_accounting_name }}
-                                                </td>
-                                                <td>
-                                                    {{ $i->price }}
-                                                </td>
-                                                <td>
-                                                    {{ $i->project_name }}
-                                                </td>
-                                            </tr>
+                    {{-- Create Form --}}
+                    <div class="card-header">
+                        <form action="{{ route('accounting.category_store') }}" method="POST">
+                            @csrf
+                            <div class="row">
+                                <div class="col-sm-4">
+                                    <label>Head Accounts</label>
+                                    <select class="form-control select2" name="accounts_id" id="accounts_id">
+                                        <option value="">Select Head</option>
+                                        @foreach ($headaccounts as $head)
+                                            <option value="{{ $head->id }}">{{ $head->name }}</option>
                                         @endforeach
-                                    </tbody>
-                                </table>
-                            </div> --}}
-                        </div>
+                                    </select>
+                                    @error('accounts_id')
+                                        <div class="text-danger">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="col-sm-4">
+                                    <label>Sub Head Accounts</label>
+                                    <select class="form-control select2" name="subaccounts_id" id="subaccounts_id">
+                                        <option value="">Select Sub Head</option>
+                                        @foreach ($subheadaccounts as $sub)
+                                            <option value="{{ $sub->id }}">{{ $sub->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('subaccounts_id')
+                                        <div class="text-danger">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <button type="submit" class="btn btn-primary">Save</button>
+                            </div>
+                        </form>
                     </div>
+
+                    {{-- Data Table --}}
+                    <div class="card-body table-responsive">
+                        <table id="categoryTable" class="table table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Head Account</th>
+                                    <th>Sub Head Account</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($categoryMappings as $index => $map)
+                                    <tr>
+                                        <td>{{ $index + 1 }}</td>
+                                        <td>{{ $map->head_name ?? 'N/A' }}</td>
+                                        <td>{{ $map->subhead_name ?? 'N/A' }}</td>
+                                        <td>
+                                            <button type="button" class="btn btn-warning btn-sm editBtn"
+                                                data-id="{{ $map->id }}">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+
+                                            <button type="button" class="btn btn-danger btn-sm deleteBtn"
+                                                data-id="{{ $map->id }}">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+
                 </div>
             </div>
         </section>
+
+        {{-- Edit Modal --}}
+        {{-- Put this in your category_index blade (replace current edit modal & js) --}}
+
+        {{-- Edit Modal --}}
+        <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editModalLabel">Edit Head Accounts</h5>
+                        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+
+                    <form id="editForm">
+                        @csrf
+                        <div class="modal-body">
+                            <input type="hidden" id="edit_id">
+
+                            <div class="form-group">
+                                <label>Head Accounts</label>
+                                <select id="edit_heads" name="head_ids[]" class="form-control select2" multiple="multiple"
+                                    style="width:100%;">
+                                    <!-- options populated via JS -->
+                                </select>
+                                <small class="form-text text-muted">Select one or more head accounts for this
+                                    subhead.</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Sub Head Account</label>
+                                <input type="text" id="edit_subhead" class="form-control" readonly>
+                            </div>
+
+                            <!-- Optional: show existing pivot rows for debugging/visibility (you can remove) -->
+                            <div class="form-group">
+                                <label>Existing Pivot IDs</label>
+                                <div id="pivotList" class="small text-muted"></div>
+                            </div>
+
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Update</button>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+
+
+
     </div>
 @endsection
 
 @section('js')
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    @if (session('error'))
+        <script>
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                html: `{!! session('error') !!}`
+            });
+        </script>
+    @endif
     <script>
-        $(document).ready(function() {
+        $(function() {
+            // initialize Select2 (ensure select2 CSS/JS loaded in layout)
+            function initSelect2() {
+                if ($.fn.select2) {
+                    $('#edit_heads').select2({
+                        dropdownParent: $('#editModal'),
+                        width: '100%'
+                    });
+                }
+            }
+            initSelect2();
 
+            // Open Edit Modal
+            $(document).on('click', '.editBtn', function() {
+                let id = $(this).data('id');
+
+                $.ajax({
+                    url: "{{ url('admin/finance/accounting/category/edit') }}/" + id,
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function(res) {
+                        if (res.status !== 'success') {
+                            Swal.fire('Error', res.message || 'Could not fetch data', 'error');
+                            return;
+                        }
+
+                        let data = res.data;
+                        let heads = res.heads || []; // array of all heads
+                        let selectedId = data.selected_head_id || null;
+
+                        $('#edit_id').val(data.id);
+                        $('#edit_subhead').val(data.subhead_name || '');
+
+                        let $select = $('#edit_heads');
+                        $select.empty();
+
+                        // Populate all head options, and mark the one that matches selectedId
+                        $.each(heads, function(i, head) {
+                            let isSelected = (String(head.id) === String(selectedId));
+                            let opt = $('<option>', {
+                                value: head.id,
+                                text: head.name,
+                                selected: isSelected
+                            });
+                            $select.append(opt);
+                        });
+
+                        // If you use Select2, refresh it and ensure selected value is set
+                        if ($.fn.select2) {
+                            // set the value explicitly in case select2 needs it
+                            $select.val(selectedId ? String(selectedId) : null).trigger(
+                                'change');
+                        }
+
+                        $('#editModal').modal('show');
+                    },
+                    error: function(xhr) {
+                        Swal.fire('Error', 'Server error while fetching record', 'error');
+                    }
+                });
+            });
+
+            // Submit Update
+            $('#editForm').on('submit', function(e) {
+                e.preventDefault();
+                let id = $('#edit_id').val();
+                let head_ids = $('#edit_heads').val() || []; // array of selected head ids
+
+                if (head_ids.length === 0) {
+                    Swal.fire('Validation', 'Please select at least one Head Account', 'warning');
+                    return;
+                }
+
+                $.ajax({
+                    url: "{{ url('admin/finance/accounting/category/update') }}/" + id,
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        _token: "{{ csrf_token() }}",
+                        head_ids: head_ids
+                    },
+                    success: function(res) {
+                        if (res.status === 'success') {
+                            $('#editModal').modal('hide');
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Updated',
+                                text: res.message || 'Saved',
+                                timer: 1400,
+                                showConfirmButton: false
+                            });
+                            setTimeout(function() {
+                                location.reload();
+                            }, 1500);
+                        } else if (res.status === 'warning') {
+                            Swal.fire('Warning', res.message, 'warning');
+                        } else {
+                            Swal.fire('Error', res.message || 'Update failed', 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        let msg = 'Server error';
+                        if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON
+                            .message;
+                        Swal.fire('Error', msg, 'error');
+                    }
+                });
+            });
+
+            // Delete button (unchanged)
+            $(document).on('click', '.deleteBtn', function() {
+                let id = $(this).data('id');
+
+                Swal.fire({
+                    title: 'Delete or Reassign?',
+                    text: "Do you want to delete this record or assign it to another head/subhead?",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    showDenyButton: true,
+                    confirmButtonText: '<span style="color:white;">Delete</span>',
+                    denyButtonText: '<span style="color:white;">Assign to Other</span>',
+                    cancelButtonText: 'Cancel',
+                    reverseButtons: true,
+                    customClass: {
+                        confirmButton: 'btn btn-danger', // 🔴 Delete (Red)
+                        denyButton: 'btn btn-success', // 🟢 Reassign (Green)
+                        cancelButton: 'btn btn-secondary'
+                    },
+                    buttonsStyling: false // Important to apply Bootstrap classes
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // === DELETE DIRECTLY ===
+                        $.ajax({
+                            url: "{{ url('admin/finance/accounting/category/delete') }}/" +
+                                id,
+                            type: 'DELETE',
+                            data: {
+                                _token: "{{ csrf_token() }}"
+                            },
+                            success: function(r) {
+                                Swal.fire(r.status === 'success' ? 'Deleted' : 'Error',
+                                    r.message, r.status);
+                                if (r.status === 'success') setTimeout(() => location
+                                    .reload(), 1000);
+                            },
+                            error: function() {
+                                Swal.fire('Error', 'Server error', 'error');
+                            }
+                        });
+                    } else if (result.isDenied) {
+                        $.ajax({
+                            url: "{{ url('admin/finance/accounting/category/edit') }}/" +
+                                id,
+                            type: 'GET',
+                            dataType: 'json',
+                            success: function(res) {
+                                if (res.status !== 'success') {
+                                    Swal.fire('Error', res.message ||
+                                        'Could not fetch data', 'error');
+                                    return;
+                                }
+
+                                let data = res.data;
+                                let heads = res.heads || []; // array of all heads
+                                let selectedId = data.selected_head_id || null;
+
+                                $('#edit_id').val(data.id);
+                                $('#edit_subhead').val(data.subhead_name || '');
+
+                                let $select = $('#edit_heads');
+                                $select.empty();
+
+                                // Populate all head options, and mark the one that matches selectedId
+                                $.each(heads, function(i, head) {
+                                    let isSelected = (String(head.id) ===
+                                        String(selectedId));
+                                    let opt = $('<option>', {
+                                        value: head.id,
+                                        text: head.name,
+                                        selected: isSelected
+                                    });
+                                    $select.append(opt);
+                                });
+
+                                // If you use Select2, refresh it and ensure selected value is set
+                                if ($.fn.select2) {
+                                    // set the value explicitly in case select2 needs it
+                                    $select.val(selectedId ? String(selectedId) : null)
+                                        .trigger(
+                                            'change');
+                                }
+
+                                $('#editModal').modal('show');
+                            },
+                            error: function(xhr) {
+                                Swal.fire('Error', 'Server error while fetching record',
+                                    'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            $('#categoryTable').DataTable({
+                responsive: true,
+                autoWidth: false,
+                pageLength: 10
+            });
 
         });
     </script>

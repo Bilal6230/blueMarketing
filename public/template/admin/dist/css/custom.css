@@ -10,7 +10,321 @@
   --box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   --transition: all 0.3s ease;
 }
+  /* Custom CSS for enhanced UI */
 
+    /* Section Titles */
+    .section-title {
+        color: #495057;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #e9ecef;
+        font-weight: 600;
+        font-size: 1.5rem;
+    }
+
+    /* Stat Cards */
+    .stat-card {
+        border-radius: 15px;
+        padding: 25px 20px;
+        color: white;
+        display: flex;
+        align-items: center;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        margin-bottom: 25px;
+        position: relative;
+        overflow: hidden;
+        min-height: 180px;
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 5px;
+        background: rgba(255,255,255,0.3);
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+    }
+
+    .total-plots {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .sold-plots {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    }
+
+    .unsold-plots {
+        background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+    }
+
+    .hold-plots {
+        background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);
+    }
+
+    .stat-icon {
+        font-size: 3.5rem;
+        margin-right: 20px;
+        opacity: 0.8;
+        flex-shrink: 0;
+    }
+
+    .stat-content {
+        flex-grow: 1;
+    }
+
+    .stat-number {
+        font-size: 2.8rem;
+        margin: 0;
+        font-weight: 700;
+        text-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+    }
+
+    .stat-label {
+        font-size: 1.1rem;
+        margin: 5px 0 10px;
+        opacity: 0.9;
+        font-weight: 500;
+    }
+
+    .stat-breakdown {
+        display: flex;
+        gap: 5px;
+    }
+
+    .breakdown-item {
+        font-size: 0.85rem;
+        opacity: 0.85;
+        display: flex;
+        align-items: center;
+    }
+
+    .breakdown-item i {
+        margin-right: 5px;
+        font-size: 0.8rem;
+    }
+
+    .stat-percentage {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 20px;
+        padding: 5px 12px;
+        font-weight: 600;
+        font-size: 1rem;
+        backdrop-filter: blur(5px);
+    }
+
+    /* Chart Cards */
+    .chart-card {
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        margin-bottom: 25px;
+        background: white;
+        border: 1px solid #f0f0f0;
+        transition: transform 0.3s ease;
+    }
+
+    .chart-card:hover {
+        transform: translateY(-3px);
+    }
+
+    .chart-header {
+        padding: 18px 20px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .chart-title {
+        margin: 0;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        color: #495057;
+        font-weight: 600;
+    }
+
+    .chart-title i {
+        margin-right: 10px;
+        color: #6c757d;
+    }
+
+    .chart-body {
+        padding: 20px;
+        height: 220px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .chart-footer {
+        padding: 15px 20px;
+        background: #f8f9fa;
+        border-top: 1px solid #e9ecef;
+    }
+
+    .chart-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: center;
+    }
+
+    .chart-stat {
+        font-size: 0.85rem;
+        color: #6c757d;
+        display: flex;
+        align-items: center;
+    }
+
+    .chart-stat i {
+        margin-right: 5px;
+    }
+
+    /* Status Cards */
+    .status-card {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        margin-bottom: 25px;
+        transition: transform 0.3s ease;
+    }
+
+    .status-card:hover {
+        transform: translateY(-3px);
+    }
+
+    .status-header {
+        padding: 18px 20px;
+        color: white;
+    }
+
+    .status-card.sold .status-header {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    }
+
+    .status-card.unsold .status-header {
+        background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+    }
+
+    .status-card.hold .status-header {
+        background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);
+    }
+
+    .status-body {
+        padding: 20px;
+        background: white;
+        max-height: 300px;
+        min-height: 300px;
+        overflow-y: auto;
+    }
+
+    .plot-row {
+        margin-bottom: 15px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #f1f1f1;
+    }
+
+    .plot-row:last-child {
+        margin-bottom: 0;
+        border-bottom: none;
+    }
+
+    .plot-tag {
+        display: inline-block;
+        background: #f8f9fa;
+        padding: 6px 12px;
+        margin: 3px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        border: 1px solid #e9ecef;
+        transition: all 0.2s ease;
+    }
+
+    .plot-tag:hover {
+        background: #e9ecef;
+        transform: scale(1.05);
+    }
+
+    /* Scrollbar styling */
+    .status-body::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .status-body::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+
+    .status-body::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 10px;
+    }
+
+    .status-body::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 1560px) {
+      .stat-icon {
+    font-size: 2.5rem;
+    margin-right: 15px;
+}
+.stat-number {
+    font-size: 2.3rem;}
+    }
+    @media (max-width: 992px) {
+        .stat-card {
+            min-height: 160px;
+        }
+
+        .stat-icon {
+            font-size: 3rem;
+            margin-right: 15px;
+        }
+
+        .stat-number {
+            font-size: 2.4rem;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .stat-card {
+            flex-direction: column;
+            text-align: center;
+            min-height: auto;
+            padding: 20px 15px;
+        }
+
+        .stat-icon {
+            margin-right: 0;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+
+        .stat-number {
+            font-size: 2.2rem;
+        }
+
+        .stat-percentage {
+            position: static;
+            margin-top: 10px;
+            align-self: flex-end;
+        }
+
+        .chart-body {
+            height: 180px;
+        }
+    }
 .ts-wrapper.single .ts-control,
 .ts-wrapper.single .ts-control input {
   cursor: text !important;
@@ -253,6 +567,16 @@
 }
 
 #wordingAmount {
+  background-color: #343A40;
+  padding: 10px;
+  border-radius: 5px;
+  margin-top: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  color: white;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+}
+#eWordingAmount {
   background-color: #343A40;
   padding: 10px;
   border-radius: 5px;
@@ -509,7 +833,7 @@ div.dt-button-collection .dt-button:hover {
 div.dt-button-collection {
   padding: 0;
 }
- 
+
 .sidebar-mini.sidebar-collapse .sidebar .nav-sidebar .nav-link p>.right {
   position: absolute;
   right: 2rem;
@@ -528,7 +852,7 @@ div.dt-button-collection {
 @media (min-width: 1280px) {
   .dataTables_filter {
     position: absolute;
-    right: 0; 
+    right: 0;
     top: 0;
   }
 }

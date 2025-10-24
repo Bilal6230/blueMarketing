@@ -9,7 +9,7 @@
                         <h4 class="mb-0">{{ $title }}</h4>
                     </div>
                     <div class="card-body">
-                        <form id="journalForm" action="{{ route('journal.voucher.store') }}" method="POST">
+                        <form id="journalForm" action="{{ route('commision.voucher.store') }}" method="POST">
                             @csrf
                             <!-- Voucher Details -->
                             <div class="row mb-4">
@@ -61,8 +61,8 @@
 
                             <!-- Dynamic Table for Journal Entries -->
                             <div class="table-responsive mb-4">
-                                <table class="table table-bordered" id="journalTable">
-                                    <thead class="bg-primary text-white">
+                                <table class="table table-bordered " id="journalTable">
+                                    <thead class="text-white">
                                         <tr>
                                             <th style="background-color: black !important">Account</th>
                                             <th style="background-color: black !important">Sub-Account</th>
@@ -119,7 +119,7 @@
                             <!-- Submit Button -->
                             <div class="text-center">
                                 <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save"></i> Save Journal Voucher
+                                    <i class="fas fa-save"></i> Save Commision Voucher
                                 </button>
                             </div>
                         </form>
@@ -259,8 +259,10 @@
 
 
 @section('modal')
-    <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+    <!-- Error Modal -->
+    <div class="modal fade" id="errorModal" tabindex="-1" role="dialog" aria-labelledby="errorModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-danger text-white">
                     <h5 class="modal-title" id="errorModalLabel">Validation Error</h5>
@@ -272,15 +274,16 @@
                     <p>Total Debit and Credit must be equal. Please review your entries.</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel"
-        aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+    <!-- Confirmation Modal -->
+    <div class="modal fade" id="confirmationModal" tabindex="-1" role="dialog"
+        aria-labelledby="confirmationModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title" id="confirmationModalLabel">Confirm Submission</h5>

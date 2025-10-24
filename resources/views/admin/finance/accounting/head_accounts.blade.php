@@ -1,6 +1,5 @@
 @extends('admin.layouts.master')
 @section('content')
-
     <div class="content-wrapper">
         <!-- Content Header (Page header) -->
         <div class="content-header">
@@ -33,16 +32,20 @@
                                         <a href="#" class="btn btn-sm btn-success" data-toggle="modal" data-target="#modal-tambah" data-backdrop="static" data-keyboard="false"><i class="fas fa-plus"></i> Add</a>
                                     </h3> --}}
                                     <div>
-                                        <form action="{{ route('accounting.head_store') }}" method="POST" enctype="multipart/form-data">
+                                        <form action="{{ route('accounting.head_store') }}" method="POST"
+                                            enctype="multipart/form-data">
                                             @csrf
                                             <div class="row">
                                                 <div class="col-sm-6">
                                                     <div class="input-group">
                                                         <label class="fbox">Head Account Name</label>
                                                         <div class="input-group">
-                                                            <input type="text" class="form-control @error('name') is-invalid @enderror" placeholder="Head Account Name" name="name" value="{{ old('name') }}">
+                                                            <input type="text"
+                                                                class="form-control @error('name') is-invalid @enderror"
+                                                                placeholder="Head Account Name" name="name"
+                                                                value="{{ old('name') }}">
                                                             @error('name')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
+                                                                <div class="invalid-feedback">{{ $message }}</div>
                                                             @enderror
                                                         </div>
                                                     </div>
@@ -52,6 +55,7 @@
                                                         <label>Type</label>
                                                         <div class="input-group">
                                                             <select class="form-control" name="acct_type">
+                                                                <option value="0">Update Please</option>
                                                                 <option value="1">Assets</option>
                                                                 <option value="2">Owner</option>
                                                                 <option value="3">Recovery</option>
@@ -59,7 +63,7 @@
                                                                 <option value="5">Amanat Pyments</option>
                                                             </select>
                                                             @error('is_active')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
+                                                                <div class="invalid-feedback">{{ $message }}</div>
                                                             @enderror
                                                         </div>
                                                     </div>
@@ -73,14 +77,14 @@
                                                                 <option value="0">Disable</option>
                                                             </select>
                                                             @error('is_active')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
+                                                                <div class="invalid-feedback">{{ $message }}</div>
                                                             @enderror
                                                         </div>
                                                     </div>
                                                 </div>
-                                                
+
                                             </div>
-                                            
+
                                             <div class="modal-footer justify-content-between">
                                                 <button type="submit" class="btn btn-primary">Save</button>
                                             </div>
@@ -109,16 +113,21 @@
                                                     {{ $i->name }}
                                                 </td>
                                                 <td>
-                                                    {{ getHead($i->acct_type)}}
+                                                    {{ getHead($i->acct_type) }}
                                                 </td>
                                                 @canany(['update lead', 'delete lead'])
                                                     <td>
                                                         <div class="btn-group">
                                                             @can('update lead')
-                                                                <button class="btn btn-sm btn-primary btn-edit" data-id="{{ $i->id }}"><i class="fas fa-pencil-alt"></i></button>
+                                                                <button class="btn btn-sm btn-primary btn-edit"
+                                                                    data-id="{{ $i->id }}"><i
+                                                                        class="fas fa-pencil-alt"></i></button>
                                                             @endcan
                                                             @can('delete lead')
-                                                                <button class="btn btn-sm btn-danger btn-delete" data-id="{{ $i->id }}" data-name="{{ $i->name }}"><i class="fas fa-trash"></i></button>
+                                                                <button class="btn btn-sm btn-danger btn-delete"
+                                                                    data-id="{{ $i->id }}"
+                                                                    data-name="{{ $i->name }}"><i
+                                                                        class="fas fa-trash"></i></button>
                                                             @endcan
                                                         </div>
                                                     </td>
@@ -149,7 +158,11 @@
 
             $(document).on("click", '.btn-edit', function() {
                 let id = $(this).attr("data-id");
-                $('#modal-loading').modal({backdrop: 'static', keyboard: false, show: true});
+                $('#modal-loading').modal({
+                    backdrop: 'static',
+                    keyboard: false,
+                    show: true
+                });
                 $.ajax({
                     url: "{{ route('accounting.head_show') }}",
                     type: "POST",
@@ -163,8 +176,14 @@
                         var data = data.data;
                         $("#name").val(data.name);
                         $("#id").val(data.id);
+                        $("#acct_type").val(data
+                            .acct_type); // ✅ This sets the correct option selected
                         $('#modal-loading').modal('hide');
-                        $('#modal-edit').modal({backdrop: 'static', keyboard: false, show: true});
+                        $('#modal-edit').modal({
+                            backdrop: 'static',
+                            keyboard: false,
+                            show: true
+                        });
                     },
                 });
             });
@@ -174,7 +193,11 @@
                 let name = $(this).attr("data-name");
                 $("#did").val(id);
                 $("#delete-data").html(name);
-                $('#modal-delete').modal({backdrop: 'static', keyboard: false, show: true});
+                $('#modal-delete').modal({
+                    backdrop: 'static',
+                    keyboard: false,
+                    show: true
+                });
             });
         });
     </script>
@@ -252,23 +275,43 @@
                 <div class="modal-body">
                     <form action="{{ route('accounting.head_update') }}" method="POST" enctype="multipart/form-data">
                         @csrf
-                        @method("PUT")
+                        @method('PUT')
                         <div class="row">
-                            <div class="col-sm-3">
+                            <div class="col-sm-6">
                                 <div class="input-group">
                                     <label class="fbox">First Name</label>
                                     <div class="input-group">
-                                        <input id="name" type="text" class="form-control @error('name') is-invalid @enderror" placeholder="First Name" name="name" value="{{ old('name') }}">
+                                        <input id="name" type="text"
+                                            class="form-control @error('name') is-invalid @enderror"
+                                            placeholder="First Name" name="name" value="{{ old('name') }}">
                                         @error('name')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="input-group">
+                                    <label>Type</label>
+                                    <div class="input-group">
+                                        <select class="form-control" id="acct_type" name="acct_type">
+                                            <option value="0">Update Please</option>
+                                            <option value="1">Assets</option>
+                                            <option value="2">Owner</option>
+                                            <option value="3">Recovery</option>
+                                            <option value="4">Expence</option>
+                                            <option value="5">Amanat Pyments</option>
+                                        </select>
+                                        @error('is_active')
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-sm-12">
-                                <div class="input-group">
+                            <div class="col-sm-4">
+                                <div class="input-group mt-2">
                                     <label>Status</label>
                                     <div class="input-group">
                                         <select id="is_active" class="form-control" name="is_active">
@@ -276,13 +319,13 @@
                                             <option value="0">Disable</option>
                                         </select>
                                         @error('is_active')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="modal-footer justify-content-between">
+                        <div class="modal-footer justify-content-between mt-2">
                             <input type="hidden" name="id" id="id">
                             <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
                             <button type="submit" class="btn btn-primary">Save</button>

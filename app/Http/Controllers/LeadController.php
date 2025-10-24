@@ -6,6 +6,7 @@ use App\Models\Lead;
 use App\Models\User;
 use App\Models\Work;
 use Illuminate\Http\Request;
+use App\Models\PendingUpdate;
 
 
 use Illuminate\Support\Facades\DB;
@@ -14,7 +15,7 @@ use Spatie\Permission\Models\Role;
 use RealRashid\SweetAlert\Facades\Alert;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
-use App\Repository\Lead\LeadRepository AS lead_repo;
+use App\Repository\Lead\LeadRepository as lead_repo;
 use App\Models\Project;
 
 class LeadController extends Controller
@@ -29,14 +30,50 @@ class LeadController extends Controller
 
         $power = Auth::user()->roles[0]->name;
 
-        $x['title']     = 'Lead SetUp';
-        $x['data']      = lead_repo::getLeadsList(Auth::user()->id, $request->filter);
-        $x['role']      = Role::get();
-        $x['users']      = User::get();
-        $x['power']     = $power;
+        $x['title'] = 'Lead SetUp';
+        $x['data'] = lead_repo::getLeadsList(Auth::user()->id, $request->filter);
+        $x['role'] = Role::get();
+        $x['users'] = User::get();
+        $x['power'] = $power;
         $projects = Project::get();
         $x['projects'] = $projects;
         return view('admin.crm.lead', $x);
+    }
+    public function requestEditBtn(Request $request)
+    {
+        $request->validate([
+            'table_name' => 'required|string',
+            'record_id' => 'required|integer',
+        ]);
+
+        
+        $existing = PendingUpdate::where('table_name', $request->table_name)
+            ->where('record_id', $request->record_id)
+            ->where('status','!=', ['approved','rejected'])
+            ->latest()
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'status' => 'exists',
+                'message' => 'An edit request is already pending for this record.',
+            ]);
+        }
+
+        $pending = new PendingUpdate();
+        $pending->table_name = $request->table_name;
+        $pending->record_id = $request->record_id;
+        $pending->submitted_by = auth()->id(); // optional: track who requested
+        $pending->status = 'pending';
+        $pending->old_values = json_encode([]); // ✅ Fix the SQL error
+        $pending->new_values = json_encode([]); // ✅ Fix the SQL error
+        $pending->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Edit request submitted successfully!',
+            'data' => $pending,
+        ]);
     }
 
 
@@ -44,18 +81,18 @@ class LeadController extends Controller
     {
         // dd($request->all());
         $validator = Validator::make($request->all(), [
-            'first_name'      => ['required', 'string', 'max:25'],
-            'last_name'       => ['required', 'string',  'max:25'],
-            'gender'          => ['required'],
+            'first_name' => ['required', 'string', 'max:25'],
+            'last_name' => ['required', 'string', 'max:25'],
+            'gender' => ['required'],
             //'nic_number'     => [ 'numeric'],
-            'phone_number'     => ['required', 'numeric',  'unique:leads'],
-            'mobile_number'     => 'nullable|unique:leads|digits:11',
-            'area_id'         => ['required','numeric'],
-            'type'          =>   ['required','numeric'],
-            'office_address'     => ['required'],
-            'assign_id'     => ['required'],
-            'follow_id'     => ['required'],
-            'projects_id'     => ['required','numeric'],
+            'phone_number' => ['required', 'numeric', 'unique:leads'],
+            'mobile_number' => 'nullable|unique:leads|digits:11',
+            'area_id' => ['required', 'numeric'],
+            'type' => ['required', 'numeric'],
+            'office_address' => ['required'],
+            'assign_id' => ['required'],
+            'follow_id' => ['required'],
+            'projects_id' => ['required', 'numeric'],
 
 
         ]);
@@ -85,10 +122,10 @@ class LeadController extends Controller
                 'is_active' => $request->is_active,
                 'follow_id' => $request->follow_id,
                 'is_active' => $request->is_active,
-                
+
                 'project_id' => $request->projects_id,
 
-                'create_by' =>Auth::user()->id
+                'create_by' => Auth::user()->id
 
             ]);
 
@@ -98,7 +135,7 @@ class LeadController extends Controller
             Alert::success('Notification', 'Data <b>' . $data->project . '</b> Save successfully ')->toToast()->toHtml();
         } catch (\Throwable $th) {
             DB::rollback();
-            Alert::error('Notification', 'Data <b>' .  $th->getMessage())->toToast()->toHtml();
+            Alert::error('Notification', 'Data <b>' . $th->getMessage())->toToast()->toHtml();
         }
         return back();
     }
@@ -107,20 +144,20 @@ class LeadController extends Controller
 
     public function show(Request $request)
     {
-        $data_list = Lead::where(['id' => $request->id])->first();
+        $data_list = Lead::where(['id' => $request->id])->with('users')->first();
 
 
         return response()->json([
-            'status'    => Response::HTTP_OK,
-            'message'   => 'Data Project by id',
-            'data'      => $data_list
+            'status' => Response::HTTP_OK,
+            'message' => 'Data Project by id',
+            'data' => $data_list
         ], Response::HTTP_OK);
     }
 
 
 
 
-     public function update(Request $request)
+    public function update(Request $request)
     {
         $rules = [
             'first_name' => ['required', 'string', 'max:25'],
@@ -131,8 +168,6 @@ class LeadController extends Controller
             'area_id' => ['required', 'numeric'],
             'type' => ['required', 'numeric'],
             'office_address' => ['required'],
-            'projects_id' => ['required', 'numeric'],
-
             'assign_id' => ['required'],
             'follow_id' => ['required']
         ];
@@ -149,6 +184,7 @@ class LeadController extends Controller
             return back()->withErrors($validator)
                 ->withInput();
         }
+
         $data = [
             'first_name' => $request->first_name,
             'last_name' => $request->last_name,
@@ -168,7 +204,6 @@ class LeadController extends Controller
             'is_active' => $request->is_active,
             'follow_id' => $request->follow_id,
             'is_active' => $request->is_active,
-            'project_id' => $request->projects_id,
         ];
 
         //dd($data);
@@ -232,9 +267,9 @@ class LeadController extends Controller
 
 
         return response()->json([
-            'status'    => Response::HTTP_OK,
-            'message'   => 'Data Project by id',
-            'data'      => $data_list
+            'status' => Response::HTTP_OK,
+            'message' => 'Data Project by id',
+            'data' => $data_list
         ], Response::HTTP_OK);
     }
 
@@ -242,40 +277,30 @@ class LeadController extends Controller
     {
         $user = Auth::user();
         $power = $user->roles[0]->name;
-        
 
-        if(isset($request->user))
-        {
+
+        if (isset($request->user)) {
             $user_id = $request->user;
-        }
-        else
-        {
+        } else {
             $user_id = $user->id;
         }
 
-        if(isset($request->id))
-        {
+        if (isset($request->id)) {
             $leadID = $request->id;
-        }
-        else
-        {
+        } else {
             $leadID = null;
         }
 
-        if(isset($request->status))
-        {
+        if (isset($request->status)) {
             $status = null;
-        }
-        else
-        {
+        } else {
             $status = true;
         }
         //dd($user);
 
 
-        $data = lead_repo::getActiveList($user_id,$status,$leadID,$power);
-        if(count($data) == 0)
-        {
+        $data = lead_repo::getActiveList($user_id, $status, $leadID, $power);
+        if (count($data) == 0) {
             echo "No More Leads";
             exit;
         }
@@ -283,10 +308,10 @@ class LeadController extends Controller
 
 
 
-        $x['title']     = 'Start Work';
-        $x['data']      = $data[0];
-        $x['user']      = $user;
-        $x['role']      = Role::get();
+        $x['title'] = 'Start Work';
+        $x['data'] = $data[0];
+        $x['user'] = $user;
+        $x['role'] = Role::get();
         $x['register_date'] = $data[0]->created_at;
         return view('admin.crm.details', $x);
     }
@@ -295,11 +320,11 @@ class LeadController extends Controller
     {
         //dd($request->all());
         $validator = Validator::make($request->all(), [
-            'call_status'      => ['required'],
-            'call_duration'     => ['required','numeric'],
-            'comment'     => ['required'],
-            'lead_id'       => ['required','numeric'],
-            'type'       => ['required','numeric'],
+            'call_status' => ['required'],
+            'call_duration' => ['required', 'numeric'],
+            'comment' => ['required'],
+            'lead_id' => ['required', 'numeric'],
+            'type' => ['required', 'numeric'],
 
 
         ]);
@@ -316,11 +341,11 @@ class LeadController extends Controller
                 'call_duration' => $request->call_duration,
                 'call_status' => $request->call_status,
                 'type' => $request->type,
-                'user_id' =>Auth::user()->id,
+                'user_id' => Auth::user()->id,
                 'follow_up' => $request->follow_up,
 
             ]);
-            Lead::where('id',$request->lead_id)->update(['follow_status'=>$request->call_status,'follow_up'=>$request->follow_up ]);
+            Lead::where('id', $request->lead_id)->update(['follow_status' => $request->call_status, 'follow_up' => $request->follow_up]);
 
 
             // $roleIds = $request->assign_id;
@@ -329,38 +354,35 @@ class LeadController extends Controller
             Alert::success('Notification', 'Data <b>' . $data->project . '</b> Save successfully ')->toToast()->toHtml();
         } catch (\Throwable $th) {
             DB::rollback();
-            Alert::error('Notification', 'Data <b>' .  $th->getMessage())->toToast()->toHtml();
+            Alert::error('Notification', 'Data <b>' . $th->getMessage())->toToast()->toHtml();
         }
         return back();
     }
 
     public function search(Request $request)
     {
-        if(isset($request->number))
-        {
+        if (isset($request->number)) {
             $data = lead_repo::getLeadByNumber($request->number);
-
-            if(!empty($data))
-            {
+            if (!empty($data)) {
                 $projectDetails = getProjectDetails($data->project_id);
 
                 $result['active'] = "Already Register";
-                $result['name'] = $data->first_name.' '.$data->last_name;
+                $result['name'] = $data->first_name . ' ' . $data->last_name;
+                $result['id'] = $data->id;
                 $result['created_at'] = $data->created_at;
+                $result['updated_at'] = $data->updated_at;
                 $result['assignTo'] = $data->users;
                 $result['project'] = $projectDetails['project'];
                 $result['status'] = 'success';
-                $result['follow_status'] =  $data->follow_status;
+                $result['follow_status'] = $data->follow_status;
 
                 return response()->json([
-                    'status'    => Response::HTTP_OK,
-                    'message'   => 'Data Project by id',
-                    'data'      => $result
+                    'status' => Response::HTTP_OK,
+                    'message' => 'Data Project by id',
+                    'data' => $result
                 ], Response::HTTP_OK);
 
-            }
-            else
-            {
+            } else {
 
                 return response()->json(['error' => 'No Record Found'], 404);
             }

@@ -144,6 +144,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::post('crm/lead/show', 'show')->middleware(['permission:read lead'])->name('crm.lead.show');
         Route::put('crm/lead', 'update')->middleware(['permission:update lead'])->name('crm.lead.update');
         Route::delete('crm/lead', 'destroy')->middleware(['permission:delete lead'])->name('crm.lead.destroy');
+        Route::post('crm/request-edit', 'requestEditBtn')->middleware(['permission:delete lead'])->name('request.edit.btn');
 
         Route::get('crm/lead/assign/', 'assign')->middleware(['permission:read lead'])->name('crm.lead.assign');
         Route::get('crm/lead/work/', 'details')->name('lead.work');
@@ -194,7 +195,9 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::get('finance/accounting/accountant', 'Accountant')->middleware(['permission:read accounting'])->name('accounting.Accountant');
         Route::get('finance/accounting/{user}/ledgers', 'AccountantLedgers')->middleware(['permission:read accounting'])->name('accounting.Accountant.ledgers');
         Route::post('finance/accounting/category', 'category_store')->middleware(['permission:read accounting'])->name('accounting.category_store');
-
+        Route::get('finance/accounting/category/edit/{id}', 'category_edit')->middleware(['permission:read accounting'])->name('accounting.category_edit');
+        Route::post('finance/accounting/category/update/{id}', 'category_update')->middleware(['permission:read accounting'])->name('accounting.category_update');
+        Route::delete('finance/accounting/category/delete/{id}', 'category_delete')->middleware(['permission:read accounting'])->name('accounting.category_delete');
         // Route::post('accounting/category', 'category_store')->middleware(['permission:create accounting'])->name('accounting.category_store');
         // Route::post('accounting/category/show', 'category_show')->middleware(['permission:read accounting'])->name('accounting.category_show');
         // Route::put('accounting/category', 'category_update')->middleware(['permission:update accounting'])->name('accounting.category_update');
@@ -214,11 +217,16 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         //accounting routes
 
         Route::get('finance/voucher', 'index')->middleware(['permission:read voucher'])->name('finance.voucher.index');
+        Route::get('finance/voucher/pending_updates', 'pendingIndex')->middleware(['permission:read voucher'])->name('finance.voucher.pending_updates_index');
         Route::get('finance/voucher/in', 'cash_in')->middleware(['permission:read voucher'])->name('finance.voucher.in');
         Route::get('finance/voucher/out', 'cash_out')->middleware(['permission:read voucher'])->name('finance.voucher.out');
+        Route::get('finance/voucher/data', 'cash_out_data')->middleware(['permission:read voucher'])->name('voucher.cash_out.data');
+        Route::get('finance/voucher/data/in', 'cash_in_data')->middleware(['permission:read voucher'])->name('voucher.cash_in.data');
         Route::get('finance/voucher/draft', 'cash_draft')->middleware(['permission:read voucher'])->name('finance.voucher.draft');
-
-
+        Route::post('finance/voucher/{id}/approve', 'approve')->middleware(['permission:read voucher'])->name('finance.voucher.approve');
+        Route::post('finance/voucher/{id}/reject', 'reject')->middleware(['permission:read voucher'])->name('finance.voucher.reject');
+        Route::post('finance/voucher/{id}/approveadmin', 'approveAdmin')->middleware(['permission:read voucher'])->name('finance.voucher.approveadmin');
+        Route::post('finance/voucher/{id}/rejectadmin', 'rejectAdmin')->middleware(['permission:read voucher'])->name('finance.voucher.rejectadmin');
     });
 
     Route::controller(DastiCashController::class)->prefix('dasticash')->name('dasticash.')->group(function () {
@@ -242,6 +250,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::match(['get', 'post'], 'fetch-data-url', 'fetch_data_url')->middleware(['permission:master report'])->name('fetch-data-url');
 
         Route::post('accounting/ledger/show', 'show')->name('ledger.show');
+        Route::post('accounting/customer/ledger/show', 'customerLedgerShow')->name('customer.ledger.show');
         Route::post('accounting/draft/ledger/show', 'draftShow')->name('draft.ledger.show');
         Route::post('accounting/ledger/store', 'store')->middleware(['permission:create voucher'])->name('ledger.store');
         Route::post('accounting/ledger/save_as_draft', 'saveAsDraft')->middleware(['permission:create voucher'])->name('ledger.save_as_draft');
@@ -262,9 +271,12 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
     });
 
     Route::controller(App\Http\Controllers\BookingController::class)->group(function () {
+        Route::post('booking/cancel/{id}', 'cancel')->middleware(['permission:read plot'])->name('booking.cancel');
         Route::get('booking/plot', 'index')->middleware(['permission:read plot'])->name('booking.plot.index');
         Route::get('booking/plot/sale', 'sale')->middleware(['permission:read plot'])->name('booking.plot.sale');
+        Route::get('booking/plot/file-transfer/{id}', 'fileTransfer')->middleware(['permission:read plot'])->name('booking.plot.file-transfer');
         Route::post('booking/plot/sale', 'store')->middleware(['permission:create plot'])->name('bookings.store');
+        Route::post('booking/plot/transfer', 'update')->middleware(['permission:create plot'])->name('bookings.transfer');
         Route::post('charge-type-store', 'chargeTypeStore')->middleware(['permission:create plot'])->name('charge-type.store');
 
         Route::get('booking/price/update/{id}', 'PriceForm')->middleware(['permission:read plot'])->name('booking.price.update');
@@ -274,6 +286,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::get('booking/plot/schedule/{id}', 'scheduleForm')->middleware(['permission:read plot'])->name('booking.schedule.form');
         Route::post('booking/plot/schedule/store', 'storePaymentSchedule')->middleware(['permission:create plot'])->name('payment_schedule.store');
         Route::get('booking/plot/voucher/', 'cash_in')->middleware(['permission:read slip'])->name('payment_schedule.cash');
+        Route::any('booking/plot/voucher/update/{id}', 'updateCashIn')->middleware(['permission:read slip'])->name('payment_schedule.cash.update');
         Route::get('extra_charge/', 'extraCharge')->middleware(['permission:read slip'])->name('payment_schedule.extra_charge');
         Route::get('booking/customer/report/form', 'customer_report_form')->middleware(['permission:view booking report'])->name('booking.customer.report.form');
         Route::post('booking/customer/report/display', 'customer_report_display')->middleware(['permission:view booking report'])->name('booking.customer.report.display');
@@ -311,6 +324,20 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::delete('journal-vouchers/delete/{id}', 'destroy')->middleware(['permission:delete jv'])->name('journal.voucher.delete');
 
         Route::get('/journal-voucher/print/{id}', 'print')->middleware(['permission:print jv'])->name('journal.voucher.print');
+
+
+
+
+    });
+    Route::controller(App\Http\Controllers\CommissionVoucherController::class)->group(function () {
+        Route::get('commision-voucher', 'index')->middleware(['permission:read jv'])->name('commision.voucher.index');
+        Route::get('commision-voucher/create', 'create')->middleware(['permission:create jv'])->name('commision.voucher.create');
+        Route::post('commision-voucher/create', 'store')->middleware(['permission:create jv'])->name('commision.voucher.store');
+        Route::get('commision-vouchers/{id}/edit', 'edit')->middleware(['permission:edit jv'])->name('commision.voucher.edit');
+        Route::put('commision-vouchers/{id}', 'update')->middleware(['permission:edit jv'])->name('commision.voucher.update');
+        Route::delete('commision-vouchers/delete/{id}', 'destroy')->middleware(['permission:delete jv'])->name('commision.voucher.delete');
+
+        Route::get('/commision-voucher/print/{id}', 'print')->middleware(['permission:print jv'])->name('commision.voucher.print');
 
 
 

@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\JournalVoucher;
-use App\Models\JournalVoucherDetail;
+use App\Models\CommisionVoucher;
+use App\Models\CommisionVoucherDetail;
 use App\Models\Ledger;
 use App\Models\Project;
 use App\Models\ProjectHeadSubhead;
@@ -14,36 +14,35 @@ use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\DB;
 
-class JournalVoucherController extends Controller
+class CommissionVoucherController extends Controller
 {
     public function index()
     {
         $power = Auth::user()->roles[0]->name;
-        $x['title']     = 'General Journal Voucher';
+        $x['title']     = 'General Commision Voucher';
         $x['role']      = Role::get();
         $x['users']      = User::get();
         $x['power']     = $power;
-        $x['type']      =   'JV';
-        $x['class']      =   'Journal voucher';
+        $x['type']      =   'CV';
+        $x['class']      =   'Commision voucher';
         $x['bg_voucher'] = 'info-cash-in';
 
         // Get selected town's project_id
         $selectedProjectId = getSelectedTown();
 
-        $x['vouchers']  = JournalVoucher::latest()->where('project_id',$selectedProjectId)->get();
-
-        return view('admin.reports.vouchers.index', $x);
+        $x['vouchers']  = CommisionVoucher::latest()->where('project_id',$selectedProjectId)->get();
+        return view('admin.reports.vouchers.commision_index', $x);
     }
 
     public function create()
     {
         $power = Auth::user()->roles[0]->name;
-        $x['title']     = 'Create General Journal Voucher';
+        $x['title']     = 'Create Commision Journal Voucher';
         $x['role']      = Role::get();
         $x['users']      = User::get();
         $x['power']     = $power;
-        $x['type']      =   'JV';
-        $x['class']      =   'Journal voucher';
+        $x['type']      =   'CV';
+        $x['class']      =   'Commision voucher';
         $x['bg_voucher'] = 'info-cash-in';
 
         // Get selected town's project_id
@@ -64,11 +63,12 @@ class JournalVoucherController extends Controller
         $x['accounts'] = $data_list;
 
 
-        return view('admin.reports.vouchers.journal_voucher', $x );
+        return view('admin.reports.vouchers.commision_voucher', $x );
     }
 
     public function store(Request $request)
     {
+        // dd($request->all());
         $lastVoucherId = getLastJvId();
 
         $request->validate([
@@ -92,9 +92,9 @@ class JournalVoucherController extends Controller
         $selectedProjectId = getSelectedTown();
 
         DB::beginTransaction();
-        // try {
+        try {
             // Create Journal Voucher Record
-            $journalVoucher = JournalVoucher::create([
+            $CommisionVoucher = CommisionVoucher::create([
                 'voucher_number' => $lastVoucherId+1,
                 'reference' => $request->reference,
                 'date' => $request->date,
@@ -104,13 +104,11 @@ class JournalVoucherController extends Controller
                 'created_by' => auth()->id(),
                 'project_id' => $selectedProjectId,
             ]);
-
-
             // Add Ledger Entries
             foreach ($request->accounts as $index => $accountId) {
 
-                $JvDetails = JournalVoucherDetail::create([
-                    'journal_voucher_id' => $journalVoucher->id,
+                $JvDetails = CommisionVoucherDetail::create([
+                    'commision_voucher_id' => $CommisionVoucher->id,
                     'account_id' => $request->sub_accounts[$index],
                     'debit' => $request->debit[$index] ?? 0,
                     'credit' => $request->credit[$index] ?? 0,
@@ -120,7 +118,7 @@ class JournalVoucherController extends Controller
 
                 $ledgerData = Ledger::create([
                     'type' => ($request->debit[$index] ?? 0) > 0 ? 'JV' : 'JV',
-                    'type_id' => $journalVoucher->id,
+                    'type_id' => $CommisionVoucher->id,
                     'project_head_subheads_id' => $request->sub_accounts[$index],
                     'reference' => $request->reference,
                     'amount_in' => $request->debit[$index] ?? 0,
@@ -134,16 +132,16 @@ class JournalVoucherController extends Controller
             }
 
             DB::commit();
-            return redirect()->route('journal.voucher.index')->with('success', 'Journal Voucher created successfully.');
-        // } catch (\Exception $e) {
-        //     DB::rollBack();
-        //     return redirect()->back()->withErrors(['error' => $e->getMessage()]);
-        // }
+            return redirect()->route('commision.voucher.index')->with('success', 'Journal Voucher created successfully.');
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return redirect()->back()->withErrors(['error' => $e->getMessage()]);
+            }
     }
 
     // public function edit($id)
     // {
-    //     $voucher = JournalVoucher::with('details')->findOrFail($id);
+    //     $voucher = CommisionVoucher::with('details')->findOrFail($id);
     //     $x['voucher'] = $voucher;
     //     $power = Auth::user()->roles[0]->name;
     //     $x['title']     = 'Edit General Journal Voucher';
@@ -176,13 +174,13 @@ class JournalVoucherController extends Controller
         DB::beginTransaction();
         try {
             // Delete Journal Voucher and related details
-            $journalVoucher = JournalVoucher::findOrFail($id);
-            JournalVoucherDetail::where('journal_voucher_id', $id)->delete();
-            Ledger::where('type_id', $id)->whereIn('type', ['JV', 'JV'])->delete();
-            $journalVoucher->delete();
+            $CommisionVoucher = CommisionVoucher::findOrFail($id);
+            CommisionVoucherDetail::where('commision_voucher_id', $id)->delete();
+            Ledger::where('type_id', $id)->whereIn('type', ['CV', 'CV'])->delete();
+            $CommisionVoucher->delete();
 
             DB::commit();
-            return redirect()->route('journal.voucher.index')->with('success', 'Journal Voucher deleted successfully.');
+            return redirect()->route('commision.voucher.index')->with('success', 'Journal Voucher deleted successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->withErrors(['error' => $e->getMessage()]);
@@ -191,8 +189,8 @@ class JournalVoucherController extends Controller
 
     public function edit($id)
     {
-        $voucher = JournalVoucher::with('details')->findOrFail($id);
-        $x = $this->getCommonData('Edit Journal Voucher');
+        $voucher = CommisionVoucher::with('details')->findOrFail($id);
+        $x = $this->getCommonData('Edit Commision Voucher');
         $x['voucher'] = $voucher;
 
         // Get selected town's project_id
@@ -206,7 +204,7 @@ class JournalVoucherController extends Controller
             ->where('project_id', $selectedProjectId)
             ->get();
 
-        return view('admin.reports.vouchers.edit_journal_voucher', $x);
+        return view('admin.reports.vouchers.edit_commision_voucher', $x);
     }
 
     public function update(Request $request, $id)
@@ -233,8 +231,8 @@ class JournalVoucherController extends Controller
         DB::beginTransaction();
         try {
             // Update Journal Voucher Record
-            $journalVoucher = JournalVoucher::findOrFail($id);
-            $journalVoucher->update([
+            $CommisionVoucher = CommisionVoucher::findOrFail($id);
+            $CommisionVoucher->update([
                 'voucher_number' => $request->voucher_number,
                 'reference' => $request->reference,
                 'date' => $request->date,
@@ -245,13 +243,13 @@ class JournalVoucherController extends Controller
             ]);
 
             // Delete existing details and ledger entries
-            JournalVoucherDetail::where('journal_voucher_id', $id)->delete();
+            CommisionVoucherDetail::where('commision_voucher_id', $id)->delete();
             Ledger::where('type_id', $id)->whereIn('type', ['JV', 'JV'])->delete();
 
             // Add updated Ledger Entries
             foreach ($request->accounts as $index => $accountId) {
-                $JvDetails = JournalVoucherDetail::create([
-                    'journal_voucher_id' => $journalVoucher->id,
+                $JvDetails = CommisionVoucherDetail::create([
+                    'commision_voucher_id' => $CommisionVoucher->id,
                     'account_id' => $request->sub_accounts[$index],
                     'debit' => $request->debit[$index] ?? 0,
                     'credit' => $request->credit[$index] ?? 0,
@@ -275,7 +273,7 @@ class JournalVoucherController extends Controller
             }
 
             DB::commit();
-            return redirect()->route('journal.voucher.index')->with('success', 'Journal Voucher updated successfully.');
+            return redirect()->route('commision.voucher.index')->with('success', 'Journal Voucher updated successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->withErrors(['error' => $e->getMessage()]);
@@ -284,7 +282,7 @@ class JournalVoucherController extends Controller
 
     public function print($id)
     {
-        $voucher = JournalVoucher::with('details.account.headAccounting', 'details.account.subheadAccounting')->findOrFail($id);
+        $voucher = CommisionVoucher::with('details.account.headAccounting', 'details.account.subheadAccounting')->findOrFail($id);
         return view('admin.reports.vouchers.print_journal_voucher', compact('voucher'));
     }
 
