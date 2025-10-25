@@ -47,7 +47,9 @@ class LedgerController extends Controller
         $x['today'] = date("d-m-Y");
         $cleanAmount = str_replace(',', '', $request->amount);
         $voucherValue = $request->input('voucher');
+        $voucherNumberValue = $request->input('voucher_number');
         $firstTwoDigits = substr($voucherValue, 0, 2);
+        $voucherNumber = substr($voucherNumberValue, 3);
         $amount_in = $amount_out = 0;
         if ($firstTwoDigits === 'CR') {
             $amount_in = $cleanAmount;
@@ -60,30 +62,30 @@ class LedgerController extends Controller
 
 
             //
-            $payment_type = $request->input('payment_type');
-            if ($payment_type == 1) {
-                $t_number = $bank_id = null;
-            } else {
-                $t_number = $request->input('t_number');
-                $bank_id = $request->input('bank_id');
-            }
+            // $payment_type = $request->input('payment_type');
+            // if ($payment_type == 1) {
+            //     $t_number = $bank_id = null;
+            // } else {
+            //     $t_number = $request->input('t_number');
+            //     $bank_id = $request->input('bank_id');
+            // }
             $plotName = Plot::where('id', $request->input('plot_id'))->value('name');
-            $customerLedger = CustomerLedger::create([
-                'transaction_type' => $firstTwoDigits,
-                'type_id' => get_new_typeID($firstTwoDigits),
-                'reference' => $request->input('reference'),
-                'project_id' => $selectedProjectId,
-                'amount_in' => 0,
-                'amount_out' => str_replace(',', '', $request->input('amount')),
-                'description' => $request->input('detail'),
-                'date' => $request->input('date'), // Assuming booking date is the transaction date
-                'payment_type' => $request->input('payment_type'),
-                't_number' => $t_number,
-                'bank_id' => $bank_id,
-                'is_active' => 1,
-                'is_approve' => 0,
-                'passing_date' => $request->input('passing_date'),
-            ]);
+            // $customerLedger = CustomerLedger::create([
+            //     'transaction_type' => $firstTwoDigits,
+            //     'type_id' => get_new_typeID($firstTwoDigits),
+            //     'reference' => $request->input('reference'),
+            //     'project_id' => $selectedProjectId,
+            //     'amount_in' => 0,
+            //     'amount_out' => str_replace(',', '', $request->input('amount')),
+            //     'description' => $request->input('detail'),
+            //     'date' => $request->input('date'), // Assuming booking date is the transaction date
+            //     'payment_type' => $request->input('payment_type'),
+            //     't_number' => $t_number,
+            //     'bank_id' => $bank_id,
+            //     'is_active' => 1,
+            //     'is_approve' => 0,
+            //     'passing_date' => $request->input('passing_date'),
+            // ]);
 
 
             $lastId = getLastLedgerIdByType($firstTwoDigits);
@@ -105,7 +107,8 @@ class LedgerController extends Controller
                 throw new \Exception('Credit account ID not found.');
             }
             $data = Ledger::create([
-                'customer_ledger_id' => $customerLedger->id,
+                // 'customer_ledger_id' => $customerLedger->id,
+                'voucher_number' => $voucherNumber,
                 'type' => $firstTwoDigits,
                 'type_id' => $lastId + 1,
                 'project_head_subheads_id' => $projectHeadSubhead->id,
@@ -128,8 +131,17 @@ class LedgerController extends Controller
             }
             DB::commit();
             // Alert::success('Notification', 'Data <b></b> Save successfully ')->toToast()->toHtml();
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Data saved successfully.',
+                'data' => $data
+            ], 200);
             Alert::success('Notification', 'Data <b>' . $data->project . '</b> Save successfully ')->toToast();
         } catch (\Throwable $th) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $th->getMessage()
+            ], 500);
             DB::rollback();
             Alert::error('Notification', 'Data <b>' . $th->getMessage())->toToast()->toHtml();
         }

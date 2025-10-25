@@ -75,6 +75,54 @@
             align-items: center;
             height: 100vh;
         }
+                .card-loader-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            border-radius: 8px;
+        }
+
+        .custom_card {
+            position: relative;
+        }
+
+        .voucher-tab-wrapper {
+            position: relative;
+        }
+
+        .voucher-tab-remove {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #dc3545;
+            color: white;
+            border: none;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .voucher-tab-remove:hover {
+            background: #c82333;
+        }
+
+        .voucher-tab-remove i {
+            font-size: 10px;
+        }
     </style>
 </head>
 

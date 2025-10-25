@@ -155,7 +155,6 @@ class VoucherController extends Controller
         if (!empty($numbers)) {
             $allNumbers = range(min($numbers), max($numbers));
             $missing = array_diff($allNumbers, $numbers);
-
             if (!empty($missing)) {
                 // Get the smallest missing number
                 $nextNumber = min($missing);
@@ -165,7 +164,7 @@ class VoucherController extends Controller
             }
         }
 
-        $x['latest_voucher_number'] = $nextNumber;
+       $x['latest_voucher_number'] = $nextNumber;
 
         return view('admin.finance.voucher.cash_voucher', $x);
     }
@@ -478,19 +477,17 @@ class VoucherController extends Controller
             'projectHeadSubhead.project:id,project',
             'projectHeadSubhead.plot.bookings' => function ($q) {
                 $q->where('cancel_type', 're_sale')
-                    ->with([
-                        'plot.projectHeadSubheads' => function ($p) {
-                            // This ensures we only include project_head_subheads where
-                            // both plot_id and customer_id match any re_sale booking
-                            $p->whereExists(function ($sub) {
-                                $sub->selectRaw(1)
-                                    ->from('bookings')
-                                    ->whereColumn('bookings.plot_id', 'project_head_subheads.plot_id')
-                                    ->whereColumn('bookings.customer_id', 'project_head_subheads.customer_id')
-                                    ->where('bookings.cancel_type', 're_sale');
-                            });
-                        }
-                    ]);
+                    ->with(['plot.projectHeadSubheads' => function ($p) {
+                        // This ensures we only include project_head_subheads where
+                        // both plot_id and customer_id match any re_sale booking
+                        $p->whereExists(function ($sub) {
+                            $sub->selectRaw(1)
+                                ->from('bookings')
+                                ->whereColumn('bookings.plot_id', 'project_head_subheads.plot_id')
+                                ->whereColumn('bookings.customer_id', 'project_head_subheads.customer_id')
+                                ->where('bookings.cancel_type', 're_sale');
+                        });
+                    }]);
             },
         ])
             ->where('is_active', 1)
@@ -546,17 +543,18 @@ class VoucherController extends Controller
 
             return [
                 'date' => $i->date,
+                'voucher_number' => $i->type.'-'.$i->voucher_number,
                 'project' => optional($i->projectHeadSubhead->project)->project ?? '',
                 'head' => optional($i->projectHeadSubhead->headAccounting)->name ?? '',
                 'subhead' => trim(
                     (optional($i->projectHeadSubhead->subheadAccounting)->name ?? '') .
-                    (
-                        count($customers) > 0
-                        ? ' <p style="font-size:12px;">(old customers: ' .
-                        e(collect($customers)->pluck('subhead')->implode(', ')) .
-                        ')</p>'
-                        : ''
-                    )
+                        (
+                            count($customers) > 0
+                            ? ' <p style="font-size:12px;">(old customers: ' .
+                            e(collect($customers)->pluck('subhead')->implode(', ')) .
+                            ')</p>'
+                            : ''
+                        )
                 ),
                 'detail' => $i->detail,
                 'amount' => $amount,
@@ -574,9 +572,8 @@ class VoucherController extends Controller
             'draw' => $draw,
             'recordsTotal' => $total,
             'recordsFiltered' => $total,
-            'data' => $data,
-        ]);
-    }
+            'data' => $data,]);
+        }
     public function cash_out_data_old()
     {
         $selectedProjectId = getSelectedTown();
@@ -757,5 +754,37 @@ class VoucherController extends Controller
         $x['projects'] = $projects;
 
         return view('admin.finance.voucher.draft_voucher', $x);
+    }
+    public function checkNewVoucherNumber(Request $request)
+    {
+        $type = $request->type;
+        $voucherNumber = (int) $request->number;
+
+        // Check if voucher number already exists
+        $exists = Ledger::where('type', $type)
+            ->where('is_active', 1)
+            ->where('voucher_number', $voucherNumber)
+            ->exists();
+
+        if ($exists) {
+            // Find next available number
+            $nextNumber = $voucherNumber + 1;
+
+            // Keep incrementing until a free number is found
+            while (
+                Ledger::where('type', $type)
+                    ->where('is_active', 1)
+                    ->where('voucher_number', $nextNumber)
+                    ->exists()
+            ) {
+                $nextNumber++;
+            }
+
+            $voucherNumber = $nextNumber;
+        }
+
+        // ✅ Now $voucherNumber is guaranteed unique
+        $x['latest_voucher_number'] = $voucherNumber;
+        return response()->json($x);
     }
 }
