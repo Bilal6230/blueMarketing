@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Auth;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpFoundation\Response;
+use App\Repository\Lead\LeadRepository as lead_repo;
 
 class VoucherController extends Controller
 {
@@ -246,6 +247,40 @@ class VoucherController extends Controller
 
         return back()->with('success', 'Voucher rejected.');
     }
+    public function GetComment(Request $request)
+    {
+        // dd($request->all());
+        $user = Auth::user();
+        $power = $user->roles[0]->name;
+        if (isset($request->user)) {
+            $user_id = $request->user;
+        } else {
+            $user_id = $user->id;
+        }
+
+        if (isset($request->id)) {
+            $leadID = $request->id;
+        } else {
+            $leadID = null;
+        }
+
+        if (isset($request->status)) {
+            $status = null;
+        } else {
+            $status = true;
+        }
+        $data = Lead_repo::getActiveList($user_id, $status, $leadID, $power);
+        if (count($data) == 0) {
+            echo "No More Leads";
+            exit;
+        }
+        return response()->json([
+            'success' => true,
+            'data' => $data[0]->comments,
+        ]);
+
+
+    }
     public function approveAdmin($id, Request $request)
     {
         // Whitelist allowed tables to prevent SQL injection
@@ -263,7 +298,7 @@ class VoucherController extends Controller
         if (!Auth::user()->hasRole('super-admin') && !Auth::user()->can('direct-update')) {
             abort(403, 'Unauthorized action.');
         }
-         if ($request->table == 'leads') {
+        if ($request->table == 'leads') {
             DB::table('lead_user')->where('lead_id', $pending->record_id)->update(['user_id' => $pending->submitted_by, 'created_at' => now(), 'updated_at' => now()]);
             $pending->update([
                 'status' => 'approved',
@@ -432,7 +467,7 @@ class VoucherController extends Controller
         return view('admin.finance.voucher.cash_voucher', $x);
     }
 
-        public function cash_out_data()
+    public function cash_out_data()
     {
         $selectedProjectId = getSelectedTown();
 
@@ -443,24 +478,26 @@ class VoucherController extends Controller
             'projectHeadSubhead.project:id,project',
             'projectHeadSubhead.plot.bookings' => function ($q) {
                 $q->where('cancel_type', 're_sale')
-                ->with(['plot.projectHeadSubheads' => function ($p) {
-                    // This ensures we only include project_head_subheads where
-                    // both plot_id and customer_id match any re_sale booking
-                    $p->whereExists(function ($sub) {
-                        $sub->selectRaw(1)
-                            ->from('bookings')
-                            ->whereColumn('bookings.plot_id', 'project_head_subheads.plot_id')
-                            ->whereColumn('bookings.customer_id', 'project_head_subheads.customer_id')
-                            ->where('bookings.cancel_type', 're_sale');
-                    });
-                }]);
+                    ->with([
+                        'plot.projectHeadSubheads' => function ($p) {
+                            // This ensures we only include project_head_subheads where
+                            // both plot_id and customer_id match any re_sale booking
+                            $p->whereExists(function ($sub) {
+                                $sub->selectRaw(1)
+                                    ->from('bookings')
+                                    ->whereColumn('bookings.plot_id', 'project_head_subheads.plot_id')
+                                    ->whereColumn('bookings.customer_id', 'project_head_subheads.customer_id')
+                                    ->where('bookings.cancel_type', 're_sale');
+                            });
+                        }
+                    ]);
             },
         ])
-        ->where('is_active', 1)
-        ->whereIn('type', ['CP', 'BO'])
-        ->whereHas('projectHeadSubhead', function ($q) use ($selectedProjectId) {
-            $q->where('project_id', $selectedProjectId);
-        });
+            ->where('is_active', 1)
+            ->whereIn('type', ['CP', 'BO'])
+            ->whereHas('projectHeadSubhead', function ($q) use ($selectedProjectId) {
+                $q->where('project_id', $selectedProjectId);
+            });
 
 
 
@@ -503,24 +540,24 @@ class VoucherController extends Controller
                     'subhead' => optional($sh->subheadAccounting)->name,
                 ];
             })->filter(fn($c) => !empty($c['subhead']))
-            ->unique('subhead')
-            ->values()
-            ->toArray();
+                ->unique('subhead')
+                ->values()
+                ->toArray();
 
             return [
                 'date' => $i->date,
                 'project' => optional($i->projectHeadSubhead->project)->project ?? '',
                 'head' => optional($i->projectHeadSubhead->headAccounting)->name ?? '',
                 'subhead' => trim(
-                        (optional($i->projectHeadSubhead->subheadAccounting)->name ?? '') .
-                        (
-                            count($customers) > 0
-                                ? ' <p style="font-size:12px;">(old customers: ' .
-                                e(collect($customers)->pluck('subhead')->implode(', ')) .
-                                ')</p>'
-                                : ''
-                        )
-                    ),
+                    (optional($i->projectHeadSubhead->subheadAccounting)->name ?? '') .
+                    (
+                        count($customers) > 0
+                        ? ' <p style="font-size:12px;">(old customers: ' .
+                        e(collect($customers)->pluck('subhead')->implode(', ')) .
+                        ')</p>'
+                        : ''
+                    )
+                ),
                 'detail' => $i->detail,
                 'amount' => $amount,
                 'status' => $p ? ucfirst($p->status) : 'Approved',

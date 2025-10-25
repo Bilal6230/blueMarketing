@@ -342,10 +342,9 @@
                         msg += text;
 
                         const currentUserId = {{ Auth::id() }};
-                        const isSuperAdmin =
-                            {{ Auth::user()->hasRole('super-admin') ? 'true' : 'false' }};
+                        
+                        const isSuperAdmin ={{ Auth::user()->getRoleNames()->first() == 'superadmin' ? 'true' : 'false' }};
                         const assignedIds = data.assignTo ? data.assignTo.map(a => a.id) : [];
-
                         if (isSuperAdmin || assignedIds.includes(currentUserId)) {
                             const editUrl =
                                 "{{ url(config('adminPrefix') . 'admin/crm/lead') }}";

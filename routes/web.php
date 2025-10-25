@@ -227,6 +227,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::post('finance/voucher/{id}/reject', 'reject')->middleware(['permission:read voucher'])->name('finance.voucher.reject');
         Route::post('finance/voucher/{id}/approveadmin', 'approveAdmin')->middleware(['permission:read voucher'])->name('finance.voucher.approveadmin');
         Route::post('finance/voucher/{id}/rejectadmin', 'rejectAdmin')->middleware(['permission:read voucher'])->name('finance.voucher.rejectadmin');
+        Route::post('finance/voucher/getcomment', 'GetComment')->middleware(['permission:read voucher'])->name('finance.voucher.getcomment');
     });
 
     Route::controller(DastiCashController::class)->prefix('dasticash')->name('dasticash.')->group(function () {

@@ -307,7 +307,6 @@ class LeadController extends Controller
 
 
 
-
         $x['title'] = 'Start Work';
         $x['data'] = $data[0];
         $x['user'] = $user;

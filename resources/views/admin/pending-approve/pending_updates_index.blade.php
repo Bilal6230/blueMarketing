@@ -46,7 +46,8 @@
                                                 data-old='@json($update->old_values)'
                                                 data-new='@json($update->new_values)'
                                                 data-submitted_by="{{ $update->submitted_by }}"
-                                                data-record_id="{{ $update->record_id }}">
+                                                data-record_id="{{ $update->record_id }}"
+                                                data-table="{{ $update->table_name }}">
                                                 <i class="fas fa-eye"></i> View Details
                                             </button>
 
@@ -75,18 +76,21 @@
                     <!-- Header close button removed -->
                 </div>
                 <div class="modal-body">
-                    <table class="table table-bordered table-hover">
-                        <thead>
-                            <tr>
-                                <th>Field</th>
-                                <th>Old Value</th>
-                                <th>New Value</th>
-                            </tr>
-                        </thead>
-                        <tbody id="changesTableBody">
-                            <!-- Dynamically filled by JS -->
-                        </tbody>
-                    </table>
+                    <div class="modal_table_changes d-none">
+                        <table class="table table-bordered table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Field</th>
+                                    <th>Old Value</th>
+                                    <th>New Value</th>
+                                </tr>
+                            </thead>
+                            <tbody id="changesTableBody">
+                                <!-- Dynamically filled by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="commentSection"></div>
                 </div>
                 <div class="modal-footer">
                     <!-- Footer close button remains -->
@@ -216,15 +220,22 @@
             $(document).on('click', '.btn-view-changes', function() {
                 let newValues = $(this).attr('data-new') || '{}';
                 let oldValues = $(this).attr('data-old') || '{}';
+                let tableName = $(this).data('table');
+                const record_id = $(this).data('record_id') || $(this).data('id');
+                const submittedBy = $(this).data('submitted_by') || 'Unknown User';
 
-                // Decode HTML entities first
+                const $tbody = $('#changesTableBody');
+                const $modalFooter = $('#viewChangesModal .modal-footer');
+                const $commentSection = $('#commentSection');
+                const $modalTable = $('.modal_table_changes');
+
+                // Decode HTML entities safely
                 newValues = $('<textarea/>').html(newValues).text();
                 oldValues = $('<textarea/>').html(oldValues).text();
 
                 try {
                     newValues = JSON.parse(newValues);
-                    if (typeof newValues === 'string') newValues = JSON.parse(
-                    newValues); // Handle double encoding
+                    if (typeof newValues === 'string') newValues = JSON.parse(newValues);
 
                     oldValues = JSON.parse(oldValues);
                     if (typeof oldValues === 'string') oldValues = JSON.parse(oldValues);
@@ -234,15 +245,26 @@
                     oldValues = {};
                 }
 
-                const submittedBy = $(this).data('submitted_by') || 'Unknown User';
-                const record_id = $(this).data('record_id') || $(this).data('id');
-                const $tbody = $('#changesTableBody');
-                const $modalFooter = $('#viewChangesModal .modal-footer');
-
+                // Reset modal
                 $tbody.empty();
-                $modalFooter.find('.btn-approve, .btn-reject').remove(); // Remove old buttons
+                $modalFooter.find('.btn-approve, .btn-reject').remove();
+                $commentSection.hide().empty();
 
-                // 🛑 If it's a delete request (only is_active = 0)
+                // Helper function to open modal
+                const openModal = (showTable = true) => {
+                    if (showTable) {
+                        $modalTable.removeClass('d-none');
+                    } else {
+                        $modalTable.addClass('d-none');
+                    }
+
+
+                    // Open the modal
+                    const modal = new bootstrap.Modal($('#viewChangesModal')[0]);
+                    modal.show();
+                };
+
+                // Build field differences
                 if (Object.keys(newValues).length === 1 && newValues.is_active == 0) {
                     $tbody.html(`
             <tr>
@@ -254,7 +276,6 @@
             </tr>
         `);
                 } else {
-                    // 📝 Normal field differences
                     $.each(newValues, function(key, newVal) {
                         const oldVal = oldValues[key] ?? '<em class="text-muted">N/A</em>';
                         const safeNewVal = newVal ?? '<em class="text-muted">N/A</em>';
@@ -268,22 +289,76 @@
                     });
                 }
 
-                // ✅ Approve & Reject buttons
-                const approveBtn = $(`
-        <button class="btn btn-outline-success btn-approve" data-id="${record_id}" data-table="draft_ledgers">
-            <i class="fas fa-check"></i> Approve
-        </button>
-    `);
-                const rejectBtn = $(`
-        <button class="btn btn-outline-danger btn-reject" data-id="${record_id}" data-table="draft_ledgers">
-            <i class="fas fa-times"></i> Reject
-        </button>
-    `);
+                // 🆕 Handle LEADS case
+                if (tableName === 'leads') {
+                    $.ajax({
+                        url: "{{ route('finance.voucher.getcomment') }}",
+                        type: 'POST',
+                        data: {
+                            _token: '{{ csrf_token() }}',
+                            id: record_id
+                        },
+                        beforeSend: function() {
+                            $tbody.html(`
+                    <tr>
+                        <td colspan="3" class="text-center text-muted">
+                            <i class="fas fa-spinner fa-spin me-2"></i> Loading comments...
+                        </td>
+                    </tr>
+                `);
+                        },
+                        success: function(response) {
+                            let commentsHtml = '';
 
-                $modalFooter.prepend(approveBtn, rejectBtn);
+                            if (response.data && Array.isArray(response.data) && response.data
+                                .length > 0) {
+                                response.data.forEach((item) => {
+                                    if (item.comment) {
+                                        commentsHtml += `
+                                <div class="border p-2 mb-2 rounded bg-light">
+                                    <i class="fas fa-comment-dots text-primary"></i>
+                                    <span>${item.comment}</span>
+                                    <div class="text-muted small mt-1">
+                                        ${item.created_at ? '⏰ ' + item.created_at : ''}
+                                    </div>
+                                </div>
+                            `;
+                                    }
+                                });
 
-                const modal = new bootstrap.Modal($('#viewChangesModal')[0]);
-                modal.show();
+                                $commentSection.html(`
+                        <h6 class="mt-3 mb-2 text-secondary">
+                            <i class="fas fa-comments me-1"></i> Related Comments
+                        </h6>
+                        ${commentsHtml}
+                    `).show();
+                            } else {
+                                $commentSection.html(`
+                        <div class="alert alert-secondary mt-3">
+                            <i class="fas fa-info-circle"></i> No comments found for this lead.
+                        </div>
+                    `).show();
+                            }
+
+                            // ✅ Show modal WITHOUT table
+                            openModal(false);
+                        },
+                        error: function(err) {
+                            console.error('Failed to fetch comments:', err);
+                            $commentSection.html(`
+                    <div class="alert alert-danger mt-3">
+                        <i class="fas fa-exclamation-triangle"></i> Failed to load comments.
+                    </div>
+                `).show();
+
+                            // ✅ Show modal WITHOUT table
+                            openModal(false);
+                        }
+                    });
+                } else {
+                    // ✅ For all other tables — show modal WITH table
+                    openModal(true);
+                }
             });
 
         });
