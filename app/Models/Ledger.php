@@ -25,6 +25,7 @@ class Ledger extends Model
         'status',
         'date',
         'delete_reason',
+        'voucher_number'
     ];
 
     public function projectHeadSubhead()
