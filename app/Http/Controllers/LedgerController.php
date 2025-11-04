@@ -29,12 +29,13 @@ class LedgerController extends Controller
 {
     public function store(Request $request)
     {
+        dd($request->all());
         $validator = Validator::make($request->all(), [
             'amount' => ['required'],
             'detail' => ['required'],
             'accounts_id' => ['required'],
             'subaccounts_id' => ['required'],
-            'reference' => 'required',
+            // 'reference' => 'required',
         ]);
 
         if ($validator->fails()) {
@@ -56,45 +57,95 @@ class LedgerController extends Controller
         } elseif ($firstTwoDigits === 'CP') {
             $amount_out = $cleanAmount;
         }
+        // dd($firstTwoDigits);
 
         try {
 
 
 
             //
-            // $payment_type = $request->input('payment_type');
-            // if ($payment_type == 1) {
-            //     $t_number = $bank_id = null;
-            // } else {
-            //     $t_number = $request->input('t_number');
-            //     $bank_id = $request->input('bank_id');
-            // }
-            $plotName = Plot::where('id', $request->input('plot_id'))->value('name');
-            // $customerLedger = CustomerLedger::create([
-            //     'transaction_type' => $firstTwoDigits,
-            //     'type_id' => get_new_typeID($firstTwoDigits),
-            //     'reference' => $request->input('reference'),
-            //     'project_id' => $selectedProjectId,
-            //     'amount_in' => 0,
-            //     'amount_out' => str_replace(',', '', $request->input('amount')),
-            //     'description' => $request->input('detail'),
-            //     'date' => $request->input('date'), // Assuming booking date is the transaction date
-            //     'payment_type' => $request->input('payment_type'),
-            //     't_number' => $t_number,
-            //     'bank_id' => $bank_id,
-            //     'is_active' => 1,
-            //     'is_approve' => 0,
-            //     'passing_date' => $request->input('passing_date'),
-            // ]);
-
-
-            $lastId = getLastLedgerIdByType($firstTwoDigits);
-
-
+            $payment_type = $request->input('payment_type');
+            if ($payment_type == 1) {
+                $t_number = $bank_id = null;
+            } else {
+                $t_number = $request->input('t_number');
+                $bank_id = $request->input('bank_id');
+            }
             $projectHeadSubhead = ProjectHeadSubhead::where('head_accounting_id', $request->accounts_id)
                 ->where('subhead_accounting_id', $request->subaccounts_id)
                 ->where('project_id', $selectedProjectId)
                 ->first();
+            $customerID = $projectHeadSubhead?->customer_id;
+            $plotID = $projectHeadSubhead?->plot_id;
+            $plotName = Plot::where('id', $request->input('plot_id'))->value('name');
+            $customerLedger = CustomerLedger::create([
+                'transaction_type' => $firstTwoDigits,
+                'type_id' => get_new_typeID($firstTwoDigits),
+                'reference' => $request->input('reference'),
+                'project_id' => $selectedProjectId ?? null,
+                'customer_id' => $customerID ?? null,
+                'plot_id' => $plotID ?? null,
+                'amount_in' => 0,
+                'amount_out' => str_replace(',', '', $request->input('amount')),
+                'description' => $request->input('detail'),
+                'date' => $request->input('date'), // Assuming booking date is the transaction date
+                'payment_type' => $request->input('payment_type'),
+                't_number' => $t_number,
+                'bank_id' => $bank_id,
+                'is_active' => 1,
+                'is_approve' => 0,
+                'passing_date' => $request->input('passing_date'),
+            ]);
+
+            if ($t_number != null) {
+                $lastId = getLastLedgerIdByType("BR");
+                $amount = $customerLedger->amount_out;
+                $check_slip = $customerLedger->transaction_type . '-' . $customerLedger->reference;
+
+                // Get the bank name
+                $bankName = getBankNameById($customerLedger->bank_id);
+
+                // Update the CustomerLedger record
+                $customerLedger->update([
+                    'passing_status' => '1',
+                    'note' => '(' . $check_slip . ') ' . $request->detail,
+                    'bank_post_at' => $request->passing_date,
+                ]);
+
+                // Add to check history
+                $customerLedger->addCheckHistory([
+                    'id' => $customerLedger->id,
+                    'check_number' => $customerLedger->t_number,
+                    'passing_date' => $request->passing_date,
+                    'passing_status' => '1',
+                    'description_note' => '(' . $check_slip . ') ' . $request->detail,
+                    'bank_name' => $bankName, // Add bank name to history
+                    'credit_account_id' => $projectHeadSubhead->id, // Add credit account ID to history
+                ]);
+
+                // Create Ledger entry only if passing_status == 1
+                // if ($request->passing_status == 1) {
+                //     Ledger::create([
+                //         'customer_ledger_id' => $customerLedger->id,
+                //         'type' => 'BR',
+                //         'type_id' => $lastId + 2,
+                //         'project_head_subheads_id' => $projectHeadSubhead->id,
+                //         'reference' => "Check Pass in Bank",
+                //         'amount_in' => 0.00, // Adjust this field as per your data
+                //         'amount_out' => $amount,
+                //         'is_active' => 1,
+                //         'date' => $request->passing_date, // Adjust this field as per your data
+                //         'detail' => '(' . $check_slip . ') ' . $request->detail,
+                //         'update_by' => Auth::user()->id,
+                //         'create_by' => Auth::user()->id,
+                //         'status' => 0,
+                //     ]);
+                // }
+            }
+            $lastId = getLastLedgerIdByType($firstTwoDigits);
+
+
+
             // dd($projectHeadSubhead->id);
             // $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', $request->accounts_id)
             //     ->where('subhead_accounting_id', $request->subaccounts_id)
@@ -106,8 +157,30 @@ class LedgerController extends Controller
             if (!$projectHeadSubhead) {
                 throw new \Exception('Credit account ID not found.');
             }
+            $exists = Ledger::where('type', $type)
+            ->where('is_active', 1)
+            ->where('voucher_number', $voucherNumber)
+            ->exists();
+
+            if ($exists) {
+                // Find next available number
+                $nextNumber = $voucherNumber + 1;
+
+                // Keep incrementing until a free number is found
+                while (
+                    Ledger::where('type', $firstTwoDigits)
+                        ->where('is_active', 1)
+                        ->where('voucher_number', $nextNumber)
+                        ->exists()
+                ) {
+                    $nextNumber++;
+                }
+
+                $voucherNumber = $nextNumber;
+            }
+            // dd($firstTwoDigits);
             $data = Ledger::create([
-                // 'customer_ledger_id' => $customerLedger->id,
+                'customer_ledger_id' => $customerLedger->id,
                 'voucher_number' => $voucherNumber,
                 'type' => $firstTwoDigits,
                 'type_id' => $lastId + 1,
@@ -238,7 +311,6 @@ class LedgerController extends Controller
                         'submitted_by' => Auth::id(),
                     ]);
                 }
-
             } else {
                 $data['create_by'] = Auth::user()->id;
                 DraftLedger::create($newValues);
@@ -288,15 +360,15 @@ class LedgerController extends Controller
     }
     public function customerLedgerShow(Request $request)
     {
-            $data_list = CustomerLedger::with([
-                'ledger' => function ($q) {
-                    $q->with([
-                        'projectHeadSubhead.headAccounting',
-                        'projectHeadSubhead.subheadAccounting',
-                        'projectHeadSubhead.project'
-                    ]);
-                }
-            ])->where('id', $request->id)->first();
+        $data_list = CustomerLedger::with([
+            'ledger' => function ($q) {
+                $q->with([
+                    'projectHeadSubhead.headAccounting',
+                    'projectHeadSubhead.subheadAccounting',
+                    'projectHeadSubhead.project'
+                ]);
+            }
+        ])->where('id', $request->id)->first();
         // $data_list = Ledger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project', 'customerLedger')->where(['id' => $request->id])->first();
         return response()->json([
             'status' => Response::HTTP_OK,
@@ -680,7 +752,6 @@ class LedgerController extends Controller
                 ->addColumn('total_amount_out', fn($ledger) => $ledger->total_amount_out ?? 0)
                 ->addColumn('balance_amount', fn($ledger) => ($ledger->total_amount_in ?? 0) - ($ledger->total_amount_out ?? 0))
                 ->toJson();
-
         }
         $data = Ledger::query()
             ->join('project_head_subheads', 'ledgers.project_head_subheads_id', '=', 'project_head_subheads.id')

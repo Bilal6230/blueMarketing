@@ -89,7 +89,7 @@ class ReportController extends Controller
         $old_bank_id = $old_fdate = $old_tdate  = null;
         $old_passing_status = 66;
 
-        $query = CustomerLedger::with('customer_list', 'plot_list','ledger')
+        $query = CustomerLedger::with('customer_list', 'plot_list','ledger','ledger.projectHeadSubhead.subheadAccounting','ledger.projectHeadSubhead.headAccounting')
         ->whereIn('payment_type', [3, 2])
         ->where('is_active', '1')
         ->where('project_id', getSelectedTown())

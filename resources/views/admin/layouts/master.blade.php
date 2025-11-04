@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $title . ' - ' . Setting::getValue('app_name') }}</title>
     <link rel="icon" href="{{ asset(Setting::getValue('app_favicon')) }}" type="image/png" />
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <!-- Google Font: Source Sans Pro -->
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
@@ -55,6 +56,7 @@
     <!-- Custom style -->
     <link rel="stylesheet" href="{{ asset('template/admin/dist/css/custom.css') }}?v={{ time() }}">
     <link rel="stylesheet" href="{{ asset('template/admin/dist/css/theme.css') }}?v={{ time() }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     @stack('style')
     <style>
         div#load_screen {
@@ -182,6 +184,8 @@
     <!-- ./wrapper -->
     <!-- jQuery -->
     <script src="{{ asset('template/admin/plugins/jquery/jquery.min.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
     @yield('js')
     @include('admin.layouts.script')
     <!-- jQuery UI 1.11.4 -->
@@ -208,7 +212,7 @@
     <script src="{{ asset('template/admin/plugins/raphael/raphael.min.js') }}"></script>
     <script src="{{ asset('template/admin/plugins/jquery-mapael/jquery.mapael.min.js') }}"></script>
     {{-- <script src="{{ asset('template/admin/plugin/jquery-mapael/maps/usa_states.min.js') }}"></script> --}}
-    <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
+
 
     <!-- Select2 -->
     <script src="{{ asset('template/admin/plugins/select2/js/select2.full.min.js') }}"></script>
@@ -254,8 +258,7 @@
     <!-- AdminLTE dashboard demo (This is only for demo purposes) -->
     <script src="{{ asset('template/admin/dist/js/pages/dashboard2.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/number-to-words@1.2.4/numberToWords.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
 
 
     <!-- Page specific script -->
@@ -390,7 +393,7 @@
                         msg += text;
 
                         const currentUserId = {{ Auth::id() }};
-                        
+
                         const isSuperAdmin ={{ Auth::user()->getRoleNames()->first() == 'superadmin' ? 'true' : 'false' }};
                         const assignedIds = data.assignTo ? data.assignTo.map(a => a.id) : [];
                         if (isSuperAdmin || assignedIds.includes(currentUserId)) {
