@@ -28,119 +28,131 @@
                     <div class="col-12">
                         <div class="card">
                             @can('cheque report')
-                            <div class="card-header">
-                                <h3 class="card-title">
-                                </h3>
-                                <form action="{{ route('report.check.post') }}" method="POST" enctype="multipart/form-data">
-                                    @csrf
-                                <div class="row">
+                                <div class="card-header">
+                                    <h3 class="card-title">
+                                    </h3>
+                                    <form action="{{ route('report.check.post') }}" method="POST"
+                                        enctype="multipart/form-data">
+                                        @csrf
+                                        <div class="row">
 
 
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label for="customer">Customer</label>
-                                            <select class="form-control select2" name="customer_id" id="customer_id">
-                                                <option value="">Select Customer</option>
-                                            </select>
-                                            @error('customer_id')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label for="customer">Customer</label>
+                                                    <select class="form-control select2" name="customer_id" id="customer_id">
+                                                        <option value="">Select Customer</option>
+                                                    </select>
+                                                    @error('customer_id')
+                                                        <div class="invalid-feedback">{{ $message }}</div>
+                                                    @enderror
+                                                </div>
+                                            </div>
+
+                                            <div class="col-md-3">
+                                                <div class="form-group">
+                                                    <label for="customer">Plot</label>
+                                                    <select class="form-control select2" name="plot_id" id="plot_id">
+                                                        <option value="">
+                                                            < All Plot>
+                                                        </option>
+                                                    </select>
+                                                    @error('plot_id')
+                                                        <div class="invalid-feedback">{{ $message }}</div>
+                                                    @enderror
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="form-group">
+                                                    <label for="customer">Status</label>
+                                                    <select class="form-control select2" name="passing_status"
+                                                        id="passing_status">
+                                                        <option value="">
+                                                            < All>
+                                                        </option>
+                                                        @foreach (check_status() as $v)
+                                                            <option value="{{ $v['id'] }}"
+                                                                {{ $old_passing_status == $v['id'] ? 'selected' : '' }}>
+                                                                {{ $v['name'] }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                    @error('passing_status')
+                                                        <div class="invalid-feedback">{{ $message }}</div>
+                                                    @enderror
+                                                </div>
+                                            </div>
+
+
                                         </div>
-                                    </div>
+                                        <div class="row">
 
-                                    <div class="col-md-3">
-                                        <div class="form-group">
-                                            <label for="customer">Plot</label>
-                                            <select class="form-control select2" name="plot_id" id="plot_id">
-                                                <option value=""> < All Plot > </option>
-                                            </select>
-                                            @error('plot_id')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="form-group">
-                                            <label for="customer">Status</label>
-                                            <select class="form-control select2" name="passing_status" id="passing_status">
-                                                <option value=""> < All > </option>
-                                                @foreach (check_status() as $v)
-                                                    <option value="{{ $v['id'] }}" {{ $old_passing_status == $v['id'] ? 'selected' : '' }}>{{ $v['name'] }}</option>
-                                                @endforeach
-                                            </select>
-                                            @error('passing_status')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-                                    </div>
+                                            <div class="col-sm-3">
+                                                <div class="input-group bank_group">
+                                                    <label class="fbox">Bank</label>
+                                                    <div class="input-group">
+                                                        <select class="form-control select2" name="bank_id" id="bank_id">
+                                                            <option value="">All Banks</option>
 
+                                                            @foreach (getPakistanBanks() as $v)
+                                                                <option value="{{ $v['id'] }}"
+                                                                    {{ $old_bank_id == $v['id'] ? 'selected' : '' }}>
+                                                                    {{ $v['name'] }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+
+                                                </div>
+                                            </div>
+                                            <div class="col-sm-3">
+                                                <div class="input-group bank_group">
+                                                    <label class="fbox">Type</label>
+                                                    <div class="input-group">
+                                                        <select class="form-control select2" name="bank_id" id="bank_id">
+                                                            <option value="">Payment Type</option>
+
+
+                                                        </select>
+                                                    </div>
+
+                                                </div>
+                                            </div>
+
+                                            <div class="col-sm-3">
+                                                <div class="input-group">
+                                                    <label class="fbox">From Date</label>
+                                                    <div class="input-group">
+                                                        <input type="date" name="fdate" class=" form-control" data-input
+                                                            value="{{ old('fdate') }}">
+                                                        @error('fdate')
+                                                            <div class="invalid-feedback">{{ $message }}</div>
+                                                        @enderror
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-sm-3">
+                                                <div class="input-group">
+                                                    <label class="fbox">To Date</label>
+                                                    <div class="input-group">
+                                                        <input type="date" name="tdate" class="form-control" data-input
+                                                            value="{{ old('tdate') }}">
+                                                        @error('tdate')
+                                                            <div class="invalid-feedback">{{ $message }}</div>
+                                                        @enderror
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-sm-3">
+                                                <div class="input-group d-flex align-items-end">
+                                                    <button class="btn btn-primary" id="searchfilter">Filter</button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </form>
 
                                 </div>
-                                <div class="row">
-
-                                    <div class="col-sm-3" >
-                                        <div class="input-group bank_group">
-                                            <label class="fbox">Bank</label>
-                                            <div class="input-group">
-                                                <select class="form-control select2" name="bank_id" id="bank_id">
-                                                    <option value="">All Banks</option>
-
-                                                    @foreach (getPakistanBanks() as $v)
-                                                        <option value="{{ $v['id'] }}" {{ $old_bank_id == $v['id'] ? 'selected' : '' }}>{{ $v['name'] }}</option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
-
-                                        </div>
-                                    </div>
-                                    <div class="col-sm-3" >
-                                        <div class="input-group bank_group">
-                                            <label class="fbox">Type</label>
-                                            <div class="input-group">
-                                                <select class="form-control select2" name="bank_id" id="bank_id">
-                                                    <option value="">Payment Type</option>
-
-
-                                                </select>
-                                            </div>
-
-                                        </div>
-                                    </div>
-
-                                    <div class="col-sm-3">
-                                        <div class="input-group">
-                                            <label class="fbox">From Date</label>
-                                            <div class="input-group">
-                                                <input type="date" name="fdate" class=" form-control" data-input value="{{ old('fdate') }}">
-                                                @error('fdate')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-sm-3">
-                                        <div class="input-group">
-                                            <label class="fbox">To Date</label>
-                                            <div class="input-group">
-                                                <input type="date" name="tdate" class="form-control" data-input value="{{ old('tdate') }}">
-                                                @error('tdate')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-sm-3">
-                                        <div class="input-group d-flex align-items-end">
-                                            <button class="btn btn-primary" id="searchfilter">Filter</button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                </form>
-
-                            </div>
                             @endcan
                             <!-- Total Sale Amount Card -->
                             <div class="col-md-4 " style="padding-top: 25px;">
@@ -182,26 +194,43 @@
                                             <tr>
                                                 <td>{{ $loop->iteration }}</td>
                                                 <td>
-                                                    {{ $i->customer_list->first_name }} {{ $i->customer_list->last_name }}
+                                                    @if ($i->customer_list)
+                                                        {{ $i?->customer_list?->first_name }}
+                                                        {{ $i?->customer_list?->last_name }}
+                                                    @else
+                                                        {{ $i?->ledger?->projectHeadSubhead?->subheadAccounting?->name ?? 'N/A' }}
+                                                    @endif
                                                 </td>
-                                                <td>{{ $i->customer_list->phone_number }} </td>
-                                                <td>{{ Setting::getPlotTypeShort($i->plot_list->type) }}-{{ $i->plot_list->name }} </td>
                                                 <td>
-                                                    <span class="badge {{ getPaymentTypeDetails($i->payment_type)['badge'] }}" style="width: 80%">
+                                                    @if ($i->customer_list)
+                                                        {{ $i?->customer_list?->phone_number }}
+                                                    @else
+                                                        {{ $i?->ledger?->projectHeadSubhead?->subheadAccounting?->phone ?? 'N/A' }}
+                                                    @endif
+                                                </td>
+                                                <td>{{ $i->plot_list ? Setting::getPlotTypeShort($i->plot_list->type) . '-' . $i->plot_list->name : '' }}
+                                                </td>
+                                                <td>
+                                                    <span
+                                                        class="badge {{ getPaymentTypeDetails($i->payment_type)['badge'] }}"
+                                                        style="width: 80%">
                                                         {{ getPaymentTypeDetails($i->payment_type)['name'] }}
                                                     </span>
                                                 </td>
                                                 <td>{{ $i->transaction_type ?? 'N/A' }}</td>
                                                 <td>{{ getBankNameById($i->bank_id) }}</td>
                                                 <td>
-                                                    <a href="{{ route('admin.reports.check_history', ['id' => $i->id]) }}" target="_blank" class="btn btn-link">
+                                                    <a href="{{ route('admin.reports.check_history', ['id' => $i->id]) }}"
+                                                        target="_blank" class="btn btn-link">
                                                         {{ $i->t_number }}
                                                     </a>
                                                 </td>
                                                 <td>{{ Setting::formatAmount($i->amount_out) }}</td>
 
                                                 <td>
-                                                    <span class="badge {{ collect(check_status())->firstWhere('id', $i->passing_status)['badge'] }}" style="width: 80px">
+                                                    <span
+                                                        class="badge {{ collect(check_status())->firstWhere('id', $i->passing_status)['badge'] }}"
+                                                        style="width: 80px">
                                                         {{ collect(check_status())->firstWhere('id', $i->passing_status)['name'] }}
                                                     </span>
                                                 </td>
@@ -209,18 +238,20 @@
                                                 <td>{{ Setting::getShortDate($i->passing_date) }}</td>
                                                 <td>{{ $i->note }}</td>
                                                 {{-- @canany(['pass cheque']) --}}
-                                                    <td>
-                                                        {{-- @if ($i->passing_status != 1) --}}
-                                                            <div class="btn-group">
-                                                                @can('pass cheque')
-                                                                    <button class="btn btn-sm btn-primary btn-edit" data-id="{{ $i->id }}"><i class="fas fa-pencil-alt"></i></button>
-                                                                @endcan
+                                                <td>
+                                                    {{-- @if ($i->passing_status != 1) --}}
+                                                    <div class="btn-group">
+                                                        @can('pass cheque')
+                                                            <button class="btn btn-sm btn-primary btn-edit"
+                                                                data-id="{{ $i->id }}"><i
+                                                                    class="fas fa-pencil-alt"></i></button>
+                                                        @endcan
 
-                                                            </div>
-                                                        {{-- @endif --}}
+                                                    </div>
+                                                    {{-- @endif --}}
 
 
-                                                    </td>
+                                                </td>
                                                 {{-- @endcanany --}}
                                             </tr>
                                         @endforeach
@@ -243,12 +274,11 @@
 @endsection
 
 @section('js')
-
-
     <script>
         // Define a JavaScript variable to hold installment options
-        $(document).ready(function () {
+        $(document).ready(function() {
             fetchCustomers('{{ getSelectedTown() }}');
+
             function fetchCustomers(projectId) {
                 $.ajax({
                     url: '/admin/get-customers-byplot', // URL to your route
@@ -262,13 +292,16 @@
                         $('#customer_id').empty();
                         $('#customer_id').append('<option value="">Select customer</option>');
                         $.each(data, function(key, customer) {
-                            $('#customer_id').append('<option value="' + customer.id + '">' + customer.first_name + ' ' + customer.last_name +' '+ customer.relate + ' '+ customer.father_name + ' - ' + customer.phone_number + '</option>');
+                            $('#customer_id').append('<option value="' + customer.id + '">' +
+                                customer.first_name + ' ' + customer.last_name + ' ' +
+                                customer.relate + ' ' + customer.father_name + ' - ' +
+                                customer.phone_number + '</option>');
                         });
                     }
                 });
             }
 
-            $('#customer_id').change(function (e) {
+            $('#customer_id').change(function(e) {
                 e.preventDefault();
                 var customerId = $(this).val();
 
@@ -297,7 +330,8 @@
                         $('#plot_id').append('<option value="">Select Plots</option>');
                         $.each(data, function(key, plot) {
                             var plotType = (plot.type == 1) ? 'R- ' : 'C- ';
-                            $('#plot_id').append('<option value="' + plot.plot_id + '">' + plotType + ' ' + plot.name +  '  </option>');
+                            $('#plot_id').append('<option value="' + plot.plot_id + '">' +
+                                plotType + ' ' + plot.name + '  </option>');
                         });
                     }
                 });
@@ -306,7 +340,11 @@
             $(document).on("click", '.btn-edit', function() {
                 debugger;
                 let id = $(this).attr("data-id");
-                $('#modal-loading').modal({backdrop: 'static', keyboard: false, show: true});
+                $('#modal-loading').modal({
+                    backdrop: 'static',
+                    keyboard: false,
+                    show: true
+                });
                 $.ajax({
                     url: "{{ route('customer.ledger.show') }}",
                     type: "POST",
@@ -318,7 +356,7 @@
                     success: function(data) {
                         debugger;
                         var data = data.data;
-                        console.log('data in the database  = ',data);
+                        console.log('data in the database  = ', data);
                         $("#id").val(data.id);
                         $("#reference").val(data.reference);
                         $('#e_projects_id').val(data.project_id).trigger('change');
@@ -330,10 +368,11 @@
 
                             setTimeout(function() {
                                 $('#e_subaccounts_id')
-                                    .val(data.ledger.project_head_subhead.subhead_accounting_id)
+                                    .val(data.ledger.project_head_subhead
+                                        .subhead_accounting_id)
                                     .trigger('change');
                             }, 1000);
-                        }else{
+                        } else {
                             $('#e_accounts_id')
                                 .val('')
                                 .trigger('change');
@@ -353,15 +392,16 @@
                         flatpickr('#date', {
                             enableTime: false,
                             dateFormat: "Y-m-d",
-                            defaultDate: data.date // Set the fetched date as the default date
+                            defaultDate: data
+                                .date // Set the fetched date as the default date
                         });
 
-                        $("#voucher").val(data.type+'-0000'+data.type_id);
+                        $("#voucher").val(data.type + '-0000' + data.type_id);
 
                         if (data.type == 'CR') {
                             $("#amount").val(data.amount_in);
 
-                        } else if(data.type == 'CP') {
+                        } else if (data.type == 'CP') {
                             $("#amount").val(data.amount_out);
 
                         }
@@ -370,14 +410,18 @@
                         console.log(data.description);
 
                         $('#modal-loading').modal('hide');
-                        $('#modal-edit').modal({backdrop: 'static', keyboard: false, show: true});
+                        $('#modal-edit').modal({
+                            backdrop: 'static',
+                            keyboard: false,
+                            show: true
+                        });
                     },
                 });
             });
 
-            $('#e_accounts_id').change(function () {
+            $('#e_accounts_id').change(function() {
                 var accountID = $(this).val();
-                var projectID = {{ getSelectedTown(); }};
+                var projectID = {{ getSelectedTown() }};
 
 
                 if (accountID) {
@@ -393,18 +437,21 @@
 
                             _token: '{{ csrf_token() }}' // Include CSRF token for Laravel
                         },
-                        success: function (data) {
+                        success: function(data) {
                             $('#e_subaccounts_id').empty();
                             console.log(data);
                             // Filter data to match selected project ID
                             var filteredData = data.filter(function(item) {
-                                return item.head_accounting_id  == accountID;
+                                return item.head_accounting_id == accountID;
                             });
-                            $('#e_subaccounts_id').append('<option value="">Select an option</option>');
+                            $('#e_subaccounts_id').append(
+                                '<option value="">Select an option</option>');
 
                             // Append filtered head accounting options to 'Accounts' dropdown
                             $.each(filteredData, function(key, value) {
-                                $('#e_subaccounts_id').append('<option value="' + value.subhead_accounting_id + '">' + value.subhead_accounting.name + '</option>');
+                                $('#e_subaccounts_id').append('<option value="' + value
+                                    .subhead_accounting_id + '">' + value
+                                    .subhead_accounting.name + '</option>');
                             });
 
                             // You may implement a similar AJAX call to fetch subheadaccounts based on the selected account
@@ -419,140 +466,144 @@
 @endsection
 
 @section('modal')
+    {{-- Modal Update --}}
+    <div class="modal fade" id="modal-edit">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header ">
+                    <h4 class="modal-title">Update Cheque</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form action="{{ route('report.check.bank.posting') }}" method="POST"
+                        enctype="multipart/form-data">
+                        @csrf
+                        @method('PUT')
+                        <div class="row">
 
-{{-- Modal Update --}}
-<div class="modal fade" id="modal-edit">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header ">
-                <h4 class="modal-title">Update Cheque</h4>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form action="{{ route('report.check.bank.posting') }}" method="POST" enctype="multipart/form-data">
-                    @csrf
-                    @method("PUT")
-                    <div class="row">
+                            <div class="col-sm-12">
+                                <div class="row">
 
-                        <div class="col-sm-12">
-                            <div class="row">
-
-                                <div class="col-sm-3">
-                                    <div class="input-group">
-                                        <label class="fbox">Voucher No.</label>
+                                    <div class="col-sm-3">
                                         <div class="input-group">
-                                            <input type="text" value="1" name="action" hidden />
-                                            <input type="text"  class="form-control " name="voucher" value="{{'BR'}}-{{get_new_voucher_number('BR')}}" autocomplete="off" readonly>
+                                            <label class="fbox">Voucher No.</label>
+                                            <div class="input-group">
+                                                <input type="text" value="1" name="action" hidden />
+                                                <input type="text" class="form-control " name="voucher"
+                                                    value="{{ 'BR' }}-{{ get_new_voucher_number('BR') }}"
+                                                    autocomplete="off" readonly>
 
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label for="customer">Status</label>
-                                        <select class="form-control select2" name="passing_status" id="e_passing_status">
-                                            <option value=""> All </option>
-                                            @foreach (check_status() as $v)
-                                                <option value="{{ $v['id'] }}" {{ $old_passing_status == $v['id'] ? 'selected' : '' }}>{{ $v['name'] }}</option>
-                                            @endforeach
-                                        </select>
-                                        @error('passing_status')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                </div>
-
-                                <div class="col-sm-6">
-                                    <div class="input-group">
-                                        <label class="fbox">Passing Date</label>
-                                        <div class="input-group">
-                                            <input type="text" id="date" name="bank_post_at" class="date_database form-control" data-input>
-                                            <!-- Add a hidden input to store the selected date in a format you want -->
-                                            {{-- <input type="hidden" id="hiddenDate" name="hiddenDate"> --}}
-                                            {{-- <input type="text" id="datepicker" class="form-control @error('date') is-invalid @enderror" name="date" value="{{ old('date') ?: date('d-m-yy') }}" autocomplete="off"> --}}
-                                            @error('date')
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label for="customer">Status</label>
+                                            <select class="form-control select2" name="passing_status"
+                                                id="e_passing_status">
+                                                <option value=""> All </option>
+                                                @foreach (check_status() as $v)
+                                                    <option value="{{ $v['id'] }}"
+                                                        {{ $old_passing_status == $v['id'] ? 'selected' : '' }}>
+                                                        {{ $v['name'] }}</option>
+                                                @endforeach
+                                            </select>
+                                            @error('passing_status')
                                                 <div class="invalid-feedback">{{ $message }}</div>
                                             @enderror
                                         </div>
                                     </div>
+
+                                    <div class="col-sm-6">
+                                        <div class="input-group">
+                                            <label class="fbox">Passing Date</label>
+                                            <div class="input-group">
+                                                <input type="text" id="date" name="bank_post_at"
+                                                    class="date_database form-control" data-input>
+                                                <!-- Add a hidden input to store the selected date in a format you want -->
+                                                {{-- <input type="hidden" id="hiddenDate" name="hiddenDate"> --}}
+                                                {{-- <input type="text" id="datepicker" class="form-control @error('date') is-invalid @enderror" name="date" value="{{ old('date') ?: date('d-m-yy') }}" autocomplete="off"> --}}
+                                                @error('date')
+                                                    <div class="invalid-feedback">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <div class="input-group">
+                                    <label class="fbox">Detail</label>
+                                    <div class="input-group">
+                                        <textarea id="note" class="form-control @error('note') is-invalid @enderror" placeholder="Note" name="note"
+                                            style=" height: 150px;" maxlength="255">{{ old('note') }}</textarea>
+                                        @error('note')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
                                 </div>
                             </div>
                         </div>
 
-                    </div>
-
-                    <div class="row">
-                        <div class="col-sm-12">
-                            <div class="input-group">
-                                <label class="fbox">Detail</label>
-                                <div class="input-group">
-                                    <textarea id="note" class="form-control @error('note') is-invalid @enderror" placeholder="Note" name="note" style=" height: 150px;" maxlength="255" >{{ old('note') }}</textarea>
-                                    @error('note')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="fbox">Head</label>
-                                <select class="form-control " name="accounts_id" id="e_accounts_id">
-                                    <option value=""> Passing Account  </option>
-                                    @foreach ($head_account_list as $head_account)
-                                        <option value="{{ $head_account->head_accounting_id }}">
-                                            {{ $head_account->headAccounting->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('accounts_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="col-sm-6">
-                            <div class="input-group">
-                                <label class="fbox">Party Account</label>
-                                <div class="input-group">
-                                    <select class="form-control select2" name="subaccounts_id" id="e_subaccounts_id">
-                                        <option value="">Select an option</option>
-                                        @foreach ($subhead_account_list as $subhead_account)
-                                            <option value="{{ $subhead_account->subhead_accounting_id }}">
-                                                {{ $subhead_account->subheadAccounting->name }}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="fbox">Head</label>
+                                    <select class="form-control " name="accounts_id" id="e_accounts_id">
+                                        <option value=""> Passing Account </option>
+                                        @foreach ($head_account_list as $head_account)
+                                            <option value="{{ $head_account->head_accounting_id }}">
+                                                {{ $head_account->headAccounting->name }}
                                             </option>
                                         @endforeach
                                     </select>
-                                    @error('subaccounts_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    @error('accounts_id')
+                                        <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
                             </div>
+
+                            <div class="col-sm-6">
+                                <div class="input-group">
+                                    <label class="fbox">Party Account</label>
+                                    <div class="input-group">
+                                        <select class="form-control select2" name="subaccounts_id" id="e_subaccounts_id">
+                                            <option value="">Select an option</option>
+                                            @foreach ($subhead_account_list as $subhead_account)
+                                                <option value="{{ $subhead_account->subhead_accounting_id }}">
+                                                    {{ $subhead_account->subheadAccounting->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('subaccounts_id')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
 
-                    </div>
 
 
 
-
-                    <div class="modal-footer justify-content-between">
-                        <input type="hidden" name="id" id="id">
-                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-primary">Update</button>
-                    </div>
-                </form>
+                        <div class="modal-footer justify-content-between">
+                            <input type="hidden" name="id" id="id">
+                            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Update</button>
+                        </div>
+                    </form>
+                </div>
+                <!-- /.modal-content -->
             </div>
-            <!-- /.modal-content -->
+            <!-- /.modal-dialog -->
         </div>
-        <!-- /.modal-dialog -->
     </div>
-</div>
-
-
-
 @endsection

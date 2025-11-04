@@ -668,6 +668,7 @@ class VoucherController extends Controller
 
             return [
                 'date' => $i->date,
+                'voucher_number' => $i->type.'-'.$i->voucher_number,
                 'project' => $i->projectHeadSubhead->project->project ?? '',
                 'head' => $i->projectHeadSubhead->headAccounting->name ?? '',
                 'subhead' => $i->projectHeadSubhead->subheadAccounting->name ?? '',
@@ -757,9 +758,9 @@ class VoucherController extends Controller
     }
     public function checkNewVoucherNumber(Request $request)
     {
+        // dd($request->all());
         $type = $request->type;
         $voucherNumber = (int) $request->number;
-
         // Check if voucher number already exists
         $exists = Ledger::where('type', $type)
             ->where('is_active', 1)

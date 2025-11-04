@@ -67,7 +67,7 @@
 
 
 
-                                            <div class="mb-3 col-sm-3">
+                                            <div class="mb-3 col-sm-3 d-none">
                                                 <div class="input-group">
                                                     <label class="fbox">Serial No.</label>
                                                     <div class="input-group">
@@ -94,7 +94,7 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="mb-3 col-sm-3">
+                                            <div class="mb-3 col-sm-3 d-none">
                                                 <div class="input-group">
                                                     <label class="fbox">Reference No</label>
                                                     <div class="input-group">
@@ -112,8 +112,8 @@
                                                 <div class="input-group">
                                                     <label class="fbox">Date</label>
                                                     <div class="input-group">
-                                                        <input type="text" name="date" class="date form-control"
-                                                            data-input>
+                                                        <input type="text" name="date"
+                                                            class="date voucher-date form-control" data-input>
                                                         <input type="hidden" id="hiddenDate" name="hiddenDate">
                                                         @error('date')
                                                             <div class="invalid-feedback">{{ $message }}</div>
@@ -199,7 +199,7 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            {{-- <div class="mb-3 col-sm-3">
+                                            <div class="mb-3 col-sm-3">
                                                 <div class="input-group">
                                                     <label class="fbox">Payment Type</label>
                                                     <div class="input-group">
@@ -250,14 +250,14 @@
                                                 <div class="input-group bank_group" style="display: none">
                                                     <label class="fbox">Passing Date</label>
                                                     <div class="input-group">
-                                                        <input type="text" name="passing_date" class="date form-control"
-                                                            data-input>
+                                                        <input type="text" name="passing_date"
+                                                            class="passing_date date form-control" data-input>
                                                         @error('passing_date')
                                                             <div class="invalid-feedback">{{ $message }}</div>
                                                         @enderror
                                                     </div>
                                                 </div>
-                                            </div> --}}
+                                            </div>
 
                                             {{-- <div class="mb-3 col-sm-6">
                                                 <div class="input-group">
@@ -380,7 +380,7 @@
                                                 <tr>
                                                     <th>#</th>
                                                     <th>Date</th>
-                                                    <th>Project</th>
+                                                    <th>Voucher Number</th>
                                                     <th>Head Account</th>
                                                     <th>Sub Head Account</th>
                                                     <th>Detail</th>
@@ -1071,8 +1071,6 @@
 
             $('#e_acct_type').change(function() {
                 var acctType = $(this).val();
-
-                console.log(acctType);
                 if (acctType) {
                     $.ajax({
                         url: '{{ route('get_account') }}',
@@ -1230,8 +1228,6 @@
                     },
                     success: function(data) {
                         var data = data.data;
-                        console.log(data);
-
                         $("#e_reference").val(data.reference);
 
                         flatpickr('#e_date', {
@@ -1337,7 +1333,7 @@
                 }
 
                 // Validate fields
-                checkField("[name='reference']", "Reference No is required.");
+                // checkField("[name='reference']", "Reference No is required.");
                 checkField("[name='date']", "Date is required.");
                 checkField("[name='acct_type']", "Account Type is required.");
                 checkField("[name='accounts_id']", "Accounts is required.");
@@ -1397,10 +1393,38 @@
             const LS_KEY = 'paysavo_voucher_tabs_v1';
             const FORM_ID = '#voucherForm';
             const TS_SEL = '.js-tomselect';
-            localStorage.removeItem(LS_KEY);
 
-            // Store shape:
-            // { tabs: { [n]: { formData:{}, selects:{ [name]: {options:[{value,text,disabled}], selected:''} } } }, currentTab:1, nextTabNumber:2 }
+            // ---------- TomSelect init ----------
+            function initTomSelects() {
+                if (typeof window.TomSelect === 'undefined') {
+                    console.warn('TomSelect not found. Skipping initTomSelects().');
+                    return;
+                }
+                $(TS_SEL).each(function() {
+                    if (this.tomselect) {
+                        try {
+                            this.tomselect.destroy();
+                        } catch (e) {}
+                    }
+                    const ts = new TomSelect(this, {
+                        persist: false,
+                        create: false,
+                        maxItems: 1,
+                        allowEmptyOption: true,
+                        onChange: () => {
+                            $(this).trigger('change');
+                        }
+                    });
+                    const current = $(this).val();
+                    if (current != null && current !== '') {
+                        try {
+                            ts.setValue(String(current), true);
+                        } catch (e) {}
+                    }
+                });
+            }
+
+            // ---------- store & pointers ----------
             let store = {
                 tabs: {
                     1: {
@@ -1414,8 +1438,9 @@
             let currentTab = 1;
             let nextTabNumber = 2;
 
-            // --- utils ---
+            // ---------- utils ----------
             const persist = () => localStorage.setItem(LS_KEY, JSON.stringify(store));
+
             const hydrate = () => {
                 try {
                     const raw = localStorage.getItem(LS_KEY);
@@ -1430,14 +1455,14 @@
                     console.warn('hydrate failed', e);
                 }
             };
-            const ensureTab = n => {
+
+            const ensureTab = (n) => {
                 if (!store.tabs[n]) store.tabs[n] = {
                     formData: {},
                     selects: {}
                 };
             };
 
-            // throttle to avoid save storms
             function throttle(fn, wait) {
                 let t, last = 0,
                     pending = null;
@@ -1466,43 +1491,56 @@
                 };
             }
 
-            // Serialize form into store for a specific tab
+            // ---------- snapshot (TomSelect-aware) ----------
             function saveFormForTab(tabNo, $form) {
                 ensureTab(tabNo);
                 const formData = {};
                 const selects = {};
 
-
                 // inputs + textarea
                 $form.find('input, textarea').each(function() {
                     const name = $(this).attr('name');
-                    // console.log(name);
                     if (!name) return;
                     formData[name] = $(this).val();
                 });
 
-                // selects (include options & selected)
+                // selects
                 $form.find('select').each(function() {
                     const $el = $(this);
                     const name = $el.attr('name');
                     if (!name) return;
 
-                    const options = [];
-                    // console.log(name);
-                    $el.find('option').each(function() {
+                    let options = [];
+                    let selected = '';
 
-                        options.push({
-                            value: $(this).attr('value') ?? '',
-                            text: $(this).text(),
-                            disabled: !!$(this).prop('disabled')
-                        });
-                    });
-
-                    // prefer tomselect-selected if present
-                    let selected = $el.val() ?? '';
                     if ($el[0] && $el[0].tomselect) {
                         const ts = $el[0].tomselect;
                         selected = (ts.getValue && ts.getValue()) || '';
+                        // Pull options from TomSelect cache
+                        options = Object.values(ts.options || {}).map(o => ({
+                            value: String(o.value ?? ''),
+                            text: String(o.text ?? ''),
+                            disabled: !!o.disabled
+                        }));
+                        // If TomSelect has no cache (edge case), fallback to DOM
+                        if (!options.length) {
+                            $el.find('option').each(function() {
+                                options.push({
+                                    value: $(this).attr('value') ?? '',
+                                    text: $(this).text(),
+                                    disabled: !!$(this).prop('disabled')
+                                });
+                            });
+                        }
+                    } else {
+                        selected = $el.val() ?? '';
+                        $el.find('option').each(function() {
+                            options.push({
+                                value: $(this).attr('value') ?? '',
+                                text: $(this).text(),
+                                disabled: !!$(this).prop('disabled')
+                            });
+                        });
                     }
 
                     selects[name] = {
@@ -1523,44 +1561,76 @@
                 }
             }
 
-            // Rebuild options then set value
+            // ---------- restore ----------
             function restoreSelect($el, snap) {
                 if (!$el.length || !snap) return;
                 const selected = snap.selected ?? '';
-                const opts = snap.options || [];
+                const snapOpts = snap.options || [];
 
-                if ($el[0].tomselect) {
+                if ($el[0] && $el[0].tomselect) {
                     const ts = $el[0].tomselect;
-                    // console.log(selected);
 
-                    ts.clear(true);
-                    ts.clearOptions();
-                    opts.forEach(o => ts.addOption({
-                        value: String(o.value ?? ''),
-                        text: String(o.text ?? '')
-                    }));
-                    ts.refreshOptions(false);
+                    // If snapshot has options, rebuild; otherwise keep existing options
+                    if (snapOpts.length) {
+                        ts.clear(true);
+                        ts.clearOptions();
+                        snapOpts.forEach(o => ts.addOption({
+                            value: String(o.value ?? ''),
+                            text: String(o.text ?? '')
+                        }));
+                        ts.refreshOptions(false);
+                    } else {
+                        // Attempt to populate from DOM if TomSelect has no options
+                        if (!Object.keys(ts.options || {}).length) {
+                            const domOpts = [];
+                            $el.find('option').each(function() {
+                                domOpts.push({
+                                    value: $(this).attr('value') ?? '',
+                                    text: $(this).text()
+                                });
+                            });
+                            if (domOpts.length) {
+                                domOpts.forEach(o => ts.addOption({
+                                    value: String(o.value ?? ''),
+                                    text: String(o.text ?? '')
+                                }));
+                                ts.refreshOptions(false);
+                            }
+                        }
+                    }
 
-                    ts.setValue(String(selected), true);
+                    if (selected !== '') {
+                        try {
+                            ts.setValue(String(selected), true);
+                        } catch (e) {}
+                    } else {
+                        ts.clear(true);
+                    }
                 } else {
-                    $el.empty();
-                    opts.forEach(o => $el.append($('<option/>').attr('value', o.value ?? '').prop('disabled', !!o
-                        .disabled).text(o.text ?? '')));
+                    // Native select path
+                    if (snapOpts.length) {
+                        $el.empty();
+                        snapOpts.forEach(o => $el.append(
+                            $('<option/>').attr('value', o.value ?? '').prop('disabled', !!o.disabled).text(
+                                o.text ?? '')
+                        ));
+                    }
                     if (selected !== '') $el.val(String(selected));
                 }
-                // $el.trigger('change');
             }
 
             function resetFormUI($form) {
-                console.log($('#voucher_number').val());
                 $form[0].reset();
-                console.log($('#voucher_number').val());
                 $form.find('select').each(function() {
                     const $el = $(this);
                     if ($el[0].tomselect) {
                         $el[0].tomselect.clear(true);
                     }
                 });
+            }
+
+            function cssEscape(s) {
+                return String(s).replace(/"/g, '\\"');
             }
 
             function loadFormForTab(tabNo) {
@@ -1570,9 +1640,10 @@
                 } = store.tabs[tabNo];
                 const $form = $(FORM_ID);
 
+                // Reset once, then restore
                 resetFormUI($form);
 
-                // restore selects first (options → value)
+                // restore selects first
                 Object.keys(selects).forEach(name => {
                     restoreSelect($form.find(`[name="${cssEscape(name)}"]`), selects[name]);
                 });
@@ -1581,21 +1652,39 @@
                 Object.keys(formData).forEach(name => {
                     const $el = $form.find(`[name="${cssEscape(name)}"]`);
                     if (!$el.length) return;
+
                     if ($el.is('select') && $el[0].tomselect) {
-                        // if not in selects snapshot, still set value
-                        if (!selects[name]) withTomSelect($el, ts => {
-                            try {
-                                ts.setValue(String(formData[name] ?? ''), true);
-                            } catch {}
+                        withTomSelect($el, ts => {
+                            const value = formData[name];
+                            if (value !== undefined && value !== null && value !== '') {
+                                try {
+                                    ts.setValue(String(value), true);
+                                } catch (e) {}
+                            } else {
+                                ts.clear(true);
+                            }
+                        });
+                    } else if ($el.hasClass('voucher-date') || $el.hasClass('passing_date')) {
+                        let val = formData[name] ?? '';
+                        if (val) {
+                            const d = new Date(val);
+                            if (!isNaN(d)) val = d.toISOString().split('T')[0];
+                        }
+                        flatpickr($el.get(0), {
+                            enableTime: false,
+                            dateFormat: "Y-m-d",
+                            altInput: true,
+                            altFormat: "F j, Y",
+                            defaultDate: val,
+                            onChange: function(selectedDates, dateStr) {
+                                const hidden = document.getElementById('hiddenDate');
+                                if (hidden) hidden.value = dateStr;
+                            }
                         });
                     } else {
                         $el.val(formData[name] ?? '');
                     }
                 });
-            }
-
-            function cssEscape(s) {
-                return String(s).replace(/"/g, '\\"');
             }
 
             function rebuildTabsUI() {
@@ -1604,109 +1693,157 @@
                 nums.forEach(n => {
                     const isActive = (n === store.currentTab);
                     $wrap.append(`
-                <div class="voucher-tab-wrapper position-relative">
-                <button class="btn btn-primary btn-sm voucher-tab ${isActive?'active':''}" data-tab="${n}">Voucher#${n}</button>
-                ${n===1 ? '' : `<button class="voucher-tab-remove" data-tab="${n}" title="Remove Tab"><i class="fas fa-times"></i></button>`}
-                </div>
-            `);
+        <div class="voucher-tab-wrapper position-relative">
+          <button class="btn btn-primary btn-sm voucher-tab ${isActive ? 'active' : ''}" data-tab="${n}">Voucher#${n}</button>
+          ${n === 1 ? '' : `<button class="voucher-tab-remove" data-tab="${n}" title="Remove Tab"><i class="fas fa-times"></i></button>`}
+        </div>
+      `);
                 });
                 currentTab = store.currentTab || 1;
-                nextTabNumber = store.nextTabNumber || (Math.max(...nums, 1) + 1);
+                nextTabNumber = store.nextTabNumber || (nums.length ? Math.max(...nums) + 1 : 2);
             }
 
+            // ---------- Reindex tabs 1..N ----------
+            function reindexTabs() {
+                const nums = Object.keys(store.tabs).map(n => parseInt(n, 10)).sort((a, b) => a - b);
+                const newTabs = {};
+                let i = 1;
+                nums.forEach(oldNum => {
+                    newTabs[i++] = store.tabs[oldNum];
+                });
+                store.tabs = newTabs;
 
+                const count = Object.keys(newTabs).length;
+                store.currentTab = Math.min(store.currentTab, count) || 1;
+                store.nextTabNumber = count + 1;
 
-            // --- DOM ready ---
-            // $(document).ready(function() {
+                currentTab = store.currentTab;
+                nextTabNumber = store.nextTabNumber;
 
+                persist();
+                rebuildTabsUI();
+            }
+
+            // ---------- loaders ----------
+            function showFormCardLoader() {
+                $('#form-card-loader').show();
+            }
+
+            function hideFormCardLoader() {
+                $('#form-card-loader').hide();
+            }
+
+            function switchToTab(tabNo, opts = {}) {
+                const {
+                    ensureSaved = false
+                } = opts;
+                const $form = $(FORM_ID);
+
+                if (ensureSaved) {
+                    const prevTab = currentTab;
+                    saveFormForTab(prevTab, $form);
+                    persist();
+                }
+
+                currentTab = tabNo;
+                store.currentTab = tabNo;
+
+                $('.voucher-tab').removeClass('active');
+                $(`.voucher-tab[data-tab="${tabNo}"]`).addClass('active');
+
+                loadFormForTab(tabNo);
+                persist();
+            }
+
+            // ---------- BOOT ORDER (fixed) ----------
             hydrate();
-            rebuildTabsUI();
-            switchToTab(currentTab, {
-                ensureSaved: false
-            });
+            initTomSelects(); // 1) have TomSelect instances ready
+            rebuildTabsUI(); // 2) render the tab buttons
+            loadFormForTab(currentTab); // 3) restore snapshot into widgets (no extra reset)
+            persist();
 
-            // Add voucher tab
+            // Snapshot once if empty (first run) so reload has data
+            (function primeSnapshotIfEmpty() {
+                const tab = store.tabs[currentTab] || {};
+                const empty = !tab.selects || Object.keys(tab.selects).length === 0;
+                if (empty) {
+                    saveFormForTab(currentTab, $(FORM_ID));
+                    persist();
+                }
+            })();
+
+            // ---------- Add voucher tab ----------
             $('#add-new-voucher-btn').off('click').on('click', function(e) {
                 e.preventDefault();
                 showFormCardLoader();
-                console.log('qq');
 
                 const voucher_val = $("#voucher_number").val(); // e.g. "CR-1823"
-                const parts = voucher_val.split('-');
-                const voucher_num = parseInt(parts[1], 10) + 1; // result: 1824
-                $.ajax({
-                    url: "{{ route('check_new_voucher_number') }}",
-                    type: 'POST',
-                    dataType: 'json',
-                    data: {
-                        _token: "{{ csrf_token() }}",
-                        type: 'CR',
-                        number: voucher_num,
-                    },
-                    success: function(data) {
-                        let nextVoucherNumber = data.latest_voucher_number;
+                const parts = (voucher_val || 'CR-0').split('-');
+                const voucher_num = parseInt(parts[1] || '0', 10) + 1;
+
+                const data = {
+                    type: 'CR',
+                    number: voucher_num,
+                    _token: '{{ csrf_token() }}'
+                };
+
+                callAjax(
+                    "{{ route('check_new_voucher_number') }}",
+                    '{{ csrf_token() }}',
+                    'POST',
+                    data,
+                    function(data) {
+                        const nextVoucherNumber = data.latest_voucher_number;
                         hideFormCardLoader();
+
                         const $form = $(FORM_ID);
-                        // Save current tab before reset
                         const prevTab = currentTab;
                         saveFormForTab(prevTab, $form);
                         persist();
 
-                        // Create new tab
-                        const newNo = nextTabNumber;
-                        ensureTab(newNo);
+                        const newNo = store.nextTabNumber || (Object.keys(store.tabs).length + 1);
                         store.tabs[newNo] = {
                             formData: {},
                             selects: {}
                         };
+                        store.currentTab = newNo;
                         store.nextTabNumber = newNo + 1;
-                        nextTabNumber = store.nextTabNumber; // ✅ sync local variable
+                        currentTab = newNo;
+                        nextTabNumber = store.nextTabNumber;
                         persist();
+
                         $('#submit-button').attr('tab-number', newNo);
                         resetFormUI($form);
-                        $('#voucher-tabs').append(`
-                        <div class="voucher-tab-wrapper position-relative">
-                            <button class="btn btn-primary btn-sm voucher-tab active" voucher-number="${nextVoucherNumber}" data-tab="${newNo}">Voucher#${newNo}</button>
-                            <button class="voucher-tab-remove" voucher-number-remove="${nextVoucherNumber}" data-tab="${newNo}" title="Remove Tab"><i class="fas fa-times"></i></button>
-                        </div>`);
-                        $('.voucher-tab').removeClass('active');
-                        $(`.voucher-tab[data-tab="${newNo}"]`).addClass('active');
 
+                        rebuildTabsUI();
                         switchToTab(newNo, {
                             ensureSaved: false
                         });
 
-                        // ✅ Now safely update voucher number
-                        const $voucherInput = $("#voucher_number");
-
-                        // const prevVoucher = $voucherInput.val();
-
-                        // if (prevVoucher && prevVoucher.includes('-')) {
-                        //     const [prefix, numStr] = prevVoucher.split('-');
-                        //     const nextNum = parseInt(numStr || '0') + 1;
                         const nextVoucher = `CR-${nextVoucherNumber}`;
+                        $("#voucher_number").val(nextVoucher).attr('value', nextVoucher).trigger(
+                            'input').trigger('change');
 
-                        $voucherInput.val(nextVoucher)
-                            .attr('value', nextVoucher)
-                            .trigger('input')
-                            .trigger('change');
-
-                        //     console.log('✅ Voucher updated in field:', $voucherInput.val());
-                        // }
+                        flatpickr('.date', {
+                            enableTime: false,
+                            dateFormat: "Y-m-d",
+                            altInput: true,
+                            altFormat: "F j, Y",
+                            defaultDate: "{{ session('last_submit_date', now()) }}",
+                            onChange: function(selectedDates, dateStr) {
+                                const hidden = document.getElementById('hiddenDate');
+                                if (hidden) hidden.value = dateStr;
+                            }
+                        });
                     },
-                    error: function() {
-                        console.log('Error fetching accounts');
-                    }
-                });
+                    true
+                );
             });
 
-
-            // Tab click
+            // ---------- Tab click ----------
             $(document).on('click', '.voucher-tab', function() {
                 const to = parseInt($(this).data('tab'), 10);
                 $('#submit-button').attr('tab-number', to);
-                console.log('a');
-
                 if (to === currentTab) return;
 
                 showFormCardLoader();
@@ -1716,91 +1853,67 @@
                 hideFormCardLoader();
             });
 
-            // Remove tab
+            // ---------- Remove tab ----------
             $(document).on('click', '.voucher-tab-remove', function(e) {
                 e.stopPropagation();
                 const tabNo = parseInt($(this).data('tab'), 10);
                 removeTab(tabNo);
-                // const tabNo = parseInt($(this).data('tab'), 10);
-                // if (tabNo === 1) return;
-
-                // showFormCardLoader();
-                // setTimeout(function() {
-                //     // Save current form for safety
-                //     saveFormForTab(currentTab, $(FORM_ID));
-
-                //     delete store.tabs[tabNo];
-                //     persist();
-
-                //     // If removing current tab, pick smallest existing (prefer 1)
-                //     if (currentTab === tabNo) {
-                //         const remaining = Object.keys(store.tabs).map(n => parseInt(n, 10))
-                //             .sort((a, b) => a - b);
-                //         const fallback = remaining.includes(1) ? 1 : remaining[0];
-                //         switchToTab(fallback, {
-                //             ensureSaved: false
-                //         });
-                //     }
-
-                //     // Rebuild UI to reflect removal
-                //     rebuildTabsUI();
-                //     hideFormCardLoader();
-                // }, 150);
             });
 
             function removeTab(tabNo) {
-                if (tabNo === 1) return;
-
                 showFormCardLoader();
-                setTimeout(function() {
-                    // Save current form for safety
-                    saveFormForTab(currentTab, $(FORM_ID));
 
-                    delete store.tabs[tabNo];
-                    persist();
+                delete store.tabs[tabNo];
 
-                    // If removing current tab, pick smallest existing (prefer 1)
-                    if (currentTab === tabNo) {
-                        const remaining = Object.keys(store.tabs).map(n => parseInt(n, 10))
-                            .sort((a, b) => a - b);
-                        const fallback = remaining.includes(1) ? 1 : remaining[0];
-                        switchToTab(fallback, {
-                            ensureSaved: false
-                        });
-                    }
-
-                    // Rebuild UI to reflect removal
-                    rebuildTabsUI();
-                    hideFormCardLoader();
-                }, 150);
-            }
-
-            function switchToTab(tabNo, opts = {}) {
-                const {
-                    ensureSaved = false
-                } = opts;
-                const $form = $(FORM_ID);
-                if (ensureSaved) {
-
-                    // Save against the *previous* tab before switching pointer
-                    const prevTab = currentTab;
-                    saveFormForTab(prevTab, $form);
-                    persist();
+                const remaining = Object.keys(store.tabs).map(n => parseInt(n, 10)).sort((a, b) => a - b);
+                if (!remaining.length) {
+                    store.tabs = {
+                        1: {
+                            formData: {},
+                            selects: {}
+                        }
+                    };
+                }
+                if (!store.tabs[currentTab]) {
+                    store.currentTab = remaining[0] || 1;
+                    currentTab = store.currentTab;
                 }
 
-                currentTab = tabNo;
-                store.currentTab = tabNo;
-                $('.voucher-tab').removeClass('active');
-                $(`.voucher-tab[data-tab="${tabNo}"]`).addClass('active');
+                reindexTabs();
+                switchToTab(store.currentTab, {
+                    ensureSaved: false
+                });
 
-                loadFormForTab(tabNo);
-                persist();
+                const tabCount = Object.keys(store.tabs).length;
+                if (tabCount === 1) {
+                    callAjax(
+                        "{{ route('check_new_voucher_number') }}",
+                        '{{ csrf_token() }}',
+                        'POST', {
+                            type: 'CR',
+                            number: 1,
+                            _token: '{{ csrf_token() }}'
+                        },
+                        function(data) {
+                            const nextVoucherNumber = data.latest_voucher_number;
+                            const nextVoucher = `CR-${nextVoucherNumber}`;
+                            $("#voucher_number").val(nextVoucher).attr('value', nextVoucher).trigger('change');
+                            hideFormCardLoader();
+                        },
+                        true,
+                        function() {
+                            hideFormCardLoader();
+                        }
+                    );
+                } else {
+                    hideFormCardLoader();
+                }
             }
 
-            // --- Autosave binding (throttled) ---
+            // ---------- Autosave ----------
             const autoSave = throttle(function() {
                 const $form = $(FORM_ID);
-                // saveFormForTab(currentTab, $form);
+                saveFormForTab(currentTab, $form);
                 persist();
             }, 250);
 
@@ -1810,54 +1923,63 @@
                     .on('input.voucherAutosave change.voucherAutosave blur.voucherAutosave',
                         `${FORM_ID} input, ${FORM_ID} textarea, ${FORM_ID} select`, autoSave);
 
-                // For Tom Select, also listen to its change
                 $(document).off('change.voucherTS').on('change.voucherTS', TS_SEL, autoSave);
             }
             bindAutoSaveEvents();
+            console.log($('meta[name="csrf-token"]').attr('content'));
+            console.log('{{ csrf_token() }}');
 
-            // Keep your loaders (no-op wrappers here; replace with your own)
-            function showFormCardLoader() {
-                $('#form-card-loader').show();
-            }
 
-            function hideFormCardLoader() {
-                $('#form-card-loader').hide();
-            }
-
+            // Submit/save handler
             $(document).on('click', '#submitForm', function(e) {
-                e.preventDefault(); // stop normal form submit
-                let tabNumber = $('#submit-button').attr('tab-number');
-                let $form = $('#voucherForm'); // your form
-                let formData = new FormData($form[0]); // collect form data (supports files too)
+                e.preventDefault();
 
+                const tabNumber = parseInt($('#submit-button').attr('tab-number'), 10) || currentTab;
+                const $form = $('#voucherForm');
+                const formData = new FormData($form[0]);
+                formData.append('_token', $('meta[name="csrf-token"]').attr('content'));
+                $.ajaxSetup({
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    }
+                });
                 $.ajax({
-                    url: $form.attr('action'), // use the action attribute from form
-                    type: $form.attr('method') || 'POST', // use method attribute (default POST)
+                    url: $form.attr('action'),
+                    type: $form.attr('method') || 'POST',
                     data: formData,
-                    processData: false, // don't process files
-                    contentType: false, // don't set default content type
+                    dataType: "JSON",
+                    processData: false, // required for FormData
+                    contentType: false, // required for FormData
                     beforeSend: function() {
-                        // optional: disable button or show loader
                         $('#submitBtn').prop('disabled', true).text('Saving...');
                     },
                     success: function(response) {
-                        console.log('✅ Success:', response);
+                        console.log(response, tabNumber);
+
+                        // Remove the saved tab and keep indices contiguous
                         removeTab(tabNumber);
-                        renderDataTable();
-                        // Example: show success message
+                        // reindexTabs();
+
+                        // Refresh table
+                        if (typeof renderDataTable === 'function') {
+                            renderDataTable();
+                        }
+
+                        // Notify + reset form
                         Swal.fire({
                             icon: 'success',
                             title: 'Saved!',
                             text: 'Voucher saved successfully.'
                         });
+                        // $form.trigger('reset');
 
-                        // Reset form if needed
-                        $form.trigger('reset');
+                        // Optional: clear TomSelect selections visually
+                        // $form.find('select').each(function() {
+                        //     if (this.tomselect) this.tomselect.clear(true);
+                        // });
                     },
                     error: function(xhr) {
                         console.error('❌ Error:', xhr.responseText);
-
-                        // Example: show error message
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
@@ -1866,136 +1988,142 @@
                     },
                     complete: function() {
                         $('#confirmedModal').modal('hide');
-                        // enable button again
                         $('#submitBtn').prop('disabled', false).text('Submit');
                     }
                 });
             });
+
+
+            // ---------- DataTable ----------
             $(document).ready(function() {
                 renderDataTable();
-            })
+            });
 
+            function renderDataTable() {
+                const $tbl = $('#vouchersTable');
+                const src = $tbl.data('source');
 
-                function renderDataTable() {
-
-
-                    const $tbl = $('#vouchersTable');
-                    const src = $tbl.data('source');
-
-                    // Destroy existing instance if already initialized
-                    if ($.fn.DataTable.isDataTable('#vouchersTable')) {
-                        $tbl.DataTable().clear().destroy();
-                    }
-
-                    $tbl.DataTable({
-                        destroy: true, // allow re-init if some other script touched it
-                        processing: true,
-                        serverSide: true,
-                        paging: true,
-                        pageLength: 10,
-                        searching: true,
-                        order: [
-                            [1, 'desc']
-                        ],
-                        ajax: {
-                            url: src,
-                            dataSrc: 'data',
-                            error: function(xhr, status, err) {
-                                console.error('DataTables AJAX error:', status, err, xhr
-                                    .responseText);
-                                alert('Failed to load data. Check console for details.');
-                            }
-                        },
-                        columns: [{
-                                data: 'id',
-                                render: (_, __, ___, meta) => meta.row + meta.settings
-                                    ._iDisplayStart + 1
-                            },
-                            {
-                                data: 'date'
-                            },
-                            {
-                                data: 'project'
-                            },
-                            {
-                                data: 'head'
-                            },
-                            {
-                                data: 'subhead'
-                            },
-                            {
-                                data: 'detail'
-                            },
-                            {
-                                data: 'amount',
-                                render: d => Number(d).toLocaleString()
-                            },
-                            @canany(['update voucher', 'delete voucher'])
-                                {
-                                    data: null,
-                                    orderable: false,
-                                    render: row => {
-                                        if (row.type === 'BO')
-                                    return 'Plot Booking Invoice';
-                                        const canDirectUpdate =
-                                            {{ Auth::user()->hasRole('super-admin') || Auth::user()->can('direct-update') ? 'true' : 'false' }};
-                                        // ✅ Always include Edit and Delete buttons
-                                        let buttons = `
-                                            <div class="btn-group">
-                                                @can('update voucher')
-                                                <button class="btn btn-sm btn-primary btn-edit" data-id="${row.id}">
-                                                    <i class="fas fa-pencil-alt"></i>
-                                                </button>
-                                                @endcan
-
-                                                @can('delete voucher')
-                                                <button class="btn btn-sm btn-danger btn-delete" data-id="${row.id}">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                                @endcan
-                                        `;
-
-                                        // ✅ Blade resolves permissions once, passed as a boolean for JS
-
-
-                                        // ➡️ Show approval controls only for users with direct-update or super-admin
-                                        if (canDirectUpdate === true || canDirectUpdate ===
-                                            'true') {
-                                            if (row.status === 'Pending') {
-                                                buttons += `
-                                            <div class="d-flex admin_approval">
-                                                <button class="btn btn-sm btn-outline-info btn-view-changes"
-                                                    data-old='${JSON.stringify(row.old_values)}'
-                                                    data-new='${JSON.stringify(row.new_values)}'
-                                                    data-submitted_by="${row.submitted_by}"
-                                                    data-record_id="${row.id}">
-                                                    <i class="fas fa-eye"></i> Approval Required
-                                                </button>
-                                            </div>`;
-                                            }
-                                        }
-                                        // ❗ For users without permission, show Needs Admin Approval badge if Pending
-                                        else {
-                                            if (row.status === 'Pending') {
-                                                buttons += `
-                                            <span class="badge bg-secondary px-3 py-2"
-                                                style="cursor: pointer;"
-                                                data-bs-toggle="tooltip"
-                                                title="Needs Admin Approval">
-                                                <i class="fas fa-lock me-1"></i>
-                                            </span>`;
-                                            }
-                                        }
-
-                                        buttons += '</div>';
-                                        return buttons;
-                                    }
-                                },
-                            @endcanany
-                        ]
-                    });
+                if ($.fn.DataTable.isDataTable('#vouchersTable')) {
+                    $tbl.DataTable().clear().destroy();
                 }
-            // })
+
+                $tbl.DataTable({
+                    destroy: true,
+                    processing: true,
+                    serverSide: true,
+                    paging: true,
+                    pageLength: 10,
+                    searching: true,
+                    order: [
+                        [1, 'desc']
+                    ],
+                    ajax: {
+                        url: src,
+                        dataSrc: 'data',
+                        error: function(xhr, status, err) {
+                            console.error('DataTables AJAX error:', status, err, xhr.responseText);
+                            alert('Failed to load data. Check console for details.');
+                        }
+                    },
+                    columns: [{
+                            data: 'id',
+                            render: (_, __, ___, meta) => meta.row + meta.settings._iDisplayStart + 1
+                        },
+                        {
+                            data: 'date'
+                        },
+                        {
+                            data: 'voucher_number'
+                        },
+                        {
+                            data: 'head'
+                        },
+                        {
+                            data: 'subhead'
+                        },
+                        {
+                            data: 'detail'
+                        },
+                        {
+                            data: 'amount',
+                            render: d => Number(d).toLocaleString()
+                        },
+                        @canany(['update voucher', 'delete voucher'])
+                            {
+                                data: null,
+                                orderable: false,
+                                render: row => {
+                                    if (row.type === 'BO') return 'Plot Booking Invoice';
+                                    const canDirectUpdate =
+                                        {{ Auth::user()->hasRole('super-admin') || Auth::user()->can('direct-update') ? 'true' : 'false' }};
+
+                                    let buttons = `<div class="btn-group">`;
+                                    @can('update voucher')
+                                        buttons += `<button class="btn btn-sm btn-primary btn-edit" data-id="${row.id}">
+                <i class="fas fa-pencil-alt"></i>
+              </button>`;
+                                    @endcan
+                                    @can('delete voucher')
+                                        buttons += `<button class="btn btn-sm btn-danger btn-delete" data-id="${row.id}">
+                <i class="fas fa-trash"></i>
+              </button>`;
+                                    @endcan
+
+                                    if (canDirectUpdate === true || canDirectUpdate === 'true') {
+                                        if (row.status === 'Pending') {
+                                            buttons += `
+                  <div class="d-flex admin_approval">
+                    <button class="btn btn-sm btn-outline-info btn-view-changes"
+                      data-old='${JSON.stringify(row.old_values)}'
+                      data-new='${JSON.stringify(row.new_values)}'
+                      data-submitted_by="${row.submitted_by}"
+                      data-record_id="${row.id}">
+                      <i class="fas fa-eye"></i> Approval Required
+                    </button>
+                  </div>`;
+                                        }
+                                    } else {
+                                        if (row.status === 'Pending') {
+                                            buttons += `
+                  <span class="badge bg-secondary px-3 py-2"
+                    style="cursor: pointer;"
+                    data-bs-toggle="tooltip"
+                    title="Needs Admin Approval">
+                    <i class="fas fa-lock me-1"></i>
+                  </span>`;
+                                        }
+                                    }
+
+                                    buttons += '</div>';
+                                    return buttons;
+                                }
+                            },
+                        @endcanany
+                    ]
+                });
+            }
+
+            // ---------- AJAX helper ----------
+            function callAjax(route, csrf, method, data, callback, isFile = false, onError = null) {
+                $.ajaxSetup({
+                    headers: {
+                        "X-CSRF-TOKEN": csrf
+                    }
+                });
+                $.ajax({
+                    url: route,
+                    method: method,
+                    data: data,
+                    success: function(response) {
+                        callback(response);
+                    },
+                    error: function(xhr) {
+                        console.error('❌ AJAX Error:', xhr.responseText);
+                        if (typeof onError === 'function') onError(xhr);
+                    }
+                });
+            }
+
         })(jQuery);
     </script>
 @endsection
@@ -2154,10 +2282,8 @@
                             </div>
                         </div>
                         <div class="customer-detail row">
-                            <div class="mb-3 col-sm-12">
-                                <div id="eWordingAmount"></div>
-                            </div>
-                            <div class="mb-3 col-sm-6">
+
+                            {{-- <div class="mb-3 col-sm-6">
                                 <div class="input-group">
                                     <label class="fbox">Customer</label>
                                     <div class="input-group">
@@ -2200,7 +2326,7 @@
                                         @enderror
                                     </div>
                                 </div>
-                            </div>
+                            </div> --}}
                             <div class="mb-3 col-sm-3">
                                 <div class="input-group">
                                     <label class="fbox">Payment Type</label>
@@ -2259,6 +2385,9 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                        <div class="mb-3 col-sm-12">
+                            <div id="eWordingAmount"></div>
                         </div>
                         <div class="row">
                             <div class="col-sm-12">
