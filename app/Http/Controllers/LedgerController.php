@@ -29,7 +29,7 @@ class LedgerController extends Controller
 {
     public function store(Request $request)
     {
-        dd($request->all());
+        // dd($request->all());
         $validator = Validator::make($request->all(), [
             'amount' => ['required'],
             'detail' => ['required'],
@@ -157,7 +157,7 @@ class LedgerController extends Controller
             if (!$projectHeadSubhead) {
                 throw new \Exception('Credit account ID not found.');
             }
-            $exists = Ledger::where('type', $type)
+            $exists = Ledger::where('type', $firstTwoDigits)
             ->where('is_active', 1)
             ->where('voucher_number', $voucherNumber)
             ->exists();
