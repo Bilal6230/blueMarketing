@@ -371,12 +371,57 @@
                     </div>
 
                     <!-- Cash Voucher List -->
+                    <button type="button" class="btn btn-primary">filters</button>
                     <div class="col-12 mb-4">
                         <div class="custom_card h-100">
                             <div class="card-body">
-                                <div class="mb-3 d-flex align-items-center justify-content-between">
-                                    <h5 class="text-lg font-semibold">Cash Voucher List</h5>
+                                <div class="mb-3">
+                                    <h5 class="text-lg font-semibold mb-3">Cash Voucher List</h5>
+                                    <div class="row g-3 align-items-end">
+
+                                        <!-- Date From -->
+                                        <div class="col-md-3">
+                                            <label for="filter_from_date">From Date</label>
+                                            <input type="text" id="filter_from_date" class="form-control date"
+                                                placeholder="YYYY-MM-DD">
+                                        </div>
+
+                                        <!-- Date To -->
+                                        <div class="col-md-3">
+                                            <label for="filter_to_date">To Date</label>
+                                            <input type="text" id="filter_to_date" class="form-control date"
+                                                placeholder="YYYY-MM-DD">
+                                        </div>
+
+                                        <!-- Type Filter -->
+                                        <div class="col-md-3">
+                                            <label for="filter_type">Type</label>
+                                            <select id="filter_type" class="form-control">
+                                                <option value="">All</option>
+                                                <option value="CR">CR</option>
+                                                <option value="CP">CP</option>
+                                                <option value="BO">BO</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Status Filter -->
+                                        <div class="col-md-3">
+                                            <label for="filter_status">Status</label>
+                                            <select id="filter_status" class="form-control">
+                                                <option value="">All</option>
+                                                <option value="Draft">Draft</option>
+                                                <option value="Approved">Approved</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="col-md-12 mt-3">
+                                            <button id="applyFilters" class="btn btn-primary btn-sm">Apply
+                                                Filters</button>
+                                            <button id="resetFilters" class="btn btn-secondary btn-sm">Reset</button>
+                                        </div>
+                                    </div>
                                 </div>
+
                                 @can('read voucher')
                                     <div class=" table-responsive">
                                         <table id="vouchersTable" class="table table-bordered table-striped"
