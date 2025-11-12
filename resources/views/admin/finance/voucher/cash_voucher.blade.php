@@ -371,47 +371,58 @@
                     </div>
 
                     <!-- Cash Voucher List -->
-                    <button type="button" class="btn btn-primary">filters</button>
-                    <div class="col-12 mb-4">
+                    <button type="button" class="btn btn-primary" id="toggleFilters">Filters</button>
+
+                    <div id="filtersSection" class="col-12 mb-4" style="display:none;">
                         <div class="custom_card h-100">
                             <div class="card-body">
                                 <div class="mb-3">
                                     <h5 class="text-lg font-semibold mb-3">Cash Voucher List</h5>
                                     <div class="row g-3 align-items-end">
-
-                                        <!-- Date From -->
+                                        <!-- Head Account -->
                                         <div class="col-md-3">
-                                            <label for="filter_from_date">From Date</label>
-                                            <input type="text" id="filter_from_date" class="form-control date"
-                                                placeholder="YYYY-MM-DD">
-                                        </div>
-
-                                        <!-- Date To -->
-                                        <div class="col-md-3">
-                                            <label for="filter_to_date">To Date</label>
-                                            <input type="text" id="filter_to_date" class="form-control date"
-                                                placeholder="YYYY-MM-DD">
-                                        </div>
-
-                                        <!-- Type Filter -->
-                                        <div class="col-md-3">
-                                            <label for="filter_type">Type</label>
-                                            <select id="filter_type" class="form-control">
-                                                <option value="">All</option>
-                                                <option value="CR">CR</option>
-                                                <option value="CP">CP</option>
-                                                <option value="BO">BO</option>
+                                            <label for="filter_head_account">Head Account</label>
+                                            <select id="filter_head_account" class="form-control">
+                                                <option value="">Select Head Account</option>
+                                                @foreach ($headaccounts as $account)
+                                                    <option value="{{ $account->headAccounting->name }}">
+                                                        {{ $account->headAccounting->name }}</option>
+                                                @endforeach
                                             </select>
                                         </div>
 
-                                        <!-- Status Filter -->
+                                        <!-- Subhead Account -->
                                         <div class="col-md-3">
-                                            <label for="filter_status">Status</label>
-                                            <select id="filter_status" class="form-control">
-                                                <option value="">All</option>
-                                                <option value="Draft">Draft</option>
-                                                <option value="Approved">Approved</option>
+                                            <label for="filter_subhead_account">Subhead Account</label>
+                                            <select id="filter_subhead_account" class="form-control">
+                                                <option value="">Select Subhead Account</option>
+                                                @foreach ($partyaccounts as $account)
+                                                    <option value="{{ $account->subheadAccounting->name }}">
+                                                        {{ $account->subheadAccounting->name }}</option>
+                                                @endforeach
                                             </select>
+                                        </div>
+
+                                        <!-- Voucher Number -->
+                                        <div class="col-md-3">
+                                            <label for="filter_voucher_number">Voucher Number</label>
+                                            <input type="text" id="filter_voucher_number" class="form-control"
+                                                placeholder="Voucher Number">
+                                        </div>
+
+                                        <!-- Amount -->
+                                        <div class="col-md-3">
+                                            <label for="filter_amount">Amount</label>
+                                            <input type="number" id="filter_amount" class="form-control"
+                                                placeholder="Amount">
+                                        </div>
+
+                                        <!-- Date -->
+                                        <!-- Date -->
+                                        <div class="col-md-3">
+                                            <label for="filter_date">Date</label>
+                                            <input type="text" id="filter_date" class="form-control date"
+                                                placeholder="YYYY-MM-DD">
                                         </div>
 
                                         <div class="col-md-12 mt-3">
@@ -421,34 +432,37 @@
                                         </div>
                                     </div>
                                 </div>
-
-                                @can('read voucher')
-                                    <div class=" table-responsive">
-                                        <table id="vouchersTable" class="table table-bordered table-striped"
-                                            data-source="{{ $table_data_route }}">
-                                            <thead>
-                                                <tr>
-                                                    <th>#</th>
-                                                    <th>Date</th>
-                                                    <th>Voucher Number</th>
-                                                    <th>Head Account</th>
-                                                    <th>Sub Head Account</th>
-                                                    <th>Detail</th>
-                                                    <th>Amount</th>
-
-                                                    @canany(['update voucher', 'delete voucher'])
-                                                        <th>Action</th>
-                                                    @endcanany
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                @endcan
                             </div>
                         </div>
                     </div>
+
+                    <!-- Table -->
+                    @can('read voucher')
+                        <div class="table-responsive">
+                            <table id="vouchersTable" class="table table-bordered table-striped"
+                                data-source="{{ $table_data_route }}">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Date</th>
+                                        <th>Voucher Number</th>
+                                        <th>Head Account</th>
+                                        <th>Sub Head Account</th>
+                                        <th>Detail</th>
+                                        <th>Amount</th>
+                                        @canany(['update voucher', 'delete voucher'])
+                                            <th>Action</th>
+                                        @endcanany
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    @endcan
+
+
+
                 </div>
             </div>
         </section>
@@ -493,6 +507,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
+        let isDateChanged = false;
         document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.js-tomselect').forEach((el) => {
                 if (el.tomselect) return; // prevent double init
@@ -2152,19 +2167,57 @@
             });
 
 
-            // ---------- DataTable ----------
             $(document).ready(function() {
-                renderDataTable();
+                // Toggle filter section visibility
+                $('#toggleFilters').on('click', function() {
+                    $('#filtersSection').toggle();
+                });
+
+                // Set today's date as default in the date filter
+                const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+                $('#filter_date').val(today);
+
+                // Track the initial date (on page load) and whether the user changes the date
+                let initialDate = today; // This stores the initial date when the page loads
+
+                // Listen for changes in the date field
+                $('#filter_date').on('change', function() {
+                    isDateChanged = true; // Mark that the date was changed by the user
+                });
+
+                // Reset filters
+                $('#resetFilters').on('click', function() {
+                    $('#filter_head_account').val('');
+                    $('#filter_subhead_account').val('');
+                    $('#filter_voucher_number').val('');
+                    $('#filter_amount').val('');
+                    $('#filter_date').val(today); // Reset to today's date
+                    initialDate = today; // Reset the initial date to today
+                    isDateChanged = false; // Reset date change tracking
+                    renderDataTable(true); // Reset DataTable with no filters
+                });
+
+                // Apply filters
+                $('#applyFilters').on('click', function() {
+                    renderDataTable(
+                        false); // Apply selected filters, excluding the date unless it's changed
+                });
+
+                // Initialize the DataTable with no data initially
+                renderDataTable(true);
             });
 
-            function renderDataTable() {
+            // Function to render the DataTable with or without filters
+            function renderDataTable(isInitialLoad = false) {
                 const $tbl = $('#vouchersTable');
                 const src = $tbl.data('source');
 
+                // Destroy the existing DataTable if it exists
                 if ($.fn.DataTable.isDataTable('#vouchersTable')) {
                     $tbl.DataTable().clear().destroy();
                 }
 
+                // Initialize DataTable with AJAX call
                 $tbl.DataTable({
                     destroy: true,
                     processing: true,
@@ -2177,6 +2230,19 @@
                     ],
                     ajax: {
                         url: src,
+                        type: 'GET',
+                        data: function(d) {
+                            // Apply date filter only if the user has changed the date
+                            if (!isInitialLoad && isDateChanged) {
+                                d.date = $('#filter_date').val(); // Send the selected date
+                            }
+
+                            // Apply other filters (head_account, subhead_account, voucher_number, amount)
+                            d.head_account = $('#filter_head_account').val();
+                            d.subhead_account = $('#filter_subhead_account').val();
+                            d.voucher_number = $('#filter_voucher_number').val();
+                            d.amount = $('#filter_amount').val();
+                        },
                         dataSrc: 'data',
                         error: function(xhr, status, err) {
                             console.error('DataTables AJAX error:', status, err, xhr.responseText);
@@ -2211,47 +2277,17 @@
                                 data: null,
                                 orderable: false,
                                 render: row => {
-                                    if (row.type === 'BO') return 'Plot Booking Invoice';
-                                    const canDirectUpdate =
-                                        {{ Auth::user()->hasRole('super-admin') || Auth::user()->can('direct-update') ? 'true' : 'false' }};
-
                                     let buttons = `<div class="btn-group">`;
                                     @can('update voucher')
                                         buttons += `<button class="btn btn-sm btn-primary btn-edit" data-id="${row.id}">
-                <i class="fas fa-pencil-alt"></i>
-              </button>`;
+                    <i class="fas fa-pencil-alt"></i>
+                  </button>`;
                                     @endcan
                                     @can('delete voucher')
                                         buttons += `<button class="btn btn-sm btn-danger btn-delete" data-id="${row.id}">
-                <i class="fas fa-trash"></i>
-              </button>`;
+                    <i class="fas fa-trash"></i>
+                  </button>`;
                                     @endcan
-
-                                    if (canDirectUpdate === true || canDirectUpdate === 'true') {
-                                        if (row.status === 'Pending') {
-                                            buttons += `
-                  <div class="d-flex admin_approval">
-                    <button class="btn btn-sm btn-outline-info btn-view-changes"
-                      data-old='${JSON.stringify(row.old_values)}'
-                      data-new='${JSON.stringify(row.new_values)}'
-                      data-submitted_by="${row.submitted_by}"
-                      data-record_id="${row.id}">
-                      <i class="fas fa-eye"></i> Approval Required
-                    </button>
-                  </div>`;
-                                        }
-                                    } else {
-                                        if (row.status === 'Pending') {
-                                            buttons += `
-                  <span class="badge bg-secondary px-3 py-2"
-                    style="cursor: pointer;"
-                    data-bs-toggle="tooltip"
-                    title="Needs Admin Approval">
-                    <i class="fas fa-lock me-1"></i>
-                  </span>`;
-                                        }
-                                    }
-
                                     buttons += '</div>';
                                     return buttons;
                                 }

@@ -86,34 +86,7 @@ class VoucherController extends Controller
         $x['class'] = 'cash-in';
         $x['bg_voucher'] = 'info-cash-in';
 
-        // Get selected town's project_id
         $selectedProjectId = getSelectedTown();
-
-        // $data = Ledger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project')->where('is_active', 1)->where('type', 'CR')->get();
-        // Modify the query to include the project_id filter
-        // $data = Ledger::with(['projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project'])
-        //     ->where('is_active', 1)
-        //     ->where('type', 'CR')
-        //     ->whereHas('projectHeadSubhead', function ($query) use ($selectedProjectId) {
-        //         $query->where('project_id', $selectedProjectId);
-        //     })
-        //     ->get();
-
-        // // Attach status to each ledger record
-        // $data = $data->map(function ($item) {
-        //     $item['amount'] = floatval($item['amount_in']);
-
-        //     $pending = PendingUpdate::where('table_name', 'ledgers')
-        //         ->where('record_id', $item->id)
-        //         ->latest()
-        //         ->first();
-        //     $item['submitted_by'] = $pending ? $pending->submittedBy?->name : '';
-        //     $item['new_values'] = $pending ? json_decode($pending->new_values, true) : '';
-        //     $item['old_values'] = $pending ? json_decode($pending->old_values, true) : '';
-        //     $item['status'] = $pending ? ucfirst($pending->status) : 'Approved';
-        //     return $item;
-        // });
-        // $x['data'] = $data;
         $x['data'] = [];
 
         $x['headaccounts'] = ProjectHeadSubhead::select('project_id', 'head_accounting_id')
@@ -164,7 +137,7 @@ class VoucherController extends Controller
             }
         }
 
-       $x['latest_voucher_number'] = $nextNumber;
+        $x['latest_voucher_number'] = $nextNumber;
 
         return view('admin.finance.voucher.cash_voucher', $x);
     }
@@ -466,7 +439,7 @@ class VoucherController extends Controller
         return view('admin.finance.voucher.cash_voucher', $x);
     }
 
-    public function cash_out_data()
+    public function cash_out_data(Request $request)
     {
         $selectedProjectId = getSelectedTown();
 
@@ -477,17 +450,19 @@ class VoucherController extends Controller
             'projectHeadSubhead.project:id,project',
             'projectHeadSubhead.plot.bookings' => function ($q) {
                 $q->where('cancel_type', 're_sale')
-                    ->with(['plot.projectHeadSubheads' => function ($p) {
-                        // This ensures we only include project_head_subheads where
-                        // both plot_id and customer_id match any re_sale booking
-                        $p->whereExists(function ($sub) {
-                            $sub->selectRaw(1)
-                                ->from('bookings')
-                                ->whereColumn('bookings.plot_id', 'project_head_subheads.plot_id')
-                                ->whereColumn('bookings.customer_id', 'project_head_subheads.customer_id')
-                                ->where('bookings.cancel_type', 're_sale');
-                        });
-                    }]);
+                    ->with([
+                        'plot.projectHeadSubheads' => function ($p) {
+                            // This ensures we only include project_head_subheads where
+                            // both plot_id and customer_id match any re_sale booking
+                            $p->whereExists(function ($sub) {
+                                $sub->selectRaw(1)
+                                    ->from('bookings')
+                                    ->whereColumn('bookings.plot_id', 'project_head_subheads.plot_id')
+                                    ->whereColumn('bookings.customer_id', 'project_head_subheads.customer_id')
+                                    ->where('bookings.cancel_type', 're_sale');
+                            });
+                        }
+                    ]);
             },
         ])
             ->where('is_active', 1)
@@ -496,15 +471,38 @@ class VoucherController extends Controller
                 $q->where('project_id', $selectedProjectId);
             });
 
+        // Apply filters only if user has selected them
+        if ($request->has('head_account') && $request->head_account) {
+            $q->whereHas('projectHeadSubhead.headAccounting', function ($query) use ($request) {
+                $query->where('name', 'like', '%' . $request->head_account . '%');
+            });
+        }
 
+        if ($request->has('subhead_account') && $request->subhead_account) {
+            $q->whereHas('projectHeadSubhead.subheadAccounting', function ($query) use ($request) {
+                $query->where('name', 'like', '%' . $request->subhead_account . '%');
+            });
+        }
+
+        if ($request->has('voucher_number') && $request->voucher_number) {
+            $q->where('voucher_number', 'like', '%' . $request->voucher_number . '%');
+        }
+
+        if ($request->has('amount') && $request->amount) {
+            $q->where('amount_out', '>=', $request->amount);
+        }
+
+        if ($request->has('date') && $request->date) {
+            $q->whereDate('date', '=', $request->date); // Use exact date match
+        }
 
         // Get total count before pagination
         $total = (clone $q)->count();
 
         // Pagination parameters
-        $start = (int) request('start', 0);
-        $length = (int) request('length', 10);
-        $draw = (int) request('draw', 1);
+        $start = (int) $request->input('start', 0);
+        $length = (int) $request->input('length', 10);
+        $draw = (int) $request->input('draw', 1);
 
         // Fetch only paginated rows, ordered by latest
         $rows = $q->orderByDesc('id')->skip($start)->take($length)->get();
@@ -519,19 +517,16 @@ class VoucherController extends Controller
                 ->latest()
                 ->first();
 
-            // ✅ Always start from a Collection
+            // Always start from a Collection
             $bookings = collect(optional($i->projectHeadSubhead->plot)->bookings);
 
-
-            // ✅ Get all related subheads from resale bookings safely
+            // Get all related subheads from resale bookings safely
             $relatedSubheads = $bookings->flatMap(function ($booking) {
                 return collect(optional($booking->plot)->projectHeadSubheads);
             });
-            // dd($relatedSubheads);
 
-            // ✅ Extract customer + head/subhead names safely
+            // Extract customer + head/subhead names safely
             $customers = $relatedSubheads->map(function ($sh) {
-                // dd(optional($sh->subheadAccounting)->name);
                 return [
                     'head' => optional($sh->headAccounting)->name,
                     'subhead' => optional($sh->subheadAccounting)->name,
@@ -543,18 +538,15 @@ class VoucherController extends Controller
 
             return [
                 'date' => $i->date,
-                'voucher_number' => $i->type.'-'.$i->voucher_number,
+                'voucher_number' => $i->type . '-' . $i->voucher_number,
                 'project' => optional($i->projectHeadSubhead->project)->project ?? '',
                 'head' => optional($i->projectHeadSubhead->headAccounting)->name ?? '',
                 'subhead' => trim(
                     (optional($i->projectHeadSubhead->subheadAccounting)->name ?? '') .
-                        (
-                            count($customers) > 0
-                            ? ' <p style="font-size:12px;">(old customers: ' .
-                            e(collect($customers)->pluck('subhead')->implode(', ')) .
-                            ')</p>'
-                            : ''
-                        )
+                    (count($customers) > 0
+                        ? ' <p style="font-size:12px;">(old customers: ' . e(collect($customers)->pluck('subhead')->implode(', ')) . ')</p>'
+                        : ''
+                    )
                 ),
                 'detail' => $i->detail,
                 'amount' => $amount,
@@ -562,7 +554,7 @@ class VoucherController extends Controller
                 'submitted_by' => optional($p?->submittedBy)->name ?? '',
                 'old_values' => json_decode($p?->old_values, true) ?? [],
                 'new_values' => json_decode($p?->new_values, true) ?? [],
-                'customers' => $customers, // ✅ List of customers + head/subhead
+                'customers' => $customers, // List of customers + head/subhead
                 'id' => $i->id,
                 'type' => $i->type,
             ];
@@ -572,8 +564,10 @@ class VoucherController extends Controller
             'draw' => $draw,
             'recordsTotal' => $total,
             'recordsFiltered' => $total,
-            'data' => $data,]);
-        }
+            'data' => $data,
+        ]);
+    }
+
     public function cash_out_data_old()
     {
         $selectedProjectId = getSelectedTown();
@@ -632,10 +626,10 @@ class VoucherController extends Controller
             'data' => $data,
         ]);
     }
-    public function cash_in_data()
+    public function cash_in_data(Request $request)
     {
         $selectedProjectId = getSelectedTown();
-        // Build base query with only the necessary relationships and columns
+
         $q = Ledger::with([
             'projectHeadSubhead.headAccounting:id,name',
             'projectHeadSubhead.subheadAccounting:id,name',
@@ -645,13 +639,38 @@ class VoucherController extends Controller
             ->where('type', 'CR')
             ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId));
 
+        // Apply filters
+        if ($request->has('head_account') && $request->head_account) {
+            $q->whereHas('projectHeadSubhead.headAccounting', function ($query) use ($request) {
+                $query->where('name', 'like', '%' . $request->head_account . '%');
+            });
+        }
+
+        if ($request->has('subhead_account') && $request->subhead_account) {
+            $q->whereHas('projectHeadSubhead.subheadAccounting', function ($query) use ($request) {
+                $query->where('name', 'like', '%' . $request->subhead_account . '%');
+            });
+        }
+
+        if ($request->has('voucher_number') && $request->voucher_number) {
+            $q->where('voucher_number', 'like', '%' . $request->voucher_number . '%');
+        }
+
+        if ($request->has('amount') && $request->amount) {
+            $q->where('amount_in', '>=', $request->amount);
+        }
+
+        if ($request->has('date') && $request->date) {
+            $q->whereDate('date', '=', $request->date);
+        }
+
         // Get total count before pagination
         $total = (clone $q)->count();
 
         // Pagination parameters
-        $start = (int) request('start', 0);
-        $length = (int) request('length', 10);
-        $draw = (int) request('draw', 1);
+        $start = (int) $request->input('start', 0);
+        $length = (int) $request->input('length', 10);
+        $draw = (int) $request->input('draw', 1);
 
         // Fetch only paginated rows, ordered by latest
         $rows = $q->orderByDesc('id')->skip($start)->take($length)->get();
@@ -659,8 +678,6 @@ class VoucherController extends Controller
         // Transform the result set
         $data = $rows->map(function ($i) {
             $amount = $i->type === 'CP' ? (float) $i->amount_out : (float) $i->amount_in;
-
-            // Use preloaded relation if available or define relation in Ledger for latestPendingUpdate
             $p = $i->latestPendingUpdate ?? PendingUpdate::where('table_name', 'ledgers')
                 ->where('record_id', $i->id)
                 ->latest()
@@ -668,7 +685,7 @@ class VoucherController extends Controller
 
             return [
                 'date' => $i->date,
-                'voucher_number' => $i->type.'-'.$i->voucher_number,
+                'voucher_number' => $i->type . '-' . $i->voucher_number,
                 'project' => $i->projectHeadSubhead->project->project ?? '',
                 'head' => $i->projectHeadSubhead->headAccounting->name ?? '',
                 'subhead' => $i->projectHeadSubhead->subheadAccounting->name ?? '',
@@ -690,6 +707,9 @@ class VoucherController extends Controller
             'data' => $data,
         ]);
     }
+
+
+
 
     public function cash_draft()
     {

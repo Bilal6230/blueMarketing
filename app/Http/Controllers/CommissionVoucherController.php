@@ -16,54 +16,111 @@ use Illuminate\Support\Facades\DB;
 
 class CommissionVoucherController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $power = Auth::user()->roles[0]->name;
-        $x['title']     = 'General Commision Voucher';
-        $x['role']      = Role::get();
-        $x['users']      = User::get();
-        $x['power']     = $power;
-        $x['type']      =   'CV';
-        $x['class']      =   'Commision voucher';
+        $x['title'] = 'General Commission Voucher';
+        $x['role'] = Role::get();
+        $x['users'] = User::get();
+        $x['power'] = $power;
+        $x['type'] = 'CV';
+        $x['class'] = 'Commission voucher';
         $x['bg_voucher'] = 'info-cash-in';
 
         // Get selected town's project_id
         $selectedProjectId = getSelectedTown();
 
-        $x['vouchers']  = CommisionVoucher::latest()->where('project_id',$selectedProjectId)->get();
+        // Build base query for vouchers
+        $query = CommisionVoucher::latest()->where('project_id', $selectedProjectId);
+
+        // Apply filters if they exist
+        if ($request->has('filter_voucher_number') && $request->filter_voucher_number) {
+            $query->where('voucher_number', 'like', '%' . $request->filter_voucher_number . '%');
+        }
+
+        if ($request->has('filter_reference') && $request->filter_reference) {
+            $query->where('reference', 'like', '%' . $request->filter_reference . '%');
+        }
+
+        if ($request->has('filter_amount') && $request->filter_amount) {
+            $query->where('total_debit', '>=', $request->filter_amount);
+        }
+
+        if ($request->has('filter_date') && $request->filter_date) {
+            $query->whereDate('date', '=', $request->filter_date); // Apply date filter if provided
+        }
+
+        // If it's an AJAX request, return JSON data
+        if ($request->ajax()) {
+            // Pagination parameters
+            $start = (int) $request->input('start', 0);
+            $length = (int) $request->input('length', 10);
+
+            // Fetch paginated rows
+            $vouchers = $query->skip($start)->take($length)->get();
+
+            // Count total records
+            $total = $query->count();
+
+            // Prepare the data, including the "actions" column
+            $data = $vouchers->map(function ($voucher) {
+                return [
+                    'id' => $voucher->id,
+                    'voucher_number' => 'CV-' . get_jv_number($voucher->voucher_number),
+                    'reference' => $voucher->reference,
+                    'date' => $voucher->date,
+                    'description' => $voucher->description,
+                    'total_debit' => $voucher->total_debit,
+                    'actions' => view('admin.reports.vouchers.actions', compact('voucher'))->render() // Render actions view
+                ];
+            });
+
+            // Return JSON data
+            return response()->json([
+                'draw' => $request->input('draw', 1),
+                'recordsTotal' => $total,
+                'recordsFiltered' => $total,
+                'data' => $data
+            ]);
+        }
+
+        // For non-AJAX requests, return the view
+        $x['vouchers'] = $query->get(); // Fetch all vouchers initially
+
         return view('admin.reports.vouchers.commision_index', $x);
     }
+
 
     public function create()
     {
         $power = Auth::user()->roles[0]->name;
-        $x['title']     = 'Create Commision Journal Voucher';
-        $x['role']      = Role::get();
-        $x['users']      = User::get();
-        $x['power']     = $power;
-        $x['type']      =   'CV';
-        $x['class']      =   'Commision voucher';
+        $x['title'] = 'Create Commision Journal Voucher';
+        $x['role'] = Role::get();
+        $x['users'] = User::get();
+        $x['power'] = $power;
+        $x['type'] = 'CV';
+        $x['class'] = 'Commision voucher';
         $x['bg_voucher'] = 'info-cash-in';
 
         // Get selected town's project_id
         $selectedProjectId = getSelectedTown();
 
 
-        $projects = Project::where('id', $selectedProjectId )->get();
+        $projects = Project::where('id', $selectedProjectId)->get();
         $x['projects'] = $projects;
 
-        $data_list = ProjectHeadSubhead::select('project_id','head_accounting_id')
-                        ->distinct()
-                        ->with('headAccounting')
-                        ->where(['project_id' => $selectedProjectId])
-                        ->get();
+        $data_list = ProjectHeadSubhead::select('project_id', 'head_accounting_id')
+            ->distinct()
+            ->with('headAccounting')
+            ->where(['project_id' => $selectedProjectId])
+            ->get();
 
-                        // dd($data_list[0]->headAccounting->name);
+        // dd($data_list[0]->headAccounting->name);
 
         $x['accounts'] = $data_list;
 
 
-        return view('admin.reports.vouchers.commision_voucher', $x );
+        return view('admin.reports.vouchers.commision_voucher', $x);
     }
 
     public function store(Request $request)
@@ -95,7 +152,7 @@ class CommissionVoucherController extends Controller
         try {
             // Create Journal Voucher Record
             $CommisionVoucher = CommisionVoucher::create([
-                'voucher_number' => $lastVoucherId+1,
+                'voucher_number' => $lastVoucherId + 1,
                 'reference' => $request->reference,
                 'date' => $request->date,
                 'description' => $request->description,
@@ -133,10 +190,10 @@ class CommissionVoucherController extends Controller
 
             DB::commit();
             return redirect()->route('commision.voucher.index')->with('success', 'Journal Voucher created successfully.');
-            } catch (\Exception $e) {
-                DB::rollBack();
-                return redirect()->back()->withErrors(['error' => $e->getMessage()]);
-            }
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->withErrors(['error' => $e->getMessage()]);
+        }
     }
 
     // public function edit($id)
@@ -194,7 +251,7 @@ class CommissionVoucherController extends Controller
         $x['voucher'] = $voucher;
 
         // Get selected town's project_id
-        $x['selectedProjectId'] =$selectedProjectId = getSelectedTown();
+        $x['selectedProjectId'] = $selectedProjectId = getSelectedTown();
 
         // Fetch projects and accounts
         $x['projects'] = Project::where('id', $selectedProjectId)->get();
