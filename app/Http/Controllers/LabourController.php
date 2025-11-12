@@ -12,7 +12,7 @@ class LabourController extends Controller
         $selectedProjectId = getSelectedTown();
         $x['title'] = 'Labour';
         $x['labours'] = Labour::where('project_id', $selectedProjectId)->get();
-        return view('admin.labours.index', $x);
+        return view('admin.labours.newindex', $x);
     }
 
     public function create()

@@ -26,16 +26,21 @@
                 <div class="row">
                     <!-- Cash Voucher Form -->
                     <div class="col-12 mb-4">
-                        <div class="d-flex gap-2 mb-3" style="gap: 10px;" id="voucher-tabs-container">
-                            <button class="btn btn-success btn-sm" id="add-new-voucher-btn">
-                                <i class="fas fa-plus"></i> Add New Cash Voucher
-                            </button>
-                            <div id="voucher-tabs" class="d-flex gap-2" style="gap: 10px;">
-                                <div class="voucher-tab-wrapper position-relative">
-                                    <button class="btn btn-primary btn-sm active voucher-tab"
-                                        data-tab="1">Voucher#1</button>
+                        <div class="buttons d-flex justify-content-between align-items-baseline">
+                            <div class="d-flex gap-2 mb-3" style="gap: 10px;" id="voucher-tabs-container">
+                                <button class="btn btn-success btn-sm" id="add-new-voucher-btn">
+                                    <i class="fas fa-plus"></i> Add New Cash Voucher
+                                </button>
+                                <div id="voucher-tabs" class="d-flex gap-2" style="gap: 10px;">
+                                    <div class="voucher-tab-wrapper position-relative">
+                                        <button class="btn btn-primary btn-sm active voucher-tab"
+                                            data-tab="1">Voucher#1</button>
+                                    </div>
                                 </div>
                             </div>
+                            <button class="btn btn-danger btn-sm" id="clear-vouchers">
+                                <i class="fas fa-minus"></i> Clear
+                            </button>
                         </div>
                         <!-- Loader -->
                         <div id="voucher-loader" class="text-center" style="display: none;">
@@ -1656,12 +1661,29 @@
                     if ($el.is('select') && $el[0].tomselect) {
                         withTomSelect($el, ts => {
                             const value = formData[name];
+                            const isPaymentType = $el.attr('id') ===
+                                'payment_type'; // 👈 detect payment_type select
+
                             if (value !== undefined && value !== null && value !== '') {
                                 try {
                                     ts.setValue(String(value), true);
                                 } catch (e) {}
+
+                                // 👇 special handling for payment_type field
+                                if (isPaymentType) {
+                                    if (String(value) !== '1') {
+                                        $('.bank_group').css('display', 'block');
+                                    } else {
+                                        $('.bank_group').css('display', 'none');
+                                    }
+                                }
                             } else {
                                 ts.clear(true);
+
+                                // 👇 also handle payment_type when no value
+                                if (isPaymentType) {
+                                    $('.bank_group').css('display', 'none');
+                                }
                             }
                         });
                     } else if ($el.hasClass('voucher-date') || $el.hasClass('passing_date')) {
@@ -1909,6 +1931,99 @@
                     hideFormCardLoader();
                 }
             }
+            $(document).on('click', '#clear-vouchers', function(e) {
+                e.preventDefault();
+
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: "This will clear all vouchers except the first one.",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Yes, clear all!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        try {
+                            // 🔹 1. Remove all voucher tabs except the first one
+                            $('.voucher-tab-wrapper').not(':first').remove();
+
+                            // 🔹 2. Clear the first voucher's form
+                            const $form = $('#voucherForm');
+                            $form.trigger('reset');
+
+                            // If you use TomSelect or flatpickr, reset them too
+                            $form.find('select').each(function() {
+                                if (this.tomselect) this.tomselect.clear(true);
+                            });
+
+                            // Reset date fields (flatpickr)
+                            if (typeof flatpickr !== 'undefined') {
+                                $form.find('.date').each(function() {
+                                    const picker = this._flatpickr;
+                                    if (picker) picker.clear();
+                                });
+                            }
+                            flatpickr('.date', {
+                                enableTime: false,
+                                dateFormat: "Y-m-d",
+                                altInput: true,
+                                altFormat: "F j, Y",
+                                defaultDate: "{{ session('last_submit_date', now()) }}",
+                                onChange: function(selectedDates, dateStr) {
+                                    const hidden = document.getElementById(
+                                        'hiddenDate');
+                                    if (hidden) hidden.value = dateStr;
+                                }
+                            });
+
+                            // 🔹 3. Clear all stored voucher data from localStorage
+                            // localStorage.removeItem('store'); // or whatever your LS_KEY is
+                            // localStorage.removeItem('tabs');
+                            // localStorage.removeItem('nextTabNumber');
+                            // localStorage.removeItem('currentTab');
+                            localStorage.removeItem(LS_KEY);
+                            // Or to wipe all (careful, only if safe):
+                            // localStorage.clear();
+
+                            // 🔹 4. Reset your in-memory store object if you use one
+                            if (typeof store !== 'undefined') {
+                                store.tabs = {
+                                    1: {
+                                        formData: {},
+                                        selects: {}
+                                    }
+                                };
+                                store.nextTabNumber = 2;
+                            }
+
+                            // ✅ Success message
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Cleared!',
+                                text: 'All vouchers cleared except the first one.',
+                            });
+
+                            // If you have a function to persist the store
+                            if (typeof persist === 'function') persist();
+
+                            // Optional: switch back to first tab
+                            $('.voucher-tab').removeClass('active');
+                            $('.voucher-tab[data-tab="1"]').addClass('active');
+                            $('.bank_group').css('display', 'none');
+                            return
+                            if (typeof switchToTab === 'function') switchToTab(1);
+                        } catch (err) {
+                            console.error('Error clearing vouchers:', err);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'Something went wrong while clearing vouchers.'
+                            });
+                        }
+                    }
+                });
+            });
 
             // ---------- Autosave ----------
             const autoSave = throttle(function() {
@@ -1926,8 +2041,6 @@
                 $(document).off('change.voucherTS').on('change.voucherTS', TS_SEL, autoSave);
             }
             bindAutoSaveEvents();
-            console.log($('meta[name="csrf-token"]').attr('content'));
-            console.log('{{ csrf_token() }}');
 
 
             // Submit/save handler
@@ -2123,7 +2236,6 @@
                     }
                 });
             }
-
         })(jQuery);
     </script>
 @endsection
