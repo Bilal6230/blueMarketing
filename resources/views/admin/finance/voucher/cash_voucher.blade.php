@@ -419,11 +419,25 @@
 
                                         <!-- Date -->
                                         <!-- Date -->
-                                        <div class="col-md-3">
+                                        {{-- <div class="col-md-3">
                                             <label for="filter_date">Date</label>
                                             <input type="text" id="filter_date" class="form-control date"
                                                 placeholder="YYYY-MM-DD">
+                                        </div> --}}
+                                        <!-- Date From -->
+                                        <div class="col-md-3">
+                                            <label for="filter_date_from">Date From</label>
+                                            <input type="text" id="filter_date_from" class="form-control date"
+                                                placeholder="YYYY-MM-DD">
                                         </div>
+
+                                        <!-- Date To -->
+                                        <div class="col-md-3">
+                                            <label for="filter_date_to">Date To</label>
+                                            <input type="text" id="filter_date_to" class="form-control date"
+                                                placeholder="YYYY-MM-DD">
+                                        </div>
+
 
                                         <div class="col-md-12 mt-3">
                                             <button id="applyFilters" class="btn btn-primary btn-sm">Apply
@@ -2168,58 +2182,42 @@
 
 
             $(document).ready(function() {
-                // Toggle filter section visibility
                 $('#toggleFilters').on('click', function() {
                     $('#filtersSection').toggle();
                 });
 
-                // Set today's date as default in the date filter
-                const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-                $('#filter_date').val(today);
-
-                // Track the initial date (on page load) and whether the user changes the date
-                let initialDate = today; // This stores the initial date when the page loads
-
-                // Listen for changes in the date field
-                $('#filter_date').on('change', function() {
-                    isDateChanged = true; // Mark that the date was changed by the user
+                $('#applyFilters').on('click', function() {
+                    isInitialLoad = false; // Enable filters
+                    renderDataTable();
                 });
 
-                // Reset filters
                 $('#resetFilters').on('click', function() {
                     $('#filter_head_account').val('');
                     $('#filter_subhead_account').val('');
                     $('#filter_voucher_number').val('');
                     $('#filter_amount').val('');
-                    $('#filter_date').val(today); // Reset to today's date
-                    initialDate = today; // Reset the initial date to today
-                    isDateChanged = false; // Reset date change tracking
-                    renderDataTable(true); // Reset DataTable with no filters
+                    $('#filter_date_from').val('');
+                    $('#filter_date_to').val('');
+                    isInitialLoad = true; // Reset to show all data again
+                    renderDataTable();
                 });
 
-                // Apply filters
-                $('#applyFilters').on('click', function() {
-                    renderDataTable(
-                        false); // Apply selected filters, excluding the date unless it's changed
-                });
-
-                // Initialize the DataTable with no data initially
-                renderDataTable(true);
+                // 🔹 First load → show all data (no filters)
+                renderDataTable();
             });
 
             // Function to render the DataTable with or without filters
-            function renderDataTable(isInitialLoad = false) {
+            let isInitialLoad = true;
+
+            function renderDataTable() {
                 const $tbl = $('#vouchersTable');
                 const src = $tbl.data('source');
 
-                // Destroy the existing DataTable if it exists
                 if ($.fn.DataTable.isDataTable('#vouchersTable')) {
                     $tbl.DataTable().clear().destroy();
                 }
 
-                // Initialize DataTable with AJAX call
                 $tbl.DataTable({
-                    destroy: true,
                     processing: true,
                     serverSide: true,
                     paging: true,
@@ -2232,22 +2230,17 @@
                         url: src,
                         type: 'GET',
                         data: function(d) {
-                            // Apply date filter only if the user has changed the date
-                            if (!isInitialLoad && isDateChanged) {
-                                d.date = $('#filter_date').val(); // Send the selected date
+                            if (!isInitialLoad) {
+                                // Only send filters after the first render
+                                d.date_from = $('#filter_date_from').val();
+                                d.date_to = $('#filter_date_to').val();
+                                d.head_account = $('#filter_head_account').val();
+                                d.subhead_account = $('#filter_subhead_account').val();
+                                d.voucher_number = $('#filter_voucher_number').val();
+                                d.amount = $('#filter_amount').val();
                             }
-
-                            // Apply other filters (head_account, subhead_account, voucher_number, amount)
-                            d.head_account = $('#filter_head_account').val();
-                            d.subhead_account = $('#filter_subhead_account').val();
-                            d.voucher_number = $('#filter_voucher_number').val();
-                            d.amount = $('#filter_amount').val();
                         },
-                        dataSrc: 'data',
-                        error: function(xhr, status, err) {
-                            console.error('DataTables AJAX error:', status, err, xhr.responseText);
-                            alert('Failed to load data. Check console for details.');
-                        }
+                        dataSrc: 'data'
                     },
                     columns: [{
                             data: 'id',
@@ -2280,13 +2273,13 @@
                                     let buttons = `<div class="btn-group">`;
                                     @can('update voucher')
                                         buttons += `<button class="btn btn-sm btn-primary btn-edit" data-id="${row.id}">
-                    <i class="fas fa-pencil-alt"></i>
-                  </button>`;
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>`;
                                     @endcan
                                     @can('delete voucher')
                                         buttons += `<button class="btn btn-sm btn-danger btn-delete" data-id="${row.id}">
-                    <i class="fas fa-trash"></i>
-                  </button>`;
+                        <i class="fas fa-trash"></i>
+                    </button>`;
                                     @endcan
                                     buttons += '</div>';
                                     return buttons;

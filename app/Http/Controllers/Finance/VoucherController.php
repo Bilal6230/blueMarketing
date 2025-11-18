@@ -492,9 +492,14 @@ class VoucherController extends Controller
             $q->where('amount_out', '>=', $request->amount);
         }
 
-        if ($request->has('date') && $request->date) {
-            $q->whereDate('date', '=', $request->date); // Use exact date match
+        if ($request->filled('date_from')) {
+            $q->whereDate('date', '>=', $request->date_from);
         }
+
+        if ($request->filled('date_to')) {
+            $q->whereDate('date', '<=', $request->date_to);
+        }
+
 
         // Get total count before pagination
         $total = (clone $q)->count();
@@ -660,8 +665,15 @@ class VoucherController extends Controller
             $q->where('amount_in', '>=', $request->amount);
         }
 
-        if ($request->has('date') && $request->date) {
-            $q->whereDate('date', '=', $request->date);
+        // if ($request->has('date') && $request->date) {
+        //     $q->whereDate('date', '=', $request->date);
+        // }
+        if ($request->filled('date_from')) {
+            $q->whereDate('date', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $q->whereDate('date', '<=', $request->date_to);
         }
 
         // Get total count before pagination
@@ -725,31 +737,60 @@ class VoucherController extends Controller
         // Get selected town's project_id
         $selectedProjectId = getSelectedTown();
 
-
-        $data = DraftLedger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project')
+        // 🔹 Replace everything from here until just before $x['headaccounts'] =
+        // ───────────────────────────────────────────────────────────────
+        $data = DraftLedger::with([
+            'projectHeadSubhead.headAccounting',
+            'projectHeadSubhead.subheadAccounting',
+            'projectHeadSubhead.project'
+        ])
             ->where('project_id', $selectedProjectId)
-            ->where('is_active', 1)  // Use whereIn to check for either 'CP' or 'BO'
-            ->get();
+            ->where('is_active', 1);
 
-        $data = $data->map(function ($item) {
-            $item['amount'] = $item['transaction_type'] === 'CR' ? floatval($item['amount_in']) : floatval($item['amount_out']);
+        // Apply filters
+        if ($from = request('from')) {
+            $data->whereDate('date', '>=', $from);
+        }
+        if ($to = request('to')) {
+            $data->whereDate('date', '<=', $to);
+        }
+        if ($head = request('head')) {
+            $data->whereHas('projectHeadSubhead', fn($q) => $q->where('head_accounting_id', $head));
+        }
+        if ($subhead = request('subhead')) {
+            $data->whereHas('projectHeadSubhead', fn($q) => $q->where('subhead_accounting_id', $subhead));
+        }
+        if ($type = request('type')) {
+            $data->where('transaction_type', $type);
+        }
+
+        $data = $data->get()->map(function ($item) {
+            $item['amount'] = $item['transaction_type'] === 'CR'
+                ? floatval($item['amount_in'])
+                : floatval($item['amount_out']);
+
             $pending = PendingUpdate::where('table_name', 'draft_ledgers')
                 ->where('record_id', $item->id)
                 ->latest()
                 ->first();
+
             $item['submitted_by'] = $pending ? $pending->submittedBy?->name : '';
             $item['new_values'] = $pending ? json_decode($pending->new_values, true) : '';
             $item['old_values'] = $pending ? json_decode($pending->old_values, true) : '';
             $item['status'] = $pending ? ucfirst($pending->status) : 'Approved';
             return $item;
         });
+
         $x['data'] = $data;
+        // ───────────────────────────────────────────────────────────────
+        // Keep everything from here downward as-is
 
         $x['headaccounts'] = ProjectHeadSubhead::select('project_id', 'head_accounting_id')
             ->distinct()
             ->with('headAccounting')
             ->where(['project_id' => $selectedProjectId])
             ->get();
+
         $x['partyaccounts'] = ProjectHeadSubhead::with('subheadAccounting')
             ->withSum('ledgers as total_in', 'amount_in')
             ->withSum('ledgers as total_out', 'amount_out')
@@ -760,22 +801,25 @@ class VoucherController extends Controller
                 $item->balance = ($item->total_in ?? 0) - ($item->total_out ?? 0);
                 return $item;
             });
+
         $x['customers'] = Lead::join('bookings', 'leads.id', '=', 'bookings.customer_id')
             ->where('leads.project_id', $selectedProjectId)
-            ->whereNull('bookings.deleted_at') // Exclude soft-deleted bookings
-            ->select('leads.*') // Select all columns from the leads table
-            ->distinct() // Ensure uniqueness by lead id
+            ->whereNull('bookings.deleted_at')
+            ->select('leads.*')
+            ->distinct()
             ->get();
+
         $x['plots'] = Plot::join('bookings', 'plots.id', '=', 'bookings.plot_id')
             ->where('plots.project_id', $selectedProjectId)
             ->get();
-        $x['selectedProjectId'] = $selectedProjectId;
 
+        $x['selectedProjectId'] = $selectedProjectId;
         $projects = Project::where('id', $selectedProjectId)->get();
         $x['projects'] = $projects;
 
         return view('admin.finance.voucher.draft_voucher', $x);
     }
+
     public function checkNewVoucherNumber(Request $request)
     {
         // dd($request->all());

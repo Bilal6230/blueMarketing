@@ -40,111 +40,158 @@
                                     <h5 class="text-lg font-semibold">Draft Voucher List</h5>
                                 </div>
                                 @can('read voucher')
-                                    <div class=" table-responsive">
-                                        <table id="example1" class="table table-bordered table-striped">
-                                            <thead>
-                                                <tr>
-                                                    <th>#</th>
-                                                    <th>Date</th>
-                                                    <th>Project</th>
-                                                    <th>Head Account</th>
-                                                    <th>Sub Head Account</th>
-                                                    <th>Detail</th>
-                                                    <th>Amount</th>
-                                                    <th>Type</th>
+                                    <div class="col-12 mb-4">
+                                        <div class="custom_card h-100 shadow-sm">
+                                            <div class="card-body">
+                                                <div class="d-flex align-items-center justify-content-between mb-3">
+                                                    <h5 class="text-lg fw-semibold mb-0">
+                                                        <i class="fas fa-file-invoice-dollar me-2 text-info"></i> Draft Voucher
+                                                        List
+                                                    </h5>
+                                                    <button id="toggleFilters" class="btn btn-outline-info btn-sm">
+                                                        <i class="fas fa-filter me-1"></i> Filters
+                                                    </button>
+                                                </div>
 
-                                                    @canany(['update voucher', 'delete voucher'])
-                                                        <th>Action</th>
-                                                    @endcanany
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach ($data as $i)
-                                                    <tr>
-                                                        <td>{{ $loop->iteration }}</td>
-                                                        <td>
-                                                            {{ $i->date ?? '' }}
-                                                        </td>
-                                                        <td>
-                                                            {{ $i->projectHeadSubhead->project->project ?? '' }}
-                                                        </td>
-                                                        <td>
-                                                            {{ $i->projectHeadSubhead->headAccounting->name ?? '' }}
-                                                        </td>
-                                                        <td>
-                                                            {{ $i->projectHeadSubhead->subheadAccounting->name ?? '' }}
+                                                <!-- Filter Panel -->
+                                                <div id="filtersSection" class="border rounded-3 p-3 mb-4 bg-light"
+                                                    style="display: {{ request()->hasAny(['from', 'to', 'head', 'subhead', 'type']) ? 'block' : 'none' }};">
 
-                                                        </td>
-                                                        <td>
-                                                            {{ $i->detail }}
-                                                        </td>
-                                                        <td>
-                                                            {{ $i->amount }}
-                                                        </td>
-                                                        <td>
-                                                            @if ($i->type == 'CR')
-                                                                <span class="text-success">Cash In</span>
-                                                            @elseif($i->type == 'CP')
-                                                                <span class="text-danger">Cash Out</span>
-                                                            @endif
-                                                        </td>
+                                                    <form method="GET" action="{{ route('finance.voucher.draft') }}"
+                                                        id="filterForm">
+                                                        <div class="row g-3 align-items-end">
+                                                            <div class="col-md-3">
+                                                                <label class="form-label fw-semibold">From Date</label>
+                                                                <input type="date" name="from" id="filter_from"
+                                                                    class="form-control" value="{{ request('from') }}">
+                                                            </div>
+                                                            <div class="col-md-3">
+                                                                <label class="form-label fw-semibold">To Date</label>
+                                                                <input type="date" name="to" id="filter_to"
+                                                                    class="form-control" value="{{ request('to') }}">
+                                                            </div>
+                                                            <div class="col-md-3">
+                                                                <label class="form-label fw-semibold">Head Account</label>
+                                                                <select name="head" id="filter_head" class="form-control">
+                                                                    <option value="">All</option>
+                                                                    @foreach ($headaccounts as $h)
+                                                                        <option value="{{ $h->head_accounting_id }}"
+                                                                            {{ request('head') == $h->head_accounting_id ? 'selected' : '' }}>
+                                                                            {{ $h->headAccounting->name }}
+                                                                        </option>
+                                                                    @endforeach
+                                                                </select>
+                                                            </div>
+                                                            <div class="col-md-3">
+                                                                <label class="form-label fw-semibold">Sub Head Account</label>
+                                                                <select name="subhead" id="filter_subhead" class="form-control">
+                                                                    <option value="">All</option>
+                                                                    @foreach ($partyaccounts as $s)
+                                                                        <option value="{{ $s->subhead_accounting_id }}"
+                                                                            {{ request('subhead') == $s->subhead_accounting_id ? 'selected' : '' }}>
+                                                                            {{ $s->subheadAccounting->name ?? 'N/A' }}
+                                                                        </option>
+                                                                    @endforeach
+                                                                </select>
+                                                            </div>
+                                                            <div class="col-md-3">
+                                                                <label class="form-label fw-semibold">Voucher Type</label>
+                                                                <select name="type" id="filter_type" class="form-control">
+                                                                    <option value="">All</option>
+                                                                    <option value="CR"
+                                                                        {{ request('type') == 'CR' ? 'selected' : '' }}>Cash In
+                                                                    </option>
+                                                                    <option value="CP"
+                                                                        {{ request('type') == 'CP' ? 'selected' : '' }}>Cash
+                                                                        Out</option>
+                                                                </select>
+                                                            </div>
 
+                                                        </div>
+                                                        <div class="mt-4 d-flex gap-3">
+                                                            <button type="submit" class="btn btn-primary px-4">
+                                                                <i class="fas fa-search me-1"></i> Apply Filters
+                                                            </button>
 
-                                                        @canany(['update voucher', 'delete voucher'])
-                                                            <td>
+                                                            <a href="{{ route('finance.voucher.draft') }}"
+                                                                class="btn btn-secondary px-4">
+                                                                <i class="fas fa-undo me-1"></i> Reset
+                                                            </a>
+                                                        </div>
+                                                    </form>
+                                                </div>
 
-                                                                <div class="btn-group">
-                                                                    @if ($i->type != 'BO')
-                                                                        @can('update voucher')
-                                                                            <button class="btn btn-sm btn-info btn-edit"
-                                                                                vocherType="{{ $i->type }}"
-                                                                                data-id="{{ $i->id }}"><i
-                                                                                    class="fas fa-pencil-alt"></i></button>
-                                                                        @endcan
-                                                                        @can('delete voucher')
-                                                                            <button class="btn btn-sm btn-danger btn-delete"
-                                                                                data-id="{{ $i->id }}"
-                                                                                data-name="{{ $i->name }}"><i
-                                                                                    class="fas fa-trash"></i></button>
-                                                                        @endcan
-                                                                        @if (Auth::user()->hasRole('super-admin') || Auth::user()->can('direct-update'))
-                                                                            @if ($i->status === 'Pending')
-                                                                                <div class="d-flex admin_approval">
-                                                                                    <button
-                                                                                        class="btn btn-sm btn-outline-info btn-view-changes"
-                                                                                        data-old='@json($i->old_values)'
-                                                                                        data-new='@json($i->new_values)'
-                                                                                        data-submitted_by='{{ addslashes($i->submitted_by) }}'
-                                                                                        data-record_id='{{ $i->id }}'>
-                                                                                        <i class="fas fa-eye"></i> Approval Required
-                                                                                    </button>
-                                                                                </div>
-                                                                            @endif
+                                                <!-- Table -->
+                                                <div class="table-responsive">
+                                                    <table class="table table-hover align-middle mb-0">
+                                                        <thead class="table-light border-bottom">
+                                                            <tr>
+                                                                <th>#</th>
+                                                                <th>Date</th>
+                                                                <th>Project</th>
+                                                                <th>Head Account</th>
+                                                                <th>Sub Head Account</th>
+                                                                <th>Detail</th>
+                                                                <th>Amount</th>
+                                                                <th>Type</th>
+                                                                @canany(['update voucher', 'delete voucher'])
+                                                                    <th>Action</th>
+                                                                @endcanany
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @forelse ($data as $i)
+                                                                <tr>
+                                                                    <td>{{ $loop->iteration }}</td>
+                                                                    <td>{{ $i->date ?? '-' }}</td>
+                                                                    <td>{{ $i->projectHeadSubhead->project->project ?? '-' }}
+                                                                    </td>
+                                                                    <td>{{ $i->projectHeadSubhead->headAccounting->name ?? '-' }}
+                                                                    </td>
+                                                                    <td>{{ $i->projectHeadSubhead->subheadAccounting->name ?? '-' }}
+                                                                    </td>
+                                                                    <td>{{ $i->detail ?? '-' }}</td>
+                                                                    <td>{{ number_format($i->amount, 2) }}</td>
+                                                                    <td>
+                                                                        @if ($i->type == 'CR')
+                                                                            <span class="badge bg-success">Cash In</span>
+                                                                        @elseif ($i->type == 'CP')
+                                                                            <span class="badge bg-danger">Cash Out</span>
                                                                         @else
-                                                                            @if ($i->status === 'Pending')
-                                                                                <span class="badge bg-secondary px-3 py-2"
-                                                                                    style="cursor: pointer;"
-                                                                                    data-bs-toggle="tooltip"
-                                                                                    title="Needs Admin Approval">
-                                                                                    <i class="fas fa-lock me-1"></i>
-                                                                                </span>
-                                                                            @endif
+                                                                            <span class="badge bg-secondary">Other</span>
                                                                         @endif
-                                                                    @else
-                                                                        Plot Booking Invoice
-                                                                    @endif
-
-                                                                </div>
-                                                            </td>
-                                                        @endcanany
-                                                    </tr>
-                                                @endforeach
-
-
-                                            </tbody>
-
-
-                                        </table>
+                                                                    </td>
+                                                                    @canany(['update voucher', 'delete voucher'])
+                                                                        <td>
+                                                                            <div class="btn-group">
+                                                                                @can('update voucher')
+                                                                                    <button class="btn btn-sm btn-info btn-edit"
+                                                                                        vocherType="{{ $i->type }}"
+                                                                                        data-id="{{ $i->id }}">
+                                                                                        <i class="fas fa-pencil-alt"></i>
+                                                                                    </button>
+                                                                                @endcan
+                                                                                @can('delete voucher')
+                                                                                    <button class="btn btn-sm btn-danger btn-delete"
+                                                                                        data-id="{{ $i->id }}">
+                                                                                        <i class="fas fa-trash"></i>
+                                                                                    </button>
+                                                                                @endcan
+                                                                            </div>
+                                                                        </td>
+                                                                    @endcanany
+                                                                </tr>
+                                                            @empty
+                                                                <tr>
+                                                                    <td colspan="9" class="text-center text-muted py-4">No
+                                                                        vouchers found</td>
+                                                                </tr>
+                                                            @endforelse
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 @endcan
                             </div>
@@ -154,7 +201,8 @@
             </div>
         </section>
     </div>
-    <div class="modal fade" id="viewChangesModal" tabindex="-1" aria-labelledby="viewChangesModalLabel" aria-hidden="true">
+    <div class="modal fade" id="viewChangesModal" tabindex="-1" aria-labelledby="viewChangesModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header bg-info text-white">
@@ -270,7 +318,7 @@
                 const modal = new bootstrap.Modal($('#viewChangesModal')[0]);
                 modal.show();
             });
-            
+
             // Approve voucher
             $(document).on('click', '.btn-approve', function(e) {
                 e.preventDefault();
@@ -298,7 +346,7 @@
                             type: 'POST',
                             data: {
                                 _token: '{{ csrf_token() }}',
-                                table:table
+                                table: table
                             },
                             success: function() {
                                 Swal.fire({
@@ -381,8 +429,12 @@
             });
 
         });
-   
-   </script>
+        $(document).ready(function() {
+            $('#toggleFilters').on('click', function() {
+                $('#filtersSection').slideToggle(200);
+            });
+        });
+    </script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const textarea = document.querySelector('.text-area');
