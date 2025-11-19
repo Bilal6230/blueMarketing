@@ -14,16 +14,14 @@ return new class extends Migration {
     {
         Schema::create('labours', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
+            $table->string('name')->nullable();
+            $table->string('father_name')->nullable();
             $table->string('cnic')->unique();
             $table->string('phone')->nullable();
-            $table->decimal('daily_wage', 10, 2);
-            $table->date('join_date');
+            $table->string('role')->nullable();
+            $table->decimal('daily_wage', 10, 2)->nullable();
+            $table->date('join_date')->nullable();
             $table->enum('status', ['active', 'inactive'])->default('active');
-            $table->unsignedBigInteger('project_id');
-            $table->foreign('project_id')
-                ->references('id')->on('projects')
-                ->onDelete('cascade');
             $table->timestamps();
         });
     }

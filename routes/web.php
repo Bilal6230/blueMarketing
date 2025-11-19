@@ -239,8 +239,16 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
     });
 
     Route::resource('labours', LabourController::class);
-    Route::patch('/labours/{labour}/status', [App\Http\Controllers\LabourController::class, 'updateStatus'])
+    Route::post('/labours/sitestore', [LabourController::class, 'siteStore'])
+    ->name('labours.sitestore');
+    Route::post('/labours/check/validate', [LabourController::class, 'checkValidate'])
+    ->name('labours.check.validate');
+    Route::patch('/labours/{labour}/status', [LabourController::class, 'updateStatus'])
     ->name('labours.updateStatus');
+    Route::post('/labours/attendance', [LabourController::class, 'attendanceStore'])
+    ->name('labours.attendance');
+    Route::post('/labours/report', [LabourController::class, 'attendanceReport'])
+    ->name('labours.report');
     Route::resource('stocks', StockController::class);
 
 
