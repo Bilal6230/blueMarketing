@@ -45,9 +45,10 @@ class LabourController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:labours,name',
+            'father_name' => 'required|string|max:255',
             'cnic' => 'required|string|max:20|unique:labours,cnic',
-            'phone' => 'nullable|string|max:20',
+            'phone' => 'nullable|string|max:20|unique:labours,phone',
             'role' => 'nullable|string|max:20',
             'daily_wage' => 'required|numeric',
         ]);
@@ -140,13 +141,18 @@ class LabourController extends Controller
             'cnic' => 'required|string|max:20|unique:labours,cnic,' . $labour->id,
             'phone' => 'nullable|string|max:20',
             'daily_wage' => 'required|numeric',
-            'join_date' => 'required|date',
-            'status' => 'required|in:active,inactive',
         ]);
 
         $labour->update($request->all());
+        $labours = Labour::get();
+        $view = '';
+        $view .= view('admin.labours.labour', compact('labours'))->render();
 
-        return redirect()->route('labours.index')->with('success', 'Labour updated successfully.');
+        return response()->json([
+            'success' => 'Labour added successfully.',
+            'view' => $view
+        ]);
+        // return redirect()->route('labours.index')->with('success', 'Labour updated successfully.');
     }
     public function updateStatus($id)
     {
@@ -211,5 +217,15 @@ class LabourController extends Controller
             'reports' => $reports,
             'view' => $view
         ]);
+    }
+    public function checkValidate(Request $request)
+    {
+        // dd($request->all());
+        $query = Labour::query();
+        if($request->has('name') && $request->name) $query->where('name', $request->name);
+        if($request->has('cnic') && $request->cnic) $query->where('cnic', $request->cnic);
+        if($request->has('phone') && $request->phone) $query->where('phone', $request->phone);
+        $exist = $query->exists();
+        return response()->json(['exists' => $exist]);
     }
 }

@@ -10,6 +10,7 @@ class Labour extends Model
     use HasFactory;
      protected $fillable = [
         'name',
+        'father_name',
         'cnic',
         'phone',
         'daily_wage',

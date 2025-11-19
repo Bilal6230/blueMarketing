@@ -15,6 +15,7 @@ return new class extends Migration {
         Schema::create('labours', function (Blueprint $table) {
             $table->id();
             $table->string('name')->nullable();
+            $table->string('father_name')->nullable();
             $table->string('cnic')->unique();
             $table->string('phone')->nullable();
             $table->string('role')->nullable();

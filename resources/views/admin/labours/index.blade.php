@@ -413,6 +413,18 @@
             background: darkgrey !important;
             color: aliceblue !important;
         }
+
+        .validate-border {
+            border: 1px solid red !important;
+        }
+
+        .validate-border:focus {
+            border: 1px solid red !important;
+            box-shadow: none !important;
+            /* Bootstrap shadow remove (optional) */
+            outline: none !important;
+            /* Removes blue outline */
+        }
     </style>
 
     <div class="wrap">
@@ -437,21 +449,34 @@
                             @csrf
                             <div class="row">
                                 <div class="col"><label>Name</label><input id="labName" name="name"
-                                        placeholder="e.g., John Peter" />
+                                        placeholder="e.g., John Peter" required />
+                                    <small class="text-danger error error-name d-none">Name is already exist</small>
                                 </div>
-                                <div class="col"><label>Mobile</label><input id="labMobile" name="phone"
-                                        placeholder="0300 1234567" />
+                                <div class="col"><label>Father Name</label><input id="fatherName" name="father_name"
+                                        placeholder="e.g., John Peter" required />
+                                    <small class="text-danger error"></small>
                                 </div>
                             </div>
                             <div class="row">
+                                <div class="col"><label>Mobile</label><input class="" id="labMobile" name="phone"
+                                        placeholder="0300 1234567" required />
+                                    <small class="text-danger error error-phone d-none">Mobile is already exist</small>
+                                </div>
                                 <div class="col"><label>Designation</label><input id="labRole" name="role"
-                                        placeholder="Mason / Helper" /></div>
-                                <div class="col"><label>Rate (per 8 hours)</label><input id="labRate" name="daily_wage"
-                                        type="number" placeholder="1000" /></div>
+                                        placeholder="Mason / Helper" required />
+                                    <small class="text-danger error"></small>
+                                </div>
+
                             </div>
                             <div class="row">
+                                <div class="col"><label>Rate (per 8 hours)</label><input id="labRate" name="daily_wage"
+                                        type="number" placeholder="1000" required />
+                                    <small class="text-danger error"></small>
+                                </div>
                                 <div class="col"><label>CNIC</label><input id="cnic" name="cnic"
-                                        placeholder="12345-6789012-3" /></div>
+                                        placeholder="12345-6789012-3" required />
+                                    <small class="text-danger error error-cnic d-none">CNIC is already exist</small>
+                                </div>
                             </div>
                             <div class="row" style="margin-top:10px">
                                 <button class="btn pri" id="btnAddLabour">Add Labour</button>
@@ -828,14 +853,66 @@
 
         </div>
     </div>
+    <!-- Edit Labour Modal -->
+    <div class="modal" id="editLabourModal" aria-hidden="true">
+        <div class="panel">
+            <div class="hd"><b>Edit Labour</b><button class="btn ghost" id="editBtnCloseModal">✕</button></div>
+            <form action="{{ route('labours.update', 1) }}" method="post" id="editLabourForm" style="padding: 20px;">
+                @csrf
+                @method('PUT')
+                <div class="row">
+                    <div class="col"><label>Name</label><input id="editlabName" name="name"
+                            placeholder="e.g., John Peter" required />
+                        <small class="text-danger error error-name d-none">Name is already exist</small>
+                    </div>
+                    <div class="col"><label>Father Name</label><input id="editfatherName" name="father_name"
+                            placeholder="e.g., John Peter" required />
+                        <small class="text-danger error"></small>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col"><label>Mobile</label><input class="" id="editlabMobile" name="phone"
+                            placeholder="0300 1234567" required />
+                        <small class="text-danger error error-phone d-none">Mobile is already exist</small>
+                    </div>
+                    <div class="col"><label>Designation</label><input id="editlabRole" name="role"
+                            placeholder="Mason / Helper" required />
+                        <small class="text-danger error"></small>
+                    </div>
+
+                </div>
+                <div class="row">
+                    <div class="col"><label>Rate (per 8 hours)</label><input id="editlabRate" name="daily_wage"
+                            type="number" placeholder="1000" required />
+                        <small class="text-danger error"></small>
+                    </div>
+                    <div class="col"><label>CNIC</label><input id="editcnic" name="cnic"
+                            placeholder="12345-6789012-3" required />
+                        <small class="text-danger error error-cnic d-none">CNIC is already exist</small>
+                    </div>
+                </div>
+                <div class="row" style="margin-top:10px">
+                    <button class="btn pri" id="editBtnAddLabour">Update Labour</button>
+                    <span class="help">Adds into in-memory list for demo. Replace with AJAX to save to
+                        server.</span>
+                </div>
+            </form>
+        </div>
+    </div>
 
     {{-- In-memory attendance records stored as JSON in DOM for demo. Initially empty (seeded below by JS). --}}
     <script type="application/json" id="initial-attendance">[]</script>
 @endsection
 
 @section('js')
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     {{-- jQuery is required. If your admin master already loads jQuery, remove the following script line. --}}
     <script>
+        $.ajaxSetup({
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            }
+        });
         $('.tab').on('click', function() {
             // Remove active state from all tabs
             $('.tab').attr('aria-selected', 'false');
@@ -850,6 +927,47 @@
             // Show the target section
             $('#' + target).removeClass('hid');
         });
+
+        function debounce(func, delay) {
+            let timer;
+            return function() {
+                clearTimeout(timer);
+                timer = setTimeout(() => func.apply(this, arguments), delay);
+            };
+        }
+
+        $('#labName, #labMobile, #cnic').on('keyup', debounce(function() {
+            let formData = new FormData();
+            let $this = $(this);
+            let name = $this.attr('name');
+            formData.append(name, $this.val());
+            formData.append('_token', '{{ csrf_token() }}'); // REQUIRED
+
+            $.ajax({
+                url: "{{ route('labours.check.validate') }}",
+                type: "POST",
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(res) {
+                    if (res.exists == true) {
+                        $this.addClass('validate-border');
+                        $('.error-' + name).removeClass('d-none');
+                        $('#btnAddLabour').prop('disabled', true);
+                    } else {
+                        $('.error-' + name).addClass('d-none');
+                        $this.removeClass('validate-border');
+                        $('#btnAddLabour').prop('disabled', false);
+                    }
+                },
+                error: function(xhr) {
+                    console.log(xhr.responseText);
+                }
+            });
+
+        }, 500));
+
+
 
         // Initialize first tab (optional safety)
         $('.tab[aria-selected="true"]').trigger('click');
@@ -873,36 +991,182 @@
         $('#btnCloseModal').on('click', function() {
             $('#attnModal').modal('hide');
         });
-        $.ajaxSetup({
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            }
+        $('#editBtnCloseModal').on('click', function() {
+            $('#editLabourModal').modal('hide');
         });
+        $(document).on('click', '.editLabourBtn', function() {
+
+            let labour = $(this).attr('labourData');
+            labour = JSON.parse(labour);
+
+            // Fill fields
+            $('#editlabName').val(labour.name);
+            $('#editfatherName').val(labour.father_name);
+            $('#editlabMobile').val(labour.phone);
+            $('#editlabRole').val(labour.role);
+            $('#editlabRate').val(labour.daily_wage);
+            $('#editcnic').val(labour.cnic);
+
+            // Dynamic Form Action
+            let updateUrl = "{{ route('labours.update', ':id') }}";
+            updateUrl = updateUrl.replace(':id', labour.id);
+            $('#editLabourForm').attr('action', updateUrl);
+
+            // Show Modal
+            $('#editLabourModal').modal('show');
+        });
+
+
 
         // ============================
         // ADD LABOUR
         // ============================
         $('#addLabourForm').on('submit', function(e) {
             e.preventDefault();
-            let formData = $(this).serialize();
-            $.ajax({
-                url: "{{ route('labours.store') }}",
-                type: "POST",
-                data: formData,
-                success: function(res) {
-                    if (res.success) {
-                        $('#labourTableBody').html('');
-                        $('#labourTableBody').append(res.view);
-                        $('#addLabourForm')[0].reset();
-                        alert('Labour added successfully!');
-                    }
-                },
-                error: function(err) {
-                    alert('Error saving labour.');
-                    console.log(err.responseText);
+            let hasError = false;
+
+            // Clear previous errors
+            $('#addLabourForm .error').text('');
+
+            // Check required fields
+            $('#addLabourForm [name]').each(function() {
+                let field = $(this);
+                let value = field.val()?.trim();
+
+                if (field.prop('required') && value === '') {
+                    field.siblings('.error').removeClass('d-none').text('This field is required');
+                    hasError = true;
+                }
+            });
+
+            if (hasError) return; // stop submit if validation fails
+
+            // --- Confirm Before Submit ---
+            Swal.fire({
+                title: "Are you sure?",
+                text: "Do you want to save this Labour?",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "Yes, save it!",
+                cancelButtonText: "Cancel",
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+
+                    let formData = $('#addLabourForm').serialize();
+
+                    $.ajax({
+                        url: "{{ route('labours.store') }}",
+                        type: "POST",
+                        data: formData,
+
+                        success: function(res) {
+                            if (res.success) {
+                                $('#labourTableBody').html('');
+                                $('#labourTableBody').append(res.view);
+                                $('#addLabourForm')[0].reset();
+
+                                // --- Success Alert ---
+                                Swal.fire({
+                                    title: "Saved!",
+                                    text: "Labour added successfully.",
+                                    icon: "success",
+                                    timer: 1500,
+                                    showConfirmButton: false
+                                });
+                            }
+                        },
+
+                        error: function(err) {
+                            Swal.fire({
+                                title: "Error",
+                                text: "Error saving labour.",
+                                icon: "error"
+                            });
+                            console.log(err.responseText);
+                        }
+                    });
+
                 }
             });
         });
+        $('#editLabourForm').on('submit', function(e) {
+            e.preventDefault();
+            let hasError = false;
+
+            // Clear all previous errors
+            $('#editLabourForm .error').text('');
+
+            // Validate required fields
+            $('#editLabourForm [name]').each(function() {
+                let field = $(this);
+                let value = field.val()?.trim();
+
+                if (field.prop('required') && value === '') {
+                    field.siblings('.error').removeClass('d-none').text('This field is required');
+                    hasError = true;
+                }
+            });
+
+            if (hasError) return; // stop if validation fails
+
+
+            // Ask for confirmation
+            Swal.fire({
+                title: "Are you sure?",
+                text: "Do you want to update this Labour?",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "Yes, update!",
+                cancelButtonText: "Cancel",
+                reverseButtons: true
+            }).then((result) => {
+
+                if (result.isConfirmed) {
+
+                    let formData = $('#editLabourForm').serialize();
+                    let actionUrl = $('#editLabourForm').attr('action'); // dynamic URL already set
+
+                    $.ajax({
+                        url: actionUrl,
+                        type: "POST", // Laravel PUT works with POST + _method
+                        data: formData,
+
+                        success: function(res) {
+                            if (res.success) {
+
+                                // Reload table
+                                $('#labourTableBody').html('');
+                                $('#labourTableBody').append(res.view);
+
+                                // Close modal
+                                $('#editLabourModal').modal('hide');
+
+                                // Success alert
+                                Swal.fire({
+                                    title: "Updated!",
+                                    text: "Labour updated successfully.",
+                                    icon: "success",
+                                    timer: 1500,
+                                    showConfirmButton: false
+                                });
+                            }
+                        },
+
+                        error: function(err) {
+                            Swal.fire({
+                                title: "Error",
+                                text: "Error updating labour.",
+                                icon: "error"
+                            });
+                            console.log(err.responseText);
+                        }
+                    });
+                }
+            });
+        });
+
+
         $('#addSiteForm').on('submit', function(e) {
             e.preventDefault();
             let formData = $(this).serialize();
@@ -946,28 +1210,6 @@
             });
         }
 
-        // UPDATE LABOUR
-        $('#editLabourForm').on('submit', function(e) {
-            e.preventDefault();
-            let id = $('#editLabourId').val();
-            let formData = $(this).serialize();
-
-            $.ajax({
-                url: `/labours/update/${id}`,
-                type: "POST",
-                data: formData,
-                success: function(res) {
-                    if (res.success) {
-                        $('#editLabourModal').modal('hide');
-                        loadLabours();
-                        alert('Labour updated successfully!');
-                    }
-                },
-                error: function(err) {
-                    alert('Update failed!');
-                }
-            });
-        });
 
         // ============================
         // DELETE LABOUR
