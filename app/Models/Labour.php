@@ -10,11 +10,15 @@ class Labour extends Model
     use HasFactory;
      protected $fillable = [
         'name',
-        'project_id',
         'cnic',
         'phone',
         'daily_wage',
         'join_date',
+        'role',
         'status',
     ];
+    public function attendances()
+    {
+        return $this->hasMany(LabourAttendance::class);
+    }
 }
