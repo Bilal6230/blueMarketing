@@ -531,6 +531,7 @@
                                                 {{ $head->headAccounting->name }}</option>
                                         @endforeach
                                     </select>
+                                    <small class="text-danger error"></small>
                                     @error('accounts_id')
                                         <div class="text-danger">{{ $message }}</div>
                                     @enderror
@@ -540,6 +541,7 @@
                                     <select class="form-control select2" name="subaccounts_id" id="subaccounts_id">
                                         <option value="">Select Sub Head</option>
                                     </select>
+                                    <small class="text-danger error"></small>
                                     @error('subaccounts_id')
                                         <div class="text-danger">{{ $message }}</div>
                                     @enderror
@@ -547,9 +549,12 @@
                             </div>
                             <div class="row">
                                 <div class="col"><label>Site Name</label><input id="siteName" name="site_name"
-                                        placeholder="e.g., Green Villas" /></div>
+                                        placeholder="e.g., Green Villas" />
+                                    <small class="text-danger error"></small>
+                                </div>
                                 <div class="col"><label>Address</label><input id="siteAddr" name="site_address"
                                         placeholder="Street, City" />
+                                    <small class="text-danger error"></small>
                                 </div>
                             </div>
                             <div class="row" style="margin-top:10px">
@@ -569,6 +574,7 @@
                                 <tr>
                                     <th>Site</th>
                                     <th>Address</th>
+                                    <th>Edit</th>
                                 </tr>
                             </thead>
                             <tbody id="siteTableBody">
@@ -899,6 +905,55 @@
             </form>
         </div>
     </div>
+    <!-- Edit Site Modal -->
+    <div class="modal" id="editSiteModal" aria-hidden="true">
+        <div class="panel">
+            <div class="hd"><b>Edit Site</b><button class="btn ghost" id="editBtnCloseModal">✕</button></div>
+            <form action="{{ route('labours.sitestore') }}" method="post" id="addSiteForm">
+                @csrf
+                <div class="row">
+                    <div class="col">
+                        <label>Head Accounts</label>
+                        <select class="form-control select2" name="accounts_id" id="edit_accounts_id">
+                            <option value="">Select Head</option>
+                            @foreach ($headaccounts as $head)
+                                <option value="{{ $head->head_accounting_id }}">
+                                    {{ $head->headAccounting->name }}</option>
+                            @endforeach
+                        </select>
+                        <small class="text-danger error"></small>
+                        @error('accounts_id')
+                            <div class="text-danger">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="col">
+                        <label>Sub Head Accounts</label>
+                        <select class="form-control select2" name="subaccounts_id" id="edit_subaccounts_id">
+                            <option value="">Select Sub Head</option>
+                        </select>
+                        <small class="text-danger error"></small>
+                        @error('subaccounts_id')
+                            <div class="text-danger">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col"><label>Site Name</label><input id="editSiteName" name="site_name"
+                            placeholder="e.g., Green Villas" />
+                        <small class="text-danger error"></small>
+                    </div>
+                    <div class="col"><label>Address</label><input id="editSiteAddr" name="site_address"
+                            placeholder="Street, City" />
+                        <small class="text-danger error"></small>
+                    </div>
+                </div>
+                <div class="row" style="margin-top:10px">
+                    <button class="btn pri" id="btnAddSite">Add Site</button>
+                    <span class="help">Adds into DOM. Replace with AJAX to persist.</span>
+                </div>
+            </form>
+        </div>
+    </div>
 
     {{-- In-memory attendance records stored as JSON in DOM for demo. Initially empty (seeded below by JS). --}}
     <script type="application/json" id="initial-attendance">[]</script>
@@ -1014,6 +1069,23 @@
 
             // Show Modal
             $('#editLabourModal').modal('show');
+        });
+        $(document).on('click', '.editSiteBtn', function() {
+
+            let site = $(this).attr('SiteData');
+            site = JSON.parse(site);
+
+            // Fill fields
+            $('#editSiteName').val(site.site_name);
+            $('#editSiteAddr').val(site.site_address);
+
+            // Dynamic Form Action
+            // let updateUrl = "{{ route('labours.update', ':id') }}";
+            // updateUrl = updateUrl.replace(':id', labour.id);
+            // $('#editLabourForm').attr('action', updateUrl);
+
+            // Show Modal
+            $('#editSiteModal').modal('show');
         });
 
 
@@ -1169,25 +1241,76 @@
 
         $('#addSiteForm').on('submit', function(e) {
             e.preventDefault();
-            let formData = $(this).serialize();
-            $.ajax({
-                url: "{{ route('labours.sitestore') }}",
-                type: "POST",
-                data: formData,
-                success: function(res) {
-                    if (res.success) {
-                        $('#siteTableBody').html('');
-                        $('#siteTableBody').append(res.view);
-                        $('#addSiteForm')[0].reset();
-                        alert('Site added successfully!');
-                    }
-                },
-                error: function(err) {
-                    alert('Error saving labour.');
-                    console.log(err.responseText);
+            let hasError = false;
+
+            // Clear previous errors
+            $('#addSiteForm .error').text('');
+
+            // Validate required fields
+            $('#addSiteForm [name]').each(function() {
+                let field = $(this);
+                let value = field.val()?.trim();
+
+                if (value === '') {
+                    field.siblings('.error').removeClass('d-none').text('This field is required');
+                    hasError = true;
+                }
+            });
+
+            if (hasError) return; // stop submit if empty fields exist
+
+
+            // Confirm Before Saving
+            Swal.fire({
+                title: "Are you sure?",
+                text: "Do you want to add this site?",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "Yes, save it!",
+                cancelButtonText: "Cancel",
+                reverseButtons: true
+            }).then((result) => {
+
+                if (result.isConfirmed) {
+
+                    let formData = $('#addSiteForm').serialize();
+
+                    $.ajax({
+                        url: "{{ route('labours.sitestore') }}",
+                        type: "POST",
+                        data: formData,
+
+                        success: function(res) {
+                            if (res.success) {
+
+                                $('#siteTableBody').html('');
+                                $('#siteTableBody').append(res.view);
+                                $('#addSiteForm')[0].reset();
+
+                                Swal.fire({
+                                    title: "Saved!",
+                                    text: "Site added successfully.",
+                                    icon: "success",
+                                    timer: 1500,
+                                    showConfirmButton: false
+                                });
+                            }
+                        },
+
+                        error: function(err) {
+                            Swal.fire({
+                                title: "Error",
+                                text: "Error saving site.",
+                                icon: "error"
+                            });
+                            console.log(err.responseText);
+                        }
+                    });
+
                 }
             });
         });
+
 
         // ============================
         // EDIT LABOUR
