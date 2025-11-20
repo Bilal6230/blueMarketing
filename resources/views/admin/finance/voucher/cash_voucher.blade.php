@@ -2265,27 +2265,50 @@
                             data: 'amount',
                             render: d => Number(d).toLocaleString()
                         },
-                        @canany(['update voucher', 'delete voucher'])
+                        @canany(['update voucher', 'delete voucher', 'read voucher'])
                             {
                                 data: null,
                                 orderable: false,
-                                render: row => {
+                                render: function(row) {
+
+                                    // Create dynamic print URL
+                                    let printUrl = "{{ route('finance.voucher.print', ':id') }}";
+                                    printUrl = printUrl.replace(':id', row.id);
+
                                     let buttons = `<div class="btn-group">`;
+
                                     @can('update voucher')
-                                        buttons += `<button class="btn btn-sm btn-primary btn-edit" data-id="${row.id}">
-                        <i class="fas fa-pencil-alt"></i>
-                    </button>`;
+                                        buttons += `
+                <button class="btn btn-sm btn-primary btn-edit" data-id="${row.id}">
+                    <i class="fas fa-pencil-alt"></i>
+                </button>
+            `;
                                     @endcan
+
                                     @can('delete voucher')
-                                        buttons += `<button class="btn btn-sm btn-danger btn-delete" data-id="${row.id}">
-                        <i class="fas fa-trash"></i>
-                    </button>`;
+                                        buttons += `
+                <button class="btn btn-sm btn-danger btn-delete" data-id="${row.id}">
+                    <i class="fas fa-trash"></i>
+                </button>
+            `;
                                     @endcan
-                                    buttons += '</div>';
+
+                                    @can('read voucher')
+                                        buttons += `
+                <a href="${printUrl}" target="_blank" class="btn btn-sm btn-info btn-print">
+                    <i class="fas fa-print"></i>
+                </a>
+            `;
+                                    @endcan
+
+                                    buttons += `</div>`;
+
                                     return buttons;
                                 }
                             },
                         @endcanany
+
+
                     ]
                 });
             }

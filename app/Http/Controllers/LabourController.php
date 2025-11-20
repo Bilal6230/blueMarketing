@@ -69,12 +69,14 @@ class LabourController extends Controller
         $validated = $request->validate([
             'site_name' => 'required|string|max:255',
             'site_address' => 'required|string',
+            'accounts_id' => 'required',
+            'subaccounts_id' => 'required',
         ]);
         $data = [
             'site_name' => $request->site_name,
             'site_address' => $request->site_address,
-            'head_accounting_id' => $request->head_accounting_id,
-            'subhead_accounting_id' => $request->subhead_accounting_id,
+            'head_accounting_id' => $request->accounts_id,
+            'subhead_accounting_id' => $request->subaccounts_id,
         ];
         Site::create($data);
         $sites = Site::get();

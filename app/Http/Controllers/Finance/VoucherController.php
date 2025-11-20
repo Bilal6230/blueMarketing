@@ -141,6 +141,12 @@ class VoucherController extends Controller
 
         return view('admin.finance.voucher.cash_voucher', $x);
     }
+
+    public function print($id)
+    {
+        $x['voucher'] = Ledger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting')->findOrFail($id);
+        return view('admin.finance.voucher.print-eng', $x);
+    }
     public function approve($id, Request $request)
     {
         // Whitelist allowed tables to prevent SQL injection

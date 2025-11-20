@@ -29,7 +29,9 @@
                             <div class="card-header p-2">
                                 <ul class="nav nav-pills">
                                     @foreach ($category as $i)
-                                        <li class="nav-item"><a class="nav-link {{ $loop->iteration == 1 ? 'active':'' }}" href="#{{ $i->category }}" data-toggle="tab">{{ Str::ucfirst($i->category) }}</a></li>
+                                        <li class="nav-item"><a class="nav-link {{ $loop->iteration == 1 ? 'active' : '' }}"
+                                                href="#{{ $i->category }}"
+                                                data-toggle="tab">{{ Str::ucfirst($i->category) }}</a></li>
                                     @endforeach
                                 </ul>
                             </div>
@@ -39,30 +41,56 @@
                                         @php
                                             $settings = \App\Models\Setting::where(['category' => $i->category])->get();
                                         @endphp
-                                        <div class="tab-pane {{ $loop->iteration == 1 ? 'active':'' }}" id="{{ $i->category }}">
-                                            <form class="form-horizontal" action="{{ route('setting.update') }}" method="POST">
+                                        <div class="tab-pane {{ $loop->iteration == 1 ? 'active' : '' }}"
+                                            id="{{ $i->category }}">
+                                            <form class="form-horizontal" action="{{ route('setting.update') }}"
+                                                method="POST">
                                                 @csrf
                                                 @method('PUT')
                                                 @foreach ($settings as $set)
                                                     <div class="form-group row">
-                                                        <label for="{{ $set->key }}" class="col-sm-2 col-form-label">{{ str_replace("Application ", "", $set->name) }}</label>
+                                                        <label for="{{ $set->key }}"
+                                                            class="col-sm-2 col-form-label">{{ str_replace('Application ', '', $set->name) }}</label>
                                                         <div class="col-sm-10">
                                                             @if ($set->type == 'text')
-                                                                <input type="hidden" name="key[]" value="{{ $set->key }}">
-                                                                <input type="text" name="value[]" value="{{ $set->value }}" class="form-control" id="{{ $set->key }}" placeholder="{{ $set->name }}" required>
+                                                                <input type="hidden" name="key[]"
+                                                                    value="{{ $set->key }}">
+                                                                <input type="text" name="value[]"
+                                                                    value="{{ $set->value }}" class="form-control"
+                                                                    id="{{ $set->key }}"
+                                                                    placeholder="{{ $set->name }}" required>
                                                             @elseif($set->type == 'textarea')
-                                                                <input type="hidden" name="key[]" value="{{ $set->key }}">
-                                                                <textarea type="text" name="value[]" rows="3" class="form-control" id="{{ $set->key }}" placeholder="{{ $set->name }}" required>{{ $set->value }}</textarea>
+                                                                <input type="hidden" name="key[]"
+                                                                    value="{{ $set->key }}">
+                                                                <textarea type="text" name="value[]" rows="3" class="form-control" id="{{ $set->key }}"
+                                                                    placeholder="{{ $set->name }}" required>{{ $set->value }}</textarea>
                                                             @elseif($set->type == 'file')
-                                                                <img src="{{ asset($set->value) }}" alt="{{ $set->name }}" id="{{ $set->key }}-image" width="8%">
+                                                                <img src="{{ asset($set->value) }}"
+                                                                    alt="{{ $set->name }}"
+                                                                    id="{{ $set->key }}-image" width="8%">
                                                                 <div class="input-group">
-                                                                    <input type="hidden" name="key[]" value="{{ $set->key }}">
-                                                                    <input type="text" readonly class="form-control" placeholder="{{ $set->name }}" name="value[]" id="{{ $set->key }}" value="{{ $set->value }}" readonly required>
+                                                                    <input type="hidden" name="key[]"
+                                                                        value="{{ $set->key }}">
+                                                                    <input type="text" readonly class="form-control"
+                                                                        placeholder="{{ $set->name }}" name="value[]"
+                                                                        id="{{ $set->key }}"
+                                                                        value="{{ $set->value }}" readonly required>
                                                                     {{-- <div class="input-group-append">
                                                                         <button class="btn btn-primary" type="button" id="{{ $set->key }}button">Pilih Foto</button>
                                                                     </div> --}}
                                                                 </div>
                                                                 <small class="text-primary">Click to select file</small>
+                                                            @elseif($set->type == 'toggle')
+                                                                <div class="custom-control custom-switch">
+                                                                    <input type="hidden" name="key[]"
+                                                                        value="{{ $set->key }}">
+                                                                    <input type="checkbox" class="custom-control-input"
+                                                                        id="{{ $set->key }}" name="value[]"
+                                                                        value="1"
+                                                                        {{ $set->value == 1 ? 'checked' : '' }}>
+                                                                    <label class="custom-control-label"
+                                                                        for="{{ $set->key }}">{{ $set->name }}</label>
+                                                                </div>
                                                             @endif
                                                         </div>
                                                     </div>
@@ -92,7 +120,7 @@
     @endphp
     @foreach ($setts as $set)
         @php
-            $setid[] = '#'.$set->key;
+            $setid[] = '#' . $set->key;
             $jsonsetid = json_encode($setid, true);
         @endphp
     @endforeach
@@ -100,16 +128,17 @@
         $(document).ready(function() {
             // input
             let inputId = '';
+
             function fmSetLink($url) {
                 $(inputId).val($url.substring(1));
-                $(inputId+'-image').attr("src", "{{ asset(null) }}"+$url.substring(1));
+                $(inputId + '-image').attr("src", "{{ asset(null) }}" + $url.substring(1));
             }
-            
+
             window.fmSetLink = fmSetLink;
 
             $(document).on("click", '{{ implode(',', $setid) }}', function(event) {
                 event.preventDefault();
-                inputId = '#'+event.target.id;
+                inputId = '#' + event.target.id;
                 window.open('/file-manager/fm-button', 'fm', 'width=800,height=600');
             });
         });
