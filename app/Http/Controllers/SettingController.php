@@ -56,21 +56,24 @@ class SettingController extends Controller
     public function update(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'key'       => ['required'],
-            'value'     => ['required']
+            'key'       => ['required']
         ]);
-
         if ($validator->fails()) {
             return back()->withErrors($validator)
                 ->withInput();
         }
-
         try {
             for ($i = 0; $i < count($request->key); $i++) {
-                Setting::where(['key' => $request->key[$i]])->update(['value' => $request->value[$i]]);
+                if($request->key[$i] == 'print_status'){
+                    $value = isset($request->value[$i]) ? 1 : 0;
+                }else{
+                    $value = $request->value[$i];
+                }
+                Setting::where(['key' => $request->key[$i]])->update(['value' => $value]);
             }
             Alert::success('Notification', 'Settings saved successfully')->toToast()->toHtml();
         } catch (\Throwable $th) {
+            dd($th->getMessage());
             Alert::error('Notification', 'Settings failed to save : ' . $th->getMessage())->toToast()->toHtml();
         }
         return back();

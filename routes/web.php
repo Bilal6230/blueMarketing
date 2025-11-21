@@ -229,6 +229,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::post('finance/voucher/{id}/approveadmin', 'approveAdmin')->middleware(['permission:read voucher'])->name('finance.voucher.approveadmin');
         Route::post('finance/voucher/{id}/rejectadmin', 'rejectAdmin')->middleware(['permission:read voucher'])->name('finance.voucher.rejectadmin');
         Route::post('finance/voucher/getcomment', 'GetComment')->middleware(['permission:read voucher'])->name('finance.voucher.getcomment');
+        Route::get('finance/voucher/print/{id}', 'print')->middleware(['permission:read voucher'])->name('finance.voucher.print');
     });
 
     Route::controller(DastiCashController::class)->prefix('dasticash')->name('dasticash.')->group(function () {
@@ -239,8 +240,16 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
     });
 
     Route::resource('labours', LabourController::class);
-    Route::patch('/labours/{labour}/status', [App\Http\Controllers\LabourController::class, 'updateStatus'])
+    Route::post('/labours/sitestore', [LabourController::class, 'siteStore'])
+    ->name('labours.sitestore');
+    Route::post('/labours/check/validate', [LabourController::class, 'checkValidate'])
+    ->name('labours.check.validate');
+    Route::patch('/labours/{labour}/status', [LabourController::class, 'updateStatus'])
     ->name('labours.updateStatus');
+    Route::post('/labours/attendance', [LabourController::class, 'attendanceStore'])
+    ->name('labours.attendance');
+    Route::post('/labours/report', [LabourController::class, 'attendanceReport'])
+    ->name('labours.report');
     Route::resource('stocks', StockController::class);
 
 
