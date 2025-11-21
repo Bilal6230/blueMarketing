@@ -172,7 +172,7 @@
                                             <div class="circle-content">
                                                 <h6>Hand Cash</h6>
                                                 <h4 class="mt-2">
-                                                    {{ number_format($total_blance + $total_bank_account_data, 2) }}</h4>
+                                                    {{ number_format($total_blance, 2) }}</h4>
                                             </div>
                                         </div>
                                         <p class="text-muted mt-2 text-center">Hand Cash Balance</p>
@@ -193,7 +193,7 @@
                                         <div class="financial-circle bg_success">
                                             <div class="circle-content">
                                                 <h6>Total Cash</h6>
-                                                <h4 class="mt-2">{{ number_format($total_blance, 2) }}</h4>
+                                                <h4 class="mt-2">{{ number_format($total_blance + $total_bank_account_data, 2) }}</h4>
                                             </div>
                                         </div>
                                         <p class="text-muted mt-2 text-center">Available Cash Balance</p>
