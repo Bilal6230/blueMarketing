@@ -7,7 +7,7 @@
 
     <style>
         @page {
-            size: 8.5in 5.5in;
+            size: 7.5in 4.5in;
             /* EXACT SMALL VOUCHER SIZE */
             margin: 5mm;
         }
@@ -20,7 +20,7 @@
 
         .voucher {
             /* width: 80%; */
-            border-top: 1px solid #000;
+            /* border-top: 1px solid #000; */
             padding: 10px;
         }
 
@@ -43,7 +43,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
+            margin-top: 20px;
         }
 
         th,
@@ -85,6 +85,9 @@
         .under-line {
             border-bottom: 2px solid #000;
         }
+        th, td{
+            font-size: 16px;
+        }
     </style>
 </head>
 
@@ -110,10 +113,10 @@
 
         <!-- Voucher Details -->
         <div style="display: flex; justify-content: space-between;">
-            <div style="text-align:center; font-size:12px; font-weight:bold;">Voucher No: <span
+            <div style="text-align:center; font-size:16px; font-weight:bold;">Voucher No: <span
                     class="under-line">{{ $voucher->voucher_number }}</span> ( {{ $voucher->projectHeadSubhead->headAccounting->name }} )</div>
-            <div style="text-align:center; font-size:12px; font-size:12px; font-weight:bold;">Page No:__________</div>
-            <div style="text-align:center; font-size:12px; font-size:12px; font-weight:bold;">Date :<span
+
+            <div style="text-align:center;  font-size:16px; font-weight:bold;">Date :<span
                     class="under-line">{{ $voucher->date }}</span></span></div>
 
         </div>
@@ -125,25 +128,25 @@
         <table>
             <thead>
                 <tr>
-                    <td style="width:70%; text-align:justify; border:none; font-size:12px; font-weight:bold;">Account
+                    <td style="width:80%; text-align:justify; border:none; font-size:18px; font-weight:bold;">Account
                         Name: <span class="under-line"
-                            style="display: inline-block;width: 60%;text-align: center;">{{ $voucher->projectHeadSubhead->subheadAccounting->name }}</span>
+                            style="display: inline-block;width: 60%;">{{ $voucher->projectHeadSubhead->subheadAccounting->name }}</span>
                     </td>
-                    <td style="width:30%; text-align:center;">Amount</td>
+                    <td style="width:20%; text-align:center;">Amount</td>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <th style="width:70%; text-align:justify;">Detail: {{ $voucher->detail }}</th>
-                    <th style="width:30%; text-align:center;"></th>
+                    <th style="width:80%; text-align:justify;">Detail: {{ $voucher->detail }}</th>
+                    <th style="width:20%; text-align:center;">{{ $voucher->amount_in }}</th>
                 </tr>
                 <tr>
                     <td></td>
-                    <td>{{ number_format($voucher->amount_in, 2) }}</td>
+                    <td style="text-align:center; height: 15px;"></td>
                 </tr>
                 <tr>
-                    <td style="text-align:right; font-weight:bold;">Total</td>
-                    <td style="font-weight:bold;">{{ number_format($voucher->amount_in, 2) }}</td>
+                    <td style="text-align:right; font-weight:bold;">Total/ٹوٹل</td>
+                    <td style="font-weight:bold; text-align:center;">= {{ $voucher->amount_in }}/-</td>
                 </tr>
             </tbody>
         </table>
@@ -163,7 +166,7 @@
     </div>
 
     <script>
-        window.onload = () => window.print();
+        // window.onload = () => window.print();
     </script>
 
 </body>
