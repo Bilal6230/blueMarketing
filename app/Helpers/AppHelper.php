@@ -162,7 +162,7 @@ function getHead($id) {
         "3"=>"Recovery",
         "4"=>"Expence",
         "5"=>"Amanat Pyments"
-       
+
     ];
 
     foreach ($heads as $key => $value) {
@@ -422,7 +422,7 @@ function getSumAmountForBooking($booking_id = null)
 {
     // Get the sum of the amount column from the CustomerLedger model
     $sum = App\Models\BookingDetail::where('booking_id', $booking_id)->sum('amount');
-    
+
     return $sum;
 }
 
@@ -433,7 +433,7 @@ function getSumDueAmount($booking_id = null)
         ->where('due_date', '<=', Carbon::today())
         ->sum('amount');
 
-    
+
     return $sum;
 }
 
@@ -441,7 +441,7 @@ function getSumRecovery($plot_id = null , $value = null)
 {
     // Get the sum of the amount column from the CustomerLedger model
     $sum = App\Models\CustomerLedger::where('plot_id', $plot_id)->where('is_active', 1)->sum($value);
-    
+
     return $sum;
 }
 
@@ -572,7 +572,7 @@ function getProjectDetails($projectId) {
 function getHeadAccountNameById($creditAccountId) {
     // Retrieve the ProjectHeadSubhead by its creditAccountId
     $account = ProjectHeadSubhead::with('headAccounting')->find($creditAccountId);
-    
+
     // Check if account exists and return the name, else return a default message
     return $account && $account->headAccounting ? $account->headAccounting->name : 'Not Found';
 }
@@ -580,7 +580,7 @@ function getHeadAccountNameById($creditAccountId) {
 function getSubAccountNameById($creditAccountId) {
     // Retrieve the ProjectHeadSubhead by its creditAccountId
     $account = ProjectHeadSubhead::with('subheadAccounting')->find($creditAccountId);
-    
+
     // Check if account exists and return the name, else return a default message
     return $account && $account->subheadAccounting ? $account->subheadAccounting->name : 'Not Found';
 }
@@ -606,7 +606,30 @@ function get_jv_number($id = null)
 }
 
 
+if (!function_exists('loadAttendanceWeek')) {
+    function loadAttendanceWeek($weekInput)
+    {
+        // Input format: 2025-W05
+        try {
+            $start = Carbon::parse($weekInput)->startOfWeek();
+        } catch (\Exception $e) {
+            $start = now()->startOfWeek();
+        }
 
+        $end = $start->copy()->endOfWeek();
+
+        // Generate all 7 days
+        $days = [];
+        $day = $start->copy();
+
+        while ($day <= $end) {
+            $days[] = $day->format('Y-m-d');
+            $day->addDay();
+        }
+
+        return [$start, $end, $days];
+    }
+}
 
 
 

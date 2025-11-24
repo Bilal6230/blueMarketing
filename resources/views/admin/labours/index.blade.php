@@ -77,8 +77,43 @@
             background: var(--card);
             border: 1px solid var(--line);
             border-radius: 14px;
-            box-shadow: var(--shadow)
+            box-shadow: var(--shadow);
+            height: 515px;
+            overflow: hidden;
         }
+
+        .table-scroll {
+            /* max-height: 350px; */
+            /* adjust height */
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            /* border-radius: 14px; */
+        }
+
+        .max-height {
+            max-height: 350px;
+            /* adjust height */
+            /* border-radius: 14px; */
+        }
+
+        .table-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .table-scroll::-webkit-scrollbar-thumb {
+            background: #aaa;
+            border-radius: 10px;
+        }
+
+
+        .table thead th {
+            position: sticky;
+            top: 0;
+            background: #fff;
+            z-index: 10;
+        }
+
+
 
         .card .hd {
             padding: 14px 16px;
@@ -490,9 +525,9 @@
                     <div class="hd"><b>All Labours</b> <span class="pill"><span
                                 id="labCount">{{ $count }}</span> total</span>
                     </div>
-                    <div class="bd">
+                    <div class="bd table-scroll">
                         <!-- Dummy labour rows moved to HTML. Javascript will parse these rows on boot. -->
-                        <table id="labourTable">
+                        <table id="labourTable table">
                             <thead>
                                 <tr>
                                     <th>Name</th>
@@ -519,7 +554,7 @@
                 <div class="card">
                     <div class="hd"><b>Add Site</b></div>
                     <div class="bd">
-                        <form action="{{ route('labours.sitestore') }}" method="post" id="addSiteForm">
+                        <form action="{{ route('labours.sitestore') }}" method="post" class="addSiteForm">
                             @csrf
                             <div class="row">
                                 <div class="col">
@@ -568,8 +603,8 @@
                     <div class="hd"><b>Sites</b> <span class="pill"><span id="siteCount">{{ $sitecount }}</span>
                             total</span>
                     </div>
-                    <div class="bd">
-                        <table id="siteTable">
+                    <div class="bd table-scroll">
+                        <table id="siteTable table">
                             <thead>
                                 <tr>
                                     <th>Site</th>
@@ -609,22 +644,24 @@
                         <span class="pill">Total Overtime Hrs: <b id="siteOt">0</b></span>
                         <span class="pill">Total Cost: <b id="siteTotal">0</b></span>
                     </div>
-                    <table id="siteReportTable">
-                        <thead>
-                            <tr>
-                                <th>Labour</th>
-                                <th>Mobile</th>
-                                <th>Designation</th>
-                                <th class="right">Rate</th>
-                                <th class="right">Days</th>
-                                <th class="right">Overtime</th>
-                                <th class="right">Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody id="siteReportTableBody">
-                            {{-- @include('admin.labours.site-report') --}}
-                        </tbody>
-                    </table>
+                    <div class="table-scroll">
+                        <table id="siteReportTable table">
+                            <thead>
+                                <tr>
+                                    <th>Labour</th>
+                                    <th>Mobile</th>
+                                    <th>Designation</th>
+                                    <th class="right">Rate</th>
+                                    <th class="right">Days</th>
+                                    <th class="right">Overtime</th>
+                                    <th class="right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody id="siteReportTableBody">
+                            </tbody>
+                            <button class="btn" id="createVoucher">Create Voucher</button>
+                        </table>
+                    </div>
                 </div>
             </div>
         </section>
@@ -642,19 +679,21 @@
                         <button class="btn" id="btnPersonExport">Export CSV</button>
                     </div>
                     <div id="personHeader" class="row" style="margin-bottom:10px"></div>
-                    <table id="personReportTable">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Site</th>
-                                <th>Designation</th>
-                                <th class="right">Hours</th>
-                                <th class="right">Overtime</th>
-                                <th class="right">Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
+                    <div class="table-scroll">
+                        <table id="personReportTable table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Site</th>
+                                    <th>Designation</th>
+                                    <th class="right">Hours</th>
+                                    <th class="right">Overtime</th>
+                                    <th class="right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
                     <div class="row" style="margin-top:12px">
                         <div class="col stat"><span class="muted">Total Days</span> <b id="pDays">0</b></div>
                         <div class="col stat"><span class="muted">Total Amount</span> <b id="pTotal">0</b></div>
@@ -663,8 +702,8 @@
                     </div>
                     <div style="margin-top:14px" class="help">On first load, all labours are listed below. Use search to
                         pick someone.</div>
-                    <div style="margin-top:8px">
-                        <table id="personAll">
+                    <div style="margin-top:8px" class="table-scroll">
+                        <table id="personAll table">
                             <thead>
                                 <tr>
                                     <th>Name</th>
@@ -689,97 +728,109 @@
                 <div class="hd"><b>Attendance</b><span class="caps">mark daily hours & overtime</span></div>
                 <div class="bd">
                     <div class="toolbar" style="margin-bottom:10px">
-                        <input type="month" id="attnMonth" />
+                        <input type="week" id="attnWeek" />
                         <select id="attnSiteFilter">
                             <option value="">All Sites</option>
                             @foreach ($sites as $site)
                                 <option value="{{ $site->id }}">{{ $site->site_name }}</option>
                             @endforeach
                         </select>
+
                         <button class="btn" id="btnAttnPrev">◀ Prev</button>
                         <button class="btn" id="btnAttnNext">Next ▶</button>
                         <button class="btn" id="btnExportAttn">Export CSV</button>
+
                     </div>
-                    <div class="attn" id="attnBoard">
-                        <div class="left" id="attnLabours">
-                            <div class="days-head" id="attnDays">
-                                <div class="d"> Labours
-                                </div>
-                            </div>
-                            @foreach ($labours as $labour)
-                                <div class="lab" data-id="{{ $labour->id }}"><span
-                                        class="nm">{{ $labour->name }}</span><span
-                                        class="muted small">{{ $labour->phone }} · {{ $labour->role }} ·
-                                        Rs&nbsp;{{ $labour->daily_wage }}</span></div>
-                            @endforeach
-                        </div>
-                        @php
-                            use Carbon\Carbon;
-
-                            $today = Carbon::now();
-                            $todayDate = $today->day;
-                            $daysInMonth = $today->daysInMonth;
-                            $monthStart = $today->copy()->startOfMonth();
-                        @endphp
-
-                        <div class="right">
-                            {{-- DAYS HEADER --}}
-                            <div class="days-head" id="attnDays">
-                                @for ($i = 1; $i <= $daysInMonth; $i++)
-                                    <div class="d {{ $todayDate == $i ? 'today' : '' }}">
-                                        {{ str_pad($i, 2, '0', STR_PAD_LEFT) }}</div>
-                                @endfor
-                            </div>
-
-                            {{-- LABOUR ROWS --}}
-                            <div class="rows" id="attnRows">
-                                @foreach ($labours as $labour)
-                                    <div class="row-days">
-                                        @for ($i = 0; $i < $daysInMonth; $i++)
-                                            @php
-                                                $date = $monthStart->copy()->addDays($i)->format('Y-m-d');
-                                                // Placeholder data (replace later with actual attendance logic)
-                                                $status = 'not-marked';
-                                                $icon = '-';
-                                                $iconClass = 'none';
-                                                $tooltip = "{$labour->name} — {$date} Not marked";
-
-                                                $attendance = $labour->attendances()->where('date', $date)->first();
-                                                if ($attendance) {
-                                                    $status = $attendance->status;
-                                                    $icon = $status == 'present' ? '✓' : '✗';
-                                                    $iconClass = $status == 'present' ? 'tick' : 'cross';
-                                                    if ($attendance?->hours == '4.00') {
-                                                        $icon = 'H';
-                                                        $iconClass = 'leave';
-                                                    }
-                                                    $tooltip = "{$labour->name} — {$date} {$status}";
-                                                }
-
-                                                $userData = [
-                                                    'id' => $labour->id,
-                                                    'name' => $labour->name,
-                                                    'date' => $date,
-                                                    'status' => $status == 'not-marked' ? 'present' : $status,
-                                                    'site' => $attendance?->site_id ?? 1,
-                                                    'desi' => $labour->role ?? '',
-                                                    'rate' => $labour->daily_wage ?? '',
-                                                    'hours' => $attendance?->hours == '4.00' ? 4 : 8,
-                                                    'ot' => 0,
-                                                    'amount' => $attendance?->amount ?? $labour->daily_wage,
-                                                ];
-                                            @endphp
-
-                                            <div class="cell" title="{{ $tooltip }}"
-                                                data-user='{{ json_encode($userData) }}'>
-                                                <span class="ico {{ $iconClass }}">{{ $icon }}</span>
-                                            </div>
-                                        @endfor
+                    <div class="table-scroll max-height">
+                        <div class="attn table" id="attnBoard">
+                            <div class="left" id="attnLabours">
+                                <div class="days-head" id="attnDays">
+                                    <div class="d"> Labours
                                     </div>
+                                </div>
+                                @foreach ($labours as $labour)
+                                    <div class="lab" data-id="{{ $labour->id }}"><span
+                                            class="nm">{{ $labour->name }}</span><span
+                                            class="muted small">{{ $labour->phone }} · {{ $labour->role }} ·
+                                            Rs&nbsp;{{ $labour->daily_wage }}</span></div>
                                 @endforeach
                             </div>
-                        </div>
+                            @php
+                                use Carbon\Carbon;
 
+                                $today = Carbon::now();
+                                $todayDate = $today->day;
+                                $daysInMonth = $today->daysInMonth;
+                                $monthStart = $today->copy()->startOfMonth();
+                            @endphp
+
+                            <div class="right">
+                                @php
+                                    [$start, $end, $weekDays] = loadAttendanceWeek(
+                                        request('week') ?? now()->format('o-\WW'),
+                                    );
+                                @endphp
+
+                                <div class="days-head">
+                                    @foreach ($weekDays as $day)
+                                        <div class="d {{ $day == now()->format('Y-m-d') ? 'today' : '' }}">
+                                            {{ \Carbon\Carbon::parse($day)->format('d') }}
+                                        </div>
+                                    @endforeach
+                                </div>
+
+                                {{-- LABOUR ROWS --}}
+                                <div class="rows" id="attnRows">
+                                    @foreach ($labours as $labour)
+                                        <div class="row-days">
+                                            @foreach ($weekDays as $day)
+                                                @php
+                                                    $attendance = $labour->attendances->where('date', $day)->first();
+
+                                                    $status = 'not-marked';
+                                                    $icon = '-';
+                                                    $iconClass = 'none';
+
+                                                    if ($attendance) {
+                                                        if ($attendance->hours == 4) {
+                                                            $status = 'leave';
+                                                            $icon = 'H';
+                                                            $iconClass = 'leave';
+                                                        } elseif ($attendance->status == 'present') {
+                                                            $status = 'present';
+                                                            $icon = '✓';
+                                                            $iconClass = 'tick';
+                                                        } else {
+                                                            $status = 'absent';
+                                                            $icon = '✗';
+                                                            $iconClass = 'cross';
+                                                        }
+                                                    }
+
+                                                    $userData = [
+                                                        'id' => $labour->id,
+                                                        'name' => $labour->name,
+                                                        'role' => $labour->role,
+                                                        'date' => $day,
+                                                        'status' => $status,
+                                                        'hours' => $attendance->hours ?? 8,
+                                                        'ot' => $attendance->ot_hours ?? 0,
+                                                        'site' => $attendance->site_id ?? 1,
+                                                        'rate' => $labour->daily_wage,
+                                                        'amount' => $attendance->amount ?? $labour->daily_wage,
+                                                    ];
+                                                @endphp
+
+                                                <div class="cell" data-user='{{ json_encode($userData) }}'>
+                                                    <span class="ico {{ $iconClass }}">{{ $icon }}</span>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+
+                        </div>
                     </div>
                     <div class="help" style="margin-top:10px">Legend: <span class="ico tick">✓</span> Present · <span
                             class="ico cross">✕</span> Absent · <span class="ico leave">L</span> Leave · <span
@@ -799,7 +850,7 @@
                     <div class="row">
                         <div class="col">
                             <label>Date</label>
-                            <input id="mDate" name="date" readonly />
+                            <input id="mDate" name="date" readonly  />
                         </div>
                         <div class="col">
                             <label>Labour</label>
@@ -825,7 +876,7 @@
                         </div>
                         <div class="col">
                             <label>Designation</label>
-                            <input id="mRole" name="role" />
+                            <input id="mRole" disabled name="role" />
                         </div>
                         <div class="col">
                             <label>Rate (per 8h)</label>
@@ -908,11 +959,12 @@
     <!-- Edit Site Modal -->
     <div class="modal" id="editSiteModal" aria-hidden="true">
         <div class="panel">
-            <div class="hd"><b>Edit Site</b><button class="btn ghost" id="editBtnCloseModal">✕</button></div>
-            <form action="{{ route('labours.sitestore') }}" method="post" id="addSiteForm">
+            <div class="hd"><b>Edit Site</b><button class="btn ghost" id="editSiteBtnCloseModal">✕</button></div>
+            <form action="{{ route('labours.sitestore') }}" method="post" class="addSiteForm" style="padding: 20px;">
                 @csrf
                 <div class="row">
                     <div class="col">
+                        <input type="hidden" name="site_id" id="edit_site_id">
                         <label>Head Accounts</label>
                         <select class="form-control select2" name="accounts_id" id="edit_accounts_id">
                             <option value="">Select Head</option>
@@ -948,7 +1000,7 @@
                     </div>
                 </div>
                 <div class="row" style="margin-top:10px">
-                    <button class="btn pri" id="btnAddSite">Add Site</button>
+                    <button class="btn pri" id="btnUpdateSite">Update Site</button>
                     <span class="help">Adds into DOM. Replace with AJAX to persist.</span>
                 </div>
             </form>
@@ -1035,9 +1087,9 @@
             $('#mLabour').val(obj.name);
             $('#mStatus').val(obj.status);
             $('#mSite').val(obj.site);
-            $('#mRole').val(obj.desi);
+            $('#mRole').val(obj.role);
             $('#mRate').val(obj.rate);
-            $('#mHours').val(obj.hours);
+            $('#mHours').val(parseFloat(obj.hours));
             $('#mOT').val(obj.ot);
             $('#mAmount').val(obj.amount);
 
@@ -1049,6 +1101,27 @@
         $('#editBtnCloseModal').on('click', function() {
             $('#editLabourModal').modal('hide');
         });
+        $('#editSiteBtnCloseModal').on('click', function() {
+            $('#editSiteModal').modal('hide');
+        });
+        $(document).on('change', '#mHours', function() {
+            let hours = $(this).val();
+            let ot = $('#mOT').val();
+            hours = parseFloat(hours) + parseFloat(ot);
+            let rate = $('#mRate').val();
+            let perHour = rate / 8;
+            let amount = hours * perHour;
+            $('#mAmount').val(amount);
+        })
+        $(document).on('input', '#mOT', function() {
+            let hours = $(this).val();
+            let ot = $('#mHours').val();
+            hours = parseFloat(hours) + parseFloat(ot);
+            let rate = $('#mRate').val();
+            let perHour = rate / 8;
+            let amount = hours * perHour;
+            $('#mAmount').val(amount);
+        })
         $(document).on('click', '.editLabourBtn', function() {
 
             let labour = $(this).attr('labourData');
@@ -1076,15 +1149,13 @@
             site = JSON.parse(site);
 
             // Fill fields
+            $('#edit_site_id').val(site.id);
             $('#editSiteName').val(site.site_name);
             $('#editSiteAddr').val(site.site_address);
-
-            // Dynamic Form Action
-            // let updateUrl = "{{ route('labours.update', ':id') }}";
-            // updateUrl = updateUrl.replace(':id', labour.id);
-            // $('#editLabourForm').attr('action', updateUrl);
-
-            // Show Modal
+            $('#edit_accounts_id').val(site.head_accounting_id).trigger('change');
+            setTimeout(() => {
+                $('#edit_subaccounts_id').val(site.subhead_accounting_id).trigger('change');
+            }, 1000);
             $('#editSiteModal').modal('show');
         });
 
@@ -1239,15 +1310,20 @@
         });
 
 
-        $('#addSiteForm').on('submit', function(e) {
+        $(document).on('click', '#btnAddSite, #btnUpdateSite', function(e) {
             e.preventDefault();
+
+            let btn = $(this); // clicked button
+            let form = btn.closest('form'); // get respective form
+            let actionType = btn.attr('id'); // btnAddSite or btnUpdateSite
+
             let hasError = false;
 
             // Clear previous errors
-            $('#addSiteForm .error').text('');
+            form.find('.error').text('');
 
             // Validate required fields
-            $('#addSiteForm [name]').each(function() {
+            form.find('[name]').each(function() {
                 let field = $(this);
                 let value = field.val()?.trim();
 
@@ -1257,59 +1333,61 @@
                 }
             });
 
-            if (hasError) return; // stop submit if empty fields exist
+            if (hasError) return;
 
+            // Confirmation message depends on button
+            let confirmText = actionType === 'btnAddSite' ?
+                "Do you want to add this site?" :
+                "Do you want to update this site?";
 
-            // Confirm Before Saving
             Swal.fire({
                 title: "Are you sure?",
-                text: "Do you want to add this site?",
+                text: confirmText,
                 icon: "warning",
                 showCancelButton: true,
-                confirmButtonText: "Yes, save it!",
+                confirmButtonText: "Yes, continue!",
                 cancelButtonText: "Cancel",
                 reverseButtons: true
             }).then((result) => {
 
                 if (result.isConfirmed) {
 
-                    let formData = $('#addSiteForm').serialize();
+                    let formData = form.serialize();
 
                     $.ajax({
-                        url: "{{ route('labours.sitestore') }}",
+                        url: "{{ route('labours.sitestore') }}", // you can change based on button too
                         type: "POST",
                         data: formData,
-
                         success: function(res) {
                             if (res.success) {
 
                                 $('#siteTableBody').html('');
                                 $('#siteTableBody').append(res.view);
-                                $('#addSiteForm')[0].reset();
-
+                                form[0].reset();
+                                actionType === 'btnUpdateSite' ?
+                                    $('#editSiteModal').modal('hide') :
+                                    "";
                                 Swal.fire({
-                                    title: "Saved!",
-                                    text: "Site added successfully.",
+                                    title: "Success!",
+                                    text: actionType === 'btnAddSite' ?
+                                        "Site added successfully." :
+                                        "Site updated successfully.",
                                     icon: "success",
                                     timer: 1500,
                                     showConfirmButton: false
                                 });
                             }
                         },
-
                         error: function(err) {
-                            Swal.fire({
-                                title: "Error",
-                                text: "Error saving site.",
-                                icon: "error"
-                            });
+                            Swal.fire("Error", "Something went wrong.", "error");
                             console.log(err.responseText);
                         }
                     });
-
                 }
             });
+
         });
+
 
 
         // ============================
@@ -1547,6 +1625,91 @@
                     subAccountSelect.empty().append('<option value="">Select Sub-Account</option>');
                 }
             });
+            $(document).on('change', '#edit_accounts_id', function() {
+                const accountID = $(this).val();
+                const subAccountSelect = $('#edit_subaccounts_id');
+
+                if (accountID) {
+                    $.ajax({
+                        url: '{{ route('get_account') }}',
+                        type: 'POST',
+                        dataType: 'json',
+                        data: {
+                            projectID: {{ getSelectedTown() }}, // Replace with the dynamic project ID if applicable
+                            accountID: accountID,
+                            action: 'get_child',
+                            _token: '{{ csrf_token() }}' // CSRF token for Laravel
+                        },
+                        success: function(response) {
+                            // Clear and populate the sub-account dropdown
+                            subAccountSelect.empty().append(
+                                '<option value="">Select Sub-Account</option>');
+
+                            if (response.length > 0) {
+                                $.each(response, function(index, item) {
+                                    if (item.subhead_accounting) {
+                                        subAccountSelect.append('<option value="' + item
+                                            .id + '">' + item.subhead_accounting
+                                            .name + '</option>');
+                                    }
+                                });
+                            } else {
+                                alert('No sub-accounts found for the selected account.');
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            alert('Error: ' + error);
+                        }
+                    });
+                } else {
+                    // Reset the sub-account dropdown if no account is selected
+                    subAccountSelect.empty().append('<option value="">Select Sub-Account</option>');
+                }
+            });
+
+            function changeWeek(offset) {
+                let current = $('#attnWeek').val(); // format "2025-W05"
+                console.log(current,'current');
+
+                if (!current) return;
+
+                let [year, week] = current.split('-W');
+                week = parseInt(week) + offset;
+
+                if (week < 1) {
+                    year--;
+                    week = 52;
+                }
+                if (week > 52) {
+                    year++;
+                    week = 1;
+                }
+
+                let newWeek = `${year}-W${String(week).padStart(2, '0')}`;
+                $('#attnWeek').val(newWeek);
+
+                loadWeekData();
+            }
+
+            $('#btnAttnPrev').on('click', () => changeWeek(-1));
+            $('#btnAttnNext').on('click', () => changeWeek(1));
+
+            $('#attnWeek, #attnSiteFilter').on('change', loadWeekData);
+
         });
+
+        function loadWeekData() {
+            $.ajax({
+                url: "{{ route('attendance.week.load') }}",
+                type: "GET",
+                data: {
+                    week: $('#attnWeek').val(),
+                    site_id: $('#attnSiteFilter').val()
+                },
+                success: function(res) {
+                    $('#attnBoard').html(res.view); // replace table with new week
+                }
+            });
+        }
     </script>
 @endsection
