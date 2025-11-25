@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use App\Models\Site;
 use App\Models\Labour;
+use App\Models\Ledger;
 use Illuminate\Http\Request;
 use App\Models\HeadAccounting;
+use App\Models\LabourAttendance;
 use App\Models\SubheadAccounting;
 use App\Models\ProjectHeadSubhead;
 use App\Http\Controllers\Controller;
-use App\Models\LabourAttendance;
-use Carbon\Carbon;
 
 
 class LabourController extends Controller
@@ -188,20 +189,22 @@ class LabourController extends Controller
             ->with(['attendances' => function ($query) use ($request) {
                 $query->whereBetween('date', [$request->start_date, $request->end_date])
                     ->where('site_id', $request->site_id)
-                    ->whereIn('status', ['present', 'leave']); // ✅ include half-days
+                    ->whereIn('status', ['present', 'leave']);
             }])
             ->whereHas('attendances', function ($query) use ($request) {
                 $query->whereBetween('date', [$request->start_date, $request->end_date])
                     ->where('site_id', $request->site_id)
-                    ->whereIn('status', ['present', 'leave']); // ✅ same here
+                    ->whereIn('status', ['present', 'leave']);
             })
             ->get()
             ->map(function ($labour) {
-                $totalHours = $labour->attendances->sum('hours');  // ✅ includes half-days now
+
+                $totalHours = $labour->attendances->sum('hours');
                 $totalOT = $labour->attendances->sum('ot_hours');
+
                 $rate = optional($labour->attendances->first())->rate ?? $labour->daily_wage ?? 0;
-                // ✅ calculate half-days correctly
-                $days = $totalHours / 8; // don’t round yet — preserve .5 accuracy
+
+                $days = $totalHours / 8;
                 $amount = ($days * $rate) + ($totalOT * ($rate / 8));
 
                 return [
@@ -212,17 +215,30 @@ class LabourController extends Controller
                     'days' => number_format($days, 2),
                     'overtime' => number_format($totalOT, 2),
                     'amount' => number_format($amount, 2),
+                    'amount_raw' => $amount, // for total sum
                 ];
             });
-        $view = '';
-        $view .= view('admin.labours.site-report', compact('reports'))->render();
+
+        // ✅ Grand total amount
+        $total_amount = $reports->sum('amount_raw');
+
+        // Remove helper key before sending
+        $reports = $reports->map(function ($r) {
+            unset($r['amount_raw']);
+            return $r;
+        });
+
+        $view = view('admin.labours.site-report', compact('reports'))->render();
 
         return response()->json([
             'success' => true,
+            'site_id' => $request->site_id,      // ✅ added
+            'total_amount' => number_format($total_amount, 2), // ✅ added
             'reports' => $reports,
             'view' => $view
         ]);
     }
+
     public function checkValidate(Request $request)
     {
         // dd($request->all());
@@ -247,5 +263,36 @@ class LabourController extends Controller
         }
 
         return [$startOfWeek, $endOfWeek, $days];
+    }
+
+    public function createVoucher(Request $request)
+    {
+        $project_head_subheads_id = Site::where('id', $request->site_id)->first()->subhead_accounting_id;
+        $ledgerData = Ledger::create([
+            'type' => 'JV',
+            'type_id' => null,
+            'project_head_subheads_id' => 8,
+            'reference' => null,
+            'amount_in' => $request->amount ?? 0,
+            'amount_out' => 0,
+            'detail' => 'From Labour Voucher',
+            'create_by' => auth()->id(),
+            'is_active' => true,
+            'status' => '0',
+            'date' => Carbon::now()->format('Y-m-d'),
+        ]);
+        $ledgerData = Ledger::create([
+            'type' => 'JV',
+            'type_id' => null,
+            'project_head_subheads_id' => $project_head_subheads_id,
+            'reference' => null,
+            'amount_in' => 0,
+            'amount_out' => $request->amount ?? 0,
+            'detail' => 'From Labour Voucher',
+            'create_by' => auth()->id(),
+            'is_active' => true,
+            'status' => '0',
+            'date' => Carbon::now()->format('Y-m-d'),
+        ]);
     }
 }

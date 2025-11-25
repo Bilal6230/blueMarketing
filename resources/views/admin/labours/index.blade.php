@@ -659,8 +659,13 @@
                             </thead>
                             <tbody id="siteReportTableBody">
                             </tbody>
-                            <button class="btn" id="createVoucher">Create Voucher</button>
                         </table>
+                        <form action="" method="post" id="createVoucherForm">
+                            @csrf
+                            <input type="hidden" name="site_id" id="site_id">
+                            <input type="hidden" name="amount" id="amount">
+                            <button class="btn" id="createVoucher">Create Voucher</button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -1540,6 +1545,8 @@
                     if (res.success) {
                         $('#siteReportTableBody').html('');
                         $('#siteReportTableBody').append(res.view);
+                        $('#site_id').val(res.site_id);
+                        $('#amount').val(res.total_amount);
                     }
                 },
                 error: function() {
