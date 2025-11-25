@@ -16,19 +16,21 @@ use function PHPUnit\Framework\isNull;
 
 
 
-function is_localhost(){
+function is_localhost()
+{
     $whitelist = array(
         '127.0.0.1',
         '::1'
     );
-    if(in_array($_SERVER['REMOTE_ADDR'], $whitelist)){
+    if (in_array($_SERVER['REMOTE_ADDR'], $whitelist)) {
         return TRUE;
     }
     return FALSE;
 }
 
 /*************** TextEditior **************************/
-function Html2Text($txt){
+function Html2Text($txt)
+{
 
     //$txt = strip_tags( (new \Html2Text\Html2Text($txt))->getText());
     //$txt = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $txt);
@@ -36,137 +38,143 @@ function Html2Text($txt){
     return ($txt);
 }
 
-function removeMultipleLineBreakWithOne($data){
+function removeMultipleLineBreakWithOne($data)
+{
     $searches = array("\r", "\n", "\r\n");
-    return str_replace($searches, "",$data);
+    return str_replace($searches, "", $data);
 }
 
-function te($data){
+function te($data)
+{
     echo '<pre>';
     print_r($data);
     echo '</pre>';
     die;
 }
 
-function getMonths(){
+function getMonths()
+{
 
-    return ['1' => 'January',
-            '2' => 'February',
-            '3' => 'March',
-            '4' => 'April',
-            '5' => 'May',
-            '6' => 'June',
-            '7' => 'July',
-            '8' => 'August',
-            '9' => 'September',
-            '10'=> 'October',
-            '11'=> 'November',
-            '12'=> 'December',
-            ];
-
-
+    return [
+        '1' => 'January',
+        '2' => 'February',
+        '3' => 'March',
+        '4' => 'April',
+        '5' => 'May',
+        '6' => 'June',
+        '7' => 'July',
+        '8' => 'August',
+        '9' => 'September',
+        '10' => 'October',
+        '11' => 'November',
+        '12' => 'December',
+    ];
 }
 function getBeforeDecimal($string)
 {
 
-    $str_arr = explode('.',$string);
+    $str_arr = explode('.', $string);
     return $str_arr[0];  // Before the Decimal point
     // echo $str_arr[1];  // After the Decimal point
 }
 function getAfterDecimal($string)
 {
 
-    $str_arr = explode('.',$string);
+    $str_arr = explode('.', $string);
     // echo $str_arr[0];  // Before the Decimal point
     return $str_arr[1];  // After the Decimal point
 }
 function getMinutesPercentage($string)
 {
 
-    $str_arr = explode('.',$string);
+    $str_arr = explode('.', $string);
     // echo $str_arr[0];  // Before the Decimal point
-    if(isset($str_arr[1])) {
-        $percentage = ($str_arr[1] *100)/60;
-        $final_value = $str_arr[0].'.'.$percentage;
+    if (isset($str_arr[1])) {
+        $percentage = ($str_arr[1] * 100) / 60;
+        $final_value = $str_arr[0] . '.' . $percentage;
     } else {
-        $final_value = $str_arr[0].'.'.'00';
+        $final_value = $str_arr[0] . '.' . '00';
     }
     return $final_value;  // After the Decimal point
 }
-function SeperateTime($time, $part){
-    $time = explode('.',$time);
+function SeperateTime($time, $part)
+{
+    $time = explode('.', $time);
 
-    if($part=='h'){
+    if ($part == 'h') {
         return $time[0];
-    }else{
-        if(isset($time[1])) {
+    } else {
+        if (isset($time[1])) {
             return $time[1];
-        }
-        else {
+        } else {
             return '0';
         }
     }
 }
 
-function getAssignmentTime_min(){
+function getAssignmentTime_min()
+{
 
-    return [0,25,5,75];
+    return [0, 25, 5, 75];
 }
 
 function getAfterHyphen($string)
 {
 
-    $str_arr = explode('-',$string);
+    $str_arr = explode('-', $string);
     // echo $str_arr[0];  // Before the Decimal point
     return $str_arr[1];  // After the Decimal point
 }
-function getMonthNumber($month) {
-    $months = ["January"=>"1","February"=>"2","March"=>"3","April"=>"4","May"=>"5","June"=>"6","July"=>"7","August"=>"8","September"=>"9","October"=>"10","November"=>"11","December"=>"12"];
+function getMonthNumber($month)
+{
+    $months = ["January" => "1", "February" => "2", "March" => "3", "April" => "4", "May" => "5", "June" => "6", "July" => "7", "August" => "8", "September" => "9", "October" => "10", "November" => "11", "December" => "12"];
     foreach ($months as $key => $value) {
-        if($month == $key) {
+        if ($month == $key) {
             $month_num = $value;
         }
     }
     return $month_num;
 }
 
-function getMonthByNumber($month) {
+function getMonthByNumber($month)
+{
     $months = [
-        "1"=>"January",
-        "2"=>"February",
-        "3"=>"March",
-        "4"=>"April",
-        "5"=>"May",
-        "6"=>"June",
-        "7"=>"July",
-        "8"=>"August",
-        "9"=>"September",
-        "10"=>"October",
-        "11"=>"November",
-        "12"=>"December"
+        "1" => "January",
+        "2" => "February",
+        "3" => "March",
+        "4" => "April",
+        "5" => "May",
+        "6" => "June",
+        "7" => "July",
+        "8" => "August",
+        "9" => "September",
+        "10" => "October",
+        "11" => "November",
+        "12" => "December"
     ];
 
     foreach ($months as $key => $value) {
-        if($month == $key) {
+        if ($month == $key) {
             $month_num = $value;
         }
     }
     return $month_num;
 }
 
-function getHead($id) {
+function getHead($id)
+{
     $heads = [
-        "0"=>"Please Update",
-        "1"=>"Assets",
-        "2"=>"Owner",
-        "3"=>"Recovery",
-        "4"=>"Expence",
-        "5"=>"Amanat Pyments"
-       
+        "0" => "Please Update",
+        "1" => "Assets",
+        "2" => "Owner",
+        "3" => "Recovery",
+        "4" => "Expence",
+        "5" => "Amanat Pyments"
+
     ];
 
     foreach ($heads as $key => $value) {
-        if($id == $key) {
+        if ($id == $key) {
             $month_num = $value;
         }
     }
@@ -175,15 +183,17 @@ function getHead($id) {
 
 
 
-function validateDate($date, $format = 'Y-m-d'){
+function validateDate($date, $format = 'Y-m-d')
+{
     $d = DateTime::createFromFormat($format, $date);
     return $d && $d->format($format) === $date;
 }
-function validateMonth($month) {
+function validateMonth($month)
+{
     $month = strtolower($month);
-    $months = ["january"=>"1","february"=>"2","march"=>"3","april"=>"4","may"=>"5","june"=>"6","july"=>"7","august"=>"8","september"=>"9","october"=>"10","november"=>"11","december"=>"12"];
+    $months = ["january" => "1", "february" => "2", "march" => "3", "april" => "4", "may" => "5", "june" => "6", "july" => "7", "august" => "8", "september" => "9", "october" => "10", "november" => "11", "december" => "12"];
     foreach ($months as $key => $value) {
-        if($month == $key) {
+        if ($month == $key) {
             return $value;
         }
     }
@@ -192,32 +202,35 @@ function validateMonth($month) {
 
 
 
-function make_writeable_dir($path){
+function make_writeable_dir($path)
+{
     //echo($path);
     //die;
-    if(!is_dir($path)){
+    if (!is_dir($path)) {
         mkdir($path);
     }
-    if(!is_writable($path)){
+    if (!is_writable($path)) {
         chmod($path, 0777);
     }
 }
 
 
-function get_feedback_types($type_id=NULL){
+function get_feedback_types($type_id = NULL)
+{
 
     $op_arr = ['Submit a bug', 'I need help', 'I’ve got an idea'];
 
-    if(!is_null($type_id)){
+    if (!is_null($type_id)) {
         return $op_arr[$type_id];
     }
     return $op_arr;
 }
 
 
-function removeHtml($data){
+function removeHtml($data)
+{
 
-    foreach ($data as $i => $row){
+    foreach ($data as $i => $row) {
         foreach ($row as $col => $val) {
             $data[$i][$col] = strip_tags($val);
         }
@@ -226,45 +239,51 @@ function removeHtml($data){
     return $data;
 }
 
-function urtype($case="u"){
+function urtype($case = "u")
+{
 
     $n = "CONSULTANT";
-    if($case == "c"){
+    if ($case == "c") {
         $n = ucfirst(strtolower($n));
     }
 
     return $n;
 }
 
-function numberFormat($n){
+function numberFormat($n)
+{
 
     return number_format((float)$n, 2, '.', ',');
 }
 
 
 
-function formatDateExperience($date){
-    if(!empty($date) && $date !='0000-00-00 00:00:00'){
+function formatDateExperience($date)
+{
+    if (!empty($date) && $date != '0000-00-00 00:00:00') {
 
         return date('m-Y', strtotime($date));
     }
 }
 
-function formatDateExperience2($date){
-    if(!empty($date) && $date !='0000-00-00 00:00:00'){
+function formatDateExperience2($date)
+{
+    if (!empty($date) && $date != '0000-00-00 00:00:00') {
 
         return date('m.Y', strtotime($date));
     }
 }
 
-function formatDateExperience3($date){
-    if(!empty($date) && $date !='0000-00-00 00:00:00'){
+function formatDateExperience3($date)
+{
+    if (!empty($date) && $date != '0000-00-00 00:00:00') {
 
         return date('d F Y \a\t H:i ', strtotime($date));
     }
 }
-function formatDateExperience4($date){
-    if(!empty($date) && $date !='0000-00-00 00:00:00'){
+function formatDateExperience4($date)
+{
+    if (!empty($date) && $date != '0000-00-00 00:00:00') {
 
         return date('d-m-Y ', strtotime($date));
     }
@@ -272,30 +291,28 @@ function formatDateExperience4($date){
 
 
 if (!function_exists('getLastLedgerIdByType')) {
-    function getLastLedgerIdByType($type , $id = null)
+    function getLastLedgerIdByType($type, $id = null)
     {
         $query = App\Models\Ledger::where('type', $type);
 
         if ($id === null) {
             $query->latest('id');
-        }else
-        {
-            $query->where('id' , $id);
+        } else {
+            $query->where('id', $id);
         }
 
         return $query->value('type_id');
     }
 }
 
-function get_new_voucher_number($type,$id = null)
+function get_new_voucher_number($type, $id = null)
 {
     // Replace 'ledgers' with your actual table name
-    $lastId = getLastLedgerIdByType($type , $id);
+    $lastId = getLastLedgerIdByType($type, $id);
 
-    if(isNull($id))
-    {
-        $newId = $lastId+1;
-    }else{
+    if (isNull($id)) {
+        $newId = $lastId + 1;
+    } else {
         $newId = $lastId;
     }
     $paddedValue = str_pad($newId, 7, '0', STR_PAD_LEFT);
@@ -422,7 +439,7 @@ function getSumAmountForBooking($booking_id = null)
 {
     // Get the sum of the amount column from the CustomerLedger model
     $sum = App\Models\BookingDetail::where('booking_id', $booking_id)->sum('amount');
-    
+
     return $sum;
 }
 
@@ -433,20 +450,21 @@ function getSumDueAmount($booking_id = null)
         ->where('due_date', '<=', Carbon::today())
         ->sum('amount');
 
-    
+
     return $sum;
 }
 
-function getSumRecovery($plot_id = null , $value = null)
+function getSumRecovery($plot_id = null, $value = null)
 {
     // Get the sum of the amount column from the CustomerLedger model
     $sum = App\Models\CustomerLedger::where('plot_id', $plot_id)->where('is_active', 1)->sum($value);
-    
+
     return $sum;
 }
 
 
-function getPakistanBanks() {
+function getPakistanBanks()
+{
     // Define an array of Pakistani banks
     $pakistanBanks = [
         ['id' => 1, 'name' => 'Bank Alfalah'],
@@ -483,7 +501,8 @@ function getPakistanBanks() {
     return $pakistanBanks;
 }
 
-function getBankNameById($id) {
+function getBankNameById($id)
+{
     $banks = getPakistanBanks();
     foreach ($banks as $bank) {
         if ($bank['id'] === $id) {
@@ -493,7 +512,8 @@ function getBankNameById($id) {
     return null; // Return null if bank not found
 }
 
-function getPaymentTypeName($value){
+function getPaymentTypeName($value)
+{
     $paymentTypes = [
         '1' => 'Cash',
         '2' => 'Online',
@@ -516,7 +536,8 @@ function getPaymentTypeDetails($value)
     return $paymentTypes[$value] ?? ['name' => 'Unknown', 'badge' => 'badge-secondary']; // Default gray badge
 }
 
-function approveStatus($value){
+function approveStatus($value)
+{
     $paymentTypes = [
         '0' => 'Pending',
         '1' => 'Approve',
@@ -527,7 +548,8 @@ function approveStatus($value){
     return $paymentTypes[$value] ?? 'Unknown';
 }
 
-function check_status() {
+function check_status()
+{
     // Define an array of statuses with badge classes
     $statuslist = [
         ['id' => 0, 'name' => 'Pending', 'badge' => 'badge-warning'], // Yellow badge
@@ -542,7 +564,8 @@ function check_status() {
     return $statuslist;
 }
 
-function check_status_id($id) {
+function check_status_id($id)
+{
     $list = check_status();
     foreach ($list as $v) {
         if ($v['id'] === $id) {
@@ -552,7 +575,8 @@ function check_status_id($id) {
     return null; // Return null if bank not found
 }
 
-function getProjectDetails($projectId) {
+function getProjectDetails($projectId)
+{
     // Retrieve the project by its ID
     $project = Project::find($projectId);
 
@@ -569,18 +593,20 @@ function getProjectDetails($projectId) {
 }
 
 // In your app/Helpers/AppHelper.php or a relevant helper file
-function getHeadAccountNameById($creditAccountId) {
+function getHeadAccountNameById($creditAccountId)
+{
     // Retrieve the ProjectHeadSubhead by its creditAccountId
     $account = ProjectHeadSubhead::with('headAccounting')->find($creditAccountId);
-    
+
     // Check if account exists and return the name, else return a default message
     return $account && $account->headAccounting ? $account->headAccounting->name : 'Not Found';
 }
 
-function getSubAccountNameById($creditAccountId) {
+function getSubAccountNameById($creditAccountId)
+{
     // Retrieve the ProjectHeadSubhead by its creditAccountId
     $account = ProjectHeadSubhead::with('subheadAccounting')->find($creditAccountId);
-    
+
     // Check if account exists and return the name, else return a default message
     return $account && $account->subheadAccounting ? $account->subheadAccounting->name : 'Not Found';
 }
@@ -606,8 +632,167 @@ function get_jv_number($id = null)
 }
 
 
+if (!function_exists('loadAttendanceWeek')) {
+    function loadAttendanceWeek($weekInput)
+    {
+        // Input format: 2025-W05
+        try {
+            $start = Carbon::parse($weekInput)->startOfWeek();
+        } catch (\Exception $e) {
+            $start = now()->startOfWeek();
+        }
 
+        $end = $start->copy()->endOfWeek();
 
+        // Generate all 7 days
+        $days = [];
+        $day = $start->copy();
 
+        while ($day <= $end) {
+            $days[] = $day->format('Y-m-d');
+            $day->addDay();
+        }
 
-?>
+        return [$start, $end, $days];
+    }
+}
+if (!function_exists('numberToUrduWords')) {
+    function numberToUrduWords($number)
+    {
+        $words = [
+            0 => 'صفر',
+            1 => 'ایک',
+            2 => 'دو',
+            3 => 'تین',
+            4 => 'چار',
+            5 => 'پانچ',
+            6 => 'چھے',
+            7 => 'سات',
+            8 => 'آٹھ',
+            9 => 'نو',
+            10 => 'دس',
+            11 => 'گیارہ',
+            12 => 'بارہ',
+            13 => 'تیرہ',
+            14 => 'چودہ',
+            15 => 'پندرہ',
+            16 => 'سولہ',
+            17 => 'سترہ',
+            18 => 'اٹھارہ',
+            19 => 'انیس',
+            20 => 'بیس',
+            21 => 'اکیس',
+            22 => 'بائیس',
+            23 => 'تئیس',
+            24 => 'چوبیس',
+            25 => 'پچیس',
+            26 => 'چھبیس',
+            27 => 'ستائیس',
+            28 => 'اٹھائیس',
+            29 => 'انتیس',
+
+            30 => 'تیس',
+            31 => 'اکتیس',
+            32 => 'بتیس',
+            33 => 'تینتیس',
+            34 => 'چونتیس',
+            35 => 'پینتیس',
+            36 => 'چھتیس',
+            37 => 'سینتیس',
+            38 => 'اڑتیس',
+            39 => 'انتالیس',
+
+            40 => 'چالیس',
+            41 => 'اکتالیس',
+            42 => 'بیالیس',
+            43 => 'تینتالیس',
+            44 => 'چوالیس',
+            45 => 'پینتالیس',
+            46 => 'چھیالیس',
+            47 => 'سینتالیس',
+            48 => 'اڑتالیس',
+            49 => 'انچاس',
+
+            50 => 'پچاس',
+            51 => 'اکیاون',
+            52 => 'باون',
+            53 => 'ترپن',
+            54 => 'چون',
+            55 => 'پچپن',
+            56 => 'چھپن',
+            57 => 'ستاون',
+            58 => 'اٹھاون',
+            59 => 'انسٹھ',
+
+            60 => 'ساٹھ',
+            61 => 'اکھتر',
+            62 => 'باسٹھ',
+            63 => 'تریسٹھ',
+            64 => 'چونسٹھ',
+            65 => 'پینسٹھ',
+            66 => 'چھیاسٹھ',
+            67 => 'سڑسٹھ',
+            68 => 'اڑسٹھ',
+            69 => 'انہتر',
+
+            70 => 'ستر',
+            71 => 'اکہتر',
+            72 => 'بہتر',
+            73 => 'تہتر',
+            74 => 'چوہتر',
+            75 => 'پچھتر',
+            76 => 'چھیتر',
+            77 => 'ستتر',
+            78 => 'اٹھہتر',
+            79 => 'انہتر',
+
+            80 => 'اسی',
+            81 => 'اکیاسی',
+            82 => 'بیاسی',
+            83 => 'تریاسی',
+            84 => 'چوراسی',
+            85 => 'پچاسی',
+            86 => 'چھیاسی',
+            87 => 'ستاسی',
+            88 => 'اٹھاسی',
+            89 => 'نواسی',
+
+            90 => 'نوے',
+            91 => 'اکانوے',
+            92 => 'بانوے',
+            93 => 'ترانوے',
+            94 => 'چورانوے',
+            95 => 'پچانوے',
+            96 => 'چھیانوے',
+            97 => 'ستانوے',
+            98 => 'اٹھانوے',
+            99 => 'ننانوے',
+
+            100 => 'سو',
+            1000 => 'ہزار',
+            100000 => 'لاکھ',
+            10000000 => 'کروڑ'
+        ];
+
+        if ($number < 100) {
+            return $words[$number];
+        }
+
+        if ($number < 1000) {
+            $hundreds = intval($number / 100);
+            $remainder = $number % 100;
+            return $words[$hundreds] . ' سو' . ($remainder ? ' ' . numberToUrduWords($remainder) : '');
+        }
+
+        foreach ([10000000 => 'کروڑ', 100000 => 'لاکھ', 1000 => 'ہزار'] as $value => $label) {
+            if ($number >= $value) {
+                $quot = intval($number / $value);
+                $rem = $number % $value;
+
+                return numberToUrduWords($quot) . " $label" . ($rem ? ' ' . numberToUrduWords($rem) : '');
+            }
+        }
+
+        return '';
+    }
+}

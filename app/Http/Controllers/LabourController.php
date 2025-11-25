@@ -2,14 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use App\Models\Site;
 use App\Models\Labour;
+use App\Models\Ledger;
 use Illuminate\Http\Request;
 use App\Models\HeadAccounting;
+use App\Models\LabourAttendance;
 use App\Models\SubheadAccounting;
 use App\Models\ProjectHeadSubhead;
 use App\Http\Controllers\Controller;
-use App\Models\LabourAttendance;
+
 
 class LabourController extends Controller
 {
@@ -72,13 +75,15 @@ class LabourController extends Controller
             'accounts_id' => 'required',
             'subaccounts_id' => 'required',
         ]);
-        $data = [
-            'site_name' => $request->site_name,
-            'site_address' => $request->site_address,
-            'head_accounting_id' => $request->accounts_id,
-            'subhead_accounting_id' => $request->subaccounts_id,
-        ];
-        Site::create($data);
+        Site::updateOrCreate(
+            ['id' => $request->site_id], // ← condition (update when ID exists)
+            [
+                'site_name' => $request->site_name,
+                'site_address' => $request->site_address,
+                'head_accounting_id' => $request->accounts_id,
+                'subhead_accounting_id' => $request->subaccounts_id,
+            ]
+        );
         $sites = Site::get();
         $view = '';
         $view .= view('admin.labours.sites', compact('sites'))->render();
@@ -98,12 +103,12 @@ class LabourController extends Controller
             'hours'       => 'nullable|numeric|min:0',
             'ot_hours'    => 'nullable|numeric|min:0',
             'rate'        => 'nullable|numeric|min:0',
-            'amount'      => 'nullable|numeric|min:0',
-            'site_name'   => 'nullable|string|max:255',
-            'remarks'     => 'nullable|string|max:255',
-            'is_approved' => 'boolean',
-            'is_draft'    => 'boolean',
-            'town_id'     => 'nullable|integer',
+            // 'amount'      => 'nullable|numeric|min:0',
+            // 'site_name'   => 'nullable|string|max:255',
+            // 'remarks'     => 'nullable|string|max:255',
+            // 'is_approved' => 'boolean',
+            // 'is_draft'    => 'boolean',
+            // 'town_id'     => 'nullable|integer',
         ]);
 
         // Auto-calculate amount if not provided
@@ -116,12 +121,11 @@ class LabourController extends Controller
         }
 
         $validated['marked_by'] = auth()->id();
-
+        // dd($validated);
         // 🧠 Create or Update logic
         $attendance = LabourAttendance::updateOrCreate(
             [
                 'labour_id' => $validated['labour_id'],
-                'site_id' => $validated['site_id'],
                 'date' => $validated['date'],
             ],
             $validated
@@ -185,20 +189,22 @@ class LabourController extends Controller
             ->with(['attendances' => function ($query) use ($request) {
                 $query->whereBetween('date', [$request->start_date, $request->end_date])
                     ->where('site_id', $request->site_id)
-                    ->whereIn('status', ['present', 'leave']); // ✅ include half-days
+                    ->whereIn('status', ['present', 'leave']);
             }])
             ->whereHas('attendances', function ($query) use ($request) {
                 $query->whereBetween('date', [$request->start_date, $request->end_date])
                     ->where('site_id', $request->site_id)
-                    ->whereIn('status', ['present', 'leave']); // ✅ same here
+                    ->whereIn('status', ['present', 'leave']);
             })
             ->get()
             ->map(function ($labour) {
-                $totalHours = $labour->attendances->sum('hours');  // ✅ includes half-days now
+
+                $totalHours = $labour->attendances->sum('hours');
                 $totalOT = $labour->attendances->sum('ot_hours');
+
                 $rate = optional($labour->attendances->first())->rate ?? $labour->daily_wage ?? 0;
-                // ✅ calculate half-days correctly
-                $days = $totalHours / 8; // don’t round yet — preserve .5 accuracy
+
+                $days = $totalHours / 8;
                 $amount = ($days * $rate) + ($totalOT * ($rate / 8));
 
                 return [
@@ -209,25 +215,84 @@ class LabourController extends Controller
                     'days' => number_format($days, 2),
                     'overtime' => number_format($totalOT, 2),
                     'amount' => number_format($amount, 2),
+                    'amount_raw' => $amount, // for total sum
                 ];
             });
-        $view = '';
-        $view .= view('admin.labours.site-report', compact('reports'))->render();
+
+        // ✅ Grand total amount
+        $total_amount = $reports->sum('amount_raw');
+
+        // Remove helper key before sending
+        $reports = $reports->map(function ($r) {
+            unset($r['amount_raw']);
+            return $r;
+        });
+
+        $view = view('admin.labours.site-report', compact('reports'))->render();
 
         return response()->json([
             'success' => true,
+            'site_id' => $request->site_id,      // ✅ added
+            'total_amount' => number_format($total_amount, 2), // ✅ added
             'reports' => $reports,
             'view' => $view
         ]);
     }
+
     public function checkValidate(Request $request)
     {
         // dd($request->all());
         $query = Labour::query();
-        if($request->has('name') && $request->name) $query->where('name', $request->name);
-        if($request->has('cnic') && $request->cnic) $query->where('cnic', $request->cnic);
-        if($request->has('phone') && $request->phone) $query->where('phone', $request->phone);
+        if ($request->has('name') && $request->name) $query->where('name', $request->name);
+        if ($request->has('cnic') && $request->cnic) $query->where('cnic', $request->cnic);
+        if ($request->has('phone') && $request->phone) $query->where('phone', $request->phone);
         $exist = $query->exists();
         return response()->json(['exists' => $exist]);
+    }
+
+    public function loadAttendanceWeek(Request $request)
+    {
+        $weekInput = $request->week;
+        [$year, $week] = explode('-W', $weekInput);
+        $startOfWeek = Carbon::now()->setISODate($year, $week)->startOfWeek(Carbon::MONDAY);
+        $endOfWeek   = $startOfWeek->copy()->endOfWeek(Carbon::SUNDAY);
+
+        $days = [];
+        for ($i = 0; $i < 7; $i++) {
+            $days[] = $startOfWeek->copy()->addDays($i)->format('Y-m-d');
+        }
+
+        return [$startOfWeek, $endOfWeek, $days];
+    }
+
+    public function createVoucher(Request $request)
+    {
+        $project_head_subheads_id = Site::where('id', $request->site_id)->first()->subhead_accounting_id;
+        $ledgerData = Ledger::create([
+            'type' => 'JV',
+            'type_id' => null,
+            'project_head_subheads_id' => 8,
+            'reference' => null,
+            'amount_in' => $request->amount ?? 0,
+            'amount_out' => 0,
+            'detail' => 'From Labour Voucher',
+            'create_by' => auth()->id(),
+            'is_active' => true,
+            'status' => '0',
+            'date' => Carbon::now()->format('Y-m-d'),
+        ]);
+        $ledgerData = Ledger::create([
+            'type' => 'JV',
+            'type_id' => null,
+            'project_head_subheads_id' => $project_head_subheads_id,
+            'reference' => null,
+            'amount_in' => 0,
+            'amount_out' => $request->amount ?? 0,
+            'detail' => 'From Labour Voucher',
+            'create_by' => auth()->id(),
+            'is_active' => true,
+            'status' => '0',
+            'date' => Carbon::now()->format('Y-m-d'),
+        ]);
     }
 }

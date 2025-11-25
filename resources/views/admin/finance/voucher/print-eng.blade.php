@@ -20,7 +20,7 @@
 
         .voucher {
             /* width: 80%; */
-            border-top: 1px solid #000;
+            /* border-top: 1px solid #000; */
             padding: 10px;
         }
 
@@ -43,7 +43,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
+            margin-top: 20px;
         }
 
         th,
@@ -62,6 +62,7 @@
         .header-container {
             display: flex;
             justify-content: space-around;
+            align-items: anchor-center;
         }
 
         .address {
@@ -85,6 +86,11 @@
         .under-line {
             border-bottom: 2px solid #000;
         }
+
+        th,
+        td {
+            font-size: 16px;
+        }
     </style>
 </head>
 
@@ -93,16 +99,17 @@
     <div class="voucher">
 
         <!-- HEADER -->
-        <div class="header-container" {!! Setting::getValue('print_status') == '0' ? 'style="display:none !important;"' : '' !!}>
+        <div class="header-container">
             <img class="logo" src="{{ asset('images/logo/blue-marketing-logo.png') }}">
+                <div class="" style="display: flex; {!! Setting::getValue('print_status') == '0' ? 'style="display:none !important;"' : '' !!}">
+                    <div class="center">
+                        <h2 class="title">Planet Architects & Builders</h2>
+                        <div class="address">Shop # C-215, A-Block Phase-1 Etihad Garden, Rahim Yar Khan</div>
+                        <div class="voucher-name">CREDIT VOUCHER</div>
+                    </div>
+                </div>
 
-            <div class="center">
-                <h2 class="title">Planet Architects & Builders</h2>
-                <div class="address">Shop # C-215, A-Block Phase-1 Etihad Garden, Rahim Yar Khan</div>
-                <div class="voucher-name">CREDIT VOUCHER</div>
-            </div>
-
-            <div>
+            <div style="{!! Setting::getValue('print_status') == '0' ? 'style="display:none !important;"' : '' !!}">
                 <div>0322-2237861</div>
                 <div>068-2096888</div>
             </div>
@@ -110,10 +117,11 @@
 
         <!-- Voucher Details -->
         <div style="display: flex; justify-content: space-between;">
-            <div style="text-align:center; font-size:12px; font-weight:bold;">Voucher No: <span
-                    class="under-line">{{ $voucher->voucher_number }}</span> ( {{ $voucher->projectHeadSubhead->headAccounting->name }} )</div>
-            <div style="text-align:center; font-size:12px; font-size:12px; font-weight:bold;">Page No:__________</div>
-            <div style="text-align:center; font-size:12px; font-size:12px; font-weight:bold;">Date :<span
+                        <div style="text-align:center; font-size:16px; font-weight:bold;">Voucher No: <span
+                    class="under-line">{{ $voucher->voucher_number }}</span> (
+                {{ $voucher->projectHeadSubhead->headAccounting->name }} )</div>
+
+            <div style="text-align:center;  font-size:16px; font-weight:bold;">Date :<span
                     class="under-line">{{ $voucher->date }}</span></span></div>
 
         </div>
@@ -125,25 +133,27 @@
         <table>
             <thead>
                 <tr>
-                    <td style="width:70%; text-align:justify; border:none; font-size:12px; font-weight:bold;">Account
+                    <td style="width:80%; text-align:justify; border:none; font-size:18px; font-weight:bold;">Account
                         Name: <span class="under-line"
-                            style="display: inline-block;width: 60%;text-align: center;">{{ $voucher->projectHeadSubhead->subheadAccounting->name }}</span>
+                            style="display: inline-block;width: 60%;">{{ $voucher->projectHeadSubhead->subheadAccounting->name }}</span>
                     </td>
-                    <td style="width:30%; text-align:center;">Amount</td>
+                    <td style="width:20%; text-align:center;">Amount</td>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <th style="width:70%; text-align:justify;">Detail: {{ $voucher->detail }}</th>
-                    <th style="width:30%; text-align:center;"></th>
+                    <th style="width:80%; text-align:justify; border-bottom: none;">Detail: {{ $voucher->detail }}</th>
+                    <th style="width:20%; text-align:center;">{{ number_format($voucher->amount_in, 0, '.', '') }}</th>
                 </tr>
                 <tr>
-                    <td></td>
-                    <td>{{ number_format($voucher->amount_in, 2) }}</td>
+                    <td style="border-top: none;"></td>
+                    <td style="text-align:center; height: 15px;"></td>
                 </tr>
                 <tr>
-                    <td style="text-align:right; font-weight:bold;">Total</td>
-                    <td style="font-weight:bold;">{{ number_format($voucher->amount_in, 2) }}</td>
+                    <td style="text-align:right; font-weight:bold;">Total/
+                        {{ numberToUrduWords($voucher->amount_in) . ' روپے' }}</td>
+                    <td style="font-weight:bold; text-align:center;">=
+                        {{ number_format($voucher->amount_in, 0, '.', '') }}/-</td>
                 </tr>
             </tbody>
         </table>
