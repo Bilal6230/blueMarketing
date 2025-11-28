@@ -78,7 +78,7 @@
             border: 1px solid var(--line);
             border-radius: 14px;
             box-shadow: var(--shadow);
-            height: 515px;
+            height: 580px;
             overflow: hidden;
         }
 
@@ -241,7 +241,9 @@
         .chips {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px
+            gap: 8px;
+            margin-top: 10px;
+            margin-bottom: 10px
         }
 
         .toolbar {
@@ -311,7 +313,7 @@
         .days-head {
             display: grid;
             grid-auto-flow: column;
-            grid-auto-columns: 60px;
+            grid-auto-columns: 145px;
             border-bottom: 1px solid var(--line);
             background: #f8fafc;
             position: sticky;
@@ -333,7 +335,7 @@
         .row-days {
             display: grid;
             grid-auto-flow: column;
-            grid-auto-columns: 60px
+            grid-auto-columns: 145px
         }
 
         .cell {
@@ -459,6 +461,46 @@
             /* Bootstrap shadow remove (optional) */
             outline: none !important;
             /* Removes blue outline */
+        }
+
+        #createVoucherForm {
+            display: inline-block;
+
+        }
+
+        thead {
+            /* display: table; */
+            width: 100%;
+            table-layout: fixed;
+            background: #f1f1f1;
+            /* optional */
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .disabled-friday {
+            background: #f4f4f4 !important;
+            color: #b0b0b0 !important;
+            cursor: not-allowed;
+            opacity: 0.6;
+            pointer-events: none;
+            /* fully disables clicking */
+        }
+
+        .disabled-friday .ico {
+            color: #b0b0b0 !important;
+        }
+
+        .btns {
+            display: flex;
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .site-report-actions {
+            display: flex;
+            justify-content: space-between;
         }
     </style>
 
@@ -627,24 +669,38 @@
             <div class="card">
                 <div class="hd"><b>Site Report</b><span class="caps">filter & total cost</span></div>
                 <div class="bd">
-                    <div class="toolbar" style="margin-bottom:12px">
-                        <select id="repSite">
+                    <div class="toolbar row" style="margin-bottom:12px">
+                        <select id="repSite" class="col-3">
                             <option value="">All Sites</option>
                             @foreach ($sites as $site)
                                 <option value="{{ $site->id }}">{{ $site->site_name }}</option>
                             @endforeach
                         </select>
-                        <input type="date" id="repFrom" />
-                        <input type="date" id="repTo" />
-                        <button class="btn" id="btnSiteRun">Run</button>
-                        <button class="btn" id="btnSiteExport">Export CSV</button>
+                        <input type="date" id="repFrom" class="col-4" />
+                        <input type="date" id="repTo" class="col-4" />
                     </div>
-                    <div class="chips" style="margin-bottom:10px">
+                    <div class="site-report-actions">
+                        <div class="site-report-btns">
+                            <button class="btn" id="reportBtnSiteRun">Report</button>
+                            <button class="btn" id="btnSiteExport">Export CSV</button>
+                        </div>
+                        <div class="site-report-voucher-btns">
+                            <button class="btn" id="voucherBtnSiteRun">Run</button>
+                            <form action="" method="post" id="createVoucherForm">
+                                @csrf
+                                <input type="hidden" name="attendance_ids" id="attendance_ids" required>
+                                <input type="hidden" name="site_id" id="site_id" required>
+                                <input type="hidden" name="amount" id="amount" required>
+                                <button class="btn" id="createVoucher">Create Voucher</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="chips">
                         <span class="pill">Total Days: <b id="siteDays">0</b></span>
                         <span class="pill">Total Overtime Hrs: <b id="siteOt">0</b></span>
                         <span class="pill">Total Cost: <b id="siteTotal">0</b></span>
                     </div>
-                    <div class="table-scroll">
+                    <div class="table-scroll" style="max-height: 290px;">
                         <table id="siteReportTable table">
                             <thead>
                                 <tr>
@@ -660,12 +716,6 @@
                             <tbody id="siteReportTableBody">
                             </tbody>
                         </table>
-                        <form action="" method="post" id="createVoucherForm">
-                            @csrf
-                            <input type="hidden" name="site_id" id="site_id">
-                            <input type="hidden" name="amount" id="amount">
-                            <button class="btn" id="createVoucher">Create Voucher</button>
-                        </form>
                     </div>
                 </div>
             </div>
@@ -676,15 +726,17 @@
             <div class="card">
                 <div class="hd"><b>Person Wise Report</b><span class="caps">details & totals</span></div>
                 <div class="bd">
-                    <div class="toolbar" style="margin-bottom:12px">
-                        <input id="personQuery" placeholder="Search by name or mobile" style="min-width:260px" />
-                        <input type="date" id="pFrom" />
-                        <input type="date" id="pTo" />
+                    <div class="toolbar row" style="margin-bottom:12px">
+                        <input id="personQuery" class="col-3" placeholder="Search by name or mobile" style="min-width:260px" />
+                        <input type="date" id="pFrom" class="col-4" />
+                        <input type="date" id="pTo" class="col-4" />
+                    </div>
+                    <div class="site-report-actions">
                         <button class="btn" id="btnPersonRun">Run</button>
                         <button class="btn" id="btnPersonExport">Export CSV</button>
                     </div>
                     <div id="personHeader" class="row" style="margin-bottom:10px"></div>
-                    <div class="table-scroll">
+                    {{-- <div class="table-scroll">
                         <table id="personReportTable table">
                             <thead>
                                 <tr>
@@ -704,21 +756,27 @@
                         <div class="col stat"><span class="muted">Total Amount</span> <b id="pTotal">0</b></div>
                         <div class="col stat"><span class="muted">Advance</span> <b id="pAdv">0</b></div>
                         <div class="col stat"><span class="muted">Net</span> <b id="pNet">0</b></div>
-                    </div>
+                    </div> --}}
                     <div style="margin-top:14px" class="help">On first load, all labours are listed below. Use search to
                         pick someone.</div>
-                    <div style="margin-top:8px" class="table-scroll">
+                    <div style="margin-top:8px" class="table-scroll max-height">
                         <table id="personAll table">
                             <thead>
                                 <tr>
                                     <th>Name</th>
                                     <th>Mobile</th>
                                     <th>Designation</th>
-                                    <th class="right">Rate</th>
-                                    <th class="right">Advance</th>
+                                    <th>Rate</th>
+                                    <th>Advance</th>
+                                    <th>Days</th>
+                                    <th>Over Time</th>
+                                    <th>status</th>
+                                    <th>Ratings</th>
+                                    <th>Amount</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="personAllBody">
+                                @include('admin.labours.person-wise-report')
                                 {{-- personAll will be populated from labour table on boot --}}
                             </tbody>
                         </table>
@@ -732,110 +790,27 @@
             <div class="card">
                 <div class="hd"><b>Attendance</b><span class="caps">mark daily hours & overtime</span></div>
                 <div class="bd">
-                    <div class="toolbar" style="margin-bottom:10px">
-                        <input type="week" id="attnWeek" />
-                        <select id="attnSiteFilter">
+                    <div class="toolbar row" style="margin-bottom:10px">
+                        <select id="attnSiteFilter" class="col-5">
                             <option value="">All Sites</option>
                             @foreach ($sites as $site)
                                 <option value="{{ $site->id }}">{{ $site->site_name }}</option>
                             @endforeach
                         </select>
-
-                        <button class="btn" id="btnAttnPrev">◀ Prev</button>
-                        <button class="btn" id="btnAttnNext">Next ▶</button>
-                        <button class="btn" id="btnExportAttn">Export CSV</button>
+                        <input type="week" class="col-6" id="attnWeek" value="{{ now()->format('o-\WW') }}" />
+                        <div class="btns">
+                            <div class="">
+                                <button class="btn" id="btnAttnPrev">◀ Prev</button>
+                                <button class="btn" id="btnAttnNext">Next ▶</button>
+                                <button class="btn" id="btnExportAttn">Export CSV</button>
+                            </div>
+                            <input id="attnSearch" class="col-4" placeholder="Search by name or mobile" />
+                        </div>
 
                     </div>
-                    <div class="table-scroll max-height">
-                        <div class="attn table" id="attnBoard">
-                            <div class="left" id="attnLabours">
-                                <div class="days-head" id="attnDays">
-                                    <div class="d"> Labours
-                                    </div>
-                                </div>
-                                @foreach ($labours as $labour)
-                                    <div class="lab" data-id="{{ $labour->id }}"><span
-                                            class="nm">{{ $labour->name }}</span><span
-                                            class="muted small">{{ $labour->phone }} · {{ $labour->role }} ·
-                                            Rs&nbsp;{{ $labour->daily_wage }}</span></div>
-                                @endforeach
-                            </div>
-                            @php
-                                use Carbon\Carbon;
 
-                                $today = Carbon::now();
-                                $todayDate = $today->day;
-                                $daysInMonth = $today->daysInMonth;
-                                $monthStart = $today->copy()->startOfMonth();
-                            @endphp
-
-                            <div class="right">
-                                @php
-                                    [$start, $end, $weekDays] = loadAttendanceWeek(
-                                        request('week') ?? now()->format('o-\WW'),
-                                    );
-                                @endphp
-
-                                <div class="days-head">
-                                    @foreach ($weekDays as $day)
-                                        <div class="d {{ $day == now()->format('Y-m-d') ? 'today' : '' }}">
-                                            {{ \Carbon\Carbon::parse($day)->format('d') }}
-                                        </div>
-                                    @endforeach
-                                </div>
-
-                                {{-- LABOUR ROWS --}}
-                                <div class="rows" id="attnRows">
-                                    @foreach ($labours as $labour)
-                                        <div class="row-days">
-                                            @foreach ($weekDays as $day)
-                                                @php
-                                                    $attendance = $labour->attendances->where('date', $day)->first();
-
-                                                    $status = 'not-marked';
-                                                    $icon = '-';
-                                                    $iconClass = 'none';
-
-                                                    if ($attendance) {
-                                                        if ($attendance->hours == 4) {
-                                                            $status = 'leave';
-                                                            $icon = 'H';
-                                                            $iconClass = 'leave';
-                                                        } elseif ($attendance->status == 'present') {
-                                                            $status = 'present';
-                                                            $icon = '✓';
-                                                            $iconClass = 'tick';
-                                                        } else {
-                                                            $status = 'absent';
-                                                            $icon = '✗';
-                                                            $iconClass = 'cross';
-                                                        }
-                                                    }
-
-                                                    $userData = [
-                                                        'id' => $labour->id,
-                                                        'name' => $labour->name,
-                                                        'role' => $labour->role,
-                                                        'date' => $day,
-                                                        'status' => $status,
-                                                        'hours' => $attendance->hours ?? 8,
-                                                        'ot' => $attendance->ot_hours ?? 0,
-                                                        'site' => $attendance->site_id ?? 1,
-                                                        'rate' => $labour->daily_wage,
-                                                        'amount' => $attendance->amount ?? $labour->daily_wage,
-                                                    ];
-                                                @endphp
-
-                                                <div class="cell" data-user='{{ json_encode($userData) }}'>
-                                                    <span class="ico {{ $iconClass }}">{{ $icon }}</span>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </div>
-
-                        </div>
+                    <div class="table-scroll max-height" id="attnBoard">
+                        @include('admin.labours.attn-board')
                     </div>
                     <div class="help" style="margin-top:10px">Legend: <span class="ico tick">✓</span> Present · <span
                             class="ico cross">✕</span> Absent · <span class="ico leave">L</span> Leave · <span
@@ -855,7 +830,7 @@
                     <div class="row">
                         <div class="col">
                             <label>Date</label>
-                            <input id="mDate" name="date" readonly  />
+                            <input id="mDate" name="date" readonly />
                         </div>
                         <div class="col">
                             <label>Labour</label>
@@ -1020,436 +995,529 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     {{-- jQuery is required. If your admin master already loads jQuery, remove the following script line. --}}
     <script>
-        $.ajaxSetup({
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        $(document).ready(function() {
+
+            $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                }
+            });
+            $('.tab').on('click', function() {
+                // Remove active state from all tabs
+                $('.tab').attr('aria-selected', 'false');
+                // Hide all pages
+                $('.page').addClass('hid');
+
+                // Get the tab target (from data-tab)
+                const target = $(this).data('tab');
+
+                // Set clicked tab as active
+                $(this).attr('aria-selected', 'true');
+                // Show the target section
+                $('#' + target).removeClass('hid');
+            });
+
+            function debounce(func, delay) {
+                let timer;
+                return function() {
+                    clearTimeout(timer);
+                    timer = setTimeout(() => func.apply(this, arguments), delay);
+                };
             }
-        });
-        $('.tab').on('click', function() {
-            // Remove active state from all tabs
-            $('.tab').attr('aria-selected', 'false');
-            // Hide all pages
-            $('.page').addClass('hid');
+            $(document).on('click', '#createVoucher', function(e) {
+                e.preventDefault();
+                let hasError = false;
 
-            // Get the tab target (from data-tab)
-            const target = $(this).data('tab');
+                // Clear previous errors
+                $('#createVoucherForm .error').text('');
 
-            // Set clicked tab as active
-            $(this).attr('aria-selected', 'true');
-            // Show the target section
-            $('#' + target).removeClass('hid');
-        });
+                // Check required fields
+                $('#createVoucherForm [name]').each(function() {
+                    let field = $(this);
+                    let value = field.val()?.trim();
 
-        function debounce(func, delay) {
-            let timer;
-            return function() {
-                clearTimeout(timer);
-                timer = setTimeout(() => func.apply(this, arguments), delay);
-            };
-        }
-
-        $('#labName, #labMobile, #cnic').on('keyup', debounce(function() {
-            let formData = new FormData();
-            let $this = $(this);
-            let name = $this.attr('name');
-            formData.append(name, $this.val());
-            formData.append('_token', '{{ csrf_token() }}'); // REQUIRED
-
-            $.ajax({
-                url: "{{ route('labours.check.validate') }}",
-                type: "POST",
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(res) {
-                    if (res.exists == true) {
-                        $this.addClass('validate-border');
-                        $('.error-' + name).removeClass('d-none');
-                        $('#btnAddLabour').prop('disabled', true);
-                    } else {
-                        $('.error-' + name).addClass('d-none');
-                        $this.removeClass('validate-border');
-                        $('#btnAddLabour').prop('disabled', false);
+                    if (field.prop('required') && value === '') {
+                        field.siblings('.error').removeClass('d-none').text(
+                            'This field is required');
+                        hasError = true;
                     }
-                },
-                error: function(xhr) {
-                    console.log(xhr.responseText);
-                }
-            });
+                });
 
-        }, 500));
+                if (hasError) return; // stop submit if validation fails
 
+                // --- Confirm Before Submit ---
+                Swal.fire({
+                    title: "Are you sure?",
+                    text: "Do you want to save this Labour?",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "Yes, save it!",
+                    cancelButtonText: "Cancel",
+                    reverseButtons: true
+                }).then((result) => {
+                    if (result.isConfirmed) {
 
+                        let formData = $('#createVoucherForm').serialize();
 
-        // Initialize first tab (optional safety)
-        $('.tab[aria-selected="true"]').trigger('click');
-        $('.cell').on('click', function() {
-            let data = $(this).attr('data-user');
+                        $.ajax({
+                            url: "{{ route('labours.create.voucher') }}",
+                            type: "POST",
+                            data: formData,
 
-            let obj = JSON.parse(data);
-            $('#mLabourid').val(obj.id);
-            $('#mDate').val(obj.date);
-            $('#mLabour').val(obj.name);
-            $('#mStatus').val(obj.status);
-            $('#mSite').val(obj.site);
-            $('#mRole').val(obj.role);
-            $('#mRate').val(obj.rate);
-            $('#mHours').val(parseFloat(obj.hours));
-            $('#mOT').val(obj.ot);
-            $('#mAmount').val(obj.amount);
+                            success: function(res) {
+                                if (res.success) {
+                                    // --- Success Alert ---
+                                    Swal.fire({
+                                        title: "Saved!",
+                                        text: "Voucher created successfully.",
+                                        icon: "success",
+                                        timer: 1500,
+                                        showConfirmButton: false
+                                    });
+                                }
+                            },
 
-            $('#attnModal').modal('show');
-        })
-        $('#btnCloseModal').on('click', function() {
-            $('#attnModal').modal('hide');
-        });
-        $('#editBtnCloseModal').on('click', function() {
-            $('#editLabourModal').modal('hide');
-        });
-        $('#editSiteBtnCloseModal').on('click', function() {
-            $('#editSiteModal').modal('hide');
-        });
-        $(document).on('change', '#mHours', function() {
-            let hours = $(this).val();
-            let ot = $('#mOT').val();
-            hours = parseFloat(hours) + parseFloat(ot);
-            let rate = $('#mRate').val();
-            let perHour = rate / 8;
-            let amount = hours * perHour;
-            $('#mAmount').val(amount);
-        })
-        $(document).on('input', '#mOT', function() {
-            let hours = $(this).val();
-            let ot = $('#mHours').val();
-            hours = parseFloat(hours) + parseFloat(ot);
-            let rate = $('#mRate').val();
-            let perHour = rate / 8;
-            let amount = hours * perHour;
-            $('#mAmount').val(amount);
-        })
-        $(document).on('click', '.editLabourBtn', function() {
-
-            let labour = $(this).attr('labourData');
-            labour = JSON.parse(labour);
-
-            // Fill fields
-            $('#editlabName').val(labour.name);
-            $('#editfatherName').val(labour.father_name);
-            $('#editlabMobile').val(labour.phone);
-            $('#editlabRole').val(labour.role);
-            $('#editlabRate').val(labour.daily_wage);
-            $('#editcnic').val(labour.cnic);
-
-            // Dynamic Form Action
-            let updateUrl = "{{ route('labours.update', ':id') }}";
-            updateUrl = updateUrl.replace(':id', labour.id);
-            $('#editLabourForm').attr('action', updateUrl);
-
-            // Show Modal
-            $('#editLabourModal').modal('show');
-        });
-        $(document).on('click', '.editSiteBtn', function() {
-
-            let site = $(this).attr('SiteData');
-            site = JSON.parse(site);
-
-            // Fill fields
-            $('#edit_site_id').val(site.id);
-            $('#editSiteName').val(site.site_name);
-            $('#editSiteAddr').val(site.site_address);
-            $('#edit_accounts_id').val(site.head_accounting_id).trigger('change');
-            setTimeout(() => {
-                $('#edit_subaccounts_id').val(site.subhead_accounting_id).trigger('change');
-            }, 1000);
-            $('#editSiteModal').modal('show');
-        });
-
-
-
-        // ============================
-        // ADD LABOUR
-        // ============================
-        $('#addLabourForm').on('submit', function(e) {
-            e.preventDefault();
-            let hasError = false;
-
-            // Clear previous errors
-            $('#addLabourForm .error').text('');
-
-            // Check required fields
-            $('#addLabourForm [name]').each(function() {
-                let field = $(this);
-                let value = field.val()?.trim();
-
-                if (field.prop('required') && value === '') {
-                    field.siblings('.error').removeClass('d-none').text('This field is required');
-                    hasError = true;
-                }
-            });
-
-            if (hasError) return; // stop submit if validation fails
-
-            // --- Confirm Before Submit ---
-            Swal.fire({
-                title: "Are you sure?",
-                text: "Do you want to save this Labour?",
-                icon: "warning",
-                showCancelButton: true,
-                confirmButtonText: "Yes, save it!",
-                cancelButtonText: "Cancel",
-                reverseButtons: true
-            }).then((result) => {
-                if (result.isConfirmed) {
-
-                    let formData = $('#addLabourForm').serialize();
-
-                    $.ajax({
-                        url: "{{ route('labours.store') }}",
-                        type: "POST",
-                        data: formData,
-
-                        success: function(res) {
-                            if (res.success) {
-                                $('#labourTableBody').html('');
-                                $('#labourTableBody').append(res.view);
-                                $('#addLabourForm')[0].reset();
-
-                                // --- Success Alert ---
+                            error: function(err) {
                                 Swal.fire({
-                                    title: "Saved!",
-                                    text: "Labour added successfully.",
-                                    icon: "success",
-                                    timer: 1500,
-                                    showConfirmButton: false
+                                    title: "Error",
+                                    text: "Error saving labour.",
+                                    icon: "error"
                                 });
+                                console.log(err.responseText);
                             }
-                        },
+                        });
 
-                        error: function(err) {
-                            Swal.fire({
-                                title: "Error",
-                                text: "Error saving labour.",
-                                icon: "error"
-                            });
-                            console.log(err.responseText);
-                        }
-                    });
-
-                }
-            });
-        });
-        $('#editLabourForm').on('submit', function(e) {
-            e.preventDefault();
-            let hasError = false;
-
-            // Clear all previous errors
-            $('#editLabourForm .error').text('');
-
-            // Validate required fields
-            $('#editLabourForm [name]').each(function() {
-                let field = $(this);
-                let value = field.val()?.trim();
-
-                if (field.prop('required') && value === '') {
-                    field.siblings('.error').removeClass('d-none').text('This field is required');
-                    hasError = true;
-                }
-            });
-
-            if (hasError) return; // stop if validation fails
-
-
-            // Ask for confirmation
-            Swal.fire({
-                title: "Are you sure?",
-                text: "Do you want to update this Labour?",
-                icon: "warning",
-                showCancelButton: true,
-                confirmButtonText: "Yes, update!",
-                cancelButtonText: "Cancel",
-                reverseButtons: true
-            }).then((result) => {
-
-                if (result.isConfirmed) {
-
-                    let formData = $('#editLabourForm').serialize();
-                    let actionUrl = $('#editLabourForm').attr('action'); // dynamic URL already set
-
-                    $.ajax({
-                        url: actionUrl,
-                        type: "POST", // Laravel PUT works with POST + _method
-                        data: formData,
-
-                        success: function(res) {
-                            if (res.success) {
-
-                                // Reload table
-                                $('#labourTableBody').html('');
-                                $('#labourTableBody').append(res.view);
-
-                                // Close modal
-                                $('#editLabourModal').modal('hide');
-
-                                // Success alert
-                                Swal.fire({
-                                    title: "Updated!",
-                                    text: "Labour updated successfully.",
-                                    icon: "success",
-                                    timer: 1500,
-                                    showConfirmButton: false
-                                });
-                            }
-                        },
-
-                        error: function(err) {
-                            Swal.fire({
-                                title: "Error",
-                                text: "Error updating labour.",
-                                icon: "error"
-                            });
-                            console.log(err.responseText);
-                        }
-                    });
-                }
-            });
-        });
-
-
-        $(document).on('click', '#btnAddSite, #btnUpdateSite', function(e) {
-            e.preventDefault();
-
-            let btn = $(this); // clicked button
-            let form = btn.closest('form'); // get respective form
-            let actionType = btn.attr('id'); // btnAddSite or btnUpdateSite
-
-            let hasError = false;
-
-            // Clear previous errors
-            form.find('.error').text('');
-
-            // Validate required fields
-            form.find('[name]').each(function() {
-                let field = $(this);
-                let value = field.val()?.trim();
-
-                if (value === '') {
-                    field.siblings('.error').removeClass('d-none').text('This field is required');
-                    hasError = true;
-                }
-            });
-
-            if (hasError) return;
-
-            // Confirmation message depends on button
-            let confirmText = actionType === 'btnAddSite' ?
-                "Do you want to add this site?" :
-                "Do you want to update this site?";
-
-            Swal.fire({
-                title: "Are you sure?",
-                text: confirmText,
-                icon: "warning",
-                showCancelButton: true,
-                confirmButtonText: "Yes, continue!",
-                cancelButtonText: "Cancel",
-                reverseButtons: true
-            }).then((result) => {
-
-                if (result.isConfirmed) {
-
-                    let formData = form.serialize();
-
-                    $.ajax({
-                        url: "{{ route('labours.sitestore') }}", // you can change based on button too
-                        type: "POST",
-                        data: formData,
-                        success: function(res) {
-                            if (res.success) {
-
-                                $('#siteTableBody').html('');
-                                $('#siteTableBody').append(res.view);
-                                form[0].reset();
-                                actionType === 'btnUpdateSite' ?
-                                    $('#editSiteModal').modal('hide') :
-                                    "";
-                                Swal.fire({
-                                    title: "Success!",
-                                    text: actionType === 'btnAddSite' ?
-                                        "Site added successfully." :
-                                        "Site updated successfully.",
-                                    icon: "success",
-                                    timer: 1500,
-                                    showConfirmButton: false
-                                });
-                            }
-                        },
-                        error: function(err) {
-                            Swal.fire("Error", "Something went wrong.", "error");
-                            console.log(err.responseText);
-                        }
-                    });
-                }
-            });
-
-        });
-
-
-
-        // ============================
-        // EDIT LABOUR
-        // ============================
-        function editLabour(id) {
-            $.ajax({
-                url: `/labours/edit/${id}`,
-                type: "GET",
-                success: function(labour) {
-                    $('#editLabourId').val(labour.id);
-                    $('#edit_name').val(labour.name);
-                    $('#edit_father_name').val(labour.father_name);
-                    $('#edit_cnic').val(labour.cnic);
-                    $('#edit_contact_no').val(labour.contact_no);
-                    $('#edit_trade').val(labour.trade);
-                    $('#edit_site').val(labour.site);
-                    $('#edit_joining_date').val(labour.joining_date);
-                    $('#editLabourModal').modal('show');
-                }
-            });
-        }
-
-
-        // ============================
-        // DELETE LABOUR
-        // ============================
-        function deleteLabour(id) {
-            if (!confirm('Are you sure you want to delete this labour?')) return;
-
-            $.ajax({
-                url: `/labours/delete/${id}`,
-                type: "DELETE",
-                success: function(res) {
-                    if (res.success) {
-                        loadLabours();
-                        alert('Deleted successfully!');
                     }
-                },
-                error: function(err) {
-                    alert('Error deleting!');
-                }
-            });
-        }
+                });
+            })
+            $('#labName, #labMobile, #cnic').on('keyup', debounce(function() {
+                let formData = new FormData();
+                let $this = $(this);
+                let name = $this.attr('name');
+                formData.append(name, $this.val());
+                formData.append('_token', '{{ csrf_token() }}'); // REQUIRED
 
-        // ============================
-        // ATTENDANCE
-        // ============================
-        function loadAttendance() {
-            $.ajax({
-                url: "{{ route('labours.index') }}",
-                type: "GET",
-                success: function(data) {
-                    let tbody = $('#attendanceTable tbody');
-                    tbody.empty();
-                    data.forEach((labour, i) => {
-                        tbody.append(`
+                $.ajax({
+                    url: "{{ route('labours.check.validate') }}",
+                    type: "POST",
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(res) {
+                        if (res.exists == true) {
+                            $this.addClass('validate-border');
+                            $('.error-' + name).removeClass('d-none');
+                            $('#btnAddLabour').prop('disabled', true);
+                        } else {
+                            $('.error-' + name).addClass('d-none');
+                            $this.removeClass('validate-border');
+                            $('#btnAddLabour').prop('disabled', false);
+                        }
+                    },
+                    error: function(xhr) {
+                        console.log(xhr.responseText);
+                    }
+                });
+
+            }, 500));
+
+
+
+            // Initialize first tab (optional safety)
+            $('.tab[aria-selected="true"]').trigger('click');
+            $(document).on('click', '.cell', function() {
+                // Prevent clicks on disabled Friday cells
+                if ($(this).hasClass('disabled-friday')) {
+                    return; // stop action completely
+                }
+
+                let data = $(this).attr('data-user');
+                if (!data) return; // safety
+
+                let obj;
+
+                try {
+                    obj = JSON.parse(data);
+                } catch (e) {
+                    console.error("Invalid JSON data-user:", data);
+                    return;
+                }
+
+                // Determine site (priority: record → filter → default:1)
+                let site = obj.site && obj.site != "" ?
+                    obj.site :
+                    ($('#attnSiteFilter').val() || 1);
+
+                // Fill modal fields
+                $('#mLabourid').val(obj.id);
+                $('#mDate').val(obj.date);
+                $('#mLabour').val(obj.name);
+                $('#mStatus').val(obj.status);
+                $('#mSite').val(site);
+                $('#mRole').val(obj.role);
+                $('#mRate').val(obj.rate);
+                $('#mHours').val(parseFloat(obj.hours) || 0);
+                $('#mOT').val(obj.ot || 0);
+                $('#mAmount').val(obj.amount || obj.rate);
+
+                // Show modal
+                $('#attnModal').modal('show');
+            });
+
+            $('#btnCloseModal').on('click', function() {
+                $('#attnModal').modal('hide');
+            });
+            $('#editBtnCloseModal').on('click', function() {
+                $('#editLabourModal').modal('hide');
+            });
+            $('#editSiteBtnCloseModal').on('click', function() {
+                $('#editSiteModal').modal('hide');
+            });
+            $(document).on('change', '#mHours', function() {
+                let hours = $(this).val();
+                let ot = $('#mOT').val();
+                hours = parseFloat(hours) + parseFloat(ot);
+                let rate = $('#mRate').val();
+                let perHour = rate / 8;
+                let amount = hours * perHour;
+                $('#mAmount').val(amount);
+            })
+            $(document).on('input', '#mOT', function() {
+                let hours = $(this).val();
+                let ot = $('#mHours').val();
+                hours = parseFloat(hours) + parseFloat(ot);
+                let rate = $('#mRate').val();
+                let perHour = rate / 8;
+                let amount = hours * perHour;
+                $('#mAmount').val(amount);
+            })
+            $(document).on('click', '.editLabourBtn', function() {
+
+                let labour = $(this).attr('labourData');
+                labour = JSON.parse(labour);
+
+                // Fill fields
+                $('#editlabName').val(labour.name);
+                $('#editfatherName').val(labour.father_name);
+                $('#editlabMobile').val(labour.phone);
+                $('#editlabRole').val(labour.role);
+                $('#editlabRate').val(labour.daily_wage);
+                $('#editcnic').val(labour.cnic);
+
+                // Dynamic Form Action
+                let updateUrl = "{{ route('labours.update', ':id') }}";
+                updateUrl = updateUrl.replace(':id', labour.id);
+                $('#editLabourForm').attr('action', updateUrl);
+
+                // Show Modal
+                $('#editLabourModal').modal('show');
+            });
+            $(document).on('click', '.editSiteBtn', function() {
+
+                let site = $(this).attr('SiteData');
+                site = JSON.parse(site);
+
+                // Fill fields
+                $('#edit_site_id').val(site.id);
+                $('#editSiteName').val(site.site_name);
+                $('#editSiteAddr').val(site.site_address);
+                $('#edit_accounts_id').val(site.head_accounting_id).trigger('change');
+                setTimeout(() => {
+                    $('#edit_subaccounts_id').val(site.subhead_accounting_id).trigger('change');
+                }, 1000);
+                $('#editSiteModal').modal('show');
+            });
+
+
+
+            // ============================
+            // ADD LABOUR
+            // ============================
+            $('#addLabourForm').on('submit', function(e) {
+                e.preventDefault();
+                let hasError = false;
+
+                // Clear previous errors
+                $('#addLabourForm .error').text('');
+
+                // Check required fields
+                $('#addLabourForm [name]').each(function() {
+                    let field = $(this);
+                    let value = field.val()?.trim();
+
+                    if (field.prop('required') && value === '') {
+                        field.siblings('.error').removeClass('d-none').text(
+                            'This field is required');
+                        hasError = true;
+                    }
+                });
+
+                if (hasError) return; // stop submit if validation fails
+
+                // --- Confirm Before Submit ---
+                Swal.fire({
+                    title: "Are you sure?",
+                    text: "Do you want to save this Labour?",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "Yes, save it!",
+                    cancelButtonText: "Cancel",
+                    reverseButtons: true
+                }).then((result) => {
+                    if (result.isConfirmed) {
+
+                        let formData = $('#addLabourForm').serialize();
+
+                        $.ajax({
+                            url: "{{ route('labours.store') }}",
+                            type: "POST",
+                            data: formData,
+
+                            success: function(res) {
+                                if (res.success) {
+                                    $('#labourTableBody').html('');
+                                    $('#labourTableBody').append(res.view);
+                                    $('#addLabourForm')[0].reset();
+
+                                    // --- Success Alert ---
+                                    Swal.fire({
+                                        title: "Saved!",
+                                        text: "Labour added successfully.",
+                                        icon: "success",
+                                        timer: 1500,
+                                        showConfirmButton: false
+                                    });
+                                }
+                            },
+
+                            error: function(err) {
+                                Swal.fire({
+                                    title: "Error",
+                                    text: "Error saving labour.",
+                                    icon: "error"
+                                });
+                                console.log(err.responseText);
+                            }
+                        });
+
+                    }
+                });
+            });
+            $('#editLabourForm').on('submit', function(e) {
+                e.preventDefault();
+                let hasError = false;
+
+                // Clear all previous errors
+                $('#editLabourForm .error').text('');
+
+                // Validate required fields
+                $('#editLabourForm [name]').each(function() {
+                    let field = $(this);
+                    let value = field.val()?.trim();
+
+                    if (field.prop('required') && value === '') {
+                        field.siblings('.error').removeClass('d-none').text(
+                            'This field is required');
+                        hasError = true;
+                    }
+                });
+
+                if (hasError) return; // stop if validation fails
+
+
+                // Ask for confirmation
+                Swal.fire({
+                    title: "Are you sure?",
+                    text: "Do you want to update this Labour?",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "Yes, update!",
+                    cancelButtonText: "Cancel",
+                    reverseButtons: true
+                }).then((result) => {
+
+                    if (result.isConfirmed) {
+
+                        let formData = $('#editLabourForm').serialize();
+                        let actionUrl = $('#editLabourForm').attr(
+                            'action'); // dynamic URL already set
+
+                        $.ajax({
+                            url: actionUrl,
+                            type: "POST", // Laravel PUT works with POST + _method
+                            data: formData,
+
+                            success: function(res) {
+                                if (res.success) {
+
+                                    // Reload table
+                                    $('#labourTableBody').html('');
+                                    $('#labourTableBody').append(res.view);
+
+                                    // Close modal
+                                    $('#editLabourModal').modal('hide');
+
+                                    // Success alert
+                                    Swal.fire({
+                                        title: "Updated!",
+                                        text: "Labour updated successfully.",
+                                        icon: "success",
+                                        timer: 1500,
+                                        showConfirmButton: false
+                                    });
+                                }
+                            },
+
+                            error: function(err) {
+                                Swal.fire({
+                                    title: "Error",
+                                    text: "Error updating labour.",
+                                    icon: "error"
+                                });
+                                console.log(err.responseText);
+                            }
+                        });
+                    }
+                });
+            });
+
+
+            $(document).on('click', '#btnAddSite, #btnUpdateSite', function(e) {
+                e.preventDefault();
+
+                let btn = $(this); // clicked button
+                let form = btn.closest('form'); // get respective form
+                let actionType = btn.attr('id'); // btnAddSite or btnUpdateSite
+
+                let hasError = false;
+
+                // Clear previous errors
+                form.find('.error').text('');
+
+                // Validate required fields
+                form.find('[name]').each(function() {
+                    let field = $(this);
+                    let value = field.val()?.trim();
+
+                    if (value === '') {
+                        field.siblings('.error').removeClass('d-none').text(
+                            'This field is required');
+                        hasError = true;
+                    }
+                });
+
+                if (hasError) return;
+
+                // Confirmation message depends on button
+                let confirmText = actionType === 'btnAddSite' ?
+                    "Do you want to add this site?" :
+                    "Do you want to update this site?";
+
+                Swal.fire({
+                    title: "Are you sure?",
+                    text: confirmText,
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "Yes, continue!",
+                    cancelButtonText: "Cancel",
+                    reverseButtons: true
+                }).then((result) => {
+
+                    if (result.isConfirmed) {
+
+                        let formData = form.serialize();
+
+                        $.ajax({
+                            url: "{{ route('labours.sitestore') }}", // you can change based on button too
+                            type: "POST",
+                            data: formData,
+                            success: function(res) {
+                                if (res.success) {
+
+                                    $('#siteTableBody').html('');
+                                    $('#siteTableBody').append(res.view);
+                                    form[0].reset();
+                                    actionType === 'btnUpdateSite' ?
+                                        $('#editSiteModal').modal('hide') :
+                                        "";
+                                    Swal.fire({
+                                        title: "Success!",
+                                        text: actionType === 'btnAddSite' ?
+                                            "Site added successfully." :
+                                            "Site updated successfully.",
+                                        icon: "success",
+                                        timer: 1500,
+                                        showConfirmButton: false
+                                    });
+                                }
+                            },
+                            error: function(err) {
+                                Swal.fire("Error", "Something went wrong.", "error");
+                                console.log(err.responseText);
+                            }
+                        });
+                    }
+                });
+
+            });
+
+
+
+            // ============================
+            // EDIT LABOUR
+            // ============================
+            function editLabour(id) {
+                $.ajax({
+                    url: `/labours/edit/${id}`,
+                    type: "GET",
+                    success: function(labour) {
+                        $('#editLabourId').val(labour.id);
+                        $('#edit_name').val(labour.name);
+                        $('#edit_father_name').val(labour.father_name);
+                        $('#edit_cnic').val(labour.cnic);
+                        $('#edit_contact_no').val(labour.contact_no);
+                        $('#edit_trade').val(labour.trade);
+                        $('#edit_site').val(labour.site);
+                        $('#edit_joining_date').val(labour.joining_date);
+                        $('#editLabourModal').modal('show');
+                    }
+                });
+            }
+
+
+            // ============================
+            // DELETE LABOUR
+            // ============================
+            function deleteLabour(id) {
+                if (!confirm('Are you sure you want to delete this labour?')) return;
+
+                $.ajax({
+                    url: `/labours/delete/${id}`,
+                    type: "DELETE",
+                    success: function(res) {
+                        if (res.success) {
+                            loadLabours();
+                            alert('Deleted successfully!');
+                        }
+                    },
+                    error: function(err) {
+                        alert('Error deleting!');
+                    }
+                });
+            }
+
+            // ============================
+            // ATTENDANCE
+            // ============================
+            function loadAttendance() {
+                $.ajax({
+                    url: "{{ route('labours.index') }}",
+                    type: "GET",
+                    success: function(data) {
+                        let tbody = $('#attendanceTable tbody');
+                        tbody.empty();
+                        data.forEach((labour, i) => {
+                            tbody.append(`
                         <tr>
                             <td>${i + 1}</td>
                             <td>${labour.name}</td>
@@ -1462,112 +1530,147 @@
                             </td>
                         </tr>
                     `);
-                    });
-                }
-            });
-        }
-
-        $('#addAttendanceForm').on('submit', function(e) {
-            e.preventDefault();
-
-            let formData = $(this).serialize();
-
-            $.ajax({
-                url: "{{ route('labours.attendance') }}",
-                type: "POST",
-                data: formData,
-                success: function(res) {
-                    if (res.success) {
-                        alert('Attendance saved!');
-
-                        // Optional: highlight updated cell visually
-                        let labourId = res.data.labour_id;
-                        let date = res.data.date;
-                        let status = res.data.status;
-                        let hours = res.data.hours;
-
-                        // Find matching cell by labour and date
-                        $(`.cell[data-user*='"id":${labourId}'][data-user*='"date":"${date}"']`).each(
-                            function() {
-                                let iconSpan = $(this).find('.ico');
-                                if (status === 'present' && hours === '8') {
-                                    iconSpan.text('✓')
-                                        .removeClass('cross none leave')
-                                        .addClass('tick');
-                                } else if (status === 'absent') {
-                                    iconSpan.text('✗')
-                                        .removeClass('tick none leave')
-                                        .addClass('cross');
-                                } else if (hours === '4' || status === 'half' || status ===
-                                    'leave') {
-                                    // Half-day or leave condition
-                                    iconSpan.text('H')
-                                        .removeClass('tick cross none')
-                                        .addClass('leave');
-                                } else {
-                                    // Default: not marked
-                                    iconSpan.text('-')
-                                        .removeClass('tick cross leave')
-                                        .addClass('none');
-                                }
-
-
-                                // Optional visual feedback (brief highlight)
-                                $(this).addClass('updated');
-                                setTimeout(() => $(this).removeClass('updated'), 1500);
-                            });
+                        });
                     }
-                    $('#attnModal').modal('hide');
-                },
-                error: function() {
-                    alert('Error saving attendance!');
-                }
-            });
-        });
-        $('#btnSiteRun').on('click', function(e) {
-            e.preventDefault();
-            let from = $('#repFrom').val();
-            let to = $('#repTo').val();
-            let site = $('#repSite').val();
-            let data = {
-                '_token': "{{ csrf_token() }}",
-                'start_date': from,
-                'end_date': to,
-                'site_id': site
+                });
             }
-            let formData = $(this).serialize();
 
-            $.ajax({
-                url: "{{ route('labours.report') }}",
-                type: "POST",
-                data: data,
-                success: function(res) {
-                    if (res.success) {
-                        $('#siteReportTableBody').html('');
-                        $('#siteReportTableBody').append(res.view);
-                        $('#site_id').val(res.site_id);
-                        $('#amount').val(res.total_amount);
+            $('#addAttendanceForm').on('submit', function(e) {
+                e.preventDefault();
+
+                let formData = $(this).serialize();
+
+                $.ajax({
+                    url: "{{ route('labours.attendance') }}",
+                    type: "POST",
+                    data: formData,
+                    success: function(res) {
+                        if (res.success) {
+                            alert('Attendance saved!');
+
+                            // Optional: highlight updated cell visually
+                            let labourId = res.data.labour_id;
+                            let date = res.data.date;
+                            let status = res.data.status;
+                            let hours = res.data.hours;
+
+                            // Find matching cell by labour and date
+                            $(`.cell[data-user*='"id":${labourId}'][data-user*='"date":"${date}"']`)
+                                .each(
+                                    function() {
+                                        let iconSpan = $(this).find('.ico');
+                                        if (status === 'present' && hours === '8') {
+                                            iconSpan.text('✓')
+                                                .removeClass('cross none leave')
+                                                .addClass('tick');
+                                        } else if (status === 'absent') {
+                                            iconSpan.text('✗')
+                                                .removeClass('tick none leave')
+                                                .addClass('cross');
+                                        } else if (hours === '4' || status === 'half' ||
+                                            status ===
+                                            'leave') {
+                                            // Half-day or leave condition
+                                            iconSpan.text('H')
+                                                .removeClass('tick cross none')
+                                                .addClass('leave');
+                                        } else {
+                                            // Default: not marked
+                                            iconSpan.text('-')
+                                                .removeClass('tick cross leave')
+                                                .addClass('none');
+                                        }
+
+
+                                        // Optional visual feedback (brief highlight)
+                                        $(this).addClass('updated');
+                                        setTimeout(() => $(this).removeClass('updated'), 1500);
+                                    });
+                        }
+                        $('#attnModal').modal('hide');
+                    },
+                    error: function() {
+                        alert('Error saving attendance!');
                     }
-                },
-                error: function() {
-                    alert('Error saving attendance!');
-                }
+                });
             });
-        });
+            $(document).on('click', '#reportBtnSiteRun, #voucherBtnSiteRun', function(e) {
+                e.preventDefault();
+                $('#site_id').val('');
+                $('#attendance_ids').val('');
+                $('#amount').val('');
+                let id = $(this).attr('id');
+                let from = $('#repFrom').val();
+                let to = $('#repTo').val();
+                let site = $('#repSite').val();
+                let data = {
+                    '_token': "{{ csrf_token() }}",
+                    'start_date': from,
+                    'end_date': to,
+                    'site_id': site,
+                    'id': id
+                }
+                $.ajax({
+                    url: "{{ route('labours.report') }}",
+                    type: "POST",
+                    data: data,
+                    success: function(res) {
+                        if (res.success) {
+                            $('#siteReportTableBody').html('');
+                            $('#siteReportTableBody').append(res.view);
+                            if (id == 'voucherBtnSiteRun') {
+                                $('#site_id').val(res.site_id);
+                                $('#attendance_ids').val(res.attendanceIds);
+                                $('#amount').val(res.total_amount);
+                            }
+                        }
+                    },
+                    error: function() {
+                        alert('Error saving attendance!');
+                    }
+                });
+            });
+            $(document).on('click', '#btnPersonRun', function(e) {
+                e.preventDefault();
+                let from = $('#pFrom').val();
+                let to = $('#pTo').val();
+                let search = $('#personQuery').val();
+                let data = {
+                    '_token': "{{ csrf_token() }}",
+                    'start_date': from,
+                    'end_date': to,
+                    'search': search,
+                }
+
+                $.ajax({
+                    url: "{{ route('labours.person.report') }}",
+                    type: "POST",
+                    data: data,
+                    success: function(res) {
+                        if (res.success) {
+                            $('#personAllBody').html('');
+                            $('#personAllBody').append(res.view);
+                        }
+                    },
+                    error: function() {
+                        alert('Error saving attendance!');
+                    }
+                });
+            });
 
 
-        // ============================
-        // REPORTS
-        // ============================
-        function loadReports() {
-            $.ajax({
-                url: "{{ route('labours.report') }}",
-                type: "GET",
-                success: function(data) {
-                    let tbody = $('#reportTable tbody');
-                    tbody.empty();
-                    data.forEach((row, i) => {
-                        tbody.append(`
+            // ============================
+            // REPORTS
+            // ============================
+            function loadReports() {
+                $.ajax({
+                    url: "{{ route('labours.report') }}",
+                    type: "GET",
+                    success: function(data) {
+                        let tbody = $('#reportTable tbody');
+                        tbody.empty();
+                        data.forEach((row, i) => {
+                            tbody.append(`
                         <tr>
                             <td>${i + 1}</td>
                             <td>${row.labour.name}</td>
@@ -1575,18 +1678,17 @@
                             <td>${row.status}</td>
                         </tr>
                     `);
-                    });
-                },
-                error: function(err) {
-                    alert('Failed to load report');
-                }
-            });
-        }
+                        });
+                    },
+                    error: function(err) {
+                        alert('Failed to load report');
+                    }
+                });
+            }
 
-        // ============================
-        // INIT ON PAGE LOAD
-        // ============================
-        $(document).ready(function() {
+            // ============================
+            // INIT ON PAGE LOAD
+            // ============================
             // loadLabours();
             // loadAttendance();
             // loadReports();
@@ -1676,7 +1778,7 @@
 
             function changeWeek(offset) {
                 let current = $('#attnWeek').val(); // format "2025-W05"
-                console.log(current,'current');
+                console.log(current, 'current');
 
                 if (!current) return;
 
@@ -1693,7 +1795,7 @@
                 }
 
                 let newWeek = `${year}-W${String(week).padStart(2, '0')}`;
-                $('#attnWeek').val(newWeek);
+                $('#attnWeek').val(newWeek).attr('value', newWeek);
 
                 loadWeekData();
             }
@@ -1702,19 +1804,25 @@
             $('#btnAttnNext').on('click', () => changeWeek(1));
 
             $('#attnWeek, #attnSiteFilter').on('change', loadWeekData);
+            $('#attnSearch').on('input', loadWeekData);
 
         });
 
         function loadWeekData() {
+            let attnWeek = $('#attnWeek').val();
             $.ajax({
                 url: "{{ route('attendance.week.load') }}",
                 type: "GET",
                 data: {
-                    week: $('#attnWeek').val(),
-                    site_id: $('#attnSiteFilter').val()
+                    week: attnWeek,
+                    site_id: $('#attnSiteFilter').val(),
+                    search: $('#attnSearch').val(),
                 },
                 success: function(res) {
+
+                    $('#attnWeek').val(attnWeek).attr('value', attnWeek);
                     $('#attnBoard').html(res.view); // replace table with new week
+                    console.log(res);
                 }
             });
         }

@@ -368,6 +368,7 @@ class AccountingController extends Controller
 
             Alert::success('Notification', 'Data <b>' . $data->project . '</b> Save successfully ')->toToast()->toHtml();
         } catch (\Throwable $th) {
+            dd($th);
             DB::rollback();
             Alert::error('Notification', 'Data <b>' . $th->getMessage())->toToast()->toHtml();
         }

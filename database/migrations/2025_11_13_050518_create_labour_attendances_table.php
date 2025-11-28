@@ -29,6 +29,8 @@ return new class extends Migration {
 
             $table->boolean('is_approved')->default(false);
             $table->foreignId('marked_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->enum('paid_status', ['paid', 'unpaid'])->default('unpaid');
+            $table->enum('voucher_status', ['created', 'notcreated'])->default('notcreated');
 
             $table->timestamps();
 

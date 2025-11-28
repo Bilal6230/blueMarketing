@@ -9,6 +9,5 @@
         <td class="right">{{ $report['days'] }}</td>
         <td class="right">{{ $report['overtime'] }}</td>
         <td class="right">{{ $report['amount'] }}</td>
-        </td>
     </tr>
 @endforeach
