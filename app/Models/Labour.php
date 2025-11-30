@@ -14,6 +14,7 @@ class Labour extends Model
         'cnic',
         'phone',
         'daily_wage',
+        'advance',
         'join_date',
         'role',
         'status',

@@ -41,7 +41,7 @@ class LabourController extends Controller
         })->get();
 
         $x['headaccounts'] = $data_list;
-        $x['personWiseReports'] = $personWiseReports = Labour::select('labours.id', 'labours.name', 'labours.phone as mobile', 'labours.role as designation')
+        $x['personWiseReports'] = $personWiseReports = Labour::select('labours.id', 'labours.name', 'labours.advance', 'labours.phone as mobile', 'labours.role as designation')
             ->with('attendances')
             ->whereHas('attendances', function ($query) use ($request) {
                 $query->where('voucher_status', 'created');
@@ -49,8 +49,10 @@ class LabourController extends Controller
             ->get()
             ->map(function ($labour) {
 
+                $attendanceIds = $labour->attendances->pluck('id')->toArray();
                 $totalHours = $labour->attendances->sum('hours');
                 $totalOT = $labour->attendances->sum('ot_hours');
+                $ratings = $labour->attendances->sum('ratings')/$labour->attendances->count();
 
                 $rate = optional($labour->attendances->first())->rate
                     ?? $labour->daily_wage
@@ -68,7 +70,10 @@ class LabourController extends Controller
                     'days' => number_format($days, 2),
                     'overtime' => number_format($totalOT, 2),
                     'amount' => number_format($amount, 2),
+                    'advance' => $labour->advance,
                     'amount_raw' => $amount,
+                    'ratings' => number_format($ratings, 1),
+                    'attendance_ids' => json_encode($attendanceIds, JSON_UNESCAPED_UNICODE), // ✅ real attendance IDs
                     'paid_status' => optional($labour->attendances->first())->paid_status
                 ];
             });
@@ -79,6 +84,18 @@ class LabourController extends Controller
 
         return view('admin.labours.index', $x);
     }
+    public function updatePaidStatus(Request $request)
+    {
+        $status = $request->status == 1 ? 'paid' : 'unpaid';
+        if($status == 'paid'){
+            Labour::updateOrCreate(['id' => $request->id], ['advance' => 0]);
+        }
+        LabourAttendance::whereIn('id', $request->ids)
+            ->update(['paid_status' => $status]);
+
+        return response()->json(['success' => true]);
+    }
+
 
     public function create()
     {
@@ -143,12 +160,7 @@ class LabourController extends Controller
             'hours'       => 'nullable|numeric|min:0',
             'ot_hours'    => 'nullable|numeric|min:0',
             'rate'        => 'nullable|numeric|min:0',
-            // 'amount'      => 'nullable|numeric|min:0',
-            // 'site_name'   => 'nullable|string|max:255',
-            // 'remarks'     => 'nullable|string|max:255',
-            // 'is_approved' => 'boolean',
-            // 'is_draft'    => 'boolean',
-            // 'town_id'     => 'nullable|integer',
+            'ratings'        => 'nullable',
         ]);
 
         // Auto-calculate amount if not provided
@@ -344,8 +356,8 @@ class LabourController extends Controller
                     'paid_status' => optional($labour->attendances->first())->paid_status
                 ];
             });
-            $x['total_amount'] = $personWiseReports->sum('amount_raw');
-
+        $x['total_amount'] = $personWiseReports->sum('amount_raw');
+        
         // Render table partial
         $view = view('admin.labours.person-wise-report', $x)->render();
 

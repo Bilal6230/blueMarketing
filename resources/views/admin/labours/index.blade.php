@@ -502,6 +502,101 @@
             display: flex;
             justify-content: space-between;
         }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #e74c3c;
+            /* red for unpaid */
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: #2ecc71;
+            /* green for paid */
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(26px);
+        }
+
+        .paid-label {
+            margin-left: 8px;
+            font-weight: bold;
+        }
+
+        .star-rating {
+            font-size: 28px;
+            cursor: pointer;
+            color: #ccc;
+        }
+
+        .star-rating .selected {
+            color: gold;
+        }
+
+        .star-rating span:hover,
+        .star-rating span:hover~span {
+            color: #ccc !important;
+        }
+
+        .star-rating span:hover,
+        .star-rating span:hover~span {
+            color: gold !important;
+        }
+
+        .stars {
+            --star-size: 24px;
+            --star-color: #ccc;
+            --star-fill: gold;
+            --percent: calc(var(--rating) / 5 * 100%);
+
+            display: inline-block;
+            font-size: var(--star-size);
+            font-family: Times;
+            line-height: 1;
+
+            background:
+                linear-gradient(90deg,
+                    var(--star-fill) var(--percent),
+                    var(--star-color) var(--percent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stars::before {
+            content: "★★★★★";
+        }
     </style>
 
     <div class="wrap">
@@ -727,7 +822,8 @@
                 <div class="hd"><b>Person Wise Report</b><span class="caps">details & totals</span></div>
                 <div class="bd">
                     <div class="toolbar row" style="margin-bottom:12px">
-                        <input id="personQuery" class="col-3" placeholder="Search by name or mobile" style="min-width:260px" />
+                        <input id="personQuery" class="col-3" placeholder="Search by name or mobile"
+                            style="min-width:260px" />
                         <input type="date" id="pFrom" class="col-4" />
                         <input type="date" id="pTo" class="col-4" />
                     </div>
@@ -767,12 +863,13 @@
                                     <th>Mobile</th>
                                     <th>Designation</th>
                                     <th>Rate</th>
-                                    <th>Advance</th>
                                     <th>Days</th>
                                     <th>Over Time</th>
                                     <th>status</th>
                                     <th>Ratings</th>
                                     <th>Amount</th>
+                                    <th>Advance</th>
+                                    <th>Final Amount</th>
                                 </tr>
                             </thead>
                             <tbody id="personAllBody">
@@ -845,6 +942,7 @@
                             </select>
                         </div>
                     </div>
+
                     <div class="row">
                         <div class="col">
                             <label>Site</label>
@@ -863,6 +961,7 @@
                             <input id="mRate" type="number" name="rate" />
                         </div>
                     </div>
+
                     <div class="row">
                         <div class="col">
                             <label>Shift</label>
@@ -881,12 +980,31 @@
                             <input id="mAmount" disabled name="amount" />
                         </div>
                     </div>
+
+                    <!-- ⭐ NEW RATING FIELD -->
+                    <div class="row">
+                        <div class="col">
+                            <label>Rating</label>
+                            <div class="star-rating">
+                                <span data-value="1">★</span>
+                                <span data-value="2">★</span>
+                                <span data-value="3">★</span>
+                                <span data-value="4">★</span>
+                                <span data-value="5">★</span>
+                            </div>
+                            <input type="hidden" name="ratings" id="mRating" value="3"> <!-- default 3 -->
+                        </div>
+                    </div>
+
+
                     <div class="help">Amount = (Rate/8) x (Hours + Overtime). Base day is 8 hours.</div>
                 </div>
+
                 <div class="ft">
                     <button class="btn ok" id="btnSaveAttn">Save</button>
                 </div>
             </form>
+
 
         </div>
     </div>
@@ -900,32 +1018,38 @@
                 <div class="row">
                     <div class="col"><label>Name</label><input id="editlabName" name="name"
                             placeholder="e.g., John Peter" required />
-                        <small class="text-danger error error-name d-none">Name is already exist</small>
+                        {{-- <small class="text-danger error error-name d-none">Name is already exist</small> --}}
                     </div>
                     <div class="col"><label>Father Name</label><input id="editfatherName" name="father_name"
                             placeholder="e.g., John Peter" required />
-                        <small class="text-danger error"></small>
+                        {{-- <small class="text-danger error"></small> --}}
                     </div>
                 </div>
                 <div class="row">
                     <div class="col"><label>Mobile</label><input class="" id="editlabMobile" name="phone"
                             placeholder="0300 1234567" required />
-                        <small class="text-danger error error-phone d-none">Mobile is already exist</small>
+                        {{-- <small class="text-danger error error-phone d-none">Mobile is already exist</small> --}}
                     </div>
                     <div class="col"><label>Designation</label><input id="editlabRole" name="role"
                             placeholder="Mason / Helper" required />
-                        <small class="text-danger error"></small>
+                        {{-- <small class="text-danger error"></small> --}}
                     </div>
 
                 </div>
                 <div class="row">
                     <div class="col"><label>Rate (per 8 hours)</label><input id="editlabRate" name="daily_wage"
                             type="number" placeholder="1000" required />
-                        <small class="text-danger error"></small>
+                        {{-- <small class="text-danger error"></small> --}}
                     </div>
                     <div class="col"><label>CNIC</label><input id="editcnic" name="cnic"
                             placeholder="12345-6789012-3" required />
-                        <small class="text-danger error error-cnic d-none">CNIC is already exist</small>
+                        {{-- <small class="text-danger error error-cnic d-none">CNIC is already exist</small> --}}
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col"><label>Advance</label><input id="editlabadvance" name="advance" type="number"
+                            placeholder="1000" />
+                        {{-- <small class="text-danger error"></small> --}}
                     </div>
                 </div>
                 <div class="row" style="margin-top:10px">
@@ -1002,6 +1126,21 @@
                     'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                 }
             });
+            $(document).on('click', '.star-rating span', function() {
+                let rating = $(this).data('value');
+
+                // Update hidden input
+                $('#mRating').val(rating);
+
+                // Update colors
+                $('.star-rating span').removeClass('selected');
+                $('.star-rating span').each(function() {
+                    if ($(this).data('value') <= rating) {
+                        $(this).addClass('selected');
+                    }
+                });
+            });
+
             $('.tab').on('click', function() {
                 // Remove active state from all tabs
                 $('.tab').attr('aria-selected', 'false');
@@ -1203,6 +1342,7 @@
                 $('#editlabRole').val(labour.role);
                 $('#editlabRate').val(labour.daily_wage);
                 $('#editcnic').val(labour.cnic);
+                $('#editlabadvance').val(labour.advance);
 
                 // Dynamic Form Action
                 let updateUrl = "{{ route('labours.update', ':id') }}";
@@ -1805,6 +1945,27 @@
 
             $('#attnWeek, #attnSiteFilter').on('change', loadWeekData);
             $('#attnSearch').on('input', loadWeekData);
+            $(document).on('change', '.toggle-paid', function() {
+
+                let ids = $(this).data('ids');
+                let id = $(this).data('id');
+                let paid = $(this).is(':checked') ? 1 : 0;
+                let label = $(this).closest('td').find('.paid-label');
+
+                $.ajax({
+                    url: "{{ route('labours.updatePaidStatus') }}",
+                    type: "POST",
+                    data: {
+                        id: id,
+                        ids: ids,
+                        status: paid,
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(res) {
+                        label.text(paid ? 'Paid' : 'Unpaid');
+                    }
+                });
+            });
 
         });
 

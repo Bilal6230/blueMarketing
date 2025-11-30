@@ -21,6 +21,9 @@ class LabourAttendance extends Model
         'remarks',
         'is_approved',
         'marked_by',
+        'paid_status',
+        'voucher_status',
+        'ratings'
     ];
     public function labour()
     {
