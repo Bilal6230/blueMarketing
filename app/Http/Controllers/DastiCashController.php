@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\DastiCash;
+use App\Models\Dasticash;
 use Illuminate\Http\Request;
 
 class DastiCashController extends Controller
@@ -17,21 +17,21 @@ class DastiCashController extends Controller
             'description' => 'nullable|string',
         ]);
         $validater['project_id'] = $selectedProjectId;
-        DastiCash::create($validater);
+        Dasticash::create($validater);
         return redirect()->route('dashboard')->with('success', 'Record added successfully.');
     }
 
     // Show edit form
     public function edit($id)
     {
-        $record = DastiCash::findOrFail($id);
+        $record = Dasticash::findOrFail($id);
         return view('dasticash.edit', compact('record'));
     }
 
     // Update record
     public function update(Request $request, $id)
     {
-        $record = DastiCash::findOrFail($id);
+        $record = Dasticash::findOrFail($id);
 
         $request->validate([
             'name' => 'required|string|max:255',
@@ -47,7 +47,7 @@ class DastiCashController extends Controller
     // Delete record
     public function destroy($id)
     {
-        $record = DastiCash::findOrFail($id);
+        $record = Dasticash::findOrFail($id);
         $record->delete();
 
         return redirect()->route('dashboard')->with('success', 'Record added successfully.');
