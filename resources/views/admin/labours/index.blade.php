@@ -479,18 +479,6 @@
             z-index: 10;
         }
 
-        .disabled-friday {
-            background: #f4f4f4 !important;
-            color: #b0b0b0 !important;
-            cursor: not-allowed;
-            opacity: 0.6;
-            pointer-events: none;
-            /* fully disables clicking */
-        }
-
-        .disabled-friday .ico {
-            color: #b0b0b0 !important;
-        }
 
         .btns {
             display: flex;
@@ -596,6 +584,46 @@
 
         .stars::before {
             content: "★★★★★";
+        }
+
+        .labour-tooltip {
+            position: relative;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        /* Tooltip box */
+        .labour-tooltip:hover::after {
+            content: attr(data-tooltip);
+            white-space: pre-line;
+
+            position: absolute;
+            top: 120%;
+            left: 50%;
+            transform: translateX(-50%);
+
+            background: #1f2937;
+            color: #fff;
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            line-height: 1.4;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            z-index: 999;
+
+            width: max-content;
+            max-width: 250px;
+        }
+
+        /* Tooltip arrow */
+        .labour-tooltip:hover::before {
+            content: '';
+            position: absolute;
+            top: 110%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-bottom-color: #1f2937;
         }
     </style>
 
@@ -765,14 +793,13 @@
                 <div class="hd"><b>Site Report</b><span class="caps">filter & total cost</span></div>
                 <div class="bd">
                     <div class="toolbar row" style="margin-bottom:12px">
-                        <select id="repSite" class="col-3">
+                        <select id="repSite" class="col-5">
                             <option value="">All Sites</option>
                             @foreach ($sites as $site)
                                 <option value="{{ $site->id }}">{{ $site->site_name }}</option>
                             @endforeach
                         </select>
-                        <input type="date" id="repFrom" class="col-4" />
-                        <input type="date" id="repTo" class="col-4" />
+                        <input type="week" id="repFrom" class="col-6" value="{{ now()->format('o-\WW') }}"/>
                     </div>
                     <div class="site-report-actions">
                         <div class="site-report-btns">
@@ -822,37 +849,15 @@
                 <div class="hd"><b>Person Wise Report</b><span class="caps">details & totals</span></div>
                 <div class="bd">
                     <div class="toolbar row" style="margin-bottom:12px">
-                        <input id="personQuery" class="col-3" placeholder="Search by name or mobile"
+                        <input id="personQuery" class="col-5" placeholder="Search by name or mobile"
                             style="min-width:260px" />
-                        <input type="date" id="pFrom" class="col-4" />
-                        <input type="date" id="pTo" class="col-4" />
+                        <input type="week" id="pFrom" class="col-6" value="{{ now()->format('o-\WW') }}"/>
                     </div>
                     <div class="site-report-actions">
                         <button class="btn" id="btnPersonRun">Run</button>
                         <button class="btn" id="btnPersonExport">Export CSV</button>
                     </div>
                     <div id="personHeader" class="row" style="margin-bottom:10px"></div>
-                    {{-- <div class="table-scroll">
-                        <table id="personReportTable table">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Site</th>
-                                    <th>Designation</th>
-                                    <th class="right">Hours</th>
-                                    <th class="right">Overtime</th>
-                                    <th class="right">Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                    <div class="row" style="margin-top:12px">
-                        <div class="col stat"><span class="muted">Total Days</span> <b id="pDays">0</b></div>
-                        <div class="col stat"><span class="muted">Total Amount</span> <b id="pTotal">0</b></div>
-                        <div class="col stat"><span class="muted">Advance</span> <b id="pAdv">0</b></div>
-                        <div class="col stat"><span class="muted">Net</span> <b id="pNet">0</b></div>
-                    </div> --}}
                     <div style="margin-top:14px" class="help">On first load, all labours are listed below. Use search to
                         pick someone.</div>
                     <div style="margin-top:8px" class="table-scroll max-height">
@@ -865,11 +870,11 @@
                                     <th>Rate</th>
                                     <th>Days</th>
                                     <th>Over Time</th>
-                                    <th>status</th>
+                                    {{-- <th>status</th> --}}
                                     <th>Ratings</th>
                                     <th>Amount</th>
-                                    <th>Advance</th>
-                                    <th>Final Amount</th>
+                                    <th>Over All Balance</th>
+                                    <th>Payments</th>
                                 </tr>
                             </thead>
                             <tbody id="personAllBody">
@@ -1265,10 +1270,7 @@
             // Initialize first tab (optional safety)
             $('.tab[aria-selected="true"]').trigger('click');
             $(document).on('click', '.cell', function() {
-                // Prevent clicks on disabled Friday cells
-                if ($(this).hasClass('disabled-friday')) {
-                    return; // stop action completely
-                }
+
 
                 let data = $(this).attr('data-user');
                 if (!data) return; // safety
@@ -1686,47 +1688,69 @@
                     data: formData,
                     success: function(res) {
                         if (res.success) {
-                            alert('Attendance saved!');
 
-                            // Optional: highlight updated cell visually
-                            let labourId = res.data.labour_id;
-                            let date = res.data.date;
-                            let status = res.data.status;
-                            let hours = res.data.hours;
+                            let row = res.data;
 
-                            // Find matching cell by labour and date
-                            $(`.cell[data-user*='"id":${labourId}'][data-user*='"date":"${date}"']`)
-                                .each(
-                                    function() {
-                                        let iconSpan = $(this).find('.ico');
-                                        if (status === 'present' && hours === '8') {
-                                            iconSpan.text('✓')
-                                                .removeClass('cross none leave')
-                                                .addClass('tick');
-                                        } else if (status === 'absent') {
-                                            iconSpan.text('✗')
-                                                .removeClass('tick none leave')
-                                                .addClass('cross');
-                                        } else if (hours === '4' || status === 'half' ||
-                                            status ===
-                                            'leave') {
-                                            // Half-day or leave condition
-                                            iconSpan.text('H')
-                                                .removeClass('tick cross none')
-                                                .addClass('leave');
-                                        } else {
-                                            // Default: not marked
-                                            iconSpan.text('-')
-                                                .removeClass('tick cross leave')
-                                                .addClass('none');
-                                        }
+                            // Find cell using safer selectors
+                            let cell = $(
+                                `.cell[data-id="${row.labour_id}"][data-date="${row.date}"]`
+                                );
 
+                            if (cell.length) {
 
-                                        // Optional visual feedback (brief highlight)
-                                        $(this).addClass('updated');
-                                        setTimeout(() => $(this).removeClass('updated'), 1500);
-                                    });
+                                // Determine icon + class
+                                let icon = '-';
+                                let iconClass = 'none';
+
+                                if (row.hours == 4 || row.status === 'leave') {
+                                    icon = 'H';
+                                    iconClass = 'leave';
+                                } else if (row.status === 'present') {
+                                    icon = '✓';
+                                    iconClass = 'tick';
+                                } else if (row.status === 'absent') {
+                                    icon = '✗';
+                                    iconClass = 'cross';
+                                }
+
+                                // Update main icon
+                                let mainIcon = cell.find('.ico').first();
+                                mainIcon.text(icon)
+                                    .removeClass('tick cross leave none')
+                                    .addClass(iconClass);
+
+                                // Remove old OT badge
+                                cell.find('.ot-badge').remove();
+
+                                // Add new OT badge if OT > 0
+                                if (row.ot_hours > 0) {
+                                    cell.append(
+                                        `<span class="ico tick ot-badge" style="margin-left:3px">${parseFloat(row.ot_hours)}</span>`
+                                    );
+                                }
+
+                                // Update stored JSON inside data-user
+                                let updatedData = {
+                                    id: row.labour_id,
+                                    name: row.name,
+                                    role: row.role,
+                                    date: row.date,
+                                    status: row.status,
+                                    hours: row.hours,
+                                    ot: parseFloat(row.ot_hours),
+                                    site: row.site_id,
+                                    rate: row.rate,
+                                    amount: row.amount,
+                                };
+
+                                cell.attr("data-user", JSON.stringify(updatedData));
+
+                                // highlight cell
+                                cell.addClass("updated");
+                                setTimeout(() => cell.removeClass("updated"), 1500);
+                            }
                         }
+
                         $('#attnModal').modal('hide');
                     },
                     error: function() {
@@ -1734,19 +1758,18 @@
                     }
                 });
             });
+
             $(document).on('click', '#reportBtnSiteRun, #voucherBtnSiteRun', function(e) {
                 e.preventDefault();
                 $('#site_id').val('');
                 $('#attendance_ids').val('');
                 $('#amount').val('');
                 let id = $(this).attr('id');
-                let from = $('#repFrom').val();
-                let to = $('#repTo').val();
+                let week = $('#repFrom').val();
                 let site = $('#repSite').val();
                 let data = {
                     '_token': "{{ csrf_token() }}",
-                    'start_date': from,
-                    'end_date': to,
+                    'week': week,
                     'site_id': site,
                     'id': id
                 }
@@ -1772,13 +1795,11 @@
             });
             $(document).on('click', '#btnPersonRun', function(e) {
                 e.preventDefault();
-                let from = $('#pFrom').val();
-                let to = $('#pTo').val();
+                let week = $('#pFrom').val();
                 let search = $('#personQuery').val();
                 let data = {
                     '_token': "{{ csrf_token() }}",
-                    'start_date': from,
-                    'end_date': to,
+                    'week': week,
                     'search': search,
                 }
 
@@ -1917,9 +1938,7 @@
             });
 
             function changeWeek(offset) {
-                let current = $('#attnWeek').val(); // format "2025-W05"
-                console.log(current, 'current');
-
+                let current = $('#attnWeek').val(); // "2025-W05"
                 if (!current) return;
 
                 let [year, week] = current.split('-W');
@@ -1943,11 +1962,15 @@
             $('#btnAttnPrev').on('click', () => changeWeek(-1));
             $('#btnAttnNext').on('click', () => changeWeek(1));
 
+
             $('#attnWeek, #attnSiteFilter').on('change', loadWeekData);
             $('#attnSearch').on('input', loadWeekData);
-            $(document).on('change', '.toggle-paid', function() {
+            $(document).on('click', '#createLabourVoucher', function() {
 
-                let ids = $(this).data('ids');
+                let labour_amount = $('.labour_amount').val();
+                console.log(labour_amount, 'labour_amount');
+                return;
+
                 let id = $(this).data('id');
                 let paid = $(this).is(':checked') ? 1 : 0;
                 let label = $(this).closest('td').find('.paid-label');

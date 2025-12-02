@@ -1,12 +1,23 @@
 <div class="attn table" id="attnBoard">
+
+    {{-- LEFT SIDE: LABOURS --}}
     <div class="left" id="attnLabours">
         <div class="days-head" id="attnDays">
-            <div class="d"> Labours</div>
+            <div class="d">Labours</div>
         </div>
 
         @foreach ($attendance_labours as $labour)
-            <div class="lab" data-id="{{ $labour->id }}">
-                <span class="nm">{{ $labour->name }}</span>
+            <div class="lab labour-tooltip" data-id="{{ $labour->id }}"
+                data-tooltip="
+Name: {{ $labour['name'] }}
+Father Name: {{ $labour['father_name'] }}
+CNIC: {{ $labour['cnic'] }}
+Phone: {{ $labour['phone'] }}
+Role: {{ $labour['role'] }}
+Daily Wage: Rs {{ $labour['daily_wage'] }}
+">
+
+                <span class="nm">{{ $labour->name }} ({{ substr($labour['cnic'], -4) }})</span>
                 <span class="muted small">
                     {{ $labour->phone }} · {{ $labour->role }} · Rs&nbsp;{{ $labour->daily_wage }}
                 </span>
@@ -16,27 +27,29 @@
 
     @php
         use Carbon\Carbon;
-        $today = Carbon::now();
-        [$start, $end, $weekDays] = loadAttendanceWeek($week ?? now()->format('o-\WW'));
+        [$start, $end, $weekDays] = loadAttendanceWeek($week ?? now()->format('Y-m-d'));
     @endphp
 
+
+    {{-- RIGHT SIDE --}}
     <div class="right">
 
-        {{-- HEADER DAYS --}}
+        {{-- DAYS HEADER (F → T WEEK) --}}
         <div class="days-head">
             @foreach ($weekDays as $day)
                 @php
-                    $isFriday = Carbon::parse($day)->isFriday();
+                    $carbon = Carbon::parse($day);
+                    $dayShort = strtoupper(substr($carbon->format('D'), 0, 1)); // F, S, S, M, T, W, T
+                    $dateNum = $carbon->format('d');
                 @endphp
 
-                <div class="d
-                    {{ $day == now()->format('Y-m-d') ? 'today' : '' }}
-                    {{ $isFriday ? 'disabled-friday' : '' }}
-                ">
-                    {{ Carbon::parse($day)->format('d') }}
+                <div class="d {{ $day == now()->format('Y-m-d') ? 'today' : '' }}">
+                    <div class="day-top">{{ $dayShort }}</div>
+                    <div class="day-date">{{ $dateNum }}</div>
                 </div>
             @endforeach
         </div>
+
 
         {{-- LABOUR ROWS --}}
         <div class="rows" id="attnRows">
@@ -45,7 +58,6 @@
 
                     @foreach ($weekDays as $day)
                         @php
-                            $isFriday = Carbon::parse($day)->isFriday();
                             $attendance = $labour->attendances->where('date', $day)->first();
 
                             $status = 'present';
@@ -82,11 +94,15 @@
                             ];
                         @endphp
 
-                        <div class="cell {{ $isFriday ? 'disabled-friday' : '' }}"
-                             data-user='{{ json_encode($userData) }}'>
-                            <span class="ico {{ $iconClass }}">{{ $icon }}</span>
-                        </div>
+                        <div class="cell" data-id="{{ $labour->id }}" data-date="{{ $day }}"
+                            data-user='@json($userData)'>
 
+                            <span class="ico {{ $iconClass }}">{{ $icon }}</span>
+
+                            @if ($attendance && $attendance->ot_hours > 0)
+                                <span class="ico tick ot-badge">{{ number_format($attendance->ot_hours) }}</span>
+                            @endif
+                        </div>
                     @endforeach
 
                 </div>
@@ -94,6 +110,4 @@
         </div>
 
     </div>
-
 </div>
-

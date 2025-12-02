@@ -635,16 +635,24 @@ function get_jv_number($id = null)
 if (!function_exists('loadAttendanceWeek')) {
     function loadAttendanceWeek($weekInput)
     {
-        // Input format: 2025-W05
         try {
-            $start = Carbon::parse($weekInput)->startOfWeek();
+            // Parse normally first
+            $start = Carbon::parse($weekInput);
         } catch (\Exception $e) {
-            $start = now()->startOfWeek();
+            $start = now();
         }
 
-        $end = $start->copy()->endOfWeek();
+        /**
+         * Force the week start to Friday
+         * Carbon::setWeekStartsAt() affects global state — avoid that.
+         * Instead, manually shift to nearest Friday.
+         */
+        $start = $start->copy()->startOfWeek(Carbon::FRIDAY);
 
-        // Generate all 7 days
+        // End of week should be Thursday (6 days after Friday)
+        $end = $start->copy()->addDays(6);
+
+        // Generate 7 days Friday → Thursday
         $days = [];
         $day = $start->copy();
 
@@ -656,6 +664,7 @@ if (!function_exists('loadAttendanceWeek')) {
         return [$start, $end, $days];
     }
 }
+
 if (!function_exists('numberToUrduWords')) {
     function numberToUrduWords($number)
     {
