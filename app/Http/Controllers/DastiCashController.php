@@ -10,15 +10,29 @@ class DastiCashController extends Controller
     // Store new record
     public function store(Request $request)
     {
-        $selectedProjectId = getSelectedTown();
-        $validater = $request->validate([
+        $validator = \Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'amount' => 'nullable|string|max:255',
             'description' => 'nullable|string',
         ]);
-        $validater['project_id'] = $selectedProjectId;
-        Dasticash::create($validater);
-        return redirect()->route('dashboard')->with('success', 'Record added successfully.');
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $data = $validator->validated();
+        $data['project_id'] = getSelectedTown();
+
+        $record = Dasticash::create($data);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Dasticash added successfully.',
+            'data' => $record
+        ]);
     }
 
     // Show edit form
@@ -33,15 +47,26 @@ class DastiCashController extends Controller
     {
         $record = Dasticash::findOrFail($id);
 
-        $request->validate([
+        $validator = \Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'amount' => 'nullable|string|max:255',
             'description' => 'nullable|string',
         ]);
 
-        $record->update($request->only('name', 'amount', 'description'));
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'errors' => $validator->errors()
+            ], 422);
+        }
 
-        return redirect()->route('dashboard')->with('success', 'Record added successfully.');
+        $record->update($validator->validated());
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Dasticash updated successfully.',
+            'data' => $record
+        ]);
     }
 
     // Delete record

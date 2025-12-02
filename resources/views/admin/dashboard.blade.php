@@ -193,7 +193,7 @@
                                         <div class="financial-circle bg_success">
                                             <div class="circle-content">
                                                 <h6>Total Cash</h6>
-                                                <h4 class="mt-2">{{ number_format($total_blance , 2) }}</h4>
+                                                <h4 class="mt-2">{{ number_format($total_blance, 2) }}</h4>
                                             </div>
                                         </div>
                                         <p class="text-muted mt-2 text-center">Available Cash Balance</p>
@@ -226,11 +226,11 @@
                                         </thead>
                                         <tbody>
                                             @foreach ($dasticashData as $key => $item)
-                                                <tr>
+                                                <tr id="row-{{ $item->id }}">
                                                     <td>{{ $key + 1 }}</td>
-                                                    <td>{{ $item->name }}</td>
-                                                    <td>{{ $item->amount }}</td>
-                                                    <td>{{ $item->description }}</td>
+                                                    <td class="name-cell">{{ $item->name }}</td>
+                                                    <td class="amount-cell">{{ $item->amount }}</td>
+                                                    <td class="desc-cell">{{ $item->description }}</td>
                                                     <td>
                                                         <a href="javascript:void(0)" class="btn btn-sm btn-info edit-btn"
                                                             data-id="{{ $item->id }}"
@@ -239,12 +239,10 @@
                                                             data-description="{{ $item->description }}">
                                                             <i class="fas fa-edit"></i>
                                                         </a>
-                                                        <form action="{{ route('dasticash.destroy', $item->id) }}"
-                                                            method="POST" style="display:inline-block">
-                                                            @csrf @method('DELETE')
-                                                            <button class="btn btn-sm btn-danger"><i
-                                                                    class="fas fa-trash"></i></button>
-                                                        </form>
+                                                        <button class="btn btn-sm btn-danger delete-btn"
+                                                            data-id="{{ $item->id }}"
+                                                            data-url="{{ route('dasticash.destroy', $item->id) }}"><i
+                                                                class="fas fa-trash"></i></button>
                                                     </td>
                                                 </tr>
                                             @endforeach
@@ -421,8 +419,120 @@
     </div>
 @endsection
 @section('js')
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <script>
         $(document).ready(function() {
+            let destroyUrl = "{{ url('admin/dasticash') }}"; // e.g., /admin/dasticash
+
+            // ------------------------------
+            // RESET FIELD ERRORS
+            // ------------------------------
+            function resetErrors(form) {
+                $(form).find('.text-danger').remove();
+                $(form).find('.is-invalid').removeClass('is-invalid');
+            }
+
+            // ------------------------------
+            // BUTTON LOADER
+            // ------------------------------
+            function toggleLoader(button, loading = true, text = "Saving...") {
+                if (loading) {
+                    $(button).html(`<span class="spinner-border spinner-border-sm"></span> ${text}`);
+                    $(button).attr("disabled", true);
+                } else {
+                    $(button).html($(button).data('original-text'));
+                    $(button).attr("disabled", false);
+                }
+            }
+
+            // ------------------------------
+            // CSRF TOKEN
+            // ------------------------------
+            $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                }
+            });
+
+            // ===================================================================
+            // 1️⃣ ADD DASTICASH (AJAX)
+            // ===================================================================
+            $("#addDasticashModal form").submit(function(e) {
+                e.preventDefault();
+
+                let form = this;
+                let button = $(form).find("button[type='submit']");
+                button.data('original-text', button.text());
+
+                resetErrors(form);
+                toggleLoader(button, true, "Saving...");
+
+                $.ajax({
+                    type: "POST",
+                    url: form.action,
+                    data: new FormData(form),
+                    processData: false,
+                    contentType: false,
+
+                    success: function(res) {
+                        toggleLoader(button, false);
+                        $("#addDasticashModal").modal("hide");
+
+                        Swal.fire({
+                            icon: "success",
+                            title: "Dasticash Added",
+                            text: res.message,
+                            timer: 1800,
+                            showConfirmButton: false
+                        });
+
+                        // ------------------------------
+                        // APPEND NEW ROW DYNAMICALLY
+                        // ------------------------------
+                        $("#dasticashTable tbody").append(`
+                    <tr id="row-${res.data.id}">
+                        <td>NEW</td>
+                        <td class="name-cell">${res.data.name}</td>
+                        <td class="amount-cell">${res.data.amount ?? ''}</td>
+                        <td class="desc-cell">${res.data.description ?? ''}</td>
+                        <td>
+                            <a href="javascript:void(0)" 
+                               class="btn btn-sm btn-info edit-btn"
+                               data-id="${res.data.id}"
+                               data-name="${res.data.name}"
+                               data-amount="${res.data.amount ?? ''}"
+                               data-description="${res.data.description ?? ''}">
+                                <i class="fas fa-edit"></i>
+                            </a>
+
+                            <button class="btn btn-sm btn-danger delete-btn" 
+                                    data-id="${res.data.id}" data-url="${destroyUrl}/${res.data.id}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `);
+
+                        // Clear form
+                        form.reset();
+                    },
+
+                    error: function(xhr) {
+                        toggleLoader(button, false);
+
+                        if (xhr.status === 422) {
+                            $.each(xhr.responseJSON.errors, function(key, value) {
+                                let input = $(form).find(`[name="${key}"]`);
+                                input.addClass("is-invalid");
+                                input.after(
+                                    `<small class="text-danger">${value[0]}</small>`
+                                );
+                            });
+                        }
+                    }
+                });
+            });
             $('.edit-btn').click(function() {
                 var id = $(this).data('id');
                 var name = $(this).data('name');
@@ -437,11 +547,110 @@
                 $('#editDasticashForm').attr('action', baseUrl + '/admin/dasticash/' + id);
                 $('#editDasticashModal').modal('show');
             });
-        });
-        $(document).off('click', '#requestEditBtn').on('click',
-            '#requestEditBtn',
-            function() {
-                alert('Edit request sent to admin!');
+
+            // ===================================================================
+            // 2️⃣ UPDATE DASTICASH (AJAX)
+            // ===================================================================
+            $("#editDasticashForm").submit(function(e) {
+                e.preventDefault();
+
+                let form = this;
+                let button = $(form).find("button[type='submit']");
+                button.data('original-text', button.text());
+
+                resetErrors(form);
+                toggleLoader(button, true, "Updating...");
+
+                $.ajax({
+                    type: "POST",
+                    url: form.action,
+                    data: new FormData(form),
+                    processData: false,
+                    contentType: false,
+
+                    success: function(res) {
+                        toggleLoader(button, false);
+                        $("#editDasticashModal").modal("hide");
+
+                        Swal.fire({
+                            icon: "success",
+                            title: "Updated Successfully",
+                            text: res.message,
+                            timer: 1800,
+                            showConfirmButton: false
+                        });
+
+                        let row = $("#row-" + res.data.id);
+
+                        row.find(".name-cell").text(res.data.name);
+                        row.find(".amount-cell").text(res.data.amount ?? '');
+                        row.find(".desc-cell").text(res.data.description ?? '');
+
+                        // update dataset for edit button
+                        let editBtn = row.find(".edit-btn");
+                        editBtn.data("name", res.data.name);
+                        editBtn.data("amount", res.data.amount);
+                        editBtn.data("description", res.data.description);
+                    },
+
+                    error: function(xhr) {
+                        toggleLoader(button, false);
+
+                        if (xhr.status === 422) {
+                            $.each(xhr.responseJSON.errors, function(key, value) {
+                                let input = $(form).find(`[name="${key}"]`);
+                                input.addClass("is-invalid");
+                                input.after(
+                                    `<small class="text-danger">${value[0]}</small>`
+                                );
+                            });
+                        }
+                    }
+                });
             });
+
+            // ===================================================================
+            // 3️⃣ DELETE DYNAMIC (AJAX)
+            // ===================================================================
+            $(document).on("click", ".delete-btn", function() {
+                debugger
+
+                let url = $(this).data("url");
+                console.log(url);
+                let id = $(this).data("id");
+                let row = $("#row-" + id);
+
+                Swal.fire({
+                    title: "Are you sure?",
+                    text: "This record will be removed.",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "Yes, delete it!"
+                }).then((result) => {
+                    if (result.isConfirmed) {
+
+                        $.ajax({
+                            type: "DELETE",
+                            url: url,
+                            success: function(res) {
+                                row.fadeOut(300, function() {
+                                    $(this).remove();
+                                });
+
+                                Swal.fire({
+                                    icon: "success",
+                                    title: "Deleted",
+                                    text: res.message,
+                                    timer: 1500,
+                                    showConfirmButton: false
+                                });
+                            }
+                        });
+
+                    }
+                });
+            });
+
+        });
     </script>
 @endsection
