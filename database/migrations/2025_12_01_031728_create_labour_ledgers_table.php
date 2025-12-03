@@ -18,6 +18,7 @@ return new class extends Migration
             $table->foreignId('labour_id')->constrained()->onDelete('cascade');
             $table->date('date')->nullable();
             $table->decimal('amount', 10, 2)->default(0);
+            $table->json('details')->nullable();
             $table->timestamps();
         });
     }

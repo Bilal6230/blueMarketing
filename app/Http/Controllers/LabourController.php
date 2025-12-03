@@ -343,7 +343,7 @@ class LabourController extends Controller
             'site_id' => $request->site_id,
             'attendanceIds' => $attendanceIds, // ✅ perfect output here
             'total_amount' => number_format($total_amount, 2),
-            'reports' => $reports,
+            'reports' => json_encode($reports, JSON_UNESCAPED_UNICODE),
             'view' => $view
         ]);
     }

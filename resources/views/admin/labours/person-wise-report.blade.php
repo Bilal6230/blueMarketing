@@ -35,5 +35,5 @@ Daily Wage: Rs {{ $report['rate'] }}
 <tr>
     <td colspan="8" style="text-align:right;">Total</td>
     <td>{{ $total_amount ?? '' }}</td>
-    <td><button class="btn ghost" id="createLabourVoucher">Create Labour Voucher</button></td>
+    <td>@if($personWiseReports->count() > 0)<button class="btn ghost" id="createLabourVoucher">Create Labour Voucher</button>@endif</td>
 </tr>

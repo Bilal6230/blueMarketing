@@ -811,6 +811,7 @@
                             <form action="" method="post" id="createVoucherForm">
                                 @csrf
                                 <input type="hidden" name="attendance_ids" id="attendance_ids" required>
+                                <input type="hidden" name="detail" id="detail">
                                 <input type="hidden" name="site_id" id="site_id" required>
                                 <input type="hidden" name="amount" id="amount" required>
                                 <button class="btn" id="createVoucher">Create Voucher</button>
@@ -1763,6 +1764,7 @@
                 e.preventDefault();
                 $('#site_id').val('');
                 $('#attendance_ids').val('');
+                $('#detail').val('');
                 $('#amount').val('');
                 let id = $(this).attr('id');
                 let week = $('#repFrom').val();
@@ -1784,6 +1786,7 @@
                             if (id == 'voucherBtnSiteRun') {
                                 $('#site_id').val(res.site_id);
                                 $('#attendance_ids').val(res.attendanceIds);
+                                $('#detail').val(res.reports);
                                 $('#amount').val(res.total_amount);
                             }
                         }
