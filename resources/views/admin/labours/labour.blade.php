@@ -6,7 +6,7 @@
         <td>{{ $labour->phone ?? '' }}</td>
         <td>{{ $labour->role ?? '' }}</td>
         <td class="right">PKR {{ $labour->daily_wage ?? '' }}</td>
-        <td class="right">PKR 0</td>
+        <td class="right">PKR {{ $labour->advance ?? '' }}</td>
         <td><button class="btn editLabourBtn" data-id="{{ $labour->id }}" labourData="{{ json_encode($labour) }}">Edit</button>
         </td>
     </tr>

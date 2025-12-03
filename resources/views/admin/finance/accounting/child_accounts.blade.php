@@ -65,63 +65,63 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                                <div class="row">
-                                                    <div class="col-sm-6">
+                                            <div class="row">
+                                                <div class="col-sm-6">
+                                                    <div class="input-group">
+                                                        <label>Status</label>
                                                         <div class="input-group">
-                                                            <label>Status</label>
-                                                            <div class="input-group">
-                                                                <select class="form-control" name="is_active">
-                                                                    <option value="1">Active</option>
-                                                                    <option value="0">Disable</option>
-                                                                </select>
-                                                                @error('is_active')
-                                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                                @enderror
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-sm-6">
-                                                        <div class="input-group">
-                                                            <label class="fbox">NIC Number</label>
-                                                            <div class="input-group">
-                                                                <div class="input-group-prepend">
-                                                                    <span class="input-group-text"><i
-                                                                            class="fas fa-id-card"></i></span>
-                                                                </div>
-                                                                <input type="text"
-                                                                    class="form-control @error('cnic') is-invalid @enderror"
-                                                                    placeholder="CNIC Number Here" name="cnic"
-                                                                    value="{{ old('cnic') }}">
-                                                                @error('cnic')
-                                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                                @enderror
-                                                            </div>
+                                                            <select class="form-control" name="is_active">
+                                                                <option value="1">Active</option>
+                                                                <option value="0">Disable</option>
+                                                            </select>
+                                                            @error('is_active')
+                                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                            @enderror
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div class="row">
-                                                    <div class="col-sm-6">
+                                                <div class="col-sm-6">
+                                                    <div class="input-group">
+                                                        <label class="fbox">NIC Number</label>
                                                         <div class="input-group">
-                                                            <label class="fbox">Phone Number</label>
-                                                            <div class="input-group">
-                                                                <div class="input-group-prepend">
-                                                                    <span class="input-group-text"><i
-                                                                            class="fas fa-phone"></i></span>
-                                                                </div>
-                                                                <input type="text"
-                                                                    class="form-control @error('phone') is-invalid @enderror"
-                                                                    placeholder="Phone Number" name="phone"
-                                                                    value="{{ old('phone') }}">
-                                                                @error('phone')
-                                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                                @enderror
+                                                            <div class="input-group-prepend">
+                                                                <span class="input-group-text"><i
+                                                                        class="fas fa-id-card"></i></span>
                                                             </div>
+                                                            <input type="text"
+                                                                class="form-control @error('cnic') is-invalid @enderror"
+                                                                placeholder="CNIC Number Here" name="cnic"
+                                                                value="{{ old('cnic') }}">
+                                                            @error('cnic')
+                                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                            @enderror
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div class="modal-footer justify-content-between">
-                                                    <button type="submit" class="btn btn-primary">Save</button>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-sm-6">
+                                                    <div class="input-group">
+                                                        <label class="fbox">Phone Number</label>
+                                                        <div class="input-group">
+                                                            <div class="input-group-prepend">
+                                                                <span class="input-group-text"><i
+                                                                        class="fas fa-phone"></i></span>
+                                                            </div>
+                                                            <input type="text"
+                                                                class="form-control @error('phone') is-invalid @enderror"
+                                                                placeholder="Phone Number" name="phone"
+                                                                value="{{ old('phone') }}">
+                                                            @error('phone')
+                                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                            @enderror
+                                                        </div>
+                                                    </div>
                                                 </div>
+                                            </div>
+                                            <div class="modal-footer justify-content-between">
+                                                <button type="submit" class="btn btn-primary">Save</button>
+                                            </div>
                                         </form>
                                     </div>
                                 </div>
@@ -145,7 +145,9 @@
                                             <tr>
                                                 <td>{{ $loop->iteration }}</td>
                                                 <td>
-                                                    {{ $i->name }}
+                                                    {{ $i->name }} @if ($i->urdu_name)
+                                                        / {{ $i->urdu_name }}
+                                                    @endif
                                                 </td>
                                                 <td>
                                                     {{ $i->cnic }}
@@ -213,6 +215,7 @@
                         console.log(data);
                         var data = data.data;
                         $("#name").val(data.name);
+                        $("#urdu_name").val(data.urdu_name);
                         $("#id").val(data.id);
                         $("#cnic").val(data.cnic);
                         $("#phone").val(data.phone);
@@ -324,6 +327,20 @@
                                             class="form-control @error('name') is-invalid @enderror"
                                             placeholder="Party Name" name="name" value="{{ old('name') }}">
                                         @error('name')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-4">
+                                <div class="input-group">
+                                    <label class="fbox">Party Account Name (Urdu)</label>
+                                    <div class="input-group">
+                                        <input type="text" id="urdu_name"
+                                            class="form-control @error('urdu_name') is-invalid @enderror"
+                                            placeholder="Subhead Account Name" name="urdu_name"
+                                            value="{{ old('urdu_name') }}">
+                                        @error('urdu_name')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>

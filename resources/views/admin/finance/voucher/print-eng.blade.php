@@ -135,7 +135,7 @@
                 <tr>
                     <td style="width:80%; text-align:justify; border:none; font-size:18px; font-weight:bold;">Account
                         Name: <span class="under-line"
-                            style="display: inline-block;width: 60%;">{{ $voucher->projectHeadSubhead->subheadAccounting->name }}</span>
+                            style="display: inline-block;width: 60%;">{{ $voucher->projectHeadSubhead->subheadAccounting->name }} @if($voucher->projectHeadSubhead->subheadAccounting->urdu_name)/ {{ $voucher->projectHeadSubhead->subheadAccounting->urdu_name }}@endif</span>
                     </td>
                     <td style="width:20%; text-align:center;">Amount</td>
                 </tr>
@@ -150,9 +150,9 @@
                     <td style="text-align:center; height: 15px;"></td>
                 </tr>
                 <tr>
-                    <td style="text-align:right; font-weight:bold;">Total/
+                    <td style="text-align:right; font-weight:bold;">ٹوٹل /
                         {{ numberToUrduWords($voucher->amount_in) . ' روپے' }}</td>
-                    <td style="font-weight:bold; text-align:center;">=
+                    <td style="font-weight:bold; text-align:center;">Total =
                         {{ number_format($voucher->amount_in, 0, '.', '') }}/-</td>
                 </tr>
             </tbody>

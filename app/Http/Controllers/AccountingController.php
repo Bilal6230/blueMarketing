@@ -405,6 +405,7 @@ class AccountingController extends Controller
         }
         $data = [
             'name' => $request->name,
+            'urdu_name' => $request->urdu_name,
             'cnic' => $request->cnic,
             'phone' => $request->phone,
             'is_active' => $request->is_active,
