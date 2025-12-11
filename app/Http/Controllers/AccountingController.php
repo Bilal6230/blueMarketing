@@ -476,12 +476,12 @@ class AccountingController extends Controller
 
         // $projects = Project::get();
         $projects = Project::where('id', $selectedProjectId)->get();
-        // $headaccounts = HeadAccounting::get();
-        // $subheadaccounts = SubheadAccounting::get();
+        $headaccounts = HeadAccounting::get();
+        $subheadaccounts = SubheadAccounting::get();
 
         $x['projects'] = $projects;
-        // $x['headaccounts'] = $headaccounts;
-        // $x['subheadaccounts'] = $subheadaccounts;
+        $x['headaccounts'] = $headaccounts;
+        $x['subheadaccounts'] = $subheadaccounts;
 
         return view('admin.finance.reports.details_index', $x);
     }

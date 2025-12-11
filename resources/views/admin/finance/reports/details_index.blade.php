@@ -24,18 +24,26 @@
                             @can('create lead')
                                 <div class="card-header">
                                     <div>
-                                        <form action="{{ route('finance.reports.details_index') }}" method="POST" enctype="multipart/form-data" target="_blank">
+                                        @php
+                                            $fromDate = old('fdate') ?: now()->subMonths(6)->format('d-m-Y');
+                                            $toDate = old('tdate') ?: now()->format('d-m-Y');
+                                        @endphp
+
+
+
+
+                                        <form action="{{ route('finance.reports.details_index') }}" method="POST"
+                                            enctype="multipart/form-data" target="_blank">
                                             @csrf
                                             <div class="row">
-                                                
                                                 <div class="col-sm-2">
                                                     <div class="input-group">
                                                         <label class="fbox">From Date</label>
                                                         <div class="input-group">
-                                                            <input type="text" name="fdate" class="date form-control" data-input>
-                                                            <!-- Add a hidden input to store the selected date in a format you want -->
-                                                            <input type="hidden" id="hiddenDate" name="hiddenDate">
-                                                            {{-- <input type="text" id="datepicker" class="form-control @error('date') is-invalid @enderror" name="date" value="{{ old('date') ?: date('d-m-yy') }}" autocomplete="off"> --}}
+                                                            <input type="text" name="fdate" class="date form-control"
+                                                                data-input value="{{ $fromDate }}">
+                                                            <input type="hidden" id="hiddenFromDate" name="hiddenFromDate"
+                                                                value="{{ $fromDate }}">
                                                             @error('fdate')
                                                                 <div class="invalid-feedback">{{ $message }}</div>
                                                             @enderror
@@ -47,10 +55,11 @@
                                                     <div class="input-group">
                                                         <label class="fbox">To Date</label>
                                                         <div class="input-group">
-                                                            <input type="text" name="tdate" class="date form-control" data-input>
-                                                            <!-- Add a hidden input to store the selected date in a format you want -->
-                                                            <input type="hidden" id="hiddenDate" name="hiddenDate">
-                                                            {{-- <input type="text" id="datepicker" class="form-control @error('date') is-invalid @enderror" name="date" value="{{ old('date') ?: date('d-m-yy') }}" autocomplete="off"> --}}
+                                                            <input type="text" name="tdate" class="date form-control"
+                                                                data-input value="{{ $toDate }}">
+                                                            <input type="hidden" id="hiddenToDate" name="hiddenToDate"
+                                                                value="{{ $toDate }}">
+
                                                             @error('tdate')
                                                                 <div class="invalid-feedback">{{ $message }}</div>
                                                             @enderror
@@ -58,18 +67,21 @@
                                                     </div>
                                                 </div>
 
-                                                
                                                 <div class="col-sm-4">
                                                     <div class="input-group">
-                                                        <label class="fbox">Projects</label>
+                                                        <label class="fbox">Accounts</label>
                                                         <div class="input-group">
-                                                            <select class="form-control select2" name="projects_id" id="projects_id" >
-                                                                <option value="">Select project(s)</option>
-                                                                @foreach ($projects as $v)
-                                                                    <option value="{{ $v->id }}">{{ $v->project }}</option>
+                                                            <select class="form-control select2" name="accounts_id"
+                                                                id="accounts_id">
+                                                                <option value="">Select Head</option>
+                                                                @foreach ($headaccounts as $head)
+                                                                    <option value="{{ $head->id }}"
+                                                                        {{ old('accounts_id') == $head->id ? 'selected' : '' }}>
+                                                                        {{ $head->name }}
+                                                                    </option>
                                                                 @endforeach
                                                             </select>
-                                                            @error('projects_id')
+                                                            @error('accounts_id')
                                                                 <div class="invalid-feedback">{{ $message }}</div>
                                                             @enderror
                                                         </div>
@@ -77,38 +89,25 @@
                                                 </div>
                                                 <div class="col-sm-4">
                                                     <div class="input-group">
-                                                        <label class="fbox">Accounts</label>
-                                                        <div class="input-group">
-                                                            <select class="form-control select2" name="accounts_id" id="accounts_id" >
-                                                                <option value="">Select an account</option>
-
-                                                            </select>
-                                                            @error('accounts_id')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
-                                                            @enderror
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                
-                                            </div>
-                                            <div class="row">
-                                                
-                                                <div class="col-sm-12">
-                                                    <div class="input-group">
                                                         <label class="fbox">SubAccounts</label>
                                                         <div class="input-group">
-                                                            <select class="form-control select2" name="subaccounts_id[]" id="subaccounts_id" multiple>
-                                                                <option value="">Select a sub account</option>
-
+                                                            <select class="form-control select2" name="subaccounts_id[]"
+                                                                id="subaccounts_id" multiple>
+                                                                <option value="">Select Sub Head</option>
+                                                                @foreach ($subheadaccounts as $sub)
+                                                                    <option value="{{ $sub->id }}"
+                                                                        {{ collect(old('subaccounts_id'))->contains($sub->id) ? 'selected' : '' }}>
+                                                                        {{ $sub->name }}
+                                                                    </option>
+                                                                @endforeach
                                                             </select>
+
                                                             @error('subaccounts_id')
-                                                            <div class="invalid-feedback">{{ $message }}</div>
+                                                                <div class="invalid-feedback">{{ $message }}</div>
                                                             @enderror
                                                         </div>
                                                     </div>
                                                 </div>
-                                                
-                                                
                                             </div>
                                             <div class="modal-footer justify-content-between">
                                                 <button type="submit" class="btn btn-primary">Show</button>
@@ -118,7 +117,7 @@
                                 </div>
                             @endcan
 
-                            
+
                         </div>
                     </div>
                 </div>
@@ -129,10 +128,9 @@
 
 @section('js')
     <script>
-        
         $(document).ready(function() {
 
-            $('#projects_id').change(function () {
+            $('#projects_id').change(function() {
                 var projectID = $(this).val();
 
                 console.log(projectID);
@@ -146,7 +144,7 @@
                             action: 'get_head',
                             _token: '{{ csrf_token() }}' // Include CSRF token for Laravel
                         },
-                        success: function (data) {
+                        success: function(data) {
                             $('#accounts_id').empty();
                             $('#subaccounts_id').empty();
                             console.log(data);
@@ -156,9 +154,12 @@
                             });
 
                             // Append filtered head accounting options to 'Accounts' dropdown
-                            $('#accounts_id').append('<option value="">Select an option</option>');
+                            $('#accounts_id').append(
+                                '<option value="">Select an option</option>');
                             $.each(filteredData, function(key, value) {
-                                $('#accounts_id').append('<option value="' + value.head_accounting_id + '">' + value.head_accounting.name + '</option>');
+                                $('#accounts_id').append('<option value="' + value
+                                    .head_accounting_id + '">' + value
+                                    .head_accounting.name + '</option>');
                             });
 
                             // You may implement a similar AJAX call to fetch subheadaccounts based on the selected account
@@ -171,7 +172,7 @@
             });
 
             // Similar change event for 'accounts_id' dropdown to fetch subaccounts based on account selection
-            $('#accounts_id').change(function () {
+            $('#accounts_id').change(function() {
                 var accountID = $(this).val();
                 var projectID = $('#projects_id').val();
 
@@ -189,18 +190,21 @@
 
                             _token: '{{ csrf_token() }}' // Include CSRF token for Laravel
                         },
-                        success: function (data) {
+                        success: function(data) {
                             $('#subaccounts_id').empty();
                             console.log(data);
                             // Filter data to match selected project ID
                             var filteredData = data.filter(function(item) {
-                                return item.head_accounting_id  == accountID;
+                                return item.head_accounting_id == accountID;
                             });
-                            $('#subaccounts_id').append('<option value="">Select an option</option>');
+                            $('#subaccounts_id').append(
+                                '<option value="">Select an option</option>');
 
                             // Append filtered head accounting options to 'Accounts' dropdown
                             $.each(filteredData, function(key, value) {
-                                $('#subaccounts_id').append('<option value="' + value.subhead_accounting_id + '">' + value.subhead_accounting.name + '</option>');
+                                $('#subaccounts_id').append('<option value="' + value
+                                    .subhead_accounting_id + '">' + value
+                                    .subhead_accounting.name + '</option>');
                             });
 
                             // You may implement a similar AJAX call to fetch subheadaccounts based on the selected account
@@ -211,6 +215,38 @@
                 }
             });
 
+        });
+    </script>
+    <script>
+        window.addEventListener("load", function() {
+            const fInput = document.querySelector("input[name='fdate']"); // original input
+            const hiddenFrom = document.getElementById('hiddenFromDate');
+
+            // Use the value from hidden input if exists, otherwise 6 months ago
+            const fromValue = hiddenFrom.value || new Date(new Date().setMonth(new Date().getMonth() - 6));
+
+            flatpickr(fInput, {
+                dateFormat: "d-m-Y",
+                defaultDate: fromValue,
+                allowInput: true,
+                onChange: function(selectedDates, dateStr) {
+                    hiddenFrom.value = dateStr || '';
+                }
+            });
+
+            // TO DATE
+            const tInput = document.querySelector("input[name='tdate']");
+            const hiddenTo = document.getElementById('hiddenToDate');
+            const toValue = hiddenTo.value || new Date();
+
+            flatpickr(tInput, {
+                dateFormat: "d-m-Y",
+                defaultDate: toValue,
+                allowInput: true,
+                onChange: function(selectedDates, dateStr) {
+                    hiddenTo.value = dateStr || '';
+                }
+            });
         });
     </script>
 @endsection
