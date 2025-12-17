@@ -12,7 +12,7 @@ use App\Models\LabourAttendance;
 use App\Models\SubheadAccounting;
 use App\Models\ProjectHeadSubhead;
 use App\Http\Controllers\Controller;
-
+use App\Models\LabourLedger;
 
 class LabourController extends Controller
 {
@@ -64,6 +64,7 @@ class LabourController extends Controller
             ->map(function ($labour) {
 
                 $attendanceIds = $labour->attendances->pluck('id')->toArray();
+                $attendanceDates = $labour->attendances->pluck('date')->toArray();
                 $totalHours = $labour->attendances->sum('hours');
                 $totalOT = $labour->attendances->sum('ot_hours');
                 $ratings = $labour->attendances->sum('ratings') / $labour->attendances->count();
@@ -74,6 +75,7 @@ class LabourController extends Controller
 
                 $days = $totalHours / 8;
                 $amount = ($days * $rate) + ($totalOT * ($rate / 8));
+                $remaningAmount = $amount - $labour->labourLedgers->sum('amount');
 
                 return [
                     'id' => $labour->id,
@@ -86,10 +88,12 @@ class LabourController extends Controller
                     'days' => number_format($days, 2),
                     'overtime' => number_format($totalOT, 2),
                     'amount' => number_format($amount, 2),
+                    'remaningAmount' => number_format($remaningAmount, 2),
                     'advance' => $labour->advance,
                     'amount_raw' => $amount,
                     'ratings' => number_format($ratings, 1),
                     'attendance_ids' => json_encode($attendanceIds, JSON_UNESCAPED_UNICODE), // ✅ real attendance IDs
+                    'attendance_dates' => json_encode($attendanceDates, JSON_UNESCAPED_UNICODE), // ✅ real attendance IDs
                     'paid_status' => optional($labour->attendances->first())->paid_status
                 ];
             });
@@ -100,14 +104,103 @@ class LabourController extends Controller
 
         return view('admin.labours.index', $x);
     }
-    public function updatePaidStatus(Request $request)
+    public function labourPayment(Request $request)
     {
-        $status = $request->status == 1 ? 'paid' : 'unpaid';
-        if ($status == 'paid') {
-            Labour::updateOrCreate(['id' => $request->id], ['advance' => 0]);
+        foreach ($request->labours as $labour) {
+            LabourLedger::create(
+                [
+                    'labour_id' => $labour['id'],
+                    'amount' => $labour['amount'],
+                    'date' => now()->format('Y-m-d'),
+                    'details' => json_encode($labour, JSON_UNESCAPED_UNICODE),
+                ]
+            );
         }
-        LabourAttendance::whereIn('id', $request->ids)
-            ->update(['paid_status' => $status]);
+        $start = Carbon::parse($request->week);
+        $start = $start->copy()->startOfWeek(Carbon::FRIDAY);
+
+        // End of week should be Thursday (6 days after Friday)
+        $end = $start->copy()->addDays(6);
+
+        // Generate 7 days Friday → Thursday
+        $days = [];
+        $day = $start->copy();
+
+        while ($day <= $end) {
+            $days[] = $day->format('Y-m-d');
+            $day->addDay();
+        }
+
+        $x['personWiseReports'] = $personWiseReports = Labour::select('labours.id', 'labours.name', 'labours.father_name', 'labours.cnic', 'labours.advance', 'labours.phone as mobile', 'labours.role as designation');
+
+        if ($request->search) {
+            $search = $request->search;
+
+            $personWiseReports->where(function ($q) use ($search) {
+                // If search contains any digit, search in phone or cnic
+                if (preg_match('/\d/', $search)) {
+                    $q->where('phone', 'like', "%{$search}%")
+                        ->orWhere('cnic', 'like', "%{$search}%");
+                } else {
+                    // Otherwise search in name
+                    $q->where('name', 'like', "%{$search}%");
+                }
+            });
+        }
+
+        $x['personWiseReports'] = $personWiseReports = $personWiseReports
+            ->with([
+                'attendances' => function ($query) use ($request, $days) {
+                    $query->whereIn('date', $days);
+                }
+            ])
+            ->whereHas('attendances', function ($query) use ($request, $days) {
+                $query->whereIn('date', $days);
+            })
+            ->get()
+            ->map(function ($labour) {
+
+                $attendanceIds = $labour->attendances->pluck('id')->toArray();
+                $attendanceDates = $labour->attendances->pluck('date')->toArray();
+                $totalHours = $labour->attendances->sum('hours');
+                $totalOT = $labour->attendances->sum('ot_hours');
+                $ratings = $labour->attendances->sum('ratings') / $labour->attendances->count();
+
+                $rate = optional($labour->attendances->first())->rate
+                    ?? $labour->daily_wage
+                    ?? 0;
+
+                $days = $totalHours / 8;
+                $amount = ($days * $rate) + ($totalOT * ($rate / 8));
+                $remaningAmount = $amount - $labour->labourLedgers->sum('amount');
+
+                return [
+                    'id' => $labour->id,
+                    'name' => $labour->name,
+                    'father_name' => $labour->father_name,
+                    'cnic' => $labour->cnic,
+                    'mobile' => $labour->mobile,
+                    'designation' => $labour->designation,
+                    'rate' => number_format($rate, 2),
+                    'days' => number_format($days, 2),
+                    'overtime' => number_format($totalOT, 2),
+                    'amount' => number_format($amount, 2),
+                    'remaningAmount' => number_format($remaningAmount, 2),
+                    'advance' => $labour->advance,
+                    'amount_raw' => $amount,
+                    'ratings' => number_format($ratings, 1),
+                    'attendance_ids' => json_encode($attendanceIds, JSON_UNESCAPED_UNICODE), // ✅ real attendance IDs
+                    'attendance_dates' => json_encode($attendanceDates, JSON_UNESCAPED_UNICODE), // ✅ real attendance IDs
+                    'paid_status' => optional($labour->attendances->first())->paid_status
+                ];
+            });
+        $x['total_amount'] = $personWiseReports->sum('amount_raw');
+        // Render table partial
+        $view = view('admin.labours.person-wise-report', $x)->render();
+        return response()->json([
+            'success' => true,
+            'view' => $view
+        ]);
 
         return response()->json(['success' => true]);
     }
@@ -387,17 +480,17 @@ class LabourController extends Controller
         $x['personWiseReports'] = $personWiseReports = $personWiseReports
             ->with([
                 'attendances' => function ($query) use ($request, $days) {
-                    $query->where('voucher_status', 'created')
-                        ->whereIn('date', $days);
+                    $query->whereIn('date', $days);
                 }
             ])
             ->whereHas('attendances', function ($query) use ($request, $days) {
-                $query->where('voucher_status', 'created')->whereIn('date', $days);
+                $query->whereIn('date', $days);
             })
             ->get()
             ->map(function ($labour) {
 
                 $attendanceIds = $labour->attendances->pluck('id')->toArray();
+                $attendanceDates = $labour->attendances->pluck('date')->toArray();
                 $totalHours = $labour->attendances->sum('hours');
                 $totalOT = $labour->attendances->sum('ot_hours');
                 $ratings = $labour->attendances->sum('ratings') / $labour->attendances->count();
@@ -408,6 +501,7 @@ class LabourController extends Controller
 
                 $days = $totalHours / 8;
                 $amount = ($days * $rate) + ($totalOT * ($rate / 8));
+                $remaningAmount = $amount - $labour->labourLedgers->sum('amount');
 
                 return [
                     'id' => $labour->id,
@@ -420,10 +514,12 @@ class LabourController extends Controller
                     'days' => number_format($days, 2),
                     'overtime' => number_format($totalOT, 2),
                     'amount' => number_format($amount, 2),
+                    'remaningAmount' => number_format($remaningAmount, 2),
                     'advance' => $labour->advance,
                     'amount_raw' => $amount,
                     'ratings' => number_format($ratings, 1),
                     'attendance_ids' => json_encode($attendanceIds, JSON_UNESCAPED_UNICODE), // ✅ real attendance IDs
+                    'attendance_dates' => json_encode($attendanceDates, JSON_UNESCAPED_UNICODE), // ✅ real attendance IDs
                     'paid_status' => optional($labour->attendances->first())->paid_status
                 ];
             });

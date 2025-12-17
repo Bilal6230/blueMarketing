@@ -799,7 +799,7 @@
                                 <option value="{{ $site->id }}">{{ $site->site_name }}</option>
                             @endforeach
                         </select>
-                        <input type="week" id="repFrom" class="col-6" value="{{ now()->format('o-\WW') }}"/>
+                        <input type="week" id="repFrom" class="col-6" value="{{ now()->format('o-\WW') }}" />
                     </div>
                     <div class="site-report-actions">
                         <div class="site-report-btns">
@@ -852,7 +852,7 @@
                     <div class="toolbar row" style="margin-bottom:12px">
                         <input id="personQuery" class="col-5" placeholder="Search by name or mobile"
                             style="min-width:260px" />
-                        <input type="week" id="pFrom" class="col-6" value="{{ now()->format('o-\WW') }}"/>
+                        <input type="week" id="pFrom" class="col-6" value="{{ now()->format('o-\WW') }}" />
                     </div>
                     <div class="site-report-actions">
                         <button class="btn" id="btnPersonRun">Run</button>
@@ -1695,7 +1695,7 @@
                             // Find cell using safer selectors
                             let cell = $(
                                 `.cell[data-id="${row.labour_id}"][data-date="${row.date}"]`
-                                );
+                            );
 
                             if (cell.length) {
 
@@ -1970,28 +1970,109 @@
             $('#attnSearch').on('input', loadWeekData);
             $(document).on('click', '#createLabourVoucher', function() {
 
-                let labour_amount = $('.labour_amount').val();
-                console.log(labour_amount, 'labour_amount');
-                return;
+                // Array to store all labour data
+                let allLabours = [];
+                let week = $('#pFrom').val();
+                let search = $('#personQuery').val();
 
-                let id = $(this).data('id');
-                let paid = $(this).is(':checked') ? 1 : 0;
-                let label = $(this).closest('td').find('.paid-label');
+                // Loop through each table row
+                $('.labour-row').each(function() {
 
-                $.ajax({
-                    url: "{{ route('labours.updatePaidStatus') }}",
-                    type: "POST",
-                    data: {
-                        id: id,
-                        ids: ids,
-                        status: paid,
-                        _token: '{{ csrf_token() }}'
-                    },
-                    success: function(res) {
-                        label.text(paid ? 'Paid' : 'Unpaid');
-                    }
+                    let row = $(this);
+                    let labourId = row.data('id');
+
+                    let labourAmount = row.find('.labour_amount').val();
+                    labourAmount = labourAmount ? parseFloat(labourAmount) : 0;
+
+                    // Skip empty or zero amounts
+                    if (labourAmount <= 0) return;
+
+                    allLabours.push({
+                        id: labourId,
+                        name: row.data('name'),
+                        mobile: row.data('mobile'),
+                        role: row.data('role'),
+                        rate: row.data('rate'),
+                        advance: row.data('advance'),
+                        attendanceDates: row.data('attendance-dates'),
+                        amount: labourAmount
+                    });
                 });
+
+                // =============================
+                // VALIDATION BEFORE CONFIRMATION
+                // =============================
+                if (allLabours.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'No Amount Entered',
+                        text: 'Please enter amount for at least one labour.',
+                        timer: 2000
+                    });
+                    return;
+                }
+
+                // =============================
+                // SWEETALERT CONFIRMATION
+                // =============================
+                Swal.fire({
+                    title: "Are you sure?",
+                    text: "Do you want to create voucher for selected labours?",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "Yes, create voucher!",
+                    cancelButtonText: "Cancel",
+                    reverseButtons: true
+                }).then((result) => {
+
+                    if (result.isConfirmed) {
+
+                        $.ajax({
+                            url: "{{ route('labours.payment') }}",
+                            type: "POST",
+                            data: {
+                                labours: allLabours,
+                                week: week,
+                                search: search,
+                                _token: '{{ csrf_token() }}'
+                            },
+
+                            success: function(res) {
+
+                                Swal.fire({
+                                    title: "Voucher Created!",
+                                    text: "Labour vouchers created successfully.",
+                                    icon: "success",
+                                    timer: 1500,
+                                    showConfirmButton: false
+                                });
+
+                                if (res.success) {
+                                    $('#personAllBody').html('');
+                                    $('#personAllBody').append(res.view);
+                                }
+
+                                // OPTIONAL: reload or empty fields
+                                $('.labour_amount').val('');
+                            },
+
+                            error: function(err) {
+                                Swal.fire({
+                                    title: "Error!",
+                                    text: "Something went wrong while creating vouchers.",
+                                    icon: "error"
+                                });
+                                console.log(err.responseText);
+                            }
+                        });
+
+                    }
+
+                });
+
             });
+
+
 
         });
 
