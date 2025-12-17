@@ -23,4 +23,8 @@ class Labour extends Model
     {
         return $this->hasMany(LabourAttendance::class);
     }
+    public function labourLedgers()
+    {
+        return $this->hasMany(LabourLedger::class);
+    }
 }
