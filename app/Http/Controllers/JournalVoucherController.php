@@ -165,14 +165,14 @@ class JournalVoucherController extends Controller
         // Add Ledger Entries
         foreach ($request->accounts as $index => $accountId) {
 
-            $JvDetails = JournalVoucherDetail::create([
-                'journal_voucher_id' => $journalVoucher->id,
-                'account_id' => $request->sub_accounts[$index],
-                'debit' => $request->debit[$index] ?? 0,
-                'credit' => $request->credit[$index] ?? 0,
-                'description' => $request->line_description[$index] ?? '',
-                'created_by' => auth()->id(),
-            ]);
+                $JvDetails = JournalVoucherDetail::create([
+                    'journal_voucher_id' => $journalVoucher->id,
+                    'account_id' => $request->sub_accounts[$index],
+                    'debit' => $request->debit[$index] ?? 0,
+                    'credit' => $request->credit[$index] ?? 0,
+                    'description' => $request->line_description[$index] ?? '',
+                    'created_by' => auth()->id(),
+                ]);
 
             $ledgerData = Ledger::create([
                 'type' => ($request->debit[$index] ?? 0) > 0 ? 'JV' : 'JV',

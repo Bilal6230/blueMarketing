@@ -211,8 +211,7 @@ class AccountingController extends Controller
             }
             return $response;
         } catch (Exception $ex) {
-            dd($ex);
-            //$response['msg'] = AppRepo::create_error_log("Tag", "get_slide_html_($action)_by_$app_user_id", $ex, $app_user_id);
+            // $response['msg'] = AppRepo::create_error_log("Tag", "get_slide_html_($action)_by_$app_user_id", $ex, $app_user_id);
         }
     }
 
@@ -319,7 +318,6 @@ class AccountingController extends Controller
 
     public function head_destroy(Request $request)
     {
-        dd("asasas");
     }
 
 
@@ -428,7 +426,6 @@ class AccountingController extends Controller
 
     public function subhead_destroy(Request $request)
     {
-        dd("asasas");
     }
 
 

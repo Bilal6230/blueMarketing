@@ -29,7 +29,6 @@ class LedgerController extends Controller
 {
     public function store(Request $request)
     {
-        // dd($request->all());
         $validator = Validator::make($request->all(), [
             'amount' => ['required'],
             'detail' => ['required'],
@@ -51,12 +50,14 @@ class LedgerController extends Controller
         $voucherNumberValue = $request->input('voucher_number');
         $firstTwoDigits = substr($voucherValue, 0, 2);
         $voucherNumber = substr($voucherNumberValue, 3);
+        // dd($firstTwoDigits);
         $amount_in = $amount_out = 0;
         if ($firstTwoDigits === 'CR') {
             $amount_in = $cleanAmount;
         } elseif ($firstTwoDigits === 'CP') {
             $amount_out = $cleanAmount;
         }
+        // dd($amount_in, $amount_out);
         // dd($firstTwoDigits);
 
         try {
@@ -453,7 +454,6 @@ class LedgerController extends Controller
             Alert::info('Notification', 'Delete request for <b>' . $ledger->detail . '</b> is pending admin approval.')
                 ->toToast()->toHtml();
         } catch (\Throwable $th) {
-            dd($th);
             DB::rollBack();
             Alert::error('Notification', 'Failed to delete voucher: ' . $th->getMessage())->toToast()->toHtml();
         }
