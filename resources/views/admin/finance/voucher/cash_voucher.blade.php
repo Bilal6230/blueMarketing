@@ -1468,151 +1468,123 @@
 
         // Voucher Tab Management with LocalStorage + full Tom Select option persistence
         // Voucher Tabs with reliable saving on tab switch + new tab, including Tom Select options
-        (async function($) {
-            const LS_KEY = 'paysavo_voucher_tabs_v1';
-            const FORM_ID = '#voucherForm';
-            const TS_SEL = '.js-tomselect';
+    (async function($) {
+        const FORM_ID = '#voucherForm';
+        const TS_SEL = '.js-tomselect';
+        const $Type = '{{ $type }}'; // e.g. CR or CP
+        const LS_KEY = `paysavo_voucher_tabs_${$Type}_v1`; // unique storage key per voucher type
 
-            // ---------- TomSelect init ----------
-            function initTomSelects() {
-                if (typeof window.TomSelect === 'undefined') {
-                    console.warn('TomSelect not found. Skipping initTomSelects().');
-                    return;
+        // ---------- TomSelect init ----------
+        function initTomSelects() {
+            if (typeof window.TomSelect === 'undefined') {
+                console.warn('TomSelect not found. Skipping initTomSelects().');
+                return;
+            }
+            $(TS_SEL).each(function() {
+                if (this.tomselect) {
+                    try {
+                        this.tomselect.destroy();
+                    } catch (e) {}
                 }
-                $(TS_SEL).each(function() {
-                    if (this.tomselect) {
-                        try {
-                            this.tomselect.destroy();
-                        } catch (e) {}
-                    }
-                    const ts = new TomSelect(this, {
-                        persist: false,
-                        create: false,
-                        maxItems: 1,
-                        allowEmptyOption: true,
-                        onChange: () => {
-                            $(this).trigger('change');
-                        }
-                    });
-                    const current = $(this).val();
-                    if (current != null && current !== '') {
-                        try {
-                            ts.setValue(String(current), true);
-                        } catch (e) {}
+                const ts = new TomSelect(this, {
+                    persist: false,
+                    create: false,
+                    maxItems: 1,
+                    allowEmptyOption: true,
+                    onChange: () => {
+                        $(this).trigger('change');
                     }
                 });
+                const current = $(this).val();
+                if (current != null && current !== '') {
+                    try {
+                        ts.setValue(String(current), true);
+                    } catch (e) {}
+                }
+            });
+        }
+
+        // ---------- store & pointers ----------
+        let store = {
+            tabs: { 1: { formData: {}, selects: {} } },
+            currentTab: 1,
+            nextTabNumber: 2
+        };
+        let currentTab = 1;
+        let nextTabNumber = 2;
+
+        // ---------- utils ----------
+        const persist = () => localStorage.setItem(LS_KEY, JSON.stringify(store));
+
+        const hydrate = () => {
+            try {
+                const raw = localStorage.getItem(LS_KEY);
+                if (!raw) return;
+                const parsed = JSON.parse(raw);
+                if (parsed && parsed.tabs) {
+                    store = parsed;
+                    currentTab = store.currentTab || 1;
+                    nextTabNumber = store.nextTabNumber || 2;
+                }
+            } catch (e) {
+                console.warn('hydrate failed', e);
             }
+        };
 
-            // ---------- store & pointers ----------
-            let store = {
-                tabs: {
-                    1: {
-                        formData: {},
-                        selects: {}
-                    }
-                },
-                currentTab: 1,
-                nextTabNumber: 2
-            };
-            let currentTab = 1;
-            let nextTabNumber = 2;
+        const ensureTab = (n) => {
+            if (!store.tabs[n]) store.tabs[n] = { formData: {}, selects: {} };
+        };
 
-            // ---------- utils ----------
-            const persist = () => localStorage.setItem(LS_KEY, JSON.stringify(store));
-
-            const hydrate = () => {
-                try {
-                    const raw = localStorage.getItem(LS_KEY);
-                    if (!raw) return;
-                    const parsed = JSON.parse(raw);
-                    if (parsed && parsed.tabs) {
-                        store = parsed;
-                        currentTab = store.currentTab || 1;
-                        nextTabNumber = store.nextTabNumber || 2;
-                    }
-                } catch (e) {
-                    console.warn('hydrate failed', e);
+        function throttle(fn, wait) {
+            let t, last = 0, pending = null;
+            return function() {
+                const now = Date.now();
+                const args = arguments, ctx = this;
+                const run = () => { last = now; t = null; fn.apply(ctx, args); };
+                if (now - last >= wait) {
+                    if (t) { clearTimeout(t); t = null; }
+                    run();
+                } else {
+                    pending = () => run();
+                    if (!t) t = setTimeout(() => {
+                        pending && pending();
+                        pending = null;
+                    }, wait - (now - last));
                 }
             };
+        }
 
-            const ensureTab = (n) => {
-                if (!store.tabs[n]) store.tabs[n] = {
-                    formData: {},
-                    selects: {}
-                };
-            };
+        // ---------- snapshot (TomSelect-aware) ----------
+        function saveFormForTab(tabNo, $form) {
+            ensureTab(tabNo);
+            const formData = {};
+            const selects = {};
 
-            function throttle(fn, wait) {
-                let t, last = 0,
-                    pending = null;
-                return function() {
-                    const now = Date.now();
-                    const args = arguments,
-                        ctx = this;
-                    const run = () => {
-                        last = now;
-                        t = null;
-                        fn.apply(ctx, args);
-                    };
-                    if (now - last >= wait) {
-                        if (t) {
-                            clearTimeout(t);
-                            t = null;
-                        }
-                        run();
-                    } else {
-                        pending = () => run();
-                        if (!t) t = setTimeout(() => {
-                            pending && pending();
-                            pending = null;
-                        }, wait - (now - last));
-                    }
-                };
-            }
+            // inputs + textarea
+            $form.find('input, textarea').each(function() {
+                const name = $(this).attr('name');
+                if (!name) return;
+                formData[name] = $(this).val();
+            });
 
-            // ---------- snapshot (TomSelect-aware) ----------
-            function saveFormForTab(tabNo, $form) {
-                ensureTab(tabNo);
-                const formData = {};
-                const selects = {};
+            // selects
+            $form.find('select').each(function() {
+                const $el = $(this);
+                const name = $el.attr('name');
+                if (!name) return;
 
-                // inputs + textarea
-                $form.find('input, textarea').each(function() {
-                    const name = $(this).attr('name');
-                    if (!name) return;
-                    formData[name] = $(this).val();
-                });
+                let options = [];
+                let selected = '';
 
-                // selects
-                $form.find('select').each(function() {
-                    const $el = $(this);
-                    const name = $el.attr('name');
-                    if (!name) return;
-
-                    let options = [];
-                    let selected = '';
-
-                    if ($el[0] && $el[0].tomselect) {
-                        const ts = $el[0].tomselect;
-                        selected = (ts.getValue && ts.getValue()) || '';
-                        // Pull options from TomSelect cache
-                        options = Object.values(ts.options || {}).map(o => ({
-                            value: String(o.value ?? ''),
-                            text: String(o.text ?? ''),
-                            disabled: !!o.disabled
-                        }));
-                        // If TomSelect has no cache (edge case), fallback to DOM
-                        if (!options.length) {
-                            $el.find('option').each(function() {
-                                options.push({
-                                    value: $(this).attr('value') ?? '',
-                                    text: $(this).text(),
-                                    disabled: !!$(this).prop('disabled')
-                                });
-                            });
-                        }
-                    } else {
-                        selected = $el.val() ?? '';
+                if ($el[0] && $el[0].tomselect) {
+                    const ts = $el[0].tomselect;
+                    selected = (ts.getValue && ts.getValue()) || '';
+                    options = Object.values(ts.options || {}).map(o => ({
+                        value: String(o.value ?? ''),
+                        text: String(o.text ?? ''),
+                        disabled: !!o.disabled
+                    }));
+                    if (!options.length) {
                         $el.find('option').each(function() {
                             options.push({
                                 value: $(this).attr('value') ?? '',
@@ -1621,719 +1593,362 @@
                             });
                         });
                     }
-
-                    selects[name] = {
-                        options,
-                        selected: selected === null ? '' : String(selected)
-                    };
-                    formData[name] = selected;
-                });
-
-                store.tabs[tabNo].formData = formData;
-                store.tabs[tabNo].selects = selects;
-                store.currentTab = currentTab;
-            }
-
-            function withTomSelect($el, fn) {
-                if ($el[0] && $el[0].tomselect) {
-                    fn($el[0].tomselect);
-                }
-            }
-
-            // ---------- restore ----------
-            function restoreSelect($el, snap) {
-                if (!$el.length || !snap) return;
-                const selected = snap.selected ?? '';
-                const snapOpts = snap.options || [];
-
-                if ($el[0] && $el[0].tomselect) {
-                    const ts = $el[0].tomselect;
-
-                    // If snapshot has options, rebuild; otherwise keep existing options
-                    if (snapOpts.length) {
-                        ts.clear(true);
-                        ts.clearOptions();
-                        snapOpts.forEach(o => ts.addOption({
-                            value: String(o.value ?? ''),
-                            text: String(o.text ?? '')
-                        }));
-                        ts.refreshOptions(false);
-                    } else {
-                        // Attempt to populate from DOM if TomSelect has no options
-                        if (!Object.keys(ts.options || {}).length) {
-                            const domOpts = [];
-                            $el.find('option').each(function() {
-                                domOpts.push({
-                                    value: $(this).attr('value') ?? '',
-                                    text: $(this).text()
-                                });
-                            });
-                            if (domOpts.length) {
-                                domOpts.forEach(o => ts.addOption({
-                                    value: String(o.value ?? ''),
-                                    text: String(o.text ?? '')
-                                }));
-                                ts.refreshOptions(false);
-                            }
-                        }
-                    }
-
-                    if (selected !== '') {
-                        try {
-                            ts.setValue(String(selected), true);
-                        } catch (e) {}
-                    } else {
-                        ts.clear(true);
-                    }
                 } else {
-                    // Native select path
-                    if (snapOpts.length) {
-                        $el.empty();
-                        snapOpts.forEach(o => $el.append(
-                            $('<option/>').attr('value', o.value ?? '').prop('disabled', !!o.disabled).text(
-                                o.text ?? '')
-                        ));
-                    }
-                    if (selected !== '') $el.val(String(selected));
+                    selected = $el.val() ?? '';
+                    $el.find('option').each(function() {
+                        options.push({
+                            value: $(this).attr('value') ?? '',
+                            text: $(this).text(),
+                            disabled: !!$(this).prop('disabled')
+                        });
+                    });
                 }
+
+                selects[name] = { options, selected: selected === null ? '' : String(selected) };
+                formData[name] = selected;
+            });
+
+            store.tabs[tabNo].formData = formData;
+            store.tabs[tabNo].selects = selects;
+            store.currentTab = currentTab;
+        }
+
+        function withTomSelect($el, fn) {
+            if ($el[0] && $el[0].tomselect) fn($el[0].tomselect);
+        }
+
+        // ---------- restore ----------
+        function restoreSelect($el, snap) {
+            if (!$el.length || !snap) return;
+            const selected = snap.selected ?? '';
+            const snapOpts = snap.options || [];
+
+            if ($el[0] && $el[0].tomselect) {
+                const ts = $el[0].tomselect;
+                if (snapOpts.length) {
+                    ts.clear(true);
+                    ts.clearOptions();
+                    snapOpts.forEach(o => ts.addOption({
+                        value: String(o.value ?? ''),
+                        text: String(o.text ?? '')
+                    }));
+                    ts.refreshOptions(false);
+                }
+                if (selected !== '') {
+                    try { ts.setValue(String(selected), true); } catch (e) {}
+                } else ts.clear(true);
+            } else {
+                if (snapOpts.length) {
+                    $el.empty();
+                    snapOpts.forEach(o => $el.append(
+                        $('<option/>').attr('value', o.value ?? '').prop('disabled', !!o.disabled).text(o.text ?? '')
+                    ));
+                }
+                if (selected !== '') $el.val(String(selected));
             }
+        }
 
-            function resetFormUI($form) {
-                $form[0].reset();
-                $form.find('select').each(function() {
-                    const $el = $(this);
-                    if ($el[0].tomselect) {
-                        $el[0].tomselect.clear(true);
-                    }
-                });
-            }
+        function resetFormUI($form) {
+            $form[0].reset();
+            $form.find('select').each(function() {
+                if (this.tomselect) this.tomselect.clear(true);
+            });
+        }
 
-            function cssEscape(s) {
-                return String(s).replace(/"/g, '\\"');
-            }
+        function cssEscape(s) {
+            return String(s).replace(/"/g, '\\"');
+        }
 
-            function loadFormForTab(tabNo) {
-                ensureTab(tabNo);
-                const {
-                    formData = {}, selects = {}
-                } = store.tabs[tabNo];
-                const $form = $(FORM_ID);
+        function loadFormForTab(tabNo) {
+            ensureTab(tabNo);
+            const { formData = {}, selects = {} } = store.tabs[tabNo];
+            const $form = $(FORM_ID);
 
-                // Reset once, then restore
-                resetFormUI($form);
+            resetFormUI($form);
 
-                // restore selects first
-                Object.keys(selects).forEach(name => {
-                    restoreSelect($form.find(`[name="${cssEscape(name)}"]`), selects[name]);
-                });
+            Object.keys(selects).forEach(name => {
+                restoreSelect($form.find(`[name="${cssEscape(name)}"]`), selects[name]);
+            });
 
-                // restore other fields
-                Object.keys(formData).forEach(name => {
-                    const $el = $form.find(`[name="${cssEscape(name)}"]`);
-                    if (!$el.length) return;
+            Object.keys(formData).forEach(name => {
+                const $el = $form.find(`[name="${cssEscape(name)}"]`);
+                if (!$el.length) return;
 
-                    if ($el.is('select') && $el[0].tomselect) {
-                        withTomSelect($el, ts => {
-                            const value = formData[name];
-                            const isPaymentType = $el.attr('id') ===
-                                'payment_type'; // 👈 detect payment_type select
-
-                            if (value !== undefined && value !== null && value !== '') {
-                                try {
-                                    ts.setValue(String(value), true);
-                                } catch (e) {}
-
-                                // 👇 special handling for payment_type field
-                                if (isPaymentType) {
-                                    if (String(value) !== '1') {
-                                        $('.bank_group').css('display', 'block');
-                                    } else {
-                                        $('.bank_group').css('display', 'none');
-                                    }
-                                }
-                            } else {
-                                ts.clear(true);
-
-                                // 👇 also handle payment_type when no value
-                                if (isPaymentType) {
-                                    $('.bank_group').css('display', 'none');
-                                }
-                            }
-                        });
-                    } else if ($el.hasClass('voucher-date') || $el.hasClass('passing_date')) {
-                        let val = formData[name] ?? '';
-                        if (val) {
-                            const d = new Date(val);
-                            if (!isNaN(d)) val = d.toISOString().split('T')[0];
+                if ($el.is('select') && $el[0].tomselect) {
+                    withTomSelect($el, ts => {
+                        const value = formData[name];
+                        const isPaymentType = $el.attr('id') === 'payment_type';
+                        if (value !== undefined && value !== null && value !== '') {
+                            try { ts.setValue(String(value), true); } catch (e) {}
+                            if (isPaymentType)
+                                String(value) !== '1'
+                                    ? $('.bank_group').show()
+                                    : $('.bank_group').hide();
+                        } else {
+                            ts.clear(true);
+                            if (isPaymentType) $('.bank_group').hide();
                         }
-                        flatpickr($el.get(0), {
-                            enableTime: false,
-                            dateFormat: "Y-m-d",
-                            altInput: true,
-                            altFormat: "F j, Y",
-                            defaultDate: val,
-                            onChange: function(selectedDates, dateStr) {
-                                const hidden = document.getElementById('hiddenDate');
-                                if (hidden) hidden.value = dateStr;
-                            }
-                        });
-                    } else {
-                        $el.val(formData[name] ?? '');
+                    });
+                } else if ($el.hasClass('voucher-date') || $el.hasClass('passing_date')) {
+                    let val = formData[name] ?? '';
+                    if (val) {
+                        const d = new Date(val);
+                        if (!isNaN(d)) val = d.toISOString().split('T')[0];
                     }
-                });
-            }
+                    flatpickr($el.get(0), {
+                        enableTime: false,
+                        dateFormat: "Y-m-d",
+                        altInput: true,
+                        altFormat: "F j, Y",
+                        defaultDate: val,
+                        onChange: function(selectedDates, dateStr) {
+                            const hidden = document.getElementById('hiddenDate');
+                            if (hidden) hidden.value = dateStr;
+                        }
+                    });
+                } else $el.val(formData[name] ?? '');
+            });
+        }
 
-            function rebuildTabsUI() {
-                const $wrap = $('#voucher-tabs').empty();
-                const nums = Object.keys(store.tabs).map(n => parseInt(n, 10)).sort((a, b) => a - b);
-                nums.forEach(n => {
-                    const isActive = (n === store.currentTab);
-                    $wrap.append(`
-        <div class="voucher-tab-wrapper position-relative">
-          <button class="btn btn-primary btn-sm voucher-tab ${isActive ? 'active' : ''}" data-tab="${n}">Voucher#${n}</button>
-          ${n === 1 ? '' : `<button class="voucher-tab-remove" data-tab="${n}" title="Remove Tab"><i class="fas fa-times"></i></button>`}
-        </div>
-      `);
-                });
-                currentTab = store.currentTab || 1;
-                nextTabNumber = store.nextTabNumber || (nums.length ? Math.max(...nums) + 1 : 2);
-            }
+        function rebuildTabsUI() {
+            const $wrap = $('#voucher-tabs').empty();
+            const nums = Object.keys(store.tabs).map(n => parseInt(n, 10)).sort((a, b) => a - b);
+            nums.forEach(n => {
+                const isActive = (n === store.currentTab);
+                $wrap.append(`
+                    <div class="voucher-tab-wrapper position-relative">
+                        <button class="btn btn-primary btn-sm voucher-tab ${isActive ? 'active' : ''}" data-tab="${n}">
+                            Voucher#${n}
+                        </button>
+                        ${n === 1 ? '' : `<button class="voucher-tab-remove" data-tab="${n}" title="Remove Tab"><i class="fas fa-times"></i></button>`}
+                    </div>
+                `);
+            });
+            currentTab = store.currentTab || 1;
+            nextTabNumber = store.nextTabNumber || (nums.length ? Math.max(...nums) + 1 : 2);
+        }
 
-            // ---------- Reindex tabs 1..N ----------
-            function reindexTabs() {
-                const nums = Object.keys(store.tabs).map(n => parseInt(n, 10)).sort((a, b) => a - b);
-                const newTabs = {};
-                let i = 1;
-                nums.forEach(oldNum => {
-                    newTabs[i++] = store.tabs[oldNum];
-                });
-                store.tabs = newTabs;
+        function reindexTabs() {
+            const nums = Object.keys(store.tabs).map(n => parseInt(n, 10)).sort((a, b) => a - b);
+            const newTabs = {};
+            let i = 1;
+            nums.forEach(oldNum => { newTabs[i++] = store.tabs[oldNum]; });
+            store.tabs = newTabs;
 
-                const count = Object.keys(newTabs).length;
-                store.currentTab = Math.min(store.currentTab, count) || 1;
-                store.nextTabNumber = count + 1;
+            const count = Object.keys(newTabs).length;
+            store.currentTab = Math.min(store.currentTab, count) || 1;
+            store.nextTabNumber = count + 1;
 
-                currentTab = store.currentTab;
-                nextTabNumber = store.nextTabNumber;
+            currentTab = store.currentTab;
+            nextTabNumber = store.nextTabNumber;
 
+            persist();
+            rebuildTabsUI();
+        }
+
+        function showFormCardLoader() { $('#form-card-loader').show(); }
+        function hideFormCardLoader() { $('#form-card-loader').hide(); }
+
+        function switchToTab(tabNo, opts = {}) {
+            const { ensureSaved = false } = opts;
+            const $form = $(FORM_ID);
+            if (ensureSaved) {
+                const prevTab = currentTab;
+                saveFormForTab(prevTab, $form);
                 persist();
-                rebuildTabsUI();
             }
+            currentTab = tabNo;
+            store.currentTab = tabNo;
+            $('.voucher-tab').removeClass('active');
+            $(`.voucher-tab[data-tab="${tabNo}"]`).addClass('active');
+            loadFormForTab(tabNo);
+            persist();
+        }
 
-            // ---------- loaders ----------
-            function showFormCardLoader() {
-                $('#form-card-loader').show();
-            }
+        // ---------- Boot ----------
+        hydrate();
+        initTomSelects();
+        rebuildTabsUI();
+        loadFormForTab(currentTab);
+        persist();
 
-            function hideFormCardLoader() {
-                $('#form-card-loader').hide();
-            }
+        if (!store.tabs[currentTab].selects || Object.keys(store.tabs[currentTab].selects).length === 0) {
+            saveFormForTab(currentTab, $(FORM_ID));
+            persist();
+        }
 
-            function switchToTab(tabNo, opts = {}) {
-                const {
-                    ensureSaved = false
-                } = opts;
-                const $form = $(FORM_ID);
+        // ---------- Add voucher tab ----------
+        $('#add-new-voucher-btn').off('click').on('click', function(e) {
+            e.preventDefault();
+            showFormCardLoader();
 
-                if (ensureSaved) {
+            const voucher_val = $("#voucher_number").val();
+            const parts = (voucher_val || $Type + '-0').split('-');
+            const voucher_num = parseInt(parts[1] || '0', 10) + 1;
+
+            const data = { type: $Type, number: voucher_num, _token: '{{ csrf_token() }}' };
+
+            callAjax(
+                "{{ route('check_new_voucher_number') }}",
+                '{{ csrf_token() }}',
+                'POST',
+                data,
+                function(data) {
+                    const nextVoucherNumber = data.latest_voucher_number;
+                    hideFormCardLoader();
+
+                    const $form = $(FORM_ID);
                     const prevTab = currentTab;
                     saveFormForTab(prevTab, $form);
                     persist();
-                }
 
-                currentTab = tabNo;
-                store.currentTab = tabNo;
-
-                $('.voucher-tab').removeClass('active');
-                $(`.voucher-tab[data-tab="${tabNo}"]`).addClass('active');
-
-                loadFormForTab(tabNo);
-                persist();
-            }
-
-            // ---------- BOOT ORDER (fixed) ----------
-            hydrate();
-            initTomSelects(); // 1) have TomSelect instances ready
-            rebuildTabsUI(); // 2) render the tab buttons
-            loadFormForTab(currentTab); // 3) restore snapshot into widgets (no extra reset)
-            persist();
-
-            // Snapshot once if empty (first run) so reload has data
-            (function primeSnapshotIfEmpty() {
-                const tab = store.tabs[currentTab] || {};
-                const empty = !tab.selects || Object.keys(tab.selects).length === 0;
-                if (empty) {
-                    saveFormForTab(currentTab, $(FORM_ID));
+                    const newNo = store.nextTabNumber || (Object.keys(store.tabs).length + 1);
+                    store.tabs[newNo] = { formData: {}, selects: {} };
+                    store.currentTab = newNo;
+                    store.nextTabNumber = newNo + 1;
+                    currentTab = newNo;
+                    nextTabNumber = store.nextTabNumber;
                     persist();
-                }
-            })();
 
-            // ---------- Add voucher tab ----------
-            $('#add-new-voucher-btn').off('click').on('click', function(e) {
-                e.preventDefault();
-                showFormCardLoader();
+                    $('#submit-button').attr('tab-number', newNo);
+                    resetFormUI($form);
 
-                const voucher_val = $("#voucher_number").val(); // e.g. "CR-1823"
-                const parts = (voucher_val || 'CR-0').split('-');
-                const voucher_num = parseInt(parts[1] || '0', 10) + 1;
+                    rebuildTabsUI();
+                    switchToTab(newNo, { ensureSaved: false });
 
-                const data = {
-                    type: 'CR',
-                    number: voucher_num,
-                    _token: '{{ csrf_token() }}'
-                };
+                    const nextVoucher = `${$Type}-${nextVoucherNumber}`;
+                    $("#voucher_number").val(nextVoucher).attr('value', nextVoucher).trigger('input').trigger('change');
 
-                callAjax(
-                    "{{ route('check_new_voucher_number') }}",
-                    '{{ csrf_token() }}',
-                    'POST',
-                    data,
-                    function(data) {
-                        const nextVoucherNumber = data.latest_voucher_number;
-                        hideFormCardLoader();
-
-                        const $form = $(FORM_ID);
-                        const prevTab = currentTab;
-                        saveFormForTab(prevTab, $form);
-                        persist();
-
-                        const newNo = store.nextTabNumber || (Object.keys(store.tabs).length + 1);
-                        store.tabs[newNo] = {
-                            formData: {},
-                            selects: {}
-                        };
-                        store.currentTab = newNo;
-                        store.nextTabNumber = newNo + 1;
-                        currentTab = newNo;
-                        nextTabNumber = store.nextTabNumber;
-                        persist();
-
-                        $('#submit-button').attr('tab-number', newNo);
-                        resetFormUI($form);
-
-                        rebuildTabsUI();
-                        switchToTab(newNo, {
-                            ensureSaved: false
-                        });
-
-                        const nextVoucher = `CR-${nextVoucherNumber}`;
-                        $("#voucher_number").val(nextVoucher).attr('value', nextVoucher).trigger(
-                            'input').trigger('change');
-
-                        flatpickr('.date', {
-                            enableTime: false,
-                            dateFormat: "Y-m-d",
-                            altInput: true,
-                            altFormat: "F j, Y",
-                            defaultDate: "{{ session('last_submit_date', now()) }}",
-                            onChange: function(selectedDates, dateStr) {
-                                const hidden = document.getElementById('hiddenDate');
-                                if (hidden) hidden.value = dateStr;
-                            }
-                        });
-                    },
-                    true
-                );
-            });
-
-            // ---------- Tab click ----------
-            $(document).on('click', '.voucher-tab', function() {
-                const to = parseInt($(this).data('tab'), 10);
-                $('#submit-button').attr('tab-number', to);
-                if (to === currentTab) return;
-
-                showFormCardLoader();
-                switchToTab(to, {
-                    ensureSaved: true
-                });
-                hideFormCardLoader();
-            });
-
-            // ---------- Remove tab ----------
-            $(document).on('click', '.voucher-tab-remove', function(e) {
-                e.stopPropagation();
-                const tabNo = parseInt($(this).data('tab'), 10);
-                removeTab(tabNo);
-            });
-
-            function removeTab(tabNo) {
-                showFormCardLoader();
-
-                delete store.tabs[tabNo];
-
-                const remaining = Object.keys(store.tabs).map(n => parseInt(n, 10)).sort((a, b) => a - b);
-                if (!remaining.length) {
-                    store.tabs = {
-                        1: {
-                            formData: {},
-                            selects: {}
+                    flatpickr('.date', {
+                        enableTime: false,
+                        dateFormat: "Y-m-d",
+                        altInput: true,
+                        altFormat: "F j, Y",
+                        defaultDate: "{{ session('last_submit_date', now()) }}",
+                        onChange: function(selectedDates, dateStr) {
+                            const hidden = document.getElementById('hiddenDate');
+                            if (hidden) hidden.value = dateStr;
                         }
-                    };
-                }
-                if (!store.tabs[currentTab]) {
-                    store.currentTab = remaining[0] || 1;
-                    currentTab = store.currentTab;
-                }
+                    });
+                },
+                true
+            );
+        });
 
-                reindexTabs();
-                switchToTab(store.currentTab, {
-                    ensureSaved: false
-                });
+        // ---------- Tab click ----------
+        $(document).on('click', '.voucher-tab', function() {
+            const to = parseInt($(this).data('tab'), 10);
+            $('#submit-button').attr('tab-number', to);
+            if (to === currentTab) return;
+            showFormCardLoader();
+            switchToTab(to, { ensureSaved: true });
+            hideFormCardLoader();
+        });
 
-                const tabCount = Object.keys(store.tabs).length;
-                if (tabCount === 1) {
-                    callAjax(
-                        "{{ route('check_new_voucher_number') }}",
-                        '{{ csrf_token() }}',
-                        'POST', {
-                            type: 'CR',
-                            number: 1,
-                            _token: '{{ csrf_token() }}'
-                        },
-                        function(data) {
-                            const nextVoucherNumber = data.latest_voucher_number;
-                            const nextVoucher = `CR-${nextVoucherNumber}`;
-                            $("#voucher_number").val(nextVoucher).attr('value', nextVoucher).trigger('change');
-                            hideFormCardLoader();
-                        },
-                        true,
-                        function() {
-                            hideFormCardLoader();
-                        }
-                    );
-                } else {
-                    hideFormCardLoader();
-                }
+        // ---------- Remove tab ----------
+        $(document).on('click', '.voucher-tab-remove', function(e) {
+            e.stopPropagation();
+            const tabNo = parseInt($(this).data('tab'), 10);
+            removeTab(tabNo);
+        });
+
+        function removeTab(tabNo) {
+            showFormCardLoader();
+            delete store.tabs[tabNo];
+            const remaining = Object.keys(store.tabs).map(n => parseInt(n, 10)).sort((a, b) => a - b);
+            if (!remaining.length) {
+                store.tabs = { 1: { formData: {}, selects: {} } };
             }
-            $(document).on('click', '#clear-vouchers', function(e) {
-                e.preventDefault();
-
-                Swal.fire({
-                    title: 'Are you sure?',
-                    text: "This will clear all vouchers except the first one.",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#d33',
-                    cancelButtonColor: '#3085d6',
-                    confirmButtonText: 'Yes, clear all!'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        try {
-                            // 🔹 1. Remove all voucher tabs except the first one
-                            $('.voucher-tab-wrapper').not(':first').remove();
-
-                            // 🔹 2. Clear the first voucher's form
-                            const $form = $('#voucherForm');
-                            $form.trigger('reset');
-
-                            // If you use TomSelect or flatpickr, reset them too
-                            $form.find('select').each(function() {
-                                if (this.tomselect) this.tomselect.clear(true);
-                            });
-
-                            // Reset date fields (flatpickr)
-                            if (typeof flatpickr !== 'undefined') {
-                                $form.find('.date').each(function() {
-                                    const picker = this._flatpickr;
-                                    if (picker) picker.clear();
-                                });
-                            }
-                            flatpickr('.date', {
-                                enableTime: false,
-                                dateFormat: "Y-m-d",
-                                altInput: true,
-                                altFormat: "F j, Y",
-                                defaultDate: "{{ session('last_submit_date', now()) }}",
-                                onChange: function(selectedDates, dateStr) {
-                                    const hidden = document.getElementById(
-                                        'hiddenDate');
-                                    if (hidden) hidden.value = dateStr;
-                                }
-                            });
-
-                            // 🔹 3. Clear all stored voucher data from localStorage
-                            // localStorage.removeItem('store'); // or whatever your LS_KEY is
-                            // localStorage.removeItem('tabs');
-                            // localStorage.removeItem('nextTabNumber');
-                            // localStorage.removeItem('currentTab');
-                            localStorage.removeItem(LS_KEY);
-                            // Or to wipe all (careful, only if safe):
-                            // localStorage.clear();
-
-                            // 🔹 4. Reset your in-memory store object if you use one
-                            if (typeof store !== 'undefined') {
-                                store.tabs = {
-                                    1: {
-                                        formData: {},
-                                        selects: {}
-                                    }
-                                };
-                                store.nextTabNumber = 2;
-                            }
-
-                            // ✅ Success message
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Cleared!',
-                                text: 'All vouchers cleared except the first one.',
-                            });
-
-                            // If you have a function to persist the store
-                            if (typeof persist === 'function') persist();
-
-                            // Optional: switch back to first tab
-                            $('.voucher-tab').removeClass('active');
-                            $('.voucher-tab[data-tab="1"]').addClass('active');
-                            $('.bank_group').css('display', 'none');
-                            return
-                            if (typeof switchToTab === 'function') switchToTab(1);
-                        } catch (err) {
-                            console.error('Error clearing vouchers:', err);
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error',
-                                text: 'Something went wrong while clearing vouchers.'
-                            });
-                        }
-                    }
-                });
-            });
-
-            // ---------- Autosave ----------
-            const autoSave = throttle(function() {
-                const $form = $(FORM_ID);
-                saveFormForTab(currentTab, $form);
-                persist();
-            }, 250);
-
-            function bindAutoSaveEvents() {
-                $(document)
-                    .off('input.voucherAutosave change.voucherAutosave blur.voucherAutosave')
-                    .on('input.voucherAutosave change.voucherAutosave blur.voucherAutosave',
-                        `${FORM_ID} input, ${FORM_ID} textarea, ${FORM_ID} select`, autoSave);
-
-                $(document).off('change.voucherTS').on('change.voucherTS', TS_SEL, autoSave);
+            if (!store.tabs[currentTab]) {
+                store.currentTab = remaining[0] || 1;
+                currentTab = store.currentTab;
             }
-            bindAutoSaveEvents();
+            reindexTabs();
+            switchToTab(store.currentTab, { ensureSaved: false });
+            hideFormCardLoader();
+        }
 
-
-            // Submit/save handler
-            $(document).on('click', '#submitForm', function(e) {
-                e.preventDefault();
-
-                const tabNumber = parseInt($('#submit-button').attr('tab-number'), 10) || currentTab;
-                const $form = $('#voucherForm');
-                const formData = new FormData($form[0]);
-                formData.append('_token', $('meta[name="csrf-token"]').attr('content'));
-                $.ajaxSetup({
-                    headers: {
-                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                    }
-                });
-                $.ajax({
-                    url: $form.attr('action'),
-                    type: $form.attr('method') || 'POST',
-                    data: formData,
-                    dataType: "JSON",
-                    processData: false, // required for FormData
-                    contentType: false, // required for FormData
-                    beforeSend: function() {
-                        $('#submitBtn').prop('disabled', true).text('Saving...');
-                    },
-                    success: function(response) {
-                        console.log(response, tabNumber);
-
-                        // Remove the saved tab and keep indices contiguous
-                        removeTab(tabNumber);
-                        // reindexTabs();
-
-                        // Refresh table
-                        if (typeof renderDataTable === 'function') {
-                            renderDataTable();
-                        }
-
-                        // Notify + reset form
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Saved!',
-                            text: 'Voucher saved successfully.'
+        // ---------- Clear all vouchers ----------
+        $(document).on('click', '#clear-vouchers', function(e) {
+            e.preventDefault();
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "This will clear all vouchers except the first one.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, clear all!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const $form = $('#voucherForm');
+                    $('.voucher-tab-wrapper').not(':first').remove();
+                    $form.trigger('reset');
+                    $form.find('select').each(function() {
+                        if (this.tomselect) this.tomselect.clear(true);
+                    });
+                    if (typeof flatpickr !== 'undefined') {
+                        $form.find('.date').each(function() {
+                            const picker = this._flatpickr;
+                            if (picker) picker.clear();
                         });
-                        // $form.trigger('reset');
-
-                        // Optional: clear TomSelect selections visually
-                        // $form.find('select').each(function() {
-                        //     if (this.tomselect) this.tomselect.clear(true);
-                        // });
-                    },
-                    error: function(xhr) {
-                        console.error('❌ Error:', xhr.responseText);
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: 'Something went wrong while saving the voucher.'
-                        });
-                    },
-                    complete: function() {
-                        $('#confirmedModal').modal('hide');
-                        $('#submitBtn').prop('disabled', false).text('Submit');
                     }
-                });
-            });
+                    flatpickr('.date', {
+                        enableTime: false,
+                        dateFormat: "Y-m-d",
+                        altInput: true,
+                        altFormat: "F j, Y",
+                        defaultDate: "{{ session('last_submit_date', now()) }}"
+                    });
 
+                    // Clear only current type’s vouchers
+                    localStorage.removeItem(LS_KEY);
 
-            $(document).ready(function() {
-                $('#toggleFilters').on('click', function() {
-                    $('#filtersSection').toggle();
-                });
+                    store.tabs = { 1: { formData: {}, selects: {} } };
+                    store.nextTabNumber = 2;
+                    persist();
 
-                $('#applyFilters').on('click', function() {
-                    isInitialLoad = false; // Enable filters
-                    renderDataTable();
-                });
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Cleared!',
+                        text: `All ${$Type} vouchers cleared except the first one.`,
+                    });
 
-                $('#resetFilters').on('click', function() {
-                    $('#filter_head_account').val('');
-                    $('#filter_subhead_account').val('');
-                    $('#filter_voucher_number').val('');
-                    $('#filter_amount').val('');
-                    $('#filter_date_from').val('');
-                    $('#filter_date_to').val('');
-                    isInitialLoad = true; // Reset to show all data again
-                    renderDataTable();
-                });
-
-                // 🔹 First load → show all data (no filters)
-                renderDataTable();
-            });
-
-            // Function to render the DataTable with or without filters
-            let isInitialLoad = true;
-
-            function renderDataTable() {
-                const $tbl = $('#vouchersTable');
-                const src = $tbl.data('source');
-
-                if ($.fn.DataTable.isDataTable('#vouchersTable')) {
-                    $tbl.DataTable().clear().destroy();
+                    $('.voucher-tab').removeClass('active');
+                    $('.voucher-tab[data-tab="1"]').addClass('active');
+                    $('.bank_group').hide();
                 }
+            });
+        });
 
-                $tbl.DataTable({
-                    processing: true,
-                    serverSide: true,
-                    paging: true,
-                    pageLength: 10,
-                    searching: true,
-                    order: [
-                        [1, 'desc']
-                    ],
-                    ajax: {
-                        url: src,
-                        type: 'GET',
-                        data: function(d) {
-                            if (!isInitialLoad) {
-                                // Only send filters after the first render
-                                d.date_from = $('#filter_date_from').val();
-                                d.date_to = $('#filter_date_to').val();
-                                d.head_account = $('#filter_head_account').val();
-                                d.subhead_account = $('#filter_subhead_account').val();
-                                d.voucher_number = $('#filter_voucher_number').val();
-                                d.amount = $('#filter_amount').val();
-                            }
-                        },
-                        dataSrc: 'data'
-                    },
-                    columns: [{
-                            data: 'id',
-                            render: (_, __, ___, meta) => meta.row + meta.settings._iDisplayStart + 1
-                        },
-                        {
-                            data: 'date'
-                        },
-                        {
-                            data: 'voucher_number'
-                        },
-                        {
-                            data: 'head'
-                        },
-                        {
-                            data: 'subhead'
-                        },
-                        {
-                            data: 'detail'
-                        },
-                        {
-                            data: 'amount',
-                            render: d => Number(d).toLocaleString()
-                        },
-                        @canany(['update voucher', 'delete voucher', 'read voucher'])
-                            {
-                                data: null,
-                                orderable: false,
-                                render: function(row) {
+        // ---------- Autosave ----------
+        const autoSave = throttle(function() {
+            const $form = $(FORM_ID);
+            saveFormForTab(currentTab, $form);
+            persist();
+        }, 250);
 
-                                    // Create dynamic print URL
-                                    let printUrl = "{{ route('finance.voucher.print', ':id') }}";
-                                    printUrl = printUrl.replace(':id', row.id);
+        $(document)
+            .off('input.voucherAutosave change.voucherAutosave blur.voucherAutosave')
+            .on('input.voucherAutosave change.voucherAutosave blur.voucherAutosave', `${FORM_ID} input, ${FORM_ID} textarea, ${FORM_ID} select`, autoSave)
+            .off('change.voucherTS')
+            .on('change.voucherTS', TS_SEL, autoSave);
 
-                                    let buttons = `<div class="btn-group">`;
-
-                                    @can('update voucher')
-                                        buttons += `
-                <button class="btn btn-sm btn-primary btn-edit" data-id="${row.id}">
-                    <i class="fas fa-pencil-alt"></i>
-                </button>
-            `;
-                                    @endcan
-
-                                    @can('delete voucher')
-                                        buttons += `
-                <button class="btn btn-sm btn-danger btn-delete" data-id="${row.id}">
-                    <i class="fas fa-trash"></i>
-                </button>
-            `;
-                                    @endcan
-
-                                    @can('read voucher')
-                                        buttons += `
-                <a href="${printUrl}" target="_blank" class="btn btn-sm btn-info btn-print">
-                    <i class="fas fa-print"></i>
-                </a>
-            `;
-                                    @endcan
-
-                                    buttons += `</div>`;
-
-                                    return buttons;
-                                }
-                            },
-                        @endcanany
-
-
-                    ]
-                });
-            }
-
-            // ---------- AJAX helper ----------
-            function callAjax(route, csrf, method, data, callback, isFile = false, onError = null) {
-                $.ajaxSetup({
-                    headers: {
-                        "X-CSRF-TOKEN": csrf
-                    }
-                });
-                $.ajax({
-                    url: route,
-                    method: method,
-                    data: data,
-                    success: function(response) {
-                        callback(response);
-                    },
-                    error: function(xhr) {
-                        console.error('❌ AJAX Error:', xhr.responseText);
-                        if (typeof onError === 'function') onError(xhr);
-                    }
-                });
-            }
-        })(jQuery);
+        // ---------- AJAX helper ----------
+        function callAjax(route, csrf, method, data, callback, isFile = false, onError = null) {
+            $.ajaxSetup({ headers: { "X-CSRF-TOKEN": csrf } });
+            $.ajax({
+                url: route,
+                method: method,
+                data: data,
+                success: function(response) { callback(response); },
+                error: function(xhr) {
+                    console.error('❌ AJAX Error:', xhr.responseText);
+                    if (typeof onError === 'function') onError(xhr);
+                }
+            });
+        }
+    })(jQuery);
     </script>
 @endsection
 
