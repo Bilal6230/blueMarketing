@@ -4,15 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Project;
 use Illuminate\Http\Request;
+use App\Models\HeadAccounting;
+use App\Models\SubheadAccounting;
+use App\Models\ProjectHeadSubhead;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
-use RealRashid\SweetAlert\Facades\Alert;
-use Symfony\Component\HttpFoundation\Response;
+use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Storage;
-use App\Models\ProjectHeadSubhead;
+use RealRashid\SweetAlert\Facades\Alert;
+use Illuminate\Support\Facades\Validator;
+use Symfony\Component\HttpFoundation\Response;
 
 
 
@@ -46,7 +48,7 @@ class ProjectController extends Controller
         }
 
         try {
-            $imageName = time().'.'.$request->logo->extension();  
+            $imageName = time().'.'.$request->logo->extension();
             $request->logo->move(public_path('images/logo'), $imageName);
 
             $data = Project::create([
@@ -62,6 +64,16 @@ class ProjectController extends Controller
                 'head_accounting_id' => 16,
                 'subhead_accounting_id' => 123,
             ]);
+            $subAccounts = [
+                'Labour' => 'Labour Party',
+                'Project Sale' => 'Deduction',
+                'Project Sale' => 'Resale Profit',
+                'Project Sale' => 'Party Profit',
+                'Old Project Sale' => null,
+            ];
+            foreach ($subAccounts as $key => $account) {
+                $this->systemHeadSubheadAccountId($data->id, $key, $account, true);
+            }
 
             Alert::success('Notification', 'Data <b>' . $data->project . '</b> saved successfully.')->toToast()->toHtml();
         } catch (\Throwable $th) {
@@ -70,6 +82,44 @@ class ProjectController extends Controller
         }
 
         return back();
+    }
+    private function systemHeadSubheadAccountId(int $projectId, string $headName, string $subheadName, bool $createIfMissing = false): int
+    {
+        $head = HeadAccounting::where('name', $headName)->first();
+        $subhead = SubheadAccounting::where('name', $subheadName)->first();
+
+        if (!$head && $createIfMissing) {
+            $head = HeadAccounting::create([
+                'name' => $headName,
+                'is_active' => 1,
+                'acct_type' => 0,
+                'create_by' => Auth::id(),
+            ]);
+        }
+        if (!$subhead && $createIfMissing) {
+            $subhead = SubheadAccounting::create([
+                'name' => $subheadName,
+                'is_active' => 1,
+                'create_by' => Auth::id(),
+            ]);
+        }
+
+        if (!$subhead) {
+            throw new \Exception("System subhead not found: {$subheadName}");
+        }
+        if($head && $subhead){
+            ProjectHeadSubhead::firstOrCreate(
+                [
+                    'project_id' => $projectId,
+                    'head_accounting_id' => $head->id,
+                    'subhead_accounting_id' => $subhead->id,
+                    'plot_id' => null,
+                    'customer_id' => null,
+                ]
+            );
+        }
+
+        return true;
     }
 
     public function show(Request $request)
@@ -172,7 +222,7 @@ class ProjectController extends Controller
         return response()->json(['success' => true])->withCookie($cookie);
     }
 
-    
 
-    
+
+
 }
