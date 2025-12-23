@@ -614,11 +614,10 @@ class BookingController extends Controller
         $head = HeadAccounting::where('name', 'Old Project Sales')->first();
 
         if (!$head) {
-            $head = SubheadAccounting::create([
+            $head = HeadAccounting::create([
                 'name' => 'Old Project Sales',
                 'is_active' => 1,
-                'cnic' => '00000',
-                'phone' => '00000',
+                'acct_type' => 0,
                 'create_by' => Auth::id(),
             ]);
         }
