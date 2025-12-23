@@ -67,7 +67,6 @@ class ProjectController extends Controller
             $subAccounts = [
                 'Labour' => 'Labour Party',
                 'Project Sale' => 'Deduction',
-                'Project Sale' => 'Resale',
                 'Project Sale' => 'Resale Profit',
                 'Project Sale' => 'Party Profit',
                 'Old Project Sale' => null,
