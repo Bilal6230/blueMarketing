@@ -887,8 +887,6 @@ class LabourController extends Controller
             $subhead = SubheadAccounting::create([
                 'name' => $subheadName,
                 'is_active' => 1,
-                'cnic' => '00000',
-                'phone' => '00000',
                 'create_by' => Auth::id(),
             ]);
         }
