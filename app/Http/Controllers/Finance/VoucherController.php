@@ -476,7 +476,6 @@ class VoucherController extends Controller
             ->whereHas('projectHeadSubhead', function ($q) use ($selectedProjectId) {
                 $q->where('project_id', $selectedProjectId);
             });
-
         // Apply filters only if user has selected them
         if ($request->has('head_account') && $request->head_account) {
             $q->whereHas('projectHeadSubhead.headAccounting', function ($query) use ($request) {
