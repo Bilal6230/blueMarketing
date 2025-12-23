@@ -562,6 +562,7 @@ class BookingController extends Controller
                 }
             });
             session(['last_submit_date' => $request->booking_date]);
+            $this->attechCustomerToOldProjectSale($request->project_id, $request->customer_id, $request->plot_id);
             Alert::success('Notification', 'Data updated successfully')->toToast()->toHtml();
         } catch (\Throwable $th) {
             Log::error('Booking update failed', [
@@ -608,6 +609,35 @@ class BookingController extends Controller
      * For File Transfer Fee we allow auto-create.
      * For Party Profit we do NOT auto-create (since you said it was added already).
      */
+    private function attechCustomerToOldProjectSale(int $projectId, int $customerId, int $plotId): int
+    {
+        $head = HeadAccounting::where('name', 'Old Project Sales')->first();
+
+        if (!$head) {
+            $head = SubheadAccounting::create([
+                'name' => 'Old Project Sales',
+                'is_active' => 1,
+                'cnic' => '00000',
+                'phone' => '00000',
+                'create_by' => Auth::id(),
+            ]);
+        }
+
+        $phs = ProjectHeadSubhead::updateOrCreate(
+            // 🔹 Find record by these fields (DO NOT change them)
+            [
+                'project_id'  => $projectId,
+                'plot_id'     => $plotId,
+                'customer_id' => $customerId,
+            ],
+            // 🔹 Only this field will be updated
+            [
+                'head_accounting_id' => $head->id,
+            ]
+        );
+
+        return (int) $phs->id;
+    }
     private function systemAccountIdBySubheadName(int $projectId, int $headId, string $subheadName, bool $createIfMissing = false): int
     {
         $subhead = SubheadAccounting::where('name', $subheadName)->first();
@@ -1664,8 +1694,7 @@ class BookingController extends Controller
             'payment_type' => 'required',
             'reference' => 'required',
 
-        ]);
-        ;
+        ]);;
 
         $action = $request->input('action');
         // dd($request->input());
@@ -2188,7 +2217,7 @@ class BookingController extends Controller
             'booking_id' => 'nullable', // we read it manually
             'action_type' => 'required|in:payment_not_received,plot_purchase,re_sale',
             'reason' => 'nullable|string|max:2000',
-            'cancel_effect' => 'required|in:charge_customer,give_profit',
+            'cancel_effect' => 'required|in:charge_customer,give_profit,none',
             'deduction_amount' => 'nullable|string', // "100,000"
         ]);
 
@@ -2240,9 +2269,9 @@ class BookingController extends Controller
                         'plot_history' => json_encode($history),
                     ]);
                 }
-                $saleAmount = $this->pvMoneyToDecimal2($booking->total_price); // from DB
-                $adjustment = $this->pvMoneyToDecimal2($request->input('deduction_amount')); // fine/profit input
                 $effect = $request->input('cancel_effect');
+                $saleAmount = $this->pvMoneyToDecimal2($booking->total_price); // from DB
+                $adjustment = $effect === 'none' ? 0 : $this->pvMoneyToDecimal2($request->input('deduction_amount')); // fine/profit input
                 // Mark booking canceled
                 $booking->update([
                     'cancel_status' => 1,
@@ -2263,10 +2292,10 @@ class BookingController extends Controller
                 // ========= Accounting =========
 
                 // Sale amount from DB (trusted)
-                $sale = $this->pvMoneyToDecimal2($booking->total_price); // "5000000.00"
-                $adj = $this->pvMoneyToDecimal2($request->input('deduction_amount')); // fine/profit
-
                 $effect = $request->cancel_effect; // charge_customer | give_profit
+                $sale = $this->pvMoneyToDecimal2($booking->total_price); // "5000000.00"
+                $adj = $effect === 'none' ? 0 : $this->pvMoneyToDecimal2($request->input('deduction_amount')); // fine/profit
+
 
                 if (bccomp($adj, '0.00', 2) < 0) {
                     throw new \Exception('Invalid adjustment amount.');
@@ -2357,7 +2386,7 @@ class BookingController extends Controller
                 ]);
 
                 // 3) Post fine/profit system side
-                if (bccomp($adj, '0.00', 2) === 1) {
+                if (bccomp($adj, '0.00', 2) === 1 && $effect != 'none') {
                     if ($effect === 'charge_customer') {
                         // Fine: credit Deduction account (CR in) = fine
                         $deductionAccId = $this->systemAccountIdBySubheadName(
@@ -2406,10 +2435,11 @@ class BookingController extends Controller
                         ]);
                     }
                 }
+                $this->attechCustomerToOldProjectSale($booking->project_id, $booking->customer_id, $booking->plot_id);
             });
 
-            return response()->json(['message' => 'Booking canceled successfully.']);
 
+            return response()->json(['message' => 'Booking canceled successfully.']);
         } catch (\Throwable $e) {
             Log::error('Booking cancel failed', [
                 'booking_id' => $bookingId,

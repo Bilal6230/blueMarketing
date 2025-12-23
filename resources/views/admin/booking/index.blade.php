@@ -248,6 +248,7 @@
                                 <div class="col-md-6 mb-3">
                                     <label for="cancel_effect"><strong>Cancellation Effect</strong></label>
                                     <select class="form-control" name="cancel_effect" id="cancel_effect">
+                                        <option value="none" selected>None of them</option>
                                         <option value="charge_customer">Charge Customer (Deduction)</option>
                                         <option value="give_profit">Give Customer Profit</option>
                                     </select>

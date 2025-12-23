@@ -238,7 +238,6 @@ class LabourController extends Controller
                     'view' => $view,
                 ]);
             });
-
         } catch (\Throwable $e) {
 
             Log::error('labourPayment failed', [
@@ -783,7 +782,9 @@ class LabourController extends Controller
         $labours = json_decode($request->detail, true);
 
         $labourNames = collect($labours)->map(function ($labour) {
-            return $labour['name'] . ' (' . $labour['days'] . ' days)';
+            return $labour['name']
+                . ' (' . $labour['days'] . ' days'
+                . ', wage: ' . $labour['rate'] . ')';
         })->implode(', ');
 
         $site = Site::find($request->site_id);
@@ -807,10 +808,16 @@ class LabourController extends Controller
             'created_by' => auth()->id(),
             'project_id' => $selectedProjectId,
         ]);
+        $headSubheadId = $this->systemHeadSubheadAccountId(
+            (int) $selectedProjectId,
+            'Labour',
+            'Labour Party',
+            true // create if missing
+        );
 
         JournalVoucherDetail::create([
             'journal_voucher_id' => $journalVoucher->id,
-            'account_id' => 372,
+            'account_id' => $headSubheadId,
             'debit' => 0,
             'credit' => $amount,
             'description' => $labourAccountDesc,
@@ -819,7 +826,7 @@ class LabourController extends Controller
         $toLedgerData = Ledger::create([
             'type' => 'JV',
             'type_id' => $journalVoucher->id,
-            'project_head_subheads_id' => 372,
+            'project_head_subheads_id' => $headSubheadId,
             'reference' => null,
             'amount_in' => $amount,
             'amount_out' => 0,
@@ -835,7 +842,7 @@ class LabourController extends Controller
             'account_id' => $project_head_subheads_id,
             'debit' => $amount,
             'credit' => 0,
-            'description' => $siteAccountDesc,
+            'description' => $labourAccountDesc,
             'created_by' => auth()->id(),
         ]);
         $fromLedgerData = Ledger::create([
@@ -845,7 +852,7 @@ class LabourController extends Controller
             'reference' => null,
             'amount_in' => 0,
             'amount_out' => $amount,
-            'detail' => $siteAccountDesc,
+            'detail' => $labourAccountDesc,
             'create_by' => auth()->id(),
             'is_active' => true,
             'status' => '0',
@@ -862,5 +869,44 @@ class LabourController extends Controller
             'toLedgerData' => $toLedgerData,
             'fromLedgerData' => $fromLedgerData
         ]);
+    }
+    private function systemHeadSubheadAccountId(int $projectId, string $headName, string $subheadName, bool $createIfMissing = false): int
+    {
+        $head = HeadAccounting::where('name', $headName)->first();
+        $subhead = SubheadAccounting::where('name', $subheadName)->first();
+
+        if (!$head && $createIfMissing) {
+            $head = HeadAccounting::create([
+                'name' => $headName,
+                'is_active' => 1,
+                'acct_type' => 0,
+                'create_by' => Auth::id(),
+            ]);
+        }
+        if (!$subhead && $createIfMissing) {
+            $subhead = SubheadAccounting::create([
+                'name' => $subheadName,
+                'is_active' => 1,
+                'cnic' => '00000',
+                'phone' => '00000',
+                'create_by' => Auth::id(),
+            ]);
+        }
+
+        if (!$subhead) {
+            throw new \Exception("System subhead not found: {$subheadName}");
+        }
+
+        $phs = ProjectHeadSubhead::firstOrCreate(
+            [
+                'project_id' => $projectId,
+                'head_accounting_id' => $head->id,
+                'subhead_accounting_id' => $subhead->id,
+                'plot_id' => null,
+                'customer_id' => null,
+            ]
+        );
+
+        return (int) $phs->id;
     }
 }
