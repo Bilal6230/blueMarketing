@@ -562,7 +562,7 @@ class BookingController extends Controller
                 }
             });
             session(['last_submit_date' => $request->booking_date]);
-            $this->attechCustomerToOldProjectSale($request->project_id, $request->customer_id, $request->plot_id);
+            $this->attechCustomerToOldProjectSale($request->project_id, $existingBooking->customer_id, $existingBooking->plot_id);
             Alert::success('Notification', 'Data updated successfully')->toToast()->toHtml();
         } catch (\Throwable $th) {
             Log::error('Booking update failed', [
