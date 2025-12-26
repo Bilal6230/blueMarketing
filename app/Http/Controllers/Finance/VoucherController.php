@@ -118,6 +118,7 @@ class VoucherController extends Controller
         $x['projects'] = $projects;
         $x['table_data_route'] = route('voucher.cash_in.data');
         $numbers = Ledger::where('type', 'CR')
+            ->where('voucher_number', '>', 0)
             ->orderBy('voucher_number')
             ->pluck('voucher_number')
             ->toArray();
@@ -419,6 +420,7 @@ class VoucherController extends Controller
         $x['projects'] = Project::query()->select('id', 'project')->where('id', $selectedProjectId)->get();
         $x['table_data_route'] = route('voucher.cash_out.data');
         $numbers = Ledger::where('type', 'CP')
+            ->where('voucher_number', '>', 0)
             ->orderBy('voucher_number')
             ->pluck('voucher_number')
             ->toArray();
@@ -829,6 +831,7 @@ class VoucherController extends Controller
         $voucherNumber = (int) $request->number;
         // Check if voucher number already exists
         $exists = Ledger::where('type', $type)
+            ->where('voucher_number', '>', 0)
             ->where('voucher_number', $voucherNumber)
             ->exists();
 
