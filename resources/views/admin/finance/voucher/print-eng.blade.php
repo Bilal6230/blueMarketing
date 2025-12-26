@@ -107,7 +107,7 @@
                         <div class="address">Shop # C-215, A-Block Phase-1 Etihad Garden, Rahim Yar Khan</div>
                         @if ($voucher->type == 'CR')
                         <div class="voucher-name">CREDIT VOUCHER</div>
-                        @elseif($voucher->type == 'CP')
+                        @elseif($voucher->type == 'CP' || $voucher->type == 'BO')
                         <div class="voucher-name">PAYMENT VOUCHER</div>
                         @endif
                     </div>
