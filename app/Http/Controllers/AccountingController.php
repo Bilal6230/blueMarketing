@@ -18,7 +18,7 @@ use RealRashid\SweetAlert\Facades\Alert;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
 use Exception;
-
+use Illuminate\Support\Carbon;
 
 class AccountingController extends Controller
 {
@@ -473,8 +473,13 @@ class AccountingController extends Controller
 
         // $projects = Project::get();
         $projects = Project::where('id', $selectedProjectId)->get();
-        $headaccounts = HeadAccounting::get();
-        $subheadaccounts = SubheadAccounting::get();
+
+        $headSubHeads = ProjectHeadSubhead::with(['headAccounting', 'subheadAccounting'])
+            ->where('project_id', $selectedProjectId)
+            ->get();
+
+        $headaccounts = $headSubHeads->pluck('headAccounting')->unique('id')->values();
+        $subheadaccounts = $headSubHeads->pluck('subheadAccounting')->unique('id')->values();
 
         $x['projects'] = $projects;
         $x['headaccounts'] = $headaccounts;
@@ -705,18 +710,9 @@ class AccountingController extends Controller
     }
     public function details_party_ledger(Request $request)
     {
-        // Validate the request
-        $request->validate([
-            'fdate' => 'required|date',
-            'tdate' => 'required|date',
-            'projects_id' => 'required|integer|exists:projects,id',
-            'accounts_id' => 'nullable|integer|exists:head_accountings,id',
-            'subaccounts_id' => 'nullable|array',
-            'subaccounts_id.*' => 'integer|exists:subhead_accountings,id',
-        ]);
-
+        $projects_id = getSelectedTown();
         // Get ProjectHeadSubhead ID(s)
-        $query = ProjectHeadSubhead::where('project_id', $request->projects_id);
+        $query = ProjectHeadSubhead::where('project_id', $projects_id);
 
         // Filter by head_accounting_id if provided
         if ($request->filled('accounts_id')) {
@@ -730,20 +726,23 @@ class AccountingController extends Controller
 
         // Fetch the matching ProjectHeadSubhead records
         $projectHeadSubheads = $query->pluck('id');
-
         if ($projectHeadSubheads->isEmpty()) {
             return redirect()->back()->with('error', 'No matching records found for the given criteria.');
         }
 
+        $fdate = Carbon::createFromFormat('d-m-Y', $request->fdate)->format('Y-m-d');
+        $tdate = Carbon::createFromFormat('d-m-Y', $request->tdate)->format('Y-m-d');
+
         // Calculate the opening balance
         $openingBalance = Ledger::whereIn('project_head_subheads_id', $projectHeadSubheads)
-            ->where('date', '<', $request->fdate)->where('is_active', 1)
-            ->selectRaw('SUM(amount_in) - SUM(amount_out) as opening_balance')
+            ->whereDate('date', '<', $fdate)
+            ->where('is_active', 1)
+            ->selectRaw('COALESCE(SUM(amount_in),0) - COALESCE(SUM(amount_out),0) as opening_balance')
             ->value('opening_balance');
-
         // Fetch ledger details
         $ledgerDetails = Ledger::whereIn('project_head_subheads_id', $projectHeadSubheads)
-            ->whereBetween('date', [$request->fdate, $request->tdate])->where('is_active', 1)
+            ->whereBetween('date', [$fdate, $tdate])
+            ->where('is_active', 1)
             ->get();
 
         // Fetch party details
@@ -760,7 +759,7 @@ class AccountingController extends Controller
             });
 
         // Get project name for the header
-        $projectName = Project::find($request->projects_id)->project ?? 'N/A';
+        $projectName = Project::find($projects_id)->project ?? 'N/A';
         // Return the Blade view with data
         return view('admin.finance.reports.party_ledger_report', [
             'reportTitle' => "Ledger Report",

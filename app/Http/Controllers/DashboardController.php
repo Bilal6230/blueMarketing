@@ -87,7 +87,6 @@ class DashboardController extends Controller
         $x['dasticashData'] = $dasticash;
         $x['total_bank_account_data'] = $Bankaccountdata->balance;
         $x['today_leads'] = $lead_response['total_leads'];
-
         return view('admin.dashboard', $x);
     }
 
