@@ -105,7 +105,11 @@
                     <div class="center">
                         <h2 class="title">Planet Architects & Builders</h2>
                         <div class="address">Shop # C-215, A-Block Phase-1 Etihad Garden, Rahim Yar Khan</div>
+                        @if ($voucher->type == 'CR')
                         <div class="voucher-name">CREDIT VOUCHER</div>
+                        @elseif($voucher->type == 'CP')
+                        <div class="voucher-name">PAYMENT VOUCHER</div>
+                        @endif
                     </div>
                 </div>
 
@@ -140,10 +144,17 @@
                     <td style="width:20%; text-align:center;">Amount</td>
                 </tr>
             </thead>
+            @php
+                if($voucher->type == 'CP' || $voucher->type == 'BO'){
+                    $amount = $voucher->amount_out;
+                }else if($voucher->type == 'CR'){
+                    $amount = $voucher->amount_in;
+                }
+            @endphp
             <tbody>
                 <tr>
                     <th style="width:80%; text-align:justify; border-bottom: none;">Detail: {{ $voucher->detail }}</th>
-                    <th style="width:20%; text-align:center;">{{ number_format($voucher->amount_in, 0, '.', '') }}</th>
+                    <th style="width:20%; text-align:center;">{{ number_format($amount, 0, '.', '') }}</th>
                 </tr>
                 <tr>
                     <td style="border-top: none;"></td>
@@ -151,9 +162,9 @@
                 </tr>
                 <tr>
                     <td style="text-align:right; font-weight:bold;">ٹوٹل /
-                        {{ numberToUrduWords($voucher->amount_in) . ' روپے' }}</td>
+                        {{ numberToUrduWords($amount) . ' روپے' }}</td>
                     <td style="font-weight:bold; text-align:center;">Total =
-                        {{ number_format($voucher->amount_in, 0, '.', '') }}/-</td>
+                        {{ number_format($amount, 0, '.', '') }}/-</td>
                 </tr>
             </tbody>
         </table>
