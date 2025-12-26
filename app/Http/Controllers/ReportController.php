@@ -14,7 +14,7 @@ use Spatie\Permission\Models\Role;
 use RealRashid\SweetAlert\Facades\Alert;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
-use App\Repository\Lead\LeadRepository AS lead_repo;
+use App\Repository\Lead\LeadRepository as lead_repo;
 use App\Models\Project;
 use App\Models\ProjectHeadSubhead;
 use App\Models\SubheadAccounting;
@@ -30,29 +30,23 @@ class ReportController extends Controller
         $userID = null;
         $status = true;
         $filter = null;
-        if(isset($request->user))
-        {
-            $userID =  $request->user;
-        }
-        elseif(isset($request->filter) && $request->filter != "all")
-        {
-            $userID =  null;
-        }
-        else
-        {
+        if (isset($request->user)) {
+            $userID = $request->user;
+        } elseif (isset($request->filter) && $request->filter != "all") {
+            $userID = null;
+        } else {
             $userID = Auth::user()->id;
         }
-        if(isset($request->filter))
-        {
+        if (isset($request->filter)) {
             $filter = $request->filter;
         }
 
 
-        $x['title']     = 'Lead SetUp';
-        $x['data']      = lead_repo::getLeadsList($userID,$filter, $status);
-        $x['role']      = Role::get();
-        $x['users']      = User::where('status_id', 1)->get(); //User::get();
-        $x['power']     = $power;
+        $x['title'] = 'Lead SetUp';
+        $x['data'] = lead_repo::getLeadsList($userID, $filter, $status);
+        $x['role'] = Role::get();
+        $x['users'] = User::where('status_id', 1)->get(); //User::get();
+        $x['power'] = $power;
         $x['filter']['type'] = $filter;
         $x['filter']['user'] = $userID;
         $projects = Project::get();
@@ -66,11 +60,11 @@ class ReportController extends Controller
     {
         $power = Auth::user()->roles[0]->name;
 
-        $x['title']     = 'Agent Report';
-        $x['data']      = lead_repo::getLeadsList(Auth::user()->id, $request->filter);
-        $x['role']      = Role::get();
-        $x['users']      = User::get();
-        $x['power']     = $power;
+        $x['title'] = 'Agent Report';
+        $x['data'] = lead_repo::getLeadsList(Auth::user()->id, $request->filter);
+        $x['role'] = Role::get();
+        $x['users'] = User::get();
+        $x['power'] = $power;
         dd($x['users']);
         return view('admin.reports.agent_report', $x);
     }
@@ -79,25 +73,25 @@ class ReportController extends Controller
     {
         $power = Auth::user()->roles[0]->name;
 
-        $x['title']     = 'Bankers Check Report';
-        $x['role']      = Role::get();
-        $x['users']      = User::get();
-        $x['power']     = $power;
-        $x['type']      =   'PPR';
-        $x['class']      =   'cash-in';
+        $x['title'] = 'Bankers Check Report';
+        $x['role'] = Role::get();
+        $x['users'] = User::get();
+        $x['power'] = $power;
+        $x['type'] = 'PPR';
+        $x['class'] = 'cash-in';
         $x['bg_voucher'] = 'info-cash-in';
-        $old_bank_id = $old_fdate = $old_tdate  = null;
+        $old_bank_id = $old_fdate = $old_tdate = null;
         $old_passing_status = 66;
 
-        $query = CustomerLedger::with('customer_list', 'plot_list','ledger','ledger.projectHeadSubhead.subheadAccounting','ledger.projectHeadSubhead.headAccounting')
-        ->whereIn('payment_type', [3, 2])
-        ->where('is_active', '1')
-        ->where('project_id', getSelectedTown())
-        ->filterByCustomerId($request->input('customer_id'))
-        ->filterByPlotId($request->input('plot_id'))
-        ->filterByPassingStatus($request->input('passing_status'))
-        ->filterByBankId($request->input('bank_id'))
-        ->filterByDateRange($request->input('fdate'), $request->input('tdate'));
+        $query = CustomerLedger::with('customer_list', 'plot_list', 'ledger', 'ledger.projectHeadSubhead.subheadAccounting', 'ledger.projectHeadSubhead.headAccounting')
+            ->whereIn('payment_type', [3, 2])
+            ->where('is_active', '1')
+            ->where('project_id', getSelectedTown())
+            ->filterByCustomerId($request->input('customer_id'))
+            ->filterByPlotId($request->input('plot_id'))
+            ->filterByPassingStatus($request->input('passing_status'))
+            ->filterByBankId($request->input('bank_id'))
+            ->filterByDateRange($request->input('fdate'), $request->input('tdate'));
 
         $selectedProjectId = getSelectedTown();
 
@@ -107,16 +101,16 @@ class ReportController extends Controller
         // Calculate the sum of amount_out
         $totalAmountOut = $data->sum('amount_out');
 
-        $data_list = ProjectHeadSubhead::select('project_id','head_accounting_id')
-                        ->distinct()
-                        ->with('headAccounting')
-                        ->where(['project_id' => $selectedProjectId])
-                        ->get();
-        $sub_data_list = ProjectHeadSubhead::select('project_id','subhead_accounting_id')
-                        ->distinct()
-                        ->with('subheadAccounting')
-                        ->where(['project_id' => $selectedProjectId])
-                        ->get();
+        $data_list = ProjectHeadSubhead::select('project_id', 'head_accounting_id')
+            ->distinct()
+            ->with('headAccounting')
+            ->where(['project_id' => $selectedProjectId])
+            ->get();
+        $sub_data_list = ProjectHeadSubhead::select('project_id', 'subhead_accounting_id')
+            ->distinct()
+            ->with('subheadAccounting')
+            ->where(['project_id' => $selectedProjectId])
+            ->get();
 
 
         $x['data'] = $data;
@@ -192,17 +186,18 @@ class ReportController extends Controller
                 'check_number' => $result->t_number,
                 'passing_date' => $request->bank_post_at,
                 'passing_status' => $request->passing_status,
-                'description_note' => '('.$check_slip.') '.$request->note,
+                'description_note' => '(' . $check_slip . ') ' . $request->note,
                 'bank_name' => $bankName, // Add bank name to history
                 'credit_account_id' => $creditAccountId, // Add credit account ID to history
             ]);
 
             // Create Ledger entry only if passing_status == 1
-            if ($request->passing_status == 1)
-            {
+            if ($request->passing_status == 1) {
+                $voucherNumber = getVocuherNumber('BR');
                 Ledger::create([
                     'customer_ledger_id' => $request->id,
                     'type' => 'BR',
+                    'voucher' => $voucherNumber,
                     'type_id' => $lastId + 2,
                     'project_head_subheads_id' => $creditAccountId,
                     'reference' => "Check Pass in Bank",
@@ -210,7 +205,7 @@ class ReportController extends Controller
                     'amount_out' => $amount,
                     'is_active' => 1,
                     'date' => $request->bank_post_at, // Adjust this field as per your data
-                    'detail' => '('.$check_slip.') '.$request->note,
+                    'detail' => '(' . $check_slip . ') ' . $request->note,
                     'update_by' => Auth::user()->id,
                     'create_by' => Auth::user()->id,
                     'status' => 0,
@@ -231,12 +226,12 @@ class ReportController extends Controller
     public function checkHistory($id)
     {
         $ledger = CustomerLedger::with(['customer_list', 'plot_list'])->findOrFail($id);
-        $title     = 'Customer Check Report';
+        $title = 'Customer Check Report';
 
         // Retrieve check history from the model
         $checkHistory = $ledger->check_history;
 
-        return view('admin.reports.bookings.check_history', compact('ledger', 'checkHistory','title'));
+        return view('admin.reports.bookings.check_history', compact('ledger', 'checkHistory', 'title'));
     }
 
 
