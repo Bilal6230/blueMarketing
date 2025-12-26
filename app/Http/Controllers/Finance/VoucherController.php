@@ -118,7 +118,6 @@ class VoucherController extends Controller
         $x['projects'] = $projects;
         $x['table_data_route'] = route('voucher.cash_in.data');
         $numbers = Ledger::where('type', 'CR')
-            ->where('is_active', 1)
             ->orderBy('voucher_number')
             ->pluck('voucher_number')
             ->toArray();
@@ -420,7 +419,6 @@ class VoucherController extends Controller
         $x['projects'] = Project::query()->select('id', 'project')->where('id', $selectedProjectId)->get();
         $x['table_data_route'] = route('voucher.cash_out.data');
         $numbers = Ledger::where('type', 'CP')
-            ->where('is_active', 1)
             ->orderBy('voucher_number')
             ->pluck('voucher_number')
             ->toArray();
@@ -430,7 +428,6 @@ class VoucherController extends Controller
         if (!empty($numbers)) {
             $allNumbers = range(min($numbers), max($numbers));
             $missing = array_diff($allNumbers, $numbers);
-
             if (!empty($missing)) {
                 // Get the smallest missing number
                 $nextNumber = min($missing);
@@ -832,7 +829,6 @@ class VoucherController extends Controller
         $voucherNumber = (int) $request->number;
         // Check if voucher number already exists
         $exists = Ledger::where('type', $type)
-            ->where('is_active', 1)
             ->where('voucher_number', $voucherNumber)
             ->exists();
 
@@ -843,7 +839,6 @@ class VoucherController extends Controller
             // Keep incrementing until a free number is found
             while (
                 Ledger::where('type', $type)
-                    ->where('is_active', 1)
                     ->where('voucher_number', $nextNumber)
                     ->exists()
             ) {
