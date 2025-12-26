@@ -173,9 +173,13 @@ class CommissionVoucherController extends Controller
                     'created_by' => auth()->id(),
                 ]);
 
+                $voucherNumber = getVocuherNumber(($request->debit[$index] ?? 0) > 0 ? 'JV' : 'JV');
+
                 $ledgerData = Ledger::create([
                     'type' => ($request->debit[$index] ?? 0) > 0 ? 'JV' : 'JV',
+                
                     'type_id' => $CommisionVoucher->id,
+                    'voucher' => $voucherNumber,
                     'project_head_subheads_id' => $request->sub_accounts[$index],
                     'reference' => $request->reference,
                     'amount_in' => $request->debit[$index] ?? 0,
@@ -313,10 +317,11 @@ class CommissionVoucherController extends Controller
                     'description' => $request->line_description[$index] ?? '',
                     'created_by' => auth()->id(),
                 ]);
-
+                $voucherNumber = getVocuherNumber(($request->debit[$index] ?? 0) > 0 ? 'JV' : 'JV');
                 Ledger::create([
                     'type' => ($request->debit[$index] ?? 0) > 0 ? 'JV' : 'JV',
                     'type_id' => $JvDetails->id,
+                    'voucher' => $voucherNumber,
                     'project_head_subheads_id' => $request->sub_accounts[$index],
                     'reference' => $request->reference,
                     'amount_in' => $request->debit[$index] ?? 0,

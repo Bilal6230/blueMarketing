@@ -185,9 +185,6 @@ class LabourController extends Controller
                 /** ------------------------
                  *  Voucher Number
                  * ------------------------ */
-                $voucherNumber = Ledger::where('type', self::LedgerType)
-                    ->where('is_active', 1)
-                    ->max('voucher_number') + 1;
 
                 /** ------------------------
                  *  Customer Ledger
@@ -211,6 +208,7 @@ class LabourController extends Controller
                 /** ------------------------
                  *  General Ledger
                  * ------------------------ */
+                $voucherNumber = getVocuherNumber(self::LedgerType);
                 Ledger::create([
                     'customer_ledger_id' => $customerLedger->id,
                     'voucher_number' => $voucherNumber,
@@ -823,8 +821,10 @@ class LabourController extends Controller
             'description' => $labourAccountDesc,
             'created_by' => auth()->id(),
         ]);
+        $voucherNumber = getVocuherNumber('JV');
         $toLedgerData = Ledger::create([
             'type' => 'JV',
+            'voucher_number' => $voucherNumber,
             'type_id' => $journalVoucher->id,
             'project_head_subheads_id' => $headSubheadId,
             'reference' => null,
@@ -845,8 +845,10 @@ class LabourController extends Controller
             'description' => $labourAccountDesc,
             'created_by' => auth()->id(),
         ]);
+        $voucherNumber = getVocuherNumber('JV');
         $fromLedgerData = Ledger::create([
             'type' => 'JV',
+            'voucher_number' => $voucherNumber,
             'type_id' => $journalVoucher->id,
             'project_head_subheads_id' => $project_head_subheads_id,
             'reference' => null,

@@ -233,9 +233,11 @@ class BookingController extends Controller
 
             // Create ledger entry
             $lastId = getLastLedgerIdByType("BO");
+            $voucherNumber = getVocuherNumber('BO');
             Ledger::create([
                 'customer_ledger_id' => $customerLedger->id,
                 'type' => 'BO',
+                'voucher_number' => $voucherNumber,
                 'type_id' => $lastId + 1,
                 'project_head_subheads_id' => $pivot->id,
                 'reference' => $booking->id,
@@ -259,9 +261,13 @@ class BookingController extends Controller
                 throw new \Exception('Credit account ID not found.');
             }
 
+            // Create credit ledger entry
+            $voucherNumber = getVocuherNumber('CR');
+
             Ledger::create([
                 'customer_ledger_id' => $customerLedger->id,
                 'type' => 'CR',
+                'voucher_number' => $voucherNumber,
                 'type_id' => $lastId + 2,
                 'project_head_subheads_id' => $creditAccountId,
                 'reference' => $booking->id,
@@ -399,9 +405,11 @@ class BookingController extends Controller
 
         // 2) CR Party Profit (optional)
         if ($partyProfitAccId && bccomp($partyProfitCredit, '0.00', 2) === 1) {
+            $voucherNumber = getVocuherNumber('CR');
             Ledger::create([
                 'type' => 'CR',
                 'type_id' => $this->nextTypeId('CR'),
+                'voucher_number' => $voucherNumber,
                 'project_head_subheads_id' => $partyProfitAccId,
                 'reference' => $booking->id,
                 'amount_in' => $partyProfitCredit,
@@ -417,9 +425,11 @@ class BookingController extends Controller
 
         // 3) CR Resale Profit
         if (bccomp($resaleProfitCredit, '0.00', 2) === 1) {
+            $voucherNumber = getVocuherNumber('CR');
             Ledger::create([
                 'type' => 'CR',
                 'type_id' => $this->nextTypeId('CR'),
+                'voucher_number' => $voucherNumber,
                 'project_head_subheads_id' => $resaleProfitAccId,
                 'reference' => $booking->id,
                 'amount_in' => $resaleProfitCredit,
@@ -625,8 +635,8 @@ class BookingController extends Controller
         $phs = ProjectHeadSubhead::updateOrCreate(
             // 🔹 Find record by these fields (DO NOT change them)
             [
-                'project_id'  => $projectId,
-                'plot_id'     => $plotId,
+                'project_id' => $projectId,
+                'plot_id' => $plotId,
                 'customer_id' => $customerId,
             ],
             // 🔹 Only this field will be updated
@@ -781,8 +791,10 @@ class BookingController extends Controller
          * 50 lac Total Sale Debit
          * 10 lac Party Profit Debit
          */
+        $voucherNumber = getVocuherNumber('BO');
         Ledger::create([
             'type' => 'BO',
+            'voucher_number' => $voucherNumber,
             'type_id' => $this->nextLedgerTypeId('BO'),
             'project_head_subheads_id' => $totalSalePhsId,
             'reference' => $booking->id,
@@ -797,8 +809,10 @@ class BookingController extends Controller
         ]);
 
         if ($partyProfitPhsId && bccomp($profit, '0.00', 2) === 1) {
+            $voucherNumber = getVocuherNumber('CP');
             Ledger::create([
                 'type' => 'CP',
+                'voucher_number' => $voucherNumber,
                 'type_id' => $this->nextLedgerTypeId('CP'),
                 'project_head_subheads_id' => $partyProfitPhsId,
                 'reference' => $booking->id,
@@ -835,9 +849,10 @@ class BookingController extends Controller
             'is_approve' => 1,
             'is_active' => 1,
         ]);
-
+        $voucherNumber = getVocuherNumber('CR');
         Ledger::create([
             'type' => 'CR',
+            'voucher_number' => $voucherNumber,
             'type_id' => $this->nextLedgerTypeId('CR'),
             'project_head_subheads_id' => $oldCustomerPivot->id,
             'reference' => $booking->id,
@@ -868,9 +883,12 @@ class BookingController extends Controller
                 'is_active' => 1,
             ]);
 
+            $voucherNumber = getVocuherNumber('CR');
+
             Ledger::create([
                 'type' => 'CR',
                 'type_id' => $this->nextLedgerTypeId('CR'),
+                'voucher_number' => $voucherNumber,
                 'project_head_subheads_id' => $oldCustomerPivot->id,
                 'reference' => $booking->id,
                 'customer_ledger_id' => $oldProfitCL->id,
@@ -905,8 +923,11 @@ class BookingController extends Controller
             'is_active' => 1,
         ]);
 
+        $voucherNumber = getVocuherNumber('CP');
+
         Ledger::create([
             'type' => 'CP',
+            'voucher_number' => $voucherNumber,
             'type_id' => $this->nextLedgerTypeId('CP'),
             'project_head_subheads_id' => $newCustomerPivot->id,
             'reference' => $booking->id,
@@ -944,8 +965,10 @@ class BookingController extends Controller
         ]);
 
         if ($partyProfitPhsId && bccomp($profit, '0.00', 2) === 1) {
+            $voucherNumber = getVocuherNumber('CR');
             Ledger::create([
                 'type' => 'CR',
+                'voucher_number' => $voucherNumber,
                 'type_id' => $this->nextLedgerTypeId('CR'),
                 'project_head_subheads_id' => $partyProfitPhsId,
                 'reference' => $booking->id,
@@ -995,8 +1018,10 @@ class BookingController extends Controller
                 'passing_date' => $request->input('passing_date'),
             ]);
 
+            $voucherNumber = getVocuherNumber('CP');
             Ledger::create([
                 'type' => 'CP',
+                'voucher_number' => $voucherNumber,
                 'type_id' => $this->nextLedgerTypeId('CP'),
                 'project_head_subheads_id' => $feePayerPivot->id,
                 'reference' => $booking->id,
@@ -1013,8 +1038,10 @@ class BookingController extends Controller
 
             // Credit File Transfer Fee account (CR) (auto-create allowed)
             $feeAccountId = $this->systemAccountIdBySubheadName((int) $booking->project_id, 16, 'File Transfer Fee', true);
+            $voucherNumber = getVocuherNumber('CR');
             Ledger::create([
                 'type' => 'CR',
+                'voucher_number' => $voucherNumber,
                 'type_id' => $this->nextLedgerTypeId('CR'),
                 'project_head_subheads_id' => $feeAccountId,
                 'reference' => $booking->id,
@@ -1691,7 +1718,8 @@ class BookingController extends Controller
             'payment_type' => 'required',
             'reference' => 'required',
 
-        ]);;
+        ]);
+        ;
 
         $action = $request->input('action');
         // dd($request->input());
@@ -1747,10 +1775,11 @@ class BookingController extends Controller
                     $plotName = Plot::where('id', $request->input('plot_id'))->value('name');
 
                     $lastId = getLastLedgerIdByType("CR");
-
+                    $voucherNumber = getVocuherNumber('CP');
                     Ledger::create([
                         'customer_ledger_id' => $customerLedger->id,
                         'type' => 'CR',
+                        'voucher' => $voucherNumber,
                         'type_id' => $lastId + 1,
                         'project_head_subheads_id' => $creditAccountId,
                         'reference' => $request->input('voucher'),
@@ -1819,9 +1848,12 @@ class BookingController extends Controller
 
                     $lastId = getLastLedgerIdByType("CR");
 
+                    $voucherNumber = getVocuherNumber('CP');
+
                     Ledger::create([
                         'charge_type_id' => $request->input('charge_type_id'),
                         'customer_ledger_id' => $customerLedger->id,
+                        'voucher' => $voucherNumber,
                         'type' => 'CR',
                         'type_id' => $lastId + 1,
                         'project_head_subheads_id' => $creditAccountId,
@@ -1845,10 +1877,12 @@ class BookingController extends Controller
                         throw new \Exception('Debit account ID not found.');
                     }
 
+                    $voucherNumber = getVocuherNumber('CP');
                     Ledger::create([
                         'charge_type_id' => $request->input('charge_type_id'),
                         'customer_ledger_id' => $customerLedger->id,
                         'type' => 'CP',
+                        'voucher' => $voucherNumber,
                         'type_id' => $lastId + 1,
                         'project_head_subheads_id' => $debitAccountId,
                         'reference' => $request->input('voucher'),
@@ -2205,6 +2239,7 @@ class BookingController extends Controller
 
         return response()->json(['message' => 'Booking deleted successfully.']);
     }
+
     public function cancel(Request $request)
     {
         // dd($request);
@@ -2337,11 +2372,12 @@ class BookingController extends Controller
                 if ($alreadyPosted) {
                     return;
                 }
-
+                $voucherNumber = getVocuherNumber('CP');
                 // 1) Debit Total Sale (CP out) = sale amount
                 Ledger::create([
                     'type' => 'CP',
                     'type_id' => $this->nextLedgerTypeId('CP'),
+                    'voucher_number' => $voucherNumber,
                     'project_head_subheads_id' => $totalSaleId,
                     'reference' => $booking->id,
                     'amount_in' => 0.00,
@@ -2365,10 +2401,14 @@ class BookingController extends Controller
                     'amount_out' => 0,
                     'description' => "Plot Cancellation Refund {$plotPrefix}{$plotName}",
                 ]);
+                $voucherNumber = getVocuherNumber('CR');
+
 
                 Ledger::create([
                     'type' => 'CR',
                     'type_id' => $this->nextLedgerTypeId('CR'),
+                    'voucher_number' => $voucherNumber,
+
                     'project_head_subheads_id' => $phsCustomer->id,
                     'reference' => $booking->id,
                     'customer_ledger_id' => $cl->id,
@@ -2392,10 +2432,12 @@ class BookingController extends Controller
                             'Deduction',
                             true // create if missing
                         );
+                        $voucherNumber = getVocuherNumber('CP');
 
                         Ledger::create([
                             'type' => 'CR',
-                            'type_id' => $this->nextLedgerTypeId('CR'),
+                            'type_id' => $this->nextLedgerTypeId('CP'),
+                            'voucher_number' => $voucherNumber,
                             'project_head_subheads_id' => $deductionAccId,
                             'reference' => $booking->id,
                             'amount_in' => $adj,
@@ -2415,10 +2457,11 @@ class BookingController extends Controller
                             'Party Profit',
                             false // must exist
                         );
-
+                        $voucherNumber = getVocuherNumber('CP');
                         Ledger::create([
                             'type' => 'CP',
                             'type_id' => $this->nextLedgerTypeId('CP'),
+                            'voucher_number' => $voucherNumber,
                             'project_head_subheads_id' => $partyProfitAccId,
                             'reference' => $booking->id,
                             'amount_in' => 0.00,
