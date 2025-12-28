@@ -157,103 +157,117 @@
                     </div>
                 @endcanany
                 {{-- Financial Summary --}}
+
                 <div class="row">
-                    <div class="col-md-6 mb-4">
-                        <div class="custom_card h-100">
-                            <div class="card-body">
-                                <div class="row justify-content-center">
-                                    <div class="col-12 text-center mb-4">
-                                        <h4 class="text-lg">Financial Summary</h4>
-                                    </div>
+                    @can('read financial')
+                        <div class="col-md-6 mb-4">
+                            <div class="custom_card h-100">
+                                <div class="card-body">
+                                    <div class="row justify-content-center">
+                                        <div class="col-12 text-center mb-4">
+                                            <h4 class="text-lg">Financial Summary</h4>
+                                        </div>
 
-                                    <!-- Hand Cash Total -->
-                                    <div class="col-md-4 mb-4 mb-md-0">
-                                        <div class="financial-circle bg_success">
-                                            <div class="circle-content">
-                                                <h6>Hand Cash</h6>
-                                                <h4 class="mt-2">
-                                                    {{ number_format($total_blance + $total_bank_account_data, 2) }}</h4>
+                                        <!-- Hand Cash Total -->
+                                        <div class="col-md-4 mb-4 mb-md-0">
+                                            <div class="financial-circle bg_success">
+                                                <div class="circle-content">
+                                                    <h6>Hand Cash</h6>
+                                                    <h4 class="mt-2">
+                                                        {{ number_format($total_blance + $total_bank_account_data, 2) }}</h4>
+                                                </div>
                                             </div>
+                                            <p class="text-muted mt-2 text-center">Hand Cash Balance</p>
                                         </div>
-                                        <p class="text-muted mt-2 text-center">Hand Cash Balance</p>
-                                    </div>
-                                    <!-- Bank Account Total -->
-                                    <div class="col-md-4">
-                                        <div class="financial-circle bg_danger">
-                                            <div class="circle-content">
-                                                <h6>Bank Account</h6>
-                                                <h4 class="mt-2">{{ number_format($total_bank_account_data, 2) }}
-                                                </h4>
+                                        <!-- Bank Account Total -->
+                                        <div class="col-md-4">
+                                            <div class="financial-circle bg_danger">
+                                                <div class="circle-content">
+                                                    <h6>Bank Account</h6>
+                                                    <h4 class="mt-2">{{ number_format($total_bank_account_data, 2) }}
+                                                    </h4>
+                                                </div>
                                             </div>
+                                            <p class="text-muted mt-2 text-center">Current Bank Balance</p>
                                         </div>
-                                        <p class="text-muted mt-2 text-center">Current Bank Balance</p>
-                                    </div>
-                                    <!-- Hand Cash Total -->
-                                    <div class="col-md-4 mb-4 mb-md-0">
-                                        <div class="financial-circle bg_success">
-                                            <div class="circle-content">
-                                                <h6>Total Cash</h6>
-                                                <h4 class="mt-2">{{ number_format($total_blance, 2) }}</h4>
+                                        <!-- Hand Cash Total -->
+                                        <div class="col-md-4 mb-4 mb-md-0">
+                                            <div class="financial-circle bg_success">
+                                                <div class="circle-content">
+                                                    <h6>Total Cash</h6>
+                                                    <h4 class="mt-2">{{ number_format($total_blance, 2) }}</h4>
+                                                </div>
                                             </div>
+                                            <p class="text-muted mt-2 text-center">Available Cash Balance</p>
                                         </div>
-                                        <p class="text-muted mt-2 text-center">Available Cash Balance</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-md-6 mb-4">
-                        <div class="custom_card h-100">
-                            <div class="card-body">
-                                <div class="mb-3 d-flex align-items-center justify-content-between">
-                                    <h5 class="text-lg font-semibold">Dasticash Summary</h5>
-                                    <button class="btn btn-sm custom_btn_outline primary" data-toggle="modal"
-                                        data-target="#addDasticashModal">
-                                        <i class="fas fa-plus mr-1"></i> Add Dasticash
-                                    </button>
-                                </div>
-                                <!-- DataTable -->
-                                <div class="table-responsive">
-                                    <table class="table table-hover" id="dasticashTable">
-                                        <thead>
-                                            <tr>
-                                                <th>ID</th>
-                                                <th>Name</th>
-                                                <th>Amount</th>
-                                                <th>Description</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach ($dasticashData as $key => $item)
-                                                <tr id="row-{{ $item->id }}">
-                                                    <td>{{ $key + 1 }}</td>
-                                                    <td class="name-cell">{{ $item->name }}</td>
-                                                    <td class="amount-cell">{{ $item->amount }}</td>
-                                                    <td class="desc-cell">{{ $item->description }}</td>
-                                                    <td>
-                                                        <a href="javascript:void(0)" class="btn btn-sm btn-info edit-btn"
-                                                            data-id="{{ $item->id }}"
-                                                            data-name="{{ $item->name }}"
-                                                            data-amount="{{ $item->amount }}"
-                                                            data-description="{{ $item->description }}">
-                                                            <i class="fas fa-edit"></i>
-                                                        </a>
-                                                        <button class="btn btn-sm btn-danger delete-btn"
-                                                            data-id="{{ $item->id }}"
-                                                            data-url="{{ route('dasticash.destroy', $item->id) }}"><i
-                                                                class="fas fa-trash"></i></button>
-                                                    </td>
+                    @endcan
+
+                    @can('read dasticash')
+                        <div class="col-md-6 mb-4">
+                            <div class="custom_card h-100">
+                                <div class="card-body">
+                                    <div class="mb-3 d-flex align-items-center justify-content-between">
+                                        <h5 class="text-lg font-semibold">Dasticash Summary</h5>
+                                        @can('create dasticash')
+                                            <button class="btn btn-sm custom_btn_outline primary" data-toggle="modal"
+                                                data-target="#addDasticashModal">
+                                                <i class="fas fa-plus mr-1"></i> Add Dasticash
+                                            </button>
+                                        @endcan
+                                    </div>
+                                    <!-- DataTable -->
+                                    <div class="table-responsive">
+                                        <table class="table table-hover" id="dasticashTable">
+                                            <thead>
+                                                <tr>
+                                                    <th>ID</th>
+                                                    <th>Name</th>
+                                                    <th>Amount</th>
+                                                    <th>Description</th>
+                                                    <th>Actions</th>
                                                 </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
+                                            </thead>
+                                            <tbody>
+                                                @foreach ($dasticashData as $key => $item)
+                                                    <tr id="row-{{ $item->id }}">
+                                                        <td>{{ $key + 1 }}</td>
+                                                        <td class="name-cell">{{ $item->name }}</td>
+                                                        <td class="amount-cell">{{ $item->amount }}</td>
+                                                        <td class="desc-cell">{{ $item->description }}</td>
+                                                        <td>
+                                                            @can('update dasticash')
+                                                                <a href="javascript:void(0)" class="btn btn-sm btn-info edit-btn"
+                                                                    data-id="{{ $item->id }}"
+                                                                    data-name="{{ $item->name }}"
+                                                                    data-amount="{{ $item->amount }}"
+                                                                    data-description="{{ $item->description }}">
+                                                                    <i class="fas fa-edit"></i>
+                                                                </a>
+                                                            @endcan
+                                                            @can('delete dasticash')
+                                                                <button class="btn btn-sm btn-danger delete-btn"
+                                                                    data-id="{{ $item->id }}"
+                                                                    data-url="{{ route('dasticash.destroy', $item->id) }}"><i
+                                                                        class="fas fa-trash"></i></button>
+                                                            @endcan
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
 
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    @endcan
+
                 </div>
+
                 <!-- /.row (main row) -->
 
                 {{-- <div class="row">
@@ -551,7 +565,7 @@
             // ===================================================================
             // 2️⃣ UPDATE DASTICASH (AJAX)
             // ===================================================================
-            
+
             $("#editDasticashForm").submit(function(e) {
                 e.preventDefault();
 
