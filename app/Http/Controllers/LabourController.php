@@ -590,7 +590,7 @@ class LabourController extends Controller
             ->toArray();
 
         // Render table partial
-        $view = view('admin.labours.site-report', compact('reports'))->render();
+        $view = view('admin.labours.site-report', compact('reports', 'total_amount'))->render();
 
         return response()->json([
             'success' => true,

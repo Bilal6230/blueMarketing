@@ -19,3 +19,7 @@ Daily Wage: Rs {{ $report['rate'] }}
         <td class="right">{{ $report['amount'] }}</td>
     </tr>
 @endforeach
+<tr>
+    <td colspan="6" style="text-align:right;">Total</td>
+    <td class="right">{{ $total_amount ?? '' }}</td>
+</tr>

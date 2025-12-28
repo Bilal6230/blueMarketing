@@ -1533,7 +1533,7 @@
                                         timer: 1500,
                                         showConfirmButton: false
                                     });
-                                        // ✅ Clear form
+                                    // ✅ Clear form
                                     $('#createVoucherForm')[0].reset();
 
                                     // ✅ Clear validation errors (if any)
@@ -2369,6 +2369,17 @@
             // $('#btnAttnPrev').on('click', () => changeWeek(-1));
             // $('#btnAttnNext').on('click', () => changeWeek(1));
 
+            $(document).on('input', '.labour_amount', function() {
+                let labourAmount = 0;
+                let totalAmount = 0;
+                $('.labour_amount').each(function() {
+                    let row = $(this);
+                    labourAmount = row.val();
+                    if (labourAmount <= 0) return;
+                    totalAmount += parseFloat(labourAmount);
+                });
+                $('#totalVoucherAmount').text(totalAmount);
+            })
 
             $('#attnWeek, #attnSiteFilter').on('change', loadWeekData);
             $('#attnSearch').on('input', loadWeekData);
