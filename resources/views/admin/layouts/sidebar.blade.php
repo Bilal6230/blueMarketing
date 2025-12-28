@@ -502,7 +502,7 @@
                         </ul>
                     </li>
                 @endcanany
-                @canany(['read user', 'read role', 'read permission'])
+                @canany('labour module')
                     <li class="nav-item">
                         <a href="{{ route('labours.index') }}"
                             class="nav-link {{ request()->routeIs('labours') ? 'active' : '' }}">
@@ -512,7 +512,7 @@
                     </li>
                 @endcanany
 
-                @canany(['read user', 'read role', 'read permission'])
+                @canany('stock module')
                     <li class="nav-item">
                         <a href="{{ route('stocks.index') }}"
                             class="nav-link {{ request()->routeIs('stocks') ? 'active' : '' }}">

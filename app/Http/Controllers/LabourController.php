@@ -717,11 +717,10 @@ class LabourController extends Controller
 
         // Get the ISO Monday for that week
         $isoMonday = Carbon::now()->setISODate($year, $week)->startOfWeek(Carbon::MONDAY);
+        $endOfWeekDate = Carbon::now()->setISODate($year, $week)->endOfWeek(Carbon::SUNDAY)->toDateString();
 
         // Convert to Friday (Mon +4 days)
         $startOfWeek = $isoMonday->copy()->addDays(4);
-
-        // If selected date is before Friday, shift back 1 week
         $selected = Carbon::parse($weekInput);
         if ($selected->lt($startOfWeek)) {
             $startOfWeek->subWeek();
@@ -752,7 +751,8 @@ class LabourController extends Controller
                     $q->where('name', 'like', "%{$search}%");
                 }
             });
-        } else {
+        }
+        if ($request->has('site_id') && $request->site_id) {
             $query->whereHas('attendances', function ($query) use ($days, $request) {
                 if ($request->has('site_id') && $request->site_id) {
                     $query->where('site_id', $request->site_id);
@@ -764,6 +764,7 @@ class LabourController extends Controller
 
 
         $x['attendance_labours'] = $query->get();
+        $x['week'] = $endOfWeekDate;
         $view = '';
         $view .= view('admin.labours.attn-board', $x)->render();
 

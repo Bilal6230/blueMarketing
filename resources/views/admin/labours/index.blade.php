@@ -645,6 +645,10 @@
                 <button class="tab" data-tab="attendance">Attendance</button>
             </div>
         </div>
+        @php
+            use Carbon\Carbon;
+            [$start, $end, $weekDays] = loadAttendanceWeek($week ?? now()->format('Y-m-d'));
+        @endphp
 
         <!-- Add Labour -->
         <section id="addLabour" class="page">
@@ -694,7 +698,8 @@
                     </div>
                 </div>
                 <div class="card">
-                    <div class="hd"><b>All Labours</b> <span class="pill"><span id="labCount">{{ $count }}</span>
+                    <div class="hd"><b>All Labours</b> <span class="pill"><span
+                                id="labCount">{{ $count }}</span>
                             total</span>
                     </div>
                     <div class="bd table-scroll">
@@ -882,7 +887,8 @@
                             <label class="fw-bold text-primary" style="font-size: 14px"></label>
                         </div>
                         <div class="col-4">
-                            <input type="week" id="pFrom" class="form-control" value="{{ now()->format('o-\WW') }}" />
+                            <input type="week" id="pFrom" class="form-control"
+                                value="{{ now()->format('o-\WW') }}" />
                             <label class="fw-bold text-primary pForm-weekLabel" style="font-size: 14px"></label>
                         </div>
                         <div class="col-4 text-end">
@@ -945,17 +951,20 @@
                                     <input id="attnSearch" class="form-control" placeholder="Search by name or mobile" />
                                 </div>
                                 <div class="col-4">
+
                                     {{-- //labur --}}
                                     <input type="week" id="attnWeek" class="form-control"
                                         value="{{ now()->format('o-\WW') }}" />
-                                    <label id="lab-weekLabel" class="fw-bold text-primary" style="font-size: 14px"></label>
+                                    <label id="lab-weekLabel" class="fw-bold text-primary"
+                                        style="font-size: 14px"></label>
                                 </div>
                                 <div class="col-4 text-end">
                                     <button type="button" id="btnAttnPrev" class="btn btn-sm btn-outline-secondary">←
                                         Prev</button>
                                     <button type="button" id="btnAttnNext" class="btn btn-sm btn-outline-secondary">Next
                                         →</button>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnExportAttn">Export
+                                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                                        id="btnExportAttn">Export
                                         CSV</button>
 
                                 </div>
@@ -1031,7 +1040,8 @@
                         </div>
                         <div class="col">
                             <label>Overtime (hrs)</label>
-                            <input id="mOT" type="number" min="0" max="12" value="0" name="ot_hours" />
+                            <input id="mOT" type="number" min="0" max="12" value="0"
+                                name="ot_hours" />
                         </div>
                         <div class="col">
                             <label>Amount (auto)</label>
@@ -1074,8 +1084,8 @@
                 @csrf
                 @method('PUT')
                 <div class="row">
-                    <div class="col"><label>Name</label><input id="editlabName" name="name" placeholder="e.g., John Peter"
-                            required />
+                    <div class="col"><label>Name</label><input id="editlabName" name="name"
+                            placeholder="e.g., John Peter" required />
                         {{-- <small class="text-danger error error-name d-none">Name is already exist</small> --}}
                     </div>
                     <div class="col"><label>Father Name</label><input id="editfatherName" name="father_name"
@@ -1099,8 +1109,8 @@
                             type="number" placeholder="1000" required />
                         {{-- <small class="text-danger error"></small> --}}
                     </div>
-                    <div class="col"><label>CNIC</label><input id="editcnic" name="cnic" placeholder="12345-6789012-3"
-                            required />
+                    <div class="col"><label>CNIC</label><input id="editcnic" name="cnic"
+                            placeholder="12345-6789012-3" required />
                         {{-- <small class="text-danger error error-cnic d-none">CNIC is already exist</small> --}}
                     </div>
                 </div>
@@ -1180,7 +1190,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     {{-- jQuery is required. If your admin master already loads jQuery, remove the following script line. --}}
     <script>
-        $(document).ready(function () {
+        $(document).ready(function() {
             let repSiteSelect = new TomSelect('#repSite', {
                 create: false,
                 allowEmptyOption: true,
@@ -1199,6 +1209,7 @@
                     this.clear(); // default to "All Sites"
                 }
             });
+
             function getWeekDates(year, week) {
                 const simple = new Date(year, 0, 1 + (week - 1) * 7);
                 const dow = simple.getDay();
@@ -1213,15 +1224,25 @@
                 const end = new Date(ISOweekStart);
                 end.setDate(start.getDate() + 6);
 
-                return { start, end };
+                return {
+                    start,
+                    end
+                };
             }
+
             function updateWeekLabel(value) {
                 if (!value) return;
 
                 const [year, week] = value.split('-W');
-                const { start, end } = getWeekDates(parseInt(year), parseInt(week));
+                const {
+                    start,
+                    end
+                } = getWeekDates(parseInt(year), parseInt(week));
 
-                const options = { day: '2-digit', month: 'short' };
+                const options = {
+                    day: '2-digit',
+                    month: 'short'
+                };
 
                 const startText = start.toLocaleDateString('en-GB', options);
                 const endText = end.toLocaleDateString('en-GB', options);
@@ -1229,13 +1250,20 @@
                     `Week ${week}, ${year} (${startText} – ${endText})`
                 );
             }
+
             function updateWeekLabel_pForm(value) {
                 if (!value) return;
 
                 const [year, week] = value.split('-W');
-                const { start, end } = getWeekDates(parseInt(year), parseInt(week));
+                const {
+                    start,
+                    end
+                } = getWeekDates(parseInt(year), parseInt(week));
 
-                const options = { day: '2-digit', month: 'short' };
+                const options = {
+                    day: '2-digit',
+                    month: 'short'
+                };
 
                 const startText = start.toLocaleDateString('en-GB', options);
                 const endText = end.toLocaleDateString('en-GB', options);
@@ -1243,13 +1271,20 @@
                     `Week ${week}, ${year} (${startText} – ${endText})`
                 );
             }
+
             function updateWeekLabel_lab(value) {
                 if (!value) return;
 
                 const [year, week] = value.split('-W');
-                const { start, end } = getWeekDates(parseInt(year), parseInt(week));
+                const {
+                    start,
+                    end
+                } = getWeekDates(parseInt(year), parseInt(week));
 
-                const options = { day: '2-digit', month: 'short' };
+                const options = {
+                    day: '2-digit',
+                    month: 'short'
+                };
 
                 const startText = start.toLocaleDateString('en-GB', options);
                 const endText = end.toLocaleDateString('en-GB', options);
@@ -1257,31 +1292,87 @@
                     `Week ${week}, ${year} (${startText} – ${endText})`
                 );
             }
+
+            function getFridayWeekInfo(date = new Date()) {
+                const d = new Date(date);
+                d.setHours(0, 0, 0, 0);
+
+                // 0=Sun ... 5=Fri ... 6=Sat
+                const day = d.getDay();
+
+                // How many days to go back to Friday
+                const diffToFriday = (day >= 5) ? day - 5 : day + 2;
+
+                const weekStart = new Date(d);
+                weekStart.setDate(d.getDate() - diffToFriday);
+
+                const yearStart = new Date(weekStart.getFullYear(), 0, 1);
+                yearStart.setHours(0, 0, 0, 0);
+
+                const weekNumber = Math.floor(
+                    (weekStart - yearStart) / (7 * 86400000)
+                ) + 1;
+
+                return {
+                    year: weekStart.getFullYear(),
+                    week: weekNumber
+                };
+            }
+
+            function getWeekDates(year, week) {
+                const yearStart = new Date(year, 0, 1);
+                yearStart.setHours(0, 0, 0, 0);
+
+                // Move to first Friday of the year
+                const firstFriday = new Date(yearStart);
+                const day = firstFriday.getDay(); // 0–6
+                const offset = (day <= 5) ? 5 - day : 12 - day;
+                firstFriday.setDate(firstFriday.getDate() + offset);
+
+                // Calculate week start
+                const start = new Date(firstFriday);
+                start.setDate(firstFriday.getDate() + (week - 1) * 7);
+
+                // Week ends on Thursday
+                const end = new Date(start);
+                end.setDate(start.getDate() + 6);
+
+                return {
+                    start,
+                    end
+                };
+            }
+
             const weekInput = $('#repFrom');
             const weekInput_pFrom = $('#pFrom');
             const weekInput_labFrom = $('#attnWeek');
 
-            const today = new Date();
-            const year = today.getFullYear();
-            const week = Math.ceil((((today - new Date(year, 0, 1)) / 86400000) + new Date(year, 0, 1).getDay() + 1) / 7);
+            const {
+                year,
+                week
+            } = getFridayWeekInfo();
 
             const currentWeek = `${year}-W${week.toString().padStart(2, '0')}`;
-            weekInput.val(currentWeek);
-            weekInput_pFrom.val(currentWeek);
-            weekInput_labFrom.val(currentWeek);
+
+            weekInput.val(currentWeek).attr('value', currentWeek);
+            weekInput_pFrom.val(currentWeek).attr('value', currentWeek);
+            weekInput_labFrom.val(currentWeek).attr('value', currentWeek);
+
             updateWeekLabel(currentWeek);
             updateWeekLabel_pForm(currentWeek);
             updateWeekLabel_lab(currentWeek);
 
-            weekInput.on('change', function () {
+
+            weekInput.on('change', function() {
                 updateWeekLabel(this.value);
             });
-            weekInput_pFrom.on('change', function () {
+            weekInput_pFrom.on('change', function() {
                 updateWeekLabel_pForm(this.value);
             });
-            weekInput_labFrom.on('change', function () {
+            weekInput_labFrom.on('change', function() {
                 updateWeekLabel_lab(this.value);
             });
+
             function changeWeekSite(step) {
                 let value = weekInput.val();
                 if (!value) return;
@@ -1301,6 +1392,7 @@
                 const newValue = `${year}-W${week.toString().padStart(2, '0')}`;
                 weekInput.val(newValue).trigger('change');
             }
+
             function changeWeekSite_pForm(step) {
                 let value = weekInput_pFrom.val();
                 if (!value) return;
@@ -1320,6 +1412,7 @@
                 const newValue = `${year}-W${week.toString().padStart(2, '0')}`;
                 weekInput_pFrom.val(newValue).trigger('change');
             }
+
             function changeWeekSite_lab(step) {
                 let value = weekInput_labFrom.val();
                 if (!value) return;
@@ -1353,7 +1446,7 @@
                     'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                 }
             });
-            $(document).on('click', '.star-rating span', function () {
+            $(document).on('click', '.star-rating span', function() {
                 let rating = $(this).data('value');
 
                 // Update hidden input
@@ -1361,14 +1454,14 @@
 
                 // Update colors
                 $('.star-rating span').removeClass('selected');
-                $('.star-rating span').each(function () {
+                $('.star-rating span').each(function() {
                     if ($(this).data('value') <= rating) {
                         $(this).addClass('selected');
                     }
                 });
             });
 
-            $('.tab').on('click', function () {
+            $('.tab').on('click', function() {
                 // Remove active state from all tabs
                 $('.tab').attr('aria-selected', 'false');
                 // Hide all pages
@@ -1385,12 +1478,12 @@
 
             function debounce(func, delay) {
                 let timer;
-                return function () {
+                return function() {
                     clearTimeout(timer);
                     timer = setTimeout(() => func.apply(this, arguments), delay);
                 };
             }
-            $(document).on('click', '#createVoucher', function (e) {
+            $(document).on('click', '#createVoucher', function(e) {
                 e.preventDefault();
                 let hasError = false;
 
@@ -1398,7 +1491,7 @@
                 $('#createVoucherForm .error').text('');
 
                 // Check required fields
-                $('#createVoucherForm [name]').each(function () {
+                $('#createVoucherForm [name]').each(function() {
                     let field = $(this);
                     let value = field.val()?.trim();
 
@@ -1430,7 +1523,7 @@
                             type: "POST",
                             data: formData,
 
-                            success: function (res) {
+                            success: function(res) {
                                 if (res.success) {
                                     // --- Success Alert ---
                                     Swal.fire({
@@ -1440,10 +1533,21 @@
                                         timer: 1500,
                                         showConfirmButton: false
                                     });
+                                        // ✅ Clear form
+                                    $('#createVoucherForm')[0].reset();
+
+                                    // ✅ Clear validation errors (if any)
+                                    $('#createVoucherForm .error')
+                                        .text('')
+                                        .addClass('d-none');
+
+                                    // Optional: clear table
+                                    $('#siteReportTableBody').html('');
+
                                 }
                             },
 
-                            error: function (err) {
+                            error: function(err) {
                                 Swal.fire({
                                     title: "Error",
                                     text: "Error saving labour.",
@@ -1456,7 +1560,7 @@
                     }
                 });
             })
-            $('#labName, #labMobile, #cnic').on('keyup', debounce(function () {
+            $('#labName, #labMobile, #cnic').on('keyup', debounce(function() {
                 let formData = new FormData();
                 let $this = $(this);
                 let name = $this.attr('name');
@@ -1469,7 +1573,7 @@
                     data: formData,
                     processData: false,
                     contentType: false,
-                    success: function (res) {
+                    success: function(res) {
                         if (res.exists == true) {
                             $this.addClass('validate-border');
                             $('.error-' + name).removeClass('d-none');
@@ -1480,7 +1584,7 @@
                             $('#btnAddLabour').prop('disabled', false);
                         }
                     },
-                    error: function (xhr) {
+                    error: function(xhr) {
                         console.log(xhr.responseText);
                     }
                 });
@@ -1491,7 +1595,7 @@
 
             // Initialize first tab (optional safety)
             $('.tab[aria-selected="true"]').trigger('click');
-            $(document).on('click', '.cell', function () {
+            $(document).on('click', '.cell', function() {
 
 
                 let data = $(this).attr('data-user');
@@ -1527,16 +1631,16 @@
                 $('#attnModal').modal('show');
             });
 
-            $('#btnCloseModal').on('click', function () {
+            $('#btnCloseModal').on('click', function() {
                 $('#attnModal').modal('hide');
             });
-            $('#editBtnCloseModal').on('click', function () {
+            $('#editBtnCloseModal').on('click', function() {
                 $('#editLabourModal').modal('hide');
             });
-            $('#editSiteBtnCloseModal').on('click', function () {
+            $('#editSiteBtnCloseModal').on('click', function() {
                 $('#editSiteModal').modal('hide');
             });
-            $(document).on('change', '#mHours', function () {
+            $(document).on('change', '#mHours', function() {
                 let hours = $(this).val();
                 let ot = $('#mOT').val();
                 hours = parseFloat(hours) + parseFloat(ot);
@@ -1545,7 +1649,7 @@
                 let amount = hours * perHour;
                 $('#mAmount').val(amount);
             })
-            $(document).on('input', '#mOT', function () {
+            $(document).on('input', '#mOT', function() {
                 let hours = $(this).val();
                 let ot = $('#mHours').val();
                 hours = parseFloat(hours) + parseFloat(ot);
@@ -1554,7 +1658,7 @@
                 let amount = hours * perHour;
                 $('#mAmount').val(amount);
             })
-            $(document).on('click', '.editLabourBtn', function () {
+            $(document).on('click', '.editLabourBtn', function() {
 
                 let labour = $(this).attr('labourData');
                 labour = JSON.parse(labour);
@@ -1576,7 +1680,7 @@
                 // Show Modal
                 $('#editLabourModal').modal('show');
             });
-            $(document).on('click', '.editSiteBtn', function () {
+            $(document).on('click', '.editSiteBtn', function() {
 
                 let site = $(this).attr('SiteData');
                 site = JSON.parse(site);
@@ -1597,7 +1701,7 @@
             // ============================
             // ADD LABOUR
             // ============================
-            $('#addLabourForm').on('submit', function (e) {
+            $('#addLabourForm').on('submit', function(e) {
                 e.preventDefault();
                 let hasError = false;
 
@@ -1605,7 +1709,7 @@
                 $('#addLabourForm .error').text('');
 
                 // Check required fields
-                $('#addLabourForm [name]').each(function () {
+                $('#addLabourForm [name]').each(function() {
                     let field = $(this);
                     let value = field.val()?.trim();
 
@@ -1637,7 +1741,7 @@
                             type: "POST",
                             data: formData,
 
-                            success: function (res) {
+                            success: function(res) {
                                 if (res.success) {
                                     $('#labourTableBody').html('');
                                     $('#labourTableBody').append(res.view);
@@ -1654,7 +1758,7 @@
                                 }
                             },
 
-                            error: function (err) {
+                            error: function(err) {
                                 Swal.fire({
                                     title: "Error",
                                     text: "Error saving labour.",
@@ -1667,7 +1771,7 @@
                     }
                 });
             });
-            $('#editLabourForm').on('submit', function (e) {
+            $('#editLabourForm').on('submit', function(e) {
                 e.preventDefault();
                 let hasError = false;
 
@@ -1675,7 +1779,7 @@
                 $('#editLabourForm .error').text('');
 
                 // Validate required fields
-                $('#editLabourForm [name]').each(function () {
+                $('#editLabourForm [name]').each(function() {
                     let field = $(this);
                     let value = field.val()?.trim();
 
@@ -1711,7 +1815,7 @@
                             type: "POST", // Laravel PUT works with POST + _method
                             data: formData,
 
-                            success: function (res) {
+                            success: function(res) {
                                 if (res.success) {
 
                                     // Reload table
@@ -1732,7 +1836,7 @@
                                 }
                             },
 
-                            error: function (err) {
+                            error: function(err) {
                                 Swal.fire({
                                     title: "Error",
                                     text: "Error updating labour.",
@@ -1746,7 +1850,7 @@
             });
 
 
-            $(document).on('click', '#btnAddSite, #btnUpdateSite', function (e) {
+            $(document).on('click', '#btnAddSite, #btnUpdateSite', function(e) {
                 e.preventDefault();
 
                 let btn = $(this); // clicked button
@@ -1759,7 +1863,7 @@
                 form.find('.error').text('');
 
                 // Validate required fields
-                form.find('[name]').each(function () {
+                form.find('[name]').each(function() {
                     let field = $(this);
                     let value = field.val()?.trim();
 
@@ -1795,7 +1899,7 @@
                             url: "{{ route('labours.sitestore') }}", // you can change based on button too
                             type: "POST",
                             data: formData,
-                            success: function (res) {
+                            success: function(res) {
                                 if (res.success) {
 
                                     $('#siteTableBody').html('');
@@ -1815,7 +1919,7 @@
                                     });
                                 }
                             },
-                            error: function (err) {
+                            error: function(err) {
                                 Swal.fire("Error", "Something went wrong.", "error");
                                 console.log(err.responseText);
                             }
@@ -1834,7 +1938,7 @@
                 $.ajax({
                     url: `/labours/edit/${id}`,
                     type: "GET",
-                    success: function (labour) {
+                    success: function(labour) {
                         $('#editLabourId').val(labour.id);
                         $('#edit_name').val(labour.name);
                         $('#edit_father_name').val(labour.father_name);
@@ -1858,13 +1962,13 @@
                 $.ajax({
                     url: `/labours/delete/${id}`,
                     type: "DELETE",
-                    success: function (res) {
+                    success: function(res) {
                         if (res.success) {
                             loadLabours();
                             alert('Deleted successfully!');
                         }
                     },
-                    error: function (err) {
+                    error: function(err) {
                         alert('Error deleting!');
                     }
                 });
@@ -1877,7 +1981,7 @@
                 $.ajax({
                     url: "{{ route('labours.index') }}",
                     type: "GET",
-                    success: function (data) {
+                    success: function(data) {
                         let tbody = $('#attendanceTable tbody');
                         tbody.empty();
                         data.forEach((labour, i) => {
@@ -1899,7 +2003,7 @@
                 });
             }
 
-            $('#addAttendanceForm').on('submit', function (e) {
+            $('#addAttendanceForm').on('submit', function(e) {
                 e.preventDefault();
 
                 let formData = $(this).serialize();
@@ -1908,7 +2012,7 @@
                     url: "{{ route('labours.attendance') }}",
                     type: "POST",
                     data: formData,
-                    success: function (res) {
+                    success: function(res) {
                         if (res.success) {
 
                             let row = res.data;
@@ -1975,12 +2079,12 @@
 
                         $('#attnModal').modal('hide');
                     },
-                    error: function () {
+                    error: function() {
                         alert('Error saving attendance!');
                     }
                 });
             });
-            $(document).on('click', '#reportBtnSiteRun, #voucherBtnSiteRun', function (e) {
+            $(document).on('click', '#reportBtnSiteRun, #voucherBtnSiteRun', function(e) {
                 e.preventDefault();
 
                 $('#site_id').val('');
@@ -2003,7 +2107,7 @@
                     url: "{{ route('labours.report') }}",
                     type: "POST",
                     data: data,
-                    success: function (res) {
+                    success: function(res) {
                         if (res.success) {
                             if (res.attendanceIds.length === 0) {
                                 Swal.fire({
@@ -2025,7 +2129,7 @@
                             }
                         }
                     },
-                    error: function (xhr) {
+                    error: function(xhr) {
 
                         let message = 'Something went wrong.';
 
@@ -2037,7 +2141,7 @@
 
                             if (xhr.responseJSON.errors) {
                                 message = '';
-                                $.each(xhr.responseJSON.errors, function (key, value) {
+                                $.each(xhr.responseJSON.errors, function(key, value) {
                                     message += value[0] + '<br>';
                                 });
                             }
@@ -2053,7 +2157,7 @@
                 });
             });
 
-            $(document).on('click', '#btnPersonRun', function (e) {
+            $(document).on('click', '#btnPersonRun', function(e) {
                 e.preventDefault();
 
                 let week = $('#pFrom').val();
@@ -2070,7 +2174,7 @@
                     type: "POST",
                     data: data,
 
-                    success: function (res) {
+                    success: function(res) {
 
                         // ✅ No records case (Total = 0)
                         if (res.success && res.view && res.view.includes('<td>0</td>')) {
@@ -2093,7 +2197,7 @@
                         }
                     },
 
-                    error: function (xhr) {
+                    error: function(xhr) {
                         let message = 'Something went wrong.';
 
                         // ✅ Laravel validation error
@@ -2105,7 +2209,7 @@
 
                             if (xhr.responseJSON.errors) {
                                 message = '';
-                                $.each(xhr.responseJSON.errors, function (key, value) {
+                                $.each(xhr.responseJSON.errors, function(key, value) {
                                     message += value[0] + '\n';
                                 });
                             }
@@ -2130,7 +2234,7 @@
                 $.ajax({
                     url: "{{ route('labours.report') }}",
                     type: "GET",
-                    success: function (data) {
+                    success: function(data) {
                         let tbody = $('#reportTable tbody');
                         tbody.empty();
                         data.forEach((row, i) => {
@@ -2144,7 +2248,7 @@
                                                                                             `);
                         });
                     },
-                    error: function (err) {
+                    error: function(err) {
                         alert('Failed to load report');
                     }
                 });
@@ -2157,7 +2261,7 @@
             // loadAttendance();
             // loadReports();
             // Fetch Sub-Accounts dynamically via AJAX when account is selected
-            $(document).on('change', '#accounts_id', function () {
+            $(document).on('change', '#accounts_id', function() {
                 const accountID = $(this).val();
                 const subAccountSelect = $('#subaccounts_id');
 
@@ -2172,24 +2276,24 @@
                             action: 'get_child',
                             _token: '{{ csrf_token() }}' // CSRF token for Laravel
                         },
-                        success: function (response) {
+                        success: function(response) {
                             // Clear and populate the sub-account dropdown
                             subAccountSelect.empty().append(
                                 '<option value="">Select Sub-Account</option>');
 
                             if (response.length > 0) {
-                                $.each(response, function (index, item) {
+                                $.each(response, function(index, item) {
                                     if (item.subhead_accounting) {
                                         subAccountSelect.append('<option value="' + item
                                             .id + '">' + item.subhead_accounting
-                                                .name + '</option>');
+                                            .name + '</option>');
                                     }
                                 });
                             } else {
                                 alert('No sub-accounts found for the selected account.');
                             }
                         },
-                        error: function (xhr, status, error) {
+                        error: function(xhr, status, error) {
                             alert('Error: ' + error);
                         }
                     });
@@ -2198,7 +2302,7 @@
                     subAccountSelect.empty().append('<option value="">Select Sub-Account</option>');
                 }
             });
-            $(document).on('change', '#edit_accounts_id', function () {
+            $(document).on('change', '#edit_accounts_id', function() {
                 const accountID = $(this).val();
                 const subAccountSelect = $('#edit_subaccounts_id');
 
@@ -2213,24 +2317,24 @@
                             action: 'get_child',
                             _token: '{{ csrf_token() }}' // CSRF token for Laravel
                         },
-                        success: function (response) {
+                        success: function(response) {
                             // Clear and populate the sub-account dropdown
                             subAccountSelect.empty().append(
                                 '<option value="">Select Sub-Account</option>');
 
                             if (response.length > 0) {
-                                $.each(response, function (index, item) {
+                                $.each(response, function(index, item) {
                                     if (item.subhead_accounting) {
                                         subAccountSelect.append('<option value="' + item
                                             .id + '">' + item.subhead_accounting
-                                                .name + '</option>');
+                                            .name + '</option>');
                                     }
                                 });
                             } else {
                                 alert('No sub-accounts found for the selected account.');
                             }
                         },
-                        error: function (xhr, status, error) {
+                        error: function(xhr, status, error) {
                             alert('Error: ' + error);
                         }
                     });
@@ -2268,7 +2372,7 @@
 
             $('#attnWeek, #attnSiteFilter').on('change', loadWeekData);
             $('#attnSearch').on('input', loadWeekData);
-            $(document).on('click', '#createLabourVoucher', function () {
+            $(document).on('click', '#createLabourVoucher', function() {
 
                 // Array to store all labour data
                 let allLabours = [];
@@ -2276,7 +2380,7 @@
                 let search = $('#personQuery').val();
 
                 // Loop through each table row
-                $('.labour-row').each(function () {
+                $('.labour-row').each(function() {
 
                     let row = $(this);
                     let labourId = row.data('id');
@@ -2335,16 +2439,17 @@
                                 _token: '{{ csrf_token() }}'
                             },
 
-                            success: function (res) {
+                            success: function(res) {
 
                                 // Backend explicitly returned failure
                                 if (res.success === false) {
                                     Swal.fire({
                                         icon: 'error',
                                         title: 'Error',
-                                        text: res.message && res.message.trim()
-                                            ? res.message
-                                            : 'Something went wrong.',
+                                        text: res.message && res.message
+                                            .trim() ?
+                                            res.message :
+                                            'Something went wrong.',
                                     });
                                     return;
                                 }
@@ -2353,9 +2458,9 @@
                                 Swal.fire({
                                     icon: 'success',
                                     title: 'Success',
-                                    text: res.message && res.message.trim()
-                                        ? res.message
-                                        : 'Operation completed successfully.',
+                                    text: res.message && res.message.trim() ?
+                                        res.message :
+                                        'Operation completed successfully.',
                                     timer: 1500,
                                     showConfirmButton: false
                                 });
@@ -2367,7 +2472,7 @@
                                 $('.labour_amount').val('');
                             },
 
-                            error: function (xhr) {
+                            error: function(xhr) {
                                 let message = 'Something went wrong.';
                                 if (xhr.responseJSON?.message) {
                                     message = xhr.responseJSON.message;
@@ -2383,8 +2488,11 @@
                 });
             });
         });
+
         function loadWeekData() {
-            let attnWeek = $('#attnWeek').val();
+            let attnWeek = $('#attnWeek').val() || $('#attnWeek').attr('value');
+            console.log(attnWeek);
+
             $.ajax({
                 url: "{{ route('attendance.week.load') }}",
                 type: "GET",
@@ -2393,7 +2501,7 @@
                     site_id: $('#attnSiteFilter').val(),
                     search: $('#attnSearch').val(),
                 },
-                success: function (res) {
+                success: function(res) {
                     // $('#attnWeek').val(attnWeek).attr('value', attnWeek);
                     $('#attnBoard').html(res.view); // replace table with new week
                     console.log(res);
