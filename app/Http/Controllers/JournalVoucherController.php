@@ -174,7 +174,10 @@ class JournalVoucherController extends Controller
                 'created_by' => auth()->id(),
             ]);
 
+
+            $voucherNumber = getVocuherNumber(($request->debit[$index] ?? 0) > 0 ? 'JV' : 'JV');
             $ledgerData = Ledger::create([
+                'voucher' => $voucherNumber,
                 'type' => ($request->debit[$index] ?? 0) > 0 ? 'JV' : 'JV',
                 'type_id' => $journalVoucher->id,
                 'project_head_subheads_id' => $request->sub_accounts[$index],
@@ -315,7 +318,9 @@ class JournalVoucherController extends Controller
                     'created_by' => auth()->id(),
                 ]);
 
-                Ledger::create([
+                $voucherNumber = getVocuherNumber(($request->debit[$index] ?? 0) > 0 ? 'JV' : 'JV');
+                $ledgerData = Ledger::create([
+                    'voucher' => $voucherNumber,
                     'type' => ($request->debit[$index] ?? 0) > 0 ? 'JV' : 'JV',
                     'type_id' => $JvDetails->id,
                     'project_head_subheads_id' => $request->sub_accounts[$index],

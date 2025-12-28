@@ -12,7 +12,14 @@ use App\Models\LabourAttendance;
 use App\Models\SubheadAccounting;
 use App\Models\ProjectHeadSubhead;
 use App\Http\Controllers\Controller;
-
+use App\Models\CustomerLedger;
+use App\Models\JournalVoucher;
+use App\Models\JournalVoucherDetail;
+use App\Models\LabourLedger;
+use App\Models\Project;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class LabourController extends Controller
 {
@@ -64,6 +71,7 @@ class LabourController extends Controller
             ->map(function ($labour) {
 
                 $attendanceIds = $labour->attendances->pluck('id')->toArray();
+                $attendanceDates = $labour->attendances->pluck('date')->toArray();
                 $totalHours = $labour->attendances->sum('hours');
                 $totalOT = $labour->attendances->sum('ot_hours');
                 $ratings = $labour->attendances->sum('ratings') / $labour->attendances->count();
@@ -74,6 +82,7 @@ class LabourController extends Controller
 
                 $days = $totalHours / 8;
                 $amount = ($days * $rate) + ($totalOT * ($rate / 8));
+                $remaningAmount = $amount - $labour->labourLedgers->sum('amount');
 
                 return [
                     'id' => $labour->id,
@@ -86,10 +95,12 @@ class LabourController extends Controller
                     'days' => number_format($days, 2),
                     'overtime' => number_format($totalOT, 2),
                     'amount' => number_format($amount, 2),
+                    'remaningAmount' => number_format($remaningAmount, 2),
                     'advance' => $labour->advance,
                     'amount_raw' => $amount,
                     'ratings' => number_format($ratings, 1),
                     'attendance_ids' => json_encode($attendanceIds, JSON_UNESCAPED_UNICODE), // ✅ real attendance IDs
+                    'attendance_dates' => json_encode($attendanceDates, JSON_UNESCAPED_UNICODE), // ✅ real attendance IDs
                     'paid_status' => optional($labour->attendances->first())->paid_status
                 ];
             });
@@ -100,17 +111,249 @@ class LabourController extends Controller
 
         return view('admin.labours.index', $x);
     }
-    public function updatePaidStatus(Request $request)
+    function formatDates(array $dates): string
     {
-        $status = $request->status == 1 ? 'paid' : 'unpaid';
-        if ($status == 'paid') {
-            Labour::updateOrCreate(['id' => $request->id], ['advance' => 0]);
-        }
-        LabourAttendance::whereIn('id', $request->ids)
-            ->update(['paid_status' => $status]);
-
-        return response()->json(['success' => true]);
+        return collect($dates)
+            ->map(fn($d) => Carbon::parse($d)->format('d M'))
+            ->implode(', ');
     }
+
+    private const LABOUR_Head_Acount_ID = 372;
+    private const LABOUR_Sub_Acount_ID = 301;
+    private const LedgerType = 'CP';
+
+    public function labourPayment(Request $request)
+    {
+        $request->validate([
+            'labours' => 'required|array|min:1',
+            'week' => 'required',
+        ]);
+
+        try {
+            $selected_project_id = getSelectedTown();
+            $head_sub_head = ProjectHeadSubhead::where([
+                'project_id' => $selected_project_id,
+                'head_accounting_id' => 37,
+                'subhead_accounting_id' => self::LABOUR_Sub_Acount_ID,
+            ])->first();
+            if (!$head_sub_head) {
+                $project = Project::find($selected_project_id);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Labour head/subhead account is not configured for the selected project : ' . $project->project . '. Please contact admin.',
+                ], 500);
+            }
+            return DB::transaction(function () use ($request) {
+
+                $labours = $request->labours;
+                [$year, $weekNo] = explode('-W', $request->week);
+
+                $ledgerLines = [];
+                $totalAmount = 0;
+
+                /** ------------------------
+                 *  Create Labour Ledgers
+                 * ------------------------ */
+                foreach ($labours as $labour) {
+
+                    $amount = (float) $labour['amount'];
+                    $dates = $this->formatDates($labour['attendanceDates'] ?? []);
+                    $days = count($labour['attendanceDates'] ?? []);
+
+                    LabourLedger::create([
+                        'labour_id' => $labour['id'],
+                        'amount' => $amount,
+                        'date' => now()->toDateString(),
+                        'details' => json_encode($labour, JSON_UNESCAPED_UNICODE),
+                    ]);
+
+                    $ledgerLines[] =
+                        "{$labour['name']} ({$labour['role']}) – {$days} day(s) "
+                        . "[{$dates}] @ {$labour['rate']} = {$amount}";
+
+                    $totalAmount += $amount;
+                }
+
+                /** ------------------------
+                 *  Ledger Narration
+                 * ------------------------ */
+                $ledgerDetail =
+                    "Labour payment (Week {$weekNo}, {$year}):\n"
+                    . "• " . implode("\n• ", $ledgerLines)
+                    . "\nTotal Paid: {$totalAmount}";
+
+                /** ------------------------
+                 *  Voucher Number
+                 * ------------------------ */
+
+                /** ------------------------
+                 *  Customer Ledger
+                 * ------------------------ */
+                $customerLedger = CustomerLedger::create([
+                    'transaction_type' => self::LedgerType,
+                    'type_id' => get_new_typeID(self::LedgerType),
+                    'reference' => $request->reference,
+                    'project_id' => getSelectedTown(),
+                    'customer_id' => self::LABOUR_Sub_Acount_ID,
+                    'amount_in' => 0,
+                    'amount_out' => $totalAmount,
+                    'description' => $ledgerDetail,
+                    'date' => now()->toDateString(),
+                    'payment_type' => 1,
+                    'is_active' => 1,
+                    'is_approve' => 0,
+                ]);
+
+
+                /** ------------------------
+                 *  General Ledger
+                 * ------------------------ */
+                $voucherNumber = getVocuherNumber(self::LedgerType);
+                Ledger::create([
+                    'customer_ledger_id' => $customerLedger->id,
+                    'voucher_number' => $voucherNumber,
+                    'type' => self::LedgerType,
+                    'type_id' => getLastLedgerIdByType('CP') + 1,
+                    'project_head_subheads_id' => self::LABOUR_Head_Acount_ID,
+                    'reference' => $request->reference,
+                    'amount_in' => 0,
+                    'amount_out' => $totalAmount,
+                    'detail' => $ledgerDetail,
+                    'date' => now()->toDateString(),
+                    'create_by' => auth()->id(),
+                    'update_by' => auth()->id(),
+                    'status' => 0,
+                    'is_active' => 1,
+                ]);
+
+                /** ------------------------
+                 *  Rebuild Report View
+                 * ------------------------ */
+                $view = $this->buildPersonWiseReport($request);
+
+                return response()->json([
+                    'success' => true,
+                    'view' => $view,
+                ]);
+            });
+        } catch (\Throwable $e) {
+
+            Log::error('labourPayment failed', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong while processing labour payment.',
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ], 500);
+        }
+    }
+    private function buildPersonWiseReport(Request $request): string
+    {
+        // Parse week range (Friday → Thursday)
+        $start = Carbon::parse($request->week)->startOfWeek(Carbon::FRIDAY);
+        $end = $start->copy()->addDays(6);
+
+        $days = [];
+        for ($day = $start->copy(); $day <= $end; $day->addDay()) {
+            $days[] = $day->format('Y-m-d');
+        }
+
+        $query = Labour::select(
+            'labours.id',
+            'labours.name',
+            'labours.father_name',
+            'labours.cnic',
+            'labours.advance',
+            'labours.phone as mobile',
+            'labours.role as designation',
+            'labours.daily_wage'
+        );
+
+        /** ------------------------
+         *  Search Filter
+         * ------------------------ */
+        if ($request->filled('search')) {
+            $search = $request->search;
+
+            $query->where(function ($q) use ($search) {
+                if (preg_match('/\d/', $search)) {
+                    $q->where('phone', 'like', "%{$search}%")
+                        ->orWhere('cnic', 'like', "%{$search}%");
+                } else {
+                    $q->where('name', 'like', "%{$search}%");
+                }
+            });
+        }
+
+        /** ------------------------
+         *  Fetch Labour + Attendances
+         * ------------------------ */
+        $personWiseReports = $query
+            ->with([
+                'attendances' => function ($q) use ($days) {
+                    $q->whereIn('date', $days);
+                },
+                'labourLedgers'
+            ])
+            ->whereHas('attendances', function ($q) use ($days) {
+                $q->whereIn('date', $days);
+            })
+            ->get()
+            ->map(function ($labour) {
+
+                $attendanceIds = $labour->attendances->pluck('id')->toArray();
+                $attendanceDates = $labour->attendances->pluck('date')->toArray();
+
+                $totalHours = $labour->attendances->sum('hours');
+                $totalOT = $labour->attendances->sum('ot_hours');
+
+                $count = max(1, $labour->attendances->count());
+                $ratings = round($labour->attendances->sum('ratings') / $count, 1);
+
+                $rate = optional($labour->attendances->first())->rate
+                    ?? $labour->daily_wage
+                    ?? 0;
+
+                $daysWorked = $totalHours / 8;
+
+                $amount = ($daysWorked * $rate) + ($totalOT * ($rate / 8));
+                $paid = $labour->labourLedgers->sum('amount');
+
+                return [
+                    'id' => $labour->id,
+                    'name' => $labour->name,
+                    'father_name' => $labour->father_name,
+                    'cnic' => $labour->cnic,
+                    'mobile' => $labour->mobile,
+                    'designation' => $labour->designation,
+                    'rate' => number_format($rate, 2),
+                    'days' => number_format($daysWorked, 2),
+                    'overtime' => number_format($totalOT, 2),
+                    'amount' => number_format($amount, 2),
+                    'remaningAmount' => number_format($amount - $paid, 2),
+                    'advance' => $labour->advance,
+                    'amount_raw' => $amount,
+                    'ratings' => number_format($ratings, 1),
+                    'attendance_ids' => json_encode($attendanceIds, JSON_UNESCAPED_UNICODE),
+                    'attendance_dates' => json_encode($attendanceDates, JSON_UNESCAPED_UNICODE),
+                    'paid_status' => optional($labour->attendances->first())->paid_status,
+                ];
+            });
+
+        $data = [
+            'personWiseReports' => $personWiseReports,
+            'total_amount' => $personWiseReports->sum('amount_raw'),
+        ];
+
+        return view('admin.labours.person-wise-report', $data)->render();
+    }
+
 
 
     public function create()
@@ -169,14 +412,14 @@ class LabourController extends Controller
     public function attendanceStore(Request $request)
     {
         $validated = $request->validate([
-            'labour_id'   => 'required|exists:labours,id',
-            'site_id'  => 'nullable|exists:sites,id',
-            'date'        => 'required|date',
-            'status'      => 'required|in:present,absent,leave,holiday,not-marked',
-            'hours'       => 'nullable|numeric|min:0',
-            'ot_hours'    => 'nullable|numeric|min:0',
-            'rate'        => 'nullable|numeric|min:0',
-            'ratings'        => 'nullable',
+            'labour_id' => 'required|exists:labours,id',
+            'site_id' => 'nullable|exists:sites,id',
+            'date' => 'required|date',
+            'status' => 'required|in:present,absent,leave,holiday,not-marked',
+            'hours' => 'nullable|numeric|min:0',
+            'ot_hours' => 'nullable|numeric|min:0',
+            'rate' => 'nullable|numeric|min:0',
+            'ratings' => 'nullable',
         ]);
 
         // Auto-calculate amount if not provided
@@ -250,10 +493,19 @@ class LabourController extends Controller
 
     public function attendanceReport(Request $request)
     {
-        $request->validate([
-            'week' => 'required',
-            'site_id'    => 'required|integer|exists:sites,id',
-        ]);
+        $request->validate(
+            [
+                'week' => 'required',
+                'site_id' => 'required|integer|exists:sites,id',
+            ],
+            [
+                'week.required' => 'Please select a week before generating the report.',
+                'site_id.required' => 'Please select a site to continue.',
+                'site_id.integer' => 'Invalid site selected.',
+                'site_id.exists' => 'The selected site does not exist.',
+            ]
+        );
+
         $start = Carbon::parse($request->week);
         $start = $start->copy()->startOfWeek(Carbon::FRIDAY);
 
@@ -270,14 +522,16 @@ class LabourController extends Controller
         }
 
         $reports = Labour::select('labours.id', 'labours.name', 'labours.father_name', 'labours.cnic', 'labours.phone as mobile', 'labours.role as designation')
-            ->with(['attendances' => function ($query) use ($request, $days) {
-                $query->whereIn('date', $days)
-                    ->where('site_id', $request->site_id)
-                    ->whereIn('status', ['present', 'leave']);
-                if ($request->id == 'voucherBtnSiteRun') {
-                    $query->where('voucher_status', 'notcreated');
+            ->with([
+                'attendances' => function ($query) use ($request, $days) {
+                    $query->whereIn('date', $days)
+                        ->where('site_id', $request->site_id)
+                        ->whereIn('status', ['present', 'leave']);
+                    if ($request->id == 'voucherBtnSiteRun') {
+                        $query->where('voucher_status', 'notcreated');
+                    }
                 }
-            }])
+            ])
             ->whereHas('attendances', function ($query) use ($request, $days) {
                 $query->whereIn('date', $days)
                     ->where('site_id', $request->site_id)
@@ -336,7 +590,7 @@ class LabourController extends Controller
             ->toArray();
 
         // Render table partial
-        $view = view('admin.labours.site-report', compact('reports'))->render();
+        $view = view('admin.labours.site-report', compact('reports', 'total_amount'))->render();
 
         return response()->json([
             'success' => true,
@@ -387,17 +641,17 @@ class LabourController extends Controller
         $x['personWiseReports'] = $personWiseReports = $personWiseReports
             ->with([
                 'attendances' => function ($query) use ($request, $days) {
-                    $query->where('voucher_status', 'created')
-                        ->whereIn('date', $days);
+                    $query->whereIn('date', $days);
                 }
             ])
             ->whereHas('attendances', function ($query) use ($request, $days) {
-                $query->where('voucher_status', 'created')->whereIn('date', $days);
+                $query->whereIn('date', $days);
             })
             ->get()
             ->map(function ($labour) {
 
                 $attendanceIds = $labour->attendances->pluck('id')->toArray();
+                $attendanceDates = $labour->attendances->pluck('date')->toArray();
                 $totalHours = $labour->attendances->sum('hours');
                 $totalOT = $labour->attendances->sum('ot_hours');
                 $ratings = $labour->attendances->sum('ratings') / $labour->attendances->count();
@@ -408,6 +662,7 @@ class LabourController extends Controller
 
                 $days = $totalHours / 8;
                 $amount = ($days * $rate) + ($totalOT * ($rate / 8));
+                $remaningAmount = $amount - $labour->labourLedgers->sum('amount');
 
                 return [
                     'id' => $labour->id,
@@ -420,10 +675,12 @@ class LabourController extends Controller
                     'days' => number_format($days, 2),
                     'overtime' => number_format($totalOT, 2),
                     'amount' => number_format($amount, 2),
+                    'remaningAmount' => number_format($remaningAmount, 2),
                     'advance' => $labour->advance,
                     'amount_raw' => $amount,
                     'ratings' => number_format($ratings, 1),
                     'attendance_ids' => json_encode($attendanceIds, JSON_UNESCAPED_UNICODE), // ✅ real attendance IDs
+                    'attendance_dates' => json_encode($attendanceDates, JSON_UNESCAPED_UNICODE), // ✅ real attendance IDs
                     'paid_status' => optional($labour->attendances->first())->paid_status
                 ];
             });
@@ -441,9 +698,12 @@ class LabourController extends Controller
     {
         // dd($request->all());
         $query = Labour::query();
-        if ($request->has('name') && $request->name) $query->where('name', $request->name);
-        if ($request->has('cnic') && $request->cnic) $query->where('cnic', $request->cnic);
-        if ($request->has('phone') && $request->phone) $query->where('phone', $request->phone);
+        if ($request->has('name') && $request->name)
+            $query->where('name', $request->name);
+        if ($request->has('cnic') && $request->cnic)
+            $query->where('cnic', $request->cnic);
+        if ($request->has('phone') && $request->phone)
+            $query->where('phone', $request->phone);
         $exist = $query->exists();
         return response()->json(['exists' => $exist]);
     }
@@ -457,11 +717,10 @@ class LabourController extends Controller
 
         // Get the ISO Monday for that week
         $isoMonday = Carbon::now()->setISODate($year, $week)->startOfWeek(Carbon::MONDAY);
+        $endOfWeekDate = Carbon::now()->setISODate($year, $week)->endOfWeek(Carbon::SUNDAY)->toDateString();
 
         // Convert to Friday (Mon +4 days)
         $startOfWeek = $isoMonday->copy()->addDays(4);
-
-        // If selected date is before Friday, shift back 1 week
         $selected = Carbon::parse($weekInput);
         if ($selected->lt($startOfWeek)) {
             $startOfWeek->subWeek();
@@ -492,7 +751,8 @@ class LabourController extends Controller
                     $q->where('name', 'like', "%{$search}%");
                 }
             });
-        } else {
+        }
+        if ($request->has('site_id') && $request->site_id) {
             $query->whereHas('attendances', function ($query) use ($days, $request) {
                 if ($request->has('site_id') && $request->site_id) {
                     $query->where('site_id', $request->site_id);
@@ -503,7 +763,8 @@ class LabourController extends Controller
         }
 
 
-        $x['attendance_labours'] =  $query->get();
+        $x['attendance_labours'] = $query->get();
+        $x['week'] = $endOfWeekDate;
         $view = '';
         $view .= view('admin.labours.attn-board', $x)->render();
 
@@ -517,34 +778,91 @@ class LabourController extends Controller
 
     public function createVoucher(Request $request)
     {
+        $labours = json_decode($request->detail, true);
+
+        $labourNames = collect($labours)->map(function ($labour) {
+            return $labour['name']
+                . ' (' . $labour['days'] . ' days'
+                . ', wage: ' . $labour['rate'] . ')';
+        })->implode(', ');
+
+        $site = Site::find($request->site_id);
+        $siteName = $site?->site_name ?? 'Unknown Site';
+        $voucherDescription = "Labour payment for Site: {$siteName}";
+        $labourAccountDesc = "Labour payable for {$labourNames}";
+        $siteAccountDesc = "Labour expense charged to Site: {$siteName}";
+
         $project_head_subheads_id = Site::where('id', $request->site_id)->first()->subhead_accounting_id;
         $amount = str_replace(',', '', $request->amount);
+
+        $selectedProjectId = getSelectedTown();
+        $lastVoucherId = getLastJvId();
+        $journalVoucher = JournalVoucher::create([
+            'voucher_number' => $lastVoucherId + 1,
+            'reference' => null,
+            'date' => Carbon::now()->format('Y-m-d'),
+            'description' => $voucherDescription,
+            'total_debit' => $amount,
+            'total_credit' => $amount,
+            'created_by' => auth()->id(),
+            'project_id' => $selectedProjectId,
+        ]);
+        $headSubheadId = $this->systemHeadSubheadAccountId(
+            (int) $selectedProjectId,
+            'Labour',
+            'Labour Party',
+            true // create if missing
+        );
+
+        JournalVoucherDetail::create([
+            'journal_voucher_id' => $journalVoucher->id,
+            'account_id' => $headSubheadId,
+            'debit' => 0,
+            'credit' => $amount,
+            'description' => $labourAccountDesc,
+            'created_by' => auth()->id(),
+        ]);
+        $voucherNumber = getVocuherNumber('JV');
         $toLedgerData = Ledger::create([
             'type' => 'JV',
-            'type_id' => null,
-            'project_head_subheads_id' => 372,
+            'voucher_number' => $voucherNumber,
+            'type_id' => $journalVoucher->id,
+            'project_head_subheads_id' => $headSubheadId,
             'reference' => null,
-            'amount_in' => $amount ?? 0,
+            'amount_in' => $amount,
             'amount_out' => 0,
-            'detail' => 'From Labour Voucher',
+            'detail' => $labourAccountDesc,
             'create_by' => auth()->id(),
             'is_active' => true,
             'status' => '0',
             'date' => Carbon::now()->format('Y-m-d'),
         ]);
+
+        JournalVoucherDetail::create([
+            'journal_voucher_id' => $journalVoucher->id,
+            'account_id' => $project_head_subheads_id,
+            'debit' => $amount,
+            'credit' => 0,
+            'description' => $labourAccountDesc,
+            'created_by' => auth()->id(),
+        ]);
+        $voucherNumber = getVocuherNumber('JV');
         $fromLedgerData = Ledger::create([
             'type' => 'JV',
-            'type_id' => null,
+            'voucher_number' => $voucherNumber,
+            'type_id' => $journalVoucher->id,
             'project_head_subheads_id' => $project_head_subheads_id,
             'reference' => null,
             'amount_in' => 0,
-            'amount_out' => $amount ?? 0,
-            'detail' => 'From Labour Voucher',
+            'amount_out' => $amount,
+            'detail' => $labourAccountDesc,
             'create_by' => auth()->id(),
             'is_active' => true,
             'status' => '0',
             'date' => Carbon::now()->format('Y-m-d'),
         ]);
+
+
         $ids = array_filter(explode(',', $request->attendance_ids));
 
         LabourAttendance::whereIn('id', $ids)
@@ -554,5 +872,42 @@ class LabourController extends Controller
             'toLedgerData' => $toLedgerData,
             'fromLedgerData' => $fromLedgerData
         ]);
+    }
+    private function systemHeadSubheadAccountId(int $projectId, string $headName, string $subheadName, bool $createIfMissing = false): int
+    {
+        $head = HeadAccounting::where('name', $headName)->first();
+        $subhead = SubheadAccounting::where('name', $subheadName)->first();
+
+        if (!$head && $createIfMissing) {
+            $head = HeadAccounting::create([
+                'name' => $headName,
+                'is_active' => 1,
+                'acct_type' => 0,
+                'create_by' => Auth::id(),
+            ]);
+        }
+        if (!$subhead && $createIfMissing) {
+            $subhead = SubheadAccounting::create([
+                'name' => $subheadName,
+                'is_active' => 1,
+                'create_by' => Auth::id(),
+            ]);
+        }
+
+        if (!$subhead) {
+            throw new \Exception("System subhead not found: {$subheadName}");
+        }
+
+        $phs = ProjectHeadSubhead::firstOrCreate(
+            [
+                'project_id' => $projectId,
+                'head_accounting_id' => $head->id,
+                'subhead_accounting_id' => $subhead->id,
+                'plot_id' => null,
+                'customer_id' => null,
+            ]
+        );
+
+        return (int) $phs->id;
     }
 }

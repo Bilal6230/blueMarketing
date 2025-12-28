@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Ledger;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use App\Models\Project;
@@ -253,7 +254,7 @@ function urtype($case = "u")
 function numberFormat($n)
 {
 
-    return number_format((float)$n, 2, '.', ',');
+    return number_format((float) $n, 2, '.', ',');
 }
 
 
@@ -303,6 +304,30 @@ if (!function_exists('getLastLedgerIdByType')) {
 
         return $query->value('type_id');
     }
+}
+function getVocuherNumber($type)
+{
+    $numbers = Ledger::where('type', $type)
+        ->where('voucher_number', '>', 0)
+        ->orderBy('voucher_number')
+        ->pluck('voucher_number')
+        ->toArray();
+
+    $nextNumber = 1; // default starting number
+
+    if (!empty($numbers)) {
+        $allNumbers = range(min($numbers), max($numbers));
+        $missing = array_diff($allNumbers, $numbers);
+        if (!empty($missing)) {
+            // Get the smallest missing number
+            $nextNumber = min($missing);
+        } else {
+            // If no missing numbers, continue from max
+            $nextNumber = max($numbers) + 1;
+        }
+    }
+
+    return $nextNumber;
 }
 
 function get_new_voucher_number($type, $id = null)
@@ -637,7 +662,12 @@ if (!function_exists('loadAttendanceWeek')) {
     {
         try {
             // Parse normally first
-            $start = Carbon::parse($weekInput);
+            if($weekInput) {
+                $start = Carbon::parse($weekInput);
+            }
+            else{
+                $start = Carbon::now()->endOfWeek(Carbon::SUNDAY);
+            }
         } catch (\Exception $e) {
             $start = now();
         }

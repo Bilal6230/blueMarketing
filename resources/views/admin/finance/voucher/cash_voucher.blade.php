@@ -464,7 +464,7 @@
                                         <th>Sub Head Account</th>
                                         <th>Detail</th>
                                         <th>Amount</th>
-                                        @canany(['update voucher', 'delete voucher'])
+                                        @canany(['update voucher','delete voucher','read voucher','print voucher'])
                                             <th>Action</th>
                                         @endcanany
                                     </tr>
@@ -1469,9 +1469,11 @@
         // Voucher Tab Management with LocalStorage + full Tom Select option persistence
         // Voucher Tabs with reliable saving on tab switch + new tab, including Tom Select options
         (async function($) {
-            const LS_KEY = 'paysavo_voucher_tabs_v1';
+            // const LS_KEY = 'paysavo_voucher_tabs_v1';
             const FORM_ID = '#voucherForm';
             const TS_SEL = '.js-tomselect';
+            const $Type = '{{ $type }}'; // e.g. CR or CP
+            const LS_KEY = `paysavo_voucher_tabs_${$Type}_v1`;
 
             // ---------- TomSelect init ----------
             function initTomSelects() {
@@ -1789,11 +1791,11 @@
                 nums.forEach(n => {
                     const isActive = (n === store.currentTab);
                     $wrap.append(`
-        <div class="voucher-tab-wrapper position-relative">
-          <button class="btn btn-primary btn-sm voucher-tab ${isActive ? 'active' : ''}" data-tab="${n}">Voucher#${n}</button>
-          ${n === 1 ? '' : `<button class="voucher-tab-remove" data-tab="${n}" title="Remove Tab"><i class="fas fa-times"></i></button>`}
-        </div>
-      `);
+                <div class="voucher-tab-wrapper position-relative">
+                <button class="btn btn-primary btn-sm voucher-tab ${isActive ? 'active' : ''}" data-tab="${n}">Voucher#${n}</button>
+                ${n === 1 ? '' : `<button class="voucher-tab-remove" data-tab="${n}" title="Remove Tab"><i class="fas fa-times"></i></button>`}
+                </div>
+            `);
                 });
                 currentTab = store.currentTab || 1;
                 nextTabNumber = store.nextTabNumber || (nums.length ? Math.max(...nums) + 1 : 2);
@@ -1874,7 +1876,7 @@
                 showFormCardLoader();
 
                 const voucher_val = $("#voucher_number").val(); // e.g. "CR-1823"
-                const parts = (voucher_val || 'CR-0').split('-');
+                const parts = (voucher_val || $Type+'-0').split('-');
                 const voucher_num = parseInt(parts[1] || '0', 10) + 1;
 
                 const data = {
@@ -1916,7 +1918,7 @@
                             ensureSaved: false
                         });
 
-                        const nextVoucher = `CR-${nextVoucherNumber}`;
+                        const nextVoucher = `${$Type}-${nextVoucherNumber}`;
                         $("#voucher_number").val(nextVoucher).attr('value', nextVoucher).trigger(
                             'input').trigger('change');
 
@@ -1992,7 +1994,7 @@
                         },
                         function(data) {
                             const nextVoucherNumber = data.latest_voucher_number;
-                            const nextVoucher = `CR-${nextVoucherNumber}`;
+                            const nextVoucher = `${$Type}-${nextVoucherNumber}`;
                             $("#voucher_number").val(nextVoucher).attr('value', nextVoucher).trigger('change');
                             hideFormCardLoader();
                         },
@@ -2075,7 +2077,7 @@
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Cleared!',
-                                text: 'All vouchers cleared except the first one.',
+                                text: `All ${$Type} vouchers cleared except the first one.`,
                             });
 
                             // If you have a function to persist the store
@@ -2265,7 +2267,7 @@
                             data: 'amount',
                             render: d => Number(d).toLocaleString()
                         },
-                        @canany(['update voucher', 'delete voucher', 'read voucher'])
+                        @canany(['update voucher','delete voucher','read voucher','print voucher'])
                             {
                                 data: null,
                                 orderable: false,
@@ -2279,26 +2281,26 @@
 
                                     @can('update voucher')
                                         buttons += `
-                <button class="btn btn-sm btn-primary btn-edit" data-id="${row.id}">
-                    <i class="fas fa-pencil-alt"></i>
-                </button>
-            `;
+                                            <button class="btn btn-sm btn-primary btn-edit" data-id="${row.id}">
+                                                <i class="fas fa-pencil-alt"></i>
+                                            </button>
+                                        `;
                                     @endcan
 
                                     @can('delete voucher')
-                                        buttons += `
-                <button class="btn btn-sm btn-danger btn-delete" data-id="${row.id}">
-                    <i class="fas fa-trash"></i>
-                </button>
-            `;
+                                    buttons += `
+                                            <button class="btn btn-sm btn-danger btn-delete" data-id="${row.id}">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        `;
                                     @endcan
 
-                                    @can('read voucher')
+                                    @can('print voucher')
                                         buttons += `
-                <a href="${printUrl}" target="_blank" class="btn btn-sm btn-info btn-print">
-                    <i class="fas fa-print"></i>
-                </a>
-            `;
+                                            <a href="${printUrl}" target="_blank" class="btn btn-sm btn-info btn-print">
+                                                <i class="fas fa-print"></i>
+                                            </a>
+                                        `;
                                     @endcan
 
                                     buttons += `</div>`;

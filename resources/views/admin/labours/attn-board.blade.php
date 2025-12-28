@@ -27,7 +27,7 @@ Daily Wage: Rs {{ $labour['daily_wage'] }}
 
     @php
         use Carbon\Carbon;
-        [$start, $end, $weekDays] = loadAttendanceWeek($week ?? now()->format('Y-m-d'));
+        [$start, $end, $weekDays] = loadAttendanceWeek($week ?? null);
     @endphp
 
 

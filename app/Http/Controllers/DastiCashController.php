@@ -4,13 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Dasticash;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class DastiCashController extends Controller
 {
     // Store new record
     public function store(Request $request)
     {
-        $validator = \Validator::make($request->all(), [
+        $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'amount' => 'nullable|string|max:255',
             'description' => 'nullable|string',

@@ -131,11 +131,6 @@
             padding: 16px
         }
 
-        .row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px
-        }
 
         .row>.col {
             flex: 1 1 200px
@@ -625,6 +620,18 @@
             border: 6px solid transparent;
             border-bottom-color: #1f2937;
         }
+
+        .ts-dropdown,
+        .ts-dropdown.single,
+        .ts-dropdown.multi {
+            z-index: 99999 !important;
+        }
+
+        /* Sometimes needed if a parent creates a stacking context */
+        .ts-wrapper {
+            position: relative;
+            z-index: 99999;
+        }
     </style>
 
     <div class="wrap">
@@ -638,12 +645,16 @@
                 <button class="tab" data-tab="attendance">Attendance</button>
             </div>
         </div>
+        @php
+            use Carbon\Carbon;
+            [$start, $end, $weekDays] = loadAttendanceWeek($week ?? now()->format('Y-m-d'));
+        @endphp
 
         <!-- Add Labour -->
         <section id="addLabour" class="page">
             <div class="grid cols-2">
                 <div class="card">
-                    <div class="hd"><b>Add a Labour</b><span class="caps">dummy form</span></div>
+                    <div class="hd"><b>Add a Labour</b></div>
                     <div class="bd">
                         <form action="{{ route('labours.store') }}" method="post" id="addLabourForm">
                             @csrf
@@ -688,7 +699,8 @@
                 </div>
                 <div class="card">
                     <div class="hd"><b>All Labours</b> <span class="pill"><span
-                                id="labCount">{{ $count }}</span> total</span>
+                                id="labCount">{{ $count }}</span>
+                            total</span>
                     </div>
                     <div class="bd table-scroll">
                         <!-- Dummy labour rows moved to HTML. Javascript will parse these rows on boot. -->
@@ -728,7 +740,8 @@
                                         <option value="">Select Head</option>
                                         @foreach ($headaccounts as $head)
                                             <option value="{{ $head->head_accounting_id }}">
-                                                {{ $head->headAccounting->name }}</option>
+                                                {{ $head->headAccounting->name }}
+                                            </option>
                                         @endforeach
                                     </select>
                                     <small class="text-danger error"></small>
@@ -792,14 +805,32 @@
             <div class="card">
                 <div class="hd"><b>Site Report</b><span class="caps">filter & total cost</span></div>
                 <div class="bd">
-                    <div class="toolbar row" style="margin-bottom:12px">
-                        <select id="repSite" class="col-5">
-                            <option value="">All Sites</option>
-                            @foreach ($sites as $site)
-                                <option value="{{ $site->id }}">{{ $site->site_name }}</option>
-                            @endforeach
-                        </select>
-                        <input type="week" id="repFrom" class="col-6" value="{{ now()->format('o-\WW') }}"/>
+                    <div class="row" style="margin-bottom:12px">
+                        <div class="col-3">
+                            <select id="repSite" class=" js-tomselect">
+                                <option value="">All Sites</option>
+                                @foreach ($sites as $site)
+                                    <option value="{{ $site->id }}">{{ $site->site_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-6 align-items-center mb-2">
+                            <div class="row">
+                                <div class="col-8">
+                                    <input type="week" id="repFrom" class="form-control" />
+                                    <label id="weekLabel" class="fw-bold text-primary" style="font-size: 14px"></label>
+                                </div>
+                                <div class="col-4 text-end">
+                                    <button type="button" id="prevWeek" class="btn btn-sm btn-outline-secondary">←
+                                        Prev</button>
+                                    <button type="button" id="nextWeek" class="btn btn-sm btn-outline-secondary">Next
+                                        →</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- <input type="week" id="repFrom" class="col-6 form-control"
+                            value="{{ now()->format('o-\WW') }}" /> --}}
                     </div>
                     <div class="site-report-actions">
                         <div class="site-report-btns">
@@ -849,10 +880,24 @@
             <div class="card">
                 <div class="hd"><b>Person Wise Report</b><span class="caps">details & totals</span></div>
                 <div class="bd">
-                    <div class="toolbar row" style="margin-bottom:12px">
-                        <input id="personQuery" class="col-5" placeholder="Search by name or mobile"
-                            style="min-width:260px" />
-                        <input type="week" id="pFrom" class="col-6" value="{{ now()->format('o-\WW') }}"/>
+                    <div class="row" style="margin-bottom:12px">
+                        <div class="col-4">
+                            <input id="personQuery" class="" placeholder="Search by name or mobile"
+                                style="min-width:260px" />
+                            <label class="fw-bold text-primary" style="font-size: 14px"></label>
+                        </div>
+                        <div class="col-4">
+                            <input type="week" id="pFrom" class="form-control"
+                                value="{{ now()->format('o-\WW') }}" />
+                            <label class="fw-bold text-primary pForm-weekLabel" style="font-size: 14px"></label>
+                        </div>
+                        <div class="col-4 text-end">
+                            <button type="button" id="prevWeek_pFrom" class="btn btn-sm btn-outline-secondary">←
+                                Prev</button>
+                            <button type="button" id="nextWeek_pFrom" class="btn btn-sm btn-outline-secondary">Next
+                                →</button>
+                        </div>
+
                     </div>
                     <div class="site-report-actions">
                         <button class="btn" id="btnPersonRun">Run</button>
@@ -878,10 +923,8 @@
                                     <th>Payments</th>
                                 </tr>
                             </thead>
-                            <tbody id="personAllBody">
-                                @include('admin.labours.person-wise-report')
-                                {{-- personAll will be populated from labour table on boot --}}
-                            </tbody>
+                            <tbody id="personAllBody"> @include('admin.labours.person-wise-report') {{-- personAll will be
+                                populated from labour table on boot --}} </tbody>
                         </table>
                     </div>
                 </div>
@@ -893,25 +936,44 @@
             <div class="card">
                 <div class="hd"><b>Attendance</b><span class="caps">mark daily hours & overtime</span></div>
                 <div class="bd">
-                    <div class="toolbar row" style="margin-bottom:10px">
-                        <select id="attnSiteFilter" class="col-5">
-                            <option value="">All Sites</option>
-                            @foreach ($sites as $site)
-                                <option value="{{ $site->id }}">{{ $site->site_name }}</option>
-                            @endforeach
-                        </select>
-                        <input type="week" class="col-6" id="attnWeek" value="{{ now()->format('o-\WW') }}" />
-                        <div class="btns">
-                            <div class="">
-                                <button class="btn" id="btnAttnPrev">◀ Prev</button>
-                                <button class="btn" id="btnAttnNext">Next ▶</button>
-                                <button class="btn" id="btnExportAttn">Export CSV</button>
+                    <div class="row" style="margin-bottom:12px">
+                        <div class="col-3">
+                            <select id="attnSiteFilter" class=" js-tomselect">
+                                <option value="">All Sites</option>
+                                @foreach ($sites as $site)
+                                    <option value="{{ $site->id }}">{{ $site->site_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-9 align-items-center mb-2">
+                            <div class="row">
+                                <div class="col-4">
+                                    <input id="attnSearch" class="form-control" placeholder="Search by name or mobile" />
+                                </div>
+                                <div class="col-4">
+
+                                    {{-- //labur --}}
+                                    <input type="week" id="attnWeek" class="form-control"
+                                        value="{{ now()->format('o-\WW') }}" />
+                                    <label id="lab-weekLabel" class="fw-bold text-primary"
+                                        style="font-size: 14px"></label>
+                                </div>
+                                <div class="col-4 text-end">
+                                    <button type="button" id="btnAttnPrev" class="btn btn-sm btn-outline-secondary">←
+                                        Prev</button>
+                                    <button type="button" id="btnAttnNext" class="btn btn-sm btn-outline-secondary">Next
+                                        →</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                                        id="btnExportAttn">Export
+                                        CSV</button>
+
+                                </div>
                             </div>
-                            <input id="attnSearch" class="col-4" placeholder="Search by name or mobile" />
                         </div>
 
+                        {{-- <input type="week" id="repFrom" class="col-6 form-control"
+                            value="{{ now()->format('o-\WW') }}" /> --}}
                     </div>
-
                     <div class="table-scroll max-height" id="attnBoard">
                         @include('admin.labours.attn-board')
                     </div>
@@ -926,7 +988,7 @@
     <!-- Attendance Modal -->
     <div class="modal" id="attnModal" aria-hidden="true">
         <div class="panel">
-            <div class="hd"><b>Mark Attendance</b><button class="btn ghost" id="btnCloseModal">✕</button></div>
+            <div class="hd"><b>Mark Attendance</b><button class=" btn ghost" id="btnCloseModal">✕</button></div>
             <form action="{{ route('labours.attendance') }}" method="post" id="addAttendanceForm">
                 @csrf
                 <div class="bd">
@@ -1017,7 +1079,7 @@
     <!-- Edit Labour Modal -->
     <div class="modal" id="editLabourModal" aria-hidden="true">
         <div class="panel">
-            <div class="hd"><b>Edit Labour</b><button class="btn ghost" id="editBtnCloseModal">✕</button></div>
+            <div class="hd"><b>Edit Labour</b><button class=" btn ghost" id="editBtnCloseModal">✕</button></div>
             <form action="{{ route('labours.update', 1) }}" method="post" id="editLabourForm" style="padding: 20px;">
                 @csrf
                 @method('PUT')
@@ -1069,7 +1131,7 @@
     <!-- Edit Site Modal -->
     <div class="modal" id="editSiteModal" aria-hidden="true">
         <div class="panel">
-            <div class="hd"><b>Edit Site</b><button class="btn ghost" id="editSiteBtnCloseModal">✕</button></div>
+            <div class="hd"><b>Edit Site</b><button class=" btn ghost" id="editSiteBtnCloseModal">✕</button></div>
             <form action="{{ route('labours.sitestore') }}" method="post" class="addSiteForm" style="padding: 20px;">
                 @csrf
                 <div class="row">
@@ -1080,12 +1142,14 @@
                             <option value="">Select Head</option>
                             @foreach ($headaccounts as $head)
                                 <option value="{{ $head->head_accounting_id }}">
-                                    {{ $head->headAccounting->name }}</option>
+                                    {{ $head->headAccounting->name }}
+                                </option>
                             @endforeach
                         </select>
                         <small class="text-danger error"></small>
                         @error('accounts_id')
-                            <div class="text-danger">{{ $message }}</div>
+                            <div class="text-danger">{{ $message }}
+                            </div>
                         @enderror
                     </div>
                     <div class="col">
@@ -1095,7 +1159,8 @@
                         </select>
                         <small class="text-danger error"></small>
                         @error('subaccounts_id')
-                            <div class="text-danger">{{ $message }}</div>
+                            <div class="text-danger">{{ $message }}
+                            </div>
                         @enderror
                     </div>
                 </div>
@@ -1126,6 +1191,255 @@
     {{-- jQuery is required. If your admin master already loads jQuery, remove the following script line. --}}
     <script>
         $(document).ready(function() {
+            let repSiteSelect = new TomSelect('#repSite', {
+                create: false,
+                allowEmptyOption: true,
+                placeholder: 'All Sites',
+                maxOptions: 500,
+                onInitialize() {
+                    this.clear(); // default to "All Sites"
+                }
+            });
+            let repSiteSelect1 = new TomSelect('#attnSiteFilter', {
+                create: false,
+                allowEmptyOption: true,
+                placeholder: 'All Sites',
+                maxOptions: 500,
+                onInitialize() {
+                    this.clear(); // default to "All Sites"
+                }
+            });
+
+            function getWeekDates(year, week) {
+                const simple = new Date(year, 0, 1 + (week - 1) * 7);
+                const dow = simple.getDay();
+                const ISOweekStart = simple;
+
+                if (dow <= 4)
+                    ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
+                else
+                    ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
+
+                const start = new Date(ISOweekStart);
+                const end = new Date(ISOweekStart);
+                end.setDate(start.getDate() + 6);
+
+                return {
+                    start,
+                    end
+                };
+            }
+
+            function updateWeekLabel(value) {
+                if (!value) return;
+
+                const [year, week] = value.split('-W');
+                const {
+                    start,
+                    end
+                } = getWeekDates(parseInt(year), parseInt(week));
+
+                const options = {
+                    day: '2-digit',
+                    month: 'short'
+                };
+
+                const startText = start.toLocaleDateString('en-GB', options);
+                const endText = end.toLocaleDateString('en-GB', options);
+                $('#weekLabel').text(
+                    `Week ${week}, ${year} (${startText} – ${endText})`
+                );
+            }
+
+            function updateWeekLabel_pForm(value) {
+                if (!value) return;
+
+                const [year, week] = value.split('-W');
+                const {
+                    start,
+                    end
+                } = getWeekDates(parseInt(year), parseInt(week));
+
+                const options = {
+                    day: '2-digit',
+                    month: 'short'
+                };
+
+                const startText = start.toLocaleDateString('en-GB', options);
+                const endText = end.toLocaleDateString('en-GB', options);
+                $('.pForm-weekLabel').text(
+                    `Week ${week}, ${year} (${startText} – ${endText})`
+                );
+            }
+
+            function updateWeekLabel_lab(value) {
+                if (!value) return;
+
+                const [year, week] = value.split('-W');
+                const {
+                    start,
+                    end
+                } = getWeekDates(parseInt(year), parseInt(week));
+
+                const options = {
+                    day: '2-digit',
+                    month: 'short'
+                };
+
+                const startText = start.toLocaleDateString('en-GB', options);
+                const endText = end.toLocaleDateString('en-GB', options);
+                $('#lab-weekLabel').text(
+                    `Week ${week}, ${year} (${startText} – ${endText})`
+                );
+            }
+
+            function getFridayWeekInfo(date = new Date()) {
+                const d = new Date(date);
+                d.setHours(0, 0, 0, 0);
+
+                // 0=Sun ... 5=Fri ... 6=Sat
+                const day = d.getDay();
+
+                // How many days to go back to Friday
+                const diffToFriday = (day >= 5) ? day - 5 : day + 2;
+
+                const weekStart = new Date(d);
+                weekStart.setDate(d.getDate() - diffToFriday);
+
+                const yearStart = new Date(weekStart.getFullYear(), 0, 1);
+                yearStart.setHours(0, 0, 0, 0);
+
+                const weekNumber = Math.floor(
+                    (weekStart - yearStart) / (7 * 86400000)
+                ) + 1;
+
+                return {
+                    year: weekStart.getFullYear(),
+                    week: weekNumber
+                };
+            }
+
+            function getWeekDates(year, week) {
+                const yearStart = new Date(year, 0, 1);
+                yearStart.setHours(0, 0, 0, 0);
+
+                // Move to first Friday of the year
+                const firstFriday = new Date(yearStart);
+                const day = firstFriday.getDay(); // 0–6
+                const offset = (day <= 5) ? 5 - day : 12 - day;
+                firstFriday.setDate(firstFriday.getDate() + offset);
+
+                // Calculate week start
+                const start = new Date(firstFriday);
+                start.setDate(firstFriday.getDate() + (week - 1) * 7);
+
+                // Week ends on Thursday
+                const end = new Date(start);
+                end.setDate(start.getDate() + 6);
+
+                return {
+                    start,
+                    end
+                };
+            }
+
+            const weekInput = $('#repFrom');
+            const weekInput_pFrom = $('#pFrom');
+            const weekInput_labFrom = $('#attnWeek');
+
+            const {
+                year,
+                week
+            } = getFridayWeekInfo();
+
+            const currentWeek = `${year}-W${week.toString().padStart(2, '0')}`;
+
+            weekInput.val(currentWeek).attr('value', currentWeek);
+            weekInput_pFrom.val(currentWeek).attr('value', currentWeek);
+            weekInput_labFrom.val(currentWeek).attr('value', currentWeek);
+
+            updateWeekLabel(currentWeek);
+            updateWeekLabel_pForm(currentWeek);
+            updateWeekLabel_lab(currentWeek);
+
+
+            weekInput.on('change', function() {
+                updateWeekLabel(this.value);
+            });
+            weekInput_pFrom.on('change', function() {
+                updateWeekLabel_pForm(this.value);
+            });
+            weekInput_labFrom.on('change', function() {
+                updateWeekLabel_lab(this.value);
+            });
+
+            function changeWeekSite(step) {
+                let value = weekInput.val();
+                if (!value) return;
+
+                let [year, week] = value.split('-W');
+                year = parseInt(year);
+                week = parseInt(week) + step;
+
+                if (week < 1) {
+                    week = 52;
+                    year--;
+                } else if (week > 52) {
+                    week = 1;
+                    year++;
+                }
+
+                const newValue = `${year}-W${week.toString().padStart(2, '0')}`;
+                weekInput.val(newValue).trigger('change');
+            }
+
+            function changeWeekSite_pForm(step) {
+                let value = weekInput_pFrom.val();
+                if (!value) return;
+
+                let [year, week] = value.split('-W');
+                year = parseInt(year);
+                week = parseInt(week) + step;
+
+                if (week < 1) {
+                    week = 52;
+                    year--;
+                } else if (week > 52) {
+                    week = 1;
+                    year++;
+                }
+
+                const newValue = `${year}-W${week.toString().padStart(2, '0')}`;
+                weekInput_pFrom.val(newValue).trigger('change');
+            }
+
+            function changeWeekSite_lab(step) {
+                let value = weekInput_labFrom.val();
+                if (!value) return;
+
+                let [year, week] = value.split('-W');
+                year = parseInt(year);
+                week = parseInt(week) + step;
+
+                if (week < 1) {
+                    week = 52;
+                    year--;
+                } else if (week > 52) {
+                    week = 1;
+                    year++;
+                }
+
+                const newValue = `${year}-W${week.toString().padStart(2, '0')}`;
+                weekInput_labFrom.val(newValue).trigger('change');
+            }
+
+            $('#prevWeek').on('click', () => changeWeekSite(-1));
+            $('#nextWeek').on('click', () => changeWeekSite(1));
+            $('#prevWeek_pFrom').on('click', () => changeWeekSite_pForm(-1));
+            $('#nextWeek_pFrom').on('click', () => changeWeekSite_pForm(1));
+            $('#btnAttnPrev').on('click', () => changeWeekSite_lab(-1));
+            $('#btnAttnNext').on('click', () => changeWeekSite_lab(1));
+
 
             $.ajaxSetup({
                 headers: {
@@ -1219,6 +1533,17 @@
                                         timer: 1500,
                                         showConfirmButton: false
                                     });
+                                    // ✅ Clear form
+                                    $('#createVoucherForm')[0].reset();
+
+                                    // ✅ Clear validation errors (if any)
+                                    $('#createVoucherForm .error')
+                                        .text('')
+                                        .addClass('d-none');
+
+                                    // Optional: clear table
+                                    $('#siteReportTableBody').html('');
+
                                 }
                             },
 
@@ -1661,18 +1986,18 @@
                         tbody.empty();
                         data.forEach((labour, i) => {
                             tbody.append(`
-                        <tr>
-                            <td>${i + 1}</td>
-                            <td>${labour.name}</td>
-                            <td>
-                                <select class="form-select attendance-status" data-id="${labour.id}">
-                                    <option value="Present">Present</option>
-                                    <option value="Absent">Absent</option>
-                                    <option value="Leave">Leave</option>
-                                </select>
-                            </td>
-                        </tr>
-                    `);
+                                                                                                <tr>
+                                                                                                    <td>${i + 1}</td>
+                                                                                                    <td>${labour.name}</td>
+                                                                                                    <td>
+                                                                                                        <select class="form-select attendance-status" data-id="${labour.id}">
+                                                                                                            <option value="Present">Present</option>
+                                                                                                            <option value="Absent">Absent</option>
+                                                                                                            <option value="Leave">Leave</option>
+                                                                                                        </select>
+                                                                                                    </td>
+                                                                                                </tr>
+                                                                                            `);
                         });
                     }
                 });
@@ -1695,7 +2020,7 @@
                             // Find cell using safer selectors
                             let cell = $(
                                 `.cell[data-id="${row.labour_id}"][data-date="${row.date}"]`
-                                );
+                            );
 
                             if (cell.length) {
 
@@ -1759,31 +2084,44 @@
                     }
                 });
             });
-
             $(document).on('click', '#reportBtnSiteRun, #voucherBtnSiteRun', function(e) {
                 e.preventDefault();
+
                 $('#site_id').val('');
                 $('#attendance_ids').val('');
                 $('#detail').val('');
                 $('#amount').val('');
+
                 let id = $(this).attr('id');
                 let week = $('#repFrom').val();
                 let site = $('#repSite').val();
+
                 let data = {
-                    '_token': "{{ csrf_token() }}",
-                    'week': week,
-                    'site_id': site,
-                    'id': id
-                }
+                    _token: "{{ csrf_token() }}",
+                    week: week,
+                    site_id: site,
+                    id: id
+                };
+
                 $.ajax({
                     url: "{{ route('labours.report') }}",
                     type: "POST",
                     data: data,
                     success: function(res) {
                         if (res.success) {
+                            if (res.attendanceIds.length === 0) {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'No Attendance',
+                                    text: 'No attendance records found for the selected week and site.',
+                                    timer: 2000
+                                });
+                                return;
+                            }
                             $('#siteReportTableBody').html('');
                             $('#siteReportTableBody').append(res.view);
-                            if (id == 'voucherBtnSiteRun') {
+
+                            if (id === 'voucherBtnSiteRun') {
                                 $('#site_id').val(res.site_id);
                                 $('#attendance_ids').val(res.attendanceIds);
                                 $('#detail').val(res.reports);
@@ -1791,36 +2129,102 @@
                             }
                         }
                     },
-                    error: function() {
-                        alert('Error saving attendance!');
+                    error: function(xhr) {
+
+                        let message = 'Something went wrong.';
+
+                        // Laravel validation error (422)
+                        if (xhr.status === 422 && xhr.responseJSON) {
+                            if (xhr.responseJSON.message) {
+                                message = xhr.responseJSON.message;
+                            }
+
+                            if (xhr.responseJSON.errors) {
+                                message = '';
+                                $.each(xhr.responseJSON.errors, function(key, value) {
+                                    message += value[0] + '<br>';
+                                });
+                            }
+                        }
+
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Validation Error',
+                            html: message,
+                            confirmButtonText: 'OK'
+                        });
                     }
                 });
             });
+
             $(document).on('click', '#btnPersonRun', function(e) {
                 e.preventDefault();
+
                 let week = $('#pFrom').val();
                 let search = $('#personQuery').val();
+
                 let data = {
-                    '_token': "{{ csrf_token() }}",
-                    'week': week,
-                    'search': search,
-                }
+                    _token: "{{ csrf_token() }}",
+                    week: week,
+                    search: search,
+                };
 
                 $.ajax({
                     url: "{{ route('labours.person.report') }}",
                     type: "POST",
                     data: data,
+
                     success: function(res) {
+
+                        // ✅ No records case (Total = 0)
+                        if (res.success && res.view && res.view.includes('<td>0</td>')) {
+                            $('#personAllBody').html('');
+
+                            Swal.fire({
+                                icon: 'info',
+                                title: 'No Records Found',
+                                text: 'No labour record found for the selected week.',
+                                confirmButtonText: 'OK'
+                            });
+
+                            return;
+                        }
+
+                        // ✅ Normal success
                         if (res.success) {
                             $('#personAllBody').html('');
                             $('#personAllBody').append(res.view);
                         }
                     },
-                    error: function() {
-                        alert('Error saving attendance!');
+
+                    error: function(xhr) {
+                        let message = 'Something went wrong.';
+
+                        // ✅ Laravel validation error
+                        if (xhr.status === 422 && xhr.responseJSON) {
+
+                            if (xhr.responseJSON.message) {
+                                message = xhr.responseJSON.message;
+                            }
+
+                            if (xhr.responseJSON.errors) {
+                                message = '';
+                                $.each(xhr.responseJSON.errors, function(key, value) {
+                                    message += value[0] + '\n';
+                                });
+                            }
+                        }
+
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: message,
+                            confirmButtonText: 'OK'
+                        });
                     }
                 });
             });
+
 
 
             // ============================
@@ -1835,13 +2239,13 @@
                         tbody.empty();
                         data.forEach((row, i) => {
                             tbody.append(`
-                        <tr>
-                            <td>${i + 1}</td>
-                            <td>${row.labour.name}</td>
-                            <td>${row.date}</td>
-                            <td>${row.status}</td>
-                        </tr>
-                    `);
+                                                                                                <tr>
+                                                                                                    <td>${i + 1}</td>
+                                                                                                    <td>${row.labour.name}</td>
+                                                                                                    <td>${row.date}</td>
+                                                                                                    <td>${row.status}</td>
+                                                                                                </tr>
+                                                                                            `);
                         });
                     },
                     error: function(err) {
@@ -1940,63 +2344,166 @@
                 }
             });
 
-            function changeWeek(offset) {
-                let current = $('#attnWeek').val(); // "2025-W05"
-                if (!current) return;
+            // function changeWeek(offset) {
+            //     let current = $('#attnWeek').val(); // "2025-W05"
+            //     if (!current) return;
 
-                let [year, week] = current.split('-W');
-                week = parseInt(week) + offset;
+            //     let [year, week] = current.split('-W');
+            //     week = parseInt(week) + offset;
 
-                if (week < 1) {
-                    year--;
-                    week = 52;
-                }
-                if (week > 52) {
-                    year++;
-                    week = 1;
-                }
+            //     if (week < 1) {
+            //         year--;
+            //         week = 52;
+            //     }
+            //     if (week > 52) {
+            //         year++;
+            //         week = 1;
+            //     }
 
-                let newWeek = `${year}-W${String(week).padStart(2, '0')}`;
-                $('#attnWeek').val(newWeek).attr('value', newWeek);
+            //     let newWeek = `${year}-W${String(week).padStart(2, '0')}`;
+            //     $('#attnWeek').val(newWeek).attr('value', newWeek);
 
-                loadWeekData();
-            }
+            //     loadWeekData();
+            // }
 
-            $('#btnAttnPrev').on('click', () => changeWeek(-1));
-            $('#btnAttnNext').on('click', () => changeWeek(1));
+            // $('#btnAttnPrev').on('click', () => changeWeek(-1));
+            // $('#btnAttnNext').on('click', () => changeWeek(1));
 
+            $(document).on('input', '.labour_amount', function() {
+                let labourAmount = 0;
+                let totalAmount = 0;
+                $('.labour_amount').each(function() {
+                    let row = $(this);
+                    labourAmount = row.val();
+                    if (labourAmount <= 0) return;
+                    totalAmount += parseFloat(labourAmount);
+                });
+                $('#totalVoucherAmount').text(totalAmount);
+            })
 
             $('#attnWeek, #attnSiteFilter').on('change', loadWeekData);
             $('#attnSearch').on('input', loadWeekData);
             $(document).on('click', '#createLabourVoucher', function() {
 
-                let labour_amount = $('.labour_amount').val();
-                console.log(labour_amount, 'labour_amount');
-                return;
+                // Array to store all labour data
+                let allLabours = [];
+                let week = $('#pFrom').val();
+                let search = $('#personQuery').val();
 
-                let id = $(this).data('id');
-                let paid = $(this).is(':checked') ? 1 : 0;
-                let label = $(this).closest('td').find('.paid-label');
+                // Loop through each table row
+                $('.labour-row').each(function() {
 
-                $.ajax({
-                    url: "{{ route('labours.updatePaidStatus') }}",
-                    type: "POST",
-                    data: {
-                        id: id,
-                        ids: ids,
-                        status: paid,
-                        _token: '{{ csrf_token() }}'
-                    },
-                    success: function(res) {
-                        label.text(paid ? 'Paid' : 'Unpaid');
+                    let row = $(this);
+                    let labourId = row.data('id');
+
+                    let labourAmount = row.find('.labour_amount').val();
+                    labourAmount = labourAmount ? parseFloat(labourAmount) : 0;
+
+                    // Skip empty or zero amounts
+                    if (labourAmount <= 0) return;
+
+                    allLabours.push({
+                        id: labourId,
+                        name: row.data('name'),
+                        mobile: row.data('mobile'),
+                        role: row.data('role'),
+                        rate: row.data('rate'),
+                        advance: row.data('advance'),
+                        attendanceDates: row.data('attendance-dates'),
+                        amount: labourAmount
+                    });
+                });
+
+                // =============================
+                // VALIDATION BEFORE CONFIRMATION
+                // =============================
+                if (allLabours.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'No Amount Entered',
+                        text: 'Please enter amount for at least one labour.',
+                        timer: 2000
+                    });
+                    return;
+                }
+
+                // =============================
+                // SWEETALERT CONFIRMATION
+                // =============================
+                Swal.fire({
+                    title: "Are you sure?",
+                    text: "Do you want to create voucher for selected labours?",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "Yes, create voucher!",
+                    cancelButtonText: "Cancel",
+                    reverseButtons: true
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: "{{ route('labours.payment') }}",
+                            type: "POST",
+                            data: {
+                                labours: allLabours,
+                                week: week,
+                                search: search,
+                                _token: '{{ csrf_token() }}'
+                            },
+
+                            success: function(res) {
+
+                                // Backend explicitly returned failure
+                                if (res.success === false) {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Error',
+                                        text: res.message && res.message
+                                            .trim() ?
+                                            res.message :
+                                            'Something went wrong.',
+                                    });
+                                    return;
+                                }
+
+                                // Success case
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Success',
+                                    text: res.message && res.message.trim() ?
+                                        res.message :
+                                        'Operation completed successfully.',
+                                    timer: 1500,
+                                    showConfirmButton: false
+                                });
+
+                                if (res.view) {
+                                    $('#personAllBody').html(res.view);
+                                }
+
+                                $('.labour_amount').val('');
+                            },
+
+                            error: function(xhr) {
+                                let message = 'Something went wrong.';
+                                if (xhr.responseJSON?.message) {
+                                    message = xhr.responseJSON.message;
+                                }
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: message
+                                });
+                            }
+                        });
                     }
                 });
             });
-
         });
 
         function loadWeekData() {
-            let attnWeek = $('#attnWeek').val();
+            let attnWeek = $('#attnWeek').val() || $('#attnWeek').attr('value');
+            console.log(attnWeek);
+
             $.ajax({
                 url: "{{ route('attendance.week.load') }}",
                 type: "GET",
@@ -2006,8 +2513,7 @@
                     search: $('#attnSearch').val(),
                 },
                 success: function(res) {
-
-                    $('#attnWeek').val(attnWeek).attr('value', attnWeek);
+                    // $('#attnWeek').val(attnWeek).attr('value', attnWeek);
                     $('#attnBoard').html(res.view); // replace table with new week
                     console.log(res);
                 }

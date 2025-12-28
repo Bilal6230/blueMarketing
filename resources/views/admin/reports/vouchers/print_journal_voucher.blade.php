@@ -93,8 +93,8 @@
                         <td>{{ $detail->account->headAccounting->name ?? 'N/A' }}</td>
                         <td>{{ $detail->account->subheadAccounting->name ?? 'N/A' }}</td>
                         <td>{{ $detail->description }}</td>
-                        <td>{{ number_format($detail->credit, 2) }}</td>
                         <td>{{ number_format($detail->debit, 2) }}</td>
+                        <td>{{ number_format($detail->credit, 2) }}</td>
                     </tr>
                 @endforeach
             </tbody>

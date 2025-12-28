@@ -7,6 +7,8 @@
     <title>{{ $title . ' - ' . Setting::getValue('app_name') }}</title>
     <link rel="icon" href="{{ asset(Setting::getValue('app_favicon')) }}" type="image/png" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="icon" type="image/png" href="{{ asset('images/logo/blue-marketing-logo.png') }}">
+
     <!-- Google Font: Source Sans Pro -->
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">

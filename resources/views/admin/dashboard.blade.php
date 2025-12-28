@@ -93,8 +93,8 @@
                                         <div class="form-group">
                                             <div class="input-group input-group-sm">
                                                 @csrf
-                                                <input type="text" class="form-control" name="number" id="number"
-                                                    maxlength="11" size="11">
+                                                <input type="text" class="form-control" name="number" id="number" maxlength="11"
+                                                    size="11">
                                                 <span class="input-group-append">
                                                     <button type="submit" class="btn btn-info btn-flat" id="search_number"><i
                                                             class="fas fa-search mr-1"></i> Search</button>
@@ -168,14 +168,16 @@
                                             <h4 class="text-lg">Financial Summary</h4>
                                         </div>
 
-                                        <!-- Hand Cash Total -->
-                                        <div class="col-md-4 mb-4 mb-md-0">
-                                            <div class="financial-circle bg_success">
-                                                <div class="circle-content">
-                                                    <h6>Hand Cash</h6>
-                                                    <h4 class="mt-2">
-                                                        {{ number_format($total_blance + $total_bank_account_data, 2) }}</h4>
-                                                </div>
+                                    <!-- Hand Cash Total -->
+                                    <div class="col-md-4 mb-4 mb-md-0">
+                                        <div class="financial-circle bg_success">
+                                            <div class="circle-content">
+                                                <h6>Hand Cash</h6>
+                                                {{-- @dd($total_blance) --}}
+                                                <!-- Hand Cash -->
+                                                <h4 class="mt-2" id="handCash">
+                                                    {{ number_format($total_blance, 2) }}
+                                                </h4>
                                             </div>
                                             <p class="text-muted mt-2 text-center">Hand Cash Balance</p>
                                         </div>
@@ -190,13 +192,14 @@
                                             </div>
                                             <p class="text-muted mt-2 text-center">Current Bank Balance</p>
                                         </div>
-                                        <!-- Hand Cash Total -->
-                                        <div class="col-md-4 mb-4 mb-md-0">
-                                            <div class="financial-circle bg_success">
-                                                <div class="circle-content">
-                                                    <h6>Total Cash</h6>
-                                                    <h4 class="mt-2">{{ number_format($total_blance, 2) }}</h4>
-                                                </div>
+                                        <p class="text-muted mt-2 text-center">Current Bank Balance</p>
+                                    </div>
+                                    <!-- Hand Cash Total -->
+                                    <div class="col-md-4 mb-4 mb-md-0">
+                                        <div class="financial-circle bg_success">
+                                            <div class="circle-content">
+                                                <h6>Total Cash</h6>
+                                                <h4 class="mt-2" id="totalCash">{{ number_format($total_blance, 2) }}</h4>
                                             </div>
                                             <p class="text-muted mt-2 text-center">Available Cash Balance</p>
                                         </div>
@@ -274,161 +277,162 @@
                     <div class="col-md-6">
                         <div class="card card-danger">
                             <div class="card-header">
-                              <h3 class="card-title">Donut Chart</h3>
+                                <h3 class="card-title">Donut Chart</h3>
 
-                              <div class="card-tools">
-                                <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                                  <i class="fas fa-minus"></i>
-                                </button>
-                                <button type="button" class="btn btn-tool" data-card-widget="remove">
-                                  <i class="fas fa-times"></i>
-                                </button>
-                              </div>
+                                <div class="card-tools">
+                                    <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                        <i class="fas fa-minus"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-tool" data-card-widget="remove">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="card-body">
-                              <canvas id="donutChart" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
+                                <canvas id="donutChart"
+                                    style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
                             </div>
                             <!-- /.card-body -->
                         </div>
-                      <!-- /.card -->
+                        <!-- /.card -->
                     </div> --}}
 
 
-                @canany(['read attendance'])
-                    <div class="col-md-12 mb-4">
-                        <div class="custom_card h-100">
-                            <div class="card-body">
-                                <div class="mb-3 d-flex align-items-center justify-content-between">
-                                    <h5 class="text-lg font-semibold">Punch-in Records for Today</h5>
+                    @canany(['read attendance'])
+                        <div class="col-md-12 mb-4">
+                            <div class="custom_card h-100">
+                                <div class="card-body">
+                                    <div class="mb-3 d-flex align-items-center justify-content-between">
+                                        <h5 class="text-lg font-semibold">Punch-in Records for Today</h5>
 
-                                </div>
-                                <div class="table-resposive">
+                                    </div>
+                                    <div class="table-resposive">
 
-                                    <table class="table table-hover ">
-                                        <thead>
-                                            <tr>
-                                                <th>Date</th>
-                                                <th>User Name</th>
-                                                <th>Punch In</th>
-                                                <th>Punch Out</th>
-                                                <th>Total Hours</th>
-
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach ($today_punches as $punch)
+                                        <table class="table table-hover ">
+                                            <thead>
                                                 <tr>
-                                                    <td>{{ date('Y-m-d', strtotime($punch->punch_in)) }}</td>
-                                                    <td>{{ $punch->user->name }}</td>
-                                                    <td>{{ date('H:i:s', strtotime($punch->punch_in)) }}</td>
-                                                    <td>{{ $punch->punch_out ? date('H:i:s', strtotime($punch->punch_out)) : 'N/A' }}
-                                                    </td>
-
-                                                    <td>
-                                                        @if ($punch->punch_out)
-                                                            <?php
-                                                            $punchInTime = strtotime($punch->punch_in);
-                                                            $punchOutTime = strtotime($punch->punch_out);
-                                                            $totalSeconds = $punchOutTime - $punchInTime;
-                                                            $hours = floor($totalSeconds / 3600);
-                                                            $minutes = floor(($totalSeconds % 3600) / 60);
-                                                            $seconds = $totalSeconds % 60;
-                                                            ?>
-                                                            {{ $hours }}h {{ $minutes }}m
-                                                            {{ $seconds }}s
-                                                        @else
-                                                            N/A
-                                                        @endif
-                                                    </td>
+                                                    <th>Date</th>
+                                                    <th>User Name</th>
+                                                    <th>Punch In</th>
+                                                    <th>Punch Out</th>
+                                                    <th>Total Hours</th>
 
                                                 </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
+                                            </thead>
+                                            <tbody>
+                                                @foreach ($today_punches as $punch)
+                                                    <tr>
+                                                        <td>{{ date('Y-m-d', strtotime($punch->punch_in)) }}</td>
+                                                        <td>{{ $punch->user->name }}</td>
+                                                        <td>{{ date('H:i:s', strtotime($punch->punch_in)) }}</td>
+                                                        <td>{{ $punch->punch_out ? date('H:i:s', strtotime($punch->punch_out)) : 'N/A' }}
+                                                        </td>
 
+                                                        <td>
+                                                            @if ($punch->punch_out)
+                                                                                                    <?php
+                                                                $punchInTime = strtotime($punch->punch_in);
+                                                                $punchOutTime = strtotime($punch->punch_out);
+                                                                $totalSeconds = $punchOutTime - $punchInTime;
+                                                                $hours = floor($totalSeconds / 3600);
+                                                                $minutes = floor(($totalSeconds % 3600) / 60);
+                                                                $seconds = $totalSeconds % 60;
+                                                                                                                                                                    ?>
+                                                                                                    {{ $hours }}h {{ $minutes }}m
+                                                                                                    {{ $seconds }}s
+                                                            @else
+                                                                N/A
+                                                            @endif
+                                                        </td>
+
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                @endcanany
+                    @endcanany
 
-                <!-- Add Dasticash Modal -->
-                <div class="modal fade" id="addDasticashModal" tabindex="-1" role="dialog"
-                    aria-labelledby="addDasticashModalLabel" aria-hidden="true">
-                    <div class="modal-dialog" role="document">
-                        <form action="{{ route('dasticash.store') }}" method="POST">
-                            @csrf
-                            <div class="modal-content">
-                                <div class="modal-header bg-success text-white">
-                                    <h5 class="modal-title" id="addDasticashModalLabel">Add Dasticash</h5>
-                                    <button type="button" class="close text-white" data-dismiss="modal"
-                                        aria-label="Close">
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
-                                </div>
-                                <div class="modal-body">
-                                    <div class="form-group">
-                                        <label>Name</label>
-                                        <input type="text" name="name" class="form-control" required>
+                    <!-- Add Dasticash Modal -->
+                    <div class="modal fade" id="addDasticashModal" tabindex="-1" role="dialog"
+                        aria-labelledby="addDasticashModalLabel" aria-hidden="true">
+                        <div class="modal-dialog" role="document">
+                            <form action="{{ route('dasticash.store') }}" method="POST">
+                                @csrf
+                                <div class="modal-content">
+                                    <div class="modal-header bg-success text-white">
+                                        <h5 class="modal-title" id="addDasticashModalLabel">Add Dasticash</h5>
+                                        <button type="button" class="close text-white" data-dismiss="modal"
+                                            aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
                                     </div>
-                                    <div class="form-group">
-                                        <label>Amount</label>
-                                        <input type="text" name="amount" class="form-control">
+                                    <div class="modal-body">
+                                        <div class="form-group">
+                                            <label>Name</label>
+                                            <input type="text" name="name" class="form-control" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Amount</label>
+                                            <input type="text" name="amount" class="form-control">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Description</label>
+                                            <textarea name="description" class="form-control" rows="3"></textarea>
+                                        </div>
                                     </div>
-                                    <div class="form-group">
-                                        <label>Description</label>
-                                        <textarea name="description" class="form-control" rows="3"></textarea>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-success">Save</button>
                                     </div>
                                 </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                                    <button type="submit" class="btn btn-success">Save</button>
-                                </div>
-                            </div>
-                        </form>
+                            </form>
+                        </div>
                     </div>
-                </div>
-                <!-- Edit Dasticash Modal -->
-                <div class="modal fade" id="editDasticashModal" tabindex="-1" role="dialog"
-                    aria-labelledby="editDasticashModalLabel" aria-hidden="true">
-                    <div class="modal-dialog" role="document">
-                        <form id="editDasticashForm" method="POST">
-                            @csrf
-                            @method('PUT')
-                            <div class="modal-content">
-                                <div class="modal-header bg-info text-white">
-                                    <h5 class="modal-title" id="editDasticashModalLabel">Edit Dasticash</h5>
-                                    <button type="button" class="close text-white" data-dismiss="modal"
-                                        aria-label="Close">
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
-                                </div>
-                                <div class="modal-body">
-                                    <input type="hidden" id="edit-id">
-                                    <div class="form-group">
-                                        <label>Name</label>
-                                        <input type="text" name="name" id="edit-name" class="form-control"
-                                            required>
+                    <!-- Edit Dasticash Modal -->
+                    <div class="modal fade" id="editDasticashModal" tabindex="-1" role="dialog"
+                        aria-labelledby="editDasticashModalLabel" aria-hidden="true">
+                        <div class="modal-dialog" role="document">
+                            <form id="editDasticashForm" method="POST">
+                                @csrf
+                                @method('PUT')
+                                <div class="modal-content">
+                                    <div class="modal-header bg-info text-white">
+                                        <h5 class="modal-title" id="editDasticashModalLabel">Edit Dasticash</h5>
+                                        <button type="button" class="close text-white" data-dismiss="modal"
+                                            aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
                                     </div>
-                                    <div class="form-group">
-                                        <label>Amount</label>
-                                        <input type="text" name="amount" id="edit-amount" class="form-control">
+                                    <div class="modal-body">
+                                        <input type="hidden" id="edit-id">
+                                        <div class="form-group">
+                                            <label>Name</label>
+                                            <input type="text" name="name" id="edit-name" class="form-control" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Amount</label>
+                                            <input type="text" name="amount" id="edit-amount" class="form-control">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Description</label>
+                                            <textarea name="description" id="edit-description" class="form-control"
+                                                rows="3"></textarea>
+                                        </div>
                                     </div>
-                                    <div class="form-group">
-                                        <label>Description</label>
-                                        <textarea name="description" id="edit-description" class="form-control" rows="3"></textarea>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-info">Update</button>
                                     </div>
                                 </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                                    <button type="submit" class="btn btn-info">Update</button>
-                                </div>
-                            </div>
-                        </form>
+                            </form>
+                        </div>
                     </div>
-                </div>
 
-            </div>
+                </div>
         </section>
     </div>
 @endsection
@@ -436,7 +440,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
-        $(document).ready(function() {
+        $(document).ready(function () {
             let destroyUrl = "{{ url('admin/dasticash') }}"; // e.g., /admin/dasticash
 
             // ------------------------------
@@ -472,10 +476,11 @@
             // ===================================================================
             // 1️⃣ ADD DASTICASH (AJAX)
             // ===================================================================
-            $("#addDasticashModal form").submit(function(e) {
+            $("#addDasticashModal form").submit(function (e) {
                 e.preventDefault();
 
                 let form = this;
+                let amount = $(form).find("input[name='amount']").val();
                 let button = $(form).find("button[type='submit']");
                 button.data('original-text', button.text());
 
@@ -489,7 +494,7 @@
                     processData: false,
                     contentType: false,
 
-                    success: function(res) {
+                    success: function (res) {
                         toggleLoader(button, false);
                         $("#addDasticashModal").modal("hide");
 
@@ -500,43 +505,56 @@
                             timer: 1800,
                             showConfirmButton: false
                         });
+                        let dastiAmount = parseFloat(res.data.amount) || 0;
+
+                        let handCashEl = $("#handCash");
+                        let totalCashEl = $("#totalCash");
+
+                        let handCash = parseFloat(handCashEl.text().replace(/,/g, '')) || 0;
+                        let totalCash = parseFloat(totalCashEl.text().replace(/,/g, '')) || 0;
+
+                        let updatedHandCash = handCash - dastiAmount;
+                        let updatedTotalCash = totalCash - dastiAmount;
+
+                        handCashEl.text(updatedHandCash.toLocaleString(undefined, { minimumFractionDigits: 2 }));
+                        totalCashEl.text(updatedTotalCash.toLocaleString(undefined, { minimumFractionDigits: 2 }));
 
                         // ------------------------------
                         // APPEND NEW ROW DYNAMICALLY
                         // ------------------------------
                         $("#dasticashTable tbody").append(`
-                    <tr id="row-${res.data.id}">
-                        <td>NEW</td>
-                        <td class="name-cell">${res.data.name}</td>
-                        <td class="amount-cell">${res.data.amount ?? ''}</td>
-                        <td class="desc-cell">${res.data.description ?? ''}</td>
-                        <td>
-                            <a href="javascript:void(0)" 
-                               class="btn btn-sm btn-info edit-btn"
-                               data-id="${res.data.id}"
-                               data-name="${res.data.name}"
-                               data-amount="${res.data.amount ?? ''}"
-                               data-description="${res.data.description ?? ''}">
-                                <i class="fas fa-edit"></i>
-                            </a>
+                            <tr id="row-${res.data.id}">
+                                <td>NEW</td>
+                                <td class="name-cell">${res.data.name}</td>
+                                <td class="amount-cell">${res.data.amount ?? ''}</td>
+                                <td class="desc-cell">${res.data.description ?? ''}</td>
+                                <td>
+                                    <a href="javascript:void(0)" 
+                                       class="btn btn-sm btn-info edit-btn"
+                                       data-id="${res.data.id}"
+                                       data-name="${res.data.name}"
+                                       data-amount="${res.data.amount ?? ''}"
+                                       data-description="${res.data.description ?? ''}">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
 
-                            <button class="btn btn-sm btn-danger delete-btn" 
-                                    data-id="${res.data.id}" data-url="${destroyUrl}/${res.data.id}">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `);
+                                    <button class="btn btn-sm btn-danger delete-btn" 
+                                            data-id="${res.data.id}" data-url="${destroyUrl}/${res.data.id}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `);
 
                         // Clear form
                         form.reset();
                     },
 
-                    error: function(xhr) {
+                    error: function (xhr) {
                         toggleLoader(button, false);
 
                         if (xhr.status === 422) {
-                            $.each(xhr.responseJSON.errors, function(key, value) {
+                            $.each(xhr.responseJSON.errors, function (key, value) {
                                 let input = $(form).find(`[name="${key}"]`);
                                 input.addClass("is-invalid");
                                 input.after(
@@ -547,7 +565,8 @@
                     }
                 });
             });
-            $('.edit-btn').click(function() {
+
+            $('.edit-btn').click(function () {
                 var id = $(this).data('id');
                 var name = $(this).data('name');
                 var amount = $(this).data('amount');
@@ -566,7 +585,7 @@
             // 2️⃣ UPDATE DASTICASH (AJAX)
             // ===================================================================
 
-            $("#editDasticashForm").submit(function(e) {
+            $("#editDasticashForm").submit(function (e) {
                 e.preventDefault();
 
                 let form = this;
@@ -583,7 +602,7 @@
                     processData: false,
                     contentType: false,
 
-                    success: function(res) {
+                    success: function (res) {
                         toggleLoader(button, false);
                         $("#editDasticashModal").modal("hide");
 
@@ -608,11 +627,11 @@
                         editBtn.data("description", res.data.description);
                     },
 
-                    error: function(xhr) {
+                    error: function (xhr) {
                         toggleLoader(button, false);
 
                         if (xhr.status === 422) {
-                            $.each(xhr.responseJSON.errors, function(key, value) {
+                            $.each(xhr.responseJSON.errors, function (key, value) {
                                 let input = $(form).find(`[name="${key}"]`);
                                 input.addClass("is-invalid");
                                 input.after(
@@ -627,7 +646,7 @@
             // ===================================================================
             // 3️⃣ DELETE DYNAMIC (AJAX)
             // ===================================================================
-            $(document).on("click", ".delete-btn", function() {
+            $(document).on("click", ".delete-btn", function () {
                 debugger
 
                 let url = $(this).data("url");
@@ -647,8 +666,8 @@
                         $.ajax({
                             type: "DELETE",
                             url: url,
-                            success: function(res) {
-                                row.fadeOut(300, function() {
+                            success: function (res) {
+                                row.fadeOut(300, function () {
                                     $(this).remove();
                                 });
 
