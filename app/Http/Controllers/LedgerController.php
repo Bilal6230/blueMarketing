@@ -159,6 +159,7 @@ class LedgerController extends Controller
                 throw new \Exception('Credit account ID not found.');
             }
             $exists = Ledger::where('type', $firstTwoDigits)
+            ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
             ->where('is_active', 1)
             ->where('voucher_number', $voucherNumber)
             ->exists();
@@ -170,6 +171,7 @@ class LedgerController extends Controller
                 // Keep incrementing until a free number is found
                 while (
                     Ledger::where('type', $firstTwoDigits)
+                        ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
                         ->where('is_active', 1)
                         ->where('voucher_number', $nextNumber)
                         ->exists()

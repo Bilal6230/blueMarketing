@@ -1473,7 +1473,8 @@
             const FORM_ID = '#voucherForm';
             const TS_SEL = '.js-tomselect';
             const $Type = '{{ $type }}'; // e.g. CR or CP
-            const LS_KEY = `paysavo_voucher_tabs_${$Type}_v1`;
+            const $projectId = '{{ getSelectedTown() }}';
+            const LS_KEY = `bluemarketing_${ $projectId }_voucher_tabs_${$Type}_v1`;
 
             // ---------- TomSelect init ----------
             function initTomSelects() {

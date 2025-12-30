@@ -216,6 +216,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
 
         //accounting routes
 
+        Route::get('finance/update_voucher_number', 'updateVoucherNumber');
         Route::post('finance/check_new_voucher_number', 'checkNewVoucherNumber')->middleware(['permission:read voucher'])->name('check_new_voucher_number');
         Route::get('finance/voucher', 'index')->middleware(['permission:read voucher'])->name('finance.voucher.index');
         Route::get('finance/voucher/pending_updates', 'pendingIndex')->middleware(['permission:read voucher'])->name('finance.voucher.pending_updates_index');
