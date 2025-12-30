@@ -10,6 +10,7 @@ class Site extends Model
     use HasFactory;
 
     protected $fillable = [
+        'project_id',
         'site_name',
         'site_address',
         'head_accounting_id',

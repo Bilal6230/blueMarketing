@@ -30,8 +30,8 @@ class LabourController extends Controller
         $x['title'] = 'Labour';
         $x['labours'] = Labour::get(); // You can also filter by $selectedProjectId if needed
         $x['count'] = Labour::count();
-        $x['sites'] = Site::get();
-        $x['sitecount'] = Site::count();
+        $x['sites'] = Site::where('project_id', $selectedProjectId)->get();
+        $x['sitecount'] = Site::where('project_id', $selectedProjectId)->count();
         $data_list = ProjectHeadSubhead::select('project_id', 'head_accounting_id')
             ->distinct()
             ->with('headAccounting')
@@ -51,21 +51,21 @@ class LabourController extends Controller
             $days[] = $day->format('Y-m-d');
             $day->addDay();
         }
-        $x['attendance_labours'] = Labour::whereHas('attendances', function ($query) use ($days) {
-            $query->whereIn('date', $days)->with('site');
+        $x['attendance_labours'] = Labour::whereHas('attendances', function ($query) use ($days, $selectedProjectId) {
+            $query->where('project_id', $selectedProjectId)->whereIn('date', $days)->with('site');
         })->get();
 
 
         $x['headaccounts'] = $data_list;
         $x['personWiseReports'] = $personWiseReports = Labour::select('labours.id', 'labours.name', 'labours.father_name', 'labours.cnic', 'labours.advance', 'labours.phone as mobile', 'labours.role as designation')
             ->with([
-                'attendances' => function ($query) use ($request, $days) {
-                    $query->where('voucher_status', 'created')
+                'attendances' => function ($query) use ($selectedProjectId, $days) {
+                    $query->where('project_id', $selectedProjectId)->where('voucher_status', 'created')
                         ->whereIn('date', $days);
                 }
             ])
-            ->whereHas('attendances', function ($query) use ($request, $days) {
-                $query->where('voucher_status', 'created')->whereIn('date', $days);
+            ->whereHas('attendances', function ($query) use ($selectedProjectId, $days) {
+                $query->where('project_id', $selectedProjectId)->where('voucher_status', 'created')->whereIn('date', $days);
             })
             ->get()
             ->map(function ($labour) {
@@ -161,6 +161,7 @@ class LabourController extends Controller
                     $days = count($labour['attendanceDates'] ?? []);
 
                     LabourLedger::create([
+                        'project_id' => getSelectedTown(),
                         'labour_id' => $labour['id'],
                         'amount' => $amount,
                         'date' => now()->toDateString(),
@@ -256,6 +257,7 @@ class LabourController extends Controller
     private function buildPersonWiseReport(Request $request): string
     {
         // Parse week range (Friday → Thursday)
+        $selectedProjectId = getSelectedTown();
         $start = Carbon::parse($request->week)->startOfWeek(Carbon::FRIDAY);
         $end = $start->copy()->addDays(6);
 
@@ -296,13 +298,13 @@ class LabourController extends Controller
          * ------------------------ */
         $personWiseReports = $query
             ->with([
-                'attendances' => function ($q) use ($days) {
-                    $q->whereIn('date', $days);
+                'attendances' => function ($q) use ($days, $selectedProjectId) {
+                    $q->where('project_id', $selectedProjectId)->whereIn('date', $days);
                 },
                 'labourLedgers'
             ])
-            ->whereHas('attendances', function ($q) use ($days) {
-                $q->whereIn('date', $days);
+            ->whereHas('attendances', function ($q) use ($days, $selectedProjectId) {
+                $q->where('project_id', $selectedProjectId)->whereIn('date', $days);
             })
             ->get()
             ->map(function ($labour) {
@@ -385,6 +387,7 @@ class LabourController extends Controller
     }
     public function siteStore(Request $request)
     {
+        $selectedProjectId = getSelectedTown();
         $validated = $request->validate([
             'site_name' => 'required|string|max:255',
             'site_address' => 'required|string',
@@ -394,6 +397,7 @@ class LabourController extends Controller
         Site::updateOrCreate(
             ['id' => $request->site_id], // ← condition (update when ID exists)
             [
+                'project_id' => $selectedProjectId,
                 'site_name' => $request->site_name,
                 'site_address' => $request->site_address,
                 'head_accounting_id' => $request->accounts_id,
@@ -432,6 +436,7 @@ class LabourController extends Controller
         }
 
         $validated['marked_by'] = auth()->id();
+        $validated['project_id'] = getSelectedTown();
         // dd($validated);
         // 🧠 Create or Update logic
         $attendance = LabourAttendance::updateOrCreate(
@@ -493,6 +498,7 @@ class LabourController extends Controller
 
     public function attendanceReport(Request $request)
     {
+        $selectedProjectId = getSelectedTown();
         $request->validate(
             [
                 'week' => 'required',
@@ -515,8 +521,9 @@ class LabourController extends Controller
 
         $reports = Labour::select('labours.id', 'labours.name', 'labours.father_name', 'labours.cnic', 'labours.phone as mobile', 'labours.role as designation')
             ->with([
-                'attendances' => function ($query) use ($request, $days) {
+                'attendances' => function ($query) use ($request, $days, $selectedProjectId) {
                     $query->whereIn('date', $days)
+                        ->where('project_id', $selectedProjectId)
                         ->where('site_id', $request->site_id)
                         ->whereIn('status', ['present', 'leave']);
                     if ($request->id == 'voucherBtnSiteRun') {
@@ -526,6 +533,7 @@ class LabourController extends Controller
             ])
             ->whereHas('attendances', function ($query) use ($request, $days) {
                 $query->whereIn('date', $days)
+                    ->where('project_id', getSelectedTown())
                     ->where('site_id', $request->site_id)
                     ->whereIn('status', ['present', 'leave']);
                 if ($request->id == 'voucherBtnSiteRun') {
@@ -626,11 +634,13 @@ class LabourController extends Controller
         $x['personWiseReports'] = $personWiseReports = $personWiseReports
             ->with([
                 'attendances' => function ($query) use ($request, $days) {
-                    $query->whereIn('date', $days);
+                    $query->whereIn('date', $days)
+                    ->where('project_id', getSelectedTown());
                 }
             ])
             ->whereHas('attendances', function ($query) use ($request, $days) {
-                $query->whereIn('date', $days);
+                $query->whereIn('date', $days)
+                ->where('project_id', getSelectedTown());
             })
             ->get()
             ->map(function ($labour) {
@@ -737,13 +747,15 @@ class LabourController extends Controller
             });
         }else{
             $query->whereHas('attendances', function ($query) use ($days, $request) {
-                    $query->whereIn('date', $days);
+                    $query->whereIn('date', $days)
+                    ->where('project_id', getSelectedTown());
             });
         }
         if ($request->has('site_id') && $request->site_id) {
             $query->whereHas('attendances', function ($query) use ($days, $request) {
                 if ($request->has('site_id') && $request->site_id) {
-                    $query->where('site_id', $request->site_id);
+                    $query->where('site_id', $request->site_id)
+                    ->where('project_id', getSelectedTown());
                 }
             });
         }
