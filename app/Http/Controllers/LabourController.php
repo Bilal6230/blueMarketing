@@ -26,6 +26,7 @@ class LabourController extends Controller
     public function index(Request $request)
     {
         $selectedProjectId = getSelectedTown();
+        $x['selectedSiteId'] = null;
         $x['title'] = 'Labour';
         $x['labours'] = Labour::get(); // You can also filter by $selectedProjectId if needed
         $x['count'] = Labour::count();
@@ -50,9 +51,8 @@ class LabourController extends Controller
             $days[] = $day->format('Y-m-d');
             $day->addDay();
         }
-
         $x['attendance_labours'] = Labour::whereHas('attendances', function ($query) use ($days) {
-            $query->whereIn('date', $days);
+            $query->whereIn('date', $days)->with('site');
         })->get();
 
 
@@ -505,20 +505,12 @@ class LabourController extends Controller
                 'site_id.exists' => 'The selected site does not exist.',
             ]
         );
-
-        $start = Carbon::parse($request->week);
-        $start = $start->copy()->startOfWeek(Carbon::FRIDAY);
+        $startOfWeek = Carbon::parse($request->start_date);
 
         // End of week should be Thursday (6 days after Friday)
-        $end = $start->copy()->addDays(6);
-
-        // Generate 7 days Friday → Thursday
         $days = [];
-        $day = $start->copy();
-
-        while ($day <= $end) {
-            $days[] = $day->format('Y-m-d');
-            $day->addDay();
+        for ($i = 0; $i < 7; $i++) {
+            $days[] = $startOfWeek->copy()->addDays($i)->format('Y-m-d');
         }
 
         $reports = Labour::select('labours.id', 'labours.name', 'labours.father_name', 'labours.cnic', 'labours.phone as mobile', 'labours.role as designation')
@@ -606,19 +598,12 @@ class LabourController extends Controller
         $request->validate([
             'week' => 'required|date',
         ]);
-        $start = Carbon::parse($request->week);
-        $start = $start->copy()->startOfWeek(Carbon::FRIDAY);
+        $startOfWeek = Carbon::parse($request->start_date);
 
         // End of week should be Thursday (6 days after Friday)
-        $end = $start->copy()->addDays(6);
-
-        // Generate 7 days Friday → Thursday
         $days = [];
-        $day = $start->copy();
-
-        while ($day <= $end) {
-            $days[] = $day->format('Y-m-d');
-            $day->addDay();
+        for ($i = 0; $i < 7; $i++) {
+            $days[] = $startOfWeek->copy()->addDays($i)->format('Y-m-d');
         }
 
         $x['personWiseReports'] = $personWiseReports = Labour::select('labours.id', 'labours.name', 'labours.father_name', 'labours.cnic', 'labours.advance', 'labours.phone as mobile', 'labours.role as designation');
@@ -711,30 +696,29 @@ class LabourController extends Controller
     public function loadAttendanceWeek(Request $request)
     {
         $x['week'] = $weekInput = $request->week;
-
+        $x['selectedSiteId'] = $request->site_id;
         // Parse ISO week from input (2025-W05)
         [$year, $week] = explode('-W', $weekInput);
-
+        $startOfWeek = Carbon::parse($request->start_date);
         // Get the ISO Monday for that week
-        $isoMonday = Carbon::now()->setISODate($year, $week)->startOfWeek(Carbon::MONDAY);
+        // $isoMonday = Carbon::now()->setISODate($year, $week)->startOfWeek(Carbon::MONDAY);
         $endOfWeekDate = Carbon::now()->setISODate($year, $week)->endOfWeek(Carbon::SUNDAY)->toDateString();
 
         // Convert to Friday (Mon +4 days)
-        $startOfWeek = $isoMonday->copy()->addDays(4);
-        $selected = Carbon::parse($weekInput);
-        if ($selected->lt($startOfWeek)) {
-            $startOfWeek->subWeek();
-        }
+        // $startOfWeek = $isoMonday->copy()->addDays(4);
+        // $selected = Carbon::parse($weekInput);
+        // if ($selected->lt($startOfWeek)) {
+        //     $startOfWeek->subWeek();
+        // }
 
-        // End = Thursday (Fri +6 days)
-        $endOfWeek = $startOfWeek->copy()->addDays(6);
+        // // End = Thursday (Fri +6 days)
+        // $endOfWeek = $startOfWeek->copy()->addDays(6);
 
         // Generate Friday → Thursday days
         $days = [];
         for ($i = 0; $i < 7; $i++) {
             $days[] = $startOfWeek->copy()->addDays($i)->format('Y-m-d');
         }
-
         // LABOUR FILTER
         $query = Labour::query();
 
@@ -751,13 +735,15 @@ class LabourController extends Controller
                     $q->where('name', 'like', "%{$search}%");
                 }
             });
+        }else{
+            $query->whereHas('attendances', function ($query) use ($days, $request) {
+                    $query->whereIn('date', $days);
+            });
         }
         if ($request->has('site_id') && $request->site_id) {
             $query->whereHas('attendances', function ($query) use ($days, $request) {
                 if ($request->has('site_id') && $request->site_id) {
                     $query->where('site_id', $request->site_id);
-                } else {
-                    $query->whereIn('date', $days);
                 }
             });
         }

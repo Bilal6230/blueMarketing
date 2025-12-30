@@ -29,4 +29,8 @@ class LabourAttendance extends Model
     {
         return $this->belongsTo(Labour::class);
     }
+    public function site()
+    {
+        return $this->belongsTo(Site::class);
+    }
 }

@@ -92,12 +92,13 @@ Daily Wage: Rs {{ $labour['daily_wage'] }}
                                 'rate' => $labour->daily_wage,
                                 'amount' => $attendance->amount ?? $labour->daily_wage,
                             ];
+                            $isDisabled =  $attendance?->site_id &&$selectedSiteId && $attendance?->site_id != $selectedSiteId;
                         @endphp
 
-                        <div class="cell" data-id="{{ $labour->id }}" data-date="{{ $day }}"
+                        <div class="cell {{ $isDisabled ? 'disabled' : '' }}" data-id="{{ $labour->id }}" data-date="{{ $day }}"
                             data-user='@json($userData)'>
 
-                            <span class="ico {{ $iconClass }}">{{ $icon }}</span>
+                            <span data-tooltip="{{ $attendance?->site->site_name ?? '' }}" class="ico {{ $iconClass }}">{{ $icon }}</span>
 
                             @if ($attendance && $attendance->ot_hours > 0)
                                 <span class="ico tick ot-badge">{{ number_format($attendance->ot_hours) }}</span>

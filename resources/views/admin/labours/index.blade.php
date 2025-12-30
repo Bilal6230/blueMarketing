@@ -632,6 +632,36 @@
             position: relative;
             z-index: 99999;
         }
+        .cell.disabled {
+            /* pointer-events: none;   /* ⛔ stops all clicks */
+            /* opacity: 0.5;           optional visual cue */ */
+            cursor: not-allowed;
+        }
+        .cell.disabled::after {
+            content: "Locked";
+            font-size: 10px;
+            color: #999;
+        }
+
+        [data-tooltip] {
+            position: relative;
+        }
+
+        [data-tooltip]:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 110%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #222;
+            color: #fff;
+            padding: 4px 8px;
+            font-size: 12px;
+            white-space: nowrap;
+            border-radius: 4px;
+            z-index: 1000;
+        }
+
     </style>
 
     <div class="wrap">
@@ -818,6 +848,8 @@
                             <div class="row">
                                 <div class="col-8">
                                     <input type="week" id="repFrom" class="form-control" />
+                                    <input type="hidden" name="repStartDate" id="repStartDate" value="">
+                                    <input type="hidden" name="repEndDate" id="repEndDate" value="">
                                     <label id="weekLabel" class="fw-bold text-primary" style="font-size: 14px"></label>
                                 </div>
                                 <div class="col-4 text-end">
@@ -889,6 +921,8 @@
                         <div class="col-4">
                             <input type="week" id="pFrom" class="form-control"
                                 value="{{ now()->format('o-\WW') }}" />
+                            <input type="hidden" name="pStartDate" id="pStartDate" value="">
+                            <input type="hidden" name="pEndDate" id="pEndDate" value="">
                             <label class="fw-bold text-primary pForm-weekLabel" style="font-size: 14px"></label>
                         </div>
                         <div class="col-4 text-end">
@@ -955,6 +989,8 @@
                                     {{-- //labur --}}
                                     <input type="week" id="attnWeek" class="form-control"
                                         value="{{ now()->format('o-\WW') }}" />
+                                    <input type="hidden" name="attStartDate" id="attStartDate" value="">
+                                    <input type="hidden" name="attEndDate" id="attEndDate" value="">
                                     <label id="lab-weekLabel" class="fw-bold text-primary"
                                         style="font-size: 14px"></label>
                                 </div>
@@ -1229,7 +1265,12 @@
                     end
                 };
             }
-
+            function formatYMD(date) {
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            }
             function updateWeekLabel(value) {
                 if (!value) return;
 
@@ -1243,6 +1284,8 @@
                     day: '2-digit',
                     month: 'short'
                 };
+                $('#repStartDate').val(formatYMD(start));
+                $('#repEndDate').val(formatYMD(end));
 
                 const startText = start.toLocaleDateString('en-GB', options);
                 const endText = end.toLocaleDateString('en-GB', options);
@@ -1264,6 +1307,8 @@
                     day: '2-digit',
                     month: 'short'
                 };
+                $('#pStartDate').val(formatYMD(start));
+                $('#pEndDate').val(formatYMD(end));
 
                 const startText = start.toLocaleDateString('en-GB', options);
                 const endText = end.toLocaleDateString('en-GB', options);
@@ -1285,7 +1330,8 @@
                     day: '2-digit',
                     month: 'short'
                 };
-
+                $('#attStartDate').val(formatYMD(start));
+                $('#attEndDate').val(formatYMD(end));
                 const startText = start.toLocaleDateString('en-GB', options);
                 const endText = end.toLocaleDateString('en-GB', options);
                 $('#lab-weekLabel').text(
@@ -1597,7 +1643,11 @@
             $('.tab[aria-selected="true"]').trigger('click');
             $(document).on('click', '.cell', function() {
 
-
+                if ($(this).hasClass('disabled')) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    return false;
+                }
                 let data = $(this).attr('data-user');
                 if (!data) return; // safety
 
@@ -2094,11 +2144,15 @@
 
                 let id = $(this).attr('id');
                 let week = $('#repFrom').val();
+                let start_date = $('#repStartDate').val();
+                let end_date = $('#repEndDate').val();
                 let site = $('#repSite').val();
 
                 let data = {
                     _token: "{{ csrf_token() }}",
                     week: week,
+                    start_date: start_date,
+                    end_date: end_date,
                     site_id: site,
                     id: id
                 };
@@ -2161,11 +2215,15 @@
                 e.preventDefault();
 
                 let week = $('#pFrom').val();
+                let start_date = $('#pStartDate').val();
+                let end_date = $('#pEndDate').val();
                 let search = $('#personQuery').val();
 
                 let data = {
                     _token: "{{ csrf_token() }}",
                     week: week,
+                    start_date: start_date,
+                    end_date: end_date,
                     search: search,
                 };
 
@@ -2502,13 +2560,19 @@
 
         function loadWeekData() {
             let attnWeek = $('#attnWeek').val() || $('#attnWeek').attr('value');
-            console.log(attnWeek);
+            // console.log(attnWeek);
+            let startDate = $('#attStartDate').val();
+            let endDate = $('#attEndDate').val();
+            console.log(startDate, endDate);
+
 
             $.ajax({
                 url: "{{ route('attendance.week.load') }}",
                 type: "GET",
                 data: {
                     week: attnWeek,
+                    start_date: startDate,
+                    end_date: endDate,
                     site_id: $('#attnSiteFilter').val(),
                     search: $('#attnSearch').val(),
                 },

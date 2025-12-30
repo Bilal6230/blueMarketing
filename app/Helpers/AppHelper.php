@@ -666,7 +666,7 @@ if (!function_exists('loadAttendanceWeek')) {
                 $start = Carbon::parse($weekInput);
             }
             else{
-                $start = Carbon::now()->endOfWeek(Carbon::SUNDAY);
+                $start =now();
             }
         } catch (\Exception $e) {
             $start = now();
