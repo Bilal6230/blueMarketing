@@ -687,6 +687,88 @@ class LabourController extends Controller
             'view' => $view
         ]);
     }
+    public function personAttendanceReportPrint(Request $request)
+    {
+        $request->validate([
+            'week' => 'required|date',
+        ]);
+        $startOfWeek = Carbon::parse($request->start_date);
+
+        // End of week should be Thursday (6 days after Friday)
+        $days = [];
+        for ($i = 0; $i < 7; $i++) {
+            $days[] = $startOfWeek->copy()->addDays($i)->format('Y-m-d');
+        }
+
+        $x['personWiseReports'] = $personWiseReports = Labour::select('labours.id', 'labours.name', 'labours.father_name', 'labours.cnic', 'labours.advance', 'labours.phone as mobile', 'labours.role as designation');
+
+        if ($request->search) {
+            $search = $request->search;
+
+            $personWiseReports->where(function ($q) use ($search) {
+                // If search contains any digit, search in phone or cnic
+                if (preg_match('/\d/', $search)) {
+                    $q->where('phone', 'like', "%{$search}%")
+                        ->orWhere('cnic', 'like', "%{$search}%");
+                } else {
+                    // Otherwise search in name
+                    $q->where('name', 'like', "%{$search}%");
+                }
+            });
+        }
+
+        $x['personWiseReports'] = $personWiseReports = $personWiseReports
+            ->with([
+                'attendances' => function ($query) use ($request, $days) {
+                    $query->whereIn('date', $days)
+                    ->where('project_id', getSelectedTown());
+                }
+            ])
+            ->whereHas('attendances', function ($query) use ($request, $days) {
+                $query->whereIn('date', $days)
+                ->where('project_id', getSelectedTown());
+            })
+            ->get()
+            ->map(function ($labour) {
+
+                $attendanceIds = $labour->attendances->pluck('id')->toArray();
+                $attendanceDates = $labour->attendances->pluck('date')->toArray();
+                $totalHours = $labour->attendances->sum('hours');
+                $totalOT = $labour->attendances->sum('ot_hours');
+                $ratings = $labour->attendances->sum('ratings') / $labour->attendances->count();
+
+                $rate = optional($labour->attendances->first())->rate
+                    ?? $labour->daily_wage
+                    ?? 0;
+
+                $days = $totalHours / 8;
+                $amount = ($days * $rate) + ($totalOT * ($rate / 8));
+                $remaningAmount = $amount - $labour->labourLedgers->sum('amount');
+
+                return [
+                    'id' => $labour->id,
+                    'name' => $labour->name,
+                    'father_name' => $labour->father_name,
+                    'cnic' => $labour->cnic,
+                    'mobile' => $labour->mobile,
+                    'designation' => $labour->designation,
+                    'rate' => number_format($rate, 2),
+                    'days' => number_format($days, 2),
+                    'overtime' => number_format($totalOT, 2),
+                    'amount' => number_format($amount, 2),
+                    'remaningAmount' => number_format($remaningAmount, 2),
+                    'advance' => $labour->advance,
+                    'amount_raw' => $amount,
+                    'ratings' => number_format($ratings, 1),
+                    'attendance_ids' => json_encode($attendanceIds, JSON_UNESCAPED_UNICODE), // ✅ real attendance IDs
+                    'attendance_dates' => json_encode($attendanceDates, JSON_UNESCAPED_UNICODE), // ✅ real attendance IDs
+                    'paid_status' => optional($labour->attendances->first())->paid_status
+                ];
+            });
+        $x['total_amount'] = $personWiseReports->sum('amount_raw');
+        // Render table partial
+        return view('admin.labours.person-wise-report', $x);
+    }
 
 
     public function checkValidate(Request $request)

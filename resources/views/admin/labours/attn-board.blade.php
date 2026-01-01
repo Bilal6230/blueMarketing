@@ -98,7 +98,7 @@ Daily Wage: Rs {{ $labour['daily_wage'] }}
                         <div class="cell {{ $isDisabled ? 'disabled' : '' }}" data-id="{{ $labour->id }}" data-date="{{ $day }}"
                             data-user='@json($userData)'>
 
-                            <span data-tooltip="{{ $attendance?->site->site_name ?? '' }}" class="ico {{ $iconClass }}">{{ $icon }}</span>
+                            <span data-tooltips="{{ $attendance?->site->site_name ?? '' }}" class="ico {{ $iconClass }}">{{ $icon }}</span>
 
                             @if ($attendance && $attendance->ot_hours > 0)
                                 <span class="ico tick ot-badge">{{ number_format($attendance->ot_hours) }}</span>

@@ -582,44 +582,26 @@
         }
 
         .labour-tooltip {
-            position: relative;
             cursor: pointer;
-            display: inline-block;
         }
 
-        /* Tooltip box */
-        .labour-tooltip:hover::after {
-            content: attr(data-tooltip);
-            white-space: pre-line;
-
-            position: absolute;
-            top: 120%;
-            left: 50%;
-            transform: translateX(-50%);
-
+        /* Tooltip element */
+        #floating-tooltip {
+            position: fixed;
             background: #1f2937;
             color: #fff;
             padding: 10px 12px;
             border-radius: 6px;
             font-size: 13px;
             line-height: 1.4;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-            z-index: 999;
-
-            width: max-content;
             max-width: 250px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            z-index: 99999;
+            pointer-events: none;
+            display: none;
+            white-space: pre-line;
         }
 
-        /* Tooltip arrow */
-        .labour-tooltip:hover::before {
-            content: '';
-            position: absolute;
-            top: 110%;
-            left: 50%;
-            transform: translateX(-50%);
-            border: 6px solid transparent;
-            border-bottom-color: #1f2937;
-        }
 
         .ts-dropdown,
         .ts-dropdown.single,
@@ -632,23 +614,25 @@
             position: relative;
             z-index: 99999;
         }
+
         .cell.disabled {
             /* pointer-events: none;   /* ⛔ stops all clicks */
-            /* opacity: 0.5;           optional visual cue */ */
-            cursor: not-allowed;
+            /* opacity: 0.5;           optional visual cue */
+            */ cursor: not-allowed;
         }
+
         .cell.disabled::after {
             content: "Locked";
             font-size: 10px;
             color: #999;
         }
 
-        [data-tooltip] {
+        [data-tooltips] {
             position: relative;
         }
 
-        [data-tooltip]:hover::after {
-            content: attr(data-tooltip);
+        [data-tooltips]:hover::after {
+            content: attr(data-tooltips);
             position: absolute;
             bottom: 110%;
             left: 50%;
@@ -661,7 +645,6 @@
             border-radius: 4px;
             z-index: 1000;
         }
-
     </style>
 
     <div class="wrap">
@@ -1265,12 +1248,14 @@
                     end
                 };
             }
+
             function formatYMD(date) {
                 const y = date.getFullYear();
                 const m = String(date.getMonth() + 1).padStart(2, '0');
                 const d = String(date.getDate()).padStart(2, '0');
                 return `${y}-${m}-${d}`;
             }
+
             function updateWeekLabel(value) {
                 if (!value) return;
 
@@ -2583,5 +2568,42 @@
                 }
             });
         }
+        $(document).ready(function() {
+
+            // Create tooltip once
+            const $tooltip = $('<div id="floating-tooltip"></div>').appendTo('body');
+
+            $(document).on({
+                mouseenter: function() {
+                    $tooltip.text($(this).data('tooltip')).fadeIn(100);
+                },
+
+                mousemove: function(e) {
+                    const offset = 12;
+
+                    let x = e.clientX + offset;
+                    let y = e.clientY + offset;
+
+                    // Prevent viewport overflow
+                    if (x + $tooltip.outerWidth() > $(window).width()) {
+                        x = e.clientX - $tooltip.outerWidth() - offset;
+                    }
+
+                    if (y + $tooltip.outerHeight() > $(window).height()) {
+                        y = e.clientY - $tooltip.outerHeight() - offset;
+                    }
+
+                    $tooltip.css({
+                        left: x + 'px',
+                        top: y + 'px'
+                    });
+                },
+
+                mouseleave: function() {
+                    $tooltip.hide();
+                }
+            }, '.labour-tooltip');
+
+        });
     </script>
 @endsection
