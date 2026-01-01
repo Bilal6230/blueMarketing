@@ -78,7 +78,7 @@
             border: 1px solid var(--line);
             border-radius: 14px;
             box-shadow: var(--shadow);
-            height: 580px;
+            height: 620px;
             overflow: hidden;
         }
 
@@ -91,7 +91,7 @@
         }
 
         .max-height {
-            max-height: 350px;
+            max-height: 385px;
             /* adjust height */
             /* border-radius: 14px; */
         }
@@ -645,6 +645,12 @@
             border-radius: 4px;
             z-index: 1000;
         }
+        #attnLabours,
+        #attnRows {
+            max-height: 45vh;
+            overflow-y: auto;
+        }
+
     </style>
 
     <div class="wrap">
@@ -993,7 +999,7 @@
                         {{-- <input type="week" id="repFrom" class="col-6 form-control"
                             value="{{ now()->format('o-\WW') }}" /> --}}
                     </div>
-                    <div class="table-scroll max-height" id="attnBoard">
+                    <div class="max-height" id="attnBoard">
                         @include('admin.labours.attn-board')
                     </div>
                     <div class="help" style="margin-top:10px">Legend: <span class="ico tick">✓</span> Present · <span
@@ -1207,7 +1213,6 @@
 
 @section('js')
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    {{-- jQuery is required. If your admin master already loads jQuery, remove the following script line. --}}
     <script>
         $(document).ready(function() {
             let repSiteSelect = new TomSelect('#repSite', {
@@ -1229,25 +1234,25 @@
                 }
             });
 
-            function getWeekDates(year, week) {
-                const simple = new Date(year, 0, 1 + (week - 1) * 7);
-                const dow = simple.getDay();
-                const ISOweekStart = simple;
+            // function getWeekDates(year, week) {
+            //     const simple = new Date(year, 0, 1 + (week - 1) * 7);
+            //     const dow = simple.getDay();
+            //     const ISOweekStart = simple;
 
-                if (dow <= 4)
-                    ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
-                else
-                    ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
+            //     if (dow <= 4)
+            //         ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
+            //     else
+            //         ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
 
-                const start = new Date(ISOweekStart);
-                const end = new Date(ISOweekStart);
-                end.setDate(start.getDate() + 6);
+            //     const start = new Date(ISOweekStart);
+            //     const end = new Date(ISOweekStart);
+            //     end.setDate(start.getDate() + 6);
 
-                return {
-                    start,
-                    end
-                };
-            }
+            //     return {
+            //         start,
+            //         end
+            //     };
+            // }
 
             function formatYMD(date) {
                 const y = date.getFullYear();
@@ -1415,7 +1420,7 @@
                 if (week < 1) {
                     week = 52;
                     year--;
-                } else if (week > 52) {
+                } else if (week > 53) {
                     week = 1;
                     year++;
                 }
@@ -1435,7 +1440,7 @@
                 if (week < 1) {
                     week = 52;
                     year--;
-                } else if (week > 52) {
+                } else if (week > 53) {
                     week = 1;
                     year++;
                 }
@@ -1455,7 +1460,7 @@
                 if (week < 1) {
                     week = 52;
                     year--;
-                } else if (week > 52) {
+                } else if (week > 53) {
                     week = 1;
                     year++;
                 }
@@ -1626,7 +1631,7 @@
 
             // Initialize first tab (optional safety)
             $('.tab[aria-selected="true"]').trigger('click');
-            $(document).on('click', '.cell', function() {
+            $(document).on('click', '.cell', function(e) {
 
                 if ($(this).hasClass('disabled')) {
                     e.preventDefault();
@@ -2603,6 +2608,21 @@
                     $tooltip.hide();
                 }
             }, '.labour-tooltip');
+        let syncing = false;
+
+        $('#attnLabours').on('scroll', function () {
+            if (syncing) return;
+            syncing = true;
+            $('#attnRows').scrollTop(this.scrollTop);
+            syncing = false;
+        });
+
+        $('#attnRows').on('scroll', function () {
+            if (syncing) return;
+            syncing = true;
+            $('#attnLabours').scrollTop(this.scrollTop);
+            syncing = false;
+        });
 
         });
     </script>

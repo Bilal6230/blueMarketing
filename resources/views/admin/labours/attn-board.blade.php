@@ -1,28 +1,33 @@
 <div class="attn table" id="attnBoard">
 
     {{-- LEFT SIDE: LABOURS --}}
-    <div class="left" id="attnLabours">
+    <div class="left">
         <div class="days-head" id="attnDays">
-            <div class="d">Labours</div>
-        </div>
-
-        @foreach ($attendance_labours as $labour)
-            <div class="lab labour-tooltip" data-id="{{ $labour->id }}"
-                data-tooltip="
-Name: {{ $labour['name'] }}
-Father Name: {{ $labour['father_name'] }}
-CNIC: {{ $labour['cnic'] }}
-Phone: {{ $labour['phone'] }}
-Role: {{ $labour['role'] }}
-Daily Wage: Rs {{ $labour['daily_wage'] }}
-">
-
-                <span class="nm">{{ $labour->name }} ({{ substr($labour['cnic'], -4) }})</span>
-                <span class="muted small">
-                    {{ $labour->phone }} · {{ $labour->role }} · Rs&nbsp;{{ $labour->daily_wage }}
-                </span>
+            <div class="d">
+            <div class="">Labours</div>
+            <div class="">-</div>
             </div>
-        @endforeach
+        </div>
+        <div  id="attnLabours">
+
+            @foreach ($attendance_labours as $labour)
+                <div class="lab labour-tooltip" data-id="{{ $labour->id }}"
+                    data-tooltip="
+                Name: {{ $labour['name'] }}
+                Father Name: {{ $labour['father_name'] }}
+                CNIC: {{ $labour['cnic'] }}
+                Phone: {{ $labour['phone'] }}
+                Role: {{ $labour['role'] }}
+                Daily Wage: Rs {{ $labour['daily_wage'] }}
+                ">
+
+                    <span class="nm">{{ $labour->name }} ({{ substr($labour['cnic'], -4) }})</span>
+                    <span class="muted small">
+                        {{ $labour->phone }} · {{ $labour->role }} · Rs&nbsp;{{ $labour->daily_wage }}
+                    </span>
+                </div>
+            @endforeach
+        </div>
     </div>
 
     @php
