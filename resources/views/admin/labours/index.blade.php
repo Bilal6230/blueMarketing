@@ -634,8 +634,7 @@
         [data-tooltips]:hover::after {
             content: attr(data-tooltips);
             position: absolute;
-            bottom: 110%;
-            left: 50%;
+            right: -70%;
             transform: translateX(-50%);
             background: #222;
             color: #fff;

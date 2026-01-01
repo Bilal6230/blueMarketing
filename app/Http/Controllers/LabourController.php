@@ -832,14 +832,14 @@ class LabourController extends Controller
                     $query->whereIn('date', $days)
                     ->where('project_id', getSelectedTown());
             });
-        }
-        if ($request->has('site_id') && $request->site_id) {
-            $query->whereHas('attendances', function ($query) use ($days, $request) {
-                if ($request->has('site_id') && $request->site_id) {
-                    $query->where('site_id', $request->site_id)
-                    ->where('project_id', getSelectedTown());
-                }
-            });
+            if ($request->has('site_id') && $request->site_id) {
+                $query->whereHas('attendances', function ($query) use ($days, $request) {
+                    if ($request->has('site_id') && $request->site_id) {
+                        $query->where('site_id', $request->site_id)
+                        ->where('project_id', getSelectedTown());
+                    }
+                });
+            }
         }
 
 
