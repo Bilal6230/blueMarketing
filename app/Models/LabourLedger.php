@@ -8,5 +8,5 @@ use Illuminate\Database\Eloquent\Model;
 class LabourLedger extends Model
 {
     use HasFactory;
-    protected $fillable = ['labour_id', 'amount', 'date', 'details'];
+    protected $fillable = ['project_id', 'labour_id', 'amount', 'date', 'details'];
 }

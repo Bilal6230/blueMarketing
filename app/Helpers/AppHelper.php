@@ -308,6 +308,7 @@ if (!function_exists('getLastLedgerIdByType')) {
 function getVocuherNumber($type)
 {
     $numbers = Ledger::where('type', $type)
+        ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', getSelectedTown()))
         ->where('voucher_number', '>', 0)
         ->orderBy('voucher_number')
         ->pluck('voucher_number')
@@ -661,12 +662,11 @@ if (!function_exists('loadAttendanceWeek')) {
     function loadAttendanceWeek($weekInput)
     {
         try {
-            // Parse normally first
             if($weekInput) {
                 $start = Carbon::parse($weekInput);
             }
             else{
-                $start = Carbon::now()->endOfWeek(Carbon::SUNDAY);
+                $start = now();
             }
         } catch (\Exception $e) {
             $start = now();

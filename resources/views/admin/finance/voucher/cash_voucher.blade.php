@@ -1473,7 +1473,8 @@
             const FORM_ID = '#voucherForm';
             const TS_SEL = '.js-tomselect';
             const $Type = '{{ $type }}'; // e.g. CR or CP
-            const LS_KEY = `paysavo_voucher_tabs_${$Type}_v1`;
+            const $projectId = '{{ getSelectedTown() }}';
+            const LS_KEY = `bluemarketing_${ $projectId }_voucher_tabs_${$Type}_v1`;
 
             // ---------- TomSelect init ----------
             function initTomSelects() {
@@ -1791,11 +1792,11 @@
                 nums.forEach(n => {
                     const isActive = (n === store.currentTab);
                     $wrap.append(`
-                <div class="voucher-tab-wrapper position-relative">
-                <button class="btn btn-primary btn-sm voucher-tab ${isActive ? 'active' : ''}" data-tab="${n}">Voucher#${n}</button>
-                ${n === 1 ? '' : `<button class="voucher-tab-remove" data-tab="${n}" title="Remove Tab"><i class="fas fa-times"></i></button>`}
-                </div>
-            `);
+        <div class="voucher-tab-wrapper position-relative">
+          <button class="btn btn-primary btn-sm voucher-tab ${isActive ? 'active' : ''}" data-tab="${n}">Voucher#${n}</button>
+          ${n === 1 ? '' : `<button class="voucher-tab-remove" data-tab="${n}" title="Remove Tab"><i class="fas fa-times"></i></button>`}
+        </div>
+      `);
                 });
                 currentTab = store.currentTab || 1;
                 nextTabNumber = store.nextTabNumber || (nums.length ? Math.max(...nums) + 1 : 2);
@@ -2281,26 +2282,26 @@
 
                                     @can('update voucher')
                                         buttons += `
-                                            <button class="btn btn-sm btn-primary btn-edit" data-id="${row.id}">
-                                                <i class="fas fa-pencil-alt"></i>
-                                            </button>
-                                        `;
+                <button class="btn btn-sm btn-primary btn-edit" data-id="${row.id}">
+                    <i class="fas fa-pencil-alt"></i>
+                </button>
+            `;
                                     @endcan
 
                                     @can('delete voucher')
-                                    buttons += `
-                                            <button class="btn btn-sm btn-danger btn-delete" data-id="${row.id}">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        `;
+                                        buttons += `
+                <button class="btn btn-sm btn-danger btn-delete" data-id="${row.id}">
+                    <i class="fas fa-trash"></i>
+                </button>
+            `;
                                     @endcan
 
                                     @can('print voucher')
                                         buttons += `
-                                            <a href="${printUrl}" target="_blank" class="btn btn-sm btn-info btn-print">
-                                                <i class="fas fa-print"></i>
-                                            </a>
-                                        `;
+                <a href="${printUrl}" target="_blank" class="btn btn-sm btn-info btn-print">
+                    <i class="fas fa-print"></i>
+                </a>
+            `;
                                     @endcan
 
                                     buttons += `</div>`;

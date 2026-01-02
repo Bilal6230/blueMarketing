@@ -949,8 +949,10 @@ class BookingController extends Controller
          * 50 lac Total Sale Credit
          * 10 lac Party Profit Credit
          */
+         $voucherNumber = getVocuherNumber('BO');
         Ledger::create([
             'type' => 'BO',
+            'voucher_number' => $voucherNumber,
             'type_id' => $this->nextLedgerTypeId('BO'),
             'project_head_subheads_id' => $totalSalePhsId,
             'reference' => $booking->id,

@@ -119,6 +119,7 @@ class VoucherController extends Controller
         $x['table_data_route'] = route('voucher.cash_in.data');
         $numbers = Ledger::where('type', 'CR')
             ->where('voucher_number', '>', 0)
+            ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
             ->orderBy('voucher_number')
             ->pluck('voucher_number')
             ->toArray();
@@ -256,8 +257,6 @@ class VoucherController extends Controller
             'success' => true,
             'data' => $data[0]->comments,
         ]);
-
-
     }
     public function approveAdmin($id, Request $request)
     {
@@ -421,6 +420,7 @@ class VoucherController extends Controller
         $x['table_data_route'] = route('voucher.cash_out.data');
         $numbers = Ledger::where('type', 'CP')
             ->where('voucher_number', '>', 0)
+            ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
             ->orderBy('voucher_number')
             ->pluck('voucher_number')
             ->toArray();
@@ -552,10 +552,10 @@ class VoucherController extends Controller
                 'head' => optional($i->projectHeadSubhead->headAccounting)->name ?? '',
                 'subhead' => trim(
                     (optional($i->projectHeadSubhead->subheadAccounting)->name ?? '') .
-                    (count($customers) > 0
-                        ? ' <p style="font-size:12px;">(old customers: ' . e(collect($customers)->pluck('subhead')->implode(', ')) . ')</p>'
-                        : ''
-                    )
+                        (count($customers) > 0
+                            ? ' <p style="font-size:12px;">(old customers: ' . e(collect($customers)->pluck('subhead')->implode(', ')) . ')</p>'
+                            : ''
+                        )
                 ),
                 'detail' => $i->detail,
                 'amount' => $amount,
@@ -826,12 +826,14 @@ class VoucherController extends Controller
 
     public function checkNewVoucherNumber(Request $request)
     {
+        $selectedProjectId = getSelectedTown();
         // dd($request->all());
         $type = $request->type;
         $voucherNumber = (int) $request->number;
         // Check if voucher number already exists
         $exists = Ledger::where('type', $type)
             ->where('voucher_number', '>', 0)
+            ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
             ->where('voucher_number', $voucherNumber)
             ->exists();
 
@@ -842,8 +844,9 @@ class VoucherController extends Controller
             // Keep incrementing until a free number is found
             while (
                 Ledger::where('type', $type)
-                    ->where('voucher_number', $nextNumber)
-                    ->exists()
+                ->where('voucher_number', $nextNumber)
+                ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
+                ->exists()
             ) {
                 $nextNumber++;
             }
@@ -854,5 +857,24 @@ class VoucherController extends Controller
         // ✅ Now $voucherNumber is guaranteed unique
         $x['latest_voucher_number'] = $voucherNumber;
         return response()->json($x);
+    }
+    public function updateVoucherNumber()
+    {
+        Ledger::with('projectHeadSubhead:id,project_id')
+            ->orderBy('type')
+            ->orderBy('id')
+            ->chunk(500, function ($ledgers) use (&$counters) {
+
+                foreach ($ledgers as $ledger) {
+                    $projectId = $ledger->projectHeadSubhead->project_id;
+                    $type = $ledger->type;
+
+                    $counters[$projectId][$type] ??= 1;
+
+                    $ledger->update([
+                        'voucher_number' => $counters[$projectId][$type]++
+                    ]);
+                }
+            });
     }
 }

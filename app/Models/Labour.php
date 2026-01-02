@@ -21,10 +21,10 @@ class Labour extends Model
     ];
     public function attendances()
     {
-        return $this->hasMany(LabourAttendance::class);
+        return $this->hasMany(LabourAttendance::class)->where('project_id', getSelectedTown());
     }
     public function labourLedgers()
     {
-        return $this->hasMany(LabourLedger::class);
+        return $this->hasMany(LabourLedger::class)->where('project_id', getSelectedTown());
     }
 }

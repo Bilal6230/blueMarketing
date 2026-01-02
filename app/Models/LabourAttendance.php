@@ -9,6 +9,7 @@ class LabourAttendance extends Model
 {
     use HasFactory;
     protected $fillable = [
+        'project_id',
         'labour_id',
         'site_id',
         'date',
@@ -28,5 +29,9 @@ class LabourAttendance extends Model
     public function labour()
     {
         return $this->belongsTo(Labour::class);
+    }
+    public function site()
+    {
+        return $this->belongsTo(Site::class)->where('project_id', getSelectedTown());
     }
 }

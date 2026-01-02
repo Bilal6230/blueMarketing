@@ -217,8 +217,6 @@
                                         <p>Cash out</p>
                                     </a>
                                 </li>
-                                 @endcan
-                            @can('read draft_voucher')
                                 <li class="nav-item">
                                     <a href="{{ route('finance.voucher.draft') }}"
                                         class="nav-link {{ request()->routeIs('finance.voucher.draft') ? 'active' : '' }}">
@@ -226,9 +224,6 @@
                                         <p>Draft Voucher</p>
                                     </a>
                                 </li>
-                            @endcan
-                            @can('read admin_approval_voucher')
-
                                 <li class="nav-item">
                                     <a href="{{ route('finance.voucher.pending_updates_index') }}"
                                         class="nav-link {{ request()->routeIs('finance.voucher.pending_updates_index') ? 'active' : '' }}">
@@ -236,7 +231,7 @@
                                         <p>Admin Approvals Voucher</p>
                                     </a>
                                 </li>
-                            @endcan
+
 
 
 
@@ -246,7 +241,7 @@
                                         <p>Cash Voucher</p>
                                     </a>
                                 </li> --}}
-                           
+                            @endcan
                             @can('read jv')
                                 <li class="nav-item">
                                     <a href="{{ route('journal.voucher.index') }}"
@@ -256,7 +251,7 @@
                                     </a>
                                 </li>
                             @endcan
-                            @can('read commision_voucher')
+                            @can('read jv')
                                 <li class="nav-item">
                                     <a href="{{ route('commision.voucher.index') }}"
                                         class="nav-link {{ request()->routeIs('commision.voucher.index') ? 'active' : '' }}">
