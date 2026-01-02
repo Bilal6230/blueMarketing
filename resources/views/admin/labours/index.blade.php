@@ -22,8 +22,8 @@
         }
 
         .wrap {
-            max-width: 1350px;
-            margin: 24px auto;
+            max-width: 1395px;
+            margin: 2px auto;
             padding: 0 16px
         }
 
@@ -32,7 +32,7 @@
             gap: 12px;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 16px
+            margin-bottom: 5px
         }
 
         .title {
@@ -51,7 +51,7 @@
             border: 1px solid var(--line);
             background: #fff;
             color: #111827;
-            padding: 8px 12px;
+            padding: 6px 12px;
             border-radius: 10px;
             cursor: pointer
         }
@@ -78,7 +78,7 @@
             border: 1px solid var(--line);
             border-radius: 14px;
             box-shadow: var(--shadow);
-            height: 620px;
+            height: 565px;
             overflow: hidden;
         }
 
@@ -116,7 +116,7 @@
 
 
         .card .hd {
-            padding: 14px 16px;
+            padding: 8px 16px;
             border-bottom: 1px solid var(--line);
             display: flex;
             align-items: center;
@@ -128,7 +128,7 @@
         }
 
         .card .bd {
-            padding: 16px
+            padding: 10px
         }
 
 
@@ -308,7 +308,7 @@
         .days-head {
             display: grid;
             grid-auto-flow: column;
-            grid-auto-columns: 145px;
+            grid-auto-columns: 153px;
             border-bottom: 1px solid var(--line);
             background: #f8fafc;
             position: sticky;
@@ -330,7 +330,7 @@
         .row-days {
             display: grid;
             grid-auto-flow: column;
-            grid-auto-columns: 145px
+            grid-auto-columns: 153px
         }
 
         .cell {
@@ -343,8 +343,8 @@
         }
 
         .cell .ico {
-            width: 22px;
-            height: 22px;
+            width: 33px;
+            height: 33px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -352,7 +352,7 @@
         }
 
         .ico.tick {
-            background: #ecfdf5;
+            background: #d4f5e6;
             color: #065f46;
             border: 1px solid #d1fae5
         }
@@ -622,7 +622,6 @@
         }
 
         .cell.disabled::after {
-            content: "Locked";
             font-size: 10px;
             color: #999;
         }
@@ -644,12 +643,31 @@
             border-radius: 4px;
             z-index: 1000;
         }
-        #attnLabours,
+
+        /* #attnLabours,
         #attnRows {
             max-height: 45vh;
             overflow-y: auto;
+        } */
+        .scroll-container {
+            height: 50vh;        /* or fixed px */
+            overflow-y: auto;
         }
 
+
+        .day-total {
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 4px;
+            background: #e2e8f0;
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+
+        .today .day-total {
+            background: #22c55e;
+            color: #fff;
+        }
     </style>
 
     <div class="wrap">
@@ -823,7 +841,7 @@
             <div class="card">
                 <div class="hd"><b>Site Report</b><span class="caps">filter & total cost</span></div>
                 <div class="bd">
-                    <div class="row" style="margin-bottom:12px">
+                    <div class="row">
                         <div class="col-3">
                             <select id="repSite" class=" js-tomselect">
                                 <option value="">All Sites</option>
@@ -869,12 +887,12 @@
                             </form>
                         </div>
                     </div>
-                    <div class="chips">
+                    {{-- <div class="chips">
                         <span class="pill">Total Days: <b id="siteDays">0</b></span>
                         <span class="pill">Total Overtime Hrs: <b id="siteOt">0</b></span>
                         <span class="pill">Total Cost: <b id="siteTotal">0</b></span>
-                    </div>
-                    <div class="table-scroll" style="max-height: 290px;">
+                    </div> --}}
+                    <div class="table-scroll max-height">
                         <table id="siteReportTable table">
                             <thead>
                                 <tr>
@@ -900,7 +918,7 @@
             <div class="card">
                 <div class="hd"><b>Person Wise Report</b><span class="caps">details & totals</span></div>
                 <div class="bd">
-                    <div class="row" style="margin-bottom:12px">
+                    <div class="row">
                         <div class="col-4">
                             <input id="personQuery" class="" placeholder="Search by name or mobile"
                                 style="min-width:260px" />
@@ -926,8 +944,8 @@
                         <button class="btn" id="btnPersonExport">Export CSV</button>
                     </div>
                     <div id="personHeader" class="row" style="margin-bottom:10px"></div>
-                    <div style="margin-top:14px" class="help">On first load, all labours are listed below. Use search to
-                        pick someone.</div>
+                    {{-- <div style="margin-top:14px" class="help">On first load, all labours are listed below. Use search to
+                        pick someone.</div> --}}
                     <div style="margin-top:8px" class="table-scroll max-height">
                         <table id="personAll table">
                             <thead>
@@ -958,7 +976,7 @@
             <div class="card">
                 <div class="hd"><b>Attendance</b><span class="caps">mark daily hours & overtime</span></div>
                 <div class="bd">
-                    <div class="row" style="margin-bottom:12px">
+                    <div class="row">
                         <div class="col-3">
                             <select id="attnSiteFilter" class=" js-tomselect">
                                 <option value="">All Sites</option>
@@ -967,7 +985,7 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-9 align-items-center mb-2">
+                        <div class="col-9 align-items-center">
                             <div class="row">
                                 <div class="col-4">
                                     <input id="attnSearch" class="form-control" placeholder="Search by name or mobile" />
@@ -998,12 +1016,12 @@
                         {{-- <input type="week" id="repFrom" class="col-6 form-control"
                             value="{{ now()->format('o-\WW') }}" /> --}}
                     </div>
-                    <div class="max-height" id="attnBoard">
+                    <div class="max-height" id="attnBoardWrapper">
                         @include('admin.labours.attn-board')
                     </div>
-                    <div class="help" style="margin-top:10px">Legend: <span class="ico tick">✓</span> Present · <span
+                    {{-- <div class="help" style="margin-top:10px">Legend: <span class="ico tick">✓</span> Present · <span
                             class="ico cross">✕</span> Absent · <span class="ico leave">L</span> Leave · <span
-                            class="ico none">-</span> Not marked — <b>click any square</b> to mark or edit.</div>
+                            class="ico none">-</span> Not marked — <b>click any square</b> to mark or edit.</div> --}}
                 </div>
             </div>
         </section>
@@ -1419,7 +1437,7 @@
                 if (week < 1) {
                     week = 52;
                     year--;
-                } else if (week > 53) {
+                } else if (week > 52) {
                     week = 1;
                     year++;
                 }
@@ -1439,7 +1457,7 @@
                 if (week < 1) {
                     week = 52;
                     year--;
-                } else if (week > 53) {
+                } else if (week > 52) {
                     week = 1;
                     year++;
                 }
@@ -1459,7 +1477,7 @@
                 if (week < 1) {
                     week = 52;
                     year--;
-                } else if (week > 53) {
+                } else if (week > 52) {
                     week = 1;
                     year++;
                 }
@@ -1637,6 +1655,7 @@
                     e.stopImmediatePropagation();
                     return false;
                 }
+                console.log('hello');
                 let data = $(this).attr('data-user');
                 if (!data) return; // safety
 
@@ -2567,11 +2586,38 @@
                 },
                 success: function(res) {
                     // $('#attnWeek').val(attnWeek).attr('value', attnWeek);
-                    $('#attnBoard').html(res.view); // replace table with new week
-                    console.log(res);
+                    $('#attnBoardWrapper').html(res.view);
+                                // ⏱ WAIT FOR DOM PAINT
+                    setTimeout(() => {
+                        initAttendanceScrollSync();
+                    }, 500);
                 }
             });
         }
+
+       function initAttendanceScrollSync() {
+
+    let syncing = false;
+
+    $('#attnLabours').off('scroll.attn');
+    $('#attnRows').off('scroll.attn');
+
+    $('#attnLabours').on('scroll.attn', function () {
+        if (syncing) return;
+        syncing = true;
+        $('#attnRows').scrollTop(this.scrollTop);
+        syncing = false;
+    });
+
+    $('#attnRows').on('scroll.attn', function () {
+        if (syncing) return;
+        syncing = true;
+        $('#attnLabours').scrollTop(this.scrollTop);
+        syncing = false;
+    });
+}
+
+        initAttendanceScrollSync();
         $(document).ready(function() {
 
             // Create tooltip once
@@ -2607,21 +2653,8 @@
                     $tooltip.hide();
                 }
             }, '.labour-tooltip');
-        let syncing = false;
 
-        $('#attnLabours').on('scroll', function () {
-            if (syncing) return;
-            syncing = true;
-            $('#attnRows').scrollTop(this.scrollTop);
-            syncing = false;
-        });
 
-        $('#attnRows').on('scroll', function () {
-            if (syncing) return;
-            syncing = true;
-            $('#attnLabours').scrollTop(this.scrollTop);
-            syncing = false;
-        });
 
         });
     </script>
