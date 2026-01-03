@@ -85,6 +85,15 @@ class VoucherController extends Controller
         $x['type'] = 'CR';
         $x['class'] = 'cash-in';
         $x['bg_voucher'] = 'info-cash-in';
+        $x['theme'] = [
+            'mode' => 'cash-in',
+            'primary' => 'voucher-primary',
+            'secondary' => 'voucher-secondary',
+            'card' => 'voucher-card-primary',
+        ];
+        $x['pagination_color'] = $x['type'] === 'CR'
+            ? '#0E7C3A'
+            : '#B11226';
 
         $selectedProjectId = getSelectedTown();
         $x['data'] = [];
@@ -354,6 +363,15 @@ class VoucherController extends Controller
         $x['type'] = 'CP';
         $x['class'] = 'cash-out';
         $x['bg_voucher'] = 'info-cash-out';
+        $x['theme'] = [
+            'mode' => 'cash-out',
+            'primary' => 'voucher-danger-primary',
+            'secondary' => 'voucher-danger-secondary',
+            'card' => 'voucher-card-danger',
+        ];
+        $x['pagination_color'] = $x['type'] === 'CR'
+            ? '#0E7C3A'
+            : '#B11226';
 
         // Get selected town's project_id
         $selectedProjectId = getSelectedTown();
@@ -552,10 +570,10 @@ class VoucherController extends Controller
                 'head' => optional($i->projectHeadSubhead->headAccounting)->name ?? '',
                 'subhead' => trim(
                     (optional($i->projectHeadSubhead->subheadAccounting)->name ?? '') .
-                        (count($customers) > 0
-                            ? ' <p style="font-size:12px;">(old customers: ' . e(collect($customers)->pluck('subhead')->implode(', ')) . ')</p>'
-                            : ''
-                        )
+                    (count($customers) > 0
+                        ? ' <p style="font-size:12px;">(old customers: ' . e(collect($customers)->pluck('subhead')->implode(', ')) . ')</p>'
+                        : ''
+                    )
                 ),
                 'detail' => $i->detail,
                 'amount' => $amount,
@@ -844,9 +862,9 @@ class VoucherController extends Controller
             // Keep incrementing until a free number is found
             while (
                 Ledger::where('type', $type)
-                ->where('voucher_number', $nextNumber)
-                ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
-                ->exists()
+                    ->where('voucher_number', $nextNumber)
+                    ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
+                    ->exists()
             ) {
                 $nextNumber++;
             }
