@@ -9,7 +9,10 @@ return new class extends Migration {
     {
         Schema::create('labour_attendances', function (Blueprint $table) {
             $table->id();
-
+            $table->unsignedBigInteger('project_id');
+            $table->foreign('project_id')
+                ->references('id')->on('projects')
+                ->onDelete('cascade');
             // Links to labour & site/project
             $table->foreignId('labour_id')->constrained()->onDelete('cascade');
             $table->foreignId('site_id')->nullable()->constrained('sites')->onDelete('set null');

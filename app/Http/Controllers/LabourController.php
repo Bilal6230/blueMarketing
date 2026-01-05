@@ -21,6 +21,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+use function Symfony\Component\String\b;
+
 class LabourController extends Controller
 {
     public function index(Request $request)
@@ -131,11 +133,12 @@ class LabourController extends Controller
 
         try {
             $selected_project_id = getSelectedTown();
-            $head_sub_head = ProjectHeadSubhead::where([
-                'project_id' => $selected_project_id,
-                'head_accounting_id' => 37,
-                'subhead_accounting_id' => self::LABOUR_Sub_Acount_ID,
-            ])->first();
+            $head_sub_head = $this->systemHeadSubheadAccountId(
+                (int) $selected_project_id,
+                'Labour',
+                'Labour Party',
+                true // create if missing
+            );
             if (!$head_sub_head) {
                 $project = Project::find($selected_project_id);
                 return response()->json([
@@ -143,7 +146,7 @@ class LabourController extends Controller
                     'message' => 'Labour head/subhead account is not configured for the selected project : ' . $project->project . '. Please contact admin.',
                 ], 500);
             }
-            return DB::transaction(function () use ($request) {
+            return DB::transaction(function () use ($request, $head_sub_head) {
 
                 $labours = $request->labours;
                 [$year, $weekNo] = explode('-W', $request->week);
@@ -215,7 +218,7 @@ class LabourController extends Controller
                     'voucher_number' => $voucherNumber,
                     'type' => self::LedgerType,
                     'type_id' => getLastLedgerIdByType('CP') + 1,
-                    'project_head_subheads_id' => self::LABOUR_Head_Acount_ID,
+                    'project_head_subheads_id' => $head_sub_head,
                     'reference' => $request->reference,
                     'amount_in' => 0,
                     'amount_out' => $totalAmount,
@@ -256,76 +259,60 @@ class LabourController extends Controller
     }
     private function buildPersonWiseReport(Request $request): string
     {
-        // Parse week range (Friday → Thursday)
-        $selectedProjectId = getSelectedTown();
-        $start = Carbon::parse($request->week)->startOfWeek(Carbon::FRIDAY);
-        $end = $start->copy()->addDays(6);
+        $startOfWeek = Carbon::parse($request->start_date);
 
+        // End of week should be Thursday (6 days after Friday)
         $days = [];
-        for ($day = $start->copy(); $day <= $end; $day->addDay()) {
-            $days[] = $day->format('Y-m-d');
+        for ($i = 0; $i < 7; $i++) {
+            $days[] = $startOfWeek->copy()->addDays($i)->format('Y-m-d');
         }
 
-        $query = Labour::select(
-            'labours.id',
-            'labours.name',
-            'labours.father_name',
-            'labours.cnic',
-            'labours.advance',
-            'labours.phone as mobile',
-            'labours.role as designation',
-            'labours.daily_wage'
-        );
+        $x['personWiseReports'] = $personWiseReports = Labour::select('labours.id', 'labours.name', 'labours.father_name', 'labours.cnic', 'labours.advance', 'labours.phone as mobile', 'labours.role as designation');
 
-        /** ------------------------
-         *  Search Filter
-         * ------------------------ */
-        if ($request->filled('search')) {
+        if ($request->search) {
             $search = $request->search;
 
-            $query->where(function ($q) use ($search) {
+            $personWiseReports->where(function ($q) use ($search) {
+                // If search contains any digit, search in phone or cnic
                 if (preg_match('/\d/', $search)) {
                     $q->where('phone', 'like', "%{$search}%")
                         ->orWhere('cnic', 'like', "%{$search}%");
                 } else {
+                    // Otherwise search in name
                     $q->where('name', 'like', "%{$search}%");
                 }
             });
         }
 
-        /** ------------------------
-         *  Fetch Labour + Attendances
-         * ------------------------ */
-        $personWiseReports = $query
+        $x['personWiseReports'] = $personWiseReports = $personWiseReports
             ->with([
-                'attendances' => function ($q) use ($days, $selectedProjectId) {
-                    $q->where('project_id', $selectedProjectId)->whereIn('date', $days);
-                },
-                'labourLedgers'
+                'attendances' => function ($query) use ($request, $days) {
+                    $query->whereIn('date', $days)
+                        ->where('status', 'present')
+                        ->where('project_id', getSelectedTown());
+                }
             ])
-            ->whereHas('attendances', function ($q) use ($days, $selectedProjectId) {
-                $q->where('project_id', $selectedProjectId)->whereIn('date', $days);
+            ->whereHas('attendances', function ($query) use ($request, $days) {
+                $query->whereIn('date', $days)
+                    ->where('status', 'present')
+                    ->where('project_id', getSelectedTown());
             })
             ->get()
             ->map(function ($labour) {
 
                 $attendanceIds = $labour->attendances->pluck('id')->toArray();
                 $attendanceDates = $labour->attendances->pluck('date')->toArray();
-
                 $totalHours = $labour->attendances->sum('hours');
                 $totalOT = $labour->attendances->sum('ot_hours');
-
-                $count = max(1, $labour->attendances->count());
-                $ratings = round($labour->attendances->sum('ratings') / $count, 1);
+                $ratings = $labour->attendances->sum('ratings') / $labour->attendances->count();
 
                 $rate = optional($labour->attendances->first())->rate
                     ?? $labour->daily_wage
                     ?? 0;
 
-                $daysWorked = $totalHours / 8;
-
-                $amount = ($daysWorked * $rate) + ($totalOT * ($rate / 8));
-                $paid = $labour->labourLedgers->sum('amount');
+                $days = $totalHours / 8;
+                $amount = ($days * $rate) + ($totalOT * ($rate / 8));
+                $remaningAmount = $amount - $labour->labourLedgers->sum('amount');
 
                 return [
                     'id' => $labour->id,
@@ -335,25 +322,21 @@ class LabourController extends Controller
                     'mobile' => $labour->mobile,
                     'designation' => $labour->designation,
                     'rate' => number_format($rate, 2),
-                    'days' => number_format($daysWorked, 2),
+                    'days' => number_format($days, 2),
                     'overtime' => number_format($totalOT, 2),
                     'amount' => number_format($amount, 2),
-                    'remaningAmount' => number_format($amount - $paid, 2),
+                    'remaningAmount' => number_format($remaningAmount, 2),
                     'advance' => $labour->advance,
                     'amount_raw' => $amount,
                     'ratings' => number_format($ratings, 1),
-                    'attendance_ids' => json_encode($attendanceIds, JSON_UNESCAPED_UNICODE),
-                    'attendance_dates' => json_encode($attendanceDates, JSON_UNESCAPED_UNICODE),
-                    'paid_status' => optional($labour->attendances->first())->paid_status,
+                    'attendance_ids' => json_encode($attendanceIds, JSON_UNESCAPED_UNICODE), // ✅ real attendance IDs
+                    'attendance_dates' => json_encode($attendanceDates, JSON_UNESCAPED_UNICODE), // ✅ real attendance IDs
+                    'paid_status' => optional($labour->attendances->first())->paid_status
                 ];
             });
-
-        $data = [
-            'personWiseReports' => $personWiseReports,
-            'total_amount' => $personWiseReports->sum('amount_raw'),
-        ];
-
-        return view('admin.labours.person-wise-report', $data)->render();
+        $x['total_amount'] = $personWiseReports->sum('amount_raw');
+        // Render table partial
+        return view('admin.labours.person-wise-report', $x)->render();
     }
 
 
@@ -525,7 +508,7 @@ class LabourController extends Controller
                     $query->whereIn('date', $days)
                         ->where('project_id', $selectedProjectId)
                         ->where('site_id', $request->site_id)
-                        ->whereIn('status', ['present', 'leave']);
+                        ->where('status', 'present');
                     if ($request->id == 'voucherBtnSiteRun') {
                         $query->where('voucher_status', 'notcreated');
                     }
@@ -535,7 +518,7 @@ class LabourController extends Controller
                 $query->whereIn('date', $days)
                     ->where('project_id', getSelectedTown())
                     ->where('site_id', $request->site_id)
-                    ->whereIn('status', ['present', 'leave']);
+                    ->where('status', 'present');
                 if ($request->id == 'voucherBtnSiteRun') {
                     $query->where('voucher_status', 'notcreated');
                 }
@@ -635,12 +618,14 @@ class LabourController extends Controller
             ->with([
                 'attendances' => function ($query) use ($request, $days) {
                     $query->whereIn('date', $days)
-                    ->where('project_id', getSelectedTown());
+                        ->where('status', 'present')
+                        ->where('project_id', getSelectedTown());
                 }
             ])
             ->whereHas('attendances', function ($query) use ($request, $days) {
                 $query->whereIn('date', $days)
-                ->where('project_id', getSelectedTown());
+                    ->where('status', 'present')
+                    ->where('project_id', getSelectedTown());
             })
             ->get()
             ->map(function ($labour) {
@@ -686,6 +671,90 @@ class LabourController extends Controller
             'success' => true,
             'view' => $view
         ]);
+    }
+    public function personAttendanceReportPrint(Request $request)
+    {
+        $request->validate([
+            'week' => 'required|date',
+        ]);
+        $startOfWeek = Carbon::parse($request->start_date);
+
+        // End of week should be Thursday (6 days after Friday)
+        $days = [];
+        for ($i = 0; $i < 7; $i++) {
+            $days[] = $startOfWeek->copy()->addDays($i)->format('Y-m-d');
+        }
+
+        $x['personWiseReports'] = $personWiseReports = Labour::select('labours.id', 'labours.name', 'labours.father_name', 'labours.cnic', 'labours.advance', 'labours.phone as mobile', 'labours.role as designation');
+
+        if ($request->search) {
+            $search = $request->search;
+
+            $personWiseReports->where(function ($q) use ($search) {
+                // If search contains any digit, search in phone or cnic
+                if (preg_match('/\d/', $search)) {
+                    $q->where('phone', 'like', "%{$search}%")
+                        ->orWhere('cnic', 'like', "%{$search}%");
+                } else {
+                    // Otherwise search in name
+                    $q->where('name', 'like', "%{$search}%");
+                }
+            });
+        }
+
+        $x['personWiseReports'] = $personWiseReports = $personWiseReports
+            ->with([
+                'attendances' => function ($query) use ($request, $days) {
+                    $query->whereIn('date', $days)
+                        ->where('status', 'present')
+                        ->where('project_id', getSelectedTown());
+                }
+            ])
+            ->whereHas('attendances', function ($query) use ($request, $days) {
+                $query->whereIn('date', $days)
+                    ->where('status', 'present')
+                    ->where('project_id', getSelectedTown());
+            })
+            ->get()
+            ->map(function ($labour) {
+
+                $attendanceIds = $labour->attendances->pluck('id')->toArray();
+                $attendanceDates = $labour->attendances->pluck('date')->toArray();
+                $totalHours = $labour->attendances->sum('hours');
+                $totalOT = $labour->attendances->sum('ot_hours');
+                $ratings = $labour->attendances->sum('ratings') / $labour->attendances->count();
+
+                $rate = optional($labour->attendances->first())->rate
+                    ?? $labour->daily_wage
+                    ?? 0;
+
+                $days = $totalHours / 8;
+                $amount = ($days * $rate) + ($totalOT * ($rate / 8));
+                $remaningAmount = $amount - $labour->labourLedgers->sum('amount');
+
+                return [
+                    'id' => $labour->id,
+                    'name' => $labour->name,
+                    'father_name' => $labour->father_name,
+                    'cnic' => $labour->cnic,
+                    'mobile' => $labour->mobile,
+                    'designation' => $labour->designation,
+                    'rate' => number_format($rate, 2),
+                    'days' => number_format($days, 2),
+                    'overtime' => number_format($totalOT, 2),
+                    'amount' => number_format($amount, 2),
+                    'remaningAmount' => number_format($remaningAmount, 2),
+                    'advance' => $labour->advance,
+                    'amount_raw' => $amount,
+                    'ratings' => number_format($ratings, 1),
+                    'attendance_ids' => json_encode($attendanceIds, JSON_UNESCAPED_UNICODE), // ✅ real attendance IDs
+                    'attendance_dates' => json_encode($attendanceDates, JSON_UNESCAPED_UNICODE), // ✅ real attendance IDs
+                    'paid_status' => optional($labour->attendances->first())->paid_status
+                ];
+            });
+        $x['total_amount'] = $personWiseReports->sum('amount_raw');
+        // Render table partial
+        return view('admin.labours.person-wise-report', $x);
     }
 
 
@@ -745,21 +814,20 @@ class LabourController extends Controller
                     $q->where('name', 'like', "%{$search}%");
                 }
             });
-        }else{
+        } else {
             $query->whereHas('attendances', function ($query) use ($days, $request) {
-                    $query->whereIn('date', $days)
+                $query->whereIn('date', $days)
                     ->where('project_id', getSelectedTown());
             });
             if ($request->has('site_id') && $request->site_id) {
                 $query->whereHas('attendances', function ($query) use ($days, $request) {
                     if ($request->has('site_id') && $request->site_id) {
                         $query->where('site_id', $request->site_id)
-                        ->where('project_id', getSelectedTown());
+                            ->where('project_id', getSelectedTown());
                     }
                 });
             }
         }
- 
 
 
         $x['attendance_labours'] = $query->get();
@@ -908,5 +976,91 @@ class LabourController extends Controller
         );
 
         return (int) $phs->id;
+    }
+    public function updateRate(Request $request)
+    {
+        dd($request->all());
+        $request->validate([
+            'labour_id'   => 'required|exists:labours,id',
+            'daily_wage'  => 'required|numeric|min:0',
+            'apply_scope' => 'required|in:today,from_today,current_week,from_current_week',
+        ]);
+
+        DB::transaction(function () use ($request) {
+
+            $labourId = $request->labour_id;
+            $newRate  = $request->daily_wage;
+            $today    = Carbon::today();
+
+            /** -------------------------
+             * Date Ranges
+             * --------------------------*/
+            switch ($request->apply_scope) {
+
+                case 'today':
+                    $startDate = $today;
+                    $endDate   = $today;
+                    break;
+
+                case 'from_today':
+                    $startDate = $today;
+                    $endDate   = $today;
+                    break;
+
+                case 'current_week':
+                    $startDate = $today->copy()->startOfWeek();
+                    $endDate   = $today->copy()->endOfWeek();
+                    break;
+
+                case 'from_current_week':
+                    $startDate = $today->copy()->startOfWeek();
+                    $endDate   = $today->copy()->endOfWeek();
+                    break;
+            }
+
+            /** -------------------------
+             * Update Attendance Records
+             * --------------------------*/
+            $attendanceQuery = LabourAttendance::where('labour_id', $labourId)
+                ->where('status', 'present');
+
+            if ($endDate) {
+                $attendanceQuery->whereBetween('date', [$startDate, $endDate]);
+            } else {
+                $attendanceQuery->where('date', '>=', $startDate);
+            }
+
+            $attendanceQuery->chunkById(100, function ($records) use ($newRate) {
+
+                foreach ($records as $att) {
+
+                    $normalHours = min($att->hours, 8);
+                    $otHours     = $att->ot_hours;
+
+                    $hourlyRate  = $newRate / 8;
+
+                    $normalAmount = $normalHours * $hourlyRate;
+                    $otAmount     = $otHours * $hourlyRate; // OT multiplier if needed
+
+                    $att->update([
+                        'rate'   => $newRate,
+                        'amount' => round($normalAmount + $otAmount, 2),
+                    ]);
+                }
+            });
+
+            /** -------------------------
+             * Update Labour Master Rate
+             * --------------------------*/
+            if (in_array($request->apply_scope, ['from_today', 'from_current_week'])) {
+                Labour::where('id', $labourId)
+                    ->update(['daily_wage' => $newRate]);
+            }
+        });
+        return back()->with('success', 'Labour rate updated successfully');
+        return response()->json([
+            'status'  => true,
+            'message' => 'Labour rate updated successfully'
+        ]);
     }
 }
