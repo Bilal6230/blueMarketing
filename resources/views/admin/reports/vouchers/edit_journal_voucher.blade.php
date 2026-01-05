@@ -20,7 +20,7 @@
                                         <div class="input-group">
                                             <input type="text" value="1" name="action" hidden />
                                             <input type="text" class="form-control" name="voucher_number"
-                                                value="{{$type}}-{{get_jv_number($voucher->voucher_number)}}"
+                                                value="{{$type}}-{{$voucher->voucher_number}}"
                                                 autocomplete="off" readonly>
                                         </div>
                                     </div>
@@ -64,6 +64,14 @@
                             <!-- Dynamic Table for Journal Entries -->
                             <div class="table-responsive mb-4">
                                 <table class="table table-bordered" id="journalTable">
+                                    <colgroup>
+                                        <col style="width: 15%"> <!-- Account (DECREASED) -->
+                                        <col style="width: 15%"> <!-- Sub-Account (DECREASED) -->
+                                        <col style="width: 35%"> <!-- Description (INCREASED) -->
+                                        <col style="width: 10%"> <!-- Debit -->
+                                        <col style="width: 10%"> <!-- Credit -->
+                                        <col style="width: 15%"> <!-- Action -->
+                                    </colgroup>
                                     <thead class="bg-warning text-white">
                                         <tr>
                                             <th>Account</th>
@@ -205,29 +213,29 @@
             // Add a new row to the table
             $(document).on('click', '.add-row', function () {
                 const newRow = `
-                        <tr>
-                            <td>
-                                <select name="accounts[]" class="form-control select2 account-select" required>
-                                    <option value="">Select Account</option>
-                                    @foreach($accounts as $account)
-                                        <option value="{{ $account->head_accounting_id }}">{{ $account->headAccounting->name }}</option>
-                                    @endforeach
-                                </select>
-                            </td>
-                            <td>
-                                <select name="sub_accounts[]" class="form-control select2 sub-account-select" required>
-                                    <option value="">Select Sub-Account</option>
-                                </select>
-                            </td>
-                            <td><input type="text" name="line_description[]" class="form-control"></td>
-                            <td><input type="number" name="credit[]" class="form-control" step="0.01"></td>
-                            <td><input type="number" name="debit[]" class="form-control" step="0.01"></td>
-                            <td>
-                                <button type="button" class="btn btn-danger btn-sm remove-row">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </td>
-                        </tr>`;
+                            <tr>
+                                <td>
+                                    <select name="accounts[]" class="form-control select2 account-select" required>
+                                        <option value="">Select Account</option>
+                                        @foreach($accounts as $account)
+                                            <option value="{{ $account->head_accounting_id }}">{{ $account->headAccounting->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </td>
+                                <td>
+                                    <select name="sub_accounts[]" class="form-control select2 sub-account-select" required>
+                                        <option value="">Select Sub-Account</option>
+                                    </select>
+                                </td>
+                                <td><input type="text" name="line_description[]" class="form-control"></td>
+                                <td><input type="number" name="credit[]" class="form-control" step="0.01"></td>
+                                <td><input type="number" name="debit[]" class="form-control" step="0.01"></td>
+                                <td>
+                                    <button type="button" class="btn btn-danger btn-sm remove-row">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>`;
                 $('#journalTable tbody').append(newRow);
             });
 
@@ -277,7 +285,7 @@
             $('#confirmSubmit').on('click', function () {
                 $('#journalForm')[0].submit();
             });
-            
+
             // Fetch Sub-Accounts dynamically via AJAX when account is selected
             $(document).on('change', '.account-select', function () {
                 const accountID = $(this).val();
