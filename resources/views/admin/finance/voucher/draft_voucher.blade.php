@@ -72,11 +72,10 @@
                                                             </div>
                                                             <div class="col-md-3">
                                                                 <label class="form-label fw-semibold">Head Account</label>
-                                                                <select name="head" id="filter_head" class="form-control">
-                                                                    <option value="">All</option>
+                                                                <select name="head[]" id="filter_head" class="form-control tom-select" multiple>
                                                                     @foreach ($headaccounts as $h)
                                                                         <option value="{{ $h->head_accounting_id }}"
-                                                                            {{ request('head') == $h->head_accounting_id ? 'selected' : '' }}>
+                                                                            {{ in_array($h->head_accounting_id, request()->get('head', [])) ? 'selected' : '' }}>
                                                                             {{ $h->headAccounting->name }}
                                                                         </option>
                                                                     @endforeach
@@ -84,16 +83,33 @@
                                                             </div>
                                                             <div class="col-md-3">
                                                                 <label class="form-label fw-semibold">Sub Head Account</label>
-                                                                <select name="subhead" id="filter_subhead" class="form-control">
-                                                                    <option value="">All</option>
+                                                                <select name="subhead[]" id="filter_subhead" class="form-control tom-select" multiple>
                                                                     @foreach ($partyaccounts as $s)
                                                                         <option value="{{ $s->subhead_accounting_id }}"
-                                                                            {{ request('subhead') == $s->subhead_accounting_id ? 'selected' : '' }}>
+                                                                            {{ in_array($s->subhead_accounting_id, request()->get('subhead', [])) ? 'selected' : '' }}>
                                                                             {{ $s->subheadAccounting->name ?? 'N/A' }}
                                                                         </option>
                                                                     @endforeach
                                                                 </select>
                                                             </div>
+                                                            <div class="col-md-3">
+                                                                <label class="form-label fw-semibold">Min Amount</label>
+                                                                <input type="number" step="0.01" min="0"
+                                                                    name="amount_min" id="filter_amount_min"
+                                                                    class="form-control"
+                                                                    value="{{ request('amount_min') }}"
+                                                                    placeholder="e.g. 1000">
+                                                            </div>
+
+                                                            <div class="col-md-3">
+                                                                <label class="form-label fw-semibold">Max Amount</label>
+                                                                <input type="number" step="0.01" min="0"
+                                                                    name="amount_max" id="filter_amount_max"
+                                                                    class="form-control"
+                                                                    value="{{ request('amount_max') }}"
+                                                                    placeholder="e.g. 50000">
+                                                            </div>
+
                                                             <div class="col-md-3">
                                                                 <label class="form-label fw-semibold">Voucher Type</label>
                                                                 <select name="type" id="filter_type" class="form-control">
@@ -647,6 +663,15 @@
                         }
                     });
                 }
+            });
+            $(document).ready(function () {
+                $('#filter_head, #filter_subhead').select2({
+                    theme: 'bootstrap4',
+                    placeholder: 'Select options',
+                    allowClear: true,
+                    width: '100%',
+                    closeOnSelect: false
+                });
             });
 
 

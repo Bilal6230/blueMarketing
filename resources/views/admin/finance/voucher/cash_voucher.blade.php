@@ -1,12 +1,12 @@
 @extends('admin.layouts.master')
 @section('content')
-<style>
-.page-item.active .page-link {
-    background-color: {{ $pagination_color }} !important;
-    color: #ffffff !important;
-    border: 1px solid {{ $pagination_color }} !important;
-}
-</style>
+    <style>
+        .page-item.active .page-link {
+            background-color: {{ $pagination_color }} !important;
+            color: #ffffff !important;
+            border: 1px solid {{ $pagination_color }} !important;
+        }
+    </style>
 
     <div class="content-wrapper">
         <div class="content-header">
@@ -69,14 +69,14 @@
                             <div class="card-body">
                                 <div class="mb-3 d-flex align-items-center justify-content-between">
                                     <h5 class="text-lg font-semibold"> {{ $title }}</h5>
-                                    
-                                        {{-- Buttons --}}
-                                        <div class="d-flex justify-content-end mt-3" style="gap: 10px">
-                                            <button type="button " class="btn {{ $theme['secondary'] }}" data-toggle="modal"
-                                                data-target="#confirmedModal" onclick="saveAsDraft()">Save as Draft</button>
-                                            <button type="button" class="btn {{ $theme['primary'] }}" id="submit-button"
-                                                tab-number="1">Save</button>
-                                        </div>
+
+                                    {{-- Buttons --}}
+                                    <div class="d-flex justify-content-end mt-3" style="gap: 10px">
+                                        <button type="button " class="btn {{ $theme['secondary'] }}" data-toggle="modal"
+                                            data-target="#confirmedModal" onclick="saveAsDraft()">Save as Draft</button>
+                                        <button type="button" class="btn {{ $theme['primary'] }}" id="submit-button"
+                                            tab-number="1">Save</button>
+                                    </div>
                                 </div>
 
 
@@ -116,7 +116,8 @@
                                                     {{-- Reference No (hidden) --}}
                                                     <div class="col-12 d-none">
                                                         <label class="fbox mb-1">Reference No</label>
-                                                        <input type="text" class="form-control form-control-sm" name="voucher"
+                                                        <input type="text" class="form-control form-control-sm"
+                                                            name="voucher"
                                                             value="{{ $type }}-{{ get_new_voucher_number($type) }}"
                                                             autocomplete="off" readonly>
                                                         @error('reference')
@@ -151,7 +152,8 @@
                                                         <label class="fbox mb-1">Account Type</label>
                                                         <select
                                                             class="js-tomselect form-select form-select-sm @error('acct_type') is-invalid @enderror"
-                                                            placeholder=" " autocomplete="off" name="acct_type" id="acct_type">
+                                                            placeholder=" " autocomplete="off" name="acct_type"
+                                                            id="acct_type">
                                                             <option value=""></option>
                                                             <option value="0">Update Please</option>
                                                             <option value="1">Assets</option>
@@ -186,13 +188,14 @@
                                                     {{-- Child Account (wide) --}}
                                                     <div class="col-6 col-md-3 col-lg-3">
                                                         <label class="fbox mb-1">Child Account</label>
-                                                        <select class="js-tomselect form-select form-select-sm" placeholder=" "
-                                                            name="subaccounts_id" id="subaccounts_id">
+                                                        <select class="js-tomselect form-select form-select-sm"
+                                                            placeholder=" " name="subaccounts_id" id="subaccounts_id">
                                                             <option value=""></option>
                                                             @foreach ($partyaccounts as $v)
                                                                 @php
                                                                     $balance = $v->balance ?? 0;
-                                                                    $balanceClass = $balance < 0 ? 'text-danger' : 'text-success';
+                                                                    $balanceClass =
+                                                                        $balance < 0 ? 'text-danger' : 'text-success';
                                                                 @endphp
                                                                 <option value="{{ $v->subhead_accounting_id }}">
                                                                     {{ $v->subheadAccounting->name ?? '' }}
@@ -204,12 +207,12 @@
                                                             <div class="invalid-feedback d-block">{{ $message }}</div>
                                                         @enderror
                                                     </div>
-                                                  
+
                                                     <div class="col-6 col-md-3 col-lg-2">
 
                                                         <label class="fbox mb-1">Payment Type</label>
-                                                        <select class="js-tomselect form-select form-select-sm" placeholder=" "
-                                                            name="payment_type" id="payment_type">
+                                                        <select class="js-tomselect form-select form-select-sm"
+                                                            placeholder=" " name="payment_type" id="payment_type">
                                                             <option value="1">Cash</option>
                                                             <option value="2">Online</option>
                                                             <option value="3">Check</option>
@@ -232,11 +235,12 @@
 
                                                     <div class="col-6 col-md-3 col-lg-2 bank_group" style="display: none">
                                                         <label class="fbox mb-1">Bank</label>
-                                                        <select class="js-tomselect form-select form-select-sm" placeholder=" "
-                                                            name="bank_id" id="bank_id">
+                                                        <select class="js-tomselect form-select form-select-sm"
+                                                            placeholder=" " name="bank_id" id="bank_id">
                                                             <option value="">Bank</option>
                                                             @foreach (getPakistanBanks() as $v)
-                                                                <option value="{{ $v['id'] }}">{{ $v['name'] }}</option>
+                                                                <option value="{{ $v['id'] }}">{{ $v['name'] }}
+                                                                </option>
                                                             @endforeach
                                                         </select>
                                                     </div>
@@ -248,12 +252,10 @@
                                                             <div class="invalid-feedback d-block">{{ $message }}</div>
                                                         @enderror
                                                     </div>
-                                                      <div class="col-6 col-md-3 col-lg-10" style="margin-top: 10px">
+                                                    <div class="col-6 col-md-3 col-lg-10" style="margin-top: 10px">
                                                         <label for="detail" class="fbox mb-1">Details</label>
-                                                        <textarea id="detail"
-                                                            class="form-control @error('detail') input-error @enderror"
-                                                            placeholder="Enter your details here..." name="detail"
-                                                            maxlength="255" required>{{ old('detail') }}</textarea>
+                                                        <textarea id="detail" class="form-control @error('detail') input-error @enderror"
+                                                            placeholder="Enter your details here..." name="detail" maxlength="255" required>{{ old('detail') }}</textarea>
                                                         @error('detail')
                                                             <div class="error-message">{{ $message }}</div>
                                                         @enderror
@@ -287,94 +289,114 @@
                                             </div>
                                         </div>
                                     </form>
-
                                 @endcan
-                                   <!-- Cash Voucher List -->
-                    <button type="button" class="btn {{ $theme['primary'] }}" id="toggleFilters">Filters</button>
+                                <!-- Cash Voucher List -->
+                                <button type="button" class="btn {{ $theme['primary'] }}"
+                                    id="toggleFilters">Filters</button>
 
-                    <div id="filtersSection" class="col-12 mb-4" style="display:none;">
-                        <div class="custom_card h-100">
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <h5 class="text-lg font-semibold mb-3">Cash Voucher List</h5>
-                                    <div class="row g-3 align-items-end">
-                                        <!-- Head Account -->
-                                        <div class="col-md-3">
-                                            <label for="filter_head_account">Head Account</label>
-                                            <select id="filter_head_account" class="form-control">
-                                                <option value="">Select Head Account</option>
-                                                @foreach ($headaccounts as $account)
-                                                    <option value="{{ $account->headAccounting->name }}">
-                                                        {{ $account->headAccounting->name }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                        </div>
+                                <div id="filtersSection" class="col-12 mb-4" style="display:none;">
+                                    <div class="custom_card h-100">
+                                        <div class="card-body">
+                                            <div class="mb-3">
+                                                <h5 class="text-lg font-semibold mb-3">Cash Voucher List</h5>
+                                                <div class="row g-3 align-items-end">
+                                                    <!-- Head Account -->
+                                                    <div class="col-md-3">
+                                                        <label for="filter_head_account">Head Account</label>
+                                                        <select id="filter_head_account" name="filter_head_account[]"
+                                                            class="form-control select2" multiple>
+                                                            @foreach ($headaccounts as $account)
+                                                                <option value="{{ $account->head_accounting_id }}">
+                                                                    {{ $account->headAccounting->name }}
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
 
-                                        <!-- Subhead Account -->
-                                        <div class="col-md-3">
-                                            <label for="filter_subhead_account">Subhead Account</label>
-                                            <select id="filter_subhead_account" class="form-control">
-                                                <option value="">Select Subhead Account</option>
-                                                @foreach ($partyaccounts as $account)
-                                                    <option value="{{ $account->subheadAccounting->name }}">
-                                                        {{ $account->subheadAccounting->name }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                        </div>
 
-                                        <!-- Voucher Number -->
-                                        <div class="col-md-3">
-                                            <label for="filter_voucher_number">Voucher Number</label>
-                                            <input type="text" id="filter_voucher_number" class="form-control"
-                                                placeholder="Voucher Number">
-                                        </div>
+                                                    </div>
 
-                                        <!-- Amount -->
-                                        <div class="col-md-3">
-                                            <label for="filter_amount">Amount</label>
-                                            <input type="number" id="filter_amount" class="form-control"
-                                                placeholder="Amount">
-                                        </div>
+                                                    <!-- Subhead Account -->
+                                                    <div class="col-md-3">
+                                                        <label for="filter_subhead_account">Subhead Account</label>
+                                                        <select id="filter_subhead_account"
+                                                            name="filter_subhead_account[]" class="form-control select2"
+                                                            multiple>
+                                                            @foreach ($partyaccounts as $account)
+                                                                <option value="{{ $account->subhead_accounting_id }}">
+                                                                    {{ $account->subheadAccounting->name }}
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
 
-                                        <!-- Date -->
-                                        <!-- Date -->
-                                        {{-- <div class="col-md-3">
+
+                                                    </div>
+
+
+                                                    <!-- Voucher Number -->
+                                                    <div class="col-md-3">
+                                                        <label for="filter_voucher_number">Voucher Number</label>
+                                                        <input type="text" id="filter_voucher_number"
+                                                            class="form-control" placeholder="Voucher Number">
+                                                    </div>
+
+                                                    <!-- Amount -->
+                                                    <!-- Amount Min/Max -->
+                                                    <div class="col-md-3">
+                                                        <label for="filter_amount_min">Amount (Min)</label>
+                                                        <input type="number" step="0.01" min="0"
+                                                            id="filter_amount_min" class="form-control"
+                                                            placeholder="Min amount">
+                                                    </div>
+
+                                                    <div class="col-md-3">
+                                                        <label for="filter_amount_max">Amount (Max)</label>
+                                                        <input type="number" step="0.01" min="0"
+                                                            id="filter_amount_max" class="form-control"
+                                                            placeholder="Max amount">
+                                                    </div>
+
+                                                    <!-- legacy single amount (hidden) - keeps old code/back-end safe if anything still reads it -->
+                                                    <input type="hidden" id="filter_amount" value="">
+
+                                                    <!-- Date -->
+                                                    <!-- Date -->
+                                                    {{-- <div class="col-md-3">
                                             <label for="filter_date">Date</label>
                                             <input type="text" id="filter_date" class="form-control date"
                                                 placeholder="YYYY-MM-DD">
                                         </div> --}}
-                                        <!-- Date From -->
-                                        <div class="col-md-3">
-                                            <label for="filter_date_from">Date From</label>
-                                            <input type="text" id="filter_date_from" class="form-control date"
-                                                placeholder="YYYY-MM-DD">
-                                        </div>
+                                                    <!-- Date From -->
+                                                    <div class="col-md-3">
+                                                        <label for="filter_date_from">Date From</label>
+                                                        <input type="text" id="filter_date_from"
+                                                            class="form-control date" placeholder="YYYY-MM-DD">
+                                                    </div>
 
-                                        <!-- Date To -->
-                                        <div class="col-md-3">
-                                            <label for="filter_date_to">Date To</label>
-                                            <input type="text" id="filter_date_to" class="form-control date"
-                                                placeholder="YYYY-MM-DD">
-                                        </div>
+                                                    <!-- Date To -->
+                                                    <div class="col-md-3">
+                                                        <label for="filter_date_to">Date To</label>
+                                                        <input type="text" id="filter_date_to"
+                                                            class="form-control date" placeholder="YYYY-MM-DD">
+                                                    </div>
 
 
-                                        <div class="col-md-12 mt-3">
-                                            <button id="applyFilters" class="btn {{ $theme['primary'] }} btn-sm">Apply
-                                                Filters</button>
-                                            <button id="resetFilters" class="btn {{ $theme['secondary'] }} btn-sm">Reset</button>
+                                                    <div class="col-md-12 mt-3">
+                                                        <button id="applyFilters"
+                                                            class="btn {{ $theme['primary'] }} btn-sm">Apply
+                                                            Filters</button>
+                                                        <button id="resetFilters"
+                                                            class="btn {{ $theme['secondary'] }} btn-sm">Reset</button>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                            </div>
-                        </div>
-                    </div>
 
-                 
+
 
                     <!-- Table -->
                     @can('read voucher')
@@ -408,7 +430,8 @@
         </section>
     </div>
     <!-- View Changes Modal -->
-    <div class="modal fade" id="viewChangesModal" tabindex="-1" aria-labelledby="viewChangesModalLabel" aria-hidden="true">
+    <div class="modal fade" id="viewChangesModal" tabindex="-1" aria-labelledby="viewChangesModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header bg-info text-white">
@@ -471,8 +494,8 @@
                 });
             });
         });
-        $(document).ready(function () {
-            $(document).on('click', '.btn-view-changes', function () {
+        $(document).ready(function() {
+            $(document).on('click', '.btn-view-changes', function() {
                 const oldValues = $(this).data('old') || {};
                 const newValues = $(this).data('new') || {};
                 const submittedBy = $(this).data('submitted_by') || 'Unknown User';
@@ -496,7 +519,7 @@
                                     `);
                 } else {
                     // 📝 Show normal field changes
-                    $.each(newValues, function (key, newVal) {
+                    $.each(newValues, function(key, newVal) {
                         const oldVal = oldValues[key] ?? '<em class="text-muted">N/A</em>';
                         const safeNewVal = newVal ?? '<em class="text-muted">N/A</em>';
                         $tbody.append(`
@@ -532,12 +555,12 @@
         });
     </script>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
             const textarea = document.querySelector('.text-area');
             const charCount = document.getElementById('char-count');
 
             if (textarea && charCount) {
-                textarea.addEventListener('input', function () {
+                textarea.addEventListener('input', function() {
                     charCount.textContent = this.value.length;
                 });
                 charCount.textContent = textarea.value.length;
@@ -546,7 +569,7 @@
     </script>
 
     <script>
-        $(document).ready(function () {
+        $(document).ready(function() {
 
             function saveAsDraft() {
                 const form = document.getElementById('voucherForm');
@@ -557,10 +580,10 @@
         });
 
 
-        $(document).ready(function () {
+        $(document).ready(function() {
 
             // Approve voucher
-            $(document).on('click', '.btn-approve', function (e) {
+            $(document).on('click', '.btn-approve', function(e) {
                 e.preventDefault();
                 const id = $(this).data('id');
                 const table = $(this).data('table');
@@ -588,7 +611,7 @@
                                 _token: '{{ csrf_token() }}',
                                 table: table
                             },
-                            success: function () {
+                            success: function() {
                                 Swal.fire({
                                     icon: 'success',
                                     title: 'Approved!',
@@ -600,7 +623,7 @@
                                 window.location.reload();
 
                             },
-                            error: function (xhr) {
+                            error: function(xhr) {
                                 const error = xhr.responseJSON?.message ||
                                     'Something went wrong.';
                                 Swal.fire({
@@ -615,7 +638,7 @@
             });
 
             // Reject voucher
-            $(document).on('click', '.btn-reject', function (e) {
+            $(document).on('click', '.btn-reject', function(e) {
                 e.preventDefault();
                 const id = $(this).data('id');
                 const table = $(this).data('table');
@@ -643,7 +666,7 @@
                                 _token: '{{ csrf_token() }}',
                                 table: table
                             },
-                            success: function () {
+                            success: function() {
                                 Swal.fire({
                                     icon: 'success',
                                     title: 'Rejected!',
@@ -654,7 +677,7 @@
                                 // 🗑 Remove container completely
                                 window.location.reload();
                             },
-                            error: function (xhr) {
+                            error: function(xhr) {
                                 const error = xhr.responseJSON?.message ||
                                     'Something went wrong.';
                                 Swal.fire({
@@ -672,7 +695,7 @@
 
 
 
-            $('#acct_type').change(function () {
+            $('#acct_type').change(function() {
                 var acctType = $(this).val();
                 if (acctType) {
                     $.ajax({
@@ -684,7 +707,7 @@
                             action: 'get_head',
                             _token: '{{ csrf_token() }}'
                         },
-                        success: function (data) {
+                        success: function(data) {
                             const $accounts = $('#accounts_id');
                             const $subAccounts = $('#subaccounts_id');
 
@@ -706,7 +729,7 @@
                                 $accounts.append('<option value=""></option>');
 
                                 // Loop and append to both <select> and TomSelect
-                                $.each(data, function (_, value) {
+                                $.each(data, function(_, value) {
                                     const opt = new Option(value.head_accounting.name,
                                         value.head_accounting_id);
                                     $accounts.append(opt);
@@ -728,7 +751,7 @@
 
                                 // If you have subaccount data in response (optional)
                                 if (data.subaccounts) {
-                                    $.each(data.subaccounts, function (_, value) {
+                                    $.each(data.subaccounts, function(_, value) {
                                         const opt = new Option(value.name, value.id);
                                         $subAccounts.append(opt);
                                         tsSubAccounts.addOption({
@@ -741,7 +764,7 @@
                                 tsSubAccounts.refreshOptions(false);
                             }
                         },
-                        error: function () {
+                        error: function() {
                             console.log('Error fetching accounts');
                         }
                     });
@@ -755,7 +778,7 @@
 
 
             // Similar change event for 'accounts_id' dropdown to fetch subaccounts based on account selection
-            $('#accounts_id').change(function () {
+            $('#accounts_id').change(function() {
                 var accountID = $(this).val();
 
                 if (accountID) {
@@ -768,13 +791,13 @@
                             action: 'get_child',
                             _token: '{{ csrf_token() }}'
                         },
-                        success: function (data) {
+                        success: function(data) {
                             const $subAccounts = $('#subaccounts_id');
                             const subAccountsEl = $subAccounts[0];
                             const tsSubAccounts = subAccountsEl?.tomselect;
 
                             // Filter only matching items
-                            const filteredData = $.grep(data, function (item) {
+                            const filteredData = $.grep(data, function(item) {
                                 return item.head_accounting_id == accountID;
                             });
 
@@ -789,7 +812,7 @@
                                     '<option value="">Select an option</option>');
 
                                 // Append new options to both <select> and TomSelect
-                                $.each(filteredData, function (_, value) {
+                                $.each(filteredData, function(_, value) {
                                     const text =
                                         `${value.subhead_accounting.name} — Balance: ${value.balance}`;
                                     const opt = new Option(text, value
@@ -844,7 +867,7 @@
                 }
             });
 
-            $('#subaccounts_id').change(function () {
+            $('#subaccounts_id').change(function() {
                 var subaccountId = $(this).val();
 
                 if (subaccountId !== '') {
@@ -855,7 +878,7 @@
                             subaccounts_id: subaccountId,
                             _token: '{{ csrf_token() }}'
                         },
-                        success: function (response) {
+                        success: function(response) {
                             let headId = response.headId;
                             let acctSelect = $('#accounts_id')[0].tomselect;
                             if (!acctSelect.getValue()) {
@@ -872,14 +895,14 @@
                             $('#phone').text(response['phone']);
                             $('#balance').text(response['balance']);
                         },
-                        error: function (error) {
+                        error: function(error) {
                             console.log(error);
                         }
                     });
                 }
             });
 
-            $('#customer_id').change(function (e) {
+            $('#customer_id').change(function(e) {
                 e.preventDefault();
                 var customerId = $(this).val();
 
@@ -891,7 +914,7 @@
                 }
 
             });
-            $('#plot_id').change(function (e) {
+            $('#plot_id').change(function(e) {
                 e.preventDefault();
                 var plotId = $(this).val();
                 if (plotId) {
@@ -902,7 +925,7 @@
                             _token: '{{ csrf_token() }}', // Add CSRF token
                             plot_id: plotId // Pass project ID to server
                         },
-                        success: function (data) {
+                        success: function(data) {
                             let customerId = data.id;
                             // Update the UI based on the response
                             // let headId = response.headId;
@@ -922,7 +945,7 @@
                     });
                 }
             });
-            $('#e_customer_id').change(function (e) {
+            $('#e_customer_id').change(function(e) {
                 e.preventDefault();
                 var customerId = $(this).val();
 
@@ -934,7 +957,7 @@
                 }
 
             });
-            $('#e_plot_id').change(function (e) {
+            $('#e_plot_id').change(function(e) {
                 e.preventDefault();
                 var plotId = $(this).val();
                 if (plotId) {
@@ -945,7 +968,7 @@
                             _token: '{{ csrf_token() }}', // Add CSRF token
                             plot_id: plotId // Pass project ID to server
                         },
-                        success: function (data) {
+                        success: function(data) {
                             let customerId = data.id;
                             // Update the UI based on the response
                             // let headId = response.headId;
@@ -976,7 +999,7 @@
                         project_id: '{{ getSelectedTown() }}',
                         customer_id: customerId
                     },
-                    success: function (data) {
+                    success: function(data) {
                         let plotEl = $('#plot_id')[0]; // DOM element
                         let tsPlot = plotEl.tomselect; // TomSelect instance
                         if (tsPlot) {
@@ -987,7 +1010,7 @@
                             tsPlot.setValue('', true);
                             tsPlot.clearOptions(); // clear old options
 
-                            $.each(data, function (key, plot) {
+                            $.each(data, function(key, plot) {
                                 var plotType = (plot.type == 1) ? 'R- ' : 'C- ';
                                 tsPlot.addOption({
                                     value: plot.plot_id,
@@ -1017,7 +1040,7 @@
                         project_id: '{{ getSelectedTown() }}',
                         customer_id: customerId
                     },
-                    success: function (data) {
+                    success: function(data) {
                         let plotEl = $('#e_plot_id')[0]; // DOM element
                         let tsPlot = plotEl.tomselect; // TomSelect instance
                         if (tsPlot) {
@@ -1028,7 +1051,7 @@
                             tsPlot.setValue('', true);
                             tsPlot.clearOptions(); // clear old options
 
-                            $.each(data, function (key, plot) {
+                            $.each(data, function(key, plot) {
                                 var plotType = (plot.type == 1) ? 'R- ' : 'C- ';
                                 tsPlot.addOption({
                                     value: plot.plot_id,
@@ -1048,7 +1071,7 @@
                     }
                 });
             }
-            $('#payment_type').change(function (e) {
+            $('#payment_type').change(function(e) {
 
                 e.preventDefault();
 
@@ -1060,7 +1083,7 @@
                     $('.bank_group').css('display', 'none');
                 }
             });
-            $('#e_payment_type').change(function (e) {
+            $('#e_payment_type').change(function(e) {
 
                 e.preventDefault();
 
@@ -1073,7 +1096,7 @@
                 }
             });
 
-            $('#e_acct_type').change(function () {
+            $('#e_acct_type').change(function() {
                 var acctType = $(this).val();
                 if (acctType) {
                     $.ajax({
@@ -1085,7 +1108,7 @@
                             action: 'get_head',
                             _token: '{{ csrf_token() }}'
                         },
-                        success: function (data) {
+                        success: function(data) {
                             let accountsEl = $('#e_accounts_id')[0]; // DOM element
                             let tsAccounts = accountsEl.tomselect; // TomSelect instance
 
@@ -1100,7 +1123,7 @@
                                 tsAccounts.setValue('', true);
                                 tsAccounts.clearOptions(); // clear old options
 
-                                $.each(data, function (key, value) {
+                                $.each(data, function(key, value) {
                                     tsAccounts.addOption({
                                         value: value.head_accounting_id,
                                         text: value.head_accounting.name
@@ -1115,7 +1138,7 @@
                                 tsSubAccounts.clearOptions(); // also clear subaccounts
                             }
                         },
-                        error: function () {
+                        error: function() {
                             console.log('Error fetching accounts');
                         }
                     });
@@ -1127,7 +1150,7 @@
                 }
             });
 
-            $('#e_accounts_id').change(function () {
+            $('#e_accounts_id').change(function() {
                 var accountID = $(this).val();
 
                 if (accountID) {
@@ -1140,11 +1163,11 @@
                             action: 'get_child',
                             _token: '{{ csrf_token() }}'
                         },
-                        success: function (data) {
+                        success: function(data) {
                             let subAccountsSelect = $('#e_subaccounts_id')[0].tomselect;
 
                             // Filter only matching items
-                            let filteredData = $.grep(data, function (item) {
+                            let filteredData = $.grep(data, function(item) {
                                 return item.head_accounting_id == accountID;
                             });
 
@@ -1157,7 +1180,7 @@
                             subAccountsSelect.clearOptions();
 
                             // Append new options
-                            $.each(filteredData, function (key, value) {
+                            $.each(filteredData, function(key, value) {
                                 subAccountsSelect.addOption({
                                     value: value.subhead_accounting_id,
                                     text: value.subhead_accounting.name +
@@ -1183,7 +1206,7 @@
                 }
             });
 
-            $('#e_subaccounts_id').change(function () {
+            $('#e_subaccounts_id').change(function() {
                 var subaccountId = $(this).val();
 
                 if (subaccountId !== '') {
@@ -1194,7 +1217,7 @@
                             subaccounts_id: subaccountId,
                             _token: '{{ csrf_token() }}'
                         },
-                        success: function (response) {
+                        success: function(response) {
                             let headId = response.headId;
                             let acctSelect = $('#e_accounts_id')[0].tomselect;
                             if (!acctSelect.setValue()) {
@@ -1206,7 +1229,7 @@
                                 acctTypeSelect.setValue(acct_type, true);
                             }
                         },
-                        error: function (error) {
+                        error: function(error) {
                             console.log(error);
                         }
                     });
@@ -1214,7 +1237,7 @@
             });
 
 
-            $(document).on("click", '.btn-edit', function () {
+            $(document).on("click", '.btn-edit', function() {
                 let id = $(this).attr("data-id");
                 $('#id').val(id);
                 $('#modal-loading').modal({
@@ -1230,7 +1253,7 @@
                         id: id,
                         _token: "{{ csrf_token() }}"
                     },
-                    success: function (data) {
+                    success: function(data) {
                         var data = data.data;
                         $("#e_reference").val(data.reference);
 
@@ -1300,7 +1323,7 @@
                 });
             });
 
-            $(document).on("click", '.btn-delete', function () {
+            $(document).on("click", '.btn-delete', function() {
                 let id = $(this).attr("data-id");
                 let name = $(this).attr("data-name");
                 $("#did").val(id);
@@ -1311,13 +1334,13 @@
                 });
             });
 
-            $('#numberInput').on('input', function () {
+            $('#numberInput').on('input', function() {
                 convertToWords();
             });
-            $('#e_amount').on('input', function () {
+            $('#e_amount').on('input', function() {
                 eConvertToWords();
             });
-            $(document).on("click", "#submit-button", function (e) {
+            $(document).on("click", "#submit-button", function(e) {
                 e.preventDefault();
                 let isValid = true;
                 let messages = [];
@@ -1345,7 +1368,7 @@
                 checkField("[name='detail']", "Details are required.");
 
                 // Amount special check
-                checkField("[name='amount']", "Valid amount is required.", function (val) {
+                checkField("[name='amount']", "Valid amount is required.", function(val) {
                     val = val.replace(/,/g, ""); // remove commas
                     return !isNaN(val) && parseFloat(val) > 0;
                 });
@@ -1393,7 +1416,7 @@
 
         // Voucher Tab Management with LocalStorage + full Tom Select option persistence
         // Voucher Tabs with reliable saving on tab switch + new tab, including Tom Select options
-        (async function ($) {
+        (async function($) {
             // const LS_KEY = 'paysavo_voucher_tabs_v1';
             const FORM_ID = '#voucherForm';
             const TS_SEL = '.js-tomselect';
@@ -1407,11 +1430,11 @@
                     console.warn('TomSelect not found. Skipping initTomSelects().');
                     return;
                 }
-                $(TS_SEL).each(function () {
+                $(TS_SEL).each(function() {
                     if (this.tomselect) {
                         try {
                             this.tomselect.destroy();
-                        } catch (e) { }
+                        } catch (e) {}
                     }
                     const ts = new TomSelect(this, {
                         persist: false,
@@ -1426,7 +1449,7 @@
                     if (current != null && current !== '') {
                         try {
                             ts.setValue(String(current), true);
-                        } catch (e) { }
+                        } catch (e) {}
                     }
                 });
             }
@@ -1473,7 +1496,7 @@
             function throttle(fn, wait) {
                 let t, last = 0,
                     pending = null;
-                return function () {
+                return function() {
                     const now = Date.now();
                     const args = arguments,
                         ctx = this;
@@ -1505,14 +1528,14 @@
                 const selects = {};
 
                 // inputs + textarea
-                $form.find('input, textarea').each(function () {
+                $form.find('input, textarea').each(function() {
                     const name = $(this).attr('name');
                     if (!name) return;
                     formData[name] = $(this).val();
                 });
 
                 // selects
-                $form.find('select').each(function () {
+                $form.find('select').each(function() {
                     const $el = $(this);
                     const name = $el.attr('name');
                     if (!name) return;
@@ -1531,7 +1554,7 @@
                         }));
                         // If TomSelect has no cache (edge case), fallback to DOM
                         if (!options.length) {
-                            $el.find('option').each(function () {
+                            $el.find('option').each(function() {
                                 options.push({
                                     value: $(this).attr('value') ?? '',
                                     text: $(this).text(),
@@ -1541,7 +1564,7 @@
                         }
                     } else {
                         selected = $el.val() ?? '';
-                        $el.find('option').each(function () {
+                        $el.find('option').each(function() {
                             options.push({
                                 value: $(this).attr('value') ?? '',
                                 text: $(this).text(),
@@ -1590,7 +1613,7 @@
                         // Attempt to populate from DOM if TomSelect has no options
                         if (!Object.keys(ts.options || {}).length) {
                             const domOpts = [];
-                            $el.find('option').each(function () {
+                            $el.find('option').each(function() {
                                 domOpts.push({
                                     value: $(this).attr('value') ?? '',
                                     text: $(this).text()
@@ -1609,7 +1632,7 @@
                     if (selected !== '') {
                         try {
                             ts.setValue(String(selected), true);
-                        } catch (e) { }
+                        } catch (e) {}
                     } else {
                         ts.clear(true);
                     }
@@ -1628,7 +1651,7 @@
 
             function resetFormUI($form) {
                 $form[0].reset();
-                $form.find('select').each(function () {
+                $form.find('select').each(function() {
                     const $el = $(this);
                     if ($el[0].tomselect) {
                         $el[0].tomselect.clear(true);
@@ -1669,7 +1692,7 @@
                             if (value !== undefined && value !== null && value !== '') {
                                 try {
                                     ts.setValue(String(value), true);
-                                } catch (e) { }
+                                } catch (e) {}
 
                                 // 👇 special handling for payment_type field
                                 if (isPaymentType) {
@@ -1700,7 +1723,7 @@
                             altInput: true,
                             altFormat: "F j, Y",
                             defaultDate: val,
-                            onChange: function (selectedDates, dateStr) {
+                            onChange: function(selectedDates, dateStr) {
                                 const hidden = document.getElementById('hiddenDate');
                                 if (hidden) hidden.value = dateStr;
                             }
@@ -1797,7 +1820,7 @@
             })();
 
             // ---------- Add voucher tab ----------
-            $('#add-new-voucher-btn').off('click').on('click', function (e) {
+            $('#add-new-voucher-btn').off('click').on('click', function(e) {
                 e.preventDefault();
                 showFormCardLoader();
 
@@ -1816,7 +1839,7 @@
                     '{{ csrf_token() }}',
                     'POST',
                     data,
-                    function (data) {
+                    function(data) {
                         const nextVoucherNumber = data.latest_voucher_number;
                         hideFormCardLoader();
 
@@ -1854,7 +1877,7 @@
                             altInput: true,
                             altFormat: "F j, Y",
                             defaultDate: "{{ session('last_submit_date', now()) }}",
-                            onChange: function (selectedDates, dateStr) {
+                            onChange: function(selectedDates, dateStr) {
                                 const hidden = document.getElementById('hiddenDate');
                                 if (hidden) hidden.value = dateStr;
                             }
@@ -1865,7 +1888,7 @@
             });
 
             // ---------- Tab click ----------
-            $(document).on('click', '.voucher-tab', function () {
+            $(document).on('click', '.voucher-tab', function() {
                 const to = parseInt($(this).data('tab'), 10);
                 $('#submit-button').attr('tab-number', to);
                 if (to === currentTab) return;
@@ -1878,7 +1901,7 @@
             });
 
             // ---------- Remove tab ----------
-            $(document).on('click', '.voucher-tab-remove', function (e) {
+            $(document).on('click', '.voucher-tab-remove', function(e) {
                 e.stopPropagation();
                 const tabNo = parseInt($(this).data('tab'), 10);
                 removeTab(tabNo);
@@ -1914,18 +1937,18 @@
                         "{{ route('check_new_voucher_number') }}",
                         '{{ csrf_token() }}',
                         'POST', {
-                        type: 'CR',
-                        number: 1,
-                        _token: '{{ csrf_token() }}'
-                    },
-                        function (data) {
+                            type: 'CR',
+                            number: 1,
+                            _token: '{{ csrf_token() }}'
+                        },
+                        function(data) {
                             const nextVoucherNumber = data.latest_voucher_number;
                             const nextVoucher = `${$Type}-${nextVoucherNumber}`;
                             $("#voucher_number").val(nextVoucher).attr('value', nextVoucher).trigger('change');
                             hideFormCardLoader();
                         },
                         true,
-                        function () {
+                        function() {
                             hideFormCardLoader();
                         }
                     );
@@ -1933,7 +1956,7 @@
                     hideFormCardLoader();
                 }
             }
-            $(document).on('click', '#clear-vouchers', function (e) {
+            $(document).on('click', '#clear-vouchers', function(e) {
                 e.preventDefault();
 
                 Swal.fire({
@@ -1955,13 +1978,13 @@
                             $form.trigger('reset');
 
                             // If you use TomSelect or flatpickr, reset them too
-                            $form.find('select').each(function () {
+                            $form.find('select').each(function() {
                                 if (this.tomselect) this.tomselect.clear(true);
                             });
 
                             // Reset date fields (flatpickr)
                             if (typeof flatpickr !== 'undefined') {
-                                $form.find('.date').each(function () {
+                                $form.find('.date').each(function() {
                                     const picker = this._flatpickr;
                                     if (picker) picker.clear();
                                 });
@@ -1972,7 +1995,7 @@
                                 altInput: true,
                                 altFormat: "F j, Y",
                                 defaultDate: "{{ session('last_submit_date', now()) }}",
-                                onChange: function (selectedDates, dateStr) {
+                                onChange: function(selectedDates, dateStr) {
                                     const hidden = document.getElementById(
                                         'hiddenDate');
                                     if (hidden) hidden.value = dateStr;
@@ -2028,7 +2051,7 @@
             });
 
             // ---------- Autosave ----------
-            const autoSave = throttle(function () {
+            const autoSave = throttle(function() {
                 const $form = $(FORM_ID);
                 saveFormForTab(currentTab, $form);
                 persist();
@@ -2046,7 +2069,7 @@
 
 
             // Submit/save handler
-            $(document).on('click', '#submitForm', function (e) {
+            $(document).on('click', '#submitForm', function(e) {
                 e.preventDefault();
 
                 const tabNumber = parseInt($('#submit-button').attr('tab-number'), 10) || currentTab;
@@ -2065,10 +2088,10 @@
                     dataType: "JSON",
                     processData: false, // required for FormData
                     contentType: false, // required for FormData
-                    beforeSend: function () {
+                    beforeSend: function() {
                         $('#submitBtn').prop('disabled', true).text('Saving...');
                     },
-                    success: function (response) {
+                    success: function(response) {
                         console.log(response, tabNumber);
 
                         // Remove the saved tab and keep indices contiguous
@@ -2093,7 +2116,7 @@
                         //     if (this.tomselect) this.tomselect.clear(true);
                         // });
                     },
-                    error: function (xhr) {
+                    error: function(xhr) {
                         console.error('❌ Error:', xhr.responseText);
                         Swal.fire({
                             icon: 'error',
@@ -2101,31 +2124,52 @@
                             text: 'Something went wrong while saving the voucher.'
                         });
                     },
-                    complete: function () {
+                    complete: function() {
                         $('#confirmedModal').modal('hide');
                         $('#submitBtn').prop('disabled', false).text('Submit');
                     }
                 });
             });
+            $(document).ready(function() {
+                $('.select2').select2({
+                    placeholder: 'Select options',
+                    allowClear: true,
+                    width: '100'
+                });
+            });
 
 
-            $(document).ready(function () {
-                $('#toggleFilters').on('click', function () {
+            $(document).ready(function() {
+                $('#toggleFilters').on('click', function() {
                     $('#filtersSection').toggle();
                 });
+                const headAccounts = $('#filter_head_account').val() || [];
+                const subAccounts = $('#filter_subhead_account').val() || [];
 
-                $('#applyFilters').on('click', function () {
+                $('#applyFilters').on('click', function() {
                     isInitialLoad = false; // Enable filters
+                    const head = $('#filter_head_account').val() || [];
+                    const sub = $('#filter_subhead_account').val() || [];
+
+                    const headRegex = head.length ? head.join('|') : '';
+                    const subRegex = sub.length ? sub.join('|') : '';
+
+                    const table = $('#vouchersTable').DataTable();
+
+                    table.column(3).search(headRegex, true, false); // Head Account column
+                    table.column(4).search(subRegex, true, false); // Subhead column
+                    table.draw();
                     renderDataTable();
                 });
 
-                $('#resetFilters').on('click', function () {
-                    $('#filter_head_account').val('');
-                    $('#filter_subhead_account').val('');
-                    $('#filter_voucher_number').val('');
-                    $('#filter_amount').val('');
-                    $('#filter_date_from').val('');
-                    $('#filter_date_to').val('');
+                $('#resetFilters').on('click', function() {
+                    $('.select2').val(null).trigger('change');
+                    $('#filter_voucher_number, #filter_amount, #filter_amount_min, #filter_amount_max, #filter_date_from, #filter_date_to')
+                        .val('');
+
+
+                    const table = $('#vouchersTable').DataTable();
+                    table.search('').columns().search('').draw()
                     isInitialLoad = true; // Reset to show all data again
                     renderDataTable();
                 });
@@ -2157,47 +2201,58 @@
                     ajax: {
                         url: src,
                         type: 'GET',
-                        data: function (d) {
+                        data: function(d) {
                             if (!isInitialLoad) {
-                                // Only send filters after the first render
                                 d.date_from = $('#filter_date_from').val();
                                 d.date_to = $('#filter_date_to').val();
                                 d.head_account = $('#filter_head_account').val();
                                 d.subhead_account = $('#filter_subhead_account').val();
                                 d.voucher_number = $('#filter_voucher_number').val();
-                                d.amount = $('#filter_amount').val();
+
+                                const minAmt = $('#filter_amount_min').val();
+                                const maxAmt = $('#filter_amount_max').val();
+
+                                let legacyAmount = '';
+                                if (minAmt && maxAmt && String(minAmt) === String(maxAmt)) {
+                                    legacyAmount = minAmt;
+                                }
+                                $('#filter_amount').val(legacyAmount);
+
+                                d.amount_min = minAmt;
+                                d.amount_max = maxAmt;
+                                d.amount = legacyAmount;
                             }
                         },
                         dataSrc: 'data'
                     },
                     columns: [{
-                        data: 'id',
-                        render: (_, __, ___, meta) => meta.row + meta.settings._iDisplayStart + 1
-                    },
-                    {
-                        data: 'date'
-                    },
-                    {
-                        data: 'voucher_number'
-                    },
-                    {
-                        data: 'head'
-                    },
-                    {
-                        data: 'subhead'
-                    },
-                    {
-                        data: 'detail'
-                    },
-                    {
-                        data: 'amount',
-                        render: d => Number(d).toLocaleString()
-                    },
+                            data: 'id',
+                            render: (_, __, ___, meta) => meta.row + meta.settings._iDisplayStart + 1
+                        },
+                        {
+                            data: 'date'
+                        },
+                        {
+                            data: 'voucher_number'
+                        },
+                        {
+                            data: 'head'
+                        },
+                        {
+                            data: 'subhead'
+                        },
+                        {
+                            data: 'detail'
+                        },
+                        {
+                            data: 'amount',
+                            render: d => Number(d).toLocaleString()
+                        },
                         @canany(['update voucher', 'delete voucher', 'read voucher', 'print voucher'])
-                                                                                                    {
+                            {
                                 data: null,
                                 orderable: false,
-                                render: function (row) {
+                                render: function(row) {
 
                                     // Create dynamic print URL
                                     let printUrl = "{{ route('finance.voucher.print', ':id') }}";
@@ -2206,7 +2261,8 @@
                                     let buttons = `<div class="btn-group">`;
 
                                     @can('update voucher')
-                                        buttons += `
+                                        buttons +=
+                                            `
                                                                                                                             <button class="btn btn-sm btn-primary btn-edit" data-id="${row.id}">
                                                                                                                                 <i class="fas fa-pencil-alt"></i>
                                                                                                                             </button>
@@ -2214,7 +2270,8 @@
                                     @endcan
 
                                     @can('delete voucher')
-                                        buttons += `
+                                        buttons +=
+                                            `
                                                                                                                             <button class="btn btn-sm btn-danger btn-delete" data-id="${row.id}">
                                                                                                                                 <i class="fas fa-trash"></i>
                                                                                                                             </button>
@@ -2222,7 +2279,8 @@
                                     @endcan
 
                                     @can('print voucher')
-                                        buttons += `
+                                        buttons +=
+                                            `
                                                                                                                             <a href="${printUrl}" target="_blank" class="btn btn-sm btn-info btn-print">
                                                                                                                                 <i class="fas fa-print"></i>
                                                                                                                             </a>
@@ -2237,7 +2295,7 @@
                         @endcanany
 
 
-                                            ]
+                    ]
                 });
             }
 
@@ -2252,10 +2310,10 @@
                     url: route,
                     method: method,
                     data: data,
-                    success: function (response) {
+                    success: function(response) {
                         callback(response);
                     },
-                    error: function (xhr) {
+                    error: function(xhr) {
                         console.error('❌ AJAX Error:', xhr.responseText);
                         if (typeof onError === 'function') onError(xhr);
                     }
@@ -2303,8 +2361,8 @@
                                             <label class="fbox">Reference No.</label>
                                             <div class="input-group">
                                                 <input type="text" value="1" name="action" hidden />
-                                                <input id="e_voucher" type="text" class="form-control " name="voucher"
-                                                    autocomplete="off" readonly>
+                                                <input id="e_voucher" type="text" class="form-control "
+                                                    name="voucher" autocomplete="off" readonly>
 
                                             </div>
                                         </div>
@@ -2486,7 +2544,8 @@
                                     <div class="input-group">
                                         <input id="e_t_number" type="text"
                                             class="form-control @error('t_number') is-invalid @enderror"
-                                            placeholder="Transaction Number" name="t_number" value="{{ old('t_number') }}">
+                                            placeholder="Transaction Number" name="t_number"
+                                            value="{{ old('t_number') }}">
                                         @error('amount')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
@@ -2513,8 +2572,8 @@
                                 <div class="input-group e_bank_group" style="display: none">
                                     <label class="fbox">Passing Date</label>
                                     <div class="input-group">
-                                        <input type="text" name="passing_date" class="date form-control" id="e_passing_date"
-                                            data-input>
+                                        <input type="text" name="passing_date" class="date form-control"
+                                            id="e_passing_date" data-input>
                                         @error('passing_date')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
@@ -2530,9 +2589,8 @@
                                 <div class="input-group">
                                     <label class="fbox">Detail</label>
                                     <div class="input-group">
-                                        <textarea id="e_detail" class="form-control @error('detail') is-invalid @enderror"
-                                            placeholder="Detail" name="detail" style=" height: 150px;"
-                                            maxlength="255">{{ old('detail') }}</textarea>
+                                        <textarea id="e_detail" class="form-control @error('detail') is-invalid @enderror" placeholder="Detail"
+                                            name="detail" style=" height: 150px;" maxlength="255">{{ old('detail') }}</textarea>
                                         @error('detail')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
