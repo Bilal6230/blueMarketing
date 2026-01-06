@@ -19,7 +19,7 @@
                                         <div class="input-group">
                                             <input type="text" value="1" name="action" hidden />
                                             <input type="text" class="form-control " name="voucher_number"
-                                                value="{{ $type }}-{{ get_jv_number(getLastJvId() + 1) }}"
+                                                value="{{ $type }}-{{getLastJvId() + 1}}"
                                                 autocomplete="off" readonly>
                                         </div>
                                     </div>
@@ -61,17 +61,27 @@
 
                             <!-- Dynamic Table for Journal Entries -->
                             <div class="table-responsive mb-4">
-                                <table class="table table-bordered" id="journalTable">
-                                    <thead class="bg-primary text-white">
-                                        <tr>
-                                            <th style="background-color: black !important">Account</th>
-                                            <th style="background-color: black !important">Sub-Account</th>
-                                            <th style="background-color: black !important">Description</th>
-                                            <th style="background-color: black !important">Debit (Out)</th>
-                                            <th style="background-color: black !important">Credit (IN)</th>
-                                            <th style="background-color: black !important">Action</th>
-                                        </tr>
-                                    </thead>
+                           <table class="table table-bordered" id="journalTable" style="table-layout: fixed;">
+
+    <colgroup>
+        <col style="width: 15%">  <!-- Account (DECREASED) -->
+        <col style="width: 15%">  <!-- Sub-Account (DECREASED) -->
+        <col style="width: 35%">  <!-- Description (INCREASED) -->
+        <col style="width: 10%">  <!-- Debit -->
+        <col style="width: 10%">  <!-- Credit -->
+        <col style="width: 15%">  <!-- Action -->
+    </colgroup>
+
+    <thead class="bg-primary text-white">
+        <tr>
+            <th style="background-color:black">Account</th>
+            <th style="background-color:black">Sub-Account</th>
+            <th style="background-color:black">Description</th>
+            <th style="background-color:black">Debit (Out)</th>
+            <th style="background-color:black">Credit (IN)</th>
+            <th style="background-color:black">Action</th>
+        </tr>
+    </thead>
                                     <tbody>
                                         <tr>
                                             <td>

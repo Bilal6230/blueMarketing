@@ -66,7 +66,7 @@
                                 <p class="mt-2">Processing...</p>
                             </div>
 
-                            <div class="card-body">
+                            <div class="card-body  {{ $theme['card_body'] }}">
                                 <div class="mb-3 d-flex align-items-center justify-content-between">
                                     <h5 class="text-lg font-semibold"> {{ $title }}</h5>
 
