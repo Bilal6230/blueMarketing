@@ -38,9 +38,17 @@ class JournalVoucherController extends Controller
             $query->where('voucher_number', 'like', '%' . $request->filter_voucher_number . '%');
         }
 
-        if ($request->has('filter_amount') && $request->filter_amount) {
-            $query->where('total_debit', '>=', $request->filter_amount);
+        $minAmount = $request->input('filter_amount_min');
+        $maxAmount = $request->input('filter_amount_max');
+
+        if ($minAmount !== null && $minAmount !== '') {
+            $query->where('total_debit', '>=', (float) $minAmount);
         }
+
+        if ($maxAmount !== null && $maxAmount !== '') {
+            $query->where('total_debit', '<=', (float) $maxAmount);
+        }
+
 
         if ($request->has('filter_reference') && $request->filter_reference) {
             $query->where('reference', 'like', '%' . $request->filter_reference . '%');
