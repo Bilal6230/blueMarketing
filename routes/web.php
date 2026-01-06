@@ -253,6 +253,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
     Route::post('/labours/report', [LabourController::class, 'attendanceReport'])
     ->name('labours.report');
     Route::post('/attendance/labour-payment', [LabourController::class, 'labourPayment'])->name('labours.payment');
+    Route::post('/labours/update-rate', [LabourController::class, 'updateRate'])->name('labours.updateRate');
     Route::post('/labours/person/report', [LabourController::class, 'personAttendanceReport'])
     ->name('labours.person.report');
     Route::post('/labours/create/voucher', [LabourController::class, 'createVoucher'])
