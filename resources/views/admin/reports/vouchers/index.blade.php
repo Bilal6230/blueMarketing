@@ -50,54 +50,67 @@
 
                         <!-- Table -->
                         <table id="journalTable" class="table table-bordered">
-                            <thead class="bg-primary text-white">
-                                <tr>
-                                    <th style="background-color: black !important">ID</th>
-                                    <th style="background-color: black !important">Voucher Number</th>
-                                    <th style="background-color: black !important">Reference</th>
-                                    <th style="background-color: black !important">Date</th>
-                                    <th style="background-color: black !important">Description</th>
-                                    <th style="background-color: black !important">Amount</th>
-                                    @canany(['edit jv', 'delete jv'])
-                                        <th style="background-color: black !important">Actions</th>
-                                    @endcanany
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($vouchers as $voucher)
-                                    <tr>
-                                        <td>{{ $voucher->id }}</td>
-                                        <td>JV-{{ get_jv_number($voucher->voucher_number) }}</td>
-                                        <td>{{ $voucher->reference }}</td>
-                                        <td>{{ $voucher->date }}</td>
-                                        <td>{{ $voucher->description }}</td>
-                                        <td>{{ $voucher->total_debit }}</td>
-                                        @canany(['edit jv', 'delete jv', 'print jv'])
-                                            <td>
-                                                @can('edit jv')
-                                                    <a href="{{ route('journal.voucher.edit', $voucher->id) }}"
-                                                        class="btn btn-sm btn-warning">
-                                                        <i class="fas fa-edit"></i> Edit
-                                                    </a>
-                                                @endcan
-                                                @can('delete jv')
-                                                    <button class="btn btn-sm btn-danger delete-btn" data-id="{{ $voucher->id }}">
-                                                        <i class="fas fa-trash"></i> Delete
-                                                    </button>
-                                                @endcan
+                            <table id="journalTable" class="table table-bordered">
 
-                                                @can('print jv')
-                                                    <a href="{{ route('journal.voucher.print', $voucher->id) }}" target="_blank"
-                                                        class="btn btn-sm btn-info">
-                                                        <i class="fas fa-print"></i> Print
-                                                    </a>
-                                                @endcan
-                                            </td>
+                                <colgroup>
+                                    <col style="width: 5%"> <!-- ID -->
+                                    <col style="width: 8%"> <!-- Voucher -->
+                                    <col style="width: 7%"> <!-- Reference -->
+                                    <col style="width: 7%"> <!-- Date -->
+                                    <col style="width: 50%"> <!-- Description (INCREASED) -->
+                                    <col style="width: 8%"> <!-- Amount -->
+                                    <col style="width: 15%"> <!-- Actions (REDUCED) -->
+                                </colgroup>
+
+                                <thead class="bg-primary text-white">
+                                    <tr>
+                                        <th style="background-color:black">ID</th>
+                                        <th style="background-color:black">Voucher Number</th>
+                                        <th style="background-color:black">Reference</th>
+                                        <th style="background-color:black">Date</th>
+                                        <th style="background-color:black">Description</th>
+                                        <th style="background-color:black">Amount</th>
+                                        @canany(['edit jv', 'delete jv'])
+                                            <th style="background-color:black">Actions</th>
                                         @endcanany
                                     </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                                </thead>
+
+                                <tbody>
+                                    @foreach ($vouchers as $voucher)
+                                        <tr>
+                                            <td>{{ $voucher->id }}</td>
+                                            <td>JV-{{ get_jv_number($voucher->voucher_number) }}</td>
+                                            <td>{{ $voucher->reference }}</td>
+                                            <td>{{ $voucher->date }}</td>
+                                            <td>{{ $voucher->description }}</td>
+                                            <td>{{ $voucher->total_debit }}</td>
+                                            @canany(['edit jv', 'delete jv', 'print jv'])
+                                                <td>
+                                                    @can('edit jv')
+                                                        <a href="{{ route('journal.voucher.edit', $voucher->id) }}"
+                                                            class="btn btn-sm btn-warning">
+                                                            <i class="fas fa-edit"></i> Edit
+                                                        </a>
+                                                    @endcan
+                                                    @can('delete jv')
+                                                        <button class="btn btn-sm btn-danger delete-btn" data-id="{{ $voucher->id }}">
+                                                            <i class="fas fa-trash"></i> Delete
+                                                        </button>
+                                                    @endcan
+
+                                                    @can('print jv')
+                                                        <a href="{{ route('journal.voucher.print', $voucher->id) }}" target="_blank"
+                                                            class="btn btn-sm btn-info">
+                                                            <i class="fas fa-print"></i> Print
+                                                        </a>
+                                                    @endcan
+                                                </td>
+                                            @endcanany
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
                     </div>
                 </div>
             </div>
@@ -135,19 +148,19 @@
 @section('js')
     <script>
         let isDateChanged = false;
-        $(document).ready(function() {
+        $(document).ready(function () {
             // Toggle filter section visibility
-            $('#toggleFilters').on('click', function() {
+            $('#toggleFilters').on('click', function () {
                 $('#filtersSection').toggle();
             });
 
             // Apply Filters
-            $('#applyFilters').on('click', function() {
+            $('#applyFilters').on('click', function () {
                 renderDataTable();
             });
 
             // Reset Filters
-            $('#resetFilters').on('click', function() {
+            $('#resetFilters').on('click', function () {
                 $('#filter_voucher_number').val('');
                 $('#filter_date').val('');
                 $('#filter_amount').val('');
@@ -160,19 +173,19 @@
             $('#filter_date').val(today); // Default to today's date
 
             // When the user changes the date, mark it as changed
-            $('#filter_date').on('change', function() {
+            $('#filter_date').on('change', function () {
                 isDateChanged = true; // Date was changed by the user
                 renderDataTable(); // Re-render table with updated filters
             });
 
             // Apply Filters (Voucher number, Amount, and Reference)
-            $('#filter_voucher_number, #filter_amount, #filter_reference').on('change', function() {
+            $('#filter_voucher_number, #filter_amount, #filter_reference').on('change', function () {
                 renderDataTable();
             });
         });
 
         // Delete Button Click
-        $(document).on('click', '.delete-btn', function() {
+        $(document).on('click', '.delete-btn', function () {
             const id = $(this).data('id');
             const deleteUrl = `{{ route('journal.voucher.delete', ':id') }}`.replace(':id', id);
             $('#deleteForm').attr('action', deleteUrl);
@@ -195,7 +208,7 @@
                 ajax: {
                     url: '{{ route('journal.voucher.index') }}', // Route to get data
                     type: 'GET',
-                    data: function(d) {
+                    data: function (d) {
                         d.filter_voucher_number = filter_voucher_number;
                         d.filter_amount = filter_amount;
                         d.filter_reference = filter_reference;
@@ -206,26 +219,26 @@
                     dataSrc: 'data'
                 },
                 columns: [{
-                        data: 'id'
-                    },
-                    {
-                        data: 'voucher_number'
-                    },
-                    {
-                        data: 'reference'
-                    },
-                    {
-                        data: 'date'
-                    },
-                    {
-                        data: 'description'
-                    },
-                    {
-                        data: 'total_debit'
-                    },
-                    {
-                        data: 'actions'
-                    } // Action column for edit, delete, and print
+                    data: 'id'
+                },
+                {
+                    data: 'voucher_number'
+                },
+                {
+                    data: 'reference'
+                },
+                {
+                    data: 'date'
+                },
+                {
+                    data: 'description'
+                },
+                {
+                    data: 'total_debit'
+                },
+                {
+                    data: 'actions'
+                } // Action column for edit, delete, and print
                 ]
             });
         }

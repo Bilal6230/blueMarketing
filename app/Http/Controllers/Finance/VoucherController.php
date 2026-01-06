@@ -90,6 +90,7 @@ class VoucherController extends Controller
             'primary' => 'voucher-primary',
             'secondary' => 'voucher-secondary',
             'card' => 'voucher-card-primary',
+            'card_body'=>'card_body_color_in',
         ];
         $x['pagination_color'] = $x['type'] === 'CR'
             ? '#0E7C3A'
@@ -368,6 +369,7 @@ class VoucherController extends Controller
             'primary' => 'voucher-danger-primary',
             'secondary' => 'voucher-danger-secondary',
             'card' => 'voucher-card-danger',
+            'card_body'=>'card_body_color_out',
         ];
         $x['pagination_color'] = $x['type'] === 'CR'
             ? '#0E7C3A'

@@ -12,7 +12,7 @@ class StockController extends Controller
         $selectedProjectId = getSelectedTown();
         $x['title'] = 'Stock';
         $x['stocks'] = Stock::where('project_id', $selectedProjectId)->get();
-        return view('admin.stocks.index', $x);
+        return view('admin.stock.index', $x);
     }
 
     public function create()
