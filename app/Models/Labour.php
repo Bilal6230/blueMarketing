@@ -23,6 +23,10 @@ class Labour extends Model
     {
         return $this->hasMany(LabourAttendance::class)->where('project_id', getSelectedTown());
     }
+    public function tAttendances()
+    {
+        return $this->hasMany(LabourAttendance::class)->where('status', 'present')->where('project_id', getSelectedTown());
+    }
     public function labourLedgers()
     {
         return $this->hasMany(LabourLedger::class)->where('project_id', getSelectedTown());

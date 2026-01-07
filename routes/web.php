@@ -144,7 +144,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::post('crm/lead/show', 'show')->middleware(['permission:read lead'])->name('crm.lead.show');
         Route::put('crm/lead', 'update')->middleware(['permission:update lead'])->name('crm.lead.update');
         Route::delete('crm/lead', 'destroy')->middleware(['permission:delete lead'])->name('crm.lead.destroy');
-        Route::post('crm/request-edit', 'requestEditBtn')->middleware(['permission:delete lead'])->name('request.edit.btn');
+        Route::post('crm/request-edit', 'requestEditBtn')->middleware(['permission:lead search'])->name('request.edit.btn');
 
         Route::get('crm/lead/assign/', 'assign')->middleware(['permission:read lead'])->name('crm.lead.assign');
         Route::get('crm/lead/work/', 'details')->name('lead.work');
@@ -258,6 +258,12 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
     ->name('labours.person.report');
     Route::post('/labours/create/voucher', [LabourController::class, 'createVoucher'])
     ->name('labours.create.voucher');
+    Route::post('/labours/print/site/report', [LabourController::class, 'printSiteReport'])
+    ->name('labours.print.site.report');
+    Route::post('/labours/print/person/report', [LabourController::class, 'printPersonReport'])
+    ->name('labours.print.person.report');
+    Route::post('/labours/print/attendance/report', [LabourController::class, 'printAttendanceReport'])
+    ->name('labours.print.attendance.report');
     Route::resource('stocks', StockController::class);
 
 
