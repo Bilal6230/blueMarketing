@@ -23,14 +23,14 @@
         </button>
 
         <!-- Change Rate -->
-        {{-- <button type="button"
+        <button type="button"
                 class="icon-btn changeRateBtn"
                 title="Change Rate"
                 data-id="{{ $labour->id }}"
                 data-name="{{ $labour->name }}"
                 data-rate="{{ $labour->daily_wage }}">
             <i class="fa fa-money-bill-wave"></i>
-        </button> --}}
+        </button>
     </td>
 </tr>
 @endforeach

@@ -700,11 +700,11 @@
         <div class="topbar">
             <div class="title">Labour Management Module</div>
             <div class="tabs" role="tablist" aria-label="Pages">
-                <button class="tab" data-tab="addLabour" aria-selected="true">Add Labour</button>
+                <button class="tab" data-tab="attendance"  aria-selected="true">Attendance</button>
+                <button class="tab" data-tab="addLabour">Add Labour</button>
                 <button class="tab" data-tab="sites">Site List</button>
-                <button class="tab" data-tab="siteReport">Site Report</button>
-                <button class="tab" data-tab="personReport">Person Wise Report</button>
-                <button class="tab" data-tab="attendance">Attendance</button>
+                <button class="tab" data-tab="siteReport">Site Voucher</button>
+                <button class="tab" data-tab="personReport">Labour Payment</button>
             </div>
         </div>
         @php

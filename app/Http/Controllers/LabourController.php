@@ -642,8 +642,8 @@ class LabourController extends Controller
 
                 $days = $totalHours / 8;
                 $amount = ($days * $rate) + ($totalOT * ($rate / 8));
-                $remaningAmount = $amount - $labour->labourLedgers->sum('amount');
-
+                $totalAmount = $labour->tAttendances->sum('amount');
+                $remaningAmount = $totalAmount - $labour->labourLedgers->sum('amount');
                 return [
                     'id' => $labour->id,
                     'name' => $labour->name,
@@ -660,7 +660,7 @@ class LabourController extends Controller
                     'amount_raw' => $amount,
                     'ratings' => number_format($ratings, 1),
                     'attendance_ids' => json_encode($attendanceIds, JSON_UNESCAPED_UNICODE), // ✅ real attendance IDs
-                    'attendance_dates' => json_encode($attendanceDates, JSON_UNESCAPED_UNICODE), // ✅ real attendance IDs
+                    'attendance_dates' => json_encode($attendanceDates, JSON_UNESCAPED_UNICODE),
                     'paid_status' => optional($labour->attendances->first())->paid_status
                 ];
             });
@@ -669,6 +669,7 @@ class LabourController extends Controller
         $view = view('admin.labours.person-wise-report', $x)->render();
         return response()->json([
             'success' => true,
+            'x' => $x,
             'view' => $view
         ]);
     }
