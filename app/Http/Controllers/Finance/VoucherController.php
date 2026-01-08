@@ -66,10 +66,38 @@ class VoucherController extends Controller
         $x['users'] = User::get();
 
         // Fetch only pending updates (you can show approved/rejected with filters later)
-        $x['pendingUpdates'] = PendingUpdate::with(['submittedBy', 'approvedBy'])
+        $pendingUpdates = PendingUpdate::with(['submittedBy', 'approvedBy'])
             ->orderBy('created_at', 'desc')
             ->where('status', 'pending')
             ->get();
+
+        $leadCommentsByRecord = collect();
+        $leadIds = $pendingUpdates->where('table_name', 'leads')
+            ->pluck('record_id')
+            ->unique()
+            ->values();
+
+        if ($leadIds->isNotEmpty()) {
+            $leadCommentsByRecord = Lead::with(['comments' => function ($query) {
+                $query->select('id', 'lead_id', 'comment', 'created_at')
+                    ->orderBy('id', 'desc');
+            }])
+                ->whereIn('id', $leadIds)
+                ->get()
+                ->mapWithKeys(function ($lead) {
+                    $comments = $lead->comments->map(function ($comment) {
+                        return [
+                            'comment' => $comment->comment,
+                            'created_at' => optional($comment->created_at)->format('Y-m-d H:i'),
+                        ];
+                    })->values();
+
+                    return [$lead->id => $comments];
+                });
+        }
+
+        $x['pendingUpdates'] = $pendingUpdates;
+        $x['leadCommentsByRecord'] = $leadCommentsByRecord;
 
         return view('admin.pending-approve.pending_updates_index', $x);
     }

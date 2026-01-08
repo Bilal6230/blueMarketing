@@ -45,6 +45,7 @@
                                             <button class="btn btn-sm btn-outline-info btn-view-changes"
                                                 data-old='@json($update->old_values)'
                                                 data-new='@json($update->new_values)'
+                                                data-comments='@json($update->table_name === "leads" ? $leadCommentsByRecord->get($update->record_id, []) : [])'
                                                 data-submitted_by="{{ $update->submitted_by }}"
                                                 data-record_id="{{ $update->record_id }}"
                                                 data-table="{{ $update->table_name }}">
@@ -220,6 +221,7 @@
             $(document).on('click', '.btn-view-changes', function() {
                 let newValues = $(this).attr('data-new') || '{}';
                 let oldValues = $(this).attr('data-old') || '{}';
+                let comments = $(this).attr('data-comments') || '[]';
                 let tableName = $(this).data('table');
                 const record_id = $(this).data('record_id') || $(this).data('id');
                 const submittedBy = $(this).data('submitted_by') || 'Unknown User';
@@ -232,6 +234,7 @@
                 // Decode HTML entities safely
                 newValues = $('<textarea/>').html(newValues).text();
                 oldValues = $('<textarea/>').html(oldValues).text();
+                comments = $('<textarea/>').html(comments).text();
 
                 try {
                     newValues = JSON.parse(newValues);
@@ -243,6 +246,14 @@
                     console.error('Invalid JSON:', e);
                     newValues = {};
                     oldValues = {};
+                }
+
+                try {
+                    comments = JSON.parse(comments);
+                    if (typeof comments === 'string') comments = JSON.parse(comments);
+                } catch (e) {
+                    console.error('Invalid JSON:', e);
+                    comments = [];
                 }
 
                 // Reset modal
@@ -291,70 +302,38 @@
 
                 // 🆕 Handle LEADS case
                 if (tableName === 'leads') {
-                    $.ajax({
-                        url: "{{ route('finance.voucher.getcomment') }}",
-                        type: 'POST',
-                        data: {
-                            _token: '{{ csrf_token() }}',
-                            id: record_id
-                        },
-                        beforeSend: function() {
-                            $tbody.html(`
-                    <tr>
-                        <td colspan="3" class="text-center text-muted">
-                            <i class="fas fa-spinner fa-spin me-2"></i> Loading comments...
-                        </td>
-                    </tr>
-                `);
-                        },
-                        success: function(response) {
-                            let commentsHtml = '';
+                    let commentsHtml = '';
 
-                            if (response.data && Array.isArray(response.data) && response.data
-                                .length > 0) {
-                                response.data.forEach((item) => {
-                                    if (item.comment) {
-                                        commentsHtml += `
+                    if (Array.isArray(comments) && comments.length > 0) {
+                        comments.forEach((item) => {
+                            if (item.comment) {
+                                commentsHtml += `
                                 <div class="border p-2 mb-2 rounded bg-light">
                                     <i class="fas fa-comment-dots text-primary"></i>
                                     <span>${item.comment}</span>
                                     <div class="text-muted small mt-1">
-                                        ${item.created_at ? '⏰ ' + item.created_at : ''}
+                                        ${item.created_at ? 'at ' + item.created_at : ''}
                                     </div>
                                 </div>
                             `;
-                                    }
-                                });
+                            }
+                        });
 
-                                $commentSection.html(`
+                        $commentSection.html(`
                         <h6 class="mt-3 mb-2 text-secondary">
                             <i class="fas fa-comments me-1"></i> Related Comments
                         </h6>
                         ${commentsHtml}
                     `).show();
-                            } else {
-                                $commentSection.html(`
+                    } else {
+                        $commentSection.html(`
                         <div class="alert alert-secondary mt-3">
                             <i class="fas fa-info-circle"></i> No comments found for this lead.
                         </div>
                     `).show();
-                            }
+                    }
 
-                            // ✅ Show modal WITHOUT table
-                            openModal(false);
-                        },
-                        error: function(err) {
-                            console.error('Failed to fetch comments:', err);
-                            $commentSection.html(`
-                    <div class="alert alert-danger mt-3">
-                        <i class="fas fa-exclamation-triangle"></i> Failed to load comments.
-                    </div>
-                `).show();
-
-                            // ✅ Show modal WITHOUT table
-                            openModal(false);
-                        }
-                    });
+                    openModal(false);
                 } else {
                     // ✅ For all other tables — show modal WITH table
                     openModal(true);
@@ -364,3 +343,4 @@
         });
     </script>
 @endsection
+
