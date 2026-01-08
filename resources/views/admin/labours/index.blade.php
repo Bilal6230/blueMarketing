@@ -326,8 +326,8 @@
         }
 
         /* .rows {
-            display: grid
-        } */
+                        display: grid
+                    } */
 
         .row-days {
             display: grid;
@@ -647,10 +647,10 @@
         }
 
         /* #attnLabours,
-                #attnRows {
-                    max-height: 45vh;
-                    overflow-y: auto;
-                } */
+                            #attnRows {
+                                max-height: 45vh;
+                                overflow-y: auto;
+                            } */
         .scroll-container {
             height: 50vh;
             /* or fixed px */
@@ -688,19 +688,19 @@
         .icon-btn:hover {
             color: #2563eb;
         }
+
         .radio-group label {
             display: block;
             margin-bottom: 6px;
             cursor: pointer;
         }
-
     </style>
 
     <div class="wrap">
         <div class="topbar">
             <div class="title">Labour Management Module</div>
             <div class="tabs" role="tablist" aria-label="Pages">
-                <button class="tab" data-tab="attendance"  aria-selected="true">Attendance</button>
+                <button class="tab" data-tab="attendance" aria-selected="true">Attendance</button>
                 <button class="tab" data-tab="addLabour">Add Labour</button>
                 <button class="tab" data-tab="sites">Site List</button>
                 <button class="tab" data-tab="siteReport">Site Voucher</button>
@@ -867,39 +867,36 @@
             <div class="card">
                 <div class="hd"><b>Site Report</b><span class="caps">filter & total cost</span></div>
                 <div class="bd">
-                    <div class="row">
+                    <form class="row" action="{{ route('labours.print.site.report') }}" method="POST"
+                        target="_blank">
+                        @csrf
                         <div class="col-3">
-                            <select id="repSite" class=" js-tomselect">
+                            <select id="repSite" class=" js-tomselect" name="site_id">
                                 <option value="">All Sites</option>
                                 @foreach ($sites as $site)
                                     <option value="{{ $site->id }}">{{ $site->site_name }}</option>
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-6 align-items-center mb-2">
-                            <div class="row">
-                                <div class="col-8">
-                                    <input type="week" id="repFrom" class="form-control" />
-                                    <input type="hidden" name="repStartDate" id="repStartDate" value="">
-                                    <input type="hidden" name="repEndDate" id="repEndDate" value="">
-                                    <label id="weekLabel" class="fw-bold text-primary" style="font-size: 14px"></label>
-                                </div>
-                                <div class="col-4 text-end">
-                                    <button type="button" id="prevWeek" class="btn btn-sm btn-outline-secondary">←
-                                        Prev</button>
-                                    <button type="button" id="nextWeek" class="btn btn-sm btn-outline-secondary">Next
-                                        →</button>
-                                </div>
-                            </div>
+                        <div class="col-5">
+                            <input type="week" name="week" id="repFrom" class="form-control" />
+                            <input type="hidden" name="start_date" id="repStartDate" value="">
+                            <input type="hidden" name="end_date" id="repEndDate" value="">
+                            <label id="weekLabel" class="fw-bold text-primary" style="font-size: 14px"></label>
                         </div>
-
-                        {{-- <input type="week" id="repFrom" class="col-6 form-control"
-                            value="{{ now()->format('o-\WW') }}" /> --}}
-                    </div>
+                        <div class="col-4 text-end">
+                            <button type="button" id="prevWeek" class="btn btn-sm btn-outline-secondary">←
+                                Prev</button>
+                            <button type="button" id="nextWeek" class="btn btn-sm btn-outline-secondary">Next
+                                →</button>
+                            <button type="submit" class="btn btn-sm btn-outline-primary">
+                                Print Report
+                            </button>
+                        </div>
+                    </form>
                     <div class="site-report-actions">
                         <div class="site-report-btns">
                             <button class="btn" id="reportBtnSiteRun">Report</button>
-                            <button class="btn" id="btnSiteExport">Export CSV</button>
                         </div>
                         <div class="site-report-voucher-btns">
                             <button class="btn" id="voucherBtnSiteRun">Run</button>
@@ -944,19 +941,22 @@
             <div class="card">
                 <div class="hd"><b>Person Wise Report</b><span class="caps">details & totals</span></div>
                 <div class="bd">
-                    <div class="row">
+                    <form class="row" action="{{ route('labours.print.person.report') }}" method="POST"
+                        target="_blank" id="personWiseForm">
+                        @csrf
                         <div class="col-4">
-                            <input id="personQuery" class="" placeholder="Search by name or mobile"
+                            <input id="personQuery" name="search" class="" placeholder="Search by name or mobile"
                                 style="min-width:260px" />
                             <label class="fw-bold text-primary" style="font-size: 14px"></label>
                         </div>
                         <div class="col-4">
-                            <input type="week" id="pFrom" class="form-control"
+                            <input type="week" name="week" id="pFrom" class="form-control"
                                 value="{{ now()->format('o-\WW') }}" />
-                            <input type="hidden" name="pStartDate" id="pStartDate" value="">
-                            <input type="hidden" name="pEndDate" id="pEndDate" value="">
+                            <input type="hidden" name="start_date" id="pStartDate" value="">
+                            <input type="hidden" name="end_date" id="pEndDate" value="">
                             <label class="fw-bold text-primary pForm-weekLabel" style="font-size: 14px"></label>
                         </div>
+                        <div id="laboursData"></div>
                         <div class="col-4 text-end">
                             <button type="button" id="prevWeek_pFrom" class="btn btn-sm btn-outline-secondary">←
                                 Prev</button>
@@ -964,10 +964,12 @@
                                 →</button>
                         </div>
 
-                    </div>
+                    </form>
                     <div class="site-report-actions">
                         <button class="btn" id="btnPersonRun">Run</button>
-                        <button class="btn" id="btnPersonExport">Export CSV</button>
+                        <button class="btn btn-sm btn-outline-primary" id="btnPersonExport">
+                            Print Report
+                        </button>
                     </div>
                     <div id="personHeader" class="row" style="margin-bottom:10px"></div>
                     {{-- <div style="margin-top:14px" class="help">On first load, all labours are listed below. Use search to
@@ -989,8 +991,11 @@
                                     <th>Payments</th>
                                 </tr>
                             </thead>
-                            <tbody id="personAllBody"> @include('admin.labours.person-wise-report') {{-- personAll will be
-                                populated from labour table on boot --}} </tbody>
+                            <tbody id="personAllBody">
+                                {{-- @include('admin.labours.person-wise-report') --}}
+                                {{-- personAll will be
+                                populated from labour table on boot --}}
+                            </tbody>
                         </table>
                     </div>
                 </div>
@@ -1002,46 +1007,54 @@
             <div class="card">
                 <div class="hd"><b>Attendance</b><span class="caps">mark daily hours & overtime</span></div>
                 <div class="bd">
-                    <div class="row">
+                    <form class="row" action="{{ route('labours.print.attendance.report') }}" method="POST"
+                        target="_blank">
+                        @csrf
                         <div class="col-3">
-                            <select id="attnSiteFilter" class=" js-tomselect">
+                            <select id="attnSiteFilter" name="site_id" class="js-tomselect">
                                 <option value="">All Sites</option>
                                 @foreach ($sites as $site)
                                     <option value="{{ $site->id }}">{{ $site->site_name }}</option>
                                 @endforeach
                             </select>
                         </div>
+
                         <div class="col-9 align-items-center">
                             <div class="row">
                                 <div class="col-4">
-                                    <input id="attnSearch" class="form-control" placeholder="Search by name or mobile" />
+                                    <input id="attnSearch" name="search" class="form-control"
+                                        placeholder="Search by name or mobile">
                                 </div>
-                                <div class="col-4">
 
-                                    {{-- //labur --}}
-                                    <input type="week" id="attnWeek" class="form-control"
-                                        value="{{ now()->format('o-\WW') }}" />
-                                    <input type="hidden" name="attStartDate" id="attStartDate" value="">
-                                    <input type="hidden" name="attEndDate" id="attEndDate" value="">
+                                <div class="col-4">
+                                    <input type="week" id="attnWeek" name="week" class="form-control"
+                                        value="{{ now()->format('o-\WW') }}">
+
+                                    <input type="hidden" name="start_date" id="attStartDate">
+                                    <input type="hidden" name="end_date" id="attEndDate">
+
                                     <label id="lab-weekLabel" class="fw-bold text-primary"
-                                        style="font-size: 14px"></label>
+                                        style="font-size:14px"></label>
                                 </div>
+
                                 <div class="col-4 text-end">
                                     <button type="button" id="btnAttnPrev" class="btn btn-sm btn-outline-secondary">←
                                         Prev</button>
+
                                     <button type="button" id="btnAttnNext" class="btn btn-sm btn-outline-secondary">Next
                                         →</button>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary"
-                                        id="btnExportAttn">Export
-                                        CSV</button>
 
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">
+                                        Print Report
+                                    </button>
                                 </div>
                             </div>
                         </div>
+                    </form>
 
-                        {{-- <input type="week" id="repFrom" class="col-6 form-control"
+
+                    {{-- <input type="week" id="repFrom" class="col-6 form-control"
                             value="{{ now()->format('o-\WW') }}" /> --}}
-                    </div>
                     <div class="max-height" id="attnBoardWrapper">
                         @include('admin.labours.attn-board')
                     </div>
@@ -1231,32 +1244,15 @@
                     </div>
                 </div>
 
-                <!-- RATE APPLICABLE OPTIONS -->
+                <!-- RATE APPLICABLE DATE -->
                 <div class="row">
                     <div class="col">
-                        <label>Apply Rate Change</label>
-
-                        <div class="radio-group">
-                            <label>
-                                <input type="radio" name="apply_scope" value="today" checked>
-                                Only Today
-                            </label>
-
-                            <label>
-                                <input type="radio" name="apply_scope" value="from_today">
-                                From Today Onward
-                            </label>
-
-                            <label>
-                                <input type="radio" name="apply_scope" value="current_week">
-                                Only Current Week
-                            </label>
-
-                            <label>
-                                <input type="radio" name="apply_scope" value="from_current_week">
-                                From Current Week Onward
-                            </label>
-                        </div>
+                        <label>Apply Rate From Date</label>
+                        <input type="text" id="applyFromDate" name="apply_from_date" placeholder="Select date"
+                            required autocomplete="off" />
+                        <small style="opacity:.7">
+                            You can select today or any previous date. Future dates are disabled.
+                        </small>
                     </div>
                 </div>
 
@@ -1330,8 +1326,18 @@
 
 @section('js')
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+
     <script>
         $(document).ready(function() {
+            $("#applyFromDate").datepicker({
+                dateFormat: "yy-mm-dd", // Laravel friendly
+                maxDate: 0,             // 🚫 Disable future dates
+                changeMonth: true,
+                changeYear: true,
+                yearRange: "2000:+0"    // adjust if needed
+            });
             let repSiteSelect = new TomSelect('#repSite', {
                 create: false,
                 allowEmptyOption: true,
@@ -2356,18 +2362,18 @@
                     success: function(res) {
 
                         // ✅ No records case (Total = 0)
-                        if (res.success && res.view && res.view.includes('<td>0</td>')) {
-                            $('#personAllBody').html('');
+                        // if (res.success && res.view && res.view.includes('<td>0</td>')) {
+                        //     $('#personAllBody').html('');
 
-                            Swal.fire({
-                                icon: 'info',
-                                title: 'No Records Found',
-                                text: 'No labour record found for the selected week.',
-                                confirmButtonText: 'OK'
-                            });
+                        //     Swal.fire({
+                        //         icon: 'info',
+                        //         title: 'No Records Found',
+                        //         text: 'No labour record found for the selected week.',
+                        //         confirmButtonText: 'OK'
+                        //     });
 
-                            return;
-                        }
+                        //     return;
+                        // }
 
                         // ✅ Normal success
                         if (res.success) {
@@ -2679,6 +2685,45 @@
                         });
                     }
                 });
+            });
+            $(document).on('click', '#btnPersonExport', function() {
+
+                // Array to store all labour data
+                let allLabours = [];
+                // Loop through each table row
+                $('#laboursData').html('');
+                $('.labour-row').each(function() {
+
+                    let row = $(this);
+                    let labourId = row.data('id');
+
+                    let labourAmount = row.find('.labour_amount').val();
+                    labourAmount = labourAmount ? parseFloat(labourAmount) : 0;
+
+                    // Skip empty or zero amounts
+                    if (labourAmount <= 0) return;
+                    $('#laboursData').append(`<input type="hidden" name="labour_` + labourId +
+                        `" value='` + labourAmount + `'>`);
+                    allLabours.push({
+                        id: labourId,
+                        amount: labourAmount
+                    });
+                });
+
+                // =============================
+                // VALIDATION BEFORE CONFIRMATION
+                // =============================
+                if (allLabours.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'No Amount Entered',
+                        text: 'Please enter amount for at least one labour.',
+                        timer: 2000
+                    });
+                    return;
+                }
+                $('#personWiseForm').submit();
+
             });
         });
 

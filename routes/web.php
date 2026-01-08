@@ -244,6 +244,8 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
     ->name('labours.sitestore');
     Route::get('/labours/attendance/week', [LabourController::class, 'loadAttendanceWeek'])
     ->name('attendance.week.load');
+    Route::get('/labour/{id}', [LabourController::class, 'labourHistory'])
+    ->name('labour.history');
     Route::post('/labours/check/validate', [LabourController::class, 'checkValidate'])
     ->name('labours.check.validate');
     Route::patch('/labours/{labour}/status', [LabourController::class, 'updateStatus'])

@@ -6,7 +6,7 @@
     data-rate="{{ $labour->daily_wage }}"
     data-advance="0">
 
-    <td>{{ $labour->name ?? '' }}</td>
+    <td><a href="{{ Route('labour.history', $labour->id) }}" target="_blank">{{ $labour->name ?? '' }}</a></td>
     <td>{{ $labour->phone ?? '' }}</td>
     <td>{{ $labour->role ?? '' }}</td>
     <td class="right">PKR {{ $labour->daily_wage ?? '' }}</td>
