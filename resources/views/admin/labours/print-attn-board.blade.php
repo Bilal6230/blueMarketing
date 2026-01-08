@@ -1,80 +1,186 @@
-<div class="attn table" id="attnBoard">
+<!DOCTYPE html>
+<html lang="en">
 
-    {{-- LEFT SIDE: LABOURS --}}
-    <div class="left">
-        <div class="days-head">
-            <div class="d">
-                <div class="day-top">Labours</div>
-                <div>-</div>
-                {{-- ✅ TOTAL LABOURS --}}
-                <div class="day-total">
-                    Total Labours:{{ $attendance_labours->count() }}
-                </div>
-            </div>
-        </div>
+<head>
+    <meta charset="UTF-8">
+    <title>Labour Attendance Report</title>
 
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
-        <div id="attnLabours" class="scroll-container">
-            @foreach ($attendance_labours as $labour)
-                <div class="lab labour-tooltip" data-id="{{ $labour->id }}"
-                    data-tooltip="
-                        Name: {{ $labour->name }}
-                        Father Name: {{ $labour->father_name }}
-                        CNIC: {{ $labour->cnic }}
-                        Phone: {{ $labour->phone }}
-                        Role: {{ $labour->role }}
-                        Daily Wage: Rs {{ $labour->daily_wage }}
-                    ">
-                    <span class="nm">{{ $labour->name }} ({{ substr($labour->cnic, -4) }})</span>
-                    <span class="muted small">
-                        {{ $labour->phone }} · {{ $labour->role }} · Rs {{ $labour->daily_wage }}
-                    </span>
-                </div>
-            @endforeach
-        </div>
-    </div>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            color: #000;
+            background: #fff;
+        }
+
+        /* ================= PAGE ================= */
+        @page {
+            size: A4 portrait;
+            margin: 12mm;
+        }
+
+        /* ================= HEADER ================= */
+        .print-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 8px;
+        }
+
+        .print-header h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .print-meta {
+            font-size: 12px;
+            text-align: right;
+        }
+
+        /* ================= TABLE ================= */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        th,
+        td {
+            border: 1px solid #000;
+            padding: 6px;
+            font-size: 11px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        th {
+            font-weight: 700;
+            background: #f0f0f0;
+        }
+
+        .labour-col {
+            text-align: left;
+            width: 240px;
+        }
+
+        .lab-name {
+            font-weight: 600;
+        }
+
+        .lab-meta {
+            font-size: 10px;
+            color: #333;
+        }
+
+        .today {
+            background: #d1fae5;
+        }
+
+        /* ================= ICONS ================= */
+        .ico {
+            display: inline-block;
+            width: 22px;
+            height: 22px;
+            line-height: 22px;
+            border-radius: 50%;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .tick {
+            background: #bbf7d0;
+        }
+
+        .cross {
+            background: #fecaca;
+        }
+
+        .leave {
+            background: #fed7aa;
+        }
+
+        .none {
+            background: #e5e7eb;
+        }
+
+        .ot {
+            margin-top: 2px;
+            font-size: 10px;
+            display: block;
+        }
+
+        /* ================= PRINT SAFETY ================= */
+        tr {
+            page-break-inside: avoid;
+        }
+
+        * {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+    </style>
+</head>
+
+<body>
 
     @php
         use Carbon\Carbon;
-        [$start, $end, $weekDays] = loadAttendanceWeek($week ?? null);
-        $today = Carbon::today();
+        [$startDate, $endDate, $weekDays] = loadAttendanceWeek($week ?? null);
+        $today = Carbon::today()->format('Y-m-d');
     @endphp
 
-    {{-- RIGHT SIDE --}}
-    <div class="right">
-
-        {{-- DAYS HEADER --}}
-        <div class="days-head">
-            @foreach ($weekDays as $day)
-                @php
-                    $carbon = Carbon::parse($day);
-                    $dayShort = strtoupper($carbon->format('D'));
-                    $dateNum = $carbon->format('d');
-
-                    // ✅ COUNT PRESENT FOR THIS DAY
-                    $presentCount = 0;
-                    foreach ($attendance_labours as $labour) {
-                        $att = $labour->attendances->where('date', $day)->first();
-                        if ($att && $att->status === 'present' && $att->hours >= 8) {
-                            $presentCount++;
-                        }
-                    }
-                @endphp
-
-                <div class="d {{ $day == $today->format('Y-m-d') ? 'today' : '' }}">
-                    <div class="day-top">{{ $dayShort }}</div>
-                    <div class="day-date">{{ $dateNum }}</div>
-
-                    {{-- ✅ TOTAL PRESENT --}}
-                    <div class="day-total">Total Attendance: {{ $presentCount }}</div>
-                </div>
-            @endforeach
+    <!-- ================= HEADER ================= -->
+    <div class="print-header">
+        <div>
+            <h2>Labour Attendance Report</h2>
+            <div style="font-size:12px;">
+                Site: {{ $site_name ?? 'All Sites' }}
+            </div>
         </div>
 
-        {{-- LABOUR ROWS --}}
-        <div class="rows scroll-container" id="attnRows">
+        <div class="print-meta">
+            Week: {{  Carbon::parse($start)->format('d-m-Y') }} to {{ Carbon::parse($end)->format('d-m-Y') }}<br>
+            Printed: {{ now()->format('d-m-Y h:i A') }}
+        </div>
+    </div>
+
+    <!-- ================= ATTENDANCE TABLE ================= -->
+    <table>
+        <thead>
+            <tr>
+                <th class="labour-col">Labour</th>
+                @foreach ($weekDays as $day)
+                    @php $carbon = Carbon::parse($day); @endphp
+                    <th class="{{ $day === $today ? 'today' : '' }}">
+                        {{ strtoupper($carbon->format('D')) }}<br>
+                        {{ $carbon->format('d') }}
+                    </th>
+                @endforeach
+            </tr>
+        </thead>
+
+        <tbody>
             @foreach ($attendance_labours as $labour)
-                <div class="row-days">
+                <tr>
+                    <td class="labour-col">
+                        <div class="lab-name">
+                            {{ $labour->name }} ({{ substr($labour->cnic, -4) }})
+                        </div>
+                        <div class="lab-meta">
+                            {{ $labour->phone }} · {{ $labour->role }} · Rs {{ $labour->daily_wage }}
+                        </div>
+                    </td>
+
                     @foreach ($weekDays as $day)
                         @php
                             $attendance = $labour->attendances->where('date', $day)->first();
@@ -99,36 +205,14 @@
                                 }
                             }
 
-                            $userData = [
-                                'id' => $labour->id,
-                                'name' => $labour->name,
-                                'role' => $labour->role,
-                                'date' => $day,
-                                'status' => $status,
-                                'hours' => $attendance->hours ?? 8,
-                                'ot' => $attendance->ot_hours ?? 0,
-                                'site' => $attendance->site_id ?? null,
-                                'rate' => $labour->daily_wage,
-                                'amount' => $attendance->amount ?? $labour->daily_wage,
-                            ];
-                            $cellDate = Carbon::parse($day);
-                            $diffFromToday = $cellDate->diffInDays($today, false);
-                            $isDateDisabled = $diffFromToday > 1;
-
-                            $isSiteDisabled = $attendance?->site_id
-                                && $selectedSiteId
-                                && $attendance->site_id != $selectedSiteId;
-
-                            $isDisabled = $isDateDisabled || $isSiteDisabled;
+                            $isSiteDisabled =
+                                $attendance?->site_id && $selectedSiteId && $attendance->site_id != $selectedSiteId;
                         @endphp
 
-                        <div class="cell {{ $isDisabled ? 'disabled' : '' }}"
-                             data-id="{{ $labour->id }}"
-                             data-date="{{ $day }}" data-user='@json($userData)'>
-
+                        <td>
                             <span class="ico {{ $isSiteDisabled ? 'none' : $iconClass }}"
-                                  style="{{ $isSiteDisabled ? 'background:#9db4dd;' : '' }}"
-                                  data-tooltips="{{ $attendance?->site->site_name ?? '' }}">
+                                style="{{ $isSiteDisabled ? 'background:#9db4dd;' : '' }}"
+                                data-tooltips="{{ $attendance?->site->site_name ?? '' }}">
                                 {{ $isSiteDisabled ? '-' : $icon }}
                             </span>
 
@@ -137,11 +221,19 @@
                                     {{ number_format($attendance->ot_hours) }}
                                 </span>
                             @endif
-                        </div>
+                        </td>
                     @endforeach
-                </div>
+                </tr>
             @endforeach
-        </div>
+        </tbody>
+    </table>
 
-    </div>
-</div>
+    <script>
+        window.addEventListener('load', () => {
+            setTimeout(() => window.print(), 500);
+        });
+    </script>
+
+</body>
+
+</html>

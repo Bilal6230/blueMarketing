@@ -59,57 +59,6 @@ class LabourController extends Controller
 
 
         $x['headaccounts'] = $data_list;
-        $x['personWiseReports'] = $personWiseReports = Labour::select('labours.id', 'labours.name', 'labours.father_name', 'labours.cnic', 'labours.advance', 'labours.phone as mobile', 'labours.role as designation')
-            ->with([
-                'attendances' => function ($query) use ($selectedProjectId, $days) {
-                    $query->where('project_id', $selectedProjectId)->where('voucher_status', 'created')
-                        ->whereIn('date', $days);
-                }
-            ])
-            ->whereHas('attendances', function ($query) use ($selectedProjectId, $days) {
-                $query->where('project_id', $selectedProjectId)->where('voucher_status', 'created')->whereIn('date', $days);
-            })
-            ->get()
-            ->map(function ($labour) {
-
-                $attendanceIds = $labour->attendances->pluck('id')->toArray();
-                $attendanceDates = $labour->attendances->pluck('date')->toArray();
-                $totalHours = $labour->attendances->sum('hours');
-                $totalOT = $labour->attendances->sum('ot_hours');
-                $ratings = $labour->attendances->sum('ratings') / $labour->attendances->count();
-
-                $rate = optional($labour->attendances->first())->rate
-                    ?? $labour->daily_wage
-                    ?? 0;
-
-                $days = $totalHours / 8;
-                $amount = ($days * $rate) + ($totalOT * ($rate / 8));
-                $remaningAmount = $amount - $labour->labourLedgers->sum('amount');
-
-                return [
-                    'id' => $labour->id,
-                    'name' => $labour->name,
-                    'father_name' => $labour->father_name,
-                    'cnic' => $labour->cnic,
-                    'mobile' => $labour->mobile,
-                    'designation' => $labour->designation,
-                    'rate' => number_format($rate, 2),
-                    'days' => number_format($days, 2),
-                    'overtime' => number_format($totalOT, 2),
-                    'amount' => number_format($amount, 2),
-                    'remaningAmount' => number_format($remaningAmount, 2),
-                    'advance' => $labour->advance,
-                    'amount_raw' => $amount,
-                    'ratings' => number_format($ratings, 1),
-                    'attendance_ids' => json_encode($attendanceIds, JSON_UNESCAPED_UNICODE), // ✅ real attendance IDs
-                    'attendance_dates' => json_encode($attendanceDates, JSON_UNESCAPED_UNICODE), // ✅ real attendance IDs
-                    'paid_status' => optional($labour->attendances->first())->paid_status
-                ];
-            });
-        $x['total_amount'] = $personWiseReports->sum('amount_raw');
-        if ($request->ajax()) {
-            return response()->json($x['labours']);
-        }
 
         return view('admin.labours.index', $x);
     }
@@ -118,6 +67,20 @@ class LabourController extends Controller
         return collect($dates)
             ->map(fn($d) => Carbon::parse($d)->format('d M'))
             ->implode(', ');
+    }
+
+    public function labourHistory($id)
+    {
+        $x['title'] = 'Labour History';
+        $x['labour'] = $labour = Labour::find($id);
+        $labourAttendances = LabourAttendance::where('labour_id', $id)->where('status', 'present')->get();
+        $x['summary'] = [
+            'total_days'   => $labour->attendances->count(),
+            'total_hours'  => $labourAttendances->sum('hours'),
+            'total_amount' => $labourAttendances->sum('amount'),
+            'unpaid'       => $labourAttendances->sum('amount') - $labour->labourLedgers->sum('amount'),
+        ];
+        return view('admin.labours.history', $x);
     }
 
     private const LABOUR_Head_Acount_ID = 372;
@@ -233,8 +196,9 @@ class LabourController extends Controller
                 /** ------------------------
                  *  Rebuild Report View
                  * ------------------------ */
-                $view = $this->buildPersonWiseReport($request);
-
+                $x = $this->buildPersonWiseReport($request);
+                $view = '';
+                $view .= view('admin.labours.person-wise-report', $x)->render();
                 return response()->json([
                     'success' => true,
                     'view' => $view,
@@ -257,7 +221,7 @@ class LabourController extends Controller
             ], 500);
         }
     }
-    private function buildPersonWiseReport(Request $request): string
+    private function buildPersonWiseReport(Request $request)
     {
         $startOfWeek = Carbon::parse($request->start_date);
 
@@ -312,7 +276,8 @@ class LabourController extends Controller
 
                 $days = $totalHours / 8;
                 $amount = ($days * $rate) + ($totalOT * ($rate / 8));
-                $remaningAmount = $amount - $labour->labourLedgers->sum('amount');
+                $totalAmount = $labour->tAttendances->sum('amount');
+                $remaningAmount = $totalAmount - $labour->labourLedgers->sum('amount');
 
                 return [
                     'id' => $labour->id,
@@ -321,11 +286,11 @@ class LabourController extends Controller
                     'cnic' => $labour->cnic,
                     'mobile' => $labour->mobile,
                     'designation' => $labour->designation,
-                    'rate' => number_format($rate, 2),
-                    'days' => number_format($days, 2),
-                    'overtime' => number_format($totalOT, 2),
-                    'amount' => number_format($amount, 2),
-                    'remaningAmount' => number_format($remaningAmount, 2),
+                    'rate' => number_format($rate, 0),
+                    'days' => number_format($days, 0),
+                    'overtime' => number_format($totalOT, 0),
+                    'amount' => number_format($amount, 0),
+                    'remaningAmount' => number_format($remaningAmount, 0),
                     'advance' => $labour->advance,
                     'amount_raw' => $amount,
                     'ratings' => number_format($ratings, 1),
@@ -336,7 +301,7 @@ class LabourController extends Controller
             });
         $x['total_amount'] = $personWiseReports->sum('amount_raw');
         // Render table partial
-        return view('admin.labours.person-wise-report', $x)->render();
+        return $x;
     }
 
 
@@ -481,7 +446,6 @@ class LabourController extends Controller
 
     public function attendanceReport(Request $request)
     {
-        $selectedProjectId = getSelectedTown();
         $request->validate(
             [
                 'week' => 'required',
@@ -494,6 +458,44 @@ class LabourController extends Controller
                 'site_id.exists' => 'The selected site does not exist.',
             ]
         );
+        $x = $this->buildSiteWiseReport($request);
+        // Render table partial
+        $view = view('admin.labours.site-report', $x)->render();
+
+        return response()->json([
+            'success' => true,
+            'site_id' => $request->site_id,
+            'attendanceIds' => $x['attendanceIds'], // ✅ perfect output here
+            'total_amount' => number_format($x['total_amount'], 2),
+            'reports' => json_encode($x['reports'], JSON_UNESCAPED_UNICODE),
+            'view' => $view
+        ]);
+    }
+
+    public function printSiteReport(Request $request)
+    {
+        $request->validate(
+            [
+                'week' => 'required',
+                'site_id' => 'required|integer|exists:sites,id',
+            ],
+            [
+                'week.required' => 'Please select a week before generating the report.',
+                'site_id.required' => 'Please select a site to continue.',
+                'site_id.integer' => 'Invalid site selected.',
+                'site_id.exists' => 'The selected site does not exist.',
+            ]
+        );
+        $x = $this->buildSiteWiseReport($request);
+        $x['start'] = $request->start_date;
+        $x['end'] = $request->end_date;
+        $x['site_name'] = Site::find($request->site_id)?->site_name;
+        // Render table partial
+        return view('admin.labours.print-site-report', $x);
+    }
+    private function buildSiteWiseReport($request)
+    {
+        $selectedProjectId = getSelectedTown();
         $startOfWeek = Carbon::parse($request->start_date);
 
         // End of week should be Thursday (6 days after Friday)
@@ -546,216 +548,59 @@ class LabourController extends Controller
                     'cnic' => $labour->cnic,
                     'mobile' => $labour->mobile,
                     'designation' => $labour->designation,
-                    'rate' => number_format($rate, 2),
-                    'days' => number_format($days, 2),
-                    'overtime' => number_format($totalOT, 2),
-                    'amount' => number_format($amount, 2),
+                    'rate' => number_format($rate, 0),
+                    'days' => number_format($days, 0),
+                    'overtime' => number_format($totalOT, 0),
+                    'amount' => number_format($amount, 0),
                     'amount_raw' => $amount,   // used for grand total
                     'attendance_ids' => $attendanceIds, // ✅ real attendance IDs
                 ];
             });
 
         // ✅ Grand Total
-        $total_amount = $reports->sum('amount_raw');
+        $x['total_amount'] = $reports->sum('amount_raw');
 
         // Remove helper amount_raw from final report
-        $reports = $reports->map(function ($r) {
+        $x['reports'] = $reports->map(function ($r) {
             unset($r['amount_raw']);
             return $r;
         });
 
         // Collect ALL attendance IDs for voucher, flatten & unique
-        $attendanceIds = $reports
+        $x['attendanceIds'] = $reports
             ->pluck('attendance_ids')
             ->flatten()
             ->unique()
             ->values()
             ->toArray();
 
-        // Render table partial
-        $view = view('admin.labours.site-report', compact('reports', 'total_amount'))->render();
-
-        return response()->json([
-            'success' => true,
-            'site_id' => $request->site_id,
-            'attendanceIds' => $attendanceIds, // ✅ perfect output here
-            'total_amount' => number_format($total_amount, 2),
-            'reports' => json_encode($reports, JSON_UNESCAPED_UNICODE),
-            'view' => $view
-        ]);
+        return $x;
     }
     public function personAttendanceReport(Request $request)
     {
         $request->validate([
             'week' => 'required|date',
         ]);
-        $startOfWeek = Carbon::parse($request->start_date);
 
-        // End of week should be Thursday (6 days after Friday)
-        $days = [];
-        for ($i = 0; $i < 7; $i++) {
-            $days[] = $startOfWeek->copy()->addDays($i)->format('Y-m-d');
-        }
-
-        $x['personWiseReports'] = $personWiseReports = Labour::select('labours.id', 'labours.name', 'labours.father_name', 'labours.cnic', 'labours.advance', 'labours.phone as mobile', 'labours.role as designation');
-
-        if ($request->search) {
-            $search = $request->search;
-
-            $personWiseReports->where(function ($q) use ($search) {
-                // If search contains any digit, search in phone or cnic
-                if (preg_match('/\d/', $search)) {
-                    $q->where('phone', 'like', "%{$search}%")
-                        ->orWhere('cnic', 'like', "%{$search}%");
-                } else {
-                    // Otherwise search in name
-                    $q->where('name', 'like', "%{$search}%");
-                }
-            });
-        }
-
-        $x['personWiseReports'] = $personWiseReports = $personWiseReports
-            ->with([
-                'attendances' => function ($query) use ($request, $days) {
-                    $query->whereIn('date', $days)
-                        ->where('status', 'present')
-                        ->where('project_id', getSelectedTown());
-                }
-            ])
-            ->whereHas('attendances', function ($query) use ($request, $days) {
-                $query->whereIn('date', $days)
-                    ->where('status', 'present')
-                    ->where('project_id', getSelectedTown());
-            })
-            ->get()
-            ->map(function ($labour) {
-
-                $attendanceIds = $labour->attendances->pluck('id')->toArray();
-                $attendanceDates = $labour->attendances->pluck('date')->toArray();
-                $totalHours = $labour->attendances->sum('hours');
-                $totalOT = $labour->attendances->sum('ot_hours');
-                $ratings = $labour->attendances->sum('ratings') / $labour->attendances->count();
-
-                $rate = optional($labour->attendances->first())->rate
-                    ?? $labour->daily_wage
-                    ?? 0;
-
-                $days = $totalHours / 8;
-                $amount = ($days * $rate) + ($totalOT * ($rate / 8));
-                $totalAmount = $labour->tAttendances->sum('amount');
-                $remaningAmount = $totalAmount - $labour->labourLedgers->sum('amount');
-                return [
-                    'id' => $labour->id,
-                    'name' => $labour->name,
-                    'father_name' => $labour->father_name,
-                    'cnic' => $labour->cnic,
-                    'mobile' => $labour->mobile,
-                    'designation' => $labour->designation,
-                    'rate' => number_format($rate, 2),
-                    'days' => number_format($days, 2),
-                    'overtime' => number_format($totalOT, 2),
-                    'amount' => number_format($amount, 2),
-                    'remaningAmount' => number_format($remaningAmount, 2),
-                    'advance' => $labour->advance,
-                    'amount_raw' => $amount,
-                    'ratings' => number_format($ratings, 1),
-                    'attendance_ids' => json_encode($attendanceIds, JSON_UNESCAPED_UNICODE), // ✅ real attendance IDs
-                    'attendance_dates' => json_encode($attendanceDates, JSON_UNESCAPED_UNICODE),
-                    'paid_status' => optional($labour->attendances->first())->paid_status
-                ];
-            });
-        $x['total_amount'] = $personWiseReports->sum('amount_raw');
-        // Render table partial
-        $view = view('admin.labours.person-wise-report', $x)->render();
+        $x = $this->buildPersonWiseReport($request);
+        $view = '';
+        $view .= view('admin.labours.person-wise-report', $x)->render();
         return response()->json([
             'success' => true,
             'x' => $x,
             'view' => $view
         ]);
     }
-    public function personAttendanceReportPrint(Request $request)
+    public function printPersonReport(Request $request)
     {
         $request->validate([
             'week' => 'required|date',
         ]);
-        $startOfWeek = Carbon::parse($request->start_date);
-
-        // End of week should be Thursday (6 days after Friday)
-        $days = [];
-        for ($i = 0; $i < 7; $i++) {
-            $days[] = $startOfWeek->copy()->addDays($i)->format('Y-m-d');
-        }
-
-        $x['personWiseReports'] = $personWiseReports = Labour::select('labours.id', 'labours.name', 'labours.father_name', 'labours.cnic', 'labours.advance', 'labours.phone as mobile', 'labours.role as designation');
-
-        if ($request->search) {
-            $search = $request->search;
-
-            $personWiseReports->where(function ($q) use ($search) {
-                // If search contains any digit, search in phone or cnic
-                if (preg_match('/\d/', $search)) {
-                    $q->where('phone', 'like', "%{$search}%")
-                        ->orWhere('cnic', 'like', "%{$search}%");
-                } else {
-                    // Otherwise search in name
-                    $q->where('name', 'like', "%{$search}%");
-                }
-            });
-        }
-
-        $x['personWiseReports'] = $personWiseReports = $personWiseReports
-            ->with([
-                'attendances' => function ($query) use ($request, $days) {
-                    $query->whereIn('date', $days)
-                        ->where('status', 'present')
-                        ->where('project_id', getSelectedTown());
-                }
-            ])
-            ->whereHas('attendances', function ($query) use ($request, $days) {
-                $query->whereIn('date', $days)
-                    ->where('status', 'present')
-                    ->where('project_id', getSelectedTown());
-            })
-            ->get()
-            ->map(function ($labour) {
-
-                $attendanceIds = $labour->attendances->pluck('id')->toArray();
-                $attendanceDates = $labour->attendances->pluck('date')->toArray();
-                $totalHours = $labour->attendances->sum('hours');
-                $totalOT = $labour->attendances->sum('ot_hours');
-                $ratings = $labour->attendances->sum('ratings') / $labour->attendances->count();
-
-                $rate = optional($labour->attendances->first())->rate
-                    ?? $labour->daily_wage
-                    ?? 0;
-
-                $days = $totalHours / 8;
-                $amount = ($days * $rate) + ($totalOT * ($rate / 8));
-                $remaningAmount = $amount - $labour->labourLedgers->sum('amount');
-
-                return [
-                    'id' => $labour->id,
-                    'name' => $labour->name,
-                    'father_name' => $labour->father_name,
-                    'cnic' => $labour->cnic,
-                    'mobile' => $labour->mobile,
-                    'designation' => $labour->designation,
-                    'rate' => number_format($rate, 2),
-                    'days' => number_format($days, 2),
-                    'overtime' => number_format($totalOT, 2),
-                    'amount' => number_format($amount, 2),
-                    'remaningAmount' => number_format($remaningAmount, 2),
-                    'advance' => $labour->advance,
-                    'amount_raw' => $amount,
-                    'ratings' => number_format($ratings, 1),
-                    'attendance_ids' => json_encode($attendanceIds, JSON_UNESCAPED_UNICODE), // ✅ real attendance IDs
-                    'attendance_dates' => json_encode($attendanceDates, JSON_UNESCAPED_UNICODE), // ✅ real attendance IDs
-                    'paid_status' => optional($labour->attendances->first())->paid_status
-                ];
-            });
-        $x['total_amount'] = $personWiseReports->sum('amount_raw');
-        // Render table partial
-        return view('admin.labours.person-wise-report', $x);
+        $x = $this->buildPersonWiseReport($request);
+        $x['start'] = $request->start_date;
+        $x['end'] = $request->end_date;
+        $x['request'] = $request->except(['_token', 'week', 'start_date', 'end_date']);
+        return view('admin.labours.print-person-wise-report', $x);
     }
 
 
@@ -775,64 +620,7 @@ class LabourController extends Controller
 
     public function loadAttendanceWeek(Request $request)
     {
-        $x['week'] = $weekInput = $request->week;
-        $x['selectedSiteId'] = $request->site_id;
-        // Parse ISO week from input (2025-W05)
-        [$year, $week] = explode('-W', $weekInput);
-        $startOfWeek = Carbon::parse($request->start_date);
-        // Get the ISO Monday for that week
-        // $isoMonday = Carbon::now()->setISODate($year, $week)->startOfWeek(Carbon::MONDAY);
-        $endOfWeekDate = Carbon::now()->setISODate($year, $week)->endOfWeek(Carbon::SUNDAY)->toDateString();
-
-        // Convert to Friday (Mon +4 days)
-        // $startOfWeek = $isoMonday->copy()->addDays(4);
-        // $selected = Carbon::parse($weekInput);
-        // if ($selected->lt($startOfWeek)) {
-        //     $startOfWeek->subWeek();
-        // }
-
-        // // End = Thursday (Fri +6 days)
-        // $endOfWeek = $startOfWeek->copy()->addDays(6);
-
-        // Generate Friday → Thursday days
-        $days = [];
-        for ($i = 0; $i < 7; $i++) {
-            $days[] = $startOfWeek->copy()->addDays($i)->format('Y-m-d');
-        }
-        // LABOUR FILTER
-        $query = Labour::query();
-
-        if ($request->has('search') && $request->search) {
-            $search = $request->search;
-
-            $query->where(function ($q) use ($search) {
-                // If search has any digit, search in phone or cnic
-                if (preg_match('/\d/', $search)) {
-                    $q->where('phone', 'like', "%{$search}%")
-                        ->orWhere('cnic', 'like', "%{$search}%");
-                } else {
-                    // Otherwise search in name
-                    $q->where('name', 'like', "%{$search}%");
-                }
-            });
-        } else {
-            $query->whereHas('attendances', function ($query) use ($days, $request) {
-                $query->whereIn('date', $days)
-                    ->where('project_id', getSelectedTown());
-            });
-            if ($request->has('site_id') && $request->site_id) {
-                $query->whereHas('attendances', function ($query) use ($days, $request) {
-                    if ($request->has('site_id') && $request->site_id) {
-                        $query->where('site_id', $request->site_id)
-                            ->where('project_id', getSelectedTown());
-                    }
-                });
-            }
-        }
-
-
-        $x['attendance_labours'] = $query->get();
-        $x['week'] = $endOfWeekDate;
+        $x = $this->loadAttendance($request);
         $view = '';
         $view .= view('admin.labours.attn-board', $x)->render();
 
@@ -842,6 +630,14 @@ class LabourController extends Controller
         ]);
 
         return [$startOfWeek, $endOfWeek, $days];
+    }
+    public function printAttendanceReport(Request $request)
+    {
+        $x = $this->loadAttendance($request);
+        $x['start'] = $request->start_date;
+        $x['end'] = $request->end_date;
+        $x['site_name'] = Site::find($request->site_id)?->site_name;
+        return view('admin.labours.print-attn-board', $x);
     }
 
     public function createVoucher(Request $request)
@@ -885,8 +681,8 @@ class LabourController extends Controller
         JournalVoucherDetail::create([
             'journal_voucher_id' => $journalVoucher->id,
             'account_id' => $headSubheadId,
-            'debit' => 0,
-            'credit' => $amount,
+            'debit' => $amount,
+            'credit' => 0,
             'description' => $labourAccountDesc,
             'created_by' => auth()->id(),
         ]);
@@ -909,8 +705,8 @@ class LabourController extends Controller
         JournalVoucherDetail::create([
             'journal_voucher_id' => $journalVoucher->id,
             'account_id' => $project_head_subheads_id,
-            'debit' => $amount,
-            'credit' => 0,
+            'debit' => 0,
+            'credit' => $amount,
             'description' => $labourAccountDesc,
             'created_by' => auth()->id(),
         ]);
@@ -984,7 +780,7 @@ class LabourController extends Controller
         $request->validate([
             'labour_id'   => 'required|exists:labours,id',
             'daily_wage'  => 'required|numeric|min:0',
-            'apply_scope' => 'required|in:today,from_today,current_week,from_current_week',
+            'apply_from_date' => 'required|date',
         ]);
 
         DB::transaction(function () use ($request) {
@@ -1063,5 +859,54 @@ class LabourController extends Controller
             'status'  => true,
             'message' => 'Labour rate updated successfully'
         ]);
+    }
+
+    private function loadAttendance($request)
+    {
+        $x['week'] = $weekInput = $request->week;
+        $x['selectedSiteId'] = $request->site_id;
+        // Parse ISO week from input (2025-W05)
+        [$year, $week] = explode('-W', $weekInput);
+        $startOfWeek = Carbon::parse($request->start_date);
+        $endOfWeekDate = Carbon::now()->setISODate($year, $week)->endOfWeek(Carbon::SUNDAY)->toDateString();
+        $days = [];
+        for ($i = 0; $i < 7; $i++) {
+            $days[] = $startOfWeek->copy()->addDays($i)->format('Y-m-d');
+        }
+        // LABOUR FILTER
+        $query = Labour::query();
+
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+
+            $query->where(function ($q) use ($search) {
+                // If search has any digit, search in phone or cnic
+                if (preg_match('/\d/', $search)) {
+                    $q->where('phone', 'like', "%{$search}%")
+                        ->orWhere('cnic', 'like', "%{$search}%");
+                } else {
+                    // Otherwise search in name
+                    $q->where('name', 'like', "%{$search}%");
+                }
+            });
+        } else {
+            $query->whereHas('attendances', function ($query) use ($days, $request) {
+                $query->whereIn('date', $days)
+                    ->where('project_id', getSelectedTown());
+            });
+            if ($request->has('site_id') && $request->site_id) {
+                $query->whereHas('attendances', function ($query) use ($days, $request) {
+                    if ($request->has('site_id') && $request->site_id) {
+                        $query->where('site_id', $request->site_id)
+                            ->where('project_id', getSelectedTown());
+                    }
+                });
+            }
+        }
+
+
+        $x['attendance_labours'] = $query->get();
+        $x['week'] = $endOfWeekDate;
+        return $x;
     }
 }
