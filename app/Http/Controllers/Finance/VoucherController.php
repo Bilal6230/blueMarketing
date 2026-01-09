@@ -496,25 +496,80 @@ class VoucherController extends Controller
                 $q->where('project_id', $selectedProjectId);
             });
         // Apply filters only if user has selected them
-        if ($request->has('head_account') && $request->head_account) {
-            $q->whereHas('projectHeadSubhead.headAccounting', function ($query) use ($request) {
-                $query->where('name', 'like', '%' . $request->head_account . '%');
-            });
+        $headIds = $request->input('head_account'); // from ajax: d.head_account = $('#filter_head_account').val()
+
+        if (is_string($headIds) && trim($headIds) !== '') {
+            $headIds = [$headIds];
+        }
+        if (is_array($headIds)) {
+            $headIds = array_values(array_filter($headIds, fn($v) => $v !== null && $v !== ''));
+            if (count($headIds)) {
+                $q->whereHas('projectHeadSubhead', function ($qq) use ($headIds) {
+                    $qq->whereIn('head_accounting_id', $headIds);
+                });
+            }
         }
 
-        if ($request->has('subhead_account') && $request->subhead_account) {
-            $q->whereHas('projectHeadSubhead.subheadAccounting', function ($query) use ($request) {
-                $query->where('name', 'like', '%' . $request->subhead_account . '%');
-            });
+        // Subhead Account filter (IDs)
+        $subheadIds = $request->input('subhead_account');
+
+        if (is_string($subheadIds) && trim($subheadIds) !== '') {
+            $subheadIds = [$subheadIds];
         }
 
+        if (is_array($subheadIds)) {
+            $subheadIds = array_values(array_filter($subheadIds, fn($v) => $v !== null && $v !== ''));
+            if (count($subheadIds)) {
+                $q->whereHas('projectHeadSubhead', function ($qq) use ($subheadIds) {
+                    $qq->whereIn('subhead_accounting_id', $subheadIds);
+                });
+            }
+        }
         if ($request->has('voucher_number') && $request->voucher_number) {
             $q->where('voucher_number', 'like', '%' . $request->voucher_number . '%');
         }
 
-        if ($request->has('amount') && $request->amount) {
-            $q->where('amount_out', '>=', $request->amount);
+        // ----------------------------
+        // Amount filters (NEW: min/max)
+        // ----------------------------
+        $sanitizeMoney = function ($v) {
+            if ($v === null)
+                return null;
+            if (is_array($v))
+                return null;
+            $v = trim((string) $v);
+            if ($v === '')
+                return null;
+            // allow commas from UI and remove spaces
+            $v = str_replace([',', ' '], '', $v);
+            // keep only digits + dot + minus (just in case)
+            $v = preg_replace('/[^0-9\.\-]/', '', $v);
+            if ($v === '' || !is_numeric($v))
+                return null;
+            return (float) $v;
+        };
+
+        $amountMin = $sanitizeMoney($request->input('amount_min'));
+        $amountMax = $sanitizeMoney($request->input('amount_max'));
+
+        if ($amountMin !== null && $amountMax !== null) {
+            // if user accidentally swaps them, fix it
+            if ($amountMin > $amountMax) {
+                [$amountMin, $amountMax] = [$amountMax, $amountMin];
+            }
+            $q->whereBetween('amount_out', [$amountMin, $amountMax]);
+        } elseif ($amountMin !== null) {
+            $q->where('amount_out', '>=', $amountMin);
+        } elseif ($amountMax !== null) {
+            $q->where('amount_out', '<=', $amountMax);
+        } else {
+            // Backward compatible fallback: old single "amount" filter
+            $legacyAmount = $sanitizeMoney($request->input('amount'));
+            if ($legacyAmount !== null) {
+                $q->where('amount_out', '>=', $legacyAmount);
+            }
         }
+
 
         if ($request->filled('date_from')) {
             $q->whereDate('date', '>=', $request->date_from);
@@ -668,30 +723,96 @@ class VoucherController extends Controller
             ->where('type', 'CR')
             ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId));
 
-        // Apply filters
-        if ($request->has('head_account') && $request->head_account) {
-            $q->whereHas('projectHeadSubhead.headAccounting', function ($query) use ($request) {
-                $query->where('name', 'like', '%' . $request->head_account . '%');
-            });
+        // ----------------------------
+        // Head Account filter (IDs)
+        // ----------------------------
+        $headIds = $request->input('head_account');
+
+        if (is_string($headIds) && trim($headIds) !== '') {
+            $headIds = [$headIds];
+        }
+        if (is_array($headIds)) {
+            $headIds = array_values(array_filter($headIds, fn($v) => $v !== null && $v !== ''));
+            if (count($headIds)) {
+                $q->whereHas('projectHeadSubhead', function ($qq) use ($headIds) {
+                    $qq->whereIn('head_accounting_id', $headIds);
+                });
+            }
         }
 
-        if ($request->has('subhead_account') && $request->subhead_account) {
-            $q->whereHas('projectHeadSubhead.subheadAccounting', function ($query) use ($request) {
-                $query->where('name', 'like', '%' . $request->subhead_account . '%');
-            });
+        // ----------------------------
+        // Subhead Account filter (IDs)
+        // ----------------------------
+        $subheadIds = $request->input('subhead_account');
+
+        if (is_string($subheadIds) && trim($subheadIds) !== '') {
+            $subheadIds = [$subheadIds];
         }
 
-        if ($request->has('voucher_number') && $request->voucher_number) {
-            $q->where('voucher_number', 'like', '%' . $request->voucher_number . '%');
+        if (is_array($subheadIds)) {
+            $subheadIds = array_values(array_filter($subheadIds, fn($v) => $v !== null && $v !== ''));
+            if (count($subheadIds)) {
+                $q->whereHas('projectHeadSubhead', function ($qq) use ($subheadIds) {
+                    $qq->whereIn('subhead_accounting_id', $subheadIds);
+                });
+            }
         }
 
-        if ($request->has('amount') && $request->amount) {
-            $q->where('amount_in', '>=', $request->amount);
-        }
-
-        // if ($request->has('date') && $request->date) {
-        //     $q->whereDate('date', '=', $request->date);
+        // ----------------------------
+        // Voucher Number filter (optional)
+        // ----------------------------
+        // if ($request->filled('voucher_number')) {
+        //     $q->where('voucher_number', 'like', '%' . $request->voucher_number . '%');
         // }
+
+        // ----------------------------
+        // Amount filters (NEW: min/max)
+        // ----------------------------
+        $sanitizeMoney = function ($v) {
+            if ($v === null)
+                return null;
+            if (is_array($v))
+                return null;
+            $v = trim((string) $v);
+            if ($v === '')
+                return null;
+            // allow commas from UI and remove spaces
+            $v = str_replace([',', ' '], '', $v);
+            // keep only digits + dot + minus (just in case)
+            $v = preg_replace('/[^0-9\.\-]/', '', $v);
+            if ($v === '' || !is_numeric($v))
+                return null;
+            return (float) $v;
+        };
+
+        $amountMin = $sanitizeMoney($request->input('amount_min'));
+        $amountMax = $sanitizeMoney($request->input('amount_max'));
+
+        if ($amountMin !== null && $amountMax !== null) {
+            // if user accidentally swaps them, fix it
+            if ($amountMin > $amountMax) {
+                [$amountMin, $amountMax] = [$amountMax, $amountMin];
+            }
+            $q->whereBetween('amount_in', [$amountMin, $amountMax]);
+        } elseif ($amountMin !== null) {
+            $q->where('amount_in', '>=', $amountMin);
+        } elseif ($amountMax !== null) {
+            $q->where('amount_in', '<=', $amountMax);
+        } else {
+            // Backward compatible fallback: old single "amount" filter
+            $legacyAmount = $sanitizeMoney($request->input('amount'));
+            if ($legacyAmount !== null) {
+                $q->where('amount_in', '>=', $legacyAmount);
+            }
+        }
+
+        // ----------------------------
+        // Date filters
+        // ----------------------------
+        if ($request->has('date') && $request->date) {
+            $q->whereDate('date', '=', $request->date);
+        }
+
         if ($request->filled('date_from')) {
             $q->whereDate('date', '>=', $request->date_from);
         }
@@ -714,6 +835,7 @@ class VoucherController extends Controller
         // Transform the result set
         $data = $rows->map(function ($i) {
             $amount = $i->type === 'CP' ? (float) $i->amount_out : (float) $i->amount_in;
+
             $p = $i->latestPendingUpdate ?? PendingUpdate::where('table_name', 'ledgers')
                 ->where('record_id', $i->id)
                 ->latest()
@@ -743,6 +865,7 @@ class VoucherController extends Controller
             'data' => $data,
         ]);
     }
+
 
 
 
@@ -778,12 +901,30 @@ class VoucherController extends Controller
         if ($to = request('to')) {
             $data->whereDate('date', '<=', $to);
         }
-        if ($head = request('head')) {
-            $data->whereHas('projectHeadSubhead', fn($q) => $q->where('head_accounting_id', $head));
+        $amountMin = request('amount_min');
+        $amountMax = request('amount_max');
+
+        if ($amountMin !== null && $amountMin !== '') {
+            $data->where('amount_in', '>=', (float) $amountMin);
         }
-        if ($subhead = request('subhead')) {
-            $data->whereHas('projectHeadSubhead', fn($q) => $q->where('subhead_accounting_id', $subhead));
+
+        if ($amountMax !== null && $amountMax !== '') {
+            $data->where('amount_in', '<=', (float) $amountMax);
         }
+
+
+        if ($heads = request('head')) {
+            $data->whereHas('projectHeadSubhead', function ($q) use ($heads) {
+                $q->whereIn('head_accounting_id', $heads);
+            });
+        }
+
+        if ($subheads = request('subhead')) {
+            $data->whereHas('projectHeadSubhead', function ($q) use ($subheads) {
+                $q->whereIn('subhead_accounting_id', $subheads);
+            });
+        }
+
         if ($type = request('type')) {
             $data->where('transaction_type', $type);
         }
