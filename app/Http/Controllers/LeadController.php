@@ -49,10 +49,9 @@ class LeadController extends Controller
         
         $existing = PendingUpdate::where('table_name', $request->table_name)
             ->where('record_id', $request->record_id)
-            ->where('status','!=', ['approved','rejected'])
+            ->where('status','=', 'pending')
             ->latest()
             ->first();
-
         if ($existing) {
             return response()->json([
                 'status' => 'exists',

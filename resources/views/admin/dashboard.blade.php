@@ -182,10 +182,10 @@
                                     </div>
                                     <!-- Bank Account Total -->
                                     <div class="col-md-4">
-                                        <div class="financial-circle bg_danger">
+                                        <div class="financial-circle {{ (-$total_bank_account_data) >= 0 ? 'bg_success' : 'bg_danger' }}">
                                             <div class="circle-content">
                                                 <h6>Bank Account</h6>
-                                                <h4 class="mt-2">{{ number_format($total_bank_account_data, 2) }}
+                                                <h4 class="mt-2">{{ number_format(-$total_bank_account_data, 2) }}
                                                 </h4>
                                             </div>
                                         </div>
@@ -196,7 +196,7 @@
                                         <div class="financial-circle bg_success">
                                             <div class="circle-content">
                                                 <h6>Total Cash</h6>
-                                                <h4 class="mt-2" id="totalCash">{{ number_format($total_blance, 2) }}</h4>
+                                                <h4 class="mt-2" id="totalCash">{{ number_format($total_blance - $total_bank_account_data, 2) }}</h4>
                                             </div>
                                         </div>
                                         <p class="text-muted mt-2 text-center">Available Cash Balance</p>
