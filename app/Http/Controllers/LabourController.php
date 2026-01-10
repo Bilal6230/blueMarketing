@@ -776,89 +776,57 @@ class LabourController extends Controller
     }
     public function updateRate(Request $request)
     {
-        dd($request->all());
         $request->validate([
-            'labour_id'   => 'required|exists:labours,id',
-            'daily_wage'  => 'required|numeric|min:0',
-            'apply_from_date' => 'required|date',
+            'labour_id'        => 'required|exists:labours,id',
+            'daily_wage'       => 'required|numeric|min:0',
+            'apply_from_date'  => 'required|date',
         ]);
 
         DB::transaction(function () use ($request) {
 
-            $labourId = $request->labour_id;
-            $newRate  = $request->daily_wage;
-            $today    = Carbon::today();
+            $labourId  = $request->labour_id;
+            $newRate   = $request->daily_wage;
 
-            /** -------------------------
-             * Date Ranges
-             * --------------------------*/
-            switch ($request->apply_scope) {
-
-                case 'today':
-                    $startDate = $today;
-                    $endDate   = $today;
-                    break;
-
-                case 'from_today':
-                    $startDate = $today;
-                    $endDate   = $today;
-                    break;
-
-                case 'current_week':
-                    $startDate = $today->copy()->startOfWeek();
-                    $endDate   = $today->copy()->endOfWeek();
-                    break;
-
-                case 'from_current_week':
-                    $startDate = $today->copy()->startOfWeek();
-                    $endDate   = $today->copy()->endOfWeek();
-                    break;
-            }
+            $applyFrom = Carbon::parse($request->apply_from_date)->startOfDay();
+            $today     = Carbon::today()->endOfDay();
 
             /** -------------------------
              * Update Attendance Records
+             * FROM apply_from_date → TODAY
              * --------------------------*/
-            $attendanceQuery = LabourAttendance::where('labour_id', $labourId)
-                ->where('status', 'present');
+            LabourAttendance::where('labour_id', $labourId)
+                ->where('status', 'present')
+                ->whereBetween('date', [
+                    $applyFrom->toDateString(),
+                    $today->toDateString()
+                ])
+                ->chunkById(100, function ($records) use ($newRate) {
 
-            if ($endDate) {
-                $attendanceQuery->whereBetween('date', [$startDate, $endDate]);
-            } else {
-                $attendanceQuery->where('date', '>=', $startDate);
-            }
+                    foreach ($records as $att) {
 
-            $attendanceQuery->chunkById(100, function ($records) use ($newRate) {
+                        $hourlyRate = $newRate / 8;
 
-                foreach ($records as $att) {
+                        $normalHours = min($att->hours, 8);
+                        $otHours     = $att->ot_hours;
 
-                    $normalHours = min($att->hours, 8);
-                    $otHours     = $att->ot_hours;
+                        $normalAmount = $normalHours * $hourlyRate;
+                        $otAmount     = $otHours * $hourlyRate; // add multiplier if needed
 
-                    $hourlyRate  = $newRate / 8;
-
-                    $normalAmount = $normalHours * $hourlyRate;
-                    $otAmount     = $otHours * $hourlyRate; // OT multiplier if needed
-
-                    $att->update([
-                        'rate'   => $newRate,
-                        'amount' => round($normalAmount + $otAmount, 2),
-                    ]);
-                }
-            });
+                        $att->update([
+                            'rate'   => $newRate,
+                            'amount' => round($normalAmount + $otAmount, 2),
+                        ]);
+                    }
+                });
 
             /** -------------------------
              * Update Labour Master Rate
              * --------------------------*/
-            if (in_array($request->apply_scope, ['from_today', 'from_current_week'])) {
-                Labour::where('id', $labourId)
-                    ->update(['daily_wage' => $newRate]);
-            }
+            Labour::where('id', $labourId)
+                ->update(['daily_wage' => $newRate]);
         });
-        return back()->with('success', 'Labour rate updated successfully');
-        return response()->json([
-            'status'  => true,
-            'message' => 'Labour rate updated successfully'
-        ]);
+
+        return back()->with('success', 'Labour rate updated from selected date to today');
     }
 
     private function loadAttendance($request)
