@@ -531,7 +531,7 @@ function getBankNameById($id)
 {
     $banks = getPakistanBanks();
     foreach ($banks as $bank) {
-        if ($bank['id'] === $id) {
+        if ($bank['id'] == $id) {
             return $bank['name'];
         }
     }

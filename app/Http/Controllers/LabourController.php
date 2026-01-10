@@ -135,8 +135,7 @@ class LabourController extends Controller
                     ]);
 
                     $ledgerLines[] =
-                        "{$labour['name']} ({$labour['role']}) – {$days} day(s) "
-                        . "[{$dates}] @ {$labour['rate']} = {$amount}";
+                        "{$labour['name']} - {$days} day(s) ";
 
                     $totalAmount += $amount;
                 }
@@ -144,8 +143,10 @@ class LabourController extends Controller
                 /** ------------------------
                  *  Ledger Narration
                  * ------------------------ */
+                $start = Carbon::parse($request->start_date)->format('d M Y');
+                $end   = Carbon::parse($request->end_date)->format('d M Y');
                 $ledgerDetail =
-                    "Labour payment (Week {$weekNo}, {$year}):\n"
+                    "Labour payment ({$start} - {$end}):\n"
                     . "• " . implode("\n• ", $ledgerLines)
                     . "\nTotal Paid: {$totalAmount}";
 
@@ -464,6 +465,8 @@ class LabourController extends Controller
 
         return response()->json([
             'success' => true,
+            'start_date' => $request->start_date,
+            'end_date' => $request->end_date,
             'site_id' => $request->site_id,
             'attendanceIds' => $x['attendanceIds'], // ✅ perfect output here
             'total_amount' => number_format($x['total_amount'], 2),
@@ -649,11 +652,13 @@ class LabourController extends Controller
                 . ' (' . $labour['days'] . ' days'
                 . ', wage: ' . $labour['rate'] . ')';
         })->implode(', ');
+        $start = Carbon::parse($request->start_date)->format('d M Y');
+        $end   = Carbon::parse($request->end_date)->format('d M Y');
 
         $site = Site::find($request->site_id);
         $siteName = $site?->site_name ?? 'Unknown Site';
         $voucherDescription = "Labour payment for Site: {$siteName}";
-        $labourAccountDesc = "Labour payable for {$labourNames}";
+        $labourAccountDesc = "Labour payable for {$labourNames} ({$start} - {$end})";
         $siteAccountDesc = "Labour expense charged to Site: {$siteName}";
 
         $project_head_subheads_id = Site::where('id', $request->site_id)->first()->subhead_accounting_id;
@@ -776,89 +781,57 @@ class LabourController extends Controller
     }
     public function updateRate(Request $request)
     {
-        dd($request->all());
         $request->validate([
-            'labour_id'   => 'required|exists:labours,id',
-            'daily_wage'  => 'required|numeric|min:0',
-            'apply_from_date' => 'required|date',
+            'labour_id'        => 'required|exists:labours,id',
+            'daily_wage'       => 'required|numeric|min:0',
+            'apply_from_date'  => 'required|date',
         ]);
 
         DB::transaction(function () use ($request) {
 
-            $labourId = $request->labour_id;
-            $newRate  = $request->daily_wage;
-            $today    = Carbon::today();
+            $labourId  = $request->labour_id;
+            $newRate   = $request->daily_wage;
 
-            /** -------------------------
-             * Date Ranges
-             * --------------------------*/
-            switch ($request->apply_scope) {
-
-                case 'today':
-                    $startDate = $today;
-                    $endDate   = $today;
-                    break;
-
-                case 'from_today':
-                    $startDate = $today;
-                    $endDate   = $today;
-                    break;
-
-                case 'current_week':
-                    $startDate = $today->copy()->startOfWeek();
-                    $endDate   = $today->copy()->endOfWeek();
-                    break;
-
-                case 'from_current_week':
-                    $startDate = $today->copy()->startOfWeek();
-                    $endDate   = $today->copy()->endOfWeek();
-                    break;
-            }
+            $applyFrom = Carbon::parse($request->apply_from_date)->startOfDay();
+            $today     = Carbon::today()->endOfDay();
 
             /** -------------------------
              * Update Attendance Records
+             * FROM apply_from_date → TODAY
              * --------------------------*/
-            $attendanceQuery = LabourAttendance::where('labour_id', $labourId)
-                ->where('status', 'present');
+            LabourAttendance::where('labour_id', $labourId)
+                ->where('status', 'present')
+                ->whereBetween('date', [
+                    $applyFrom->toDateString(),
+                    $today->toDateString()
+                ])
+                ->chunkById(100, function ($records) use ($newRate) {
 
-            if ($endDate) {
-                $attendanceQuery->whereBetween('date', [$startDate, $endDate]);
-            } else {
-                $attendanceQuery->where('date', '>=', $startDate);
-            }
+                    foreach ($records as $att) {
 
-            $attendanceQuery->chunkById(100, function ($records) use ($newRate) {
+                        $hourlyRate = $newRate / 8;
 
-                foreach ($records as $att) {
+                        $normalHours = min($att->hours, 8);
+                        $otHours     = $att->ot_hours;
 
-                    $normalHours = min($att->hours, 8);
-                    $otHours     = $att->ot_hours;
+                        $normalAmount = $normalHours * $hourlyRate;
+                        $otAmount     = $otHours * $hourlyRate; // add multiplier if needed
 
-                    $hourlyRate  = $newRate / 8;
-
-                    $normalAmount = $normalHours * $hourlyRate;
-                    $otAmount     = $otHours * $hourlyRate; // OT multiplier if needed
-
-                    $att->update([
-                        'rate'   => $newRate,
-                        'amount' => round($normalAmount + $otAmount, 2),
-                    ]);
-                }
-            });
+                        $att->update([
+                            'rate'   => $newRate,
+                            'amount' => round($normalAmount + $otAmount, 2),
+                        ]);
+                    }
+                });
 
             /** -------------------------
              * Update Labour Master Rate
              * --------------------------*/
-            if (in_array($request->apply_scope, ['from_today', 'from_current_week'])) {
-                Labour::where('id', $labourId)
-                    ->update(['daily_wage' => $newRate]);
-            }
+            Labour::where('id', $labourId)
+                ->update(['daily_wage' => $newRate]);
         });
-        return back()->with('success', 'Labour rate updated successfully');
-        return response()->json([
-            'status'  => true,
-            'message' => 'Labour rate updated successfully'
-        ]);
+
+        return back()->with('success', 'Labour rate updated from selected date to today');
     }
 
     private function loadAttendance($request)

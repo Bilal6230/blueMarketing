@@ -903,6 +903,8 @@
                             <form action="" method="post" id="createVoucherForm">
                                 @csrf
                                 <input type="hidden" name="attendance_ids" id="attendance_ids" required>
+                                <input type="hidden" name="start_date" id="startDateV">
+                                <input type="hidden" name="end_date" id="endDateV">
                                 <input type="hidden" name="detail" id="detail">
                                 <input type="hidden" name="site_id" id="site_id" required>
                                 <input type="hidden" name="amount" id="amount" required>
@@ -2303,6 +2305,8 @@
                             $('#siteReportTableBody').append(res.view);
 
                             if (id === 'voucherBtnSiteRun') {
+                                $('#startDateV').val(res.start_date);
+                                $('#endDateV').val(res.end_date);
                                 $('#site_id').val(res.site_id);
                                 $('#attendance_ids').val(res.attendanceIds);
                                 $('#detail').val(res.reports);

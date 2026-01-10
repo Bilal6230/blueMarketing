@@ -51,11 +51,15 @@ class LedgerController extends Controller
         $firstTwoDigits = substr($voucherValue, 0, 2);
         $voucherNumber = substr($voucherNumberValue, 3);
         // dd($firstTwoDigits);
+        $bankName = getBankNameById($request->input('bank_id'));
         $amount_in = $amount_out = 0;
+        $passing_status = '0';
         if ($firstTwoDigits === 'CR') {
             $amount_in = $cleanAmount;
+            $passing_status = '0';
         } elseif ($firstTwoDigits === 'CP') {
             $amount_out = $cleanAmount;
+            $passing_status = '1';
         }
         // dd($amount_in, $amount_out);
         // dd($firstTwoDigits);
@@ -97,7 +101,6 @@ class LedgerController extends Controller
                 'is_approve' => 0,
                 'passing_date' => $request->input('passing_date'),
             ]);
-
             if ($t_number != null) {
                 $lastId = getLastLedgerIdByType("BR");
                 $amount = $customerLedger->amount_out;
@@ -108,7 +111,7 @@ class LedgerController extends Controller
 
                 // Update the CustomerLedger record
                 $customerLedger->update([
-                    'passing_status' => '1',
+                    'passing_status' => $passing_status,
                     'note' => '(' . $check_slip . ') ' . $request->detail,
                     'bank_post_at' => $request->passing_date,
                 ]);
@@ -123,25 +126,6 @@ class LedgerController extends Controller
                     'bank_name' => $bankName, // Add bank name to history
                     'credit_account_id' => $projectHeadSubhead->id, // Add credit account ID to history
                 ]);
-
-                // Create Ledger entry only if passing_status == 1
-                // if ($request->passing_status == 1) {
-                //     Ledger::create([
-                //         'customer_ledger_id' => $customerLedger->id,
-                //         'type' => 'BR',
-                //         'type_id' => $lastId + 2,
-                //         'project_head_subheads_id' => $projectHeadSubhead->id,
-                //         'reference' => "Check Pass in Bank",
-                //         'amount_in' => 0.00, // Adjust this field as per your data
-                //         'amount_out' => $amount,
-                //         'is_active' => 1,
-                //         'date' => $request->passing_date, // Adjust this field as per your data
-                //         'detail' => '(' . $check_slip . ') ' . $request->detail,
-                //         'update_by' => Auth::user()->id,
-                //         'create_by' => Auth::user()->id,
-                //         'status' => 0,
-                //     ]);
-                // }
             }
             $lastId = getLastLedgerIdByType($firstTwoDigits);
 
@@ -181,6 +165,14 @@ class LedgerController extends Controller
 
                 $voucherNumber = $nextNumber;
             }
+            $detail = $request->input('detail');
+            if($request->payment_type == '1' && $firstTwoDigits == 'CR'){
+                $detail = $request->input('detail') . '(Cash Payment)';
+            }elseif($request->payment_type == '2' && $firstTwoDigits == 'CR'){
+                $detail = $request->input('detail') . ' (Bank: ' . $bankName . ' Account No: ' . $customerLedger->t_number . ' Passing Date: ' . $request->passing_date . ')';
+            }elseif($request->payment_type == '3' && $firstTwoDigits == 'CR'){
+                $detail = $request->input('detail') . ' (Bank: ' . $bankName . ' cheque No: ' . $customerLedger->t_number . ' Passing Date: ' . $request->passing_date . ')';
+            }
             // dd($firstTwoDigits);
             $data = Ledger::create([
                 'customer_ledger_id' => $customerLedger->id,
@@ -193,7 +185,7 @@ class LedgerController extends Controller
                 'amount_out' => $amount_out,
                 'is_active' => 1,
                 'date' => $request->date,
-                'detail' => $request->detail,
+                'detail' => $detail,
                 'update_by' => Auth::user()->id,
                 'create_by' => Auth::user()->id,
                 'status' => 0,
