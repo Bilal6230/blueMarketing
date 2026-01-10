@@ -377,12 +377,11 @@
                         }
 
                         var msg =
-                            '<span class="message-alert"><b>Name:</b> ' + data.name +
-                            '</span><br>' +
-                            '<span class="message-alert"><b>Project:</b> ' + data.project +
-                            '</span><br>' +
-                            '<b>Created At:</b> ' + data.created_at + '<br>' +
-                            '<b>Updated At:</b> ' + data.updated_at + '<br>';
+                            '<div class="lead-message">' +
+                                '<span class="message-alert"><b>Name:</b> ' + data.name + '</span><br>' +
+                                '<span class="message-alert"><b>Project:</b> ' + data.project + '</span><br>' +
+                                '<b>Created At:</b> ' + data.created_at + '<br>' +
+                                '<b>Updated At:</b> ' + data.updated_at + '<br>';
 
                         const assigne = data.assignTo || [];
                         if (assigne.length > 0) {
@@ -432,30 +431,42 @@
                                         record_id: data.id,
                                         _token: "{{ csrf_token() }}"
                                     },
-                                    success: function(response) {
-                                        let alertBox = $('#soft-alert');
+                                   success: function (response) {
 
-                                        // Reset alert classes
-                                        alertBox.removeClass(
-                                            'alert-success alert-warning alert-danger'
-                                            );
+                                    let leadMessage = $('.lead-message');
 
-                                        if (response.status === "exists") {
-                                            alertBox.addClass('alert-warning')
-                                                .text(response.message);
-                                        } else if (response.status ===
-                                            "success") {
-                                            alertBox.addClass('alert-success')
-                                                .text(response.message);
-                                        } else {
-                                            alertBox.addClass('alert-danger')
-                                                .text("Unexpected response.");
-                                        }
+                                    // reset state
+                                    leadMessage
+                                        .removeClass('lead-success lead-warning lead-error request-edit-sent');
 
-                                        // Show and auto-hide
-                                        alertBox.fadeIn(300).delay(2500)
-                                            .fadeOut(500);
-                                    },
+                                    // ✅ silent success (no message)
+                                    if (!response.message) {
+                                        leadMessage
+                                            .addClass('lead-success request-edit-sent')
+                                            .append('<div class="lead-note">Edit request sent successfully.</div>');
+                                        return;
+                                    }
+
+                                    // ✅ request already exists
+                                    if (response.status === "exists") {
+                                        leadMessage
+                                            .addClass('lead-warning')
+                                            .append('<div class="lead-note">' + response.message + '</div>');
+                                    }
+                                    // ✅ success with message
+                                    else if (response.status === "success") {
+                                        leadMessage
+                                            .addClass('lead-success request-edit-sent')
+                                            .append('<div class="lead-note">' + response.message + '</div>');
+                                    }
+                                    // ❌ fallback
+                                    else {
+                                        leadMessage
+                                            .addClass('lead-error')
+                                            .append('<div class="lead-note">Unexpected response.</div>');
+                                    }
+                                },
+
                                     error: function(xhr) {
                                         let alertBox = $('#soft-alert');
                                         alertBox.removeClass(
@@ -480,6 +491,7 @@
                     }
                 });
             });
+       
         });
     </script>
 

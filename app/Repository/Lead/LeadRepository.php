@@ -3,6 +3,7 @@
 namespace App\Repository\Lead;
 use App\Models\Lead;
 
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 use Exception;
@@ -16,7 +17,7 @@ class LeadRepository {
 
     public static function getLeadsList($user_id = null, $filter = null, $status = null){
 
-         //Lead::where('user_id', $user_id);
+        //Lead::where('user_id', $user_id);
          $leads =  Lead::where('is_active', 1);
          if(!is_null($user_id)){
             $profile =  $leads->whereRelation('users', 'user_id', $user_id )->whereIn('follow_status',[2,6,3,7,5,8]);
@@ -35,7 +36,7 @@ class LeadRepository {
 
         // Eager load the project relationship to get the project name
         $leads = $leads->with('project:id,project') // Eager load only the 'id' and 'project' columns from the Project model
-        ->get();
+            ->get();
 
         // Modify the collection to include project name
         $leads->map(function ($lead) {
@@ -93,20 +94,28 @@ class LeadRepository {
     }
     public static function getAllLeads($project_id = null)
     {
-        // Base query for active leads
+        $user = Auth::user();
+        $isSuperAdmin = $user->getRoleNames()->first() === 'superadmin';
+        // Base query
         $leadsQuery = Lead::whereDate('follow_up', '<=', Carbon::today());
-        // Filter by project ID if provided
+
+        // Project filter
         if (!is_null($project_id)) {
-            $leadsQuery = $leadsQuery->where('project_id', $project_id);
+            $leadsQuery->where('project_id', $project_id);
         }
 
-        $totalLeadsCount=$leadsQuery->count();
-        // Return both leads and total count
+        // 🔐 Role-based filtering
+        if (!$isSuperAdmin) {
+            $leadsQuery->whereHas('users', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            });
+        }
+
         return [
-            'total_leads' => $totalLeadsCount,
+            'total_leads' => $leadsQuery->count(),
         ];
     }
-    
+
 
 
     public static function getLeadsByUsers2($project_id = null, $filter = null, $user_id = null)
@@ -162,7 +171,7 @@ class LeadRepository {
     {
         // Initialize the query with necessary relationships and basic condition
         $leadsQuery = Lead::with(['users:id,name', 'project:id,project'])
-                        ->where('is_active', 1);
+            ->where('is_active', 1);
 
         // Apply project filter if provided
         if (!is_null($project_id)) {
@@ -222,17 +231,17 @@ class LeadRepository {
             if(!is_null($status)){
             $profile =  $profile->where('follow_up', '<', now()->toDateTimeString());
 
-            }
+        }
             if(!is_null($id)){
                 $profile =  $profile->where('id', $id);
 
-            }
+        }
             if(!is_null($user_id)){
                 $profile =  $profile->whereRelation('users', 'user_id', $user_id );
 
-            }
+        }
 
-            $profile = $profile->get();
+        $profile = $profile->get();
 
 
         return $profile;
