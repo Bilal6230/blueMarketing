@@ -185,7 +185,7 @@ class JournalVoucherController extends Controller
 
             $voucherNumber = getVocuherNumber(($request->debit[$index] ?? 0) > 0 ? 'JV' : 'JV');
             $ledgerData = Ledger::create([
-                'voucher' => $voucherNumber,
+                'voucher_number' => $voucherNumber,
                 'type' => ($request->debit[$index] ?? 0) > 0 ? 'JV' : 'JV',
                 'type_id' => $journalVoucher->id,
                 'project_head_subheads_id' => $request->sub_accounts[$index],
@@ -302,7 +302,6 @@ class JournalVoucherController extends Controller
             // Update Journal Voucher Record
             $journalVoucher = JournalVoucher::findOrFail($id);
             $journalVoucher->update([
-                'voucher_number' => $request->voucher_number,
                 'reference' => $request->reference,
                 'date' => $request->date,
                 'description' => $request->description,
@@ -312,8 +311,19 @@ class JournalVoucherController extends Controller
             ]);
 
             // Delete existing details and ledger entries
-            JournalVoucherDetail::where('journal_voucher_id', $id)->delete();
-            Ledger::where('type_id', $id)->whereIn('type', ['JV', 'JV'])->delete();
+            $journalVoucherDetails = JournalVoucherDetail::where('journal_voucher_id', $id)->get();
+
+            $detailIds = $journalVoucherDetails->pluck('id');
+
+            Ledger::where('type', 'JV')
+                ->where(function ($q) use ($id, $detailIds) {
+                    $q->where('type_id', $id)
+                    ->orWhereIn('type_id', $detailIds);
+                })
+                ->delete();
+
+            $journalVoucherDetails->each->delete();
+
 
             // Add updated Ledger Entries
             foreach ($request->accounts as $index => $accountId) {
@@ -328,9 +338,9 @@ class JournalVoucherController extends Controller
 
                 $voucherNumber = getVocuherNumber(($request->debit[$index] ?? 0) > 0 ? 'JV' : 'JV');
                 $ledgerData = Ledger::create([
-                    'voucher' => $voucherNumber,
+                    'voucher_number' => $voucherNumber,
                     'type' => ($request->debit[$index] ?? 0) > 0 ? 'JV' : 'JV',
-                    'type_id' => $JvDetails->id,
+                    'type_id' => $id,
                     'project_head_subheads_id' => $request->sub_accounts[$index],
                     'reference' => $request->reference,
                     'amount_in' => $request->debit[$index] ?? 0,

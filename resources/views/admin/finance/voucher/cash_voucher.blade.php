@@ -569,15 +569,10 @@
     </script>
 
     <script>
-        $(document).ready(function() {
-
-            function saveAsDraft() {
-                const form = document.getElementById('voucherForm');
-                form.action = "{{ route('ledger.save_as_draft') }}";
-            }
-
-
-        });
+        function saveAsDraft() {
+            const form = document.getElementById('voucherForm');
+            form.action = "{{ route('ledger.save_as_draft') }}";
+        }
 
 
         $(document).ready(function() {
@@ -1220,12 +1215,12 @@
                         success: function(response) {
                             let headId = response.headId;
                             let acctSelect = $('#e_accounts_id')[0].tomselect;
-                            if (!acctSelect.setValue()) {
+                            if (!acctSelect.getValue()) {
                                 acctSelect.setValue(headId, true);
                             }
                             let acct_type = response.acct_type;
                             let acctTypeSelect = $('#e_acct_type')[0].tomselect;
-                            if (!acctTypeSelect.setValue()) {
+                            if (!acctTypeSelect.getValue()) {
                                 acctTypeSelect.setValue(acct_type, true);
                             }
                         },
@@ -1441,8 +1436,9 @@
                         create: false,
                         maxItems: 1,
                         allowEmptyOption: true,
-                        onChange: () => {
-                            $(this).trigger('change');
+                        onChange: function () {
+                            $(this.input).trigger('change'); // TomSelect input
+                            // or: $(this.$input).trigger('change'); depending on TS version
                         }
                     });
                     const current = $(this).val();
