@@ -133,7 +133,7 @@ class JournalVoucherController extends Controller
 
     public function store(Request $request)
     {
-        $lastVoucherId = getLastJvId();
+        $lastVoucherId = getLastJvVNumber();
 
         $request->validate([
             'voucher_number' => 'required|string',
