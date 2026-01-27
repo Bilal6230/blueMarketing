@@ -10,6 +10,7 @@ use App\Models\Ledger;
 use App\Models\Project;
 use App\Models\DraftLedger;
 use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Builder;
 use App\Models\HeadAccounting;
 use App\Models\AccountingExpense;
 use App\Models\SubheadAccounting;
@@ -608,8 +609,17 @@ class VoucherController extends Controller
         }
 
 
-        // Get total count before pagination
+        // Get total count before pagination/search
         $total = (clone $q)->count();
+
+        $searchValue = trim((string) $request->input('search.value', ''));
+        $filteredQuery = (clone $q);
+
+        if ($searchValue !== '') {
+            $this->applyVoucherSearchFilter($filteredQuery, $searchValue);
+        }
+
+        $recordsFiltered = (clone $filteredQuery)->count();
 
         // Pagination parameters
         $start = (int) $request->input('start', 0);
@@ -617,7 +627,7 @@ class VoucherController extends Controller
         $draw = (int) $request->input('draw', 1);
 
         // Fetch only paginated rows, ordered by latest
-        $rows = $q->orderByDesc('id')->skip($start)->take($length)->get();
+        $rows = (clone $filteredQuery)->orderByDesc('id')->skip($start)->take($length)->get();
 
         // Transform result set
         $data = $rows->map(function ($i) {
@@ -675,7 +685,7 @@ class VoucherController extends Controller
         return response()->json([
             'draw' => $draw,
             'recordsTotal' => $total,
-            'recordsFiltered' => $total,
+            'recordsFiltered' => $recordsFiltered,
             'data' => $data,
         ]);
     }
@@ -849,8 +859,17 @@ class VoucherController extends Controller
             $q->whereDate('date', '<=', $request->date_to);
         }
 
-        // Get total count before pagination
+        // Get total count before pagination/search
         $total = (clone $q)->count();
+
+        $searchValue = trim((string) $request->input('search.value', ''));
+        $filteredQuery = (clone $q);
+
+        if ($searchValue !== '') {
+            $this->applyVoucherSearchFilter($filteredQuery, $searchValue);
+        }
+
+        $recordsFiltered = (clone $filteredQuery)->count();
 
         // Pagination parameters
         $start = (int) $request->input('start', 0);
@@ -858,7 +877,7 @@ class VoucherController extends Controller
         $draw = (int) $request->input('draw', 1);
 
         // Fetch only paginated rows, ordered by latest
-        $rows = $q->orderByDesc('id')->skip($start)->take($length)->get();
+        $rows = (clone $filteredQuery)->orderByDesc('id')->skip($start)->take($length)->get();
 
         // Transform the result set
         $data = $rows->map(function ($i) {
@@ -889,7 +908,7 @@ class VoucherController extends Controller
         return response()->json([
             'draw' => $draw,
             'recordsTotal' => $total,
-            'recordsFiltered' => $total,
+            'recordsFiltered' => $recordsFiltered,
             'data' => $data,
         ]);
     }
@@ -1065,5 +1084,17 @@ class VoucherController extends Controller
                     ]);
                 }
             });
+    }
+
+    private function applyVoucherSearchFilter(Builder $query, string $search)
+    {
+        $query->where(function (Builder $q) use ($search) {
+            $q->where('voucher_number', 'like', "%{$search}%")
+                ->orWhere('detail', 'like', "%{$search}%")
+                ->orWhereHas('projectHeadSubhead.headAccounting', fn (Builder $head) => $head->where('name', 'like', "%{$search}%"))
+                ->orWhereHas('projectHeadSubhead.subheadAccounting', fn (Builder $sub) => $sub->where('name', 'like', "%{$search}%"));
+        });
+
+        return $query;
     }
 }
