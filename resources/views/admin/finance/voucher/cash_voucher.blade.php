@@ -150,18 +150,16 @@
                                                     {{-- Account Type (small) --}}
                                                     <div class="col-6 col-md-3 col-lg-2">
                                                         <label class="fbox mb-1">Account Type</label>
-                                                        <select
-                                                            class="js-tomselect form-select form-select-sm @error('acct_type') is-invalid @enderror"
-                                                            placeholder=" " autocomplete="off" name="acct_type"
-                                                            id="acct_type">
-                                                            <option value=""></option>
-                                                            <option value="0">Update Please</option>
-                                                            <option value="1">Assets</option>
-                                                            <option value="2">Owner</option>
-                                                            <option value="3">Recovery</option>
-                                                            <option value="4">Expence</option>
-                                                            <option value="5">Amanat Pyments</option>
-                                                        </select>
+                                                            <select
+                                                                class="js-tomselect form-select form-select-sm @error('acct_type') is-invalid @enderror"
+                                                                placeholder=" " autocomplete="off" name="acct_type"
+                                                                id="acct_type">
+                                                                <option value="">Select Account Type</option>
+                                                                @foreach ($accountTypes as $type)
+                                                                    <option value="{{ $type->id }}">{{ $type->name }}
+                                                                    </option>
+                                                                @endforeach
+                                                            </select>
                                                         @error('acct_type')
                                                             <div class="invalid-feedback d-block">{{ $message }}</div>
                                                         @enderror
@@ -2393,13 +2391,10 @@
                                             <div class="input-group">
                                                 <select class="js-tomselect" placeholder=" " name="acct_type"
                                                     id="e_acct_type">
-                                                    <option value=""></option>
-                                                    <option value="0">Update Please</option>
-                                                    <option value="1">Assets</option>
-                                                    <option value="2">Owner</option>
-                                                    <option value="3">Recovery</option>
-                                                    <option value="4">Expence</option>
-                                                    <option value="5">Amanat Pyments</option>
+                                                    <option value="">Select Account Type</option>
+                                                    @foreach ($accountTypes as $type)
+                                                        <option value="{{ $type->id }}">{{ $type->name }}</option>
+                                                    @endforeach
                                                 </select>
                                                 @error('projects_id')
                                                     <div class="invalid-feedback">{{ $message }}</div>

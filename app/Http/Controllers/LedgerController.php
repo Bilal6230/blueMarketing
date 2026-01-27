@@ -782,15 +782,6 @@ class LedgerController extends Controller
     }
     private function getAccountName($typeId)
     {
-        $map = [
-            0 => 'Pleas Update',
-            1 => 'Assets',
-            2 => 'Owner',
-            3 => 'Recovery',
-            4 => 'Expense',
-            5 => 'Amanat Payments',
-        ];
-
-        return $map[$typeId] ?? 'Unknown';
+        return getAccountTypeName($typeId);
     }
 }

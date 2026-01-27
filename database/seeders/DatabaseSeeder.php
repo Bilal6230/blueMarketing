@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             SettingSeeder::class,
             RoadSeeder::class,
             FacingSeeder::class,
+            AccountTypeSeeder::class,
         ]);
     }
 }
