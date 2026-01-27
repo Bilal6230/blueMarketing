@@ -665,7 +665,7 @@ class LabourController extends Controller
         $amount = str_replace(',', '', $request->amount);
 
         $selectedProjectId = getSelectedTown();
-        $lastVoucherId = getLastJvId();
+        $lastVoucherId = getLastJvVNumber();
         $journalVoucher = JournalVoucher::create([
             'voucher_number' => $lastVoucherId + 1,
             'reference' => null,
