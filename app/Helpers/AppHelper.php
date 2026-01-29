@@ -1,12 +1,13 @@
 <?php
 
 use App\Models\AccountType;
-use App\Models\Ledger;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Cache;
+use App\Models\Ledger;
 use App\Models\Project;
+use App\Models\JournalVoucher;
 use App\Models\ProjectHeadSubhead;
 
+use Illuminate\Support\Facades\Cache;
 use function PHPUnit\Framework\isNull;
 
 /**
@@ -545,7 +546,7 @@ function getBankNameById($id)
 {
     $banks = getPakistanBanks();
     foreach ($banks as $bank) {
-        if ($bank['id'] === $id) {
+        if ($bank['id'] == $id) {
             return $bank['name'];
         }
     }
@@ -660,7 +661,20 @@ if (!function_exists('getLastJvId')) {
      */
     function getLastJvId()
     {
-        return \App\Models\JournalVoucher::withTrashed()->max('id');
+        $selectedProjectId = getSelectedTown();
+        return JournalVoucher::where('project_id', $selectedProjectId)->withTrashed()->max('id');
+    }
+}
+if (!function_exists('getLastJvVNumber')) {
+    /**
+     * Get the last journal voucher ID.
+     *
+     * @return int|null
+     */
+    function getLastJvVNumber()
+    {
+        $selectedProjectId = getSelectedTown();
+        return JournalVoucher::where('project_id', $selectedProjectId)->withTrashed()->latest()->value('voucher_number');
     }
 }
 
