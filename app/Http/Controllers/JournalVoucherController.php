@@ -311,7 +311,7 @@ class JournalVoucherController extends Controller
             ]);
 
             // Delete existing details and ledger entries
-            $journalVoucherDetails = JournalVoucherDetail::where('journal_voucher_id', $id)->get();
+            $journalVoucherDetails = JournalVoucherDetail::withTrashed()->where('journal_voucher_id', $id)->get();
 
             $detailIds = $journalVoucherDetails->pluck('id');
 
