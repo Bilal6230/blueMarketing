@@ -632,8 +632,6 @@
             // 3️⃣ DELETE DYNAMIC (AJAX)
             // ===================================================================
             $(document).on("click", ".delete-btn", function () {
-                debugger
-
                 let url = $(this).data("url");
                 console.log(url);
                 let id = $(this).data("id");
@@ -663,6 +661,7 @@
                                     timer: 1500,
                                     showConfirmButton: false
                                 });
+                                window.location.reload();
                             }
                         });
 
