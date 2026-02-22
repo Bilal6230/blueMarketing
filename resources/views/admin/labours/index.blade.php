@@ -2027,6 +2027,79 @@
                     }
                 });
             });
+            $('#editLabourRateForm').on('submit', function(e) {
+                e.preventDefault();
+                let hasError = false;
+
+                // Clear all previous errors
+                $('#editLabourRateForm .error').text('');
+
+                // Validate required fields
+                $('#editLabourRateForm [name]').each(function() {
+                    let field = $(this);
+                    let value = field.val()?.trim();
+
+                    if (field.prop('required') && value === '') {
+                        field.siblings('.error').removeClass('d-none').text(
+                            'This field is required');
+                        hasError = true;
+                    }
+                });
+
+                if (hasError) return; // stop if validation fails
+
+
+                // Ask for confirmation
+                Swal.fire({
+                    title: "Are you sure?",
+                    text: "Do you want to update this Labour's rate?",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "Yes, update!",
+                    cancelButtonText: "Cancel",
+                    reverseButtons: true
+                }).then((result) => {
+
+                    if (result.isConfirmed) {
+
+                        let formData = $('#editLabourRateForm').serialize();
+                        let actionUrl = $('#editLabourRateForm').attr(
+                            'action'); // dynamic URL already set
+
+                        $.ajax({
+                            url: actionUrl,
+                            type: "POST", // Laravel PUT works with POST + _method
+                            data: formData,
+
+                            success: function(res) {
+                                if (res.success) {
+                                    // Close modal
+                                    $('#changeLabourRateModal').modal('hide');
+
+                                    // Success alert
+                                    Swal.fire({
+                                        title: "Updated!",
+                                        text: res.message,
+                                        icon: "success",
+                                        timer: 1500,
+                                        showConfirmButton: false
+                                    });
+                                    window.location.reload();
+                                }
+                            },
+
+                            error: function(err) {
+
+                                Swal.fire({
+                                    title: "Error",
+                                    text: err.responseJSON.message,
+                                    icon: "error"
+                                });
+                            }
+                        });
+                    }
+                });
+            });
 
 
             $(document).on('click', '#btnAddSite, #btnUpdateSite', function(e) {
