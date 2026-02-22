@@ -75,7 +75,10 @@ class DastiCashController extends Controller
     {
         $record = Dasticash::findOrFail($id);
         $record->delete();
-
-        return redirect()->route('dashboard')->with('success', 'Record added successfully.');
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Dasticash deleted successfully.',
+            'data' => $record
+        ]);
     }
 }
