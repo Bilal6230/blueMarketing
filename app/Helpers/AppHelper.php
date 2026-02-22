@@ -660,7 +660,19 @@ if (!function_exists('getLastJvVNumber')) {
     function getLastJvVNumber()
     {
         $selectedProjectId = getSelectedTown();
-        return JournalVoucher::withTrashed()->where('project_id', $selectedProjectId)->max('voucher_number');
+        return JournalVoucher::where('project_id', $selectedProjectId)->where('type', 'JV')->withTrashed()->latest()->value('voucher_number');
+    }
+}
+if (!function_exists('getLastSVVNumber')) {
+    /**
+     * Get the last journal voucher ID.
+     *
+     * @return int|null
+     */
+    function getLastSVVNumber()
+    {
+        $selectedProjectId = getSelectedTown();
+        return JournalVoucher::where('project_id', $selectedProjectId)->where('type', 'SV')->withTrashed()->latest()->value('voucher_number');
     }
 }
 

@@ -253,6 +253,15 @@
                             @endcan
                             @can('read jv')
                                 <li class="nav-item">
+                                    <a href="{{ route('sales.voucher.index') }}"
+                                        class="nav-link {{ request()->routeIs('sales.voucher.index') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Sales Voucher</p>
+                                    </a>
+                                </li>
+                            @endcan
+                            @can('read jv')
+                                <li class="nav-item">
                                     <a href="{{ route('commision.voucher.index') }}"
                                         class="nav-link {{ request()->routeIs('commision.voucher.index') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>
