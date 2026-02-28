@@ -369,6 +369,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
 
     Route::controller(App\Http\Controllers\JournalVoucherController::class)->group(function () {
 
+        Route::get('sales-voucher', 'salesIndex')->middleware(['permission:read jv'])->name('sales.voucher.index');
         Route::get('journal-voucher', 'index')->middleware(['permission:read jv'])->name('journal.voucher.index');
         Route::get('journal-voucher/create', 'create')->middleware(['permission:create jv'])->name('journal.voucher.create');
         Route::post('journal-voucher/create', 'store')->middleware(['permission:create jv'])->name('journal.voucher.store');

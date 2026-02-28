@@ -9,7 +9,7 @@
                         <h4 class="mb-0">{{ $title }}</h4>
                     </div>
                     <div class="card-body">
-                        <div class="row">
+                        <div class="row {{ $type == 'SV' ? 'd-none' : '' }}" >
                             <a href="{{ route('journal.voucher.create') }}" class="btn btn-success">
                                 <i class="fas fa-plus"></i> Add New Voucher
                             </a>
@@ -88,7 +88,7 @@
                                 @foreach ($vouchers as $voucher)
                                     <tr>
                                         <td>{{ $voucher->id }}</td>
-                                        <td>JV-{{ get_jv_number($voucher->voucher_number) }}</td>
+                                        <td>{{ $type }}-{{ get_jv_number($voucher->voucher_number) }}</td>
                                         <td>{{ $voucher->reference }}</td>
                                         <td>{{ $voucher->date }}</td>
                                         <td>{{ $voucher->description }}</td>

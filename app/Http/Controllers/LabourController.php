@@ -787,51 +787,83 @@ class LabourController extends Controller
             'apply_from_date'  => 'required|date',
         ]);
 
-        DB::transaction(function () use ($request) {
+        try {
 
-            $labourId  = $request->labour_id;
-            $newRate   = $request->daily_wage;
+            DB::transaction(function () use ($request) {
 
-            $applyFrom = Carbon::parse($request->apply_from_date)->startOfDay();
-            $today     = Carbon::today()->endOfDay();
+                $labourId  = $request->labour_id;
+                $newRate   = $request->daily_wage;
+                $selectedProjectId = getSelectedTown();
 
-            /** -------------------------
-             * Update Attendance Records
-             * FROM apply_from_date → TODAY
-             * --------------------------*/
-            LabourAttendance::where('labour_id', $labourId)
-                ->where('status', 'present')
-                ->whereBetween('date', [
-                    $applyFrom->toDateString(),
-                    $today->toDateString()
-                ])
-                ->chunkById(100, function ($records) use ($newRate) {
+                $applyFrom = Carbon::parse($request->apply_from_date)->startOfDay();
+                $today     = Carbon::today()->endOfDay();
 
-                    foreach ($records as $att) {
+                $headSubheadId = $this->systemHeadSubheadAccountId(
+                    (int) $selectedProjectId,
+                    'Labour',
+                    'Labour Party',
+                    true
+                );
 
-                        $hourlyRate = $newRate / 8;
+                /**
+                 * ❌ Block if Journal Voucher already exists
+                 */
+                $exists = JournalVoucherDetail::where('account_id', $headSubheadId)
+                    ->whereHas('journalVoucher', function ($q) use ($applyFrom) {
+                        $q->whereDate('date', '>=', $applyFrom);
+                    })
+                    ->exists();
 
-                        $normalHours = min($att->hours, 8);
-                        $otHours     = $att->ot_hours;
+                if ($exists) {
+                    throw new \Exception(
+                        'Cannot update rate. Journal voucher already created for this date or later.'
+                    );
+                }
 
-                        $normalAmount = $normalHours * $hourlyRate;
-                        $otAmount     = $otHours * $hourlyRate; // add multiplier if needed
+                /**
+                 * ✅ Update Attendance
+                 */
+                LabourAttendance::where('labour_id', $labourId)
+                    ->where('status', 'present')
+                    ->whereBetween('date', [
+                        $applyFrom->toDateString(),
+                        $today->toDateString()
+                    ])
+                    ->chunkById(100, function ($records) use ($newRate) {
 
-                        $att->update([
-                            'rate'   => $newRate,
-                            'amount' => round($normalAmount + $otAmount, 2),
-                        ]);
-                    }
-                });
+                        foreach ($records as $att) {
 
-            /** -------------------------
-             * Update Labour Master Rate
-             * --------------------------*/
-            Labour::where('id', $labourId)
-                ->update(['daily_wage' => $newRate]);
-        });
+                            $hourlyRate = $newRate / 8;
 
-        return back()->with('success', 'Labour rate updated from selected date to today');
+                            $normalHours = min($att->hours, 8);
+                            $otHours     = $att->ot_hours;
+
+                            $normalAmount = $normalHours * $hourlyRate;
+                            $otAmount     = $otHours * $hourlyRate;
+
+                            $att->update([
+                                'rate'   => $newRate,
+                                'amount' => round($normalAmount + $otAmount, 2),
+                            ]);
+                        }
+                    });
+
+                /**
+                 * ✅ Update Master Rate
+                 */
+                Labour::where('id', $labourId)
+                    ->update(['daily_wage' => $newRate]);
+            });
+            return response()->json([
+                'success' => true,
+                'message' => 'Labour rate updated from selected date to today'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     private function loadAttendance($request)
