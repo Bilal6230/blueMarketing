@@ -159,7 +159,7 @@ class LabourController extends Controller
                  * ------------------------ */
                 $customerLedger = CustomerLedger::create([
                     'transaction_type' => self::LedgerType,
-                    'type_id' => get_new_typeID(self::LedgerType),
+                    'type_id' => get_new_typeID(self::LedgerType), // generate new type_id based on CP type
                     'reference' => $request->reference,
                     'project_id' => getSelectedTown(),
                     'customer_id' => self::LABOUR_Sub_Acount_ID,

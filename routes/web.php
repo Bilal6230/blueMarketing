@@ -241,32 +241,58 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
 
     Route::resource('labours', LabourController::class);
     Route::post('/labours/sitestore', [LabourController::class, 'siteStore'])
-    ->name('labours.sitestore');
+        ->name('labours.sitestore');
     Route::get('/labours/attendance/week', [LabourController::class, 'loadAttendanceWeek'])
-    ->name('attendance.week.load');
+        ->name('attendance.week.load');
     Route::get('/labour/{id}', [LabourController::class, 'labourHistory'])
-    ->name('labour.history');
+        ->name('labour.history');
     Route::post('/labours/check/validate', [LabourController::class, 'checkValidate'])
-    ->name('labours.check.validate');
+        ->name('labours.check.validate');
     Route::patch('/labours/{labour}/status', [LabourController::class, 'updateStatus'])
-    ->name('labours.updateStatus');
+        ->name('labours.updateStatus');
     Route::post('/labours/attendance', [LabourController::class, 'attendanceStore'])
-    ->name('labours.attendance');
+        ->name('labours.attendance');
     Route::post('/labours/report', [LabourController::class, 'attendanceReport'])
-    ->name('labours.report');
+        ->name('labours.report');
     Route::post('/attendance/labour-payment', [LabourController::class, 'labourPayment'])->name('labours.payment');
     Route::post('/labours/update-rate', [LabourController::class, 'updateRate'])->name('labours.updateRate');
     Route::post('/labours/person/report', [LabourController::class, 'personAttendanceReport'])
-    ->name('labours.person.report');
+        ->name('labours.person.report');
     Route::post('/labours/create/voucher', [LabourController::class, 'createVoucher'])
-    ->name('labours.create.voucher');
+        ->name('labours.create.voucher');
     Route::post('/labours/print/site/report', [LabourController::class, 'printSiteReport'])
-    ->name('labours.print.site.report');
+        ->name('labours.print.site.report');
     Route::post('/labours/print/person/report', [LabourController::class, 'printPersonReport'])
-    ->name('labours.print.person.report');
+        ->name('labours.print.person.report');
     Route::post('/labours/print/attendance/report', [LabourController::class, 'printAttendanceReport'])
-    ->name('labours.print.attendance.report');
-    Route::resource('stocks', StockController::class);
+        ->name('labours.print.attendance.report');
+    Route::get('stocks', [StockController::class, 'index'])->name('stocks.index');
+
+    // Meta (items/parties for dropdowns)
+    Route::get('stocks/meta', [StockController::class, 'meta'])->name('stocks.meta');
+
+    // Counters (slip/bill numbers)
+    Route::get('stocks/next-slip', [StockController::class, 'nextSlip'])->name('stocks.nextSlip');
+    Route::get('stocks/next-bill', [StockController::class, 'nextBill'])->name('stocks.nextBill'); // ?type=purchase|sale
+
+    // Create actions (AJAX)
+    Route::post('stocks/items', [StockController::class, 'storeItem'])->name('stocks.items.store');
+    Route::post('stocks/parties', [StockController::class, 'storeParty'])->name('stocks.parties.store');
+    Route::post('stocks/entries', [StockController::class, 'storeEntry'])->name('stocks.entries.store');
+    Route::post('stocks/bills', [StockController::class, 'storeBill'])->name('stocks.bills.store');
+    Route::put('stocks/items/{item}', [StockController::class, 'updateItem'])->name('stocks.items.update');
+    Route::delete('stocks/items/{item}', [StockController::class, 'deleteItem'])->name('stocks.items.delete');
+    Route::put('stocks/parties/{party}', [StockController::class, 'updateParty'])->name('stocks.parties.update');
+    Route::delete('stocks/parties/{party}', [StockController::class, 'deleteParty'])->name('stocks.parties.delete');
+
+    // Lists (AJAX tables)
+    Route::get('stocks/entries', [StockController::class, 'entries'])->name('stocks.entries.index');
+    Route::get('stocks/bills', [StockController::class, 'bills'])->name('stocks.bills.index');
+    Route::get('stocks/items', [StockController::class, 'items'])->name('stocks.items.index');
+    Route::get('stocks/parties', [StockController::class, 'parties'])->name('stocks.parties.index');
+
+    // Stock report (date range + optional item filter)
+    Route::get('stocks/report', [StockController::class, 'report'])->name('stocks.report');
 
 
     Route::controller(App\Http\Controllers\LedgerController::class)->group(function () {
