@@ -15,6 +15,7 @@ class JournalVoucher extends Model
 
     protected $fillable = [
         'voucher_number',
+        'type',
         'reference',
         'description',
         'date',

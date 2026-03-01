@@ -514,7 +514,7 @@
                                 <td class="amount-cell">${res.data.amount ?? ''}</td>
                                 <td class="desc-cell">${res.data.description ?? ''}</td>
                                 <td>
-                                    <a href="javascript:void(0)" 
+                                    <a href="javascript:void(0)"
                                        class="btn btn-sm btn-info edit-btn"
                                        data-id="${res.data.id}"
                                        data-name="${res.data.name}"
@@ -653,7 +653,20 @@
                                 row.fadeOut(300, function () {
                                     $(this).remove();
                                 });
+                                dastiAmount = parseFloat(res.data.amount) || 0;
+                                let id = res.data.id;
+                                let handCashEl = $("#handCash");
+                                let totalCashEl = $("#totalCash");
 
+                                let handCash = parseFloat(handCashEl.text().replace(/,/g, '')) || 0;
+                                let totalCash = parseFloat(totalCashEl.text().replace(/,/g, '')) || 0;
+
+                                let updatedHandCash = handCash + dastiAmount;
+                                let updatedTotalCash = totalCash + dastiAmount;
+
+                                handCashEl.text(updatedHandCash.toLocaleString(undefined, { minimumFractionDigits: 2 }));
+                                totalCashEl.text(updatedTotalCash.toLocaleString(undefined, { minimumFractionDigits: 2 }));
+                                $("#row-" + id).remove();
                                 Swal.fire({
                                     icon: "success",
                                     title: "Deleted",

@@ -2,29 +2,31 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use App\Models\Lead;
-use App\Models\Plot;
-use App\Models\User;
-use App\Models\Ledger;
 use App\Models\Booking;
-use App\Models\Project;
-use App\Models\ChargeType;
-use App\Models\DraftLedger;
-use App\Models\Installment;
-use Illuminate\Http\Request;
 use App\Models\BookingDetail;
-use App\Models\PendingUpdate;
+use App\Models\ChargeType;
 use App\Models\CustomerLedger;
+use App\Models\DraftLedger;
 use App\Models\HeadAccounting;
-use App\Models\SubheadAccounting;
+use App\Models\Installment;
+use App\Models\JournalVoucher;
+use App\Models\JournalVoucherDetail;
+use App\Models\Lead;
+use App\Models\Ledger;
+use App\Models\PendingUpdate;
+use App\Models\Plot;
+use App\Models\Project;
 use App\Models\ProjectHeadSubhead;
-use Illuminate\Support\Facades\DB;
-use Spatie\Permission\Models\Role;
-use Illuminate\Support\Facades\Log;
+use App\Models\SubheadAccounting;
+use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use RealRashid\SweetAlert\Facades\Alert;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use RealRashid\SweetAlert\Facades\Alert;
+use Spatie\Permission\Models\Role;
 use Symfony\Component\HttpFoundation\Response;
 
 class BookingController extends Controller
@@ -949,7 +951,7 @@ class BookingController extends Controller
          * 50 lac Total Sale Credit
          * 10 lac Party Profit Credit
          */
-         $voucherNumber = getVocuherNumber('BO');
+        $voucherNumber = getVocuherNumber('BO');
         Ledger::create([
             'type' => 'BO',
             'voucher_number' => $voucherNumber,
@@ -1720,8 +1722,7 @@ class BookingController extends Controller
             'payment_type' => 'required',
             'reference' => 'required',
 
-        ]);
-        ;
+        ]);;
 
         $action = $request->input('action');
         // dd($request->input());
@@ -2364,7 +2365,21 @@ class BookingController extends Controller
 
                 // System accounts under Project Sale (head=16)
                 $totalSaleId = $this->totalSaleAccountId((int) $booking->project_id);
-
+                $totalDebit = 0;
+                $totalCredit = 0;
+                $lastVoucherId = getLastSVVNumber() ?? 0;
+                $selectedProjectId = getSelectedTown();
+                $journalVoucher = JournalVoucher::create([
+                    'voucher_number' => $lastVoucherId + 1,
+                    'type' => 'SV',
+                    'reference' => $request->reference,
+                    'date' => now()->format('Y-m-d'),
+                    'description' => $request->description,
+                    'total_debit' => 0, // Add total debit
+                    'total_credit' => 0, // Add total credit
+                    'created_by' => auth()->id(),
+                    'project_id' => $selectedProjectId,
+                ]);
                 // Marker to avoid duplicates (optional but safe)
                 $marker = 'CANCEL#' . $booking->id;
                 $alreadyPosted = Ledger::where('reference', $booking->id)
@@ -2374,11 +2389,20 @@ class BookingController extends Controller
                 if ($alreadyPosted) {
                     return;
                 }
-                $voucherNumber = getVocuherNumber('CP');
-                // 1) Debit Total Sale (CP out) = sale amount
+                $voucherNumber = getVocuherNumber('SV');
+                // 1) Debit Total Sale (SV out) = sale amount
+                JournalVoucherDetail::create([
+                    'journal_voucher_id' => $journalVoucher->id,
+                    'account_id' => $totalSaleId,
+                    'debit' => 0,
+                    'credit' => $sale ?? 0,
+                    'description' => $marker . " | Cancel Reverse Total Sale | {$plotPrefix}{$plotName}",
+                    'created_by' => auth()->id(),
+                ]);
+                $totalCredit += $sale;
                 Ledger::create([
-                    'type' => 'CP',
-                    'type_id' => $this->nextLedgerTypeId('CP'),
+                    'type' => 'SV',
+                    'type_id' => $journalVoucher->id,
                     'voucher_number' => $voucherNumber,
                     'project_head_subheads_id' => $totalSaleId,
                     'reference' => $booking->id,
@@ -2403,12 +2427,20 @@ class BookingController extends Controller
                     'amount_out' => 0,
                     'description' => "Plot Cancellation Refund {$plotPrefix}{$plotName}",
                 ]);
-                $voucherNumber = getVocuherNumber('CR');
-
-
+                $voucherNumber = getVocuherNumber('SV');
+                // 1) Debit Total Sale (SV out) = sale amount
+                JournalVoucherDetail::create([
+                    'journal_voucher_id' => $journalVoucher->id,
+                    'account_id' => $phsCustomer->id,
+                    'debit' => $customerCredit,
+                    'credit' => 0,
+                    'description' => $marker . " | Customer Credit | {$plotPrefix}{$plotName}",
+                    'created_by' => auth()->id(),
+                ]);
+                $totalDebit += $customerCredit;
                 Ledger::create([
-                    'type' => 'CR',
-                    'type_id' => $this->nextLedgerTypeId('CR'),
+                    'type' => 'SV',
+                    'type_id' => $journalVoucher->id,
                     'voucher_number' => $voucherNumber,
 
                     'project_head_subheads_id' => $phsCustomer->id,
@@ -2434,11 +2466,20 @@ class BookingController extends Controller
                             'Deduction',
                             true // create if missing
                         );
-                        $voucherNumber = getVocuherNumber('CP');
-
+                        $voucherNumber = getVocuherNumber('SV');
+                        // 1) Debit Total Sale (SV out) = sale amount
+                        JournalVoucherDetail::create([
+                            'journal_voucher_id' => $journalVoucher->id,
+                            'account_id' => $deductionAccId,
+                            'debit' => $adj,
+                            'credit' => 0,
+                            'description' => $marker . " | Deduction Credit | {$plotPrefix}{$plotName}",
+                            'created_by' => $userId,
+                        ]);
+                        $totalDebit += $adj;
                         Ledger::create([
-                            'type' => 'CR',
-                            'type_id' => $this->nextLedgerTypeId('CP'),
+                            'type' => 'SV',
+                            'type_id' => $journalVoucher->id,
                             'voucher_number' => $voucherNumber,
                             'project_head_subheads_id' => $deductionAccId,
                             'reference' => $booking->id,
@@ -2452,17 +2493,26 @@ class BookingController extends Controller
                             'status' => 0,
                         ]);
                     } else {
-                        // Profit: debit Party Profit (CP out) = profit
+                        // Profit: debit Party Profit (SV out) = profit
                         $partyProfitAccId = $this->systemAccountIdBySubheadName(
                             (int) $booking->project_id,
                             16,
                             'Party Profit',
-                            false // must exist
+                            true // must exist
                         );
-                        $voucherNumber = getVocuherNumber('CP');
+                        $voucherNumber = getVocuherNumber('SV');
+                        JournalVoucherDetail::create([
+                            'journal_voucher_id' => $journalVoucher->id,
+                            'account_id' => $partyProfitAccId,
+                            'debit' => 0.00,
+                            'credit' => $adj,
+                            'description' => $marker . " | Party Profit Debit | {$plotPrefix}{$plotName}",
+                            'created_by' => $userId,
+                        ]);
+                        $totalCredit += $adj;
                         Ledger::create([
-                            'type' => 'CP',
-                            'type_id' => $this->nextLedgerTypeId('CP'),
+                            'type' => 'SV',
+                            'type_id' => $journalVoucher->id,
                             'voucher_number' => $voucherNumber,
                             'project_head_subheads_id' => $partyProfitAccId,
                             'reference' => $booking->id,
@@ -2478,8 +2528,10 @@ class BookingController extends Controller
                     }
                 }
                 $this->attechCustomerToOldProjectSale($booking->project_id, $booking->customer_id, $booking->plot_id);
+                $journalVoucher->total_debit = $totalDebit;
+                $journalVoucher->total_credit = $totalCredit;
+                $journalVoucher->save();
             });
-
 
             return response()->json(['message' => 'Booking canceled successfully.']);
         } catch (\Throwable $e) {

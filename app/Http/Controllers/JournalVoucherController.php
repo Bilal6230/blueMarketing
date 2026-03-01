@@ -31,7 +31,88 @@ class JournalVoucherController extends Controller
         $selectedProjectId = getSelectedTown();
 
         // Build base query for vouchers
-        $query = JournalVoucher::latest()->where('project_id', $selectedProjectId);
+        $query = JournalVoucher::latest()->where('project_id', $selectedProjectId)->where('type', 'JV');
+
+        // Apply filters if they exist
+        if ($request->has('filter_voucher_number') && $request->filter_voucher_number) {
+            $query->where('voucher_number', 'like', '%' . $request->filter_voucher_number . '%');
+        }
+
+        $minAmount = $request->input('filter_amount_min');
+        $maxAmount = $request->input('filter_amount_max');
+
+        if ($minAmount !== null && $minAmount !== '') {
+            $query->where('total_debit', '>=', (float) $minAmount);
+        }
+
+        if ($maxAmount !== null && $maxAmount !== '') {
+            $query->where('total_debit', '<=', (float) $maxAmount);
+        }
+
+
+        if ($request->has('filter_reference') && $request->filter_reference) {
+            $query->where('reference', 'like', '%' . $request->filter_reference . '%');
+        }
+
+        if ($request->has('filter_date') && $request->filter_date) {
+            $query->whereDate('date', '=', $request->filter_date); // Apply date filter if provided
+        }
+
+        // If it's an AJAX request, return JSON data
+        if ($request->ajax()) {
+            // Pagination parameters
+            $start = (int) $request->input('start', 0);
+            $length = (int) $request->input('length', 10);
+
+            // Fetch paginated rows
+            $vouchers = $query->skip($start)->take($length)->get();
+
+            // Count total records
+            $total = $query->count();
+
+            // Prepare the data, including the "actions" column
+            $data = $vouchers->map(function ($voucher) {
+                return [
+                    'id' => $voucher->id,
+                    'voucher_number' => 'JV-' . get_jv_number($voucher->voucher_number),
+                    'reference' => $voucher->reference,
+                    'date' => $voucher->date,
+                    'description' => $voucher->description,
+                    'total_debit' => $voucher->total_debit,
+                    'actions' => view('admin.reports.vouchers.actions', compact('voucher'))->render() // Render actions view
+                ];
+            });
+
+            // Return JSON data
+            return response()->json([
+                'draw' => $request->input('draw', 1),
+                'recordsTotal' => $total,
+                'recordsFiltered' => $total,
+                'data' => $data
+            ]);
+        }
+
+        // For non-AJAX requests, return the view
+        $x['vouchers'] = $query->get(); // Fetch all vouchers initially
+
+        return view('admin.reports.vouchers.index', $x);
+    }
+    public function salesIndex(Request $request)
+    {
+        $power = Auth::user()->roles[0]->name;
+        $x['title'] = 'General Sales Voucher';
+        $x['role'] = Role::get();
+        $x['users'] = User::get();
+        $x['power'] = $power;
+        $x['type'] = 'SV';
+        $x['class'] = 'Journal voucher';
+        $x['bg_voucher'] = 'info-cash-in';
+
+        // Get selected town's project_id
+        $selectedProjectId = getSelectedTown();
+
+        // Build base query for vouchers
+        $query = JournalVoucher::latest()->where('project_id', $selectedProjectId)->where('type', 'SV');
 
         // Apply filters if they exist
         if ($request->has('filter_voucher_number') && $request->filter_voucher_number) {
@@ -311,7 +392,7 @@ class JournalVoucherController extends Controller
             ]);
 
             // Delete existing details and ledger entries
-            $journalVoucherDetails = JournalVoucherDetail::where('journal_voucher_id', $id)->get();
+            $journalVoucherDetails = JournalVoucherDetail::withTrashed()->where('journal_voucher_id', $id)->get();
 
             $detailIds = $journalVoucherDetails->pluck('id');
 
