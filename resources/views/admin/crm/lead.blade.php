@@ -124,19 +124,106 @@
 @section('js')
     <script>
         $(document).ready(function() {
+            const createForm = $('#lead-create-form');
+            const editForm = $('#lead-edit-form');
+            const oldInput = @json(old());
+            const hasErrors = @json($errors->any());
+            const modalAdd = $('#modal-tambah');
+            const modalEdit = $('#modal-edit');
+
+            $('.lead-form .invalid-feedback').addClass('server-error');
+
+            const initSelect2 = () => {
+                if (typeof $.fn.select2 !== 'function') {
+                    return;
+                }
+                modalAdd.find('.select2').select2({
+                    dropdownParent: modalAdd,
+                    width: '100%'
+                });
+                modalEdit.find('.select2').select2({
+                    dropdownParent: modalEdit,
+                    width: '100%'
+                });
+            };
+            initSelect2();
+
+            const clearLeadErrors = ($form) => {
+                if (!$form.length) {
+                    return;
+                }
+                $form.find('.is-invalid').removeClass('is-invalid');
+                $form.find('.client-error').remove();
+                $form.find('.server-error').addClass('d-none');
+            };
+
+            const applyOldValues = ($form, oldValues) => {
+                if (!$form.length || !oldValues) {
+                    return;
+                }
+
+                const setVal = (name) => {
+                    if (oldValues[name] !== undefined) {
+                        $form.find(`[name="${name}"]`).val(oldValues[name]).trigger('change');
+                    }
+                };
+
+                if (oldValues['assign_id']) {
+                    $form.find('[name="assign_id[]"]').val(oldValues['assign_id']).trigger('change');
+                }
+
+                setVal('relate');
+                setVal('follow_id');
+                setVal('gender');
+                setVal('type');
+                setVal('zone_id');
+                setVal('area_id');
+                setVal('projects_id');
+                setVal('is_active');
+
+                if (oldValues['id']) {
+                    $form.find('[name="id"]').val(oldValues['id']);
+                }
+                if (oldValues['old_phone']) {
+                    $form.find('[name="old_phone"]').val(oldValues['old_phone']);
+                }
+            };
+
+            if (hasErrors) {
+                const isEditContext = !!oldInput.id;
+                const $targetForm = isEditContext ? editForm : createForm;
+                applyOldValues($targetForm, oldInput);
+                setTimeout(() => {
+                    $(isEditContext ? '#modal-edit' : '#modal-tambah').modal({
+                        backdrop: 'static',
+                        keyboard: false,
+                        show: true
+                    });
+                }, 150);
+            }
+
+            $('#modal-tambah').on('hidden.bs.modal', function() {
+                clearLeadErrors(createForm);
+            });
+
+            $('#modal-edit').on('hidden.bs.modal', function() {
+                clearLeadErrors(editForm);
+            });
 
             $("#filter").change(function() {
                 var filter = $("#filter").val();
-                var pathname = window.location.pathname; // Returns path only (/path/example.html)
-                var url = window.location.href; // Returns full URL (https://example.com/path/example.html)
-                var origin = window.location.origin;
-                origin = origin + "/admin/crm/lead?filter=" + filter
+                var origin = window.location.origin + "/admin/crm/lead?filter=" + filter
                 window.location.replace(origin);
 
             });
 
             $(document).on("click", '.btn-edit', function() {
                 let id = $(this).attr("data-id");
+                clearLeadErrors(editForm);
+                if (editForm.length) {
+                    editForm[0].reset();
+                    editForm.find('select.select2').val(null).trigger('change');
+                }
                 $('#modal-loading').modal({
                     backdrop: 'static',
                     keyboard: false,
@@ -151,34 +238,30 @@
                         _token: "{{ csrf_token() }}"
                     },
                     success: function(data) {
-                        console.log(data);
-                        var data = data.data;
-                        $("#assign_id").val(data.assign_id);
-                        $("#first_name").val(data.first_name);
-                        $("#last_name").val(data.last_name);
-                        $("#gender").val(data.gender);
-                        $("#type").val(data.type);
-                        $("#father_name").val(data.father_name ?? '');
-                        $("#nic_number").val(data.nic_number);
-                        $("#phone_number").val(data.phone_number);
-                        $("#mobile_number").val(data
-                            .mobile_number); // This line populates the 2nd phone number
-                        $("#zone_id").val(data.zone_id);
-                        $("#area_id").val(data.area_id);
-                        $("#business").val(data.business);
-                        $("#designation").val(data.designation);
-                        $("#home_address").val(data.home_address);
-                        $("#office_address").val(data.office_address);
-                        $("#projects_id").val(data.project_id);
-                        if (data.users && data.users.length > 0) {
-                            const ids = data.users.map(u => u.id);
-                            $('#assign_id').val(ids).trigger('change');
-                        };
-                        if (data.follow_id) {
-                            $('#follow_id').val(data.follow_id).trigger('change');
-                        };
-                        $("#id").val(data.id);
-                        $("#old_phone").val(data.phone_number);
+                        var payload = data.data || {};
+
+                        const assignedUsers = payload.users && payload.users.length > 0 ? payload.users.map(u => u.id) : [];
+                        editForm.find('[name="assign_id[]"]').val(assignedUsers.map(String)).trigger('change');
+                        editForm.find('[name="first_name"]').val(payload.first_name || '');
+                        editForm.find('[name="last_name"]').val(payload.last_name || '');
+                        editForm.find('[name="gender"]').val(payload.gender != null ? String(payload.gender) : '').trigger('change');
+                        editForm.find('[name="type"]').val(payload.type != null ? String(payload.type) : '').trigger('change');
+                        editForm.find('[name="relate"]').val(payload.relate || '').trigger('change');
+                        editForm.find('[name="father_name"]').val(payload.father_name || '');
+                        editForm.find('[name="nic_number"]').val(payload.nic_number || '');
+                        editForm.find('[name="phone_number"]').val(payload.phone_number || '');
+                        editForm.find('[name="mobile_number"]').val(payload.mobile_number || '');
+                        editForm.find('[name="zone_id"]').val(payload.zone_id != null ? String(payload.zone_id) : '').trigger('change');
+                        editForm.find('[name="area_id"]').val(payload.area_id != null ? String(payload.area_id) : '').trigger('change');
+                        editForm.find('[name="business"]').val(payload.business || '');
+                        editForm.find('[name="designation"]').val(payload.designation || '');
+                        editForm.find('[name="home_address"]').val(payload.home_address || '');
+                        editForm.find('[name="office_address"]').val(payload.office_address || '');
+                        editForm.find('[name="projects_id"]').val(payload.project_id != null ? String(payload.project_id) : '').trigger('change');
+                        editForm.find('[name="follow_id"]').val(payload.follow_id != null ? String(payload.follow_id) : '').trigger('change');
+                        editForm.find('[name="is_active"]').val(payload.is_active != null ? String(payload.is_active) : '').trigger('change');
+                        editForm.find('[name="id"]').val(payload.id || '');
+                        editForm.find('[name="old_phone"]').val(payload.phone_number || '');
 
                         $('#modal-loading').modal('hide');
                         $('#modal-edit').modal({
@@ -187,6 +270,9 @@
                             show: true
                         });
                     },
+                    error: function() {
+                        $('#modal-loading').modal('hide');
+                    }
                 });
             });
 
@@ -217,7 +303,8 @@
                     </button>
                 </div>
                 <div class="modal-body">
-                    <form action="{{ route('crm.lead.store') }}" method="POST" enctype="multipart/form-data">
+                    <form id="lead-create-form" class="lead-form" action="{{ route('crm.lead.store') }}"
+                        method="POST" enctype="multipart/form-data">
                         @csrf
                         @if ($power == 'superadmin')
                             <div class="row">
@@ -594,6 +681,25 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="col-sm-6">
+
+                                <div class="input-group">
+                                    <label>Project</label>
+                                    <div class="input-group">
+                                        <select class="form-control select2 @error('projects_id') is-invalid @enderror"
+                                            name="projects_id">
+                                            <option value="">Select an option</option>
+
+                                            @foreach ($projects as $v)
+                                                <option value="{{ $v->id }}">{{ $v->project }}</option>
+                                            @endforeach
+                                        </select>
+                                        @error('projects_id')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
 
 
                         </div>
@@ -622,7 +728,8 @@
                     </button>
                 </div>
                 <div class="modal-body">
-                    <form action="{{ route('crm.lead.update') }}" method="POST" enctype="multipart/form-data">
+                    <form id="lead-edit-form" class="lead-form" action="{{ route('crm.lead.update') }}"
+                        method="POST" enctype="multipart/form-data">
                         @csrf
                         @method('PUT')
                         @if ($power == 'superadmin')
@@ -982,7 +1089,25 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="col-sm-6">
 
+                                <div class="input-group">
+                                    <label>Project</label>
+                                    <div class="input-group">
+                                        <select class="form-control select2 @error('projects_id') is-invalid @enderror"
+                                            name="projects_id">
+                                            <option value="">Select an option</option>
+
+                                            @foreach ($projects as $v)
+                                                <option value="{{ $v->id }}">{{ $v->project }}</option>
+                                            @endforeach
+                                        </select>
+                                        @error('projects_id')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
 
                         </div>
 
