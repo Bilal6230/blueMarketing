@@ -1791,7 +1791,7 @@
           mobile: document.getElementById("partyMobile").value.trim(),
           address: document.getElementById("partyAddress").value.trim(),
           head: document.getElementById("accounts_id").value.trim(),
-          subhead: document.getElementById("partySubHead").value.trim(),
+          subhead: document.getElementById("subaccounts_id").value.trim(),
         });
 
         viewToast("success", "Added", "Party created.");
@@ -1805,6 +1805,7 @@
         await loadMeta();
         await loadPartiesTable();
       } catch (err) {
+        console.error(err);
         handleApiError(err, "Unable to create party.");
       }
     });

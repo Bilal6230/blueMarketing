@@ -642,23 +642,22 @@ class StockController extends Controller
             'name' => ['required', 'string', 'max:190'],
             'mobile' => ['nullable', 'string', 'max:40'],
             'address' => ['nullable', 'string', 'max:255'],
-            'head' => ['nullable', 'string', 'max:255'],
-            'subhead' => ['nullable', 'string', 'max:255'],
+            'head' => ['nullable'],
+            'subhead' => ['nullable'],
         ]);
         if ($validator->fails()) {
             return $this->validationError($validator);
         }
-
         $data = $validator->validated();
         $party = StockParty::create([
             'type' => $data['type'],
             'name' => trim($data['name']),
             'mobile' => $data['mobile'] ?? null,
             'address' => $data['address'] ?? null,
-            'head_accounting_id' => $request->accounts_id ?? null,
-            'subhead_accounting_id' => $request->subaccounts_id ?? null,
+            'head_account' => $request->head ?? null,
+            'sub_head_account' => $request->subhead ?? null,
             'created_by' => auth()->id(),
-        ]);
+            ]);
 
         return response()->json([
             'status' => 'success',
@@ -966,7 +965,11 @@ class StockController extends Controller
         $flow = $data['flow'];
         $linesInput = $data['lines'];
         $itemIds = collect($linesInput)->pluck('item_id')->unique()->values()->all();
-        $itemNames = StockItem::whereIn('id', $itemIds)->pluck('name', 'id')->toArray();
+        $itemMeta = StockItem::query()
+            ->whereIn('id', $itemIds)
+            ->get(['id', 'name', 'unit'])
+            ->keyBy('id');
+        $itemNames = $itemMeta->mapWithKeys(fn($it) => [(int) $it->id => $it->name])->toArray();
 
         try {
             $result = DB::transaction(function () use ($data, $flow, $linesInput, $itemNames) {
@@ -990,6 +993,8 @@ class StockController extends Controller
                         'qty_decimal' => $this->qtyIntToDecimal($qtyInt),
                         'rate_minor' => $rateMinor,
                         'amount_minor' => $amountMinor,
+                        'item_name' => $itemMeta[(int) $line['item_id']]->name ?? ('Item #' . (int) $line['item_id']),
+                        'unit' => $itemMeta[(int) $line['item_id']]->unit ?? '',
                     ];
 
                     $totalsByItem[$line['item_id']] = ($totalsByItem[$line['item_id']] ?? 0) + $qtyInt;
@@ -1041,7 +1046,7 @@ class StockController extends Controller
                     ]);
                 }
 
-                $this->postEntryLedger($entry, $flow, $totalMinor, $data['date']);
+                $this->postEntryLedger($entry, $flow, $totalMinor, $data['date'], $lines);
 
                 return [
                     'id' => (int) $entry->id,
@@ -1104,7 +1109,11 @@ class StockController extends Controller
         $direction = $data['type'] === 'purchase' ? 'IN' : 'OUT';
         $linesInput = $data['lines'];
         $itemIds = collect($linesInput)->pluck('item_id')->unique()->values()->all();
-        $itemNames = StockItem::whereIn('id', $itemIds)->pluck('name', 'id')->toArray();
+        $itemMeta = StockItem::query()
+            ->whereIn('id', $itemIds)
+            ->get(['id', 'name', 'unit'])
+            ->keyBy('id');
+        $itemNames = $itemMeta->mapWithKeys(fn($it) => [(int) $it->id => $it->name])->toArray();
 
         $entryId = null;
         if (!empty($data['entry_no'])) {
@@ -1138,6 +1147,8 @@ class StockController extends Controller
                         'qty_decimal' => $this->qtyIntToDecimal($qtyInt),
                         'rate_minor' => $rateMinor,
                         'amount_minor' => $amountMinor,
+                        'item_name' => $itemMeta[(int) $line['item_id']]->name ?? ('Item #' . (int) $line['item_id']),
+                        'unit' => $itemMeta[(int) $line['item_id']]->unit ?? '',
                     ];
 
                     $totalsByItem[$line['item_id']] = ($totalsByItem[$line['item_id']] ?? 0) + $qtyInt;
@@ -1189,7 +1200,7 @@ class StockController extends Controller
                     ]);
                 }
 
-                $this->postBillLedger($bill, $data['type'], $totalMinor, $data['date']);
+                $this->postBillLedger($bill, $data['type'], $totalMinor, $data['date'], $lines);
 
                 if ($entryId) {
                     StockEntry::where('id', $entryId)
@@ -1237,14 +1248,26 @@ class StockController extends Controller
         ]);
     }
 
-    private function postEntryLedger(StockEntry $entry, string $flow, int $totalMinor, string $entryDate): void
+    private function postEntryLedger(StockEntry $entry, string $flow, int $totalMinor, string $entryDate, array $lines): void
     {
         $reference = 'STOCK-ENTRY:' . $entry->id;
         $ledgerType = 'JV';
         $amount = $this->minorToLedgerAmount($totalMinor);
-
+        $party = StockParty::query()->find((int) $entry->party_id);
+        if (!$party) {
+            throw new \DomainException('PARTY_ACCOUNT_MAPPING_MISSING');
+        }
         $partyProjectHeadSubheadId = $this->resolvePartyPhsId((int) $entry->party_id);
         $stockProjectHeadSubheadId = $this->resolveStockKhataPhsId();
+        $detail = $this->buildStockLedgerDetail([
+            'kind' => 'ENTRY',
+            'number' => $entry->slip_no,
+            'date' => $entryDate,
+            'direction' => $flow,
+            'party_name' => $party->name,
+            'party_type' => $party->type,
+            'total_minor' => $totalMinor,
+        ], $lines);
 
         if ($flow === 'IN') {
             $debitPhsId = $stockProjectHeadSubheadId;
@@ -1259,13 +1282,13 @@ class StockController extends Controller
                 'project_head_subheads_id' => $debitPhsId,
                 'amount_in' => $amount,
                 'amount_out' => 0,
-                'detail' => "Stock entry {$entry->slip_no} ({$flow}) | DR",
+                'detail' => $detail,
             ],
             [
                 'project_head_subheads_id' => $creditPhsId,
                 'amount_in' => 0,
                 'amount_out' => $amount,
-                'detail' => "Stock entry {$entry->slip_no} ({$flow}) | CR",
+                'detail' => $detail,
             ],
         ];
 
@@ -1295,7 +1318,7 @@ class StockController extends Controller
                 'plot_id' => null,
                 'amount_in' => $flow === 'OUT' ? $amount : 0,
                 'amount_out' => $flow === 'IN' ? $amount : 0,
-                'description' => "Stock entry {$entry->slip_no} ({$flow})",
+                'description' => $detail,
                 'date' => $entryDate,
                 'payment_type' => 1,
                 'is_active' => 1,
@@ -1368,7 +1391,7 @@ class StockController extends Controller
         return $this->systemHeadSubheadAccountId($projectId, 'Stock', 'Stock Khata', true);
     }
 
-    private function postBillLedger(StockBill $bill, string $billType, int $totalMinor, string $billDate): void
+    private function postBillLedger(StockBill $bill, string $billType, int $totalMinor, string $billDate, array $lines): void
     {
         $projectId = (int) getSelectedTown();
         if ($projectId <= 0) {
@@ -1388,6 +1411,15 @@ class StockController extends Controller
 
         $partyProjectHeadSubheadId = $this->systemHeadSubheadAccountId($projectId, $partyHead, $partySubhead, true);
         $stockProjectHeadSubheadId = $this->systemHeadSubheadAccountId($projectId, 'Stock', 'Stock Khata', true);
+        $detail = $this->buildStockLedgerDetail([
+            'kind' => 'BILL',
+            'number' => $bill->bill_no,
+            'date' => $billDate,
+            'direction' => $billType,
+            'party_name' => $party->name,
+            'party_type' => $party->type,
+            'total_minor' => $totalMinor,
+        ], $lines);
 
         $reference = 'STOCK-BILL:' . $bill->id;
         $ledgerType = 'JV';
@@ -1401,8 +1433,6 @@ class StockController extends Controller
         if ($existingLegCount >= 2) {
             return;
         }
-
-        $narration = sprintf('Stock bill %s (%s)', $bill->bill_no, strtoupper($billType));
 
         $customerLedger = CustomerLedger::query()
             ->where('transaction_type', $ledgerType)
@@ -1420,7 +1450,7 @@ class StockController extends Controller
                 'plot_id' => null,
                 'amount_in' => $billType === 'sale' ? $amount : 0,
                 'amount_out' => $billType === 'purchase' ? $amount : 0,
-                'description' => $narration,
+                'description' => $detail,
                 'date' => $billDate,
                 'payment_type' => 1,
                 'is_active' => 1,
@@ -1438,13 +1468,13 @@ class StockController extends Controller
                     'project_head_subheads_id' => $stockProjectHeadSubheadId,
                     'amount_in' => $amount,
                     'amount_out' => 0,
-                    'detail' => $narration . ' | DR Stock Khata',
+                    'detail' => $detail,
                 ],
                 [
                     'project_head_subheads_id' => $partyProjectHeadSubheadId,
                     'amount_in' => 0,
                     'amount_out' => $amount,
-                    'detail' => $narration . ' | CR Party',
+                    'detail' => $detail,
                 ],
             ];
         } else {
@@ -1453,13 +1483,13 @@ class StockController extends Controller
                     'project_head_subheads_id' => $partyProjectHeadSubheadId,
                     'amount_in' => $amount,
                     'amount_out' => 0,
-                    'detail' => $narration . ' | DR Party',
+                    'detail' => $detail,
                 ],
                 [
                     'project_head_subheads_id' => $stockProjectHeadSubheadId,
                     'amount_in' => 0,
                     'amount_out' => $amount,
-                    'detail' => $narration . ' | CR Stock Khata',
+                    'detail' => $detail,
                 ],
             ];
         }
@@ -1499,10 +1529,58 @@ class StockController extends Controller
         return number_format($amountMinor, 2, '.', '');
     }
 
+    private function buildStockLedgerDetail(array $meta, array $lines): string
+    {
+        $direction = strtolower((string) ($meta['direction'] ?? ''));
+        $partyName = (string) ($meta['party_name'] ?? 'Unknown Party');
+        $number = (string) ($meta['number'] ?? '-');
+        $kind = strtoupper((string) ($meta['kind'] ?? 'ENTRY'));
+        $date = (string) ($meta['date'] ?? '');
+        $totalMinor = (int) ($meta['total_minor'] ?? 0);
+
+        if ($kind === 'ENTRY' && $direction === 'in') {
+            $lead = "Stock purchase from {$partyName}";
+        } elseif ($kind === 'ENTRY' && $direction === 'out') {
+            $lead = "Stock issued to {$partyName}";
+        } elseif ($kind === 'BILL' && $direction === 'purchase') {
+            $lead = "Stock purchase bill from {$partyName}";
+        } else {
+            $lead = "Stock sale/issue bill for {$partyName}";
+        }
+
+        $lineText = collect($lines)->map(function ($line) {
+            $item = (string) ($line['item_name'] ?? 'Item');
+            $qty = (string) ($line['qty_decimal'] ?? '0.000');
+            $unit = trim((string) ($line['unit'] ?? ''));
+            $rate = $this->minorToLedgerAmount((int) ($line['rate_minor'] ?? 0));
+            $amount = $this->minorToLedgerAmount((int) ($line['amount_minor'] ?? 0));
+            $qtyWithUnit = trim($qty . ' ' . $unit);
+            return "{$item}: {$qtyWithUnit} @ {$rate} = {$amount}";
+        })->implode('; ');
+
+        $dateLabel = $date !== '' ? date('d M Y', strtotime($date)) : '';
+        $total = $this->minorToLedgerAmount($totalMinor);
+        $directionLabel = strtoupper((string) ($meta['direction'] ?? ''));
+
+        $parts = [
+            $lead,
+            "{$kind} #{$number} ({$directionLabel})",
+        ];
+        if ($lineText !== '') {
+            $parts[] = $lineText;
+        }
+        $parts[] = "Total: {$total}";
+        if ($dateLabel !== '') {
+            $parts[] = "({$dateLabel})";
+        }
+
+        return implode(' - ', $parts);
+    }
+
     private function systemHeadSubheadAccountId(int $projectId, string $headName, string $subheadName, bool $createIfMissing = false): int
     {
-        $head = HeadAccounting::where('name', $headName)->first();
-        $subhead = SubheadAccounting::where('name', $subheadName)->first();
+        $head = HeadAccounting::where('id', $headName)->first();
+        $subhead = SubheadAccounting::where('id', $subheadName)->first();
 
         if (!$head && $createIfMissing) {
             $head = HeadAccounting::create([
