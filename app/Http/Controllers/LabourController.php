@@ -20,6 +20,7 @@ use App\Models\Project;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 use function Symfony\Component\String\b;
 
@@ -645,7 +646,127 @@ class LabourController extends Controller
 
     public function createVoucher(Request $request)
     {
-        $labours = json_decode($request->detail, true);
+        $traceId = (string) Str::uuid();
+        $log = Log::channel('labour');
+        $authUserId = auth()->id();
+        $siteId = $request->site_id;
+        $selectedProjectId = getSelectedTown();
+        $amountRaw = str_replace(',', '', (string) $request->amount);
+        $amount = is_numeric($amountRaw) ? (string) $amountRaw : null;
+        $ids = array_filter(explode(',', (string) $request->attendance_ids));
+
+        $log->info('labour.createVoucher.start', [
+            'trace_id' => $traceId,
+            'auth_user_id' => $authUserId,
+            'site_id' => $siteId,
+            'selectedProjectId' => $selectedProjectId,
+            'amount' => $amount,
+            'attendance_ids_count' => count($ids),
+        ]);
+
+        try {
+            if (empty($siteId)) {
+                $errorKey = 'invalid_site';
+                $log->warning('labour.createVoucher.warn', [
+                    'trace_id' => $traceId,
+                    'auth_user_id' => $authUserId,
+                    'site_id' => $siteId,
+                    'selectedProjectId' => $selectedProjectId,
+                    'error_key' => $errorKey,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'error_key' => $errorKey,
+                    'message' => 'Invalid site selected.',
+                    'trace_id' => $traceId,
+                ], 422);
+            }
+
+            if (!is_numeric($amountRaw) || (float) $amountRaw <= 0) {
+                $errorKey = 'invalid_amount';
+                $log->warning('labour.createVoucher.warn', [
+                    'trace_id' => $traceId,
+                    'auth_user_id' => $authUserId,
+                    'site_id' => $siteId,
+                    'selectedProjectId' => $selectedProjectId,
+                    'error_key' => $errorKey,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'error_key' => $errorKey,
+                    'message' => 'Invalid amount.',
+                    'trace_id' => $traceId,
+                ], 422);
+            }
+
+            if (empty($selectedProjectId)) {
+                $errorKey = 'invalid_project';
+                $log->warning('labour.createVoucher.warn', [
+                    'trace_id' => $traceId,
+                    'auth_user_id' => $authUserId,
+                    'site_id' => $siteId,
+                    'selectedProjectId' => $selectedProjectId,
+                    'error_key' => $errorKey,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'error_key' => $errorKey,
+                    'message' => 'Invalid project selection.',
+                    'trace_id' => $traceId,
+                ], 422);
+            }
+
+            $labours = json_decode($request->detail, true);
+            $log->info('labour.createVoucher.input_parsing_done', [
+                'trace_id' => $traceId,
+                'auth_user_id' => $authUserId,
+                'site_id' => $siteId,
+                'selectedProjectId' => $selectedProjectId,
+                'amount' => (string) $amountRaw,
+                'attendance_ids_count' => count($ids),
+            ]);
+
+            $site = Site::find($siteId);
+            if (!$site) {
+                $errorKey = 'invalid_site';
+                $log->warning('labour.createVoucher.warn', [
+                    'trace_id' => $traceId,
+                    'auth_user_id' => $authUserId,
+                    'site_id' => $siteId,
+                    'selectedProjectId' => $selectedProjectId,
+                    'error_key' => $errorKey,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'error_key' => $errorKey,
+                    'message' => 'Invalid site selected.',
+                    'trace_id' => $traceId,
+                ], 422);
+            }
+            $log->info('labour.createVoucher.site_loaded', [
+                'trace_id' => $traceId,
+                'auth_user_id' => $authUserId,
+                'site_id' => $siteId,
+                'selectedProjectId' => $selectedProjectId,
+            ]);
+
+            $project_head_subheads_id = $site->subhead_accounting_id;
+            if (empty($project_head_subheads_id)) {
+                $errorKey = 'missing_site_subhead';
+                $log->warning('labour.createVoucher.warn', [
+                    'trace_id' => $traceId,
+                    'auth_user_id' => $authUserId,
+                    'site_id' => $siteId,
+                    'selectedProjectId' => $selectedProjectId,
+                    'error_key' => $errorKey,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'error_key' => $errorKey,
+                    'message' => 'Site subhead is not configured.',
+                    'trace_id' => $traceId,
+                ], 422);
+            }
 
         $labourNames = collect($labours)->map(function ($labour) {
             return $labour['name']
@@ -661,86 +782,211 @@ class LabourController extends Controller
         $labourAccountDesc = "Labour payable for {$labourNames} ({$start} - {$end})";
         $siteAccountDesc = "Labour expense charged to Site: {$siteName}";
 
-        $project_head_subheads_id = Site::where('id', $request->site_id)->first()->subhead_accounting_id;
-        $amount = str_replace(',', '', $request->amount);
+            $voucherNumber = getVocuherNumber('JV');
+            $log->info('labour.createVoucher.voucher_number_computed', [
+                'trace_id' => $traceId,
+                'auth_user_id' => $authUserId,
+                'site_id' => $siteId,
+                'selectedProjectId' => $selectedProjectId,
+                'voucher_number' => $voucherNumber,
+                'amount' => (string) $amountRaw,
+            ]);
 
-        $selectedProjectId = getSelectedTown();
-        $lastVoucherId = getLastJvVNumber();
-        $journalVoucher = JournalVoucher::create([
-            'voucher_number' => $lastVoucherId + 1,
-            'reference' => null,
-            'date' => Carbon::now()->format('Y-m-d'),
-            'description' => $voucherDescription,
-            'total_debit' => $amount,
-            'total_credit' => $amount,
-            'created_by' => auth()->id(),
-            'project_id' => $selectedProjectId,
-        ]);
-        $headSubheadId = $this->systemHeadSubheadAccountId(
-            (int) $selectedProjectId,
-            'Labour',
-            'Labour Party',
-            true // create if missing
-        );
+            $lastVoucherId = getLastJvVNumber() + 1;
+            $journalVoucher = JournalVoucher::create([
+                'voucher_number' => $lastVoucherId,
+                'reference' => null,
+                'date' => Carbon::now()->format('Y-m-d'),
+                'description' => $voucherDescription,
+                'total_debit' => $amountRaw,
+                'total_credit' => $amountRaw,
+                'created_by' => $authUserId,
+                'project_id' => $selectedProjectId,
+            ]);
+            $log->info('labour.createVoucher.journal_voucher_created', [
+                'trace_id' => $traceId,
+                'auth_user_id' => $authUserId,
+                'site_id' => $siteId,
+                'selectedProjectId' => $selectedProjectId,
+                'journal_voucher_id' => $journalVoucher->id,
+            ]);
 
-        JournalVoucherDetail::create([
-            'journal_voucher_id' => $journalVoucher->id,
-            'account_id' => $headSubheadId,
-            'debit' => $amount,
-            'credit' => 0,
-            'description' => $labourAccountDesc,
-            'created_by' => auth()->id(),
-        ]);
-        $voucherNumber = getVocuherNumber('JV');
-        $toLedgerData = Ledger::create([
-            'type' => 'JV',
-            'voucher_number' => $voucherNumber,
-            'type_id' => $journalVoucher->id,
-            'project_head_subheads_id' => $headSubheadId,
-            'reference' => null,
-            'amount_in' => $amount,
-            'amount_out' => 0,
-            'detail' => $labourAccountDesc,
-            'create_by' => auth()->id(),
-            'is_active' => true,
-            'status' => '0',
-            'date' => Carbon::now()->format('Y-m-d'),
-        ]);
+            try {
+                $headSubheadId = $this->systemHeadSubheadAccountId(
+                    (int) $selectedProjectId,
+                    'Labour',
+                    'Labour Party',
+                    true
+                );
+            } catch (\Throwable $th) {
+                $errorKey = 'missing_labour_subhead';
+                $log->warning('labour.createVoucher.warn', [
+                    'trace_id' => $traceId,
+                    'auth_user_id' => $authUserId,
+                    'site_id' => $siteId,
+                    'selectedProjectId' => $selectedProjectId,
+                    'error_key' => $errorKey,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'error_key' => $errorKey,
+                    'message' => 'Labour subhead is not configured.',
+                    'trace_id' => $traceId,
+                ], 422);
+            }
+            if (empty($headSubheadId)) {
+                $errorKey = 'missing_labour_subhead';
+                $log->warning('labour.createVoucher.warn', [
+                    'trace_id' => $traceId,
+                    'auth_user_id' => $authUserId,
+                    'site_id' => $siteId,
+                    'selectedProjectId' => $selectedProjectId,
+                    'error_key' => $errorKey,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'error_key' => $errorKey,
+                    'message' => 'Labour subhead is not configured.',
+                    'trace_id' => $traceId,
+                ], 422);
+            }
+            $log->info('labour.createVoucher.head_subhead_resolved', [
+                'trace_id' => $traceId,
+                'auth_user_id' => $authUserId,
+                'site_id' => $siteId,
+                'selectedProjectId' => $selectedProjectId,
+            ]);
 
-        JournalVoucherDetail::create([
-            'journal_voucher_id' => $journalVoucher->id,
-            'account_id' => $project_head_subheads_id,
-            'debit' => 0,
-            'credit' => $amount,
-            'description' => $labourAccountDesc,
-            'created_by' => auth()->id(),
-        ]);
-        $voucherNumber = getVocuherNumber('JV');
-        $fromLedgerData = Ledger::create([
-            'type' => 'JV',
-            'voucher_number' => $voucherNumber,
-            'type_id' => $journalVoucher->id,
-            'project_head_subheads_id' => $project_head_subheads_id,
-            'reference' => null,
-            'amount_in' => 0,
-            'amount_out' => $amount,
-            'detail' => $labourAccountDesc,
-            'create_by' => auth()->id(),
-            'is_active' => true,
-            'status' => '0',
-            'date' => Carbon::now()->format('Y-m-d'),
-        ]);
+            JournalVoucherDetail::create([
+                'journal_voucher_id' => $journalVoucher->id,
+                'account_id' => $headSubheadId,
+                'debit' => $amountRaw,
+                'credit' => 0,
+                'description' => $labourAccountDesc,
+                'created_by' => $authUserId,
+            ]);
+            $log->info('labour.createVoucher.first_voucher_detail_created', [
+                'trace_id' => $traceId,
+                'auth_user_id' => $authUserId,
+                'site_id' => $siteId,
+                'selectedProjectId' => $selectedProjectId,
+                'journal_voucher_id' => $journalVoucher->id,
+            ]);
 
+            $toLedgerData = Ledger::create([
+                'type' => 'JV',
+                'voucher_number' => $voucherNumber,
+                'type_id' => $journalVoucher->id,
+                'project_head_subheads_id' => $headSubheadId,
+                'reference' => null,
+                'amount_in' => $amountRaw,
+                'amount_out' => 0,
+                'detail' => $labourAccountDesc,
+                'create_by' => $authUserId,
+                'is_active' => true,
+                'status' => '0',
+                'date' => Carbon::now()->format('Y-m-d'),
+            ]);
+            $log->info('labour.createVoucher.to_ledger_created', [
+                'trace_id' => $traceId,
+                'auth_user_id' => $authUserId,
+                'site_id' => $siteId,
+                'selectedProjectId' => $selectedProjectId,
+                'ledger_id' => $toLedgerData->id,
+                'voucher_number' => $voucherNumber,
+            ]);
 
-        $ids = array_filter(explode(',', $request->attendance_ids));
+            JournalVoucherDetail::create([
+                'journal_voucher_id' => $journalVoucher->id,
+                'account_id' => $project_head_subheads_id,
+                'debit' => 0,
+                'credit' => $amountRaw,
+                'description' => $labourAccountDesc,
+                'created_by' => $authUserId,
+            ]);
+            $log->info('labour.createVoucher.second_voucher_detail_created', [
+                'trace_id' => $traceId,
+                'auth_user_id' => $authUserId,
+                'site_id' => $siteId,
+                'selectedProjectId' => $selectedProjectId,
+                'journal_voucher_id' => $journalVoucher->id,
+            ]);
 
-        LabourAttendance::whereIn('id', $ids)
-            ->update(['voucher_status' => 'created']);
-        return response()->json([
-            'success' => true,
-            'toLedgerData' => $toLedgerData,
-            'fromLedgerData' => $fromLedgerData
-        ]);
+            $fromLedgerData = Ledger::create([
+                'type' => 'JV',
+                'voucher_number' => $voucherNumber,
+                'type_id' => $journalVoucher->id,
+                'project_head_subheads_id' => $project_head_subheads_id,
+                'reference' => null,
+                'amount_in' => 0,
+                'amount_out' => $amountRaw,
+                'detail' => $labourAccountDesc,
+                'create_by' => $authUserId,
+                'is_active' => true,
+                'status' => '0',
+                'date' => Carbon::now()->format('Y-m-d'),
+            ]);
+            $log->info('labour.createVoucher.from_ledger_created', [
+                'trace_id' => $traceId,
+                'auth_user_id' => $authUserId,
+                'site_id' => $siteId,
+                'selectedProjectId' => $selectedProjectId,
+                'ledger_id' => $fromLedgerData->id,
+                'voucher_number' => $voucherNumber,
+            ]);
+
+            LabourAttendance::whereIn('id', $ids)
+                ->update(['voucher_status' => 'created']);
+            $log->info('labour.createVoucher.attendance_updated', [
+                'trace_id' => $traceId,
+                'auth_user_id' => $authUserId,
+                'site_id' => $siteId,
+                'selectedProjectId' => $selectedProjectId,
+                'attendance_ids_count' => count($ids),
+            ]);
+
+            $log->info('labour.createVoucher.success', [
+                'trace_id' => $traceId,
+                'auth_user_id' => $authUserId,
+                'site_id' => $siteId,
+                'selectedProjectId' => $selectedProjectId,
+                'journal_voucher_id' => $journalVoucher->id,
+                'to_ledger_id' => $toLedgerData->id,
+                'from_ledger_id' => $fromLedgerData->id,
+                'voucher_number' => $voucherNumber,
+                'amount' => (string) $amountRaw,
+                'attendance_ids_count' => count($ids),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'toLedgerData' => $toLedgerData,
+                'fromLedgerData' => $fromLedgerData,
+                'trace_id' => $traceId,
+            ]);
+        } catch (\Throwable $e) {
+            $errorKey = 'labour_voucher_failed';
+            $log->error('labour.createVoucher.error', [
+                'trace_id' => $traceId,
+                'auth_user_id' => $authUserId,
+                'site_id' => $siteId,
+                'selectedProjectId' => $selectedProjectId,
+                'amount' => $amount,
+                'attendance_ids_count' => count($ids),
+                'error_key' => $errorKey,
+                'exception_class' => get_class($e),
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error_key' => $errorKey,
+                'message' => 'Unable to create voucher. Please try again or contact support.',
+                'trace_id' => $traceId,
+            ], 500);
+        }
     }
     private function systemHeadSubheadAccountId(int $projectId, string $headName, string $subheadName, bool $createIfMissing = false): int
     {
