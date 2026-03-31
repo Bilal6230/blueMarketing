@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AccountType;
 use Carbon\Carbon;
 use App\Models\Ledger;
 use App\Models\Project;
@@ -163,24 +164,37 @@ function getMonthByNumber($month)
     return $month_num;
 }
 
+function getAccountTypes($activeOnly = true)
+{
+    static $cache = [];
+
+    $key = $activeOnly ? 'active' : 'all';
+    if (!isset($cache[$key])) {
+        $query = AccountType::query();
+        if ($activeOnly) {
+            $query->where('status', 1);
+        }
+        $cache[$key] = $query->orderBy('id')->get();
+    }
+
+    return $cache[$key];
+}
+
+function getAccountTypeName($id)
+{
+    if ($id === null || $id === '') {
+        return 'Please Update';
+    }
+
+    $types = getAccountTypes(false);
+    $type = $types->firstWhere('id', (int) $id);
+
+    return $type ? $type->name : 'Please Update';
+}
+
 function getHead($id)
 {
-    $heads = [
-        "0" => "Please Update",
-        "1" => "Assets",
-        "2" => "Owner",
-        "3" => "Recovery",
-        "4" => "Expence",
-        "5" => "Amanat Pyments"
-
-    ];
-
-    foreach ($heads as $key => $value) {
-        if ($id == $key) {
-            $month_num = $value;
-        }
-    }
-    return $month_num;
+    return getAccountTypeName($id);
 }
 
 

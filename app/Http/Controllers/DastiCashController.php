@@ -77,7 +77,7 @@ class DastiCashController extends Controller
         $record->delete();
         return response()->json([
             'status' => 'success',
-            'message' => 'Dasticash deleted successfully.',
+            'message' => 'Dasticash Delete successfully.',
             'data' => $record
         ]);
     }

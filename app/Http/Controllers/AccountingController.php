@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\AccountType;
 use App\Models\HeadAccounting;
 use App\Models\ProjectHeadSubhead;
 use App\Models\SubheadAccounting;
@@ -236,6 +237,7 @@ class AccountingController extends Controller
         $x['role'] = Role::get();
         $x['users'] = User::get();
         $x['power'] = $power;
+        $x['accountTypes'] = AccountType::where('status', 1)->orderBy('id')->get();
         return view('admin.finance.accounting.head_accounts', $x);
     }
 
