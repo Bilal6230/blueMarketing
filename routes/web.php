@@ -239,7 +239,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::delete('/{id}', 'destroy')->middleware(['permission:delete dasticash'])->name('destroy');
     });
 
-    Route::resource('labours', LabourController::class);
+    Route::resource('labours', LabourController::class)->except(['show']);
     Route::post('/labours/sitestore', [LabourController::class, 'siteStore'])
         ->name('labours.sitestore');
     Route::get('/labours/attendance/week', [LabourController::class, 'loadAttendanceWeek'])
@@ -260,6 +260,8 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         ->name('labours.person.report');
     Route::post('/labours/create/voucher', [LabourController::class, 'createVoucher'])
         ->name('labours.create.voucher');
+    Route::get('/labours/site-vouchers', [LabourController::class, 'siteVouchers'])
+        ->name('labours.site.vouchers');
     Route::post('/labours/print/site/report', [LabourController::class, 'printSiteReport'])
         ->name('labours.print.site.report');
     Route::post('/labours/print/person/report', [LabourController::class, 'printPersonReport'])

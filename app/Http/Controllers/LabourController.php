@@ -20,12 +20,15 @@ use App\Models\Project;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 use function Symfony\Component\String\b;
 
 class LabourController extends Controller
 {
+    private static ?bool $journalVoucherHasSiteIdColumn = null;
+
     public function index(Request $request)
     {
         $selectedProjectId = getSelectedTown();
@@ -644,6 +647,43 @@ class LabourController extends Controller
         return view('admin.labours.print-attn-board', $x);
     }
 
+    public function siteVouchers(Request $request)
+    {
+        $selectedProjectId = getSelectedTown();
+        $siteId = $request->site_id;
+
+        if (empty($siteId)) {
+            $view = view('admin.labours.site-vouchers', [
+                'siteVouchers' => collect(),
+                'selectedSite' => null,
+            ])->render();
+
+            return response()->json([
+                'success' => true,
+                'view' => $view,
+            ]);
+        }
+
+        $selectedSite = Site::where('project_id', $selectedProjectId)->find($siteId);
+
+        if (!$selectedSite) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid site selected.',
+            ], 422);
+        }
+
+        $view = view('admin.labours.site-vouchers', [
+            'siteVouchers' => $this->getSiteVoucherList($selectedSite, $selectedProjectId),
+            'selectedSite' => $selectedSite,
+        ])->render();
+
+        return response()->json([
+            'success' => true,
+            'view' => $view,
+        ]);
+    }
+
     public function createVoucher(Request $request)
     {
         $traceId = (string) Str::uuid();
@@ -793,8 +833,9 @@ class LabourController extends Controller
             ]);
 
             $lastVoucherId = getLastJvVNumber() + 1;
-            $journalVoucher = JournalVoucher::create([
+            $journalVoucherData = [
                 'voucher_number' => $lastVoucherId,
+                'type' => 'JV',
                 'reference' => null,
                 'date' => Carbon::now()->format('Y-m-d'),
                 'description' => $voucherDescription,
@@ -802,7 +843,13 @@ class LabourController extends Controller
                 'total_credit' => $amountRaw,
                 'created_by' => $authUserId,
                 'project_id' => $selectedProjectId,
-            ]);
+            ];
+
+            if ($this->journalVoucherHasSiteIdColumn()) {
+                $journalVoucherData['site_id'] = $siteId;
+            }
+
+            $journalVoucher = JournalVoucher::create($journalVoucherData);
             $log->info('labour.createVoucher.journal_voucher_created', [
                 'trace_id' => $traceId,
                 'auth_user_id' => $authUserId,
@@ -962,6 +1009,7 @@ class LabourController extends Controller
                 'success' => true,
                 'toLedgerData' => $toLedgerData,
                 'fromLedgerData' => $fromLedgerData,
+                'voucher_id' => $journalVoucher->id,
                 'trace_id' => $traceId,
             ]);
         } catch (\Throwable $e) {
@@ -987,6 +1035,53 @@ class LabourController extends Controller
                 'trace_id' => $traceId,
             ], 500);
         }
+    }
+
+    private function getSiteVoucherList(Site $site, int $selectedProjectId)
+    {
+        $siteVoucherDescription = "Labour payment for Site: {$site->site_name}";
+        $query = JournalVoucher::query()
+            ->with($this->journalVoucherHasSiteIdColumn() ? ['site', 'creator'] : ['creator'])
+            ->where('project_id', $selectedProjectId);
+
+        if ($this->journalVoucherHasSiteIdColumn()) {
+            $query->where(function ($voucherQuery) use ($site, $siteVoucherDescription) {
+                $voucherQuery->where('site_id', $site->id)
+                    ->orWhere(function ($legacyQuery) use ($site, $siteVoucherDescription) {
+                        $legacyQuery->whereNull('site_id')
+                            ->where('description', $siteVoucherDescription);
+
+                        if (!empty($site->subhead_accounting_id)) {
+                            $legacyQuery->whereHas('details', function ($detailQuery) use ($site) {
+                                $detailQuery->where('account_id', $site->subhead_accounting_id)
+                                    ->where('credit', '>', 0);
+                            });
+                        }
+                    });
+            });
+        } else {
+            $query->where('description', $siteVoucherDescription);
+
+            if (!empty($site->subhead_accounting_id)) {
+                $query->whereHas('details', function ($detailQuery) use ($site) {
+                    $detailQuery->where('account_id', $site->subhead_accounting_id)
+                        ->where('credit', '>', 0);
+                });
+            }
+        }
+
+        return $query->latest('date')
+            ->latest('id')
+            ->get();
+    }
+
+    private function journalVoucherHasSiteIdColumn(): bool
+    {
+        if (self::$journalVoucherHasSiteIdColumn === null) {
+            self::$journalVoucherHasSiteIdColumn = Schema::hasColumn('journal_vouchers', 'site_id');
+        }
+
+        return self::$journalVoucherHasSiteIdColumn;
     }
     private function systemHeadSubheadAccountId(int $projectId, string $headName, string $subheadName, bool $createIfMissing = false): int
     {

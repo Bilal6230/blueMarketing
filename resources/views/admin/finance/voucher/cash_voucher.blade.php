@@ -1259,15 +1259,16 @@
 
                         $("#e_voucher").val(data.type + '-0000' + data.type_id);
                         let amount = 0;
-                        if (data.type == 'CR') {
-                            amount = data.amount_in;
-                        } else if (data.type == 'CP') {
-                            amount = data.amount_out;
-                        }
-                        $("#e_amount").val(amount);
-                        $('#eWordingAmount').text(numberToWords.toWords(amount));
-                        $('#modal-loading').modal('hide');
-                        $('#modal-edit').modal({
+	                        if (data.type == 'CR') {
+	                            amount = data.amount_in;
+	                        } else if (data.type == 'CP') {
+	                            amount = data.amount_out;
+	                        }
+	                        $("#e_amount").val(amount);
+	                        $("#e_detail").val(data.detail ?? '');
+	                        $('#eWordingAmount').text(numberToWords.toWords(amount));
+	                        $('#modal-loading').modal('hide');
+	                        $('#modal-edit').modal({
                             backdrop: 'static',
                             keyboard: false,
                             show: true

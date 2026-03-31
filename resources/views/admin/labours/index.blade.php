@@ -912,15 +912,36 @@
                             </form>
                         </div>
                     </div>
-                    {{-- <div class="chips">
-                        <span class="pill">Total Days: <b id="siteDays">0</b></span>
-                        <span class="pill">Total Overtime Hrs: <b id="siteOt">0</b></span>
-                        <span class="pill">Total Cost: <b id="siteTotal">0</b></span>
-                    </div> --}}
-                    <div class="table-scroll max-height">
-                        <table id="siteReportTable table">
-                            <thead>
-                                <tr>
+	                    {{-- <div class="chips">
+	                        <span class="pill">Total Days: <b id="siteDays">0</b></span>
+	                        <span class="pill">Total Overtime Hrs: <b id="siteOt">0</b></span>
+	                        <span class="pill">Total Cost: <b id="siteTotal">0</b></span>
+	                    </div> --}}
+	                    <div class="table-scroll" style="max-height: 220px; margin-bottom: 14px;">
+	                        <table id="createdSiteVoucherTable">
+	                            <thead>
+	                                <tr>
+	                                    <th>Voucher #</th>
+	                                    <th>Date</th>
+	                                    <th>Site</th>
+	                                    <th class="right">Amount</th>
+	                                    <th>Created By</th>
+	                                    <th>Status</th>
+	                                    <th>Action</th>
+	                                </tr>
+	                            </thead>
+	                            <tbody id="siteVoucherListBody">
+	                                @include('admin.labours.site-vouchers', [
+	                                    'siteVouchers' => collect(),
+	                                    'selectedSite' => null,
+	                                ])
+	                            </tbody>
+	                        </table>
+	                    </div>
+	                    <div class="table-scroll max-height">
+	                        <table id="siteReportTable table">
+	                            <thead>
+	                                <tr>
                                     <th>Labour</th>
                                     <th>Mobile</th>
                                     <th>Designation</th>
@@ -1637,16 +1658,55 @@
                 $('#' + target).removeClass('hid');
             });
 
-            function debounce(func, delay) {
-                let timer;
-                return function() {
-                    clearTimeout(timer);
-                    timer = setTimeout(() => func.apply(this, arguments), delay);
-                };
-            }
-            $(document).on('click', '#createVoucher', function(e) {
-                e.preventDefault();
-                let hasError = false;
+	            function debounce(func, delay) {
+	                let timer;
+	                return function() {
+	                    clearTimeout(timer);
+	                    timer = setTimeout(() => func.apply(this, arguments), delay);
+	                };
+	            }
+
+	            function resetSiteVoucherForm() {
+	                $('#site_id').val('');
+	                $('#attendance_ids').val('');
+	                $('#detail').val('');
+	                $('#amount').val('');
+	                $('#startDateV').val('');
+	                $('#endDateV').val('');
+	            }
+
+	            function loadSiteVouchers(siteId = $('#repSite').val()) {
+	                $.ajax({
+	                    url: "{{ route('labours.site.vouchers') }}",
+	                    type: "GET",
+	                    data: {
+	                        site_id: siteId
+	                    },
+	                    success: function(res) {
+	                        if (res.success) {
+	                            $('#siteVoucherListBody').html(res.view);
+	                        }
+	                    },
+	                    error: function(xhr) {
+	                        let message = xhr.responseJSON?.message || 'Unable to load created vouchers.';
+	                        Swal.fire({
+	                            icon: 'error',
+	                            title: 'Error',
+	                            text: message
+	                        });
+	                    }
+	                });
+	            }
+
+	            $(document).on('change', '#repSite', function() {
+	                resetSiteVoucherForm();
+	                $('#siteReportTableBody').html('');
+	                loadSiteVouchers($(this).val());
+	            });
+
+	            $(document).on('click', '#createVoucher', function(e) {
+	                e.preventDefault();
+	                let hasError = false;
 
                 // Clear previous errors
                 $('#createVoucherForm .error').text('');
@@ -1698,15 +1758,16 @@
                                     $('#createVoucherForm')[0].reset();
 
                                     // ✅ Clear validation errors (if any)
-                                    $('#createVoucherForm .error')
-                                        .text('')
-                                        .addClass('d-none');
-
-                                    // Optional: clear table
-                                    $('#siteReportTableBody').html('');
-
-                                }
-                            },
+	                                    $('#createVoucherForm .error')
+	                                        .text('')
+	                                        .addClass('d-none');
+	
+	                                    // Optional: clear table
+	                                    $('#siteReportTableBody').html('');
+	                                    loadSiteVouchers($('#repSite').val());
+	
+	                                }
+	                            },
 
                             error: function(err) {
                                 Swal.fire({
@@ -2336,22 +2397,20 @@
                     }
                 });
             });
-            $(document).on('click', '#reportBtnSiteRun, #voucherBtnSiteRun', function(e) {
-                e.preventDefault();
-
-                $('#site_id').val('');
-                $('#attendance_ids').val('');
-                $('#detail').val('');
-                $('#amount').val('');
-
-                let id = $(this).attr('id');
-                let week = $('#repFrom').val();
-                let start_date = $('#repStartDate').val();
-                let end_date = $('#repEndDate').val();
-                let site = $('#repSite').val();
-
-                let data = {
-                    _token: "{{ csrf_token() }}",
+	            $(document).on('click', '#reportBtnSiteRun, #voucherBtnSiteRun', function(e) {
+	                e.preventDefault();
+	
+	                resetSiteVoucherForm();
+	
+	                let id = $(this).attr('id');
+	                let week = $('#repFrom').val();
+	                let start_date = $('#repStartDate').val();
+	                let end_date = $('#repEndDate').val();
+	                let site = $('#repSite').val();
+	                loadSiteVouchers(site);
+	
+	                let data = {
+	                    _token: "{{ csrf_token() }}",
                     week: week,
                     start_date: start_date,
                     end_date: end_date,
