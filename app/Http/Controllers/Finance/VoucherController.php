@@ -7,6 +7,7 @@ use App\Models\PendingUpdate;
 use App\Models\Plot;
 use App\Models\User;
 use App\Models\Ledger;
+use App\Models\AccountType;
 use App\Models\Project;
 use App\Models\DraftLedger;
 use Illuminate\Http\Request;
@@ -111,6 +112,7 @@ class VoucherController extends Controller
         $x['role'] = Role::get();
         $x['users'] = User::get();
         $x['power'] = $power;
+        $x['accountTypes'] = AccountType::where('status', 1)->orderBy('id')->get();
         $x['type'] = 'CR';
         $x['class'] = 'cash-in';
         $x['bg_voucher'] = 'info-cash-in';
@@ -390,6 +392,7 @@ class VoucherController extends Controller
         $x['role'] = Role::get();
         $x['users'] = User::get();
         $x['power'] = $power;
+        $x['accountTypes'] = AccountType::where('status', 1)->orderBy('id')->get();
         $x['type'] = 'CP';
         $x['class'] = 'cash-out';
         $x['bg_voucher'] = 'info-cash-out';
@@ -924,6 +927,7 @@ class VoucherController extends Controller
         $x['role'] = Role::get();
         $x['users'] = User::get();
         $x['power'] = $power;
+        $x['accountTypes'] = AccountType::where('status', 1)->orderBy('id')->get();
         $x['type'] = 'CR';
         $x['class'] = 'cash-out';
         $x['bg_voucher'] = 'info-cash-out';
