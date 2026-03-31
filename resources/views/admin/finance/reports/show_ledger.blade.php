@@ -51,8 +51,9 @@
                                     <thead>
                                         <tr>
                                             <th>ID</th>
+                                            <th>Voucher Number</th>
                                             <th>Date</th>
-                                            <th>Accountent</th>
+                                            <th>Accountant</th>
                                             <th>Head Account</th>
                                             <th>Party Account</th>
                                             <th style="width: 5px">Ref</th>
@@ -88,81 +89,86 @@
 
 @section('js')
     <script>
-        $(document).ready(function() {
+        $(document).ready(function () {
             var lastbalanceAmount = 0;
             var table = $('#your-datatable-id').DataTable({
                 ajax: {
                     url: "{{ route('fetch-data-url') }}",
                     type: "POST",
-                    data: function(d) {
+                    data: function (d) {
                         d._token = "{{ csrf_token() }}";
                         d.start_date = $('#startdate').val();
                         d.end_date = $('#enddate').val();
                     }
                 },
                 columns: [{
-                        data: 'id',
-                        name: 'id',
-                        orderable: false
-                    },
-                    {
-                        data: 'date',
-                        name: 'date',
-                        orderable: false
-                    },
-                    {
-                        data: 'accountent_name',
-                        name: 'accountent_name',
-                        orderable: false
-                    },
-                    {
-                        data: 'head_account_name',
-                        name: 'project_head_subheads.headAccounting.name',
-                        orderable: false
-                    },
-                    {
-                        data: 'subhead_account_name',
-                        name: 'project_head_subheads.subheadAccounting.name',
-                        orderable: false
-                    },
-                    {
-                        data: 'reference',
-                        name: 'reference',
-                        orderable: false
-                    },
-                    {
-                        data: 'detail',
-                        name: 'detail',
-                        orderable: false
-                    },
-                    {
-                        data: 'amount_in',
-                        name: 'amount_in',
-                        orderable: false
-                    },
-                    {
-                        data: 'amount_out',
-                        name: 'amount_out',
-                        orderable: false
-                    },
-                    {
-                        // New column for balance amount
-                        data: null,
-                        name: 'balance_amount',
-                        render: function(data, type, row) {
-                            var amountIn = parseFloat(row.amount_in) || 0;
-                            var amountOut = parseFloat(row.amount_out) || 0;
-                            var balanceAmount = (lastbalanceAmount + amountIn) - amountOut;
+                    data: 'id',
+                    name: 'id',
+                    orderable: false
+                },
+                {
+                    data: 'display_voucher_number',
+                    name: 'display_voucher_number',
+                    orderable: false
+                },
+                {
+                    data: 'date',
+                    name: 'date',
+                    orderable: false
+                },
+                {
+                    data: 'accountent_name',
+                    name: 'accountent_name',
+                    orderable: false
+                },
+                {
+                    data: 'head_account_name',
+                    name: 'project_head_subheads.headAccounting.name',
+                    orderable: false
+                },
+                {
+                    data: 'subhead_account_name',
+                    name: 'project_head_subheads.subheadAccounting.name',
+                    orderable: false
+                },
+                {
+                    data: 'reference',
+                    name: 'reference',
+                    orderable: false
+                },
+                {
+                    data: 'detail',
+                    name: 'detail',
+                    orderable: false
+                },
+                {
+                    data: 'amount_in',
+                    name: 'amount_in',
+                    orderable: false
+                },
+                {
+                    data: 'amount_out',
+                    name: 'amount_out',
+                    orderable: false
+                },
+                {
+                    // New column for balance amount
+                    data: null,
+                    name: 'balance_amount',
+                    render: function (data, type, row) {
+                        var amountIn = parseFloat(row.amount_in) || 0;
+                        var amountOut = parseFloat(row.amount_out) || 0;
+                        var balanceAmount = (lastbalanceAmount + amountIn) - amountOut;
 
-                            // Update last balance amount for the next row
-                            lastbalanceAmount = balanceAmount;
+                        // Update last balance amount for the next row
+                        lastbalanceAmount = balanceAmount;
 
-                            return balanceAmount.toFixed(2);
-                        }
-                    },
+                        return balanceAmount.toFixed(2);
+                    }
+                },
                     // Add more columns based on your data model
                 ],
-                createdRow: function(row, data, dataIndex) {
+                createdRow: function (row, data, dataIndex) {
                     // Handle the text color change for 'head_account_name' column
                     changeColumnTextColor(row, data, 'amount_in', 'green');
                     changeColumnTextColor(row, data, 'amount_out', 'red');
@@ -170,87 +176,86 @@
                 },
                 dom: 'Bfrtip', // Enable Buttons
                 buttons: [{
-                        extend: 'copy',
-                        text: 'Copy',
-                        className: 'btn btn-info-light'
-                    },
-                    {
-                        extend: 'csv',
-                        text: 'CSV',
-                        className: 'btn btn-primary-light'
-                    },
-                    {
-                        extend: 'excel',
-                        text: 'Excel',
-                        className: 'btn btn-success-light'
-                    },
-                    {
-                        extend: 'pdf',
-                        text: 'PDF',
-                        className: 'btn btn-danger-light'
-                    },
-                    {
-                        extend: 'print',
-                        text: 'Print me!',
-                        className: 'btn btn-info'
-                    },
-                    {
-                        extend: 'pageLength',
-                        className: 'btn btn-info'
-                    },
-                    {
-                        extend: 'colvis',
-                        className: 'btn btn-info'
-                    },
-
+                    extend: 'copy',
+                    text: 'Copy',
+                    className: 'btn btn-info-light'
+                },
+                {
+                    extend: 'csv',
+                    text: 'CSV',
+                    className: 'btn btn-primary-light'
+                },
+                {
+                    extend: 'excel',
+                    text: 'Excel',
+                    className: 'btn btn-success-light'
+                },
+                {
+                    extend: 'pdf',
+                    text: 'PDF',
+                    className: 'btn btn-danger-light'
+                },
+                {
+                    extend: 'print',
+                    text: 'Print me!',
+                    className: 'btn btn-info'
+                },
+                {
+                    extend: 'pageLength',
+                    className: 'btn btn-info'
+                },
+                {
+                    extend: 'colvis',
+                    className: 'btn btn-info'
+                },
                 ],
                 columnDefs: [
                     // { targets: [3, 4], visible: false } // Indexes of columns to hide (0-indexed)
                 ],
-                initComplete: function() {
+                initComplete: function () {
                     var table = this.api();
 
-                    table.columns().every(function() {
+                    table.columns().every(function () {
                         var column = this;
 
                         // Skip adding input for the "ID" column
                         if (column.index() == 1 || column.index() == 5) {
                             var input = document.createElement("input");
                             $(input).addClass('form-control').appendTo($(column.header())).on('keyup change',
-                                function() {
+                                function () {
                                     column.search($(this).val()).draw();
                                 }).css('width', '100px'); // Adjust the width as needed
                         }
                     });
                 },
-                footerCallback: function(row, data, start, end, display) {
+                footerCallback: function (row, data, start, end, display) {
                     var api = this.api();
 
                     // Calculate the sum of the "amount_in" column for the current page
                     var amountInSumPage = api.column(7, {
                         page: 'current'
-                    }).data().reduce(function(acc, value) {
+                    }).data().reduce(function (acc, value) {
                         return acc + parseFloat(value);
                     }, 0);
 
                     // Calculate the sum of the "amount_out" column for the current page
                     var amountOutSumPage = api.column(8, {
                         page: 'current'
-                    }).data().reduce(function(acc, value) {
+                    }).data().reduce(function (acc, value) {
                         return acc + parseFloat(value);
                     }, 0);
 
                     // Calculate the sum of the "amount_in" column for all pages
                     var amountInSumAll = api.column(7, {
                         search: 'applied'
-                    }).data().reduce(function(acc, value) {
+                    }).data().reduce(function (acc, value) {
                         return acc + parseFloat(value);
                     }, 0);
 
                     // Calculate the sum of the "amount_out" column for all pages
                     var amountOutSumAll = api.column(8, {
                         search: 'applied'
-                    }).data().reduce(function(acc, value) {
+                    }).data().reduce(function (acc, value) {
                         return acc + parseFloat(value);
                     }, 0);
 
@@ -266,12 +271,10 @@
 
                     $(api.column(6).footer()).html('Total In: ' + amountInSumAll.toFixed(2) +
                         '<br> Total Out:' + amountOutSumAll.toFixed(2) + '<hr>Balance: ' + balance);
-
-
                 }
-
             });
-            $('#startdate, #enddate').on('change', function() {
+
+            $('#startdate, #enddate').on('change', function () {
                 lastbalanceAmount = 0; // Reset running balance
                 table.ajax.reload();
             });
@@ -291,7 +294,7 @@
             var table = $('#your-datatable-id').DataTable();
             var columnIndex = null;
 
-            $.each(table.settings().init().columns, function(index, column) {
+            $.each(table.settings().init().columns, function (index, column) {
                 if (column.name === columnName) {
                     columnIndex = index;
                     return false; // Break the loop

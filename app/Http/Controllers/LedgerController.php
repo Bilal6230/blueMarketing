@@ -14,6 +14,7 @@ use App\Models\DraftLedger;
 use Illuminate\Http\Request;
 use App\Models\CustomerLedger;
 use App\Models\HeadAccounting;
+use App\Models\JournalVoucher;
 use App\Models\SubheadAccounting;
 use App\Models\ProjectHeadSubhead;
 use Illuminate\Support\Facades\DB;
@@ -143,10 +144,10 @@ class LedgerController extends Controller
                 throw new \Exception('Credit account ID not found.');
             }
             $exists = Ledger::where('type', $firstTwoDigits)
-            ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
-            ->where('is_active', 1)
-            ->where('voucher_number', $voucherNumber)
-            ->exists();
+                ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
+                ->where('is_active', 1)
+                ->where('voucher_number', $voucherNumber)
+                ->exists();
 
             if ($exists) {
                 // Find next available number
@@ -166,11 +167,11 @@ class LedgerController extends Controller
                 $voucherNumber = $nextNumber;
             }
             $detail = $request->input('detail');
-            if($request->payment_type == '1' && $firstTwoDigits == 'CR'){
+            if ($request->payment_type == '1' && $firstTwoDigits == 'CR') {
                 $detail = $request->input('detail') . '(Cash Payment)';
-            }elseif($request->payment_type == '2' && $firstTwoDigits == 'CR'){
+            } elseif ($request->payment_type == '2' && $firstTwoDigits == 'CR') {
                 $detail = $request->input('detail') . ' (Bank: ' . $bankName . ' Account No: ' . $customerLedger->t_number . ' Passing Date: ' . $request->passing_date . ')';
-            }elseif($request->payment_type == '3' && $firstTwoDigits == 'CR'){
+            } elseif ($request->payment_type == '3' && $firstTwoDigits == 'CR') {
                 $detail = $request->input('detail') . ' (Bank: ' . $bankName . ' cheque No: ' . $customerLedger->t_number . ' Passing Date: ' . $request->passing_date . ')';
             }
             // dd($firstTwoDigits);
@@ -400,6 +401,7 @@ class LedgerController extends Controller
                 $query->where('project_id', $selectedProjectId);
             })
             ->get();
+        // dd($data->where('type', 'JV')->toArray());
         $data = $data->map(function ($item) {
             $item['amount'] = floatval($item['amount_in']);
             return $item;
@@ -578,49 +580,60 @@ class LedgerController extends Controller
 
     public function fetch_data_url(Request $request)
     {
-        // Get selected town's project_id
         $selectedProjectId = getSelectedTown();
 
-        $query = Ledger::with('projectHeadSubhead.project', 'projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'createdBy:id,name')->where('is_active', 1)->whereHas('projectHeadSubhead', function ($query) use ($selectedProjectId) {
-            $query->where('project_id', $selectedProjectId);
-        });
+        $query = Ledger::with(
+            'projectHeadSubhead.project',
+            'projectHeadSubhead.headAccounting',
+            'projectHeadSubhead.subheadAccounting',
+            'createdBy:id,name'
+        )
+            ->where('is_active', 1)
+            ->whereHas('projectHeadSubhead', function ($query) use ($selectedProjectId) {
+                $query->where('project_id', $selectedProjectId);
+            });
 
-        // If only start date → from start date to all
         if (!empty($request->start_date) && empty($request->end_date)) {
             $query->whereDate('date', '>=', $request->start_date);
         }
 
-        // If only end date → from start to end date
         if (empty($request->start_date) && !empty($request->end_date)) {
             $query->whereDate('date', '<=', $request->end_date);
         }
 
-        // If both → between start and end
         if (!empty($request->start_date) && !empty($request->end_date)) {
             $query->whereBetween('date', [$request->start_date, $request->end_date]);
         }
 
-        // $data = $query->get();
-
         return DataTables::eloquent($query)
+            ->addColumn('display_voucher_number', function ($ledger) {
+                $voucherNumber = $ledger->voucher_number;
+
+                if ($ledger->type === 'JV' && !empty($ledger->type_id)) {
+                    $journalVoucher = JournalVoucher::where('id', $ledger->type_id)
+                        ->select('id', 'voucher_number')
+                        ->first();
+
+                    if ($journalVoucher && !empty($journalVoucher->voucher_number)) {
+                        $voucherNumber = $journalVoucher->voucher_number;
+                    }
+                }
+
+                return ($ledger->type ?? '') . '-' . $voucherNumber;
+            })
             ->addColumn('project_name', function ($ledger) {
-                // Access the project name from the relationship
                 return $ledger->projectHeadSubhead->project->project ?? '';
             })
             ->addColumn('accountent_name', function ($ledger) {
-                // Access the head account name from the relationship
                 return $ledger->createdBy->name ?? '';
             })
             ->addColumn('head_account_name', function ($ledger) {
-                // Access the head account name from the relationship
                 return $ledger->projectHeadSubhead->headAccounting->name ?? '';
             })
             ->addColumn('subhead_account_name', function ($ledger) {
-                // Access the sub account name from the relationship
                 return $ledger->projectHeadSubhead->subheadAccounting->name ?? '';
             })
             ->addColumn('action', function ($ledger) {
-                // Add any additional columns or custom data here
                 return '<button class="btn btn-info">Edit</button>';
             })
             ->toJson();
