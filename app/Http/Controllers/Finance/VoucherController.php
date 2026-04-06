@@ -79,6 +79,8 @@ class VoucherController extends Controller
             ->unique()
             ->values();
 
+        $leadOwnerNamesByRecord = collect();
+
         if ($leadIds->isNotEmpty()) {
             $leadCommentsByRecord = Lead::with(['comments' => function ($query) {
                 $query->select('id', 'lead_id', 'comment', 'created_at')
@@ -96,7 +98,43 @@ class VoucherController extends Controller
 
                     return [$lead->id => $comments];
                 });
+
+            $existingLeadIds = Lead::whereIn('id', $leadIds)->pluck('id');
+
+            $latestLeadOwners = DB::table('lead_user as lu')
+                ->joinSub(
+                    DB::table('lead_user')
+                        ->selectRaw('lead_id, MAX(id) as latest_id')
+                        ->whereIn('lead_id', $leadIds)
+                        ->groupBy('lead_id'),
+                    'latest',
+                    function ($join) {
+                        $join->on('latest.latest_id', '=', 'lu.id');
+                    }
+                )
+                ->leftJoin('users', 'users.id', '=', 'lu.user_id')
+                ->select('lu.lead_id', 'users.name')
+                ->get()
+                ->mapWithKeys(function ($row) {
+                    return [$row->lead_id => $row->name ?: 'Unassigned'];
+                });
+
+            $leadOwnerNamesByRecord = $leadIds->mapWithKeys(function ($leadId) use ($existingLeadIds, $latestLeadOwners) {
+                if (!$existingLeadIds->contains($leadId)) {
+                    return [$leadId => 'Deleted Lead'];
+                }
+
+                return [$leadId => $latestLeadOwners->get($leadId, 'Unassigned')];
+            });
         }
+
+        $pendingUpdates->transform(function ($update) use ($leadOwnerNamesByRecord) {
+            $update->current_owner_name = $update->table_name === 'leads'
+                ? $leadOwnerNamesByRecord->get($update->record_id, 'Deleted Lead')
+                : '—';
+
+            return $update;
+        });
 
         $x['pendingUpdates'] = $pendingUpdates;
         $x['leadCommentsByRecord'] = $leadCommentsByRecord;

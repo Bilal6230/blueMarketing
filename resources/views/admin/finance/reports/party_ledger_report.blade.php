@@ -175,11 +175,24 @@
                             @php
                                 $balance += $ledger->amount_in - $ledger->amount_out;
                                 $balanceClass = $balance < 0 ? 'balance-negative' : 'balance-positive';
+                                  $voucherNumber = $ledger->voucher_number;
+
+                if ($ledger->type === 'JV' && !empty($ledger->type_id)) {
+                    $journalVoucher = App\Models\JournalVoucher::where('id', $ledger->type_id)
+                        ->select('id', 'voucher_number')
+                        ->first();
+
+                    if ($journalVoucher && !empty($journalVoucher->voucher_number)) {
+                        $voucherNumber = $journalVoucher->voucher_number;
+                    }
+                }
+
+                $number =  ($ledger->type ?? '') . '-' . $voucherNumber;
                             @endphp
                             <tr>
                                 <td>{{ $index + 1 }}</td>
                                 <td>{{ \Carbon\Carbon::parse($ledger->date)->format('d-m-y') }}</td>
-                                <td>{{ $ledger->type }}-{{ str_pad($ledger->type_id, 7, '0', STR_PAD_LEFT);  }}</td>
+                                <td>{{ $number ?? 'N/A' }}</td>
                                 <td>{{ $ledger->detail }}</td>
                                 <td>{{ number_format($ledger->amount_in, 0) }}</td>
                                 <td>{{ number_format($ledger->amount_out, 0) }}</td>
