@@ -342,6 +342,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::post('booking/plot/schedule/store', 'storePaymentSchedule')->middleware(['permission:create plot'])->name('payment_schedule.store');
         Route::get('booking/plot/voucher/', 'cash_in')->middleware(['permission:read slip'])->name('payment_schedule.cash');
         Route::any('booking/plot/voucher/update/{id}', 'updateCashIn')->middleware(['permission:read slip'])->name('payment_schedule.cash.update');
+        Route::get('booking/plot/voucher/print/{id}', 'printCashIn')->middleware(['permission:read slip'])->name('booking.customer.print');
         Route::get('extra_charge/', 'extraCharge')->middleware(['permission:read slip'])->name('payment_schedule.extra_charge');
         Route::get('booking/customer/report/form', 'customer_report_form')->middleware(['permission:view booking report'])->name('booking.customer.report.form');
         Route::post('booking/customer/report/display', 'customer_report_display')->middleware(['permission:view booking report'])->name('booking.customer.report.display');
@@ -353,7 +354,6 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::post('/get-plots-list', 'getCustomerPlots')->middleware(['permission:read plot'])->name('get-plots-list');
         Route::post('/get-plot-customer', 'getPlotCustomer')->middleware(['permission:read plot'])->name('get-plot-customer');
 
-        Route::post('booking/plot/voucher/', 'store')->middleware(['permission:create voucher'])->name('ledger.store');
         Route::post('booking/plot/voucher/', 'deposit')->middleware(['permission:create plot'])->name('booking.customer.deposit');
         Route::delete('booking/plot/destroy', 'destroy')->middleware(['permission:delete slip'])->name('booking.customer.destroy');
         Route::post('booking/plot/show', 'fatch_voucher')->middleware(['permission:can approve'])->name('booking.voucher.show');

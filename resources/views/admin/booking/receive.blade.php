@@ -325,6 +325,64 @@
                             @endcan
                             <!-- /.card-header -->
                             @can('read slip')
+                                <div class="card-body">
+                                    <form action="{{ route('payment_schedule.cash') }}" method="GET" class="mb-3">
+                                        <div class="row">
+                                            <div class="col-md-2">
+                                                <label class="fbox">Customer</label>
+                                                <select class="form-control select2" name="customer_id">
+                                                    <option value="">All Customers</option>
+                                                    @foreach ($customers as $customer)
+                                                        <option value="{{ $customer['value'] }}"
+                                                            {{ (string) ($filters['customer_id'] ?? '') === (string) $customer['value'] ? 'selected' : '' }}>
+                                                            {{ $customer['label'] }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="fbox">Plot</label>
+                                                <select class="form-control select2" name="plot_id">
+                                                    <option value="">All Plots</option>
+                                                    @foreach ($plots as $plot)
+                                                        <option value="{{ $plot['value'] }}"
+                                                            {{ (string) ($filters['plot_id'] ?? '') === (string) $plot['value'] ? 'selected' : '' }}>
+                                                            {{ $plot['label'] }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="fbox">Reference</label>
+                                                <input type="text" class="form-control" name="reference"
+                                                    value="{{ $filters['reference'] ?? '' }}" placeholder="Slip reference">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="fbox">Date From</label>
+                                                <input type="date" class="form-control" name="fdate"
+                                                    value="{{ $filters['fdate'] ?? '' }}">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="fbox">Date To</label>
+                                                <input type="date" class="form-control" name="tdate"
+                                                    value="{{ $filters['tdate'] ?? '' }}">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="fbox">Status</label>
+                                                <select class="form-control" name="status">
+                                                    <option value="">All Statuses</option>
+                                                    <option value="0" {{ (string) ($filters['status'] ?? '') === '0' ? 'selected' : '' }}>Pending</option>
+                                                    <option value="1" {{ (string) ($filters['status'] ?? '') === '1' ? 'selected' : '' }}>Approve</option>
+                                                    <option value="2" {{ (string) ($filters['status'] ?? '') === '2' ? 'selected' : '' }}>Reject</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3 d-flex gap-2">
+                                            <button type="submit" class="btn btn-primary">Apply Filters</button>
+                                            <a href="{{ route('payment_schedule.cash') }}" class="btn btn-default">Reset</a>
+                                        </div>
+                                    </form>
+                                </div>
                                 <div class="card-body table-responsive">
                                     <table id="example1" class="table table-striped table-bordered " style="width:100%">
                                         <thead>
@@ -335,45 +393,77 @@
                                                 <th>Customer</th>
                                                 <th style="width: 5px">Plot</th>
                                                 <th style="width: 5px">Ref</th>
+                                                <th style="width: 5px">Voucher</th>
                                                 <th>Detail</th>
                                                 <th>Amount</th>
                                                 <th>Type</th>
                                                 <th>Approve</th>
 
 
-                                                @canany(['delete slip', 'can approve'])
+                                                @canany(['read slip', 'delete slip', 'can approve'])
                                                     <th>Action</th>
                                                 @endcanany
                                             </tr>
                                         </thead>
-                                        <tbody>
-                                            @foreach ($data as $i)
-                                                <tr>
-                                                    <td>{{ $loop->iteration }}</td>
-                                                    <td>
-                                                        {{ $i->date ?? '' }}
-                                                    </td>
+                                            <tbody>
+                                                @foreach ($data as $i)
+                                                    @php
+                                                        $ledgerProjectHeadSubhead = optional($i->ledger)->projectHeadSubhead;
+                                                        $ledgerSubhead = optional($ledgerProjectHeadSubhead)->subheadAccounting;
+                                                        $ledgerPlot = optional($ledgerProjectHeadSubhead)->plot;
+                                                        $customerName = trim(($i->customer_list->first_name ?? '') . ' ' . ($i->customer_list->last_name ?? ''));
+                                                        if ($customerName === '') {
+                                                            $customerName = $ledgerSubhead->name ?? '—';
+                                                        }
+                                                        $plotSource = $i->plot_list ?: $ledgerPlot;
+                                                        $plotPrefix = ($plotSource->type ?? null) == 1 ? 'R-' : (($plotSource->type ?? null) == 2 ? 'C-' : '');
+                                                        $plotName = $plotSource ? $plotPrefix . $plotSource->name : '—';
+                                                        $referenceValue = $i->reference
+                                                            ?? $i->ledger->reference
+                                                            ?? (($i->ledger->type ?? null) && ($i->ledger->voucher_number ?? $i->ledger->voucher ?? null)
+                                                                ? $i->ledger->type . '-' . ($i->ledger->voucher_number ?? $i->ledger->voucher)
+                                                                : null)
+                                                            ?? '—';
+                                                        $plotName = $i->plot_list ? $plotPrefix . $i->plot_list->name : '—';
+                                                        $voucherNumber = $i->ledger->voucher_number ?? $i->ledger->voucher ?? '—';
+                                                        $plotName = $plotSource ? $plotPrefix . $plotSource->name : '—';
+                                                        $voucherNumber = $i->ledger->voucher_number ?? $i->ledger->voucher ?? '—';
+                                                        $referenceValue = $i->reference
+                                                            ?? $i->ledger->reference
+                                                            ?? $i->ledger->voucher_number
+                                                            ?? $i->ledger->voucher
+                                                            ?? 'â€”';
+                                                        $voucherNumber = (($i->ledger->type ?? null) && ($i->ledger->voucher_number ?? $i->ledger->voucher ?? null))
+                                                            ? $i->ledger->type . '-' . ($i->ledger->voucher_number ?? $i->ledger->voucher)
+                                                            : ($i->ledger->voucher_number ?? $i->ledger->voucher ?? 'â€”');
+                                                        $i->reference = $referenceValue;
+                                                    @endphp
+                                                    <tr>
+                                                        <td>{{ $loop->iteration }}</td>
+                                                        <td>
+                                                            {{ $i->date ?? '—' }}
+                                                        </td>
 
-                                                    <td>
-                                                        {{ $i->customer_list->first_name ?? '' }}
-                                                        {{ $i->customer_list->last_name ?? '' }}
-                                                        {{ $i->customer_list->relate ?? '' }}
-                                                        {{ $i->customer_list->last_name ?? '' }}
-                                                    </td>
-                                                    <td>
-                                                        {{ $i->plot_list->name ?? '' }}
+                                                        <td>
+                                                            {{ $customerName ?: '—' }}
+                                                        </td>
+                                                        <td>
+                                                            {{ $plotName }}
 
-                                                    </td>
-                                                    <td>
-                                                        {{ $i->reference ?? '' }}
+                                                        </td>
+                                                        <td>
+                                                            {{ $i->reference ?? '—' }}
+                                                        </td>
+                                                        <td>
+                                                            {{ $voucherNumber ?: '—' }}
 
-                                                    </td>
-                                                    <td>
-                                                        {{ $i->description }}
-                                                    </td>
-                                                    <td>
-                                                        {{ Setting::roundformatAmount($i->amount_out) }}
-                                                    </td>
+                                                        </td>
+                                                        <td>
+                                                            {{ $i->description ?: '—' }}
+                                                        </td>
+                                                        <td>
+                                                            {{ Setting::roundformatAmount($i->amount_out) }}
+                                                        </td>
 
                                                     <td>
                                                         <span
@@ -388,23 +478,34 @@
                                                     </td>
 
 
-                                                    @canany(['update voucher', 'delete slip', 'can approve'])
+                                                    @canany(['read slip', 'update voucher', 'delete slip', 'can approve'])
                                                         <td>
                                                             <div class="btn-group">
                                                                 @can('update voucher')
                                                                     <button class="btn btn-sm btn-primary btn-edit"
                                                                         data-id="{{ $i->id }}"
-                                                                        data-voucher="{{ $i->voucher }}"
+                                                                        data-action-template="{{ route('payment_schedule.cash.update', ['id' => '__id__']) }}"
+                                                                        data-voucher="{{ $voucherNumber }}"
                                                                         data-reference="{{ $i->reference }}"
                                                                         data-date="{{ $i->date }}"
-                                                                        data-projects_id="{{ $i->projects_id }}"
-                                                                        data-accounts_id="{{ $i->accounts_id }}"
-                                                                        data-subaccounts_id="{{ $i->subaccounts_id }}"
                                                                         data-amount="{{ $i->amount_out }}"
-                                                                        data-detail="{{ $i->description }}">
+                                                                        data-detail="{{ $i->description }}"
+                                                                        data-payment_type="{{ $i->payment_type }}"
+                                                                        data-t_number="{{ $i->t_number }}"
+                                                                        data-bank_id="{{ $i->bank_id }}"
+                                                                        data-passing_date="{{ $i->passing_date }}"
+                                                                        data-customer="{{ $customerName }}"
+                                                                        data-plot="{{ $plotName }}"
+                                                                        data-project="{{ $i->project_list->project ?? '—' }}">
                                                                         <i class="fas fa-pencil-alt"></i>
                                                                     </button>
                                                                 @endcan
+
+                                                                <a href="{{ route('booking.customer.print', ['id' => $i->id]) }}"
+                                                                    class="btn btn-sm btn-info" target="_blank"
+                                                                    title="Print">
+                                                                    <i class="fas fa-print"></i>
+                                                                </a>
 
                                                                 @can('can approve')
                                                                     <button class="btn btn-sm btn-secondary btn-view"
@@ -484,123 +585,120 @@
                     </button>
                 </div>
                 <div class="modal-body">
-                    <form id="updateForm" action="{{ route('payment_schedule.cash.update', ['id' => '__id__']) }}"
+                    <form id="updateForm"
+                        action="{{ route('payment_schedule.cash.update', ['id' => '__id__']) }}"
+                        data-action-template="{{ route('payment_schedule.cash.update', ['id' => '__id__']) }}"
                         method="POST" enctype="multipart/form-data">
                         @csrf
                         @method('POST')
                         <div class="row">
-
-                            <div class="col-sm-12">
-                                <div class="row">
-                                    <div class="col-sm-3">
-                                        <div class="input-group">
-                                            <label class="fbox">Voucher No.</label>
-                                            <div class="input-group">
-                                                <input type="text" value="1" name="action" hidden />
-                                                <input id="voucher" type="text" class="form-control "
-                                                    name="voucher" autocomplete="off" readonly>
-
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-sm-3">
-                                        <div class="input-group">
-                                            <label class="fbox">Reference</label>
-                                            <div class="input-group">
-
-                                                <input id="reference" type="text"
-                                                    class="form-control @error('reference') is-invalid @enderror"
-                                                    name="reference" value="{{ old('reference') }}" autocomplete="off">
-                                                @error('reference')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-sm-6">
-                                        <div class="input-group">
-                                            <label class="fbox">Date</label>
-                                            <div class="input-group">
-                                                <input type="text" id="date" name="date"
-                                                    class="date_database form-control" data-input>
-                                                <!-- Add a hidden input to store the selected date in a format you want -->
-                                                {{-- <input type="hidden" id="hiddenDate" name="hiddenDate"> --}}
-                                                {{-- <input type="text" id="datepicker" class="form-control @error('date') is-invalid @enderror" name="date" value="{{ old('date') ?: date('d-m-yy') }}" autocomplete="off"> --}}
-                                                @error('date')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                        </div>
-                                    </div>
+                            <div class="col-sm-4">
+                                <div class="form-group">
+                                    <label class="fbox">Voucher No.</label>
+                                    <input id="edit_voucher" type="text" class="form-control" readonly>
                                 </div>
                             </div>
-
+                            <div class="col-sm-4">
+                                <div class="form-group">
+                                    <label class="fbox">Customer</label>
+                                    <input id="edit_customer" type="text" class="form-control" readonly>
+                                </div>
+                            </div>
+                            <div class="col-sm-4">
+                                <div class="form-group">
+                                    <label class="fbox">Plot</label>
+                                    <input id="edit_plot" type="text" class="form-control" readonly>
+                                </div>
+                            </div>
                         </div>
-
                         <div class="row">
+                            <div class="col-sm-4">
+                                <div class="form-group">
+                                    <label class="fbox">Project</label>
+                                    <input id="edit_project" type="text" class="form-control" readonly>
+                                </div>
+                            </div>
+                            <div class="col-sm-4">
+                                <div class="form-group">
+                                    <label class="fbox">Reference</label>
+                                    <input id="edit_reference" type="text"
+                                        class="form-control @error('reference') is-invalid @enderror"
+                                        name="reference" value="{{ old('reference') }}" autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="col-sm-4">
+                                <div class="form-group">
+                                    <label class="fbox">Date</label>
+                                    <input type="date" id="edit_date" name="date"
+                                        class="form-control @error('date') is-invalid @enderror"
+                                        value="{{ old('date') }}">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-4">
+                                <div class="form-group">
+                                    <label class="fbox">Amount</label>
+                                    <input id="edit_amount" oninput="formatAmount(this)" type="text"
+                                        class="form-control @error('amount_out') is-invalid @enderror"
+                                        placeholder="Amount" name="amount_out" value="{{ old('amount_out') }}">
+                                </div>
+                            </div>
+                            <div class="col-sm-4">
+                                <div class="form-group">
+                                    <label class="fbox">Payment Type</label>
+                                    <select class="form-control" name="payment_type" id="edit_payment_type">
+                                        <option value="1">Cash</option>
+                                        <option value="2">Online</option>
+                                        <option value="3">Check</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-sm-4 edit-bank-group" style="display:none;">
+                                <div class="form-group">
+                                    <label class="fbox">Number</label>
+                                    <input id="edit_t_number" type="text" class="form-control" name="t_number"
+                                        value="{{ old('t_number') }}">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row edit-bank-group" style="display:none;">
                             <div class="col-sm-6">
-                                <div class="row">
-                                    {{-- <div class="col-sm-6">
-                                        <div class="input-group">
-                                            <label class="fbox">Party Account</label>
-                                            <div class="input-group">
-                                                <select class="form-control select2" name="subaccounts_id"
-                                                    id="e_subaccounts_id">
-                                                    <option value="">Select an option</option>
-                                                </select>
-                                                @error('subaccounts_id')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                        </div>
-                                    </div> --}}
-                                    <div class="col-sm-6">
-                                        <div class="input-group">
-                                            <label class="fbox">Amount</label>
-                                            <div class="input-group">
-                                                <input id="amount" oninput="formatAmount(this)" type="text"
-                                                    class="form-control @error('amount') is-invalid @enderror"
-                                                    placeholder="Amount" name="amount_out" value="{{ old('amount') }}">
-                                                @error('amount')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                        </div>
-                                    </div>
-
-
+                                <div class="form-group">
+                                    <label class="fbox">Bank</label>
+                                    <select class="form-control" name="bank_id" id="edit_bank_id">
+                                        <option value="">Bank</option>
+                                        @foreach (getPakistanBanks() as $v)
+                                            <option value="{{ $v['id'] }}">{{ $v['name'] }}</option>
+                                        @endforeach
+                                    </select>
                                 </div>
                             </div>
-
+                            <div class="col-sm-6">
+                                <div class="form-group">
+                                    <label class="fbox">Passing Date</label>
+                                    <input type="date" id="edit_passing_date" name="passing_date"
+                                        class="form-control" value="{{ old('passing_date') }}">
+                                </div>
+                            </div>
                         </div>
                         <div class="row">
                             <div class="col-sm-12">
-                                <div class="input-group">
+                                <div class="form-group">
                                     <label class="fbox">Detail</label>
-                                    <div class="input-group">
-                                        <textarea id="detail" class="form-control @error('detail') is-invalid @enderror" placeholder="Detail"
-                                            name="description" style=" height: 150px;" maxlength="255">{{ old('detail') }}</textarea>
-                                        @error('detail')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-
+                                    <textarea id="edit_description" class="form-control @error('description') is-invalid @enderror"
+                                        placeholder="Detail" name="description" style="height: 150px;" maxlength="255">{{ old('description') }}</textarea>
                                 </div>
                             </div>
                         </div>
-
                         <div class="modal-footer justify-content-between">
-                            <input type="hidden" name="id" id="id">
+                            <input type="hidden" name="id" id="edit_id">
                             <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
                             <button type="submit" class="btn btn-primary">Update</button>
                         </div>
                     </form>
                 </div>
-                <!-- /.modal-content -->
             </div>
-            <!-- /.modal-dialog -->
         </div>
     </div>
     {{-- Modal delete --}}
@@ -672,94 +770,114 @@
                     </button>
                 </div>
                 <div class="modal-body">
-                    <form action="{{ route('ledger.update') }}" method="POST" enctype="multipart/form-data">
-                        @csrf
-                        @method('PUT')
-                        <div class="row">
-
-                            <div class="col-sm-6">
-                                <div class="row">
-                                    <div class="col-sm-6">
-                                        <span>Slip</span>
-                                    </div>
-                                    <div class="col-sm-6">
-                                        <span>Slip Number </span>
-                                    </div>
-
-                                </div>
-                                <div class="row">
-                                    <div class="col-sm-6">
-                                        <span>Customer</span>
-                                    </div>
-                                    <div class="col-sm-6">
-                                        <span>Ali </span>
-                                    </div>
-
-                                </div>
-                                <div class="row">
-                                    <div class="col-sm-6">
-                                        <span>Plot</span>
-                                    </div>
-                                    <div class="col-sm-6">
-                                        <span>Ali </span>
-                                    </div>
-
-                                </div>
-                                <div class="row">
-                                    <div class="col-sm-6">
-                                        <span>Plot</span>
-                                    </div>
-                                    <div class="col-sm-6">
-                                        <span>Ali </span>
-                                    </div>
-
-                                </div>
-                            </div>
-                            <div class="col-sm-6">
-                                <div class="row">
-                                    <div class="col-sm-6">
-                                        <span>Date</span>
-                                    </div>
-                                    <div class="col-sm-6">
-                                        <span>Date Here</span>
-                                    </div>
-
-                                </div>
-                                <div class="row">
-                                    <div class="col-sm-6">
-                                        <span>Phone</span>
-                                    </div>
-                                    <div class="col-sm-6">
-                                        <span>Date Here</span>
-                                    </div>
-
-                                </div>
-                                <div class="row">
-                                    <div class="col-sm-6">
-                                        <span>Size</span>
-                                    </div>
-                                    <div class="col-sm-6">
-                                        <span>Date Here</span>
-                                    </div>
-
-                                </div>
-                            </div>
-
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <table class="table table-sm table-bordered">
+                                <tr>
+                                    <th>Voucher</th>
+                                    <td id="view_voucher_number">—</td>
+                                </tr>
+                                <tr>
+                                    <th>Reference</th>
+                                    <td id="view_reference">—</td>
+                                </tr>
+                                <tr>
+                                    <th>Date</th>
+                                    <td id="view_date">—</td>
+                                </tr>
+                                <tr>
+                                    <th>Amount</th>
+                                    <td id="view_amount">—</td>
+                                </tr>
+                                <tr>
+                                    <th>Payment Type</th>
+                                    <td id="view_payment_type">—</td>
+                                </tr>
+                                <tr>
+                                    <th>Transaction No.</th>
+                                    <td id="view_t_number">—</td>
+                                </tr>
+                                <tr>
+                                    <th>Bank</th>
+                                    <td id="view_bank">—</td>
+                                </tr>
+                                <tr>
+                                    <th>Passing Date</th>
+                                    <td id="view_passing_date">—</td>
+                                </tr>
+                                <tr>
+                                    <th>Status</th>
+                                    <td id="view_status">—</td>
+                                </tr>
+                            </table>
                         </div>
-
-
-                        <div class="modal-footer justify-content-between">
-                            <button type="button" class="btn btn-default btn-rejected" data-dismiss="modal"
-                                data-id='' data-name=''>Rejected</button>
-                            <button type="button" class="btn btn-primary btn-approve" data-dismiss="modal"
-                                data-id='' data-name=''>Approve</button>
-
+                        <div class="col-sm-6">
+                            <table class="table table-sm table-bordered">
+                                <tr>
+                                    <th>Customer</th>
+                                    <td id="view_customer">—</td>
+                                </tr>
+                                <tr>
+                                    <th>Phone</th>
+                                    <td id="view_phone">—</td>
+                                </tr>
+                                <tr>
+                                    <th>CNIC</th>
+                                    <td id="view_cnic">—</td>
+                                </tr>
+                                <tr>
+                                    <th>Project</th>
+                                    <td id="view_project">—</td>
+                                </tr>
+                                <tr>
+                                    <th>Plot</th>
+                                    <td id="view_plot">—</td>
+                                </tr>
+                                <tr>
+                                    <th>Plot Size</th>
+                                    <td id="view_plot_size">—</td>
+                                </tr>
+                                <tr>
+                                    <th>Ledger Ref</th>
+                                    <td id="view_ledger_reference">—</td>
+                                </tr>
+                                <tr>
+                                    <th>Created At</th>
+                                    <td id="view_created_at">—</td>
+                                </tr>
+                            </table>
                         </div>
-                    </form>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <div class="form-group">
+                                <label class="fbox">Address</label>
+                                <div id="view_address" class="border rounded p-2 bg-light">—</div>
+                            </div>
+                            <div class="form-group">
+                                <label class="fbox">Remarks</label>
+                                <div id="view_description" class="border rounded p-2 bg-light">—</div>
+                            </div>
+                            <div class="form-group">
+                                <label class="fbox">Ledger Detail</label>
+                                <div id="view_ledger_detail" class="border rounded p-2 bg-light">—</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <!-- /.modal-content -->
+                <div class="modal-footer justify-content-between">
+                    <a href="#" class="btn btn-info" id="view_print_link" target="_blank"
+                        data-print-template="{{ route('booking.customer.print', ['id' => '__id__']) }}">
+                        Print
+                    </a>
+                    <div>
+                        <button type="button" class="btn btn-default btn-rejected" data-dismiss="modal"
+                            data-id='' data-name=''>Rejected</button>
+                        <button type="button" class="btn btn-primary btn-approve" data-dismiss="modal"
+                            data-id='' data-name=''>Approve</button>
+                    </div>
+                </div>
             </div>
-            <!-- /.modal-dialog -->
         </div>
     </div>
     <div class="modal fade" id="viewChangesModal" tabindex="-1" aria-labelledby="viewChangesModalLabel"
@@ -806,49 +924,53 @@
         $(document).ready(function() {
 
             $(document).ready(function() {
-                // console.log("Document ready");
                 $('#payment_type').change(function(e) {
-
                     e.preventDefault();
 
                     if ($(this).val() != '1') {
-
                         $('.bank_group').css('display', 'block');
                     } else {
-
                         $('.bank_group').css('display', 'none');
                     }
                 });
-                $(document).on('click', '.btn-edit', function() {
-                    // Get values from button
-                    let id = $(this).data('id');
-                    let action = $('#updateForm').attr('action').replace('__id__', id);
-                    $('#updateForm').attr('action', action);
-                    let voucher = $(this).data('voucher');
-                    let reference = $(this).data('reference');
-                    let date = $(this).data('date');
-                    let projects_id = $(this).data('projects_id');
-                    let accounts_id = $(this).data('accounts_id');
-                    let subaccounts_id = $(this).data('subaccounts_id');
-                    let amount = $(this).data('amount');
-                    let detail = $(this).data('detail');
 
-                    // Fill modal fields
-                    $('#id').val(id);
-                    $('#voucher').val(voucher);
-                    $('#reference').val(reference);
-                    $('#date').val(date);
-                    $('#e_projects_id').val(projects_id).trigger('change');
-                    $('#e_accounts_id').val(accounts_id).trigger('change');
-                    $('#e_subaccounts_id').val(subaccounts_id).trigger('change');
-                    $('#amount').val(amount);
-                    $('#detail').val(detail);
+                function toggleEditBankGroup(paymentType) {
+                    if (paymentType && paymentType !== '1') {
+                        $('.edit-bank-group').show();
+                    } else {
+                        $('.edit-bank-group').hide();
+                        $('#edit_t_number').val('');
+                        $('#edit_bank_id').val('');
+                        $('#edit_passing_date').val('');
+                    }
+                }
 
-                    // Show modal
-                    $('#modal-edit').modal('show');
+                $('#edit_payment_type').change(function() {
+                    toggleEditBankGroup($(this).val());
                 });
 
+                $(document).on('click', '.btn-edit', function() {
+                    const id = $(this).data('id');
+                    const template = $('#updateForm').data('action-template');
+                    const paymentType = String($(this).data('payment_type') || '1');
 
+                    $('#updateForm').attr('action', template.replace('__id__', id));
+                    $('#edit_id').val(id);
+                    $('#edit_voucher').val($(this).data('voucher') || '—');
+                    $('#edit_customer').val($(this).data('customer') || '—');
+                    $('#edit_plot').val($(this).data('plot') || '—');
+                    $('#edit_project').val($(this).data('project') || '—');
+                    $('#edit_reference').val($(this).data('reference') || '');
+                    $('#edit_date').val($(this).data('date') || '');
+                    $('#edit_amount').val($(this).data('amount') || '');
+                    $('#edit_description').val($(this).data('detail') || '');
+                    $('#edit_payment_type').val(paymentType);
+                    $('#edit_t_number').val($(this).data('t_number') || '');
+                    $('#edit_bank_id').val($(this).data('bank_id') || '');
+                    $('#edit_passing_date').val($(this).data('passing_date') || '');
+                    toggleEditBankGroup(paymentType);
+                    $('#modal-edit').modal('show');
+                });
             });
             $(document).ready(function() {
                 $(document).on('click', '.btn-view-changes', function() {
@@ -1067,8 +1189,6 @@
 
                 if (customerId) {
                     fetchPlots(customerId);
-                    // console.log($(this).data('phone'));
-                    // $('#phone').text( 'asdas');
                 } else {
                     // If no project is selected, empty the customer dropdown
                     $('#plot_id').empty();
@@ -1087,7 +1207,6 @@
                         customer_id: customerId // Pass project ID to server
                     },
                     success: function(data) {
-                        console.log(data);
                         // Populate customer dropdown with retrieved data
                         $('#plot_id').empty();
                         $('#plot_id').append('<option value="">Select Plots</option>');
@@ -1132,17 +1251,33 @@
                         id: id,
                         _token: "{{ csrf_token() }}"
                     },
-                    success: function(data) {
-                        var data = data.data;
-                        $("#id").val(data.id);
-                        $("#reference").val(data.reference);
+                    success: function(response) {
+                        const data = response.data;
+                        const printTemplate = $('#view_print_link').data('print-template');
+
+                        $('#view_reference').text(data.reference || '—');
+                        $('#view_voucher_number').text(data.ledger?.voucher_number || '—');
+                        $('#view_date').text(data.date || '—');
+                        $('#view_amount').text(data.amount_out || '—');
+                        $('#view_payment_type').text(data.payment_type_label || '—');
+                        $('#view_t_number').text(data.t_number || '—');
+                        $('#view_bank').text(data.bank_name || data.bank_id || '—');
+                        $('#view_passing_date').text(data.passing_date || '—');
+                        $('#view_status').text(data.status_label || '—');
+                        $('#view_customer').text(data.customer?.name || '—');
+                        $('#view_phone').text(data.customer?.phone_number || data.customer?.mobile_number || '—');
+                        $('#view_cnic').text(data.customer?.nic_number || '—');
+                        $('#view_project').text(data.project?.name || '—');
+                        $('#view_plot').text(data.plot?.name ? (((data.plot?.type == 1) ? 'R-' : ((data.plot?.type == 2) ? 'C-' : '')) + data.plot.name) : '—');
+                        $('#view_plot_size').text(data.plot?.size ? `${data.plot.size}${data.plot?.unit ? ' ' + data.plot.unit : ''}` : '—');
+                        $('#view_ledger_reference').text(data.ledger?.reference || '—');
+                        $('#view_created_at').text(data.created_at || '—');
+                        $('#view_address').text(data.customer?.home_address || '—');
+                        $('#view_description').text(data.description || '—');
+                        $('#view_ledger_detail').text(data.ledger?.detail || '—');
+                        $('#view_print_link').attr('href', printTemplate.replace('__id__', data.id));
                         $('.btn-approve').attr('data-id', data.id);
                         $('.btn-rejected').attr('data-id', data.id);
-
-
-
-                        $("#description").val(data.description);
-
                         $('#modal-loading').modal('hide');
                         $('#modal-view').modal({
                             backdrop: 'static',
@@ -1150,6 +1285,14 @@
                             show: true
                         });
                     },
+                    error: function() {
+                        $('#modal-loading').modal('hide');
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Unable to load voucher details right now.'
+                        });
+                    }
                 });
             });
 

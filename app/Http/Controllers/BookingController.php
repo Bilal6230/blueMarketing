@@ -1587,8 +1587,9 @@ class BookingController extends Controller
 
 
 
-    public function cash_in()
+    public function cash_in(Request $request)
     {
+        $selectedProjectId = getSelectedTown();
         $power = Auth::user()->roles[0]->name;
         $x['title'] = 'Receive Plot Payment';
         $x['role'] = Role::get();
@@ -1598,7 +1599,62 @@ class BookingController extends Controller
         $x['class'] = 'cash-in';
         $x['bg_voucher'] = 'info-cash-in';
 
-        $data = CustomerLedger::with('customer_list', 'plot_list')->where('transaction_type', 'CR')->where('is_active', '1')->where('project_id', getSelectedTown())->get();
+        $baseQuery = CustomerLedger::with([
+            'customer_list',
+            'plot_list',
+            'project_list',
+            'ledger.projectHeadSubhead.subheadAccounting',
+            'ledger.projectHeadSubhead.plot',
+        ])
+            ->where('transaction_type', 'CR')
+            ->where('is_active', '1')
+            ->where('project_id', $selectedProjectId);
+
+        $query = clone $baseQuery;
+
+        if ($request->filled('customer_id')) {
+            $customerFilter = (string) $request->input('customer_id');
+
+            if (str_starts_with($customerFilter, 'subhead:')) {
+                $subheadId = (int) substr($customerFilter, 8);
+                $query->whereHas('ledger.projectHeadSubhead', function ($relationQuery) use ($subheadId) {
+                    $relationQuery->where('subhead_accounting_id', $subheadId);
+                });
+            } elseif (str_starts_with($customerFilter, 'lead:')) {
+                $leadId = (int) substr($customerFilter, 5);
+                $query->where('customer_id', $leadId);
+            } else {
+                $query->where('customer_id', $customerFilter);
+            }
+        }
+
+        if ($request->filled('plot_id')) {
+            $plotId = (int) $request->input('plot_id');
+            $query->where(function ($plotQuery) use ($plotId) {
+                $plotQuery->where('plot_id', $plotId)
+                    ->orWhereHas('ledger.projectHeadSubhead', function ($relationQuery) use ($plotId) {
+                        $relationQuery->where('plot_id', $plotId);
+                    });
+            });
+        }
+
+        if ($request->filled('reference')) {
+            $query->where('reference', 'like', '%' . trim($request->input('reference')) . '%');
+        }
+
+        if ($request->filled('fdate')) {
+            $query->whereDate('date', '>=', $request->input('fdate'));
+        }
+
+        if ($request->filled('tdate')) {
+            $query->whereDate('date', '<=', $request->input('tdate'));
+        }
+
+        if ($request->filled('status') && in_array((string) $request->input('status'), ['0', '1', '2'], true)) {
+            $query->where('is_approve', $request->input('status'));
+        }
+
+        $data = $query->orderByDesc('id')->get();
         $data = $data->map(function ($item) {
             $pending = PendingUpdate::where('table_name', 'customer_ledger') // 👈 dynamic table name
                 ->where('record_id', $item->id)
@@ -1612,42 +1668,143 @@ class BookingController extends Controller
         });
         $x['data'] = $data;
 
-        $projects = Project::where('id', getSelectedTown())->get();
-        $x['projects'] = $projects;
+        $baseRows = (clone $baseQuery)->get();
+
+        $x['projects'] = Project::where('id', $selectedProjectId)->get();
+        $x['customers'] = $baseRows->map(function ($item) {
+            $customer = $item->customer_list;
+            if ($customer) {
+                $name = trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? ''));
+                if ($name !== '') {
+                    return [
+                        'value' => 'lead:' . $customer->id,
+                        'label' => $name,
+                    ];
+                }
+            }
+
+            $subhead = optional(optional($item->ledger)->projectHeadSubhead)->subheadAccounting;
+            if ($subhead && !empty($subhead->name)) {
+                return [
+                    'value' => 'subhead:' . $subhead->id,
+                    'label' => $subhead->name,
+                ];
+            }
+
+            return null;
+        })->filter()->unique('value')->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)->values();
+
+        $x['plots'] = $baseRows->map(function ($item) {
+            $plot = $item->plot_list ?: optional(optional($item->ledger)->projectHeadSubhead)->plot;
+
+            if (!$plot) {
+                return null;
+            }
+
+            $prefix = ($plot->type ?? null) == 1 ? 'R-' : (($plot->type ?? null) == 2 ? 'C-' : '');
+
+            return [
+                'value' => $plot->id,
+                'label' => $prefix . ($plot->name ?? ''),
+            ];
+        })->filter()->unique('value')->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)->values();
+        $x['filters'] = [
+            'customer_id' => $request->input('customer_id'),
+            'plot_id' => $request->input('plot_id'),
+            'reference' => $request->input('reference'),
+            'fdate' => $request->input('fdate'),
+            'tdate' => $request->input('tdate'),
+            'status' => $request->input('status'),
+        ];
 
         return view('admin.booking.receive', $x);
     }
     public function updateCashIn(Request $request, $id)
     {
-        // Validate incoming fields (adjust rules as per your fields)
-        $validated = $request->validate([
-            'amount_out' => 'required',
-            'date' => 'required',
-            'description' => 'nullable',
+        $validator = Validator::make($request->all(), [
+            'reference' => 'required|string|max:255',
+            'date' => 'required|date',
+            'amount_out' => ['required', 'regex:/^\d[\d,]*(\.\d{1,2})?$/'],
+            'description' => 'nullable|string|max:255',
+            'payment_type' => 'required|in:1,2,3',
+            't_number' => 'nullable|string|max:255',
+            'bank_id' => 'nullable',
+            'passing_date' => 'nullable|date',
         ]);
+
+        $validator->sometimes('t_number', 'required|string|max:255', function ($input) {
+            return in_array((string) $input->payment_type, ['2', '3'], true);
+        });
+
+        $validator->sometimes('bank_id', 'required', function ($input) {
+            return in_array((string) $input->payment_type, ['2', '3'], true);
+        });
+
+        $validated = $validator->validate();
 
         // 🛑 Remove commas from amount_out
         $validated['amount_out'] = str_replace(',', '', $validated['amount_out']);
 
-        DB::transaction(function () use ($validated, $id, $request) {
-            $ledger = CustomerLedger::where('id', $id)->first();
+        if ((string) $validated['payment_type'] === '1') {
+            $validated['t_number'] = null;
+            $validated['bank_id'] = null;
+            $validated['passing_date'] = null;
+        }
 
-            if (auth()->user()->cannot('direct-update')) {
-                PendingUpdate::create([
-                    'record_id' => $ledger->id,
-                    'table_name' => 'customer_ledger',
-                    'new_values' => json_encode($validated),
-                    'old_values' => json_encode($ledger->only(array_keys($validated))),
-                    'status' => 'pending',
-                    'submitted_by' => Auth::id(),
-                ]);
-            } else {
-                // Direct update
-                $ledger->update($validated);
-            }
-        });
+        try {
+            DB::transaction(function () use ($validated, $id) {
+                $customerLedger = CustomerLedger::with('ledger')
+                    ->where('id', $id)
+                    ->where('project_id', getSelectedTown())
+                    ->firstOrFail();
 
-        return redirect()->back()->with('success', 'Ledger updated successfully!');
+                if (auth()->user()->cannot('direct-update')) {
+                    PendingUpdate::create([
+                        'record_id' => $customerLedger->id,
+                        'table_name' => 'customer_ledger',
+                        'new_values' => json_encode($validated),
+                        'old_values' => json_encode($customerLedger->only(array_keys($validated))),
+                        'status' => 'pending',
+                        'submitted_by' => Auth::id(),
+                    ]);
+
+                    return;
+                }
+
+                $customerLedger->update($validated);
+
+                if ($customerLedger->ledger) {
+                    $ledgerPayload = [
+                        'date' => $validated['date'],
+                        'detail' => '(Cash slip#' . $validated['reference'] . ') ' . ($validated['description'] ?? ''),
+                    ];
+
+                    if ((string) $customerLedger->ledger->type === 'CR') {
+                        $ledgerPayload['amount_in'] = $validated['amount_out'];
+                    } else {
+                        $ledgerPayload['amount_out'] = $validated['amount_out'];
+                    }
+
+                    $customerLedger->ledger->update($ledgerPayload);
+                }
+            });
+        } catch (\Throwable $th) {
+            Log::error('Receive plot payment update failed', [
+                'customer_ledger_id' => $id,
+                'user_id' => Auth::id(),
+                'message' => $th->getMessage(),
+            ]);
+
+            return redirect()->back()->withErrors([
+                'msg' => 'Unable to update the voucher right now. Please try again.',
+            ])->withInput();
+        }
+
+        $message = auth()->user()->cannot('direct-update')
+            ? 'Update request submitted for approval.'
+            : 'Ledger updated successfully!';
+
+        return redirect()->back()->with('success', $message);
     }
 
 
@@ -1905,8 +2062,14 @@ class BookingController extends Controller
 
                     break;
             }
-        } catch (\Exception $e) {
-            return back()->withErrors(['msg' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            Log::error('Receive plot payment save failed', [
+                'action' => $action,
+                'user_id' => Auth::id(),
+                'message' => $e->getMessage(),
+            ]);
+
+            return back()->withErrors(['msg' => 'Unable to save the voucher right now. Please try again.'])->withInput();
         }
         return back();
     }
@@ -2153,15 +2316,88 @@ class BookingController extends Controller
 
     public function fatch_voucher(Request $request)
     {
-        $data_list = CustomerLedger::with('customer_list', 'plot_list')->where(['id' => $request->id])->first();
+        $request->validate([
+            'id' => 'required|integer',
+        ]);
 
+        $dataList = CustomerLedger::with(['customer_list', 'plot_list', 'project_list', 'ledger'])
+            ->where('id', $request->id)
+            ->where('project_id', getSelectedTown())
+            ->first();
 
+        if (!$dataList) {
+            return response()->json([
+                'status' => Response::HTTP_NOT_FOUND,
+                'message' => 'Voucher not found.',
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        $customer = $dataList->customer_list;
+        $plot = $dataList->plot_list;
+        $project = $dataList->project_list;
+        $ledger = $dataList->ledger;
 
         return response()->json([
             'status' => Response::HTTP_OK,
-            'message' => 'Data Project by id',
-            'data' => $data_list
+            'message' => 'Voucher loaded successfully.',
+            'data' => [
+                'id' => $dataList->id,
+                'date' => $dataList->date,
+                'reference' => $dataList->reference,
+                'amount_out' => $dataList->amount_out,
+                'description' => $dataList->description,
+                'payment_type' => $dataList->payment_type,
+                'payment_type_label' => getPaymentTypeDetails($dataList->payment_type)['name'],
+                't_number' => $dataList->t_number,
+                'bank_id' => $dataList->bank_id,
+                'bank_name' => $dataList->bank_id ? getBankNameById($dataList->bank_id) : null,
+                'passing_date' => $dataList->passing_date,
+                'status' => $dataList->is_approve,
+                'status_label' => approveStatus($dataList->is_approve),
+                'created_at' => optional($dataList->created_at)->format('Y-m-d H:i:s'),
+                'customer' => [
+                    'id' => $customer?->id,
+                    'name' => trim(($customer?->first_name ?? '') . ' ' . ($customer?->last_name ?? '')),
+                    'relate' => $customer?->relate,
+                    'father_name' => $customer?->father_name,
+                    'phone_number' => $customer?->phone_number,
+                    'mobile_number' => $customer?->mobile_number,
+                    'nic_number' => $customer?->nic_number,
+                    'home_address' => $customer?->home_address,
+                ],
+                'plot' => [
+                    'id' => $plot?->id,
+                    'name' => $plot?->name,
+                    'type' => $plot?->type,
+                    'size' => $plot?->size,
+                    'unit' => $plot?->unit,
+                ],
+                'project' => [
+                    'id' => $project?->id,
+                    'name' => $project?->project,
+                ],
+                'ledger' => [
+                    'id' => $ledger?->id,
+                    'type' => $ledger?->type,
+                    'voucher_number' => $ledger?->voucher_number ?? $ledger?->voucher ?? null,
+                    'reference' => $ledger?->reference,
+                    'amount_in' => $ledger?->amount_in,
+                    'amount_out' => $ledger?->amount_out,
+                    'detail' => $ledger?->detail,
+                    'date' => $ledger?->date,
+                ],
+            ]
         ], Response::HTTP_OK);
+    }
+
+    public function printCashIn($id)
+    {
+        $x['voucher'] = CustomerLedger::with(['customer_list', 'plot_list', 'project_list', 'ledger'])
+            ->where('id', $id)
+            ->where('project_id', getSelectedTown())
+            ->firstOrFail();
+
+        return view('admin.booking.print_receive', $x);
     }
 
 
