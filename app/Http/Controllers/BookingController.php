@@ -1600,15 +1600,18 @@ class BookingController extends Controller
         $x['class'] = 'cash-in';
         $x['bg_voucher'] = 'info-cash-in';
 
-        $baseQuery = CustomerLedger::with([
-            'bookingVoucher',
-            'customer_list',
-            'plot_list',
-            'project_list',
+        $baseQuery = BookingVoucher::with([
+            'customerLedger',
+            'customerLedger.customer_list',
+            'customerLedger.plot_list',
+            'customerLedger.project_list',
             'ledger.projectHeadSubhead.subheadAccounting',
             'ledger.projectHeadSubhead.plot',
+            'customer',
+            'plot',
+            'project',
         ])
-            ->where('transaction_type', 'PPR')
+            ->where('voucher_series', 'PPR')
             ->where('is_active', '1')
             ->where('project_id', $selectedProjectId);
         $query = clone $baseQuery;
@@ -1640,15 +1643,21 @@ class BookingController extends Controller
         }
 
         if ($request->filled('reference')) {
-            $query->where('reference', 'like', '%' . trim($request->input('reference')) . '%');
+            $reference = trim($request->input('reference'));
+            $query->where(function ($referenceQuery) use ($reference) {
+                $referenceQuery->where('slip_reference', 'like', '%' . $reference . '%')
+                    ->orWhereHas('customerLedger', function ($customerLedgerQuery) use ($reference) {
+                        $customerLedgerQuery->where('reference', 'like', '%' . $reference . '%');
+                    });
+            });
         }
 
         if ($request->filled('fdate')) {
-            $query->whereDate('date', '>=', $request->input('fdate'));
+            $query->whereDate('receipt_date', '>=', $request->input('fdate'));
         }
 
         if ($request->filled('tdate')) {
-            $query->whereDate('date', '<=', $request->input('tdate'));
+            $query->whereDate('receipt_date', '<=', $request->input('tdate'));
         }
 
         if ($request->filled('status') && in_array((string) $request->input('status'), ['0', '1', '2'], true)) {
@@ -1658,7 +1667,7 @@ class BookingController extends Controller
         $data = $query->orderByDesc('id')->get();
         $data = $data->map(function ($item) {
             $pending = PendingUpdate::where('table_name', 'customer_ledger') // 👈 dynamic table name
-                ->where('record_id', $item->id)
+                ->where('record_id', $item->customer_ledger_id)
                 ->latest()
                 ->first();
             $item['submitted_by'] = $pending ? $pending->submittedBy?->name : '';
@@ -1686,7 +1695,7 @@ class BookingController extends Controller
 
         $x['projects'] = Project::where('id', $selectedProjectId)->get();
         $x['customers'] = $baseRows->map(function ($item) {
-            $customer = $item->customer_list;
+            $customer = $item->customer ?: optional($item->customerLedger)->customer_list;
             if ($customer) {
                 $name = trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? ''));
                 if ($name !== '') {
@@ -1988,8 +1997,8 @@ class BookingController extends Controller
                     $plotName = Plot::where('id', $request->input('plot_id'))->value('name');
                     $customerLedger = CustomerLedger::create([
                         'customer_id' => $customer_id,
-                        'transaction_type' => 'PPR',
-                        'type_id' => get_new_typeID('PPR'),
+                        'transaction_type' => 'null',
+                        'type_id' => get_new_typeID('null'),
                         'reference' => $request->input('reference'),
                         'project_id' => $projectId,
                         'plot_id' => $request->input('plot_id'),

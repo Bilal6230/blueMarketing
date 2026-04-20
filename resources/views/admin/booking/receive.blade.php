@@ -408,11 +408,16 @@
                                             <tbody>
                                                 @foreach ($data as $i)
                                                     @php
-                                                        $ledgerProjectHeadSubhead = optional($i->ledger)->projectHeadSubhead;
+                                                        $customerLedger = $i->customerLedger;
+                                                        $ledger = $i->ledger;
+                                                        $ledgerProjectHeadSubhead = optional($ledger)->projectHeadSubhead;
 	                                                        $ledgerSubhead = optional($ledgerProjectHeadSubhead)->subheadAccounting;
 	                                                        $ledgerPlot = optional($ledgerProjectHeadSubhead)->plot;
 	                                                        $fallbackPlotId = optional($ledgerProjectHeadSubhead)->plot_id;
-                                                        $customerName = trim(($i->customer_list->first_name ?? '') . ' ' . ($i->customer_list->last_name ?? ''));
+                                                        $customer = $i->customer ?: optional($customerLedger)->customer_list;
+                                                        $plot = $i->plot ?: optional($customerLedger)->plot_list;
+                                                        $project = $i->project ?: optional($customerLedger)->project_list;
+                                                        $customerName = trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? ''));
                                                         if ($customerName === '') {
                                                             $customerName = $ledgerSubhead->name ?? '—';
                                                         }
@@ -434,8 +439,8 @@
                                                             ?? $i->ledger->voucher_number
                                                             ?? $i->ledger->voucher
                                                             ?? 'â€”';
-                                                        $voucherNumber = (($i->ledger->type ?? null) && ($i->ledger->voucher_number ?? $i->ledger->voucher ?? null))
-                                                            ? $i->ledger->type . '-' . ($i->ledger->voucher_number ?? $i->ledger->voucher)
+                                                        $voucherNumber = !empty($i->voucher_series) && !empty($i->voucher_number)
+                                                            ? $i->voucher_series . '-' . $i->voucher_number
                                                             : ($i->ledger->voucher_number ?? $i->ledger->voucher ?? 'â€”');
 	                                                        $plotName = ($plotSource && !empty($plotSource->name))
 	                                                            ? Setting::getPlotTypeShort($plotSource->type) . '-' . $plotSource->name
@@ -445,28 +450,28 @@
                                                     <tr>
                                                         <td>{{ $loop->iteration }}</td>
                                                         <td>
-                                                            {{ $i->date ?? '—' }}
+                                                            {{ $i->receipt_date ?? $i->date ?? optional($customerLedger)->date ?? '-' }}
                                                         </td>
 
                                                         <td>
-                                                            {{ $customerName ?: '—' }}
+                                                            {{ $customerName ?: '-' }}
                                                         </td>
                                                         <td>
                                                             {{ $plotName }}
 
                                                         </td>
                                                         <td>
-                                                            {{ $i->reference ?? '—' }}
+                                                            {{ $i->slip_reference ?? $i->reference ?? optional($customerLedger)->reference ?? '-' }}
                                                         </td>
                                                         <td>
-                                                            {{ $voucherNumber ?: '—' }}
+                                                            {{ (!empty($i->voucher_series) && !empty($i->voucher_number)) ? $i->voucher_series . '-' . $i->voucher_number : ($voucherNumber ?: '-') }}
 
                                                         </td>
                                                         <td>
-                                                            {{ $i->description ?: '—' }}
+                                                            {{ $i->description ?: optional($customerLedger)->description ?: '-' }}
                                                         </td>
                                                         <td>
-                                                            {{ Setting::roundformatAmount($i->amount_out) }}
+                                                            {{ Setting::roundformatAmount($i->amount ?? $i->amount_out ?? optional($customerLedger)->amount_out ?? 0) }}
                                                         </td>
 
                                                     <td>
@@ -487,25 +492,25 @@
                                                             <div class="btn-group">
                                                                 @can('update voucher')
                                                                     <button class="btn btn-sm btn-primary btn-edit"
-                                                                        data-id="{{ $i->id }}"
+                                                                        data-id="{{ $customerLedger->id ?? $i->customer_ledger_id }}"
                                                                         data-action-template="{{ route('payment_schedule.cash.update', ['id' => '__id__']) }}"
                                                                         data-voucher="{{ $voucherNumber }}"
-                                                                        data-reference="{{ $i->reference }}"
-                                                                        data-date="{{ $i->date }}"
-                                                                        data-amount="{{ $i->amount_out }}"
-                                                                        data-detail="{{ $i->description }}"
+                                                                        data-reference="{{ $i->slip_reference ?? $i->reference ?? optional($customerLedger)->reference ?? '—' }}"
+                                                                        data-date="{{ $i->receipt_date ?? $i->date ?? optional($customerLedger)->date }}"
+                                                                        data-amount="{{ $i->amount ?? $i->amount_out ?? optional($customerLedger)->amount_out }}"
+                                                                        data-detail="{{ $i->description ?? optional($customerLedger)->description }}"
                                                                         data-payment_type="{{ $i->payment_type }}"
                                                                         data-t_number="{{ $i->t_number }}"
                                                                         data-bank_id="{{ $i->bank_id }}"
                                                                         data-passing_date="{{ $i->passing_date }}"
                                                                         data-customer="{{ $customerName }}"
                                                                         data-plot="{{ $plotName }}"
-                                                                        data-project="{{ $i->project_list->project ?? '—' }}">
+                                                                        data-project="{{ $project->project ?? '-' }}">
                                                                         <i class="fas fa-pencil-alt"></i>
                                                                     </button>
                                                                 @endcan
 
-                                                                <a href="{{ route('booking.customer.print', ['id' => $i->id]) }}"
+                                                                <a href="{{ route('booking.customer.print', ['id' => $customerLedger->id ?? $i->customer_ledger_id]) }}"
                                                                     class="btn btn-sm btn-info" target="_blank"
                                                                     title="Print">
                                                                     <i class="fas fa-print"></i>
@@ -513,7 +518,7 @@
 
                                                                 @can('can approve')
                                                                     <button class="btn btn-sm btn-secondary btn-view"
-                                                                        data-id="{{ $i->id }}"
+                                                                        data-id="{{ $customerLedger->id ?? $i->customer_ledger_id }}"
                                                                         data-name="{{ $i->name }}"><i
                                                                             class="fas fa-eye"></i></button>
                                                                 @endcan
@@ -1356,3 +1361,5 @@
         }
     </script>
 @endsection
+
+
