@@ -47,7 +47,7 @@
                                                                     <input type="text" value="deposit" name="action"
                                                                         hidden />
                                                                     <input type="text" class="form-control " name="voucher"
-                                                                        value="{{ $type }}-{{ get_new_booking_voucher($type) }}"
+                                                                        value="{{ $type }}-{{ getVocuherNumber($type) }}"
                                                                         autocomplete="off" readonly>
 
                                                                 </div>

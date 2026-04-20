@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\BookingDetail;
+use App\Models\BookingVoucher;
 use App\Models\ChargeType;
 use App\Models\CustomerLedger;
 use App\Models\DraftLedger;
@@ -1600,13 +1601,14 @@ class BookingController extends Controller
         $x['bg_voucher'] = 'info-cash-in';
 
         $baseQuery = CustomerLedger::with([
+            'bookingVoucher',
             'customer_list',
             'plot_list',
             'project_list',
             'ledger.projectHeadSubhead.subheadAccounting',
             'ledger.projectHeadSubhead.plot',
         ])
-            ->where('transaction_type', 'CR')
+            ->where('transaction_type', 'PPR')
             ->where('is_active', '1')
             ->where('project_id', $selectedProjectId);
         $query = clone $baseQuery;
@@ -1790,7 +1792,7 @@ class BookingController extends Controller
                         'detail' => '(Cash slip#' . $validated['reference'] . ') ' . ($validated['description'] ?? ''),
                     ];
 
-                    if ((string) $customerLedger->ledger->type === 'CR') {
+                    if (in_array((string) $customerLedger->ledger->type, ['CR', 'PPR'], true)) {
                         $ledgerPayload['amount_in'] = $validated['amount_out'];
                     } else {
                         $ledgerPayload['amount_out'] = $validated['amount_out'];
@@ -1798,6 +1800,8 @@ class BookingController extends Controller
 
                     $customerLedger->ledger->update($ledgerPayload);
                 }
+
+                $this->syncBookingVoucherRecord($customerLedger->fresh(['ledger']));
             });
         } catch (\Throwable $th) {
             Log::error('Receive plot payment update failed', [
@@ -1901,68 +1905,67 @@ class BookingController extends Controller
             switch ($action) {
 
                 case 'deposit':
+                    DB::transaction(function () use ($request, $customer_id) {
+                        $payment_type = $request->input('payment_type');
+                        if ($payment_type == 1) {
+                            $t_number = $bank_id = null;
+                        } else {
+                            $t_number = $request->input('t_number');
+                            $bank_id = $request->input('bank_id');
+                        }
 
-                    // Create entry in customer ledger
-                    // dd($request->input());
-                    $payment_type = $request->input('payment_type');
-                    if ($payment_type == 1) {
-                        $t_number = $bank_id = null;
-                    } else {
-                        $t_number = $request->input('t_number');
-                        $bank_id = $request->input('bank_id');
-                    }
-                    $plotName = Plot::where('id', $request->input('plot_id'))->value('name');
-                    $customerLedger = CustomerLedger::create([
-                        'customer_id' => $customer_id,
-                        'transaction_type' => 'PPR',
-                        'type_id' => get_new_typeID('PPR'),
-                        'reference' => $request->input('reference'),
-                        'project_id' => $request->input('project_id'),
-                        'plot_id' => $request->input('plot_id'),
-                        'amount_in' => 0,
-                        'amount_out' => str_replace(',', '', $request->input('amount')),
-                        'description' => $request->input('detail'),
-                        'date' => $request->input('date'), // Assuming booking date is the transaction date
-                        'payment_type' => $request->input('payment_type'),
-                        't_number' => $t_number,
-                        'bank_id' => $bank_id,
-                        'is_active' => 1,
-                        'is_approve' => 0,
-                        'passing_date' => $request->input('passing_date'),
-                    ]);
+                        $customerLedger = CustomerLedger::create([
+                            'customer_id' => $customer_id,
+                            'transaction_type' => 'PPR',
+                            'type_id' => get_new_typeID('PPR'),
+                            'reference' => $request->input('reference'),
+                            'project_id' => $request->input('project_id'),
+                            'plot_id' => $request->input('plot_id'),
+                            'amount_in' => 0,
+                            'amount_out' => str_replace(',', '', $request->input('amount')),
+                            'description' => $request->input('detail'),
+                            'date' => $request->input('date'),
+                            'payment_type' => $request->input('payment_type'),
+                            't_number' => $t_number,
+                            'bank_id' => $bank_id,
+                            'is_active' => 1,
+                            'is_approve' => 0,
+                            'passing_date' => $request->input('passing_date'),
+                        ]);
 
+                        $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', 16)
+                            ->where('project_id', $request->input('project_id'))
+                            ->where('plot_id', $request->input('plot_id'))
+                            ->where('customer_id', $customer_id)
+                            ->value('id');
 
-                    // Ensure credit account exists
-                    $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', 16)
-                        ->where('project_id', $request->input('project_id'))
-                        ->where('plot_id', $request->input('plot_id'))
-                        ->where('customer_id', $customer_id)
-                        ->value('id');
+                        if (!$creditAccountId) {
+                            throw new \Exception('Credit account ID not found.');
+                        }
 
-                    if (!$creditAccountId) {
-                        throw new \Exception('Credit account ID not found.');
-                    }
+                        $ledgerType = 'PPR';
+                        $voucherNumber = getVocuherNumber($ledgerType);
+                        $lastId = getLastLedgerIdByType($ledgerType);
 
-                    $plotName = Plot::where('id', $request->input('plot_id'))->value('name');
+                        $ledger = Ledger::create([
+                            'customer_ledger_id' => $customerLedger->id,
+                            'type' => $ledgerType,
+                            'voucher_number' => $voucherNumber,
+                            'type_id' => ((int) $lastId) + 1,
+                            'project_head_subheads_id' => $creditAccountId,
+                            'reference' => $request->input('reference'),
+                            'amount_in' => str_replace(',', '', $request->input('amount')),
+                            'amount_out' => 0.00,
+                            'is_active' => 1,
+                            'date' => $request->input('date'),
+                            'detail' => '(Cash slip#' . $request->input('reference') . ') ' . $request->input('detail'),
+                            'update_by' => Auth::id(),
+                            'create_by' => Auth::id(),
+                            'status' => 0,
+                        ]);
 
-                    $lastId = getLastLedgerIdByType("CR");
-                    $voucherNumber = getVocuherNumber('CP');
-                    Ledger::create([
-                        'customer_ledger_id' => $customerLedger->id,
-                        'type' => 'CR',
-                        'voucher' => $voucherNumber,
-                        'type_id' => $lastId + 1,
-                        'project_head_subheads_id' => $creditAccountId,
-                        'reference' => $request->input('voucher'),
-                        'amount_in' => str_replace(',', '', $request->input('amount')),
-                        'amount_out' => 0.00,
-                        'is_active' => 1,
-                        'date' => $request->input('date'), // Assuming booking date is the transaction date
-                        'detail' => '(Cash slip#' . $request->input('reference') . ') ' . $request->input('detail'),
-                        'update_by' => Auth::user()->id,
-                        'create_by' => Auth::user()->id,
-                        'status' => 0,
-                    ]);
+                        $this->syncBookingVoucherRecord($customerLedger, $ledger);
+                    });
 
 
                     Alert::success('Notification', 'Data <b></b> Save successfully ')->toToast()->toHtml();
@@ -2404,6 +2407,7 @@ class BookingController extends Controller
     public function printCashIn($id)
     {
         $x['voucher'] = CustomerLedger::with([
+            'bookingVoucher',
             'customer_list',
             'plot_list',
             'project_list',
@@ -2416,6 +2420,42 @@ class BookingController extends Controller
             ->firstOrFail();
 
         return view('admin.booking.print_receive', $x);
+    }
+
+    private function syncBookingVoucherRecord(CustomerLedger $customerLedger, ?Ledger $ledger = null): BookingVoucher
+    {
+        $ledger = $ledger ?: $customerLedger->ledger;
+        $bookingId = Booking::where('project_id', $customerLedger->project_id)
+            ->where('customer_id', $customerLedger->customer_id)
+            ->where('plot_id', $customerLedger->plot_id)
+            ->where('cancel_status', '0')
+            ->latest('id')
+            ->value('id');
+
+        return BookingVoucher::updateOrCreate(
+            ['customer_ledger_id' => $customerLedger->id],
+            [
+                'booking_id' => $bookingId,
+                'ledger_id' => $ledger?->id,
+                'project_id' => $customerLedger->project_id,
+                'customer_id' => $customerLedger->customer_id,
+                'plot_id' => $customerLedger->plot_id,
+                'voucher_series' => $ledger?->type ?? $customerLedger->transaction_type,
+                'voucher_number' => $ledger?->voucher_number,
+                'slip_reference' => $customerLedger->reference,
+                'payment_type' => $customerLedger->payment_type,
+                'amount' => $customerLedger->amount_out,
+                'receipt_date' => $customerLedger->date,
+                'description' => $customerLedger->description,
+                'bank_id' => $customerLedger->bank_id,
+                't_number' => $customerLedger->t_number,
+                'passing_date' => $customerLedger->passing_date,
+                'is_active' => $customerLedger->is_active,
+                'is_approve' => $customerLedger->is_approve,
+                'create_by' => $ledger?->create_by ?? Auth::id(),
+                'update_by' => Auth::id(),
+            ]
+        );
     }
 
 

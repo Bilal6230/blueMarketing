@@ -120,4 +120,9 @@ class CustomerLedger extends Model
         return $this->hasOne(Ledger::class, 'customer_ledger_id', 'id');
     }
 
+    public function bookingVoucher()
+    {
+        return $this->hasOne(BookingVoucher::class, 'customer_ledger_id', 'id');
+    }
+
 }

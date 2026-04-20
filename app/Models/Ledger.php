@@ -40,4 +40,9 @@ class Ledger extends Model
     {
         return $this->belongsTo(CustomerLedger::class);
     }
+
+    public function bookingVoucher()
+    {
+        return $this->hasOne(BookingVoucher::class, 'ledger_id', 'id');
+    }
 }
