@@ -522,24 +522,24 @@
                                                                         data-name="{{ $i->name }}"><i
                                                                             class="fas fa-eye"></i></button>
                                                                 @endcan
-                                                                @can('delete slip')
-                                                                    <button class="btn btn-sm btn-danger btn-delete"
-                                                                        data-id="{{ $i->id }}"
-                                                                        data-name="{{ $i->name }}"><i
-                                                                            class="fas fa-trash"></i></button>
-                                                                @endcan
+	                                                                @can('delete slip')
+	                                                                    <button class="btn btn-sm btn-danger btn-delete"
+	                                                                        data-id="{{ $customerLedger->id ?? $i->customer_ledger_id }}"
+	                                                                        data-name="{{ $i->name }}"><i
+	                                                                            class="fas fa-trash"></i></button>
+	                                                                @endcan
                                                                 @if (Auth::user()->hasRole('super-admin') || Auth::user()->can('direct-update'))
                                                                     @if ($i->status === 'Pending')
                                                                         <div class="d-flex admin_approval">
                                                                             <button
-                                                                                class="btn btn-sm btn-outline-info btn-view-changes"
-                                                                                data-old='@json($i->old_values)'
-                                                                                data-new='@json($i->new_values)'
-                                                                                data-submitted_by='{{ addslashes($i->submitted_by) }}'
-                                                                                data-record_id='{{ $i->id }}'>
-                                                                                <i class="fas fa-eye"></i> Approval Required
-                                                                            </button>
-                                                                        </div>
+	                                                                                class="btn btn-sm btn-outline-info btn-view-changes"
+	                                                                                data-old='@json($i->old_values)'
+	                                                                                data-new='@json($i->new_values)'
+	                                                                                data-submitted_by='{{ addslashes($i->submitted_by) }}'
+	                                                                                data-record_id='{{ $customerLedger->id ?? $i->customer_ledger_id }}'>
+	                                                                                <i class="fas fa-eye"></i> Approval Required
+	                                                                            </button>
+	                                                                        </div>
                                                                     @endif
                                                                 @else
                                                                     @if ($i->status === 'Pending')
