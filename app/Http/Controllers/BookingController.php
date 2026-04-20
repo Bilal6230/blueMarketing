@@ -1609,7 +1609,6 @@ class BookingController extends Controller
             ->where('transaction_type', 'CR')
             ->where('is_active', '1')
             ->where('project_id', $selectedProjectId);
-
         $query = clone $baseQuery;
 
         if ($request->filled('customer_id')) {
@@ -1669,6 +1668,19 @@ class BookingController extends Controller
         $x['data'] = $data;
 
         $baseRows = (clone $baseQuery)->get();
+        $plotIds = $baseRows->pluck('plot_id')
+            ->merge($baseRows->map(function ($item) {
+                return optional(optional($item->ledger)->projectHeadSubhead)->plot_id;
+            }))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $plotLookup = Plot::whereIn('id', $plotIds)->get()->keyBy('id');
+        $plotLabels = $plotLookup->mapWithKeys(function ($plot) {
+            $label = trim($this->plotTypePrefix((int) ($plot->type ?? 0)) . ($plot->name ?? ''));
+            return [$plot->id => $label !== '' ? $label : '—'];
+        })->toArray();
 
         $x['projects'] = Project::where('id', $selectedProjectId)->get();
         $x['customers'] = $baseRows->map(function ($item) {
@@ -1694,20 +1706,19 @@ class BookingController extends Controller
             return null;
         })->filter()->unique('value')->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)->values();
 
-        $x['plots'] = $baseRows->map(function ($item) {
-            $plot = $item->plot_list ?: optional(optional($item->ledger)->projectHeadSubhead)->plot;
+        $x['plotLabels'] = $plotLabels;
+        $x['plots'] = $plotIds->map(function ($plotId) use ($plotLabels) {
+            $label = $plotLabels[$plotId] ?? '—';
 
-            if (!$plot) {
+            if ($label === '—') {
                 return null;
             }
 
-            $prefix = ($plot->type ?? null) == 1 ? 'R-' : (($plot->type ?? null) == 2 ? 'C-' : '');
-
             return [
-                'value' => $plot->id,
-                'label' => $prefix . ($plot->name ?? ''),
+                'value' => $plotId,
+                'label' => $label,
             ];
-        })->filter()->unique('value')->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)->values();
+        })->filter()->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)->values();
         $x['filters'] = [
             'customer_id' => $request->input('customer_id'),
             'plot_id' => $request->input('plot_id'),
@@ -2392,7 +2403,14 @@ class BookingController extends Controller
 
     public function printCashIn($id)
     {
-        $x['voucher'] = CustomerLedger::with(['customer_list', 'plot_list', 'project_list', 'ledger'])
+        $x['voucher'] = CustomerLedger::with([
+            'customer_list',
+            'plot_list',
+            'project_list',
+            'ledger.projectHeadSubhead.project',
+            'ledger.projectHeadSubhead.subheadAccounting',
+            'ledger.projectHeadSubhead.plot',
+        ])
             ->where('id', $id)
             ->where('project_id', getSelectedTown())
             ->firstOrFail();

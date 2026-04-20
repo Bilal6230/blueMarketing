@@ -409,8 +409,9 @@
                                                 @foreach ($data as $i)
                                                     @php
                                                         $ledgerProjectHeadSubhead = optional($i->ledger)->projectHeadSubhead;
-                                                        $ledgerSubhead = optional($ledgerProjectHeadSubhead)->subheadAccounting;
-                                                        $ledgerPlot = optional($ledgerProjectHeadSubhead)->plot;
+	                                                        $ledgerSubhead = optional($ledgerProjectHeadSubhead)->subheadAccounting;
+	                                                        $ledgerPlot = optional($ledgerProjectHeadSubhead)->plot;
+	                                                        $fallbackPlotId = optional($ledgerProjectHeadSubhead)->plot_id;
                                                         $customerName = trim(($i->customer_list->first_name ?? '') . ' ' . ($i->customer_list->last_name ?? ''));
                                                         if ($customerName === '') {
                                                             $customerName = $ledgerSubhead->name ?? '—';
@@ -436,7 +437,10 @@
                                                         $voucherNumber = (($i->ledger->type ?? null) && ($i->ledger->voucher_number ?? $i->ledger->voucher ?? null))
                                                             ? $i->ledger->type . '-' . ($i->ledger->voucher_number ?? $i->ledger->voucher)
                                                             : ($i->ledger->voucher_number ?? $i->ledger->voucher ?? 'â€”');
-                                                        $i->reference = $referenceValue;
+	                                                        $plotName = ($plotSource && !empty($plotSource->name))
+	                                                            ? Setting::getPlotTypeShort($plotSource->type) . '-' . $plotSource->name
+	                                                            : ($plotLabels[$fallbackPlotId] ?? '—');
+	                                                        $i->reference = $referenceValue;
                                                     @endphp
                                                     <tr>
                                                         <td>{{ $loop->iteration }}</td>
