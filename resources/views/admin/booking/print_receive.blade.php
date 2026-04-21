@@ -18,23 +18,24 @@
             margin: 0;
             color: #000;
             font-family: Arial, sans-serif;
-            font-size: 12px;
-            line-height: 1.35;
+            font-size: 11.5px;
+            line-height: 1.28;
             background: #fff;
         }
 
         .receipt {
             width: 100%;
             border: 2px solid #000;
-            padding: 10px;
+            padding: 8px 9px 9px;
         }
 
         .header {
             display: table;
             width: 100%;
+            table-layout: fixed;
             border-bottom: 2px solid #000;
-            padding-bottom: 8px;
-            margin-bottom: 8px;
+            padding-bottom: 6px;
+            margin-bottom: 6px;
         }
 
         .header-cell {
@@ -43,101 +44,136 @@
         }
 
         .header-left {
-            width: 78px;
+            width: 68px;
         }
 
         .logo {
-            width: 64px;
-            height: 64px;
+            width: 54px;
+            height: 54px;
             object-fit: contain;
         }
 
         .header-center {
             text-align: center;
+            padding: 0 10px;
         }
 
         .company {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: 700;
-            letter-spacing: .3px;
+            letter-spacing: .2px;
             margin: 0;
         }
 
         .address {
-            font-size: 11px;
-            margin: 4px 0;
+            font-size: 10px;
+            margin: 3px auto 5px;
+            max-width: 78%;
         }
 
         .title {
             display: inline-block;
             border: 1px solid #000;
-            padding: 4px 14px;
-            font-size: 15px;
+            padding: 3px 12px 4px;
+            font-size: 12px;
             font-weight: 700;
-            letter-spacing: .8px;
+            letter-spacing: .7px;
         }
 
         .header-right {
-            width: 130px;
+            width: 108px;
             text-align: right;
-            font-size: 11px;
-            line-height: 1.5;
+            font-size: 10px;
+            line-height: 1.4;
+            white-space: nowrap;
+        }
+
+        .meta-strip {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 6px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .meta-pill {
+            border: 1px solid #000;
+            padding: 3px 8px;
+            min-width: 170px;
+        }
+
+        .meta-pill.right {
+            text-align: right;
         }
 
         .grid {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
         }
 
         .grid td,
         .grid th {
             border: 1px solid #000;
-            padding: 6px 8px;
+            padding: 5px 7px;
             vertical-align: top;
         }
 
         .label {
-            width: 17%;
+            width: 14%;
             font-weight: 700;
-            white-space: nowrap;
+            white-space: normal;
             background: #f7f7f7;
         }
 
         .value {
-            width: 33%;
+            width: 36%;
+            word-break: break-word;
         }
 
         .full-label {
-            width: 17%;
+            width: 14%;
             font-weight: 700;
+            white-space: normal;
             background: #f7f7f7;
         }
 
         .full-value {
-            width: 83%;
+            width: 86%;
+            word-break: break-word;
         }
 
         .amount-box {
             text-align: right;
             font-weight: 700;
-            font-size: 14px;
+            font-size: 13px;
             white-space: nowrap;
         }
 
+        .amount-words {
+            line-height: 1.4;
+        }
+
         .remarks-box {
-            min-height: 54px;
+            min-height: 46px;
+            line-height: 1.35;
+        }
+
+        .compact-note {
+            color: #111;
         }
 
         .signatures {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 18px;
+            margin-top: 14px;
         }
 
         .signatures td {
             width: 33.33%;
             border: none;
-            padding: 24px 10px 0;
+            padding: 18px 8px 0;
             text-align: center;
             font-weight: 700;
         }
@@ -145,7 +181,7 @@
         .sign-line {
             display: block;
             border-top: 1px solid #000;
-            padding-top: 6px;
+            padding-top: 5px;
         }
 
         @media print {
@@ -155,12 +191,12 @@
 
             .receipt {
                 border-width: 1.5px;
-                padding: 8px;
+                padding: 7px 8px 8px;
             }
 
             .grid td,
             .grid th {
-                padding: 5px 7px;
+                padding: 4.5px 6px;
             }
         }
     </style>
@@ -245,23 +281,27 @@
             return (string) $number;
         };
 
-        $receiptNo = $ledger->voucher_number ?? $ledger->voucher ?? '—';
+        $receiptNo = $ledger->voucher_number ?? $ledger->voucher ?? '-';
         $customerName = trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? ''));
         if ($customerName === '') {
-            $customerName = $fallbackCustomer->name ?? '—';
+            $customerName = $fallbackCustomer->name ?? '-';
         }
 
-        $phone = $customer->phone_number ?? $customer->mobile_number ?? $fallbackCustomer->phone ?? '—';
-        $guardianName = $customer->father_name ?? $customer->relate ?? '—';
-        $address = $customer->home_address ?? '—';
-        $plotLabel = $plot ? (Setting::getPlotTypeShort($plot->type) . '-' . $plot->name) : '—';
-        $plotSize = $plot && $plot->size ? trim($plot->size . ' ' . ($plot->unit ?? '')) : '—';
+        $phone = $customer->phone_number ?? $customer->mobile_number ?? $fallbackCustomer->phone ?? '-';
+        $guardianName = $customer->father_name ?? $customer->relate ?? '-';
+        $address = $customer->home_address ?? '-';
+        $plotLabel = $plot ? (Setting::getPlotTypeShort($plot->type) . '-' . $plot->name) : '-';
+        $plotSize = $plot && $plot->size ? trim($plot->size . ' ' . ($plot->unit ?? '')) : '-';
         $projectName = $project->project ?? null;
-        $projectBlockSize = trim(collect([
-            $projectName,
-            $plotSize !== '—' ? 'Size: ' . $plotSize : null,
-        ])->filter()->implode(' | '));
-        $projectBlockSize = $projectBlockSize !== '' ? $projectBlockSize : '—';
+        $projectBlockSize = trim(
+            collect([
+                $projectName,
+                $plotSize !== '-' ? 'Size: ' . $plotSize : null,
+            ])
+                ->filter()
+                ->implode(' | '),
+        );
+        $projectBlockSize = $projectBlockSize !== '' ? $projectBlockSize : '-';
         $amount = (float) ($voucher->amount_out ?? 0);
         $amountDisplay = number_format($amount, 2);
         $wholeAmount = (int) floor($amount);
@@ -271,13 +311,13 @@
             $amountInWords .= ' and ' . $toWords($decimalAmount) . ' Paisa';
         }
         $amountInWords .= ' Only';
-        $paymentMode = getPaymentTypeDetails($voucher->payment_type)['name'] ?? '—';
-        $transactionNo = $voucher->t_number ?? $ledger->reference ?? '—';
-        $bankName = $voucher->bank_id ? getBankNameById($voucher->bank_id) : '—';
-        $remarks = $voucher->description ?? $ledger->detail ?? '—';
-        $receivedThrough = $voucher->note ?? '—';
-        $shortAmount = '—';
-        $balanceAmount = '—';
+        $paymentMode = getPaymentTypeDetails($voucher->payment_type)['name'] ?? '-';
+        $transactionNo = $voucher->t_number ?? $ledger->reference ?? '-';
+        $bankName = $voucher->bank_id ? getBankNameById($voucher->bank_id) : '-';
+        $remarks = $voucher->description ?? $ledger->detail ?? '-';
+        $receivedThrough = $voucher->note ?? '-';
+        $shortAmount = '-';
+        $balanceAmount = '-';
         $branding = getProjectPrintBranding($project);
     @endphp
 
@@ -292,18 +332,17 @@
             'extraHtml' => '<div class="title">RECEIVE PLOT PAYMENT SLIP</div>',
         ])
 
+        <div class="meta-strip">
+            <div class="meta-pill">Receipt No: {{ $receiptNo }}</div>
+            <div class="meta-pill right">Date: {{ $voucher->date ?? '-' }}</div>
+        </div>
+
         <table class="grid">
             <tr>
-                <td class="label">Receipt No.</td>
-                <td class="value">{{ $receiptNo }}</td>
-                <td class="label">Date</td>
-                <td class="value">{{ $voucher->date ?? '—' }}</td>
-            </tr>
-            <tr>
-                <td class="label">Phone</td>
-                <td class="value">{{ $phone }}</td>
                 <td class="label">Buyer Name</td>
                 <td class="value">{{ $customerName }}</td>
+                <td class="label">Phone</td>
+                <td class="value">{{ $phone }}</td>
             </tr>
             <tr>
                 <td class="label">Father / Guardian Name</td>
@@ -322,12 +361,6 @@
                 <td class="value">{{ $projectBlockSize }}</td>
             </tr>
             <tr>
-                <td class="label">Amount</td>
-                <td class="value amount-box">{{ $amountDisplay }}</td>
-                <td class="label">Amount in Words</td>
-                <td class="value">{{ $amountInWords }}</td>
-            </tr>
-            <tr>
                 <td class="label">Payment Mode</td>
                 <td class="value">{{ $paymentMode }}</td>
                 <td class="label">Transaction No.</td>
@@ -340,8 +373,14 @@
                 <td class="value">{{ approveStatus($voucher->is_approve) }}</td>
             </tr>
             <tr>
+                <td class="label">Amount</td>
+                <td class="value amount-box">{{ $amountDisplay }}</td>
+                <td class="label">Amount in Words</td>
+                <td class="value amount-words">{{ $amountInWords }}</td>
+            </tr>
+            <tr>
                 <td class="full-label">Additional Details / Remarks</td>
-                <td class="full-value remarks-box" colspan="3">{{ $remarks }}</td>
+                <td class="full-value remarks-box compact-note" colspan="3">{{ $remarks }}</td>
             </tr>
             <tr>
                 <td class="label">Short Amount</td>
