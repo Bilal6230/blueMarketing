@@ -278,23 +278,19 @@
         $receivedThrough = $voucher->note ?? '—';
         $shortAmount = '—';
         $balanceAmount = '—';
+        $branding = getProjectPrintBranding($project);
     @endphp
 
     <div class="receipt">
-        <div class="header">
-            <div class="header-cell header-left">
-                <img class="logo" src="{{ asset('images/logo/blue-marketing-logo.png') }}" alt="Logo">
-            </div>
-            <div class="header-cell header-center">
-                <h1 class="company">Planet Architects &amp; Builders</h1>
-                <div class="address">Shop # C-215, A-Block Phase-1 Etihad Garden, Rahim Yar Khan</div>
-                <div class="title">RECEIVE PLOT PAYMENT SLIP</div>
-            </div>
-            <div class="header-cell header-right">
-                <div>0322-2237861</div>
-                <div>068-2096888</div>
-            </div>
-        </div>
+        @include('admin.partials.print_branding_header', [
+            'branding' => $branding,
+            'wrapperClass' => 'header',
+            'logoClass' => 'logo header-cell header-left',
+            'centerClass' => 'header-cell header-center',
+            'rightClass' => 'header-cell header-right',
+            'titleClass' => 'company',
+            'extraHtml' => '<div class="title">RECEIVE PLOT PAYMENT SLIP</div>',
+        ])
 
         <table class="grid">
             <tr>

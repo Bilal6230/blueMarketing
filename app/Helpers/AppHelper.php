@@ -4,6 +4,7 @@ use App\Models\AccountType;
 use Carbon\Carbon;
 use App\Models\Ledger;
 use App\Models\Project;
+use App\Models\Setting;
 use App\Models\JournalVoucher;
 use App\Models\ProjectHeadSubhead;
 
@@ -631,6 +632,91 @@ function getProjectDetails($projectId)
 
     // Return null if no project is found
     return null;
+}
+
+if (!function_exists('getProjectPrintBranding')) {
+    function getProjectPrintBranding($project = null): array
+    {
+        if (is_numeric($project)) {
+            $project = Project::find($project);
+        }
+
+        $settings = Setting::query()
+            ->whereIn('key', [
+                'app_name',
+                'app_logo',
+                'print_phone',
+                'print_phone_1',
+                'print_phone_2',
+                'contact_phone',
+                'contact_phone_1',
+                'contact_phone_2',
+                'phone',
+                'phone_1',
+                'phone_2',
+                'mobile',
+                'mobile_1',
+                'mobile_2',
+                'contact_number',
+                'contact_number_1',
+                'contact_number_2',
+            ])
+            ->pluck('value', 'key');
+
+        $title = trim((string) data_get($project, 'project', ''));
+        if ($title === '') {
+            $title = (string) ($settings->get('app_name') ?? 'Company');
+        }
+
+        $address = trim((string) data_get($project, 'address', ''));
+        if ($address === '') {
+            $address = '—';
+        }
+
+        $logo = trim((string) data_get($project, 'logo', ''));
+        if ($logo !== '') {
+            $logo = str_contains($logo, '/') ? $logo : 'images/logo/' . ltrim($logo, '/');
+        } else {
+            $logo = (string) ($settings->get('app_logo') ?? 'images/logo/blue-marketing-logo.png');
+        }
+
+        $phones = collect([
+            data_get($project, 'phone'),
+            data_get($project, 'phone_1'),
+            data_get($project, 'phone_2'),
+            data_get($project, 'mobile'),
+            data_get($project, 'mobile_1'),
+            data_get($project, 'mobile_2'),
+            data_get($project, 'phone_number'),
+            $settings->get('print_phone'),
+            $settings->get('print_phone_1'),
+            $settings->get('print_phone_2'),
+            $settings->get('contact_phone'),
+            $settings->get('contact_phone_1'),
+            $settings->get('contact_phone_2'),
+            $settings->get('phone'),
+            $settings->get('phone_1'),
+            $settings->get('phone_2'),
+            $settings->get('mobile'),
+            $settings->get('mobile_1'),
+            $settings->get('mobile_2'),
+            $settings->get('contact_number'),
+            $settings->get('contact_number_1'),
+            $settings->get('contact_number_2'),
+        ])->map(fn($value) => trim((string) $value))
+            ->filter()
+            ->unique()
+            ->values()
+            ->take(2)
+            ->all();
+
+        return [
+            'title' => $title,
+            'address' => $address,
+            'logo' => $logo,
+            'phones' => $phones,
+        ];
+    }
 }
 
 // In your app/Helpers/AppHelper.php or a relevant helper file
