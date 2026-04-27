@@ -131,11 +131,11 @@ class ReportController extends Controller
     public function bank_posting_check(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'passing_status' => 'required|numeric',
+            'passing_status' => 'required|integer|in:1,2,3',
             'note' => 'required|string',
             'id' => 'required|exists:customer_ledger,id',
-            'accounts_id' => 'required',
-            'subaccounts_id' => 'required',
+            'accounts_id' => 'required_if:passing_status,1',
+            'subaccounts_id' => 'required_if:passing_status,1',
         ], [
             'passing_status.required' => 'The passing status field is required.',
             'note.required' => 'The note field is required.',
@@ -155,15 +155,7 @@ class ReportController extends Controller
             $lastId = getLastLedgerIdByType("BR");
             $selectedProjectId = getSelectedTown();
 
-            // Ensure credit account exists
-            $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', $request->accounts_id)
-                ->where('project_id', $selectedProjectId)
-                ->where('subhead_accounting_id', $request->subaccounts_id)
-                ->value('id');
-
-            if (!$creditAccountId) {
-                throw new \Exception('Credit account ID not found.');
-            }
+            $creditAccountId = null;
 
             // Lock and scope the target row to current project
             $result = CustomerLedger::where('project_id', $selectedProjectId)
@@ -200,6 +192,16 @@ class ReportController extends Controller
 
             // Create Ledger entry only if passing_status == 1
             if ($request->passing_status == 1) {
+                // Ensure credit account exists only for pass action
+                $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', $request->accounts_id)
+                    ->where('project_id', $selectedProjectId)
+                    ->where('subhead_accounting_id', $request->subaccounts_id)
+                    ->value('id');
+
+                if (!$creditAccountId) {
+                    throw new \Exception('Credit account ID not found.');
+                }
+
                 $clearanceReference = 'BANK_CLEARANCE#' . $result->id;
                 $alreadyPosted = Ledger::where('customer_ledger_id', $result->id)
                     ->where('type', 'BR')

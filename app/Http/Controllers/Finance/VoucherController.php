@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Finance;
 
 use App\Models\Lead;
-use App\Models\BookingVoucher;
 use App\Models\CustomerLedger;
 use App\Models\PendingUpdate;
 use App\Models\Plot;
@@ -277,40 +276,6 @@ class VoucherController extends Controller
                 ->where('id', $pending->record_id)
                 ->update($pendingNewChanges);
 
-            if ($request->table === 'customer_ledger') {
-                $customerLedger = \App\Models\CustomerLedger::with('ledger')->find($pending->record_id);
-                if ($customerLedger && $customerLedger->transaction_type === 'PPR') {
-                    BookingVoucher::updateOrCreate(
-                        ['customer_ledger_id' => $customerLedger->id],
-                        [
-                            'booking_id' => \App\Models\Booking::where('project_id', $customerLedger->project_id)
-                                ->where('customer_id', $customerLedger->customer_id)
-                                ->where('plot_id', $customerLedger->plot_id)
-                                ->where('cancel_status', '0')
-                                ->latest('id')
-                                ->value('id'),
-                            'ledger_id' => optional($customerLedger->ledger)->id,
-                            'project_id' => $customerLedger->project_id,
-                            'customer_id' => $customerLedger->customer_id,
-                            'plot_id' => $customerLedger->plot_id,
-                            'voucher_series' => optional($customerLedger->ledger)->type ?? $customerLedger->transaction_type,
-                            'voucher_number' => optional($customerLedger->ledger)->voucher_number,
-                            'slip_reference' => $customerLedger->reference,
-                            'payment_type' => $customerLedger->payment_type,
-                            'amount' => $customerLedger->amount_out,
-                            'receipt_date' => $customerLedger->date,
-                            'description' => $customerLedger->description,
-                            'bank_id' => $customerLedger->bank_id,
-                            't_number' => $customerLedger->t_number,
-                            'passing_date' => $customerLedger->passing_date,
-                            'is_active' => $customerLedger->is_active,
-                            'is_approve' => $customerLedger->is_approve,
-                            'update_by' => Auth::id(),
-                        ]
-                    );
-                }
-            }
-
             // Mark pending as approved
             $pending->update([
                 'status' => 'approved',
@@ -324,6 +289,10 @@ class VoucherController extends Controller
 
     public function reject($id, Request $request)
     {
+        if (!in_array($request->table, $this->allowedPendingUpdateTables, true)) {
+            abort(400, 'Invalid table name.');
+        }
+
         $pending = PendingUpdate::where('record_id', $id)
             ->where('table_name', $request->table)
             ->where('status', 'pending')
@@ -426,40 +395,6 @@ class VoucherController extends Controller
                 ->where('id', $pending->record_id)
                 ->update($pendingNewChanges);
 
-            if ($request->table === 'customer_ledger') {
-                $customerLedger = \App\Models\CustomerLedger::with('ledger')->find($pending->record_id);
-                if ($customerLedger && $customerLedger->transaction_type === 'PPR') {
-                    BookingVoucher::updateOrCreate(
-                        ['customer_ledger_id' => $customerLedger->id],
-                        [
-                            'booking_id' => \App\Models\Booking::where('project_id', $customerLedger->project_id)
-                                ->where('customer_id', $customerLedger->customer_id)
-                                ->where('plot_id', $customerLedger->plot_id)
-                                ->where('cancel_status', '0')
-                                ->latest('id')
-                                ->value('id'),
-                            'ledger_id' => optional($customerLedger->ledger)->id,
-                            'project_id' => $customerLedger->project_id,
-                            'customer_id' => $customerLedger->customer_id,
-                            'plot_id' => $customerLedger->plot_id,
-                            'voucher_series' => optional($customerLedger->ledger)->type ?? $customerLedger->transaction_type,
-                            'voucher_number' => optional($customerLedger->ledger)->voucher_number,
-                            'slip_reference' => $customerLedger->reference,
-                            'payment_type' => $customerLedger->payment_type,
-                            'amount' => $customerLedger->amount_out,
-                            'receipt_date' => $customerLedger->date,
-                            'description' => $customerLedger->description,
-                            'bank_id' => $customerLedger->bank_id,
-                            't_number' => $customerLedger->t_number,
-                            'passing_date' => $customerLedger->passing_date,
-                            'is_active' => $customerLedger->is_active,
-                            'is_approve' => $customerLedger->is_approve,
-                            'update_by' => Auth::id(),
-                        ]
-                    );
-                }
-            }
-
             // Mark pending as approved
             $pending->update([
                 'status' => 'approved',
@@ -473,6 +408,10 @@ class VoucherController extends Controller
 
     public function rejectAdmin($id, Request $request)
     {
+        if (!in_array($request->table, $this->allowedPendingUpdateTables, true)) {
+            abort(400, 'Invalid table name.');
+        }
+
         $pending = PendingUpdate::where('id', $id)
             ->where('status', 'pending')
             ->firstOrFail();
