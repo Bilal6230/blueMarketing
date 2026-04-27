@@ -150,18 +150,16 @@
                                                     {{-- Account Type (small) --}}
                                                     <div class="col-6 col-md-3 col-lg-2">
                                                         <label class="fbox mb-1">Account Type</label>
-                                                        <select
-                                                            class="js-tomselect form-select form-select-sm @error('acct_type') is-invalid @enderror"
-                                                            placeholder=" " autocomplete="off" name="acct_type"
-                                                            id="acct_type">
-                                                            <option value=""></option>
-                                                            <option value="0">Update Please</option>
-                                                            <option value="1">Assets</option>
-                                                            <option value="2">Owner</option>
-                                                            <option value="3">Recovery</option>
-                                                            <option value="4">Expence</option>
-                                                            <option value="5">Amanat Pyments</option>
-                                                        </select>
+                                                            <select
+                                                                class="js-tomselect form-select form-select-sm @error('acct_type') is-invalid @enderror"
+                                                                placeholder=" " autocomplete="off" name="acct_type"
+                                                                id="acct_type">
+                                                                <option value="">Select Account Type</option>
+                                                                @foreach ($accountTypes as $type)
+                                                                    <option value="{{ $type->id }}">{{ $type->name }}
+                                                                    </option>
+                                                                @endforeach
+                                                            </select>
                                                         @error('acct_type')
                                                             <div class="invalid-feedback d-block">{{ $message }}</div>
                                                         @enderror
@@ -252,6 +250,85 @@
                                                             <div class="invalid-feedback d-block">{{ $message }}</div>
                                                         @enderror
                                                     </div>
+                                                    @if ($type === 'CP')
+                                                        <div class="col-12 mt-3" id="pendingPaymentsSection"
+                                                            style="display: none;">
+                                                            <div class="card border">
+                                                                <div class="card-header py-2">
+                                                                    <strong>Pending Online/Check Payments</strong>
+                                                                </div>
+                                                                <div class="card-body p-2">
+                                                                    <div class="table-responsive mb-2">
+                                                                        <table class="table table-sm table-bordered mb-0"
+                                                                            id="pendingPaymentsTable">
+                                                                            <thead>
+                                                                                <tr>
+                                                                                    <th>Select</th>
+                                                                                    <th>Date</th>
+                                                                                    <th>Ref</th>
+                                                                                    <th>Customer</th>
+                                                                                    <th>Plot</th>
+                                                                                    <th>Bank</th>
+                                                                                    <th>Number</th>
+                                                                                    <th>Amount</th>
+                                                                                    <th>Passing Date</th>
+                                                                                </tr>
+                                                                            </thead>
+                                                                            <tbody></tbody>
+                                                                        </table>
+                                                                    </div>
+                                                                    <div class="row g-2 align-items-end">
+                                                                        <div class="col-md-3">
+                                                                            <label class="fbox mb-1">Status</label>
+                                                                            <select class="form-control form-control-sm"
+                                                                                id="pending_status">
+                                                                                <option value="1">Pass</option>
+                                                                                <option value="2">Return</option>
+                                                                                <option value="3">Cheque Bounce</option>
+                                                                            </select>
+                                                                        </div>
+                                                                        <div class="col-md-3 bank-ledger-fields">
+                                                                            <label class="fbox mb-1">Head Account</label>
+                                                                            <select class="form-control form-control-sm"
+                                                                                id="pending_accounts_id">
+                                                                                <option value="">Select head</option>
+                                                                                @foreach ($headaccounts as $v)
+                                                                                    <option
+                                                                                        value="{{ $v->head_accounting_id }}">
+                                                                                        {{ $v->headAccounting->name ?? '' }}
+                                                                                    </option>
+                                                                                @endforeach
+                                                                            </select>
+                                                                        </div>
+                                                                        <div class="col-md-3 bank-ledger-fields">
+                                                                            <label class="fbox mb-1">Bank Account</label>
+                                                                            <select class="form-control form-control-sm"
+                                                                                id="pending_subaccounts_id">
+                                                                                <option value="">Select account</option>
+                                                                            </select>
+                                                                        </div>
+                                                                        <div class="col-md-3">
+                                                                            <label class="fbox mb-1">Bank Post Date</label>
+                                                                            <input type="date"
+                                                                                class="form-control form-control-sm"
+                                                                                id="pending_bank_post_at">
+                                                                        </div>
+                                                                        <div class="col-md-12">
+                                                                            <label class="fbox mb-1">Note</label>
+                                                                            <textarea class="form-control form-control-sm" id="pending_note" rows="2"
+                                                                                maxlength="1000" placeholder="Reason/note"></textarea>
+                                                                        </div>
+                                                                        <div class="col-md-12">
+                                                                            <button type="button"
+                                                                                class="btn btn-sm btn-primary"
+                                                                                id="submitPendingStatus">Update
+                                                                                Pending Payment</button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    @endif
                                                     <div class="col-6 col-md-3 col-lg-10" style="margin-top: 10px">
                                                         <label for="detail" class="fbox mb-1">Details</label>
                                                         <textarea id="detail" class="form-control @error('detail') input-error @enderror"
@@ -1066,6 +1143,167 @@
                     }
                 });
             }
+
+            @if ($type === 'CP')
+                const pendingFetchUrl = "{{ route('finance.voucher.pending_bank_payments') }}";
+                const pendingStatusUpdateUrlTemplate =
+                    "{{ route('finance.voucher.pending_bank_payments.status', ['customerLedger' => 'LEDGER_ID']) }}";
+
+                function populatePendingPaymentsTable(rows) {
+                    const $tbody = $('#pendingPaymentsTable tbody');
+                    $tbody.empty();
+
+                    if (!rows || !rows.length) {
+                        $tbody.append(
+                            '<tr><td colspan="9" class="text-center text-muted">No pending records found.</td></tr>'
+                        );
+                        return;
+                    }
+
+                    rows.forEach(function(item) {
+                        const row = `<tr>
+                            <td><input type="radio" name="selected_pending_payment" value="${item.id}"></td>
+                            <td>${item.date || ''}</td>
+                            <td>${(item.transaction_type || '')}-${(item.reference || '')}</td>
+                            <td>${item.customer || ''}</td>
+                            <td>${item.plot || ''}</td>
+                            <td>${item.bank || ''}</td>
+                            <td>${item.t_number || ''}</td>
+                            <td>${item.amount || 0}</td>
+                            <td>${item.passing_date || ''}</td>
+                        </tr>`;
+                        $tbody.append(row);
+                    });
+                }
+
+                function loadPendingPayments() {
+                    $.ajax({
+                        url: pendingFetchUrl,
+                        type: 'GET',
+                        dataType: 'json',
+                        success: function(res) {
+                            if (res?.status === 'success') {
+                                populatePendingPaymentsTable(res.data || []);
+                            } else {
+                                populatePendingPaymentsTable([]);
+                            }
+                        },
+                        error: function() {
+                            populatePendingPaymentsTable([]);
+                        }
+                    });
+                }
+
+                function togglePendingBankAccountFields() {
+                    const status = $('#pending_status').val();
+                    if (status === '1') {
+                        $('.bank-ledger-fields').show();
+                    } else {
+                        $('.bank-ledger-fields').hide();
+                        $('#pending_accounts_id').val('');
+                        $('#pending_subaccounts_id').empty().append(
+                            '<option value="">Select account</option>');
+                    }
+                }
+
+                $('#pending_status').on('change', togglePendingBankAccountFields);
+                togglePendingBankAccountFields();
+
+                $('#pending_accounts_id').on('change', function() {
+                    const accountID = $(this).val();
+                    const $subaccounts = $('#pending_subaccounts_id');
+                    $subaccounts.empty().append('<option value="">Select account</option>');
+                    if (!accountID) {
+                        return;
+                    }
+                    $.ajax({
+                        url: '{{ route('get_account') }}',
+                        type: 'POST',
+                        dataType: 'json',
+                        data: {
+                            accountID: accountID,
+                            action: 'get_child',
+                            _token: '{{ csrf_token() }}'
+                        },
+                        success: function(data) {
+                            const filteredData = $.grep(data, function(item) {
+                                return item.head_accounting_id == accountID;
+                            });
+                            $.each(filteredData, function(_, value) {
+                                $subaccounts.append('<option value="' + value.subhead_accounting_id +
+                                    '">' + value.subhead_accounting.name + '</option>');
+                            });
+                        }
+                    });
+                });
+
+                $('#submitPendingStatus').on('click', function() {
+                    const selectedId = $('input[name="selected_pending_payment"]:checked').val();
+                    const passingStatus = $('#pending_status').val();
+                    const note = $('#pending_note').val().trim();
+                    const bankPostAt = $('#pending_bank_post_at').val();
+                    const accountsId = $('#pending_accounts_id').val();
+                    const subaccountsId = $('#pending_subaccounts_id').val();
+
+                    if (!selectedId) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Select payment',
+                            text: 'Please select a pending payment first.'
+                        });
+                        return;
+                    }
+                    if (!note) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Note required',
+                            text: 'Please enter a note.'
+                        });
+                        return;
+                    }
+                    if (passingStatus === '1' && (!accountsId || !subaccountsId)) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Account required',
+                            text: 'Please select head and bank account for pass.'
+                        });
+                        return;
+                    }
+
+                    const endpoint = pendingStatusUpdateUrlTemplate.replace('LEDGER_ID', selectedId);
+                    $.ajax({
+                        url: endpoint,
+                        type: 'POST',
+                        dataType: 'json',
+                        data: {
+                            _token: '{{ csrf_token() }}',
+                            passing_status: passingStatus,
+                            note: note,
+                            bank_post_at: bankPostAt,
+                            accounts_id: accountsId,
+                            subaccounts_id: subaccountsId
+                        },
+                        success: function(res) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Updated',
+                                text: res?.message || 'Status updated successfully.'
+                            }).then(function() {
+                                window.location.reload();
+                            });
+                        },
+                        error: function(xhr) {
+                            const msg = xhr.responseJSON?.message || 'Unable to update status.';
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: msg
+                            });
+                        }
+                    });
+                });
+            @endif
+
             $('#payment_type').change(function(e) {
 
                 e.preventDefault();
@@ -1073,9 +1311,16 @@
                 if ($(this).val() != '1') {
 
                     $('.bank_group').css('display', 'block');
+                    @if ($type === 'CP')
+                        $('#pendingPaymentsSection').show();
+                        loadPendingPayments();
+                    @endif
                 } else {
 
                     $('.bank_group').css('display', 'none');
+                    @if ($type === 'CP')
+                        $('#pendingPaymentsSection').hide();
+                    @endif
                 }
             });
             $('#e_payment_type').change(function(e) {
@@ -1261,15 +1506,16 @@
 
                         $("#e_voucher").val(data.type + '-0000' + data.type_id);
                         let amount = 0;
-                        if (data.type == 'CR') {
-                            amount = data.amount_in;
-                        } else if (data.type == 'CP') {
-                            amount = data.amount_out;
-                        }
-                        $("#e_amount").val(amount);
-                        $('#eWordingAmount').text(numberToWords.toWords(amount));
-                        $('#modal-loading').modal('hide');
-                        $('#modal-edit').modal({
+	                        if (data.type == 'CR') {
+	                            amount = data.amount_in;
+	                        } else if (data.type == 'CP') {
+	                            amount = data.amount_out;
+	                        }
+	                        $("#e_amount").val(amount);
+	                        $("#e_detail").val(data.detail ?? '');
+	                        $('#eWordingAmount').text(numberToWords.toWords(amount));
+	                        $('#modal-loading').modal('hide');
+	                        $('#modal-edit').modal({
                             backdrop: 'static',
                             keyboard: false,
                             show: true
@@ -2389,13 +2635,10 @@
                                             <div class="input-group">
                                                 <select class="js-tomselect" placeholder=" " name="acct_type"
                                                     id="e_acct_type">
-                                                    <option value=""></option>
-                                                    <option value="0">Update Please</option>
-                                                    <option value="1">Assets</option>
-                                                    <option value="2">Owner</option>
-                                                    <option value="3">Recovery</option>
-                                                    <option value="4">Expence</option>
-                                                    <option value="5">Amanat Pyments</option>
+                                                    <option value="">Select Account Type</option>
+                                                    @foreach ($accountTypes as $type)
+                                                        <option value="{{ $type->id }}">{{ $type->name }}</option>
+                                                    @endforeach
                                                 </select>
                                                 @error('projects_id')
                                                     <div class="invalid-feedback">{{ $message }}</div>

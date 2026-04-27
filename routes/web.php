@@ -221,6 +221,8 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::get('finance/voucher/pending_updates', 'pendingIndex')->middleware(['permission:read voucher'])->name('finance.voucher.pending_updates_index');
         Route::get('finance/voucher/in', 'cash_in')->middleware(['permission:read voucher'])->name('finance.voucher.in');
         Route::get('finance/voucher/out', 'cash_out')->middleware(['permission:read voucher'])->name('finance.voucher.out');
+        Route::get('finance/voucher/pending-bank-payments', 'pendingBankPayments')->middleware(['permission:read voucher'])->name('finance.voucher.pending_bank_payments');
+        Route::post('finance/voucher/pending-bank-payments/{customerLedger}/status', 'updatePendingBankPaymentStatus')->middleware(['permission:pass cheque'])->name('finance.voucher.pending_bank_payments.status');
         Route::get('finance/voucher/data', 'cash_out_data')->middleware(['permission:read voucher'])->name('voucher.cash_out.data');
         Route::get('finance/voucher/data/in', 'cash_in_data')->middleware(['permission:read voucher'])->name('voucher.cash_in.data');
         Route::get('finance/voucher/draft', 'cash_draft')->middleware(['permission:read voucher'])->name('finance.voucher.draft');
@@ -239,34 +241,62 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::delete('/{id}', 'destroy')->middleware(['permission:delete dasticash'])->name('destroy');
     });
 
-    Route::resource('labours', LabourController::class);
+    Route::resource('labours', LabourController::class)->except(['show']);
     Route::post('/labours/sitestore', [LabourController::class, 'siteStore'])
-    ->name('labours.sitestore');
+        ->name('labours.sitestore');
     Route::get('/labours/attendance/week', [LabourController::class, 'loadAttendanceWeek'])
-    ->name('attendance.week.load');
+        ->name('attendance.week.load');
     Route::get('/labour/{id}', [LabourController::class, 'labourHistory'])
-    ->name('labour.history');
+        ->name('labour.history');
     Route::post('/labours/check/validate', [LabourController::class, 'checkValidate'])
-    ->name('labours.check.validate');
+        ->name('labours.check.validate');
     Route::patch('/labours/{labour}/status', [LabourController::class, 'updateStatus'])
-    ->name('labours.updateStatus');
+        ->name('labours.updateStatus');
     Route::post('/labours/attendance', [LabourController::class, 'attendanceStore'])
-    ->name('labours.attendance');
+        ->name('labours.attendance');
     Route::post('/labours/report', [LabourController::class, 'attendanceReport'])
-    ->name('labours.report');
+        ->name('labours.report');
     Route::post('/attendance/labour-payment', [LabourController::class, 'labourPayment'])->name('labours.payment');
     Route::post('/labours/update-rate', [LabourController::class, 'updateRate'])->name('labours.updateRate');
     Route::post('/labours/person/report', [LabourController::class, 'personAttendanceReport'])
-    ->name('labours.person.report');
+        ->name('labours.person.report');
     Route::post('/labours/create/voucher', [LabourController::class, 'createVoucher'])
-    ->name('labours.create.voucher');
+        ->name('labours.create.voucher');
+    Route::get('/labours/site-vouchers', [LabourController::class, 'siteVouchers'])
+        ->name('labours.site.vouchers');
     Route::post('/labours/print/site/report', [LabourController::class, 'printSiteReport'])
-    ->name('labours.print.site.report');
+        ->name('labours.print.site.report');
     Route::post('/labours/print/person/report', [LabourController::class, 'printPersonReport'])
-    ->name('labours.print.person.report');
+        ->name('labours.print.person.report');
     Route::post('/labours/print/attendance/report', [LabourController::class, 'printAttendanceReport'])
-    ->name('labours.print.attendance.report');
-    Route::resource('stocks', StockController::class);
+        ->name('labours.print.attendance.report');
+    Route::get('stocks', [StockController::class, 'index'])->name('stocks.index');
+
+    // Meta (items/parties for dropdowns)
+    Route::get('stocks/meta', [StockController::class, 'meta'])->name('stocks.meta');
+
+    // Counters (slip/bill numbers)
+    Route::get('stocks/next-slip', [StockController::class, 'nextSlip'])->name('stocks.nextSlip');
+    Route::get('stocks/next-bill', [StockController::class, 'nextBill'])->name('stocks.nextBill'); // ?type=purchase|sale
+
+    // Create actions (AJAX)
+    Route::post('stocks/items', [StockController::class, 'storeItem'])->name('stocks.items.store');
+    Route::post('stocks/parties', [StockController::class, 'storeParty'])->name('stocks.parties.store');
+    Route::post('stocks/entries', [StockController::class, 'storeEntry'])->name('stocks.entries.store');
+    Route::post('stocks/bills', [StockController::class, 'storeBill'])->name('stocks.bills.store');
+    Route::put('stocks/items/{item}', [StockController::class, 'updateItem'])->name('stocks.items.update');
+    Route::delete('stocks/items/{item}', [StockController::class, 'deleteItem'])->name('stocks.items.delete');
+    Route::put('stocks/parties/{party}', [StockController::class, 'updateParty'])->name('stocks.parties.update');
+    Route::delete('stocks/parties/{party}', [StockController::class, 'deleteParty'])->name('stocks.parties.delete');
+
+    // Lists (AJAX tables)
+    Route::get('stocks/entries', [StockController::class, 'entries'])->name('stocks.entries.index');
+    Route::get('stocks/bills', [StockController::class, 'bills'])->name('stocks.bills.index');
+    Route::get('stocks/items', [StockController::class, 'items'])->name('stocks.items.index');
+    Route::get('stocks/parties', [StockController::class, 'parties'])->name('stocks.parties.index');
+
+    // Stock report (date range + optional item filter)
+    Route::get('stocks/report', [StockController::class, 'report'])->name('stocks.report');
 
 
     Route::controller(App\Http\Controllers\LedgerController::class)->group(function () {
@@ -314,6 +344,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::post('booking/plot/schedule/store', 'storePaymentSchedule')->middleware(['permission:create plot'])->name('payment_schedule.store');
         Route::get('booking/plot/voucher/', 'cash_in')->middleware(['permission:read slip'])->name('payment_schedule.cash');
         Route::any('booking/plot/voucher/update/{id}', 'updateCashIn')->middleware(['permission:read slip'])->name('payment_schedule.cash.update');
+        Route::get('booking/plot/voucher/print/{id}', 'printCashIn')->middleware(['permission:read slip'])->name('booking.customer.print');
         Route::get('extra_charge/', 'extraCharge')->middleware(['permission:read slip'])->name('payment_schedule.extra_charge');
         Route::get('booking/customer/report/form', 'customer_report_form')->middleware(['permission:view booking report'])->name('booking.customer.report.form');
         Route::post('booking/customer/report/display', 'customer_report_display')->middleware(['permission:view booking report'])->name('booking.customer.report.display');
@@ -325,7 +356,6 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::post('/get-plots-list', 'getCustomerPlots')->middleware(['permission:read plot'])->name('get-plots-list');
         Route::post('/get-plot-customer', 'getPlotCustomer')->middleware(['permission:read plot'])->name('get-plot-customer');
 
-        Route::post('booking/plot/voucher/', 'store')->middleware(['permission:create voucher'])->name('ledger.store');
         Route::post('booking/plot/voucher/', 'deposit')->middleware(['permission:create plot'])->name('booking.customer.deposit');
         Route::delete('booking/plot/destroy', 'destroy')->middleware(['permission:delete slip'])->name('booking.customer.destroy');
         Route::post('booking/plot/show', 'fatch_voucher')->middleware(['permission:can approve'])->name('booking.voucher.show');
@@ -343,6 +373,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
 
     Route::controller(App\Http\Controllers\JournalVoucherController::class)->group(function () {
 
+        Route::get('sales-voucher', 'salesIndex')->middleware(['permission:read jv'])->name('sales.voucher.index');
         Route::get('journal-voucher', 'index')->middleware(['permission:read jv'])->name('journal.voucher.index');
         Route::get('journal-voucher/create', 'create')->middleware(['permission:create jv'])->name('journal.voucher.create');
         Route::post('journal-voucher/create', 'store')->middleware(['permission:create jv'])->name('journal.voucher.store');

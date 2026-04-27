@@ -2,29 +2,32 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use App\Models\Lead;
-use App\Models\Plot;
-use App\Models\User;
-use App\Models\Ledger;
 use App\Models\Booking;
-use App\Models\Project;
-use App\Models\ChargeType;
-use App\Models\DraftLedger;
-use App\Models\Installment;
-use Illuminate\Http\Request;
 use App\Models\BookingDetail;
-use App\Models\PendingUpdate;
+use App\Models\BookingVoucher;
+use App\Models\ChargeType;
 use App\Models\CustomerLedger;
+use App\Models\DraftLedger;
 use App\Models\HeadAccounting;
-use App\Models\SubheadAccounting;
+use App\Models\Installment;
+use App\Models\JournalVoucher;
+use App\Models\JournalVoucherDetail;
+use App\Models\Lead;
+use App\Models\Ledger;
+use App\Models\PendingUpdate;
+use App\Models\Plot;
+use App\Models\Project;
 use App\Models\ProjectHeadSubhead;
-use Illuminate\Support\Facades\DB;
-use Spatie\Permission\Models\Role;
-use Illuminate\Support\Facades\Log;
+use App\Models\SubheadAccounting;
+use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use RealRashid\SweetAlert\Facades\Alert;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use RealRashid\SweetAlert\Facades\Alert;
+use Spatie\Permission\Models\Role;
 use Symfony\Component\HttpFoundation\Response;
 
 class BookingController extends Controller
@@ -949,7 +952,7 @@ class BookingController extends Controller
          * 50 lac Total Sale Credit
          * 10 lac Party Profit Credit
          */
-         $voucherNumber = getVocuherNumber('BO');
+        $voucherNumber = getVocuherNumber('BO');
         Ledger::create([
             'type' => 'BO',
             'voucher_number' => $voucherNumber,
@@ -1585,8 +1588,9 @@ class BookingController extends Controller
 
 
 
-    public function cash_in()
+    public function cash_in(Request $request)
     {
+        $selectedProjectId = getSelectedTown();
         $power = Auth::user()->roles[0]->name;
         $x['title'] = 'Receive Plot Payment';
         $x['role'] = Role::get();
@@ -1596,10 +1600,74 @@ class BookingController extends Controller
         $x['class'] = 'cash-in';
         $x['bg_voucher'] = 'info-cash-in';
 
-        $data = CustomerLedger::with('customer_list', 'plot_list')->where('transaction_type', 'CR')->where('is_active', '1')->where('project_id', getSelectedTown())->get();
+        $baseQuery = BookingVoucher::with([
+            'customerLedger',
+            'customerLedger.customer_list',
+            'customerLedger.plot_list',
+            'customerLedger.project_list',
+            'ledger.projectHeadSubhead.subheadAccounting',
+            'ledger.projectHeadSubhead.plot',
+            'customer',
+            'plot',
+            'project',
+        ])
+            ->where('voucher_series', 'PPR')
+            ->where('is_active', '1')
+            ->where('project_id', $selectedProjectId);
+        $query = clone $baseQuery;
+
+        if ($request->filled('customer_id')) {
+            $customerFilter = (string) $request->input('customer_id');
+
+            if (str_starts_with($customerFilter, 'subhead:')) {
+                $subheadId = (int) substr($customerFilter, 8);
+                $query->whereHas('ledger.projectHeadSubhead', function ($relationQuery) use ($subheadId) {
+                    $relationQuery->where('subhead_accounting_id', $subheadId);
+                });
+            } elseif (str_starts_with($customerFilter, 'lead:')) {
+                $leadId = (int) substr($customerFilter, 5);
+                $query->where('customer_id', $leadId);
+            } else {
+                $query->where('customer_id', $customerFilter);
+            }
+        }
+
+        if ($request->filled('plot_id')) {
+            $plotId = (int) $request->input('plot_id');
+            $query->where(function ($plotQuery) use ($plotId) {
+                $plotQuery->where('plot_id', $plotId)
+                    ->orWhereHas('ledger.projectHeadSubhead', function ($relationQuery) use ($plotId) {
+                        $relationQuery->where('plot_id', $plotId);
+                    });
+            });
+        }
+
+        if ($request->filled('reference')) {
+            $reference = trim($request->input('reference'));
+            $query->where(function ($referenceQuery) use ($reference) {
+                $referenceQuery->where('slip_reference', 'like', '%' . $reference . '%')
+                    ->orWhereHas('customerLedger', function ($customerLedgerQuery) use ($reference) {
+                        $customerLedgerQuery->where('reference', 'like', '%' . $reference . '%');
+                    });
+            });
+        }
+
+        if ($request->filled('fdate')) {
+            $query->whereDate('receipt_date', '>=', $request->input('fdate'));
+        }
+
+        if ($request->filled('tdate')) {
+            $query->whereDate('receipt_date', '<=', $request->input('tdate'));
+        }
+
+        if ($request->filled('status') && in_array((string) $request->input('status'), ['0', '1', '2'], true)) {
+            $query->where('is_approve', $request->input('status'));
+        }
+
+        $data = $query->orderByDesc('id')->get();
         $data = $data->map(function ($item) {
             $pending = PendingUpdate::where('table_name', 'customer_ledger') // 👈 dynamic table name
-                ->where('record_id', $item->id)
+                ->where('record_id', $item->customer_ledger_id)
                 ->latest()
                 ->first();
             $item['submitted_by'] = $pending ? $pending->submittedBy?->name : '';
@@ -1610,42 +1678,157 @@ class BookingController extends Controller
         });
         $x['data'] = $data;
 
-        $projects = Project::where('id', getSelectedTown())->get();
-        $x['projects'] = $projects;
+        $baseRows = (clone $baseQuery)->get();
+        $plotIds = $baseRows->pluck('plot_id')
+            ->merge($baseRows->map(function ($item) {
+                return optional(optional($item->ledger)->projectHeadSubhead)->plot_id;
+            }))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $plotLookup = Plot::whereIn('id', $plotIds)->get()->keyBy('id');
+        $plotLabels = $plotLookup->mapWithKeys(function ($plot) {
+            $label = trim($this->plotTypePrefix((int) ($plot->type ?? 0)) . ($plot->name ?? ''));
+            return [$plot->id => $label !== '' ? $label : '—'];
+        })->toArray();
+
+        $x['projects'] = Project::where('id', $selectedProjectId)->get();
+        $x['customers'] = $baseRows->map(function ($item) {
+            $customer = $item->customer ?: optional($item->customerLedger)->customer_list;
+            if ($customer) {
+                $name = trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? ''));
+                if ($name !== '') {
+                    return [
+                        'value' => 'lead:' . $customer->id,
+                        'label' => $name,
+                    ];
+                }
+            }
+
+            $subhead = optional(optional($item->ledger)->projectHeadSubhead)->subheadAccounting;
+            if ($subhead && !empty($subhead->name)) {
+                return [
+                    'value' => 'subhead:' . $subhead->id,
+                    'label' => $subhead->name,
+                ];
+            }
+
+            return null;
+        })->filter()->unique('value')->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)->values();
+
+        $x['plotLabels'] = $plotLabels;
+        $x['plots'] = $plotIds->map(function ($plotId) use ($plotLabels) {
+            $label = $plotLabels[$plotId] ?? '—';
+
+            if ($label === '—') {
+                return null;
+            }
+
+            return [
+                'value' => $plotId,
+                'label' => $label,
+            ];
+        })->filter()->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)->values();
+        $x['filters'] = [
+            'customer_id' => $request->input('customer_id'),
+            'plot_id' => $request->input('plot_id'),
+            'reference' => $request->input('reference'),
+            'fdate' => $request->input('fdate'),
+            'tdate' => $request->input('tdate'),
+            'status' => $request->input('status'),
+        ];
 
         return view('admin.booking.receive', $x);
     }
     public function updateCashIn(Request $request, $id)
     {
-        // Validate incoming fields (adjust rules as per your fields)
-        $validated = $request->validate([
-            'amount_out' => 'required',
-            'date' => 'required',
-            'description' => 'nullable',
+        $validator = Validator::make($request->all(), [
+            'reference' => 'required|string|max:255',
+            'date' => 'required|date',
+            'amount_out' => ['required', 'regex:/^\d[\d,]*(\.\d{1,2})?$/'],
+            'description' => 'nullable|string|max:255',
+            'payment_type' => 'required|in:1,2,3',
+            't_number' => 'nullable|string|max:255',
+            'bank_id' => 'nullable',
+            'passing_date' => 'nullable|date',
         ]);
+
+        $validator->sometimes('t_number', 'required|string|max:255', function ($input) {
+            return in_array((string) $input->payment_type, ['2', '3'], true);
+        });
+
+        $validator->sometimes('bank_id', 'required', function ($input) {
+            return in_array((string) $input->payment_type, ['2', '3'], true);
+        });
+
+        $validated = $validator->validate();
 
         // 🛑 Remove commas from amount_out
         $validated['amount_out'] = str_replace(',', '', $validated['amount_out']);
 
-        DB::transaction(function () use ($validated, $id, $request) {
-            $ledger = CustomerLedger::where('id', $id)->first();
+        if ((string) $validated['payment_type'] === '1') {
+            $validated['t_number'] = null;
+            $validated['bank_id'] = null;
+            $validated['passing_date'] = null;
+        }
 
-            if (auth()->user()->cannot('direct-update')) {
-                PendingUpdate::create([
-                    'record_id' => $ledger->id,
-                    'table_name' => 'customer_ledger',
-                    'new_values' => json_encode($validated),
-                    'old_values' => json_encode($ledger->only(array_keys($validated))),
-                    'status' => 'pending',
-                    'submitted_by' => Auth::id(),
-                ]);
-            } else {
-                // Direct update
-                $ledger->update($validated);
-            }
-        });
+        try {
+            DB::transaction(function () use ($validated, $id) {
+                $customerLedger = CustomerLedger::with('ledger')
+                    ->where('id', $id)
+                    ->where('project_id', getSelectedTown())
+                    ->firstOrFail();
 
-        return redirect()->back()->with('success', 'Ledger updated successfully!');
+                if (auth()->user()->cannot('direct-update')) {
+                    PendingUpdate::create([
+                        'record_id' => $customerLedger->id,
+                        'table_name' => 'customer_ledger',
+                        'new_values' => json_encode($validated),
+                        'old_values' => json_encode($customerLedger->only(array_keys($validated))),
+                        'status' => 'pending',
+                        'submitted_by' => Auth::id(),
+                    ]);
+
+                    return;
+                }
+
+                $customerLedger->update($validated);
+
+                if ($customerLedger->ledger) {
+                    $ledgerPayload = [
+                        'date' => $validated['date'],
+                        'detail' => '(Cash slip#' . $validated['reference'] . ') ' . ($validated['description'] ?? ''),
+                    ];
+
+                    if (in_array((string) $customerLedger->ledger->type, ['CR', 'PPR'], true)) {
+                        $ledgerPayload['amount_in'] = $validated['amount_out'];
+                    } else {
+                        $ledgerPayload['amount_out'] = $validated['amount_out'];
+                    }
+
+                    $customerLedger->ledger->update($ledgerPayload);
+                }
+
+                $this->syncBookingVoucherRecord($customerLedger->fresh(['ledger']));
+            });
+        } catch (\Throwable $th) {
+            Log::error('Receive plot payment update failed', [
+                'customer_ledger_id' => $id,
+                'user_id' => Auth::id(),
+                'message' => $th->getMessage(),
+            ]);
+
+            return redirect()->back()->withErrors([
+                'msg' => 'Unable to update the voucher right now. Please try again.',
+            ])->withInput();
+        }
+
+        $message = auth()->user()->cannot('direct-update')
+            ? 'Update request submitted for approval.'
+            : 'Ledger updated successfully!';
+
+        return redirect()->back()->with('success', $message);
     }
 
 
@@ -1720,8 +1903,7 @@ class BookingController extends Controller
             'payment_type' => 'required',
             'reference' => 'required',
 
-        ]);
-        ;
+        ]);;
 
         $action = $request->input('action');
         // dd($request->input());
@@ -1732,68 +1914,72 @@ class BookingController extends Controller
             switch ($action) {
 
                 case 'deposit':
+                    DB::transaction(function () use ($request, $customer_id) {
+                        $payment_type = $request->input('payment_type');
+                        $isPendingBankPayment = in_array((int) $payment_type, [2, 3], true);
+                        if ($payment_type == 1) {
+                            $t_number = $bank_id = null;
+                        } else {
+                            $t_number = $request->input('t_number');
+                            $bank_id = $request->input('bank_id');
+                        }
 
-                    // Create entry in customer ledger
-                    // dd($request->input());
-                    $payment_type = $request->input('payment_type');
-                    if ($payment_type == 1) {
-                        $t_number = $bank_id = null;
-                    } else {
-                        $t_number = $request->input('t_number');
-                        $bank_id = $request->input('bank_id');
-                    }
-                    $plotName = Plot::where('id', $request->input('plot_id'))->value('name');
-                    $customerLedger = CustomerLedger::create([
-                        'customer_id' => $customer_id,
-                        'transaction_type' => 'PPR',
-                        'type_id' => get_new_typeID('PPR'),
-                        'reference' => $request->input('reference'),
-                        'project_id' => $request->input('project_id'),
-                        'plot_id' => $request->input('plot_id'),
-                        'amount_in' => 0,
-                        'amount_out' => str_replace(',', '', $request->input('amount')),
-                        'description' => $request->input('detail'),
-                        'date' => $request->input('date'), // Assuming booking date is the transaction date
-                        'payment_type' => $request->input('payment_type'),
-                        't_number' => $t_number,
-                        'bank_id' => $bank_id,
-                        'is_active' => 1,
-                        'is_approve' => 0,
-                        'passing_date' => $request->input('passing_date'),
-                    ]);
+                        $customerLedger = CustomerLedger::create([
+                            'customer_id' => $customer_id,
+                            'transaction_type' => 'PPR',
+                            'type_id' => get_new_typeID('PPR'),
+                            'reference' => $request->input('reference'),
+                            'project_id' => $request->input('project_id'),
+                            'plot_id' => $request->input('plot_id'),
+                            'amount_in' => 0,
+                            'amount_out' => str_replace(',', '', $request->input('amount')),
+                            'description' => $request->input('detail'),
+                            'date' => $request->input('date'),
+                            'payment_type' => $request->input('payment_type'),
+                            't_number' => $t_number,
+                            'bank_id' => $bank_id,
+                            'is_active' => 1,
+                            'is_approve' => 0,
+                            'passing_date' => $request->input('passing_date'),
+                            'passing_status' => $isPendingBankPayment ? 0 : null,
+                        ]);
 
+                        $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', 16)
+                            ->where('project_id', $request->input('project_id'))
+                            ->where('plot_id', $request->input('plot_id'))
+                            ->where('customer_id', $customer_id)
+                            ->value('id');
 
-                    // Ensure credit account exists
-                    $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', 16)
-                        ->where('project_id', $request->input('project_id'))
-                        ->where('plot_id', $request->input('plot_id'))
-                        ->where('customer_id', $customer_id)
-                        ->value('id');
+                        if (!$creditAccountId) {
+                            throw new \Exception('Credit account ID not found.');
+                        }
 
-                    if (!$creditAccountId) {
-                        throw new \Exception('Credit account ID not found.');
-                    }
+                        $ledgerType = 'PPR';
+                        $voucherNumber = getVocuherNumber($ledgerType);
+                        $lastId = getLastLedgerIdByType($ledgerType);
 
-                    $plotName = Plot::where('id', $request->input('plot_id'))->value('name');
+                        $ledger = null;
+                        if (!$isPendingBankPayment) {
+                            $ledger = Ledger::create([
+                                'customer_ledger_id' => $customerLedger->id,
+                                'type' => $ledgerType,
+                                'voucher_number' => $voucherNumber,
+                                'type_id' => ((int) $lastId) + 1,
+                                'project_head_subheads_id' => $creditAccountId,
+                                'reference' => $request->input('reference'),
+                                'amount_in' => str_replace(',', '', $request->input('amount')),
+                                'amount_out' => 0.00,
+                                'is_active' => 1,
+                                'date' => $request->input('date'),
+                                'detail' => '(Cash slip#' . $request->input('reference') . ') ' . $request->input('detail'),
+                                'update_by' => Auth::id(),
+                                'create_by' => Auth::id(),
+                                'status' => 0,
+                            ]);
+                        }
 
-                    $lastId = getLastLedgerIdByType("CR");
-                    $voucherNumber = getVocuherNumber('CP');
-                    Ledger::create([
-                        'customer_ledger_id' => $customerLedger->id,
-                        'type' => 'CR',
-                        'voucher' => $voucherNumber,
-                        'type_id' => $lastId + 1,
-                        'project_head_subheads_id' => $creditAccountId,
-                        'reference' => $request->input('voucher'),
-                        'amount_in' => str_replace(',', '', $request->input('amount')),
-                        'amount_out' => 0.00,
-                        'is_active' => 1,
-                        'date' => $request->input('date'), // Assuming booking date is the transaction date
-                        'detail' => '(Cash slip#' . $request->input('reference') . ') ' . $request->input('detail'),
-                        'update_by' => Auth::user()->id,
-                        'create_by' => Auth::user()->id,
-                        'status' => 0,
-                    ]);
+                        $this->syncBookingVoucherRecord($customerLedger, $ledger);
+                    });
 
 
                     Alert::success('Notification', 'Data <b></b> Save successfully ')->toToast()->toHtml();
@@ -1816,8 +2002,8 @@ class BookingController extends Controller
                     $plotName = Plot::where('id', $request->input('plot_id'))->value('name');
                     $customerLedger = CustomerLedger::create([
                         'customer_id' => $customer_id,
-                        'transaction_type' => 'PPR',
-                        'type_id' => get_new_typeID('PPR'),
+                        'transaction_type' => 'null',
+                        'type_id' => get_new_typeID('null'),
                         'reference' => $request->input('reference'),
                         'project_id' => $projectId,
                         'plot_id' => $request->input('plot_id'),
@@ -1904,8 +2090,14 @@ class BookingController extends Controller
 
                     break;
             }
-        } catch (\Exception $e) {
-            return back()->withErrors(['msg' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            Log::error('Receive plot payment save failed', [
+                'action' => $action,
+                'user_id' => Auth::id(),
+                'message' => $e->getMessage(),
+            ]);
+
+            return back()->withErrors(['msg' => 'Unable to save the voucher right now. Please try again.'])->withInput();
         }
         return back();
     }
@@ -2152,15 +2344,132 @@ class BookingController extends Controller
 
     public function fatch_voucher(Request $request)
     {
-        $data_list = CustomerLedger::with('customer_list', 'plot_list')->where(['id' => $request->id])->first();
+        $request->validate([
+            'id' => 'required|integer',
+        ]);
 
+        $dataList = CustomerLedger::with(['customer_list', 'plot_list', 'project_list', 'ledger'])
+            ->where('id', $request->id)
+            ->where('project_id', getSelectedTown())
+            ->first();
 
+        if (!$dataList) {
+            return response()->json([
+                'status' => Response::HTTP_NOT_FOUND,
+                'message' => 'Voucher not found.',
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        $customer = $dataList->customer_list;
+        $plot = $dataList->plot_list;
+        $project = $dataList->project_list;
+        $ledger = $dataList->ledger;
 
         return response()->json([
             'status' => Response::HTTP_OK,
-            'message' => 'Data Project by id',
-            'data' => $data_list
+            'message' => 'Voucher loaded successfully.',
+            'data' => [
+                'id' => $dataList->id,
+                'date' => $dataList->date,
+                'reference' => $dataList->reference,
+                'amount_out' => $dataList->amount_out,
+                'description' => $dataList->description,
+                'payment_type' => $dataList->payment_type,
+                'payment_type_label' => getPaymentTypeDetails($dataList->payment_type)['name'],
+                't_number' => $dataList->t_number,
+                'bank_id' => $dataList->bank_id,
+                'bank_name' => $dataList->bank_id ? getBankNameById($dataList->bank_id) : null,
+                'passing_date' => $dataList->passing_date,
+                'status' => $dataList->is_approve,
+                'status_label' => approveStatus($dataList->is_approve),
+                'created_at' => optional($dataList->created_at)->format('Y-m-d H:i:s'),
+                'customer' => [
+                    'id' => $customer?->id,
+                    'name' => trim(($customer?->first_name ?? '') . ' ' . ($customer?->last_name ?? '')),
+                    'relate' => $customer?->relate,
+                    'father_name' => $customer?->father_name,
+                    'phone_number' => $customer?->phone_number,
+                    'mobile_number' => $customer?->mobile_number,
+                    'nic_number' => $customer?->nic_number,
+                    'home_address' => $customer?->home_address,
+                ],
+                'plot' => [
+                    'id' => $plot?->id,
+                    'name' => $plot?->name,
+                    'type' => $plot?->type,
+                    'size' => $plot?->size,
+                    'unit' => $plot?->unit,
+                ],
+                'project' => [
+                    'id' => $project?->id,
+                    'name' => $project?->project,
+                ],
+                'ledger' => [
+                    'id' => $ledger?->id,
+                    'type' => $ledger?->type,
+                    'voucher_number' => $ledger?->voucher_number ?? $ledger?->voucher ?? null,
+                    'reference' => $ledger?->reference,
+                    'amount_in' => $ledger?->amount_in,
+                    'amount_out' => $ledger?->amount_out,
+                    'detail' => $ledger?->detail,
+                    'date' => $ledger?->date,
+                ],
+            ]
         ], Response::HTTP_OK);
+    }
+
+    public function printCashIn($id)
+    {
+        $x['voucher'] = CustomerLedger::with([
+            'bookingVoucher',
+            'customer_list',
+            'plot_list',
+            'project_list',
+            'ledger.projectHeadSubhead.project',
+            'ledger.projectHeadSubhead.subheadAccounting',
+            'ledger.projectHeadSubhead.plot',
+        ])
+            ->where('id', $id)
+            ->where('project_id', getSelectedTown())
+            ->firstOrFail();
+
+        return view('admin.booking.print_receive', $x);
+    }
+
+    private function syncBookingVoucherRecord(CustomerLedger $customerLedger, ?Ledger $ledger = null): BookingVoucher
+    {
+        $ledger = $ledger ?: $customerLedger->ledger;
+        $bookingId = Booking::where('project_id', $customerLedger->project_id)
+            ->where('customer_id', $customerLedger->customer_id)
+            ->where('plot_id', $customerLedger->plot_id)
+            ->where('cancel_status', '0')
+            ->latest('id')
+            ->value('id');
+
+        return BookingVoucher::updateOrCreate(
+            ['customer_ledger_id' => $customerLedger->id],
+            [
+                'booking_id' => $bookingId,
+                'ledger_id' => $ledger?->id,
+                'project_id' => $customerLedger->project_id,
+                'customer_id' => $customerLedger->customer_id,
+                'plot_id' => $customerLedger->plot_id,
+                'voucher_series' => $ledger?->type ?? $customerLedger->transaction_type,
+                'voucher_number' => $ledger?->voucher_number,
+                'slip_reference' => $customerLedger->reference,
+                'payment_type' => $customerLedger->payment_type,
+                'amount' => $customerLedger->amount_out,
+                'receipt_date' => $customerLedger->date,
+                'description' => $customerLedger->description,
+                'bank_id' => $customerLedger->bank_id,
+                't_number' => $customerLedger->t_number,
+                'passing_date' => $customerLedger->passing_date,
+                'is_active' => $customerLedger->is_active,
+                'is_approve' => $customerLedger->is_approve,
+                'create_by' => $ledger?->create_by ?? Auth::id(),
+                'update_by' => Auth::id(),
+            ]
+        );
     }
 
 
@@ -2364,7 +2673,21 @@ class BookingController extends Controller
 
                 // System accounts under Project Sale (head=16)
                 $totalSaleId = $this->totalSaleAccountId((int) $booking->project_id);
-
+                $totalDebit = 0;
+                $totalCredit = 0;
+                $lastVoucherId = getLastSVVNumber() ?? 0;
+                $selectedProjectId = getSelectedTown();
+                $journalVoucher = JournalVoucher::create([
+                    'voucher_number' => $lastVoucherId + 1,
+                    'type' => 'SV',
+                    'reference' => $request->reference,
+                    'date' => now()->format('Y-m-d'),
+                    'description' => $request->description,
+                    'total_debit' => 0, // Add total debit
+                    'total_credit' => 0, // Add total credit
+                    'created_by' => auth()->id(),
+                    'project_id' => $selectedProjectId,
+                ]);
                 // Marker to avoid duplicates (optional but safe)
                 $marker = 'CANCEL#' . $booking->id;
                 $alreadyPosted = Ledger::where('reference', $booking->id)
@@ -2374,11 +2697,20 @@ class BookingController extends Controller
                 if ($alreadyPosted) {
                     return;
                 }
-                $voucherNumber = getVocuherNumber('CP');
-                // 1) Debit Total Sale (CP out) = sale amount
+                $voucherNumber = getVocuherNumber('SV');
+                // 1) Debit Total Sale (SV out) = sale amount
+                JournalVoucherDetail::create([
+                    'journal_voucher_id' => $journalVoucher->id,
+                    'account_id' => $totalSaleId,
+                    'debit' => 0,
+                    'credit' => $sale ?? 0,
+                    'description' => $marker . " | Cancel Reverse Total Sale | {$plotPrefix}{$plotName}",
+                    'created_by' => auth()->id(),
+                ]);
+                $totalCredit += $sale;
                 Ledger::create([
-                    'type' => 'CP',
-                    'type_id' => $this->nextLedgerTypeId('CP'),
+                    'type' => 'SV',
+                    'type_id' => $journalVoucher->id,
                     'voucher_number' => $voucherNumber,
                     'project_head_subheads_id' => $totalSaleId,
                     'reference' => $booking->id,
@@ -2403,12 +2735,20 @@ class BookingController extends Controller
                     'amount_out' => 0,
                     'description' => "Plot Cancellation Refund {$plotPrefix}{$plotName}",
                 ]);
-                $voucherNumber = getVocuherNumber('CR');
-
-
+                $voucherNumber = getVocuherNumber('SV');
+                // 1) Debit Total Sale (SV out) = sale amount
+                JournalVoucherDetail::create([
+                    'journal_voucher_id' => $journalVoucher->id,
+                    'account_id' => $phsCustomer->id,
+                    'debit' => $customerCredit,
+                    'credit' => 0,
+                    'description' => $marker . " | Customer Credit | {$plotPrefix}{$plotName}",
+                    'created_by' => auth()->id(),
+                ]);
+                $totalDebit += $customerCredit;
                 Ledger::create([
-                    'type' => 'CR',
-                    'type_id' => $this->nextLedgerTypeId('CR'),
+                    'type' => 'SV',
+                    'type_id' => $journalVoucher->id,
                     'voucher_number' => $voucherNumber,
 
                     'project_head_subheads_id' => $phsCustomer->id,
@@ -2434,11 +2774,20 @@ class BookingController extends Controller
                             'Deduction',
                             true // create if missing
                         );
-                        $voucherNumber = getVocuherNumber('CP');
-
+                        $voucherNumber = getVocuherNumber('SV');
+                        // 1) Debit Total Sale (SV out) = sale amount
+                        JournalVoucherDetail::create([
+                            'journal_voucher_id' => $journalVoucher->id,
+                            'account_id' => $deductionAccId,
+                            'debit' => $adj,
+                            'credit' => 0,
+                            'description' => $marker . " | Deduction Credit | {$plotPrefix}{$plotName}",
+                            'created_by' => $userId,
+                        ]);
+                        $totalDebit += $adj;
                         Ledger::create([
-                            'type' => 'CR',
-                            'type_id' => $this->nextLedgerTypeId('CP'),
+                            'type' => 'SV',
+                            'type_id' => $journalVoucher->id,
                             'voucher_number' => $voucherNumber,
                             'project_head_subheads_id' => $deductionAccId,
                             'reference' => $booking->id,
@@ -2452,17 +2801,26 @@ class BookingController extends Controller
                             'status' => 0,
                         ]);
                     } else {
-                        // Profit: debit Party Profit (CP out) = profit
+                        // Profit: debit Party Profit (SV out) = profit
                         $partyProfitAccId = $this->systemAccountIdBySubheadName(
                             (int) $booking->project_id,
                             16,
                             'Party Profit',
-                            false // must exist
+                            true // must exist
                         );
-                        $voucherNumber = getVocuherNumber('CP');
+                        $voucherNumber = getVocuherNumber('SV');
+                        JournalVoucherDetail::create([
+                            'journal_voucher_id' => $journalVoucher->id,
+                            'account_id' => $partyProfitAccId,
+                            'debit' => 0.00,
+                            'credit' => $adj,
+                            'description' => $marker . " | Party Profit Debit | {$plotPrefix}{$plotName}",
+                            'created_by' => $userId,
+                        ]);
+                        $totalCredit += $adj;
                         Ledger::create([
-                            'type' => 'CP',
-                            'type_id' => $this->nextLedgerTypeId('CP'),
+                            'type' => 'SV',
+                            'type_id' => $journalVoucher->id,
                             'voucher_number' => $voucherNumber,
                             'project_head_subheads_id' => $partyProfitAccId,
                             'reference' => $booking->id,
@@ -2478,8 +2836,10 @@ class BookingController extends Controller
                     }
                 }
                 $this->attechCustomerToOldProjectSale($booking->project_id, $booking->customer_id, $booking->plot_id);
+                $journalVoucher->total_debit = $totalDebit;
+                $journalVoucher->total_credit = $totalCredit;
+                $journalVoucher->save();
             });
-
 
             return response()->json(['message' => 'Booking canceled successfully.']);
         } catch (\Throwable $e) {
