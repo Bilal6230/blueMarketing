@@ -95,29 +95,28 @@
 </head>
 
 <body>
+    @php
+        $branding = getProjectPrintBranding(optional(optional($voucher)->projectHeadSubhead)->project);
+        $voucherBadge = '';
+        if ($voucher->type == 'CR') {
+            $voucherBadge = '<div class="voucher-name">CREDIT VOUCHER</div>';
+        } elseif ($voucher->type == 'CP' || $voucher->type == 'BO') {
+            $voucherBadge = '<div class="voucher-name">PAYMENT VOUCHER</div>';
+        }
+    @endphp
 
     <div class="voucher">
 
         <!-- HEADER -->
-        <div class="header-container">
-            <img class="logo" src="{{ asset('images/logo/blue-marketing-logo.png') }}">
-                <div class="" style="display: flex; {!! Setting::getValue('print_status') == '0' ? 'style="display:none !important;"' : '' !!}">
-                    <div class="center">
-                        <h2 class="title">Planet Architects & Builders</h2>
-                        <div class="address">Shop # C-215, A-Block Phase-1 Etihad Garden, Rahim Yar Khan</div>
-                        @if ($voucher->type == 'CR')
-                        <div class="voucher-name">CREDIT VOUCHER</div>
-                        @elseif($voucher->type == 'CP' || $voucher->type == 'BO')
-                        <div class="voucher-name">PAYMENT VOUCHER</div>
-                        @endif
-                    </div>
-                </div>
-
-            <div style="{!! Setting::getValue('print_status') == '0' ? 'style="display:none !important;"' : '' !!}">
-                <div>0322-2237861</div>
-                <div>068-2096888</div>
-            </div>
-        </div>
+        @include('admin.partials.print_branding_header', [
+            'branding' => $branding,
+            'wrapperClass' => 'header-container',
+            'logoClass' => 'logo',
+            'centerClass' => 'center',
+            'centerStyle' => Setting::getValue('print_status') == '0' ? 'display:none !important;' : '',
+            'rightStyle' => Setting::getValue('print_status') == '0' ? 'display:none !important;' : '',
+            'extraHtml' => $voucherBadge,
+        ])
 
         <!-- Voucher Details -->
         <div style="display: flex; justify-content: space-between;">

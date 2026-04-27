@@ -6,73 +6,143 @@
     <title>Party Ledger Report</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
+        @page {
+            size: auto;
+            margin: 8mm 7mm;
+        }
+
         @media print {
             body {
                 margin: 0;
                 padding: 0;
+                background: #fff !important;
+                font-size: 10px;
             }
+
             .no-print {
-                display: none;
+                display: none !important;
+            }
+
+            .container {
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 6px 8px !important;
+                box-shadow: none !important;
+                border-radius: 0 !important;
+            }
+
+            .header {
+                margin-bottom: 8px !important;
+            }
+
+            .header h1 {
+                font-size: 18px !important;
+                margin-bottom: 2px !important;
+            }
+
+            .header p,
+            .party-list,
+            .footer {
+                font-size: 10px !important;
+                line-height: 1.2 !important;
+            }
+
+            .section-title {
+                font-size: 13px !important;
+                margin-bottom: 6px !important;
+                padding-left: 6px !important;
+            }
+
+            .table {
+                margin-bottom: 0 !important;
+                table-layout: fixed;
+            }
+
+            .table th,
+            .table td {
+                padding: 3px 5px !important;
+                font-size: 9.5px !important;
+                line-height: 1.15 !important;
+            }
+
+            .table-responsive {
+                overflow: visible !important;
+            }
+
+            .report-block {
+                page-break-inside: avoid;
+            }
+
+            .footer {
+                margin-top: 6px !important;
             }
         }
 
         body {
             background-color: #f5f7fa;
             font-family: 'Arial', sans-serif;
+            color: #222;
+            font-size: 13px;
+            line-height: 1.25;
         }
 
         .container {
             background: #ffffff;
             border-radius: 10px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            margin-top: 20px;
+            padding: 14px 16px;
+            margin-top: 12px;
+            margin-bottom: 10px;
+            max-width: 1100px;
         }
 
         .header {
-            /* text-align: center; */
-            margin-bottom: 30px;
+            margin-bottom: 12px;
         }
 
         .header h1 {
-            font-size: 28px;
+            font-size: 24px;
             font-weight: bold;
             color: #333;
+            margin-bottom: 4px;
         }
 
         .header p {
-            font-size: 14px;
+            font-size: 13px;
             color: #555;
-            margin-bottom: 0rem;
+            margin-bottom: 2px;
         }
 
         .section-title {
-            font-size: 20px;
+            font-size: 16px;
             font-weight: bold;
             color: #2c3e50;
-            border-left: 5px solid #3498db;
-            padding-left: 10px;
-            margin-bottom: 15px;
+            border-left: 4px solid #3498db;
+            padding-left: 8px;
+            margin-bottom: 8px;
+            line-height: 1.1;
         }
 
         .table {
             background: #ffffff;
             border-radius: 5px;
             overflow: hidden;
+            margin-bottom: 0;
+            table-layout: auto;
         }
 
         .table thead th {
             background-color: #3498db;
             color: #ffffff;
             border: none;
+            padding: 6px 8px;
+            font-size: 12px;
+            line-height: 1.1;
+            white-space: nowrap;
         }
 
         .table tbody tr:nth-child(even) {
             background-color: #f9f9f9;
-        }
-
-        .table tbody td {
-            color: #333;
         }
 
         .opening-balance-row {
@@ -100,13 +170,52 @@
 
         .footer {
             text-align: center;
-            margin-top: 20px;
+            margin-top: 10px;
             font-size: 12px;
             color: #888;
         }
+
         .table tbody td {
             color: #333;
-            padding: 1px;
+            padding: 4px 6px;
+            font-size: 12px;
+            line-height: 1.15;
+            vertical-align: top;
+        }
+
+        .party-list {
+            margin-bottom: 4px;
+            line-height: 1.2;
+        }
+
+        .report-block {
+            margin-top: 8px;
+        }
+
+        .col-index {
+            width: 42px;
+            white-space: nowrap;
+        }
+
+        .col-date {
+            width: 88px;
+            white-space: nowrap;
+        }
+
+        .col-voucher {
+            width: 112px;
+            white-space: nowrap;
+        }
+
+        .col-amount {
+            width: 86px;
+            white-space: nowrap;
+            text-align: right;
+        }
+
+        .table tbody td.col-date,
+        .table tbody td.col-voucher {
+            white-space: nowrap;
         }
     </style>
 </head>
@@ -115,9 +224,11 @@
         <!-- Header Section -->
         <div class="header">
             <h1>{{ $reportTitle }}</h1>
-            @foreach($party_details as $index => $party)
-              <b>{{ $party['subhead_accounting'] }}, </b> 
-            @endforeach
+            <div class="party-list">
+                @foreach($party_details as $index => $party)
+                    <b>{{ $party['subhead_accounting'] }}</b>@if(!$loop->last), @endif
+                @endforeach
+            </div>
             <p>Date Range: <strong>{{ \Carbon\Carbon::parse($fdate)->format('d-m-y') }} </strong> to <strong>{{ \Carbon\Carbon::parse($tdate)->format('d-m-y') }} </strong></p>
             <p>Project: <strong>{{ $projectName }}</strong></p>
         </div>
@@ -147,19 +258,19 @@
         </div> --}}
 
         <!-- Ledger Details Table -->
-        <div class="mt-4">
+        <div class="report-block">
             <div class="section-title">Ledger Details</div>
             <div class="table-responsive">
                 <table class="table table-striped table-bordered">
                     <thead>
                         <tr>
-                            <th>#</th>
-                            <th>Date</th>
-                            <th>Voucher</th>
+                            <th class="col-index">#</th>
+                            <th class="col-date">Date</th>
+                            <th class="col-voucher">Voucher</th>
                             <th>Details</th>
-                            <th>In</th>
-                            <th>Out</th>
-                            <th>Balance</th>
+                            <th class="col-amount">In</th>
+                            <th class="col-amount">Out</th>
+                            <th class="col-amount">Balance</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -175,15 +286,28 @@
                             @php
                                 $balance += $ledger->amount_in - $ledger->amount_out;
                                 $balanceClass = $balance < 0 ? 'balance-negative' : 'balance-positive';
+                                  $voucherNumber = $ledger->voucher_number;
+
+                if ($ledger->type === 'JV' && !empty($ledger->type_id)) {
+                    $journalVoucher = App\Models\JournalVoucher::where('id', $ledger->type_id)
+                        ->select('id', 'voucher_number')
+                        ->first();
+
+                    if ($journalVoucher && !empty($journalVoucher->voucher_number)) {
+                        $voucherNumber = $journalVoucher->voucher_number;
+                    }
+                }
+
+                $number =  ($ledger->type ?? '') . '-' . $voucherNumber;
                             @endphp
                             <tr>
-                                <td>{{ $index + 1 }}</td>
-                                <td>{{ \Carbon\Carbon::parse($ledger->date)->format('d-m-y') }}</td>
-                                <td>{{ $ledger->type }}-{{ str_pad($ledger->type_id, 7, '0', STR_PAD_LEFT);  }}</td>
+                                <td class="col-index">{{ $index + 1 }}</td>
+                                <td class="col-date">{{ \Carbon\Carbon::parse($ledger->date)->format('d-m-y') }}</td>
+                                <td class="col-voucher">{{ $number ?? 'N/A' }}</td>
                                 <td>{{ $ledger->detail }}</td>
-                                <td>{{ number_format($ledger->amount_in, 0) }}</td>
-                                <td>{{ number_format($ledger->amount_out, 0) }}</td>
-                                <td class="{{ $balanceClass }}">{{ number_format($balance, 0) }}</td>
+                                <td class="col-amount">{{ number_format($ledger->amount_in, 0) }}</td>
+                                <td class="col-amount">{{ number_format($ledger->amount_out, 0) }}</td>
+                                <td class="col-amount {{ $balanceClass }}">{{ number_format($balance, 0) }}</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -192,8 +316,8 @@
         </div>
 
         <!-- Print Button -->
-        <div class="text-end mt-4 no-print">
-            <button class="btn btn-primary" onclick="window.print()">Print</button>
+        <div class="text-end mt-3 no-print">
+            <button class="btn btn-primary btn-sm" onclick="window.print()">Print</button>
         </div>
     </div>
 

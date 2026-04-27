@@ -15,6 +15,7 @@
                                     <th style="background-color: black !important">ID</th>
                                     <th style="background-color: black !important">Table</th>
                                     <th style="background-color: black !important">Record ID</th>
+                                    <th style="background-color: black !important">Current Owner</th>
                                     <th style="background-color: black !important">Submitted By</th>
                                     <th style="background-color: black !important">Status</th>
                                     <th style="background-color: black !important">Submitted At</th>
@@ -27,6 +28,7 @@
                                         <td>{{ $update->id }}</td>
                                         <td>{{ $update->table_name }}</td>
                                         <td>{{ $update->record_id }}</td>
+                                        <td>{{ $update->current_owner_name }}</td>
                                         <td>{{ $update->submittedBy->name ?? 'N/A' }}</td>
                                         <td>
                                             <span class="badge badge-warning text-dark">
@@ -46,6 +48,7 @@
                                                 data-old='@json($update->old_values)'
                                                 data-new='@json($update->new_values)'
                                                 data-comments='@json($update->table_name === "leads" ? $leadCommentsByRecord->get($update->record_id, []) : [])'
+                                                data-user = "{{ $update->submittedBy->name ?? 'N/A' }}"
                                                 data-submitted_by="{{ $update->submitted_by }}"
                                                 data-record_id="{{ $update->record_id }}"
                                                 data-table="{{ $update->table_name }}">
@@ -56,7 +59,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="7" class="text-center text-muted">No pending approvals found</td>
+                                        <td colspan="8" class="text-center text-muted">No pending approvals found</td>
                                     </tr>
                                 @endforelse
                             </tbody>
@@ -222,6 +225,7 @@
                 let newValues = $(this).attr('data-new') || '{}';
                 let oldValues = $(this).attr('data-old') || '{}';
                 let comments = $(this).attr('data-comments') || '[]';
+                let user = $(this).attr('data-user') || 'Unknown User';
                 let tableName = $(this).data('table');
                 const record_id = $(this).data('record_id') || $(this).data('id');
                 const submittedBy = $(this).data('submitted_by') || 'Unknown User';
@@ -306,6 +310,7 @@
 
                     if (Array.isArray(comments) && comments.length > 0) {
                         comments.forEach((item) => {
+                            console.log(item);
                             if (item.comment) {
                                 commentsHtml += `
                                 <div class="border p-2 mb-2 rounded bg-light">
@@ -313,6 +318,9 @@
                                     <span>${item.comment}</span>
                                     <div class="text-muted small mt-1">
                                         ${item.created_at ? 'at ' + item.created_at : ''}
+                                    </div>
+                                    <div class="text-muted small">
+                                        ${user ? 'by ' + user : ''}
                                     </div>
                                 </div>
                             `;

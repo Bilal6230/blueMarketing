@@ -197,7 +197,7 @@ class ReportController extends Controller
                 Ledger::create([
                     'customer_ledger_id' => $request->id,
                     'type' => 'BR',
-                    'voucher' => $voucherNumber,
+                    'voucher_number' => $voucherNumber,
                     'type_id' => $lastId + 2,
                     'project_head_subheads_id' => $creditAccountId,
                     'reference' => "Check Pass in Bank",

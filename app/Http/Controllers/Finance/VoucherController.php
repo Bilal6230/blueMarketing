@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Finance;
 
 use App\Models\Lead;
+use App\Models\BookingVoucher;
+use App\Models\CustomerLedger;
 use App\Models\PendingUpdate;
 use App\Models\Plot;
 use App\Models\User;
@@ -79,6 +81,8 @@ class VoucherController extends Controller
             ->unique()
             ->values();
 
+        $leadOwnerNamesByRecord = collect();
+
         if ($leadIds->isNotEmpty()) {
             $leadCommentsByRecord = Lead::with(['comments' => function ($query) {
                 $query->select('id', 'lead_id', 'comment', 'created_at')
@@ -96,7 +100,43 @@ class VoucherController extends Controller
 
                     return [$lead->id => $comments];
                 });
+
+            $existingLeadIds = Lead::whereIn('id', $leadIds)->pluck('id');
+
+            $latestLeadOwners = DB::table('lead_user as lu')
+                ->joinSub(
+                    DB::table('lead_user')
+                        ->selectRaw('lead_id, MAX(id) as latest_id')
+                        ->whereIn('lead_id', $leadIds)
+                        ->groupBy('lead_id'),
+                    'latest',
+                    function ($join) {
+                        $join->on('latest.latest_id', '=', 'lu.id');
+                    }
+                )
+                ->leftJoin('users', 'users.id', '=', 'lu.user_id')
+                ->select('lu.lead_id', 'users.name')
+                ->get()
+                ->mapWithKeys(function ($row) {
+                    return [$row->lead_id => $row->name ?: 'Unassigned'];
+                });
+
+            $leadOwnerNamesByRecord = $leadIds->mapWithKeys(function ($leadId) use ($existingLeadIds, $latestLeadOwners) {
+                if (!$existingLeadIds->contains($leadId)) {
+                    return [$leadId => 'Deleted Lead'];
+                }
+
+                return [$leadId => $latestLeadOwners->get($leadId, 'Unassigned')];
+            });
         }
+
+        $pendingUpdates->transform(function ($update) use ($leadOwnerNamesByRecord) {
+            $update->current_owner_name = $update->table_name === 'leads'
+                ? $leadOwnerNamesByRecord->get($update->record_id, 'Deleted Lead')
+                : '—';
+
+            return $update;
+        });
 
         $x['pendingUpdates'] = $pendingUpdates;
         $x['leadCommentsByRecord'] = $leadCommentsByRecord;
@@ -238,6 +278,40 @@ class VoucherController extends Controller
                 ->where('id', $pending->record_id)
                 ->update($pendingNewChanges);
 
+            if ($request->table === 'customer_ledger') {
+                $customerLedger = \App\Models\CustomerLedger::with('ledger')->find($pending->record_id);
+                if ($customerLedger && $customerLedger->transaction_type === 'PPR') {
+                    BookingVoucher::updateOrCreate(
+                        ['customer_ledger_id' => $customerLedger->id],
+                        [
+                            'booking_id' => \App\Models\Booking::where('project_id', $customerLedger->project_id)
+                                ->where('customer_id', $customerLedger->customer_id)
+                                ->where('plot_id', $customerLedger->plot_id)
+                                ->where('cancel_status', '0')
+                                ->latest('id')
+                                ->value('id'),
+                            'ledger_id' => optional($customerLedger->ledger)->id,
+                            'project_id' => $customerLedger->project_id,
+                            'customer_id' => $customerLedger->customer_id,
+                            'plot_id' => $customerLedger->plot_id,
+                            'voucher_series' => optional($customerLedger->ledger)->type ?? $customerLedger->transaction_type,
+                            'voucher_number' => optional($customerLedger->ledger)->voucher_number,
+                            'slip_reference' => $customerLedger->reference,
+                            'payment_type' => $customerLedger->payment_type,
+                            'amount' => $customerLedger->amount_out,
+                            'receipt_date' => $customerLedger->date,
+                            'description' => $customerLedger->description,
+                            'bank_id' => $customerLedger->bank_id,
+                            't_number' => $customerLedger->t_number,
+                            'passing_date' => $customerLedger->passing_date,
+                            'is_active' => $customerLedger->is_active,
+                            'is_approve' => $customerLedger->is_approve,
+                            'update_by' => Auth::id(),
+                        ]
+                    );
+                }
+            }
+
             // Mark pending as approved
             $pending->update([
                 'status' => 'approved',
@@ -354,6 +428,40 @@ class VoucherController extends Controller
             DB::table($request->table)
                 ->where('id', $pending->record_id)
                 ->update($pendingNewChanges);
+
+            if ($request->table === 'customer_ledger') {
+                $customerLedger = \App\Models\CustomerLedger::with('ledger')->find($pending->record_id);
+                if ($customerLedger && $customerLedger->transaction_type === 'PPR') {
+                    BookingVoucher::updateOrCreate(
+                        ['customer_ledger_id' => $customerLedger->id],
+                        [
+                            'booking_id' => \App\Models\Booking::where('project_id', $customerLedger->project_id)
+                                ->where('customer_id', $customerLedger->customer_id)
+                                ->where('plot_id', $customerLedger->plot_id)
+                                ->where('cancel_status', '0')
+                                ->latest('id')
+                                ->value('id'),
+                            'ledger_id' => optional($customerLedger->ledger)->id,
+                            'project_id' => $customerLedger->project_id,
+                            'customer_id' => $customerLedger->customer_id,
+                            'plot_id' => $customerLedger->plot_id,
+                            'voucher_series' => optional($customerLedger->ledger)->type ?? $customerLedger->transaction_type,
+                            'voucher_number' => optional($customerLedger->ledger)->voucher_number,
+                            'slip_reference' => $customerLedger->reference,
+                            'payment_type' => $customerLedger->payment_type,
+                            'amount' => $customerLedger->amount_out,
+                            'receipt_date' => $customerLedger->date,
+                            'description' => $customerLedger->description,
+                            'bank_id' => $customerLedger->bank_id,
+                            't_number' => $customerLedger->t_number,
+                            'passing_date' => $customerLedger->passing_date,
+                            'is_active' => $customerLedger->is_active,
+                            'is_approve' => $customerLedger->is_approve,
+                            'update_by' => Auth::id(),
+                        ]
+                    );
+                }
+            }
 
             // Mark pending as approved
             $pending->update([
@@ -751,6 +859,153 @@ class VoucherController extends Controller
             'data' => $data,
         ]);
     }
+
+    public function pendingBankPayments(Request $request)
+    {
+        $selectedProjectId = getSelectedTown();
+
+        $pendingRows = CustomerLedger::with([
+            'customer_list:id,first_name,last_name,phone_number',
+            'plot_list:id,name,type',
+            'ledger.projectHeadSubhead.subheadAccounting:id,name',
+        ])
+            ->where('project_id', $selectedProjectId)
+            ->where('is_active', 1)
+            ->whereIn('payment_type', [2, 3])
+            ->where('passing_status', 0)
+            ->orderByDesc('id')
+            ->get()
+            ->map(function (CustomerLedger $item) {
+                return [
+                    'id' => $item->id,
+                    'date' => $item->date,
+                    'transaction_type' => $item->transaction_type,
+                    'reference' => $item->reference,
+                    'customer' => trim(($item->customer_list?->first_name ?? '') . ' ' . ($item->customer_list?->last_name ?? '')),
+                    'plot' => $item->plot_list
+                        ? ((((int) $item->plot_list->type === 1) ? 'R' : (((int) $item->plot_list->type === 2) ? 'C' : '')) . '-' . $item->plot_list->name)
+                        : '',
+                    'bank' => $item->bank_id ? getBankNameById($item->bank_id) : '',
+                    't_number' => $item->t_number,
+                    'amount' => (float) $item->amount_out,
+                    'passing_date' => $item->passing_date,
+                    'payment_type' => (int) $item->payment_type,
+                    'child_account' => optional(optional($item->ledger)->projectHeadSubhead)->subheadAccounting?->name,
+                ];
+            });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $pendingRows,
+        ]);
+    }
+
+    public function updatePendingBankPaymentStatus(Request $request, $customerLedger)
+    {
+        $selectedProjectId = getSelectedTown();
+        $validated = $request->validate([
+            'passing_status' => 'required|in:1,2,3',
+            'note' => 'required|string|max:1000',
+            'bank_post_at' => 'nullable|date',
+            'accounts_id' => 'required_if:passing_status,1',
+            'subaccounts_id' => 'required_if:passing_status,1',
+        ]);
+
+        try {
+            DB::transaction(function () use ($validated, $customerLedger, $selectedProjectId) {
+                $lockedLedger = CustomerLedger::where('project_id', $selectedProjectId)
+                    ->where('id', $customerLedger)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ((int) $lockedLedger->passing_status !== 0) {
+                    throw new \RuntimeException('This payment is already processed.');
+                }
+
+                $creditAccountId = null;
+                if ((int) $validated['passing_status'] === 1) {
+                    $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', $validated['accounts_id'])
+                        ->where('subhead_accounting_id', $validated['subaccounts_id'])
+                        ->where('project_id', $selectedProjectId)
+                        ->value('id');
+
+                    if (!$creditAccountId) {
+                        throw new \RuntimeException('Selected bank account is invalid for this project.');
+                    }
+                }
+
+                $status = (int) $validated['passing_status'];
+                $checkSlip = $lockedLedger->transaction_type . '-' . $lockedLedger->reference;
+                $bankName = $lockedLedger->bank_id ? getBankNameById($lockedLedger->bank_id) : null;
+                $note = '(' . $checkSlip . ') ' . $validated['note'];
+
+                $lockedLedger->update([
+                    'passing_status' => $status,
+                    'note' => $note,
+                    'bank_post_at' => $validated['bank_post_at'] ?? null,
+                ]);
+
+                $lockedLedger->addCheckHistory([
+                    'id' => $lockedLedger->id,
+                    'check_number' => $lockedLedger->t_number,
+                    'passing_date' => $validated['bank_post_at'] ?? null,
+                    'passing_status' => $status,
+                    'description_note' => $note,
+                    'bank_name' => $bankName,
+                    'credit_account_id' => $creditAccountId,
+                    'user_id' => Auth::id(),
+                ]);
+
+                if ($status === 1) {
+                    $clearanceReference = 'BANK_CLEARANCE#' . $lockedLedger->id;
+                    $alreadyPosted = Ledger::where('customer_ledger_id', $lockedLedger->id)
+                        ->where('type', 'BR')
+                        ->where('reference', $clearanceReference)
+                        ->exists();
+
+                    if (!$alreadyPosted) {
+                        $voucherNumber = getVocuherNumber('BR');
+                        $lastId = getLastLedgerIdByType('BR');
+
+                        Ledger::create([
+                            'customer_ledger_id' => $lockedLedger->id,
+                            'type' => 'BR',
+                            'voucher_number' => $voucherNumber,
+                            'type_id' => ((int) $lastId) + 1,
+                            'project_head_subheads_id' => $creditAccountId,
+                            'reference' => $clearanceReference,
+                            'amount_in' => 0.00,
+                            'amount_out' => $lockedLedger->amount_out,
+                            'is_active' => 1,
+                            'date' => $validated['bank_post_at'] ?? now()->toDateString(),
+                            'detail' => $note,
+                            'update_by' => Auth::id(),
+                            'create_by' => Auth::id(),
+                            'status' => 0,
+                        ]);
+                    }
+                }
+            });
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unable to update payment status right now.',
+            ], 500);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Payment status updated successfully.',
+        ]);
+    }
+
     public function cash_in_data(Request $request)
     {
         $selectedProjectId = getSelectedTown();
