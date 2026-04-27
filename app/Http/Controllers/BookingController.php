@@ -1916,6 +1916,7 @@ class BookingController extends Controller
                 case 'deposit':
                     DB::transaction(function () use ($request, $customer_id) {
                         $payment_type = $request->input('payment_type');
+                        $isPendingBankPayment = in_array((int) $payment_type, [2, 3], true);
                         if ($payment_type == 1) {
                             $t_number = $bank_id = null;
                         } else {
@@ -1940,6 +1941,7 @@ class BookingController extends Controller
                             'is_active' => 1,
                             'is_approve' => 0,
                             'passing_date' => $request->input('passing_date'),
+                            'passing_status' => $isPendingBankPayment ? 0 : null,
                         ]);
 
                         $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', 16)
@@ -1956,22 +1958,25 @@ class BookingController extends Controller
                         $voucherNumber = getVocuherNumber($ledgerType);
                         $lastId = getLastLedgerIdByType($ledgerType);
 
-                        $ledger = Ledger::create([
-                            'customer_ledger_id' => $customerLedger->id,
-                            'type' => $ledgerType,
-                            'voucher_number' => $voucherNumber,
-                            'type_id' => ((int) $lastId) + 1,
-                            'project_head_subheads_id' => $creditAccountId,
-                            'reference' => $request->input('reference'),
-                            'amount_in' => str_replace(',', '', $request->input('amount')),
-                            'amount_out' => 0.00,
-                            'is_active' => 1,
-                            'date' => $request->input('date'),
-                            'detail' => '(Cash slip#' . $request->input('reference') . ') ' . $request->input('detail'),
-                            'update_by' => Auth::id(),
-                            'create_by' => Auth::id(),
-                            'status' => 0,
-                        ]);
+                        $ledger = null;
+                        if (!$isPendingBankPayment) {
+                            $ledger = Ledger::create([
+                                'customer_ledger_id' => $customerLedger->id,
+                                'type' => $ledgerType,
+                                'voucher_number' => $voucherNumber,
+                                'type_id' => ((int) $lastId) + 1,
+                                'project_head_subheads_id' => $creditAccountId,
+                                'reference' => $request->input('reference'),
+                                'amount_in' => str_replace(',', '', $request->input('amount')),
+                                'amount_out' => 0.00,
+                                'is_active' => 1,
+                                'date' => $request->input('date'),
+                                'detail' => '(Cash slip#' . $request->input('reference') . ') ' . $request->input('detail'),
+                                'update_by' => Auth::id(),
+                                'create_by' => Auth::id(),
+                                'status' => 0,
+                            ]);
+                        }
 
                         $this->syncBookingVoucherRecord($customerLedger, $ledger);
                     });

@@ -111,22 +111,31 @@ class LedgerController extends Controller
                 $bankName = getBankNameById($customerLedger->bank_id);
 
                 // Update the CustomerLedger record
-                $customerLedger->update([
-                    'passing_status' => $passing_status,
-                    'note' => '(' . $check_slip . ') ' . $request->detail,
-                    'bank_post_at' => $request->passing_date,
-                ]);
+                $isPendingCashInBankPayment = in_array((int) $request->payment_type, [2, 3], true) && $firstTwoDigits === 'CR';
+                if ($isPendingCashInBankPayment) {
+                    $customerLedger->update([
+                        'passing_status' => 0,
+                        'note' => null,
+                        'bank_post_at' => null,
+                    ]);
+                } else {
+                    $customerLedger->update([
+                        'passing_status' => $passing_status,
+                        'note' => '(' . $check_slip . ') ' . $request->detail,
+                        'bank_post_at' => $request->passing_date,
+                    ]);
 
-                // Add to check history
-                $customerLedger->addCheckHistory([
-                    'id' => $customerLedger->id,
-                    'check_number' => $customerLedger->t_number,
-                    'passing_date' => $request->passing_date,
-                    'passing_status' => '1',
-                    'description_note' => '(' . $check_slip . ') ' . $request->detail,
-                    'bank_name' => $bankName, // Add bank name to history
-                    'credit_account_id' => $projectHeadSubhead->id, // Add credit account ID to history
-                ]);
+                    // Add to check history only for immediately-passed flows
+                    $customerLedger->addCheckHistory([
+                        'id' => $customerLedger->id,
+                        'check_number' => $customerLedger->t_number,
+                        'passing_date' => $request->passing_date,
+                        'passing_status' => '1',
+                        'description_note' => '(' . $check_slip . ') ' . $request->detail,
+                        'bank_name' => $bankName, // Add bank name to history
+                        'credit_account_id' => $projectHeadSubhead->id, // Add credit account ID to history
+                    ]);
+                }
             }
             $lastId = getLastLedgerIdByType($firstTwoDigits);
 
@@ -175,23 +184,26 @@ class LedgerController extends Controller
                 $detail = $request->input('detail') . ' (Bank: ' . $bankName . ' cheque No: ' . $customerLedger->t_number . ' Passing Date: ' . $request->passing_date . ')';
             }
             // dd($firstTwoDigits);
-            $data = Ledger::create([
-                'customer_ledger_id' => $customerLedger->id,
-                'voucher_number' => $voucherNumber,
-                'type' => $firstTwoDigits,
-                'type_id' => $lastId + 1,
-                'project_head_subheads_id' => $projectHeadSubhead->id,
-                'reference' => $request->reference,
-                'amount_in' => $amount_in,
-                'amount_out' => $amount_out,
-                'is_active' => 1,
-                'date' => $request->date,
-                'detail' => $detail,
-                'update_by' => Auth::user()->id,
-                'create_by' => Auth::user()->id,
-                'status' => 0,
-
-            ]);
+            $isPendingCashInBankPayment = in_array((int) $request->payment_type, [2, 3], true) && $firstTwoDigits === 'CR';
+            $data = null;
+            if (!$isPendingCashInBankPayment) {
+                $data = Ledger::create([
+                    'customer_ledger_id' => $customerLedger->id,
+                    'voucher_number' => $voucherNumber,
+                    'type' => $firstTwoDigits,
+                    'type_id' => $lastId + 1,
+                    'project_head_subheads_id' => $projectHeadSubhead->id,
+                    'reference' => $request->reference,
+                    'amount_in' => $amount_in,
+                    'amount_out' => $amount_out,
+                    'is_active' => 1,
+                    'date' => $request->date,
+                    'detail' => $detail,
+                    'update_by' => Auth::user()->id,
+                    'create_by' => Auth::user()->id,
+                    'status' => 0,
+                ]);
+            }
             $lastSubmitDate = $request->date; // Adjust this according to your actual form field
             session(['last_submit_date' => $lastSubmitDate]);
 

@@ -34,7 +34,7 @@
         .header {
             display: table;
             width: 100%;
-            table-layout: fixed;
+            /* table-layout: fixed; */
             border-bottom: 1.2px solid #000;
             padding-bottom: 6px;
             margin-bottom: 7px;
@@ -46,7 +46,8 @@
         }
 
         .header-left {
-            width: 54px;
+            width: 110px;
+            text-align: left;
         }
 
         .logo {

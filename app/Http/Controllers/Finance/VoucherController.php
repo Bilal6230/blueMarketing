@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Finance;
 
 use App\Models\Lead;
 use App\Models\BookingVoucher;
+use App\Models\CustomerLedger;
 use App\Models\PendingUpdate;
 use App\Models\Plot;
 use App\Models\User;
@@ -858,6 +859,153 @@ class VoucherController extends Controller
             'data' => $data,
         ]);
     }
+
+    public function pendingBankPayments(Request $request)
+    {
+        $selectedProjectId = getSelectedTown();
+
+        $pendingRows = CustomerLedger::with([
+            'customer_list:id,first_name,last_name,phone_number',
+            'plot_list:id,name,type',
+            'ledger.projectHeadSubhead.subheadAccounting:id,name',
+        ])
+            ->where('project_id', $selectedProjectId)
+            ->where('is_active', 1)
+            ->whereIn('payment_type', [2, 3])
+            ->where('passing_status', 0)
+            ->orderByDesc('id')
+            ->get()
+            ->map(function (CustomerLedger $item) {
+                return [
+                    'id' => $item->id,
+                    'date' => $item->date,
+                    'transaction_type' => $item->transaction_type,
+                    'reference' => $item->reference,
+                    'customer' => trim(($item->customer_list?->first_name ?? '') . ' ' . ($item->customer_list?->last_name ?? '')),
+                    'plot' => $item->plot_list
+                        ? ((((int) $item->plot_list->type === 1) ? 'R' : (((int) $item->plot_list->type === 2) ? 'C' : '')) . '-' . $item->plot_list->name)
+                        : '',
+                    'bank' => $item->bank_id ? getBankNameById($item->bank_id) : '',
+                    't_number' => $item->t_number,
+                    'amount' => (float) $item->amount_out,
+                    'passing_date' => $item->passing_date,
+                    'payment_type' => (int) $item->payment_type,
+                    'child_account' => optional(optional($item->ledger)->projectHeadSubhead)->subheadAccounting?->name,
+                ];
+            });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $pendingRows,
+        ]);
+    }
+
+    public function updatePendingBankPaymentStatus(Request $request, $customerLedger)
+    {
+        $selectedProjectId = getSelectedTown();
+        $validated = $request->validate([
+            'passing_status' => 'required|in:1,2,3',
+            'note' => 'required|string|max:1000',
+            'bank_post_at' => 'nullable|date',
+            'accounts_id' => 'required_if:passing_status,1',
+            'subaccounts_id' => 'required_if:passing_status,1',
+        ]);
+
+        try {
+            DB::transaction(function () use ($validated, $customerLedger, $selectedProjectId) {
+                $lockedLedger = CustomerLedger::where('project_id', $selectedProjectId)
+                    ->where('id', $customerLedger)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ((int) $lockedLedger->passing_status !== 0) {
+                    throw new \RuntimeException('This payment is already processed.');
+                }
+
+                $creditAccountId = null;
+                if ((int) $validated['passing_status'] === 1) {
+                    $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', $validated['accounts_id'])
+                        ->where('subhead_accounting_id', $validated['subaccounts_id'])
+                        ->where('project_id', $selectedProjectId)
+                        ->value('id');
+
+                    if (!$creditAccountId) {
+                        throw new \RuntimeException('Selected bank account is invalid for this project.');
+                    }
+                }
+
+                $status = (int) $validated['passing_status'];
+                $checkSlip = $lockedLedger->transaction_type . '-' . $lockedLedger->reference;
+                $bankName = $lockedLedger->bank_id ? getBankNameById($lockedLedger->bank_id) : null;
+                $note = '(' . $checkSlip . ') ' . $validated['note'];
+
+                $lockedLedger->update([
+                    'passing_status' => $status,
+                    'note' => $note,
+                    'bank_post_at' => $validated['bank_post_at'] ?? null,
+                ]);
+
+                $lockedLedger->addCheckHistory([
+                    'id' => $lockedLedger->id,
+                    'check_number' => $lockedLedger->t_number,
+                    'passing_date' => $validated['bank_post_at'] ?? null,
+                    'passing_status' => $status,
+                    'description_note' => $note,
+                    'bank_name' => $bankName,
+                    'credit_account_id' => $creditAccountId,
+                    'user_id' => Auth::id(),
+                ]);
+
+                if ($status === 1) {
+                    $clearanceReference = 'BANK_CLEARANCE#' . $lockedLedger->id;
+                    $alreadyPosted = Ledger::where('customer_ledger_id', $lockedLedger->id)
+                        ->where('type', 'BR')
+                        ->where('reference', $clearanceReference)
+                        ->exists();
+
+                    if (!$alreadyPosted) {
+                        $voucherNumber = getVocuherNumber('BR');
+                        $lastId = getLastLedgerIdByType('BR');
+
+                        Ledger::create([
+                            'customer_ledger_id' => $lockedLedger->id,
+                            'type' => 'BR',
+                            'voucher_number' => $voucherNumber,
+                            'type_id' => ((int) $lastId) + 1,
+                            'project_head_subheads_id' => $creditAccountId,
+                            'reference' => $clearanceReference,
+                            'amount_in' => 0.00,
+                            'amount_out' => $lockedLedger->amount_out,
+                            'is_active' => 1,
+                            'date' => $validated['bank_post_at'] ?? now()->toDateString(),
+                            'detail' => $note,
+                            'update_by' => Auth::id(),
+                            'create_by' => Auth::id(),
+                            'status' => 0,
+                        ]);
+                    }
+                }
+            });
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unable to update payment status right now.',
+            ], 500);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Payment status updated successfully.',
+        ]);
+    }
+
     public function cash_in_data(Request $request)
     {
         $selectedProjectId = getSelectedTown();
