@@ -1599,18 +1599,14 @@ class BookingController extends Controller
         $x['class'] = 'cash-in';
         $x['bg_voucher'] = 'info-cash-in';
 
-        $baseQuery = BookingVoucher::with([
-            'customerLedger',
-            'customerLedger.customer_list',
-            'customerLedger.plot_list',
-            'customerLedger.project_list',
+        $baseQuery = CustomerLedger::with([
+            'customer_list',
+            'plot_list',
+            'project_list',
             'ledger.projectHeadSubhead.subheadAccounting',
             'ledger.projectHeadSubhead.plot',
-            'customer',
-            'plot',
-            'project',
         ])
-            ->where('voucher_series', 'PPR')
+            ->where('transaction_type', 'PPR')
             ->where('is_active', '1')
             ->where('project_id', $selectedProjectId);
         $query = clone $baseQuery;
@@ -1643,20 +1639,15 @@ class BookingController extends Controller
 
         if ($request->filled('reference')) {
             $reference = trim($request->input('reference'));
-            $query->where(function ($referenceQuery) use ($reference) {
-                $referenceQuery->where('slip_reference', 'like', '%' . $reference . '%')
-                    ->orWhereHas('customerLedger', function ($customerLedgerQuery) use ($reference) {
-                        $customerLedgerQuery->where('reference', 'like', '%' . $reference . '%');
-                    });
-            });
+            $query->where('reference', 'like', '%' . $reference . '%');
         }
 
         if ($request->filled('fdate')) {
-            $query->whereDate('receipt_date', '>=', $request->input('fdate'));
+            $query->whereDate('date', '>=', $request->input('fdate'));
         }
 
         if ($request->filled('tdate')) {
-            $query->whereDate('receipt_date', '<=', $request->input('tdate'));
+            $query->whereDate('date', '<=', $request->input('tdate'));
         }
 
         if ($request->filled('status') && in_array((string) $request->input('status'), ['0', '1', '2'], true)) {
@@ -1666,7 +1657,7 @@ class BookingController extends Controller
         $data = $query->orderByDesc('id')->get();
         $data = $data->map(function ($item) {
             $pending = PendingUpdate::where('table_name', 'customer_ledger') // 👈 dynamic table name
-                ->where('record_id', $item->customer_ledger_id)
+                ->where('record_id', $item->id)
                 ->latest()
                 ->first();
             $item['submitted_by'] = $pending ? $pending->submittedBy?->name : '';
@@ -1694,7 +1685,7 @@ class BookingController extends Controller
 
         $x['projects'] = Project::where('id', $selectedProjectId)->get();
         $x['customers'] = $baseRows->map(function ($item) {
-            $customer = $item->customer ?: optional($item->customerLedger)->customer_list;
+            $customer = $item->customer_list;
             if ($customer) {
                 $name = trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? ''));
                 if ($name !== '') {
@@ -1809,7 +1800,6 @@ class BookingController extends Controller
                     $customerLedger->ledger->update($ledgerPayload);
                 }
 
-                $this->syncBookingVoucherRecord($customerLedger->fresh(['ledger']));
             });
         } catch (\Throwable $th) {
             Log::error('Receive plot payment update failed', [
@@ -1977,7 +1967,6 @@ class BookingController extends Controller
                             ]);
                         }
 
-                        $this->syncBookingVoucherRecord($customerLedger, $ledger);
                     });
 
 
@@ -2434,43 +2423,6 @@ class BookingController extends Controller
 
         return view('admin.booking.print_receive', $x);
     }
-
-    private function syncBookingVoucherRecord(CustomerLedger $customerLedger, ?Ledger $ledger = null): BookingVoucher
-    {
-        $ledger = $ledger ?: $customerLedger->ledger;
-        $bookingId = Booking::where('project_id', $customerLedger->project_id)
-            ->where('customer_id', $customerLedger->customer_id)
-            ->where('plot_id', $customerLedger->plot_id)
-            ->where('cancel_status', '0')
-            ->latest('id')
-            ->value('id');
-
-        return BookingVoucher::updateOrCreate(
-            ['customer_ledger_id' => $customerLedger->id],
-            [
-                'booking_id' => $bookingId,
-                'ledger_id' => $ledger?->id,
-                'project_id' => $customerLedger->project_id,
-                'customer_id' => $customerLedger->customer_id,
-                'plot_id' => $customerLedger->plot_id,
-                'voucher_series' => $ledger?->type ?? $customerLedger->transaction_type,
-                'voucher_number' => $ledger?->voucher_number,
-                'slip_reference' => $customerLedger->reference,
-                'payment_type' => $customerLedger->payment_type,
-                'amount' => $customerLedger->amount_out,
-                'receipt_date' => $customerLedger->date,
-                'description' => $customerLedger->description,
-                'bank_id' => $customerLedger->bank_id,
-                't_number' => $customerLedger->t_number,
-                'passing_date' => $customerLedger->passing_date,
-                'is_active' => $customerLedger->is_active,
-                'is_approve' => $customerLedger->is_approve,
-                'create_by' => $ledger?->create_by ?? Auth::id(),
-                'update_by' => Auth::id(),
-            ]
-        );
-    }
-
 
     public function booking_price_update(Request $request)
     {
