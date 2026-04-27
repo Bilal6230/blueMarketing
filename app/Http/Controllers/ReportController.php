@@ -169,6 +169,18 @@ class ReportController extends Controller
             $amount = $result->amount_out;
             $check_slip = $result->transaction_type . '-' . $result->reference;
 
+            if ($request->passing_status == 1) {
+                // Resolve pass account before writing history so credit_account_id is saved.
+                $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', $request->accounts_id)
+                    ->where('project_id', $selectedProjectId)
+                    ->where('subhead_accounting_id', $request->subaccounts_id)
+                    ->value('id');
+
+                if (!$creditAccountId) {
+                    throw new \Exception('Credit account ID not found.');
+                }
+            }
+
             // Get the bank name
             $bankName = getBankNameById($result->bank_id);
 
@@ -192,16 +204,6 @@ class ReportController extends Controller
 
             // Create Ledger entry only if passing_status == 1
             if ($request->passing_status == 1) {
-                // Ensure credit account exists only for pass action
-                $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', $request->accounts_id)
-                    ->where('project_id', $selectedProjectId)
-                    ->where('subhead_accounting_id', $request->subaccounts_id)
-                    ->value('id');
-
-                if (!$creditAccountId) {
-                    throw new \Exception('Credit account ID not found.');
-                }
-
                 $clearanceReference = 'BANK_CLEARANCE#' . $result->id;
                 $alreadyPosted = Ledger::where('customer_ledger_id', $result->id)
                     ->where('type', 'BR')
