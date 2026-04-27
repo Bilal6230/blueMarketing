@@ -165,8 +165,15 @@ class ReportController extends Controller
                 throw new \Exception('Credit account ID not found.');
             }
 
-            // Find the CustomerLedger record
-            $result = CustomerLedger::find($request->id);
+            // Lock and scope the target row to current project
+            $result = CustomerLedger::where('project_id', $selectedProjectId)
+                ->where('id', $request->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ((int) $result->passing_status !== 0) {
+                throw new \RuntimeException('This payment has already been processed.');
+            }
             $amount = $result->amount_out;
             $check_slip = $result->transaction_type . '-' . $result->reference;
 
@@ -193,23 +200,31 @@ class ReportController extends Controller
 
             // Create Ledger entry only if passing_status == 1
             if ($request->passing_status == 1) {
-                $voucherNumber = getVocuherNumber('BR');
-                Ledger::create([
-                    'customer_ledger_id' => $request->id,
-                    'type' => 'BR',
-                    'voucher_number' => $voucherNumber,
-                    'type_id' => $lastId + 2,
-                    'project_head_subheads_id' => $creditAccountId,
-                    'reference' => "Check Pass in Bank",
-                    'amount_in' => 0.00, // Adjust this field as per your data
-                    'amount_out' => $amount,
-                    'is_active' => 1,
-                    'date' => $request->bank_post_at, // Adjust this field as per your data
-                    'detail' => '(' . $check_slip . ') ' . $request->note,
-                    'update_by' => Auth::user()->id,
-                    'create_by' => Auth::user()->id,
-                    'status' => 0,
-                ]);
+                $clearanceReference = 'BANK_CLEARANCE#' . $result->id;
+                $alreadyPosted = Ledger::where('customer_ledger_id', $result->id)
+                    ->where('type', 'BR')
+                    ->where('reference', $clearanceReference)
+                    ->exists();
+
+                if (!$alreadyPosted) {
+                    $voucherNumber = getVocuherNumber('BR');
+                    Ledger::create([
+                        'customer_ledger_id' => $result->id,
+                        'type' => 'BR',
+                        'voucher_number' => $voucherNumber,
+                        'type_id' => $lastId + 2,
+                        'project_head_subheads_id' => $creditAccountId,
+                        'reference' => $clearanceReference,
+                        'amount_in' => 0.00, // Adjust this field as per your data
+                        'amount_out' => $amount,
+                        'is_active' => 1,
+                        'date' => $request->bank_post_at, // Adjust this field as per your data
+                        'detail' => '(' . $check_slip . ') ' . $request->note,
+                        'update_by' => Auth::user()->id,
+                        'create_by' => Auth::user()->id,
+                        'status' => 0,
+                    ]);
+                }
             }
 
 

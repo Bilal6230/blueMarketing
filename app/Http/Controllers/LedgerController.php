@@ -65,6 +65,7 @@ class LedgerController extends Controller
         // dd($amount_in, $amount_out);
         // dd($firstTwoDigits);
 
+        DB::beginTransaction();
         try {
 
 
@@ -211,20 +212,17 @@ class LedgerController extends Controller
                 DraftLedger::find($request->input('id'))->delete();
             }
             DB::commit();
-            // Alert::success('Notification', 'Data <b></b> Save successfully ')->toToast()->toHtml();
             return response()->json([
                 'status' => 'success',
                 'message' => 'Data saved successfully.',
                 'data' => $data
             ], 200);
-            Alert::success('Notification', 'Data <b>' . $data->project . '</b> Save successfully ')->toToast();
         } catch (\Throwable $th) {
+            DB::rollBack();
             return response()->json([
                 'status' => 'error',
-                'message' => $th->getMessage()
+                'message' => 'Unable to save voucher right now. Please try again.'
             ], 500);
-            DB::rollback();
-            Alert::error('Notification', 'Data <b>' . $th->getMessage())->toToast()->toHtml();
         }
         return redirect()->back();
     }

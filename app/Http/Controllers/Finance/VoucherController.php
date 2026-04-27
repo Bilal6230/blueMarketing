@@ -29,6 +29,7 @@ use App\Repository\Lead\LeadRepository as lead_repo;
 
 class VoucherController extends Controller
 {
+    private array $allowedPendingUpdateTables = ['ledgers', 'draft_ledgers', 'customer_ledger', 'leads'];
     /**
      * Display a listing of the resource.
      *
@@ -231,11 +232,9 @@ class VoucherController extends Controller
     }
     public function approve($id, Request $request)
     {
-        // Whitelist allowed tables to prevent SQL injection
-        // $allowedTables = ['ledgers', 'customers', 'projects']; // add all tables you want to allow
-        // if (!in_array($request->table, $allowedTables)) {
-        //     abort(400, 'Invalid table name.');
-        // }
+        if (!in_array($request->table, $this->allowedPendingUpdateTables, true)) {
+            abort(400, 'Invalid table name.');
+        }
 
         // Fetch pending update record
         $pending = PendingUpdate::where('record_id', $id)
@@ -375,11 +374,9 @@ class VoucherController extends Controller
     }
     public function approveAdmin($id, Request $request)
     {
-        // Whitelist allowed tables to prevent SQL injection
-        // $allowedTables = ['ledgers', 'customers', 'projects']; // add all tables you want to allow
-        // if (!in_array($request->table, $allowedTables)) {
-        //     abort(400, 'Invalid table name.');
-        // }
+        if (!in_array($request->table, $this->allowedPendingUpdateTables, true)) {
+            abort(400, 'Invalid table name.');
+        }
 
         // Fetch pending update record
         $pending = PendingUpdate::where('id', $id)
