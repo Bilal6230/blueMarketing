@@ -149,6 +149,7 @@
                 }else if($voucher->type == 'CR'){
                     $amount = $voucher->amount_in;
                 }
+                $amount = (float) ($amount ?? 0);
             @endphp
             <tbody>
                 <tr>

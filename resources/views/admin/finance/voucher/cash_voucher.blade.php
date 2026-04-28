@@ -1,5 +1,8 @@
 @extends('admin.layouts.master')
 @section('content')
+    @php
+        $voucherType = is_string($type) && in_array($type, ['CR', 'CP'], true) ? $type : '';
+    @endphp
     <style>
         .page-item.active .page-link {
             background-color: {{ $pagination_color }} !important;
@@ -106,7 +109,7 @@
                                                         <label class="fbox mb-1">Voucher No</label>
                                                         <input type="text" class="form-control form-control-sm"
                                                             name="voucher_number" id="voucher_number"
-                                                            value="{{ $type }}-{{ $latest_voucher_number ?? '' }}"
+                                                            value="{{ $voucherType }}-{{ $latest_voucher_number ?? '' }}"
                                                             autocomplete="off" readonly>
                                                         @error('reference')
                                                             <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -118,7 +121,7 @@
                                                         <label class="fbox mb-1">Reference No</label>
                                                         <input type="text" class="form-control form-control-sm"
                                                             name="voucher"
-                                                            value="{{ $type }}-{{ get_new_voucher_number($type) }}"
+                                                            value="{{ $voucherType }}-{{ $latest_voucher_number ?? '' }}"
                                                             autocomplete="off" readonly>
                                                         @error('reference')
                                                             <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -155,8 +158,8 @@
                                                                 placeholder=" " autocomplete="off" name="acct_type"
                                                                 id="acct_type">
                                                                 <option value="">Select Account Type</option>
-                                                                @foreach ($accountTypes as $type)
-                                                                    <option value="{{ $type->id }}">{{ $type->name }}
+                                                                @foreach ($accountTypes as $accountType)
+                                                                    <option value="{{ $accountType->id }}">{{ $accountType->name }}
                                                                     </option>
                                                                 @endforeach
                                                             </select>
@@ -244,30 +247,57 @@
                                                     </div>
                                                     <div class="col-6 col-md-3 col-lg-2 bank_group" style="display: none">
                                                         <label class="fbox mb-1">Passing Date</label>
-                                                        <input type="text" name="passing_date"
+                                                        <input type="text" name="passing_date" id="passing_date"
                                                             class="passing_date date form-control form-control-sm" data-input>
                                                         @error('passing_date')
                                                             <div class="invalid-feedback d-block">{{ $message }}</div>
                                                         @enderror
                                                     </div>
-                                                    @if ($type === 'CP')
+                                                    @if ($voucherType === 'CP')
+                                                        <div class="col-6 col-md-3 col-lg-2 bank_group pending_status_group"
+                                                            style="display: none">
+                                                            <label class="fbox mb-1">Status</label>
+                                                            <select class="form-control form-control-sm" name="pending_status"
+                                                                id="pending_status" disabled>
+                                                                <option value="1">Pass</option>
+                                                                <option value="2">Return</option>
+                                                                <option value="3">Cheque Bounce</option>
+                                                            </select>
+                                                        </div>
+                                                    @endif
+                                                    <div class="col-12 col-md-12 col-lg-10" style="margin-top: 10px">
+                                                        <label for="detail" class="fbox mb-1">Details</label>
+                                                        <textarea id="detail" class="form-control @error('detail') input-error @enderror"
+                                                            placeholder="Enter your details here..." name="detail" maxlength="255" required>{{ old('detail') }}</textarea>
+                                                        @error('detail')
+                                                            <div class="error-message">{{ $message }}</div>
+                                                        @enderror
+                                                    </div>
+                                                    @if ($voucherType === 'CP')
                                                         <div class="col-12 mt-3" id="pendingPaymentsSection"
                                                             style="display: none;">
                                                             <div class="card border">
                                                                 <div class="card-header py-2">
-                                                                    <strong>Pending Online/Check Payments</strong>
+                                                                    <strong id="pendingPanelTitle">Pending Online Payments</strong>
                                                                 </div>
                                                                 <div class="card-body p-2">
+                                                                    <div class="alert alert-info py-2 mb-2">
+                                                                        Select a pending Online/Check voucher to clear, return, or mark as bounced.
+                                                                    </div>
+                                                                    <input type="hidden" id="selected_pending_payment_id"
+                                                                        name="selected_pending_payment_id" value="">
                                                                     <div class="table-responsive mb-2">
                                                                         <table class="table table-sm table-bordered mb-0"
                                                                             id="pendingPaymentsTable">
                                                                             <thead>
                                                                                 <tr>
                                                                                     <th>Select</th>
+                                                                                    <th>Source</th>
                                                                                     <th>Date</th>
-                                                                                    <th>Ref</th>
+                                                                                    <th>Voucher Number</th>
                                                                                     <th>Customer</th>
                                                                                     <th>Plot</th>
+                                                                                    <th>Type</th>
                                                                                     <th>Bank</th>
                                                                                     <th>Number</th>
                                                                                     <th>Amount</th>
@@ -277,66 +307,14 @@
                                                                             <tbody></tbody>
                                                                         </table>
                                                                     </div>
-                                                                    <div class="row g-2 align-items-end">
-                                                                        <div class="col-md-3">
-                                                                            <label class="fbox mb-1">Status</label>
-                                                                            <select class="form-control form-control-sm"
-                                                                                id="pending_status">
-                                                                                <option value="1">Pass</option>
-                                                                                <option value="2">Return</option>
-                                                                                <option value="3">Cheque Bounce</option>
-                                                                            </select>
-                                                                        </div>
-                                                                        <div class="col-md-3 bank-ledger-fields">
-                                                                            <label class="fbox mb-1">Head Account</label>
-                                                                            <select class="form-control form-control-sm"
-                                                                                id="pending_accounts_id">
-                                                                                <option value="">Select head</option>
-                                                                                @foreach ($headaccounts as $v)
-                                                                                    <option
-                                                                                        value="{{ $v->head_accounting_id }}">
-                                                                                        {{ $v->headAccounting->name ?? '' }}
-                                                                                    </option>
-                                                                                @endforeach
-                                                                            </select>
-                                                                        </div>
-                                                                        <div class="col-md-3 bank-ledger-fields">
-                                                                            <label class="fbox mb-1">Bank Account</label>
-                                                                            <select class="form-control form-control-sm"
-                                                                                id="pending_subaccounts_id">
-                                                                                <option value="">Select account</option>
-                                                                            </select>
-                                                                        </div>
-                                                                        <div class="col-md-3">
-                                                                            <label class="fbox mb-1">Bank Post Date</label>
-                                                                            <input type="date"
-                                                                                class="form-control form-control-sm"
-                                                                                id="pending_bank_post_at">
-                                                                        </div>
-                                                                        <div class="col-md-12">
-                                                                            <label class="fbox mb-1">Note</label>
-                                                                            <textarea class="form-control form-control-sm" id="pending_note" rows="2"
-                                                                                maxlength="1000" placeholder="Reason/note"></textarea>
-                                                                        </div>
-                                                                        <div class="col-md-12">
-                                                                            <button type="button"
-                                                                                class="btn btn-sm btn-primary"
-                                                                                id="submitPendingStatus">Update
-                                                                                Pending Payment</button>
-                                                                        </div>
+                                                                    <div class="border rounded p-2 mb-2 bg-light d-none" id="pendingSelectedSummary">
+                                                                        <strong>Selected voucher:</strong>
+                                                                        <span id="pendingSummaryText"></span>
                                                                     </div>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     @endif
-                                                    <div class="col-6 col-md-3 col-lg-10" style="margin-top: 10px">
-                                                        <label for="detail" class="fbox mb-1">Details</label>
-                                                        <textarea id="detail" class="form-control @error('detail') input-error @enderror"
-                                                            placeholder="Enter your details here..." name="detail" maxlength="255" required>{{ old('detail') }}</textarea>
-                                                        @error('detail')
-                                                            <div class="error-message">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
                                                 </div>
                                             </div>
                                             <div class="col-2">
@@ -767,8 +745,67 @@
 
 
 
+            let accountTypeRequestSeq = 0;
+            let childAccountRequestSeq = 0;
+
+            function clearPartyInfo() {
+                $('#cnic').text('Not provided');
+                $('#phone').text('Not provided');
+                $('#address').text('Not provided');
+                $('#balance').text('$0.00');
+            }
+
+            function clearVoucherAccountSelection() {
+                const tsAccounts = $('#accounts_id')[0]?.tomselect;
+                const tsSubAccounts = $('#subaccounts_id')[0]?.tomselect;
+                if (tsAccounts) {
+                    tsAccounts.clear(true);
+                    tsAccounts.clearOptions();
+                    tsAccounts.refreshOptions(false);
+                }
+                if (tsSubAccounts) {
+                    tsSubAccounts.clear(true);
+                    tsSubAccounts.clearOptions();
+                    tsSubAccounts.refreshOptions(false);
+                }
+            }
+
+            function toggleAccountFieldsLoading(isLoading) {
+                const tsAccounts = $('#accounts_id')[0]?.tomselect;
+                const tsSubAccounts = $('#subaccounts_id')[0]?.tomselect;
+                if (isLoading) {
+                    tsAccounts?.disable();
+                    tsSubAccounts?.disable();
+                } else {
+                    tsAccounts?.enable();
+                }
+            }
+
+            function setChildFieldEnabled(enabled) {
+                const tsSubAccounts = $('#subaccounts_id')[0]?.tomselect;
+                if (!enabled) {
+                    tsSubAccounts?.disable();
+                    return;
+                }
+                tsSubAccounts?.enable();
+            }
+
+            function optionExists(selectId, value) {
+                if (!value) return false;
+                const ts = document.getElementById(selectId)?.tomselect;
+                if (!ts) return false;
+                return Object.prototype.hasOwnProperty.call(ts.options || {}, String(value));
+            }
+
             $('#acct_type').change(function() {
                 var acctType = $(this).val();
+                clearPartyInfo();
+                accountTypeRequestSeq += 1;
+                const reqSeq = accountTypeRequestSeq;
+                clearVoucherAccountSelection();
+                toggleAccountFieldsLoading(true);
+                setChildFieldEnabled(false);
+
                 if (acctType) {
                     $.ajax({
                         url: '{{ route('get_account') }}',
@@ -780,6 +817,7 @@
                             _token: '{{ csrf_token() }}'
                         },
                         success: function(data) {
+                            if (reqSeq !== accountTypeRequestSeq) return;
                             const $accounts = $('#accounts_id');
                             const $subAccounts = $('#subaccounts_id');
 
@@ -813,6 +851,7 @@
 
                                 // Refresh TomSelect
                                 tsAccounts.refreshOptions(false);
+                                tsAccounts.enable();
                             }
 
                             if (tsSubAccounts) {
@@ -834,10 +873,21 @@
                                 }
 
                                 tsSubAccounts.refreshOptions(false);
+                                tsSubAccounts.disable();
                             }
                         },
                         error: function() {
+                            if (reqSeq !== accountTypeRequestSeq) return;
                             console.log('Error fetching accounts');
+                        },
+                        complete: function() {
+                            if (reqSeq !== accountTypeRequestSeq) return;
+                            const hasAccountOptions = Object.keys($('#accounts_id')[0]?.tomselect?.options || {}).length > 0;
+                            if (hasAccountOptions) {
+                                $('#accounts_id')[0]?.tomselect?.enable();
+                            } else {
+                                $('#accounts_id')[0]?.tomselect?.disable();
+                            }
                         }
                     });
                 } else {
@@ -845,6 +895,8 @@
                     let tsSubAccounts = $('#subaccounts_id')[0].tomselect;
                     if (tsAccounts) tsAccounts.clearOptions();
                     if (tsSubAccounts) tsSubAccounts.clearOptions();
+                    tsAccounts?.disable();
+                    tsSubAccounts?.disable();
                 }
             });
 
@@ -852,6 +904,17 @@
             // Similar change event for 'accounts_id' dropdown to fetch subaccounts based on account selection
             $('#accounts_id').change(function() {
                 var accountID = $(this).val();
+                clearPartyInfo();
+                childAccountRequestSeq += 1;
+                const reqSeq = childAccountRequestSeq;
+
+                const tsSubAccounts = $('#subaccounts_id')[0]?.tomselect;
+                if (tsSubAccounts) {
+                    tsSubAccounts.clear(true);
+                    tsSubAccounts.clearOptions();
+                    tsSubAccounts.refreshOptions(false);
+                    tsSubAccounts.disable();
+                }
 
                 if (accountID) {
                     $.ajax({
@@ -864,6 +927,7 @@
                             _token: '{{ csrf_token() }}'
                         },
                         success: function(data) {
+                            if (reqSeq !== childAccountRequestSeq) return;
                             const $subAccounts = $('#subaccounts_id');
                             const subAccountsEl = $subAccounts[0];
                             const tsSubAccounts = subAccountsEl?.tomselect;
@@ -899,43 +963,15 @@
 
                                 // Refresh dropdown
                                 tsSubAccounts.refreshOptions(false);
+                                tsSubAccounts.enable();
                             }
 
-                            // 🧠 Handle acct_type auto-selection
-                            if (filteredData.length > 0) {
-                                const acct_type = filteredData[0].head_accounting.acct_type;
-                                const $acctType = $('#acct_type');
-                                const acctTypeEl = $acctType[0];
-                                const tsAcctType = acctTypeEl?.tomselect;
-
-                                // Ensure DOM select also reflects TomSelect
-                                if (tsAcctType) {
-                                    // Optional: clear both first
-                                    tsAcctType.clear(true);
-                                    $acctType.val('');
-
-                                    // Check if this acct_type option exists
-                                    if (!$acctType.find(`option[value="${acct_type}"]`)
-                                        .length) {
-                                        $acctType.append(new Option(acct_type, acct_type));
-                                        tsAcctType.addOption({
-                                            value: acct_type,
-                                            text: acct_type
-                                        });
-                                        tsAcctType.refreshOptions(false);
-                                    }
-
-                                    // Set value only if not already selected
-                                    if (!tsAcctType.getValue()) {
-                                        tsAcctType.setValue(acct_type, true);
-                                    }
-                                }
-                            }
                         }
 
                     });
                 } else {
                     $('#subaccounts_id')[0].tomselect.clearOptions();
+                    $('#subaccounts_id')[0].tomselect.disable();
                 }
             });
 
@@ -955,11 +991,6 @@
                             let acctSelect = $('#accounts_id')[0].tomselect;
                             if (!acctSelect.getValue()) {
                                 acctSelect.setValue(headId, true);
-                            }
-                            let acct_type = response.acct_type;
-                            let acctTypeSelect = $('#acct_type')[0].tomselect;
-                            if (!acctTypeSelect.getValue()) {
-                                acctTypeSelect.setValue(acct_type, true);
                             }
 
                             // $('#accounts_id').val(response.headId).trigger('change');
@@ -1144,42 +1175,67 @@
                 });
             }
 
-            @if ($type === 'CP')
+            @if ($voucherType === 'CP')
                 const pendingFetchUrl = "{{ route('finance.voucher.pending_bank_payments') }}";
-                const pendingStatusUpdateUrlTemplate =
-                    "{{ route('finance.voucher.pending_bank_payments.status', ['customerLedger' => 'LEDGER_ID']) }}";
+                let pendingRowsCache = [];
+                let activePendingPaymentType = '2';
 
-                function populatePendingPaymentsTable(rows) {
+                function getPendingTypeText(paymentType) {
+                    return String(paymentType) === '3' ? 'Check' : 'Online';
+                }
+
+                function renderPendingRows() {
                     const $tbody = $('#pendingPaymentsTable tbody');
                     $tbody.empty();
+                    const filtered = pendingRowsCache;
+                    const pendingTypeText = getPendingTypeText(activePendingPaymentType);
+                    $('#pendingPanelTitle').text(`Pending ${pendingTypeText} Payments`);
 
-                    if (!rows || !rows.length) {
-                        $tbody.append(
-                            '<tr><td colspan="9" class="text-center text-muted">No pending records found.</td></tr>'
-                        );
+                    if (!filtered.length) {
+                        $tbody.append(`<tr><td colspan="11" class="text-center text-muted">No pending ${pendingTypeText} payments found for this project.</td></tr>`);
                         return;
                     }
 
-                    rows.forEach(function(item) {
-                        const row = `<tr>
-                            <td><input type="radio" name="selected_pending_payment" value="${item.id}"></td>
+                    filtered.forEach(function(item) {
+                        const checked = String($('#selected_pending_payment_id').val()) === String(item.id) ? 'checked' : '';
+                        const isOnline = Number(item.payment_type) === 2;
+                        const typeBadge = isOnline ? '<span class="badge bg-primary">Online</span>' : '<span class="badge bg-warning text-dark">Check</span>';
+                        const source = item.transaction_type === 'PPR' ? 'Received Payment' : 'Cash In';
+                        const pendingDays = item.pending_days !== undefined ? item.pending_days : '';
+                        const row = `<tr class="pending-row ${checked ? 'table-active' : ''}" data-id="${item.id}">
+                            <td><input type="radio" name="selected_pending_payment" value="${item.id}" ${checked}></td>
+                            <td>${source}</td>
                             <td>${item.date || ''}</td>
-                            <td>${(item.transaction_type || '')}-${(item.reference || '')}</td>
+                            <td>${item.voucher_number_display || ('Pending #' + item.id)}</td>
                             <td>${item.customer || ''}</td>
                             <td>${item.plot || ''}</td>
+                            <td>${typeBadge}</td>
                             <td>${item.bank || ''}</td>
                             <td>${item.t_number || ''}</td>
                             <td>${item.amount || 0}</td>
-                            <td>${item.passing_date || ''}</td>
+                            <td>${item.passing_date || ''}${pendingDays !== '' ? ` <small class="text-muted">(${pendingDays}d)</small>` : ''}</td>
                         </tr>`;
                         $tbody.append(row);
                     });
                 }
 
+                function populatePendingPaymentsTable(rows) {
+                    pendingRowsCache = rows || [];
+                    renderPendingRows();
+                }
+
                 function loadPendingPayments() {
+                    const paymentType = $('#payment_type').val();
+                    activePendingPaymentType = (paymentType === '3') ? '3' : '2';
+                    const requestData = {};
+                    if (paymentType === '2' || paymentType === '3') {
+                        requestData.payment_type = paymentType;
+                    }
+                    $('#pendingPaymentsTable tbody').html('<tr><td colspan="11" class="text-center text-muted">Loading pending payments...</td></tr>');
                     $.ajax({
                         url: pendingFetchUrl,
                         type: 'GET',
+                        data: requestData,
                         dataType: 'json',
                         success: function(res) {
                             if (res?.status === 'success') {
@@ -1194,134 +1250,59 @@
                     });
                 }
 
-                function togglePendingBankAccountFields() {
-                    const status = $('#pending_status').val();
-                    if (status === '1') {
-                        $('.bank-ledger-fields').show();
+                window.syncPendingPanelFromPaymentType = function() {
+                    const paymentType = String($('#payment_type').val() || '');
+                    const isBankMode = paymentType === '2' || paymentType === '3';
+                    $('#pending_status').prop('disabled', !isBankMode);
+                    $('.pending_status_group').toggle(isBankMode);
+                    if (paymentType === '2' || paymentType === '3') {
+                        $('.bank_group').css('display', 'block');
+                        $('#pendingPaymentsSection').show();
+                        $('#selected_pending_payment_id').val('');
+                        $('#pendingSelectedSummary').addClass('d-none');
+                        loadPendingPayments();
                     } else {
-                        $('.bank-ledger-fields').hide();
-                        $('#pending_accounts_id').val('');
-                        $('#pending_subaccounts_id').empty().append(
-                            '<option value="">Select account</option>');
+                        $('.bank_group').css('display', 'none');
+                        $('#pendingPaymentsSection').hide();
+                        $('#pending_status').val('1');
+                        $('#selected_pending_payment_id').val('');
+                        $('#pendingSelectedSummary').addClass('d-none');
+                        pendingRowsCache = [];
+                        renderPendingRows();
                     }
-                }
+                };
 
-                $('#pending_status').on('change', togglePendingBankAccountFields);
-                togglePendingBankAccountFields();
-
-                $('#pending_accounts_id').on('change', function() {
-                    const accountID = $(this).val();
-                    const $subaccounts = $('#pending_subaccounts_id');
-                    $subaccounts.empty().append('<option value="">Select account</option>');
-                    if (!accountID) {
-                        return;
+                $(document).on('change', 'input[name="selected_pending_payment"]', function() {
+                    const selectedId = $(this).val();
+                    $('#selected_pending_payment_id').val(selectedId);
+                    $('#pendingPaymentsTable tbody tr').removeClass('table-active');
+                    $(this).closest('tr').addClass('table-active');
+                    const selected = pendingRowsCache.find((row) => String(row.id) === String(selectedId));
+                    if (selected) {
+                        $('#pendingSummaryText').text(
+                            `${selected.voucher_number_display || ('Pending #' + selected.id)} | ${selected.transaction_type === 'PPR' ? 'Received Payment' : 'Cash In'} | ${selected.bank || 'N/A'} | ${selected.t_number || 'N/A'} | ${selected.amount || 0}`
+                        );
+                        $('#pendingSelectedSummary').removeClass('d-none');
+                    } else {
+                        $('#pendingSelectedSummary').addClass('d-none');
                     }
-                    $.ajax({
-                        url: '{{ route('get_account') }}',
-                        type: 'POST',
-                        dataType: 'json',
-                        data: {
-                            accountID: accountID,
-                            action: 'get_child',
-                            _token: '{{ csrf_token() }}'
-                        },
-                        success: function(data) {
-                            const filteredData = $.grep(data, function(item) {
-                                return item.head_accounting_id == accountID;
-                            });
-                            $.each(filteredData, function(_, value) {
-                                $subaccounts.append('<option value="' + value.subhead_accounting_id +
-                                    '">' + value.subhead_accounting.name + '</option>');
-                            });
-                        }
-                    });
-                });
-
-                $('#submitPendingStatus').on('click', function() {
-                    const selectedId = $('input[name="selected_pending_payment"]:checked').val();
-                    const passingStatus = $('#pending_status').val();
-                    const note = $('#pending_note').val().trim();
-                    const bankPostAt = $('#pending_bank_post_at').val();
-                    const accountsId = $('#pending_accounts_id').val();
-                    const subaccountsId = $('#pending_subaccounts_id').val();
-
-                    if (!selectedId) {
-                        Swal.fire({
-                            icon: 'warning',
-                            title: 'Select payment',
-                            text: 'Please select a pending payment first.'
-                        });
-                        return;
-                    }
-                    if (!note) {
-                        Swal.fire({
-                            icon: 'warning',
-                            title: 'Note required',
-                            text: 'Please enter a note.'
-                        });
-                        return;
-                    }
-                    if (passingStatus === '1' && (!accountsId || !subaccountsId)) {
-                        Swal.fire({
-                            icon: 'warning',
-                            title: 'Account required',
-                            text: 'Please select head and bank account for pass.'
-                        });
-                        return;
-                    }
-
-                    const endpoint = pendingStatusUpdateUrlTemplate.replace('LEDGER_ID', selectedId);
-                    $.ajax({
-                        url: endpoint,
-                        type: 'POST',
-                        dataType: 'json',
-                        data: {
-                            _token: '{{ csrf_token() }}',
-                            passing_status: passingStatus,
-                            note: note,
-                            bank_post_at: bankPostAt,
-                            accounts_id: accountsId,
-                            subaccounts_id: subaccountsId
-                        },
-                        success: function(res) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Updated',
-                                text: res?.message || 'Status updated successfully.'
-                            }).then(function() {
-                                window.location.reload();
-                            });
-                        },
-                        error: function(xhr) {
-                            const msg = xhr.responseJSON?.message || 'Unable to update status.';
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error',
-                                text: msg
-                            });
-                        }
-                    });
                 });
             @endif
 
             $('#payment_type').change(function(e) {
 
                 e.preventDefault();
-
-                if ($(this).val() != '1') {
-
-                    $('.bank_group').css('display', 'block');
-                    @if ($type === 'CP')
-                        $('#pendingPaymentsSection').show();
-                        loadPendingPayments();
-                    @endif
-                } else {
-
-                    $('.bank_group').css('display', 'none');
-                    @if ($type === 'CP')
-                        $('#pendingPaymentsSection').hide();
-                    @endif
-                }
+                @if ($voucherType === 'CP')
+                    if (typeof window.syncPendingPanelFromPaymentType === 'function') {
+                        window.syncPendingPanelFromPaymentType();
+                    }
+                @else
+                    if ($(this).val() != '1') {
+                        $('.bank_group').css('display', 'block');
+                    } else {
+                        $('.bank_group').css('display', 'none');
+                    }
+                @endif
             });
             $('#e_payment_type').change(function(e) {
 
@@ -1335,6 +1316,14 @@
                     $('.e_bank_group').css('display', 'none');
                 }
             });
+
+            @if ($voucherType === 'CP')
+                setTimeout(function() {
+                    if (typeof window.syncPendingPanelFromPaymentType === 'function') {
+                        window.syncPendingPanelFromPaymentType();
+                    }
+                }, 0);
+            @endif
 
             $('#e_acct_type').change(function() {
                 var acctType = $(this).val();
@@ -1431,14 +1420,6 @@
                             // Refresh TomSelect dropdown
                             subAccountsSelect.refreshOptions(false);
 
-                            // Auto-select acct_type if found
-                            if (filteredData.length > 0) {
-                                let acct_type = filteredData[0].head_accounting.acct_type;
-                                let acctTypeSelect = $('#e_acct_type')[0].tomselect;
-                                if (!acctTypeSelect.getValue()) {
-                                    acctTypeSelect.setValue(acct_type, true);
-                                }
-                            }
                         }
                     });
                 } else {
@@ -1462,11 +1443,6 @@
                             let acctSelect = $('#e_accounts_id')[0].tomselect;
                             if (!acctSelect.getValue()) {
                                 acctSelect.setValue(headId, true);
-                            }
-                            let acct_type = response.acct_type;
-                            let acctTypeSelect = $('#e_acct_type')[0].tomselect;
-                            if (!acctTypeSelect.getValue()) {
-                                acctTypeSelect.setValue(acct_type, true);
                             }
                         },
                         error: function(error) {
@@ -1614,9 +1590,34 @@
                     return !isNaN(val) && parseFloat(val) > 0;
                 });
 
+                const voucherVisible = String($("[name='voucher_number']").val() || '');
+                const voucherHidden = String($("[name='voucher']").val() || '');
+                const voucherRegex = /^(CR|CP)-\d+$/;
+                const visibleMatch = voucherVisible.match(voucherRegex);
+                const hiddenMatch = voucherHidden.match(voucherRegex);
+                if (!visibleMatch || !hiddenMatch || visibleMatch[1] !== hiddenMatch[1] || visibleMatch[1] !== @json($voucherType)) {
+                    isValid = false;
+                    messages.push("Invalid voucher number. Please refresh and try again.");
+                }
+
+                const accountId = String($("[name='accounts_id']").val() || '');
+                const subAccountId = String($("[name='subaccounts_id']").val() || '');
+                const accountSelect = document.getElementById('accounts_id');
+                const subAccountSelect = document.getElementById('subaccounts_id');
+                const accountExists = accountSelect?.tomselect?.options?.[accountId];
+                const subAccountExists = subAccountSelect?.tomselect?.options?.[subAccountId];
+                if (!accountId || !subAccountId || !accountExists || !subAccountExists) {
+                    isValid = false;
+                    messages.push("Please reselect Account and Child Account.");
+                }
+
                 if (!isValid) {
                     e.preventDefault();
-                    alert(messages.join("\n"));
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Validation error',
+                        text: messages[0] || 'Please review your input and try again.'
+                    });
                     return;
                 } else {
                     $('#confirmedModal').modal('show');
@@ -1658,12 +1659,30 @@
         // Voucher Tab Management with LocalStorage + full Tom Select option persistence
         // Voucher Tabs with reliable saving on tab switch + new tab, including Tom Select options
         (async function($) {
-            // const LS_KEY = 'paysavo_voucher_tabs_v1';
             const FORM_ID = '#voucherForm';
             const TS_SEL = '.js-tomselect';
-            const $Type = '{{ $type }}'; // e.g. CR or CP
-            const $projectId = '{{ getSelectedTown() }}';
-            const LS_KEY = `bluemarketing_${$projectId}_voucher_tabs_${$Type}_v1`;
+            const VOUCHER_TYPE = @json($voucherType);
+            const INITIAL_VOUCHER_NUMBER = @json((int) ($latest_voucher_number ?? 1));
+            const VOUCHER_STORAGE_KEY = `bluemarketing_voucher_tabs_${VOUCHER_TYPE}_${window.location.pathname}_v3`;
+
+            function buildVoucherDisplay(number) {
+                return `${VOUCHER_TYPE}-${number}`;
+            }
+
+            function setVoucherNumber(number) {
+                const safeNumber = Math.max(1, parseInt(number, 10) || 1);
+                const display = buildVoucherDisplay(safeNumber);
+                $('#voucher_number').val(display);
+                $('input[name="voucher"]').val(display);
+            }
+
+            function parseVoucherNumber(value) {
+                if (typeof value !== 'string') return null;
+                if (value.includes('{') || value.includes('}') || value.includes('&quot;')) return null;
+                const match = value.match(/^(CR|CP)-(\d+)$/);
+                if (!match || match[1] !== VOUCHER_TYPE) return null;
+                return parseInt(match[2], 10);
+            }
 
             // ---------- TomSelect init ----------
             function initTomSelects() {
@@ -1711,14 +1730,39 @@
             let nextTabNumber = 2;
 
             // ---------- utils ----------
-            const persist = () => localStorage.setItem(LS_KEY, JSON.stringify(store));
+            const persist = () => localStorage.setItem(VOUCHER_STORAGE_KEY, JSON.stringify(store));
 
             const hydrate = () => {
                 try {
-                    const raw = localStorage.getItem(LS_KEY);
+                    localStorage.removeItem(`bluemarketing_${'{{ getSelectedTown() }}'}_voucher_tabs_${VOUCHER_TYPE}_v1`);
+                    localStorage.removeItem(`bluemarketing_voucher_tabs_${VOUCHER_TYPE}_${window.location.pathname}_v2`);
+                    const raw = localStorage.getItem(VOUCHER_STORAGE_KEY);
                     if (!raw) return;
                     const parsed = JSON.parse(raw);
                     if (parsed && parsed.tabs) {
+                        const tabKeys = Object.keys(parsed.tabs || {});
+                        for (const tabKey of tabKeys) {
+                            const storedVoucher = parsed.tabs?.[tabKey]?.formData?.voucher_number ?? '';
+                            if (storedVoucher && parseVoucherNumber(storedVoucher) === null) {
+                                localStorage.removeItem(VOUCHER_STORAGE_KEY);
+                                return;
+                            }
+                            const accountId = parsed.tabs?.[tabKey]?.formData?.accounts_id ?? '';
+                            const subAccountId = parsed.tabs?.[tabKey]?.formData?.subaccounts_id ?? '';
+                            if ((accountId && !subAccountId) || (!accountId && subAccountId)) {
+                                parsed.tabs[tabKey].formData.accounts_id = '';
+                                parsed.tabs[tabKey].formData.subaccounts_id = '';
+                            }
+                            // Do not blindly restore account/subaccount; force validated re-selection.
+                            parsed.tabs[tabKey].formData.accounts_id = '';
+                            parsed.tabs[tabKey].formData.subaccounts_id = '';
+                            if (parsed.tabs?.[tabKey]?.selects?.accounts_id) {
+                                parsed.tabs[tabKey].selects.accounts_id.selected = '';
+                            }
+                            if (parsed.tabs?.[tabKey]?.selects?.subaccounts_id) {
+                                parsed.tabs[tabKey].selects.subaccounts_id.selected = '';
+                            }
+                        }
                         store = parsed;
                         currentTab = store.currentTab || 1;
                         nextTabNumber = store.nextTabNumber || 2;
@@ -1974,6 +2018,24 @@
                         $el.val(formData[name] ?? '');
                     }
                 });
+
+                const parsedVoucherNumber = parseVoucherNumber($('#voucher_number').val());
+                if (parsedVoucherNumber !== null) {
+                    setVoucherNumber(parsedVoucherNumber);
+                }
+
+                const currentAccount = $('#accounts_id')[0]?.tomselect?.getValue();
+                const currentSubAccount = $('#subaccounts_id')[0]?.tomselect?.getValue();
+                if (currentAccount && !optionExists('accounts_id', currentAccount)) {
+                    $('#accounts_id')[0]?.tomselect?.clear(true);
+                    $('#subaccounts_id')[0]?.tomselect?.clear(true);
+                    $('#subaccounts_id')[0]?.tomselect?.clearOptions();
+                    clearPartyInfo();
+                }
+                if (currentSubAccount && !optionExists('subaccounts_id', currentSubAccount)) {
+                    $('#subaccounts_id')[0]?.tomselect?.clear(true);
+                    clearPartyInfo();
+                }
             }
 
             function rebuildTabsUI() {
@@ -2049,6 +2111,15 @@
             initTomSelects(); // 1) have TomSelect instances ready
             rebuildTabsUI(); // 2) render the tab buttons
             loadFormForTab(currentTab); // 3) restore snapshot into widgets (no extra reset)
+            const restoredVoucherNumber = parseVoucherNumber($('#voucher_number').val());
+            if (restoredVoucherNumber === null) {
+                setVoucherNumber(INITIAL_VOUCHER_NUMBER);
+            } else {
+                setVoucherNumber(restoredVoucherNumber);
+            }
+            if (typeof window.syncPendingPanelFromPaymentType === 'function') {
+                setTimeout(window.syncPendingPanelFromPaymentType, 0);
+            }
             persist();
 
             // Snapshot once if empty (first run) so reload has data
@@ -2066,12 +2137,11 @@
                 e.preventDefault();
                 showFormCardLoader();
 
-                const voucher_val = $("#voucher_number").val(); // e.g. "CR-1823"
-                const parts = (voucher_val || $Type + '-0').split('-');
-                const voucher_num = parseInt(parts[1] || '0', 10) + 1;
+                const voucher_val = $("#voucher_number").val();
+                const voucher_num = (parseVoucherNumber(voucher_val) ?? INITIAL_VOUCHER_NUMBER) + 1;
 
                 const data = {
-                    type: 'CR',
+                    type: VOUCHER_TYPE,
                     number: voucher_num,
                     _token: '{{ csrf_token() }}'
                 };
@@ -2109,9 +2179,8 @@
                             ensureSaved: false
                         });
 
-                        const nextVoucher = `${$Type}-${nextVoucherNumber}`;
-                        $("#voucher_number").val(nextVoucher).attr('value', nextVoucher).trigger(
-                            'input').trigger('change');
+                        setVoucherNumber(nextVoucherNumber);
+                        $("#voucher_number").trigger('input').trigger('change');
 
                         flatpickr('.date', {
                             enableTime: false,
@@ -2179,14 +2248,14 @@
                         "{{ route('check_new_voucher_number') }}",
                         '{{ csrf_token() }}',
                         'POST', {
-                            type: 'CR',
+                            type: VOUCHER_TYPE,
                             number: 1,
                             _token: '{{ csrf_token() }}'
                         },
                         function(data) {
                             const nextVoucherNumber = data.latest_voucher_number;
-                            const nextVoucher = `${$Type}-${nextVoucherNumber}`;
-                            $("#voucher_number").val(nextVoucher).attr('value', nextVoucher).trigger('change');
+                            setVoucherNumber(nextVoucherNumber);
+                            $("#voucher_number").trigger('change');
                             hideFormCardLoader();
                         },
                         true,
@@ -2249,7 +2318,7 @@
                             // localStorage.removeItem('tabs');
                             // localStorage.removeItem('nextTabNumber');
                             // localStorage.removeItem('currentTab');
-                            localStorage.removeItem(LS_KEY);
+                            localStorage.removeItem(VOUCHER_STORAGE_KEY);
                             // Or to wipe all (careful, only if safe):
                             // localStorage.clear();
 
@@ -2264,11 +2333,13 @@
                                 store.nextTabNumber = 2;
                             }
 
+                            setVoucherNumber(INITIAL_VOUCHER_NUMBER);
+
                             // ✅ Success message
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Cleared!',
-                                text: `All ${$Type} vouchers cleared except the first one.`,
+                                text: `All ${VOUCHER_TYPE} vouchers cleared except the first one.`,
                             });
 
                             // If you have a function to persist the store
@@ -2316,6 +2387,47 @@
 
                 const tabNumber = parseInt($('#submit-button').attr('tab-number'), 10) || currentTab;
                 const $form = $('#voucherForm');
+                const paymentType = String($('#payment_type').val() || '');
+                const isCashOutBankFlow = VOUCHER_TYPE === 'CP' && (paymentType === '2' || paymentType === '3');
+                if (isCashOutBankFlow) {
+                    const selectedPendingId = String($('#selected_pending_payment_id').val() || '').trim();
+                    const pendingStatus = String($('#pending_status').val() || '').trim();
+                    const passingDate = String($('#passing_date').val() || '').trim();
+                    const detail = String($('#detail').val() || '').trim();
+
+                    if (!selectedPendingId) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Pending voucher required',
+                            text: 'Please select a pending Online/Check voucher before saving.'
+                        });
+                        return;
+                    }
+                    if (!pendingStatus) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Status required',
+                            text: 'Please select a pending status before saving.'
+                        });
+                        return;
+                    }
+                    if (!passingDate) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Passing date required',
+                            text: 'Please select passing date before saving.'
+                        });
+                        return;
+                    }
+                    if (!detail) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Details required',
+                            text: 'Please enter details before saving.'
+                        });
+                        return;
+                    }
+                }
                 const formData = new FormData($form[0]);
                 formData.append('_token', $('meta[name="csrf-token"]').attr('content'));
                 $.ajaxSetup({
@@ -2331,7 +2443,8 @@
                     processData: false, // required for FormData
                     contentType: false, // required for FormData
                     beforeSend: function() {
-                        $('#submitBtn').prop('disabled', true).text('Saving...');
+                        $('#submitForm').prop('disabled', true).text('Saving...');
+                        $('#submit-button').prop('disabled', true);
                     },
                     success: function(response) {
                         console.log(response, tabNumber);
@@ -2349,7 +2462,7 @@
                         Swal.fire({
                             icon: 'success',
                             title: 'Saved!',
-                            text: 'Voucher saved successfully.'
+                            text: response?.message || 'Voucher saved successfully.'
                         });
                         // $form.trigger('reset');
 
@@ -2360,15 +2473,17 @@
                     },
                     error: function(xhr) {
                         console.error('❌ Error:', xhr.responseText);
+                        const msg = xhr.responseJSON?.message || 'Something went wrong while saving the voucher.';
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
-                            text: 'Something went wrong while saving the voucher.'
+                            text: msg
                         });
                     },
                     complete: function() {
                         $('#confirmedModal').modal('hide');
-                        $('#submitBtn').prop('disabled', false).text('Submit');
+                        $('#submitForm').prop('disabled', false).text('Save');
+                        $('#submit-button').prop('disabled', false);
                     }
                 });
             });
@@ -2636,8 +2751,8 @@
                                                 <select class="js-tomselect" placeholder=" " name="acct_type"
                                                     id="e_acct_type">
                                                     <option value="">Select Account Type</option>
-                                                    @foreach ($accountTypes as $type)
-                                                        <option value="{{ $type->id }}">{{ $type->name }}</option>
+                                                    @foreach ($accountTypes as $accountType)
+                                                        <option value="{{ $accountType->id }}">{{ $accountType->name }}</option>
                                                     @endforeach
                                                 </select>
                                                 @error('projects_id')
