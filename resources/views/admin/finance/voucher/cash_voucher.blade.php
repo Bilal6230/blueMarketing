@@ -1,5 +1,8 @@
 @extends('admin.layouts.master')
 @section('content')
+    @php
+        $voucherType = is_string($type) && in_array($type, ['CR', 'CP'], true) ? $type : '';
+    @endphp
     <style>
         .page-item.active .page-link {
             background-color: {{ $pagination_color }} !important;
@@ -106,7 +109,7 @@
                                                         <label class="fbox mb-1">Voucher No</label>
                                                         <input type="text" class="form-control form-control-sm"
                                                             name="voucher_number" id="voucher_number"
-                                                            value="{{ $type }}-{{ $latest_voucher_number ?? '' }}"
+                                                            value="{{ $voucherType }}-{{ $latest_voucher_number ?? '' }}"
                                                             autocomplete="off" readonly>
                                                         @error('reference')
                                                             <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -118,7 +121,7 @@
                                                         <label class="fbox mb-1">Reference No</label>
                                                         <input type="text" class="form-control form-control-sm"
                                                             name="voucher"
-                                                            value="{{ $type }}-{{ get_new_voucher_number($type) }}"
+                                                            value="{{ $voucherType }}-{{ get_new_voucher_number($voucherType) }}"
                                                             autocomplete="off" readonly>
                                                         @error('reference')
                                                             <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -155,8 +158,8 @@
                                                                 placeholder=" " autocomplete="off" name="acct_type"
                                                                 id="acct_type">
                                                                 <option value="">Select Account Type</option>
-                                                                @foreach ($accountTypes as $type)
-                                                                    <option value="{{ $type->id }}">{{ $type->name }}
+                                                                @foreach ($accountTypes as $accountType)
+                                                                    <option value="{{ $accountType->id }}">{{ $accountType->name }}
                                                                     </option>
                                                                 @endforeach
                                                             </select>
@@ -250,7 +253,7 @@
                                                             <div class="invalid-feedback d-block">{{ $message }}</div>
                                                         @enderror
                                                     </div>
-                                                    @if ($type === 'CP')
+                                                    @if ($voucherType === 'CP')
                                                         <div class="col-12 mt-3" id="pendingPaymentsSection"
                                                             style="display: none;">
                                                             <div class="card border">
@@ -767,8 +770,16 @@
 
 
 
+            function clearPartyInfo() {
+                $('#cnic').text('Not provided');
+                $('#phone').text('Not provided');
+                $('#address').text('Not provided');
+                $('#balance').text('$0.00');
+            }
+
             $('#acct_type').change(function() {
                 var acctType = $(this).val();
+                clearPartyInfo();
                 if (acctType) {
                     $.ajax({
                         url: '{{ route('get_account') }}',
@@ -852,6 +863,7 @@
             // Similar change event for 'accounts_id' dropdown to fetch subaccounts based on account selection
             $('#accounts_id').change(function() {
                 var accountID = $(this).val();
+                clearPartyInfo();
 
                 if (accountID) {
                     $.ajax({
@@ -901,36 +913,6 @@
                                 tsSubAccounts.refreshOptions(false);
                             }
 
-                            // 🧠 Handle acct_type auto-selection
-                            if (filteredData.length > 0) {
-                                const acct_type = filteredData[0].head_accounting.acct_type;
-                                const $acctType = $('#acct_type');
-                                const acctTypeEl = $acctType[0];
-                                const tsAcctType = acctTypeEl?.tomselect;
-
-                                // Ensure DOM select also reflects TomSelect
-                                if (tsAcctType) {
-                                    // Optional: clear both first
-                                    tsAcctType.clear(true);
-                                    $acctType.val('');
-
-                                    // Check if this acct_type option exists
-                                    if (!$acctType.find(`option[value="${acct_type}"]`)
-                                        .length) {
-                                        $acctType.append(new Option(acct_type, acct_type));
-                                        tsAcctType.addOption({
-                                            value: acct_type,
-                                            text: acct_type
-                                        });
-                                        tsAcctType.refreshOptions(false);
-                                    }
-
-                                    // Set value only if not already selected
-                                    if (!tsAcctType.getValue()) {
-                                        tsAcctType.setValue(acct_type, true);
-                                    }
-                                }
-                            }
                         }
 
                     });
@@ -955,11 +937,6 @@
                             let acctSelect = $('#accounts_id')[0].tomselect;
                             if (!acctSelect.getValue()) {
                                 acctSelect.setValue(headId, true);
-                            }
-                            let acct_type = response.acct_type;
-                            let acctTypeSelect = $('#acct_type')[0].tomselect;
-                            if (!acctTypeSelect.getValue()) {
-                                acctTypeSelect.setValue(acct_type, true);
                             }
 
                             // $('#accounts_id').val(response.headId).trigger('change');
@@ -1144,7 +1121,7 @@
                 });
             }
 
-            @if ($type === 'CP')
+            @if ($voucherType === 'CP')
                 const pendingFetchUrl = "{{ route('finance.voucher.pending_bank_payments') }}";
                 const pendingStatusUpdateUrlTemplate =
                     "{{ route('finance.voucher.pending_bank_payments.status', ['customerLedger' => 'LEDGER_ID']) }}";
@@ -1155,7 +1132,7 @@
 
                     if (!rows || !rows.length) {
                         $tbody.append(
-                            '<tr><td colspan="9" class="text-center text-muted">No pending records found.</td></tr>'
+                            '<tr><td colspan="9" class="text-center text-muted">No pending online/check payments found for this project.</td></tr>'
                         );
                         return;
                     }
@@ -1311,14 +1288,14 @@
                 if ($(this).val() != '1') {
 
                     $('.bank_group').css('display', 'block');
-                    @if ($type === 'CP')
+                    @if ($voucherType === 'CP')
                         $('#pendingPaymentsSection').show();
                         loadPendingPayments();
                     @endif
                 } else {
 
                     $('.bank_group').css('display', 'none');
-                    @if ($type === 'CP')
+                    @if ($voucherType === 'CP')
                         $('#pendingPaymentsSection').hide();
                     @endif
                 }
@@ -1431,14 +1408,6 @@
                             // Refresh TomSelect dropdown
                             subAccountsSelect.refreshOptions(false);
 
-                            // Auto-select acct_type if found
-                            if (filteredData.length > 0) {
-                                let acct_type = filteredData[0].head_accounting.acct_type;
-                                let acctTypeSelect = $('#e_acct_type')[0].tomselect;
-                                if (!acctTypeSelect.getValue()) {
-                                    acctTypeSelect.setValue(acct_type, true);
-                                }
-                            }
                         }
                     });
                 } else {
@@ -1462,11 +1431,6 @@
                             let acctSelect = $('#e_accounts_id')[0].tomselect;
                             if (!acctSelect.getValue()) {
                                 acctSelect.setValue(headId, true);
-                            }
-                            let acct_type = response.acct_type;
-                            let acctTypeSelect = $('#e_acct_type')[0].tomselect;
-                            if (!acctTypeSelect.getValue()) {
-                                acctTypeSelect.setValue(acct_type, true);
                             }
                         },
                         error: function(error) {
@@ -1658,12 +1622,30 @@
         // Voucher Tab Management with LocalStorage + full Tom Select option persistence
         // Voucher Tabs with reliable saving on tab switch + new tab, including Tom Select options
         (async function($) {
-            // const LS_KEY = 'paysavo_voucher_tabs_v1';
             const FORM_ID = '#voucherForm';
             const TS_SEL = '.js-tomselect';
-            const $Type = '{{ $type }}'; // e.g. CR or CP
-            const $projectId = '{{ getSelectedTown() }}';
-            const LS_KEY = `bluemarketing_${$projectId}_voucher_tabs_${$Type}_v1`;
+            const VOUCHER_TYPE = @json($voucherType);
+            const INITIAL_VOUCHER_NUMBER = @json((int) ($latest_voucher_number ?? 1));
+            const VOUCHER_STORAGE_KEY = `bluemarketing_voucher_tabs_${VOUCHER_TYPE}_${window.location.pathname}_v2`;
+
+            function buildVoucherDisplay(number) {
+                return `${VOUCHER_TYPE}-${number}`;
+            }
+
+            function setVoucherNumber(number) {
+                const safeNumber = Math.max(1, parseInt(number, 10) || 1);
+                const display = buildVoucherDisplay(safeNumber);
+                $('#voucher_number').val(display);
+                $('input[name="voucher"]').val(display);
+            }
+
+            function parseVoucherNumber(value) {
+                if (typeof value !== 'string') return null;
+                if (value.includes('{') || value.includes('}') || value.includes('&quot;')) return null;
+                const match = value.match(/^(CR|CP)-(\d+)$/);
+                if (!match || match[1] !== VOUCHER_TYPE) return null;
+                return parseInt(match[2], 10);
+            }
 
             // ---------- TomSelect init ----------
             function initTomSelects() {
@@ -1711,14 +1693,22 @@
             let nextTabNumber = 2;
 
             // ---------- utils ----------
-            const persist = () => localStorage.setItem(LS_KEY, JSON.stringify(store));
+            const persist = () => localStorage.setItem(VOUCHER_STORAGE_KEY, JSON.stringify(store));
 
             const hydrate = () => {
                 try {
-                    const raw = localStorage.getItem(LS_KEY);
+                    const raw = localStorage.getItem(VOUCHER_STORAGE_KEY);
                     if (!raw) return;
                     const parsed = JSON.parse(raw);
                     if (parsed && parsed.tabs) {
+                        const tabKeys = Object.keys(parsed.tabs || {});
+                        for (const tabKey of tabKeys) {
+                            const storedVoucher = parsed.tabs?.[tabKey]?.formData?.voucher_number ?? '';
+                            if (storedVoucher && parseVoucherNumber(storedVoucher) === null) {
+                                localStorage.removeItem(VOUCHER_STORAGE_KEY);
+                                return;
+                            }
+                        }
                         store = parsed;
                         currentTab = store.currentTab || 1;
                         nextTabNumber = store.nextTabNumber || 2;
@@ -1974,6 +1964,11 @@
                         $el.val(formData[name] ?? '');
                     }
                 });
+
+                const parsedVoucherNumber = parseVoucherNumber($('#voucher_number').val());
+                if (parsedVoucherNumber !== null) {
+                    setVoucherNumber(parsedVoucherNumber);
+                }
             }
 
             function rebuildTabsUI() {
@@ -2049,6 +2044,12 @@
             initTomSelects(); // 1) have TomSelect instances ready
             rebuildTabsUI(); // 2) render the tab buttons
             loadFormForTab(currentTab); // 3) restore snapshot into widgets (no extra reset)
+            const restoredVoucherNumber = parseVoucherNumber($('#voucher_number').val());
+            if (restoredVoucherNumber === null) {
+                setVoucherNumber(INITIAL_VOUCHER_NUMBER);
+            } else {
+                setVoucherNumber(restoredVoucherNumber);
+            }
             persist();
 
             // Snapshot once if empty (first run) so reload has data
@@ -2066,12 +2067,11 @@
                 e.preventDefault();
                 showFormCardLoader();
 
-                const voucher_val = $("#voucher_number").val(); // e.g. "CR-1823"
-                const parts = (voucher_val || $Type + '-0').split('-');
-                const voucher_num = parseInt(parts[1] || '0', 10) + 1;
+                const voucher_val = $("#voucher_number").val();
+                const voucher_num = (parseVoucherNumber(voucher_val) ?? INITIAL_VOUCHER_NUMBER) + 1;
 
                 const data = {
-                    type: 'CR',
+                    type: VOUCHER_TYPE,
                     number: voucher_num,
                     _token: '{{ csrf_token() }}'
                 };
@@ -2109,9 +2109,8 @@
                             ensureSaved: false
                         });
 
-                        const nextVoucher = `${$Type}-${nextVoucherNumber}`;
-                        $("#voucher_number").val(nextVoucher).attr('value', nextVoucher).trigger(
-                            'input').trigger('change');
+                        setVoucherNumber(nextVoucherNumber);
+                        $("#voucher_number").trigger('input').trigger('change');
 
                         flatpickr('.date', {
                             enableTime: false,
@@ -2179,14 +2178,14 @@
                         "{{ route('check_new_voucher_number') }}",
                         '{{ csrf_token() }}',
                         'POST', {
-                            type: 'CR',
+                            type: VOUCHER_TYPE,
                             number: 1,
                             _token: '{{ csrf_token() }}'
                         },
                         function(data) {
                             const nextVoucherNumber = data.latest_voucher_number;
-                            const nextVoucher = `${$Type}-${nextVoucherNumber}`;
-                            $("#voucher_number").val(nextVoucher).attr('value', nextVoucher).trigger('change');
+                            setVoucherNumber(nextVoucherNumber);
+                            $("#voucher_number").trigger('change');
                             hideFormCardLoader();
                         },
                         true,
@@ -2249,7 +2248,7 @@
                             // localStorage.removeItem('tabs');
                             // localStorage.removeItem('nextTabNumber');
                             // localStorage.removeItem('currentTab');
-                            localStorage.removeItem(LS_KEY);
+                            localStorage.removeItem(VOUCHER_STORAGE_KEY);
                             // Or to wipe all (careful, only if safe):
                             // localStorage.clear();
 
@@ -2264,11 +2263,13 @@
                                 store.nextTabNumber = 2;
                             }
 
+                            setVoucherNumber(INITIAL_VOUCHER_NUMBER);
+
                             // ✅ Success message
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Cleared!',
-                                text: `All ${$Type} vouchers cleared except the first one.`,
+                                text: `All ${VOUCHER_TYPE} vouchers cleared except the first one.`,
                             });
 
                             // If you have a function to persist the store
@@ -2331,7 +2332,8 @@
                     processData: false, // required for FormData
                     contentType: false, // required for FormData
                     beforeSend: function() {
-                        $('#submitBtn').prop('disabled', true).text('Saving...');
+                        $('#submitForm').prop('disabled', true).text('Saving...');
+                        $('#submit-button').prop('disabled', true);
                     },
                     success: function(response) {
                         console.log(response, tabNumber);
@@ -2360,15 +2362,17 @@
                     },
                     error: function(xhr) {
                         console.error('❌ Error:', xhr.responseText);
+                        const msg = xhr.responseJSON?.message || 'Something went wrong while saving the voucher.';
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
-                            text: 'Something went wrong while saving the voucher.'
+                            text: msg
                         });
                     },
                     complete: function() {
                         $('#confirmedModal').modal('hide');
-                        $('#submitBtn').prop('disabled', false).text('Submit');
+                        $('#submitForm').prop('disabled', false).text('Save');
+                        $('#submit-button').prop('disabled', false);
                     }
                 });
             });
@@ -2636,8 +2640,8 @@
                                                 <select class="js-tomselect" placeholder=" " name="acct_type"
                                                     id="e_acct_type">
                                                     <option value="">Select Account Type</option>
-                                                    @foreach ($accountTypes as $type)
-                                                        <option value="{{ $type->id }}">{{ $type->name }}</option>
+                                                    @foreach ($accountTypes as $accountType)
+                                                        <option value="{{ $accountType->id }}">{{ $accountType->name }}</option>
                                                     @endforeach
                                                 </select>
                                                 @error('projects_id')

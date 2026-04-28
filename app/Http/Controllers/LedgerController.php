@@ -18,6 +18,7 @@ use App\Models\JournalVoucher;
 use App\Models\SubheadAccounting;
 use App\Models\ProjectHeadSubhead;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Auth;
 use RealRashid\SweetAlert\Facades\Alert;
@@ -31,88 +32,117 @@ class LedgerController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'amount' => ['required'],
-            'detail' => ['required'],
-            'accounts_id' => ['required'],
-            'subaccounts_id' => ['required'],
-            // 'reference' => 'required',
+            'amount' => [
+                'required',
+                function ($attribute, $value, $fail) {
+                    $clean = str_replace(',', '', (string) $value);
+                    if (!is_numeric($clean) || (float) $clean <= 0) {
+                        $fail('Amount must be a valid number greater than zero.');
+                    }
+                }
+            ],
+            'detail' => ['required', 'string', 'max:255'],
+            'accounts_id' => ['required', 'integer'],
+            'subaccounts_id' => ['required', 'integer'],
+            'payment_type' => ['required', 'integer', 'in:1,2,3'],
+            'date' => ['required', 'date'],
+            'voucher' => ['required', 'string', 'regex:/^(CR|CP)-\d+$/'],
+            'voucher_number' => ['required', 'string', 'regex:/^(CR|CP)-\d+$/'],
+            't_number' => ['required_if:payment_type,2,3', 'nullable', 'string', 'max:255'],
+            'bank_id' => ['required_if:payment_type,2,3', 'nullable', 'integer'],
+            'passing_date' => ['required_if:payment_type,2,3', 'nullable', 'date'],
         ]);
 
         if ($validator->fails()) {
-            return back()->withErrors($validator)
-                ->withInput();
+            if ($validator->errors()->has('voucher') || $validator->errors()->has('voucher_number')) {
+                return response()->json([
+                    'status' => 'error',
+                    'error_key' => 'invalid_voucher_number',
+                    'message' => 'Invalid voucher number. Please refresh the page and try again.'
+                ], 422);
+            }
+
+            return response()->json([
+                'status' => 'error',
+                'error_key' => 'validation_error',
+                'message' => $validator->errors()->first() ?: 'Please correct the highlighted fields and try again.',
+                'errors' => $validator->errors(),
+            ], 422);
         }
+
         $selectedProjectId = getSelectedTown();
-        $action = $request->input('action');
-        $customer_id = $request->input('customer_id');
-        $x['today'] = date("d-m-Y");
-        $cleanAmount = str_replace(',', '', $request->amount);
-        $voucherValue = $request->input('voucher');
-        $voucherNumberValue = $request->input('voucher_number');
-        $firstTwoDigits = substr($voucherValue, 0, 2);
-        $voucherNumber = substr($voucherNumberValue, 3);
-        // dd($firstTwoDigits);
-        $bankName = getBankNameById($request->input('bank_id'));
-        $amount_in = $amount_out = 0;
-        $passing_status = '0';
-        if ($firstTwoDigits === 'CR') {
-            $amount_in = $cleanAmount;
-            $passing_status = '0';
-        } elseif ($firstTwoDigits === 'CP') {
-            $amount_out = $cleanAmount;
-            $passing_status = '1';
+        $voucherValue = (string) $request->input('voucher');
+        $voucherNumberValue = (string) $request->input('voucher_number');
+        $voucherParts = explode('-', $voucherValue);
+        $voucherNumberParts = explode('-', $voucherNumberValue);
+        $voucherPrefix = $voucherParts[0] ?? '';
+        $voucherNumberPrefix = $voucherNumberParts[0] ?? '';
+
+        if (!in_array($voucherPrefix, ['CR', 'CP'], true) || $voucherPrefix !== $voucherNumberPrefix) {
+            return response()->json([
+                'status' => 'error',
+                'error_key' => 'invalid_voucher_number',
+                'message' => 'Invalid voucher number. Please refresh the page and try again.'
+            ], 422);
         }
-        // dd($amount_in, $amount_out);
-        // dd($firstTwoDigits);
+
+        $effectiveVoucherType = $voucherPrefix;
+        $voucherNumber = (int) ($voucherNumberParts[1] ?? 0);
+        $cleanAmount = (float) str_replace(',', '', (string) $request->input('amount'));
+        $paymentType = (int) $request->input('payment_type');
+        $amount_in = $effectiveVoucherType === 'CR' ? $cleanAmount : 0;
+        $amount_out = $effectiveVoucherType === 'CP' ? $cleanAmount : 0;
+
+        $projectHeadSubhead = ProjectHeadSubhead::where('head_accounting_id', $request->accounts_id)
+            ->where('subhead_accounting_id', $request->subaccounts_id)
+            ->where('project_id', $selectedProjectId)
+            ->first();
+
+        if (!$projectHeadSubhead) {
+            return response()->json([
+                'status' => 'error',
+                'error_key' => 'invalid_account_mapping',
+                'message' => 'Selected account and child account are not valid for this project.'
+            ], 422);
+        }
 
         DB::beginTransaction();
         try {
-
-
-
-            //
-            $payment_type = $request->input('payment_type');
-            if ($payment_type == 1) {
+            if ($paymentType === 1) {
                 $t_number = $bank_id = null;
             } else {
                 $t_number = $request->input('t_number');
                 $bank_id = $request->input('bank_id');
             }
-            $projectHeadSubhead = ProjectHeadSubhead::where('head_accounting_id', $request->accounts_id)
-                ->where('subhead_accounting_id', $request->subaccounts_id)
-                ->where('project_id', $selectedProjectId)
-                ->first();
+
             $customerID = $projectHeadSubhead?->customer_id;
             $plotID = $projectHeadSubhead?->plot_id;
-            $plotName = Plot::where('id', $request->input('plot_id'))->value('name');
+            $bankName = $bank_id ? getBankNameById($bank_id) : null;
+            $isPendingCashInBankPayment = in_array($paymentType, [2, 3], true) && $effectiveVoucherType === 'CR';
+
             $customerLedger = CustomerLedger::create([
-                'transaction_type' => $firstTwoDigits,
-                'type_id' => get_new_typeID($firstTwoDigits),
+                'transaction_type' => $effectiveVoucherType,
+                'type_id' => get_new_typeID($effectiveVoucherType),
                 'reference' => $request->input('reference'),
                 'project_id' => $selectedProjectId ?? null,
                 'customer_id' => $customerID ?? null,
                 'plot_id' => $plotID ?? null,
-                'amount_in' => 0,
-                'amount_out' => str_replace(',', '', $request->input('amount')),
+                'amount_in' => $amount_in,
+                'amount_out' => $amount_out,
                 'description' => $request->input('detail'),
-                'date' => $request->input('date'), // Assuming booking date is the transaction date
-                'payment_type' => $request->input('payment_type'),
+                'date' => $request->input('date'),
+                'payment_type' => $paymentType,
                 't_number' => $t_number,
                 'bank_id' => $bank_id,
                 'is_active' => 1,
                 'is_approve' => 0,
                 'passing_date' => $request->input('passing_date'),
+                'passing_status' => $isPendingCashInBankPayment ? 0 : null,
             ]);
+
             if ($t_number != null) {
-                $lastId = getLastLedgerIdByType("BR");
-                $amount = $customerLedger->amount_out;
                 $check_slip = $customerLedger->transaction_type . '-' . $customerLedger->reference;
 
-                // Get the bank name
-                $bankName = getBankNameById($customerLedger->bank_id);
-
-                // Update the CustomerLedger record
-                $isPendingCashInBankPayment = in_array((int) $request->payment_type, [2, 3], true) && $firstTwoDigits === 'CR';
                 if ($isPendingCashInBankPayment) {
                     $customerLedger->update([
                         'passing_status' => 0,
@@ -120,13 +150,13 @@ class LedgerController extends Controller
                         'bank_post_at' => null,
                     ]);
                 } else {
+                    $passing_status = $effectiveVoucherType === 'CP' ? 1 : 0;
                     $customerLedger->update([
                         'passing_status' => $passing_status,
                         'note' => '(' . $check_slip . ') ' . $request->detail,
                         'bank_post_at' => $request->passing_date,
                     ]);
 
-                    // Add to check history only for immediately-passed flows
                     $customerLedger->addCheckHistory([
                         'id' => $customerLedger->id,
                         'check_number' => $customerLedger->t_number,
@@ -138,60 +168,34 @@ class LedgerController extends Controller
                     ]);
                 }
             }
-            $lastId = getLastLedgerIdByType($firstTwoDigits);
 
-
-
-            // dd($projectHeadSubhead->id);
-            // $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', $request->accounts_id)
-            //     ->where('subhead_accounting_id', $request->subaccounts_id)
-            //     ->where('project_id', $selectedProjectId)
-            //     ->where('plot_id', $request->input('plot_id'))
-            //     ->where('customer_id', $customer_id)
-            //     ->value('id');
-            //     dd($creditAccountId);
-            if (!$projectHeadSubhead) {
-                throw new \Exception('Credit account ID not found.');
+            while (
+                Ledger::where('type', $effectiveVoucherType)
+                    ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
+                    ->where('is_active', 1)
+                    ->where('voucher_number', $voucherNumber)
+                    ->lockForUpdate()
+                    ->exists()
+            ) {
+                $voucherNumber++;
             }
-            $exists = Ledger::where('type', $firstTwoDigits)
-                ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
-                ->where('is_active', 1)
-                ->where('voucher_number', $voucherNumber)
-                ->exists();
 
-            if ($exists) {
-                // Find next available number
-                $nextNumber = $voucherNumber + 1;
-
-                // Keep incrementing until a free number is found
-                while (
-                    Ledger::where('type', $firstTwoDigits)
-                        ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
-                        ->where('is_active', 1)
-                        ->where('voucher_number', $nextNumber)
-                        ->exists()
-                ) {
-                    $nextNumber++;
-                }
-
-                $voucherNumber = $nextNumber;
-            }
+            $lastId = getLastLedgerIdByType($effectiveVoucherType);
             $detail = $request->input('detail');
-            if ($request->payment_type == '1' && $firstTwoDigits == 'CR') {
+            if ($paymentType === 1 && $effectiveVoucherType === 'CR') {
                 $detail = $request->input('detail') . '(Cash Payment)';
-            } elseif ($request->payment_type == '2' && $firstTwoDigits == 'CR') {
+            } elseif ($paymentType === 2 && $effectiveVoucherType === 'CR') {
                 $detail = $request->input('detail') . ' (Bank: ' . $bankName . ' Account No: ' . $customerLedger->t_number . ' Passing Date: ' . $request->passing_date . ')';
-            } elseif ($request->payment_type == '3' && $firstTwoDigits == 'CR') {
+            } elseif ($paymentType === 3 && $effectiveVoucherType === 'CR') {
                 $detail = $request->input('detail') . ' (Bank: ' . $bankName . ' cheque No: ' . $customerLedger->t_number . ' Passing Date: ' . $request->passing_date . ')';
             }
-            // dd($firstTwoDigits);
-            $isPendingCashInBankPayment = in_array((int) $request->payment_type, [2, 3], true) && $firstTwoDigits === 'CR';
+
             $data = null;
             if (!$isPendingCashInBankPayment) {
                 $data = Ledger::create([
                     'customer_ledger_id' => $customerLedger->id,
                     'voucher_number' => $voucherNumber,
-                    'type' => $firstTwoDigits,
+                    'type' => $effectiveVoucherType,
                     'type_id' => $lastId + 1,
                     'project_head_subheads_id' => $projectHeadSubhead->id,
                     'reference' => $request->reference,
@@ -205,8 +209,7 @@ class LedgerController extends Controller
                     'status' => 0,
                 ]);
             }
-            $lastSubmitDate = $request->date; // Adjust this according to your actual form field
-            session(['last_submit_date' => $lastSubmitDate]);
+            session(['last_submit_date' => $request->date]);
 
             if ($request->id) {
                 DraftLedger::find($request->input('id'))->delete();
@@ -215,16 +218,29 @@ class LedgerController extends Controller
             return response()->json([
                 'status' => 'success',
                 'message' => 'Data saved successfully.',
-                'data' => $data
+                'data' => $data,
+                'voucher_number' => $voucherNumber,
+                'voucher_display' => $effectiveVoucherType . '-' . $voucherNumber,
             ], 200);
         } catch (\Throwable $th) {
             DB::rollBack();
+            Log::error('voucher_store_failed', [
+                'user_id' => Auth::id(),
+                'project_id' => getSelectedTown(),
+                'voucher' => $request->input('voucher'),
+                'voucher_number' => $request->input('voucher_number'),
+                'payment_type' => $request->input('payment_type'),
+                'accounts_id' => $request->input('accounts_id'),
+                'subaccounts_id' => $request->input('subaccounts_id'),
+                'error' => $th->getMessage(),
+            ]);
+
             return response()->json([
                 'status' => 'error',
+                'error_key' => 'voucher_store_failed',
                 'message' => 'Unable to save voucher right now. Please try again.'
             ], 500);
         }
-        return redirect()->back();
     }
     public function saveAsDraft(Request $request)
     {
@@ -241,6 +257,7 @@ class LedgerController extends Controller
         } elseif ($firstTwoDigits === 'CP') {
             $amount_out = $cleanAmount;
         }
+        DB::beginTransaction();
         try {
             $payment_type = $request->input('payment_type');
             if ($payment_type == 1) {
@@ -321,10 +338,11 @@ class LedgerController extends Controller
                 $data['create_by'] = Auth::user()->id;
                 DraftLedger::create($newValues);
             }
+            DB::commit();
         } catch (\Throwable $th) {
-            return $th->getMessage();
-            DB::rollback();
-            Alert::error('Notification', 'Data <b>' . $th->getMessage())->toToast()->toHtml();
+            DB::rollBack();
+            Alert::error('Notification', 'Unable to save draft right now.')->toToast()->toHtml();
+            return back();
         }
         return back();
         return response()->json(['message' => 'Draft saved successfully.']);

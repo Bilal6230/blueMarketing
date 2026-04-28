@@ -823,7 +823,7 @@ class VoucherController extends Controller
                         : '',
                     'bank' => $item->bank_id ? getBankNameById($item->bank_id) : '',
                     't_number' => $item->t_number,
-                    'amount' => (float) $item->amount_out,
+                    'amount' => (float) (($item->amount_out > 0) ? $item->amount_out : $item->amount_in),
                     'passing_date' => $item->passing_date,
                     'payment_type' => (int) $item->payment_type,
                     'child_account' => optional(optional($item->ledger)->projectHeadSubhead)->subheadAccounting?->name,
