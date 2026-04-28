@@ -121,7 +121,7 @@
                                                         <label class="fbox mb-1">Reference No</label>
                                                         <input type="text" class="form-control form-control-sm"
                                                             name="voucher"
-                                                            value="{{ $voucherType }}-{{ get_new_voucher_number($voucherType) }}"
+                                                            value="{{ $voucherType }}-{{ $latest_voucher_number ?? '' }}"
                                                             autocomplete="off" readonly>
                                                         @error('reference')
                                                             <div class="invalid-feedback d-block">{{ $message }}</div>
