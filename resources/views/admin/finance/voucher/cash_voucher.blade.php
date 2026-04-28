@@ -258,19 +258,35 @@
                                                             style="display: none;">
                                                             <div class="card border">
                                                                 <div class="card-header py-2">
-                                                                    <strong>Pending Online/Check Payments</strong>
+                                                                    <strong>Pending Online/Check Clearance</strong>
                                                                 </div>
                                                                 <div class="card-body p-2">
+                                                                    <div class="alert alert-info py-2 mb-2">
+                                                                        Select a pending Online/Check voucher to clear, return, or mark as bounced.
+                                                                    </div>
+                                                                    <input type="hidden" id="selected_pending_payment_id">
+                                                                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                                                                        <div class="btn-group btn-group-sm" role="group">
+                                                                            <button type="button" class="btn btn-outline-secondary active pending-filter-chip" data-filter="all">All</button>
+                                                                            <button type="button" class="btn btn-outline-secondary pending-filter-chip" data-filter="2">Online</button>
+                                                                            <button type="button" class="btn btn-outline-secondary pending-filter-chip" data-filter="3">Check</button>
+                                                                        </div>
+                                                                        <input type="text" class="form-control form-control-sm" id="pendingSearchInput"
+                                                                            placeholder="Search voucher/ref/number/customer/bank" style="max-width:320px;">
+                                                                        <button type="button" class="btn btn-sm btn-outline-primary" id="pendingRefreshBtn">Refresh</button>
+                                                                    </div>
                                                                     <div class="table-responsive mb-2">
                                                                         <table class="table table-sm table-bordered mb-0"
                                                                             id="pendingPaymentsTable">
                                                                             <thead>
                                                                                 <tr>
                                                                                     <th>Select</th>
+                                                                                    <th>Source</th>
                                                                                     <th>Date</th>
                                                                                     <th>Ref</th>
                                                                                     <th>Customer</th>
                                                                                     <th>Plot</th>
+                                                                                    <th>Type</th>
                                                                                     <th>Bank</th>
                                                                                     <th>Number</th>
                                                                                     <th>Amount</th>
@@ -279,6 +295,10 @@
                                                                             </thead>
                                                                             <tbody></tbody>
                                                                         </table>
+                                                                    </div>
+                                                                    <div class="border rounded p-2 mb-2 bg-light d-none" id="pendingSelectedSummary">
+                                                                        <strong>Selected voucher:</strong>
+                                                                        <span id="pendingSummaryText"></span>
                                                                     </div>
                                                                     <div class="row g-2 align-items-end">
                                                                         <div class="col-md-3">
@@ -317,6 +337,11 @@
                                                                                 id="pending_bank_post_at">
                                                                         </div>
                                                                         <div class="col-md-12">
+                                                                            <small id="pendingStatusHelper" class="text-muted d-block">
+                                                                                Pass: This will post the bank receipt ledger.
+                                                                            </small>
+                                                                        </div>
+                                                                        <div class="col-md-12">
                                                                             <label class="fbox mb-1">Note</label>
                                                                             <textarea class="form-control form-control-sm" id="pending_note" rows="2"
                                                                                 maxlength="1000" placeholder="Reason/note"></textarea>
@@ -324,6 +349,7 @@
                                                                         <div class="col-md-12">
                                                                             <button type="button"
                                                                                 class="btn btn-sm btn-primary"
+                                                                                disabled
                                                                                 id="submitPendingStatus">Update
                                                                                 Pending Payment</button>
                                                                         </div>
@@ -770,6 +796,9 @@
 
 
 
+            let accountTypeRequestSeq = 0;
+            let childAccountRequestSeq = 0;
+
             function clearPartyInfo() {
                 $('#cnic').text('Not provided');
                 $('#phone').text('Not provided');
@@ -777,9 +806,62 @@
                 $('#balance').text('$0.00');
             }
 
+            function clearVoucherAccountSelection() {
+                const tsAccounts = $('#accounts_id')[0]?.tomselect;
+                const tsSubAccounts = $('#subaccounts_id')[0]?.tomselect;
+                if (tsAccounts) {
+                    tsAccounts.clear(true);
+                    tsAccounts.clearOptions();
+                    tsAccounts.refreshOptions(false);
+                }
+                if (tsSubAccounts) {
+                    tsSubAccounts.clear(true);
+                    tsSubAccounts.clearOptions();
+                    tsSubAccounts.refreshOptions(false);
+                }
+                const tabNo = parseInt($('#submit-button').attr('tab-number'), 10) || 1;
+                if (store?.tabs?.[tabNo]?.formData) {
+                    store.tabs[tabNo].formData.accounts_id = '';
+                    store.tabs[tabNo].formData.subaccounts_id = '';
+                }
+            }
+
+            function toggleAccountFieldsLoading(isLoading) {
+                const tsAccounts = $('#accounts_id')[0]?.tomselect;
+                const tsSubAccounts = $('#subaccounts_id')[0]?.tomselect;
+                if (isLoading) {
+                    tsAccounts?.disable();
+                    tsSubAccounts?.disable();
+                } else {
+                    tsAccounts?.enable();
+                }
+            }
+
+            function setChildFieldEnabled(enabled) {
+                const tsSubAccounts = $('#subaccounts_id')[0]?.tomselect;
+                if (!enabled) {
+                    tsSubAccounts?.disable();
+                    return;
+                }
+                tsSubAccounts?.enable();
+            }
+
+            function optionExists(selectId, value) {
+                if (!value) return false;
+                const ts = document.getElementById(selectId)?.tomselect;
+                if (!ts) return false;
+                return Object.prototype.hasOwnProperty.call(ts.options || {}, String(value));
+            }
+
             $('#acct_type').change(function() {
                 var acctType = $(this).val();
                 clearPartyInfo();
+                accountTypeRequestSeq += 1;
+                const reqSeq = accountTypeRequestSeq;
+                clearVoucherAccountSelection();
+                toggleAccountFieldsLoading(true);
+                setChildFieldEnabled(false);
+
                 if (acctType) {
                     $.ajax({
                         url: '{{ route('get_account') }}',
@@ -791,6 +873,7 @@
                             _token: '{{ csrf_token() }}'
                         },
                         success: function(data) {
+                            if (reqSeq !== accountTypeRequestSeq) return;
                             const $accounts = $('#accounts_id');
                             const $subAccounts = $('#subaccounts_id');
 
@@ -824,6 +907,7 @@
 
                                 // Refresh TomSelect
                                 tsAccounts.refreshOptions(false);
+                                tsAccounts.enable();
                             }
 
                             if (tsSubAccounts) {
@@ -845,10 +929,21 @@
                                 }
 
                                 tsSubAccounts.refreshOptions(false);
+                                tsSubAccounts.disable();
                             }
                         },
                         error: function() {
+                            if (reqSeq !== accountTypeRequestSeq) return;
                             console.log('Error fetching accounts');
+                        },
+                        complete: function() {
+                            if (reqSeq !== accountTypeRequestSeq) return;
+                            const hasAccountOptions = Object.keys($('#accounts_id')[0]?.tomselect?.options || {}).length > 0;
+                            if (hasAccountOptions) {
+                                $('#accounts_id')[0]?.tomselect?.enable();
+                            } else {
+                                $('#accounts_id')[0]?.tomselect?.disable();
+                            }
                         }
                     });
                 } else {
@@ -856,6 +951,8 @@
                     let tsSubAccounts = $('#subaccounts_id')[0].tomselect;
                     if (tsAccounts) tsAccounts.clearOptions();
                     if (tsSubAccounts) tsSubAccounts.clearOptions();
+                    tsAccounts?.disable();
+                    tsSubAccounts?.disable();
                 }
             });
 
@@ -864,6 +961,16 @@
             $('#accounts_id').change(function() {
                 var accountID = $(this).val();
                 clearPartyInfo();
+                childAccountRequestSeq += 1;
+                const reqSeq = childAccountRequestSeq;
+
+                const tsSubAccounts = $('#subaccounts_id')[0]?.tomselect;
+                if (tsSubAccounts) {
+                    tsSubAccounts.clear(true);
+                    tsSubAccounts.clearOptions();
+                    tsSubAccounts.refreshOptions(false);
+                    tsSubAccounts.disable();
+                }
 
                 if (accountID) {
                     $.ajax({
@@ -876,6 +983,7 @@
                             _token: '{{ csrf_token() }}'
                         },
                         success: function(data) {
+                            if (reqSeq !== childAccountRequestSeq) return;
                             const $subAccounts = $('#subaccounts_id');
                             const subAccountsEl = $subAccounts[0];
                             const tsSubAccounts = subAccountsEl?.tomselect;
@@ -911,6 +1019,7 @@
 
                                 // Refresh dropdown
                                 tsSubAccounts.refreshOptions(false);
+                                tsSubAccounts.enable();
                             }
 
                         }
@@ -918,6 +1027,7 @@
                     });
                 } else {
                     $('#subaccounts_id')[0].tomselect.clearOptions();
+                    $('#subaccounts_id')[0].tomselect.disable();
                 }
             });
 
@@ -1125,38 +1235,96 @@
                 const pendingFetchUrl = "{{ route('finance.voucher.pending_bank_payments') }}";
                 const pendingStatusUpdateUrlTemplate =
                     "{{ route('finance.voucher.pending_bank_payments.status', ['customerLedger' => 'LEDGER_ID']) }}";
+                let pendingRowsCache = [];
+                let pendingFilterType = 'all';
+                let pendingSearchTerm = '';
 
-                function populatePendingPaymentsTable(rows) {
+                function setPendingControlsEnabled(enabled) {
+                    $('#pending_status').prop('disabled', !enabled);
+                    $('#pending_note').prop('disabled', !enabled);
+                    $('#pending_bank_post_at').prop('disabled', !enabled);
+                    $('#pending_accounts_id').prop('disabled', !enabled);
+                    $('#pending_subaccounts_id').prop('disabled', !enabled);
+                }
+
+                function refreshPendingSubmitState() {
+                    const selectedId = $('#selected_pending_payment_id').val();
+                    const passingStatus = $('#pending_status').val();
+                    const note = $('#pending_note').val().trim();
+                    const bankPostAt = $('#pending_bank_post_at').val();
+                    const accountsId = $('#pending_accounts_id').val();
+                    const subaccountsId = $('#pending_subaccounts_id').val();
+                    const passValid = passingStatus !== '1' || (bankPostAt && accountsId && subaccountsId);
+                    $('#submitPendingStatus').prop('disabled', !(selectedId && passingStatus && note && passValid));
+                }
+
+                function setPendingStatusHelper() {
+                    const status = $('#pending_status').val();
+                    if (status === '1') {
+                        $('#pendingStatusHelper').text('Pass: This will post the bank receipt ledger.');
+                    } else {
+                        $('#pendingStatusHelper').text('Return/Bounce: This will only update status and history. No bank ledger will be posted.');
+                    }
+                    refreshPendingSubmitState();
+                }
+
+                function renderPendingRows() {
                     const $tbody = $('#pendingPaymentsTable tbody');
                     $tbody.empty();
+                    const filtered = pendingRowsCache.filter((item) => {
+                        const typeMatch = pendingFilterType === 'all' ? true : String(item.payment_type) === pendingFilterType;
+                        if (!typeMatch) return false;
+                        if (!pendingSearchTerm) return true;
+                        const haystack = [
+                            item.reference, item.t_number, item.customer, item.bank, item.transaction_type
+                        ].join(' ').toLowerCase();
+                        return haystack.includes(pendingSearchTerm.toLowerCase());
+                    });
 
-                    if (!rows || !rows.length) {
-                        $tbody.append(
-                            '<tr><td colspan="9" class="text-center text-muted">No pending online/check payments found for this project.</td></tr>'
-                        );
+                    if (!filtered.length) {
+                        $tbody.append('<tr><td colspan="11" class="text-center text-muted">No pending online/check payments found for this project.</td></tr>');
                         return;
                     }
 
-                    rows.forEach(function(item) {
-                        const row = `<tr>
-                            <td><input type="radio" name="selected_pending_payment" value="${item.id}"></td>
+                    filtered.forEach(function(item) {
+                        const checked = String($('#selected_pending_payment_id').val()) === String(item.id) ? 'checked' : '';
+                        const isOnline = Number(item.payment_type) === 2;
+                        const typeBadge = isOnline ? '<span class="badge bg-primary">Online</span>' : '<span class="badge bg-warning text-dark">Check</span>';
+                        const source = item.transaction_type === 'PPR' ? 'Received Payment' : 'Cash In';
+                        const pendingDays = item.pending_days !== undefined ? item.pending_days : '';
+                        const row = `<tr class="pending-row ${checked ? 'table-active' : ''}" data-id="${item.id}">
+                            <td><input type="radio" name="selected_pending_payment" value="${item.id}" ${checked}></td>
+                            <td>${source}</td>
                             <td>${item.date || ''}</td>
                             <td>${(item.transaction_type || '')}-${(item.reference || '')}</td>
                             <td>${item.customer || ''}</td>
                             <td>${item.plot || ''}</td>
+                            <td>${typeBadge}</td>
                             <td>${item.bank || ''}</td>
                             <td>${item.t_number || ''}</td>
                             <td>${item.amount || 0}</td>
-                            <td>${item.passing_date || ''}</td>
+                            <td>${item.passing_date || ''}${pendingDays !== '' ? ` <small class="text-muted">(${pendingDays}d)</small>` : ''}</td>
                         </tr>`;
                         $tbody.append(row);
                     });
                 }
 
+                function populatePendingPaymentsTable(rows) {
+                    pendingRowsCache = rows || [];
+                    renderPendingRows();
+                }
+
                 function loadPendingPayments() {
+                    const paymentType = $('#payment_type').val();
+                    const requestData = {};
+                    if (paymentType === '2' || paymentType === '3') {
+                        requestData.payment_type = paymentType;
+                    }
+                    $('#pendingPaymentsTable tbody').html('<tr><td colspan="11" class="text-center text-muted">Loading pending payments...</td></tr>');
                     $.ajax({
                         url: pendingFetchUrl,
                         type: 'GET',
+                        data: requestData,
                         dataType: 'json',
                         success: function(res) {
                             if (res?.status === 'success') {
@@ -1181,10 +1349,49 @@
                         $('#pending_subaccounts_id').empty().append(
                             '<option value="">Select account</option>');
                     }
+                    setPendingStatusHelper();
                 }
 
                 $('#pending_status').on('change', togglePendingBankAccountFields);
+                $('#pending_note, #pending_bank_post_at, #pending_accounts_id, #pending_subaccounts_id').on('input change', refreshPendingSubmitState);
+                setPendingControlsEnabled(false);
                 togglePendingBankAccountFields();
+                setPendingStatusHelper();
+
+                $(document).on('click', '.pending-filter-chip', function() {
+                    $('.pending-filter-chip').removeClass('active');
+                    $(this).addClass('active');
+                    pendingFilterType = String($(this).data('filter'));
+                    renderPendingRows();
+                });
+
+                $('#pendingSearchInput').on('input', function() {
+                    pendingSearchTerm = $(this).val() || '';
+                    renderPendingRows();
+                });
+
+                $('#pendingRefreshBtn').on('click', function() {
+                    loadPendingPayments();
+                });
+
+                $(document).on('change', 'input[name="selected_pending_payment"]', function() {
+                    const selectedId = $(this).val();
+                    $('#selected_pending_payment_id').val(selectedId);
+                    $('#pendingPaymentsTable tbody tr').removeClass('table-active');
+                    $(this).closest('tr').addClass('table-active');
+                    const selected = pendingRowsCache.find((row) => String(row.id) === String(selectedId));
+                    if (selected) {
+                        $('#pendingSummaryText').text(
+                            `${selected.transaction_type}-${selected.reference} | ${selected.customer || 'N/A'} | ${selected.bank || 'N/A'} | ${selected.t_number || 'N/A'} | ${selected.amount || 0}`
+                        );
+                        $('#pendingSelectedSummary').removeClass('d-none');
+                        setPendingControlsEnabled(true);
+                    } else {
+                        $('#pendingSelectedSummary').addClass('d-none');
+                        setPendingControlsEnabled(false);
+                    }
+                    refreshPendingSubmitState();
+                });
 
                 $('#pending_accounts_id').on('change', function() {
                     const accountID = $(this).val();
@@ -1215,7 +1422,7 @@
                 });
 
                 $('#submitPendingStatus').on('click', function() {
-                    const selectedId = $('input[name="selected_pending_payment"]:checked').val();
+                    const selectedId = $('#selected_pending_payment_id').val();
                     const passingStatus = $('#pending_status').val();
                     const note = $('#pending_note').val().trim();
                     const bankPostAt = $('#pending_bank_post_at').val();
@@ -1260,14 +1467,21 @@
                             accounts_id: accountsId,
                             subaccounts_id: subaccountsId
                         },
+                        beforeSend: function() {
+                            $('#submitPendingStatus').prop('disabled', true).text('Updating...');
+                        },
                         success: function(res) {
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Updated',
                                 text: res?.message || 'Status updated successfully.'
-                            }).then(function() {
-                                window.location.reload();
                             });
+                            pendingRowsCache = pendingRowsCache.filter((row) => String(row.id) !== String(selectedId));
+                            $('#selected_pending_payment_id').val('');
+                            $('#pendingSelectedSummary').addClass('d-none');
+                            setPendingControlsEnabled(false);
+                            renderPendingRows();
+                            refreshPendingSubmitState();
                         },
                         error: function(xhr) {
                             const msg = xhr.responseJSON?.message || 'Unable to update status.';
@@ -1276,6 +1490,10 @@
                                 title: 'Error',
                                 text: msg
                             });
+                        },
+                        complete: function() {
+                            $('#submitPendingStatus').text('Update Pending Payment');
+                            refreshPendingSubmitState();
                         }
                     });
                 });
@@ -1578,9 +1796,34 @@
                     return !isNaN(val) && parseFloat(val) > 0;
                 });
 
+                const voucherVisible = String($("[name='voucher_number']").val() || '');
+                const voucherHidden = String($("[name='voucher']").val() || '');
+                const voucherRegex = /^(CR|CP)-\d+$/;
+                const visibleMatch = voucherVisible.match(voucherRegex);
+                const hiddenMatch = voucherHidden.match(voucherRegex);
+                if (!visibleMatch || !hiddenMatch || visibleMatch[1] !== hiddenMatch[1] || visibleMatch[1] !== @json($voucherType)) {
+                    isValid = false;
+                    messages.push("Invalid voucher number. Please refresh and try again.");
+                }
+
+                const accountId = String($("[name='accounts_id']").val() || '');
+                const subAccountId = String($("[name='subaccounts_id']").val() || '');
+                const accountSelect = document.getElementById('accounts_id');
+                const subAccountSelect = document.getElementById('subaccounts_id');
+                const accountExists = accountSelect?.tomselect?.options?.[accountId];
+                const subAccountExists = subAccountSelect?.tomselect?.options?.[subAccountId];
+                if (!accountId || !subAccountId || !accountExists || !subAccountExists) {
+                    isValid = false;
+                    messages.push("Please reselect Account and Child Account.");
+                }
+
                 if (!isValid) {
                     e.preventDefault();
-                    alert(messages.join("\n"));
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Validation error',
+                        text: messages[0] || 'Please review your input and try again.'
+                    });
                     return;
                 } else {
                     $('#confirmedModal').modal('show');
@@ -1626,7 +1869,7 @@
             const TS_SEL = '.js-tomselect';
             const VOUCHER_TYPE = @json($voucherType);
             const INITIAL_VOUCHER_NUMBER = @json((int) ($latest_voucher_number ?? 1));
-            const VOUCHER_STORAGE_KEY = `bluemarketing_voucher_tabs_${VOUCHER_TYPE}_${window.location.pathname}_v2`;
+            const VOUCHER_STORAGE_KEY = `bluemarketing_voucher_tabs_${VOUCHER_TYPE}_${window.location.pathname}_v3`;
 
             function buildVoucherDisplay(number) {
                 return `${VOUCHER_TYPE}-${number}`;
@@ -1697,6 +1940,8 @@
 
             const hydrate = () => {
                 try {
+                    localStorage.removeItem(`bluemarketing_${'{{ getSelectedTown() }}'}_voucher_tabs_${VOUCHER_TYPE}_v1`);
+                    localStorage.removeItem(`bluemarketing_voucher_tabs_${VOUCHER_TYPE}_${window.location.pathname}_v2`);
                     const raw = localStorage.getItem(VOUCHER_STORAGE_KEY);
                     if (!raw) return;
                     const parsed = JSON.parse(raw);
@@ -1707,6 +1952,21 @@
                             if (storedVoucher && parseVoucherNumber(storedVoucher) === null) {
                                 localStorage.removeItem(VOUCHER_STORAGE_KEY);
                                 return;
+                            }
+                            const accountId = parsed.tabs?.[tabKey]?.formData?.accounts_id ?? '';
+                            const subAccountId = parsed.tabs?.[tabKey]?.formData?.subaccounts_id ?? '';
+                            if ((accountId && !subAccountId) || (!accountId && subAccountId)) {
+                                parsed.tabs[tabKey].formData.accounts_id = '';
+                                parsed.tabs[tabKey].formData.subaccounts_id = '';
+                            }
+                            // Do not blindly restore account/subaccount; force validated re-selection.
+                            parsed.tabs[tabKey].formData.accounts_id = '';
+                            parsed.tabs[tabKey].formData.subaccounts_id = '';
+                            if (parsed.tabs?.[tabKey]?.selects?.accounts_id) {
+                                parsed.tabs[tabKey].selects.accounts_id.selected = '';
+                            }
+                            if (parsed.tabs?.[tabKey]?.selects?.subaccounts_id) {
+                                parsed.tabs[tabKey].selects.subaccounts_id.selected = '';
                             }
                         }
                         store = parsed;
@@ -1968,6 +2228,19 @@
                 const parsedVoucherNumber = parseVoucherNumber($('#voucher_number').val());
                 if (parsedVoucherNumber !== null) {
                     setVoucherNumber(parsedVoucherNumber);
+                }
+
+                const currentAccount = $('#accounts_id')[0]?.tomselect?.getValue();
+                const currentSubAccount = $('#subaccounts_id')[0]?.tomselect?.getValue();
+                if (currentAccount && !optionExists('accounts_id', currentAccount)) {
+                    $('#accounts_id')[0]?.tomselect?.clear(true);
+                    $('#subaccounts_id')[0]?.tomselect?.clear(true);
+                    $('#subaccounts_id')[0]?.tomselect?.clearOptions();
+                    clearPartyInfo();
+                }
+                if (currentSubAccount && !optionExists('subaccounts_id', currentSubAccount)) {
+                    $('#subaccounts_id')[0]?.tomselect?.clear(true);
+                    clearPartyInfo();
                 }
             }
 

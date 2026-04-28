@@ -800,7 +800,7 @@ class VoucherController extends Controller
     {
         $selectedProjectId = getSelectedTown();
 
-        $pendingRows = CustomerLedger::with([
+        $query = CustomerLedger::with([
             'customer_list:id,first_name,last_name,phone_number',
             'plot_list:id,name,type',
             'ledger.projectHeadSubhead.subheadAccounting:id,name',
@@ -809,8 +809,13 @@ class VoucherController extends Controller
             ->where('is_active', 1)
             ->whereIn('payment_type', [2, 3])
             ->where('passing_status', 0)
-            ->orderByDesc('id')
-            ->get()
+            ->orderByDesc('id');
+
+        if ($request->filled('payment_type') && in_array((int) $request->input('payment_type'), [2, 3], true)) {
+            $query->where('payment_type', (int) $request->input('payment_type'));
+        }
+
+        $pendingRows = $query->get()
             ->map(function (CustomerLedger $item) {
                 return [
                     'id' => $item->id,
@@ -827,11 +832,13 @@ class VoucherController extends Controller
                     'passing_date' => $item->passing_date,
                     'payment_type' => (int) $item->payment_type,
                     'child_account' => optional(optional($item->ledger)->projectHeadSubhead)->subheadAccounting?->name,
+                    'pending_days' => $item->date ? now()->diffInDays(\Carbon\Carbon::parse($item->date)) : null,
                 ];
             });
 
         return response()->json([
             'status' => 'success',
+            'count' => $pendingRows->count(),
             'data' => $pendingRows,
         ]);
     }
@@ -927,11 +934,13 @@ class VoucherController extends Controller
         } catch (\RuntimeException $e) {
             return response()->json([
                 'status' => 'error',
+                'error_key' => 'pending_payment_invalid_state',
                 'message' => $e->getMessage(),
             ], 422);
         } catch (\Throwable $th) {
             return response()->json([
                 'status' => 'error',
+                'error_key' => 'pending_payment_update_failed',
                 'message' => 'Unable to update payment status right now.',
             ], 500);
         }
