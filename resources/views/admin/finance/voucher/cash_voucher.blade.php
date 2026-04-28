@@ -273,7 +273,7 @@
                                                                                     <th>Select</th>
                                                                                     <th>Source</th>
                                                                                     <th>Date</th>
-                                                                                    <th>Ref</th>
+                                                                                    <th>Voucher Number</th>
                                                                                     <th>Customer</th>
                                                                                     <th>Plot</th>
                                                                                     <th>Type</th>
@@ -1255,7 +1255,7 @@
                             <td><input type="radio" name="selected_pending_payment" value="${item.id}" ${checked}></td>
                             <td>${source}</td>
                             <td>${item.date || ''}</td>
-                            <td>${(item.transaction_type || '')}-${(item.reference || '')}</td>
+                            <td>${item.voucher_number_display || ('Pending #' + item.id)}</td>
                             <td>${item.customer || ''}</td>
                             <td>${item.plot || ''}</td>
                             <td>${typeBadge}</td>
@@ -1337,7 +1337,7 @@
                     const selected = pendingRowsCache.find((row) => String(row.id) === String(selectedId));
                     if (selected) {
                         $('#pendingSummaryText').text(
-                            `${selected.transaction_type}-${selected.reference} | ${selected.customer || 'N/A'} | ${selected.bank || 'N/A'} | ${selected.t_number || 'N/A'} | ${selected.amount || 0}`
+                            `${selected.voucher_number_display || ('Pending #' + selected.id)} | ${selected.customer || 'N/A'} | ${selected.bank || 'N/A'} | ${selected.t_number || 'N/A'} | ${selected.amount || 0}`
                         );
                         $('#pendingSelectedSummary').removeClass('d-none');
                         setPendingControlsEnabled(true);

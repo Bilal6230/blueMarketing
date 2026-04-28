@@ -817,11 +817,31 @@ class VoucherController extends Controller
 
         $pendingRows = $query->get()
             ->map(function (CustomerLedger $item) {
+                $ledgerType = trim((string) optional($item->ledger)->type);
+                $ledgerVoucherNumber = trim((string) optional($item->ledger)->voucher_number);
+                $transactionType = trim((string) $item->transaction_type);
+                $typeId = trim((string) ($item->type_id ?? ''));
+                $reference = trim((string) ($item->reference ?? ''));
+
+                $voucherNumberDisplay = null;
+                if ($ledgerType !== '' && $ledgerVoucherNumber !== '') {
+                    $voucherNumberDisplay = $ledgerType . '-' . $ledgerVoucherNumber;
+                } elseif (in_array($transactionType, ['CR', 'CP'], true) && $typeId !== '') {
+                    $voucherNumberDisplay = $transactionType . '-' . $typeId;
+                } elseif ($reference !== '' && preg_match('/[A-Za-z]/', $reference)) {
+                    $voucherNumberDisplay = $reference;
+                } elseif ($transactionType !== '' && $reference !== '') {
+                    $voucherNumberDisplay = $transactionType . '-' . $reference;
+                } else {
+                    $voucherNumberDisplay = 'Pending #' . $item->id;
+                }
+
                 return [
                     'id' => $item->id,
                     'date' => $item->date,
                     'transaction_type' => $item->transaction_type,
                     'reference' => $item->reference,
+                    'voucher_number_display' => $voucherNumberDisplay,
                     'customer' => trim(($item->customer_list?->first_name ?? '') . ' ' . ($item->customer_list?->last_name ?? '')),
                     'plot' => $item->plot_list
                         ? ((((int) $item->plot_list->type === 1) ? 'R' : (((int) $item->plot_list->type === 2) ? 'C' : '')) . '-' . $item->plot_list->name)
