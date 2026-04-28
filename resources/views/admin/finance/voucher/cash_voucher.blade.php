@@ -247,10 +247,30 @@
                                                     </div>
                                                     <div class="col-6 col-md-3 col-lg-2 bank_group" style="display: none">
                                                         <label class="fbox mb-1">Passing Date</label>
-                                                        <input type="text" name="passing_date"
+                                                        <input type="text" name="passing_date" id="passing_date"
                                                             class="passing_date date form-control form-control-sm" data-input>
                                                         @error('passing_date')
                                                             <div class="invalid-feedback d-block">{{ $message }}</div>
+                                                        @enderror
+                                                    </div>
+                                                    @if ($voucherType === 'CP')
+                                                        <div class="col-6 col-md-3 col-lg-2 bank_group pending_status_group"
+                                                            style="display: none">
+                                                            <label class="fbox mb-1">Status</label>
+                                                            <select class="form-control form-control-sm" name="pending_status"
+                                                                id="pending_status" disabled>
+                                                                <option value="1">Pass</option>
+                                                                <option value="2">Return</option>
+                                                                <option value="3">Cheque Bounce</option>
+                                                            </select>
+                                                        </div>
+                                                    @endif
+                                                    <div class="col-12 col-md-12 col-lg-10" style="margin-top: 10px">
+                                                        <label for="detail" class="fbox mb-1">Details</label>
+                                                        <textarea id="detail" class="form-control @error('detail') input-error @enderror"
+                                                            placeholder="Enter your details here..." name="detail" maxlength="255" required>{{ old('detail') }}</textarea>
+                                                        @error('detail')
+                                                            <div class="error-message">{{ $message }}</div>
                                                         @enderror
                                                     </div>
                                                     @if ($voucherType === 'CP')
@@ -264,7 +284,8 @@
                                                                     <div class="alert alert-info py-2 mb-2">
                                                                         Select a pending Online/Check voucher to clear, return, or mark as bounced.
                                                                     </div>
-                                                                    <input type="hidden" id="selected_pending_payment_id">
+                                                                    <input type="hidden" id="selected_pending_payment_id"
+                                                                        name="selected_pending_payment_id" value="">
                                                                     <div class="table-responsive mb-2">
                                                                         <table class="table table-sm table-bordered mb-0"
                                                                             id="pendingPaymentsTable">
@@ -290,52 +311,10 @@
                                                                         <strong>Selected voucher:</strong>
                                                                         <span id="pendingSummaryText"></span>
                                                                     </div>
-                                                                    <div class="row g-2 align-items-end">
-                                                                        <div class="col-md-3">
-                                                                            <label class="fbox mb-1">Status</label>
-                                                                            <select class="form-control form-control-sm"
-                                                                                id="pending_status">
-                                                                                <option value="1">Pass</option>
-                                                                                <option value="2">Return</option>
-                                                                                <option value="3">Cheque Bounce</option>
-                                                                            </select>
-                                                                        </div>
-                                                                        <div class="col-md-3">
-                                                                            <label class="fbox mb-1">Bank Post Date</label>
-                                                                            <input type="date"
-                                                                                class="form-control form-control-sm"
-                                                                                id="pending_bank_post_at">
-                                                                        </div>
-                                                                        <div class="col-md-12">
-                                                                            <small id="pendingStatusHelper" class="text-muted d-block">
-                                                                                Pass: This will post the bank receipt ledger.
-                                                                            </small>
-                                                                        </div>
-                                                                        <div class="col-md-12">
-                                                                            <label class="fbox mb-1">Note</label>
-                                                                            <textarea class="form-control form-control-sm" id="pending_note" rows="2"
-                                                                                maxlength="1000" placeholder="Reason/note"></textarea>
-                                                                        </div>
-                                                                        <div class="col-md-12">
-                                                                            <button type="button"
-                                                                                class="btn btn-sm btn-primary"
-                                                                                disabled
-                                                                                id="submitPendingStatus">Update
-                                                                                Pending Payment</button>
-                                                                        </div>
-                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     @endif
-                                                    <div class="col-6 col-md-3 col-lg-10" style="margin-top: 10px">
-                                                        <label for="detail" class="fbox mb-1">Details</label>
-                                                        <textarea id="detail" class="form-control @error('detail') input-error @enderror"
-                                                            placeholder="Enter your details here..." name="detail" maxlength="255" required>{{ old('detail') }}</textarea>
-                                                        @error('detail')
-                                                            <div class="error-message">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
                                                 </div>
                                             </div>
                                             <div class="col-2">
@@ -1198,39 +1177,11 @@
 
             @if ($voucherType === 'CP')
                 const pendingFetchUrl = "{{ route('finance.voucher.pending_bank_payments') }}";
-                const pendingStatusUpdateUrlTemplate =
-                    "{{ route('finance.voucher.pending_bank_payments.status', ['customerLedger' => 'LEDGER_ID']) }}";
                 let pendingRowsCache = [];
                 let activePendingPaymentType = '2';
 
                 function getPendingTypeText(paymentType) {
                     return String(paymentType) === '3' ? 'Check' : 'Online';
-                }
-
-                function setPendingControlsEnabled(enabled) {
-                    $('#pending_status').prop('disabled', !enabled);
-                    $('#pending_note').prop('disabled', !enabled);
-                    $('#pending_bank_post_at').prop('disabled', !enabled);
-                }
-
-                function refreshPendingSubmitState() {
-                    const selectedId = $('#selected_pending_payment_id').val();
-                    const passingStatus = $('#pending_status').val();
-                    const note = $('#pending_note').val().trim();
-                    const accountsId = $('#accounts_id').val();
-                    const subaccountsId = $('#subaccounts_id').val();
-                    const passValid = passingStatus !== '1' || (accountsId && subaccountsId);
-                    $('#submitPendingStatus').prop('disabled', !(selectedId && passingStatus && note && passValid));
-                }
-
-                function setPendingStatusHelper() {
-                    const status = $('#pending_status').val();
-                    if (status === '1') {
-                        $('#pendingStatusHelper').text('Pass: This will post the bank receipt ledger.');
-                    } else {
-                        $('#pendingStatusHelper').text('Return/Bounce: This will only update status and history. No bank ledger will be posted.');
-                    }
-                    refreshPendingSubmitState();
                 }
 
                 function renderPendingRows() {
@@ -1301,33 +1252,25 @@
 
                 window.syncPendingPanelFromPaymentType = function() {
                     const paymentType = String($('#payment_type').val() || '');
+                    const isBankMode = paymentType === '2' || paymentType === '3';
+                    $('#pending_status').prop('disabled', !isBankMode);
+                    $('.pending_status_group').toggle(isBankMode);
                     if (paymentType === '2' || paymentType === '3') {
                         $('.bank_group').css('display', 'block');
                         $('#pendingPaymentsSection').show();
                         $('#selected_pending_payment_id').val('');
                         $('#pendingSelectedSummary').addClass('d-none');
-                        setPendingControlsEnabled(false);
                         loadPendingPayments();
                     } else {
                         $('.bank_group').css('display', 'none');
                         $('#pendingPaymentsSection').hide();
+                        $('#pending_status').val('1');
                         $('#selected_pending_payment_id').val('');
                         $('#pendingSelectedSummary').addClass('d-none');
                         pendingRowsCache = [];
                         renderPendingRows();
                     }
                 };
-
-                function togglePendingBankAccountFields() {
-                    const status = $('#pending_status').val();
-                    setPendingStatusHelper();
-                }
-
-                $('#pending_status').on('change', togglePendingBankAccountFields);
-                $('#pending_note, #pending_bank_post_at, #accounts_id, #subaccounts_id').on('input change', refreshPendingSubmitState);
-                setPendingControlsEnabled(false);
-                togglePendingBankAccountFields();
-                setPendingStatusHelper();
 
                 $(document).on('change', 'input[name="selected_pending_payment"]', function() {
                     const selectedId = $(this).val();
@@ -1337,92 +1280,12 @@
                     const selected = pendingRowsCache.find((row) => String(row.id) === String(selectedId));
                     if (selected) {
                         $('#pendingSummaryText').text(
-                            `${selected.voucher_number_display || ('Pending #' + selected.id)} | ${selected.customer || 'N/A'} | ${selected.bank || 'N/A'} | ${selected.t_number || 'N/A'} | ${selected.amount || 0}`
+                            `${selected.voucher_number_display || ('Pending #' + selected.id)} | ${selected.transaction_type === 'PPR' ? 'Received Payment' : 'Cash In'} | ${selected.bank || 'N/A'} | ${selected.t_number || 'N/A'} | ${selected.amount || 0}`
                         );
                         $('#pendingSelectedSummary').removeClass('d-none');
-                        setPendingControlsEnabled(true);
                     } else {
                         $('#pendingSelectedSummary').addClass('d-none');
-                        setPendingControlsEnabled(false);
                     }
-                    refreshPendingSubmitState();
-                });
-
-                $('#submitPendingStatus').on('click', function() {
-                    const selectedId = $('#selected_pending_payment_id').val();
-                    const passingStatus = $('#pending_status').val();
-                    const note = $('#pending_note').val().trim();
-                    const bankPostAt = $('#pending_bank_post_at').val();
-                    const accountsId = $('#accounts_id').val();
-                    const subaccountsId = $('#subaccounts_id').val();
-
-                    if (!selectedId) {
-                        Swal.fire({
-                            icon: 'warning',
-                            title: 'Select payment',
-                            text: 'Please select a pending payment first.'
-                        });
-                        return;
-                    }
-                    if (!note) {
-                        Swal.fire({
-                            icon: 'warning',
-                            title: 'Note required',
-                            text: 'Please enter a note.'
-                        });
-                        return;
-                    }
-                    if (passingStatus === '1' && (!accountsId || !subaccountsId)) {
-                        Swal.fire({
-                            icon: 'warning',
-                            title: 'Account required',
-                            text: 'Please select Accounts and Child Account in the main form for pass.'
-                        });
-                        return;
-                    }
-
-                    const endpoint = pendingStatusUpdateUrlTemplate.replace('LEDGER_ID', selectedId);
-                    $.ajax({
-                        url: endpoint,
-                        type: 'POST',
-                        dataType: 'json',
-                        data: {
-                            _token: '{{ csrf_token() }}',
-                            passing_status: passingStatus,
-                            note: note,
-                            bank_post_at: bankPostAt,
-                            accounts_id: accountsId,
-                            subaccounts_id: subaccountsId
-                        },
-                        beforeSend: function() {
-                            $('#submitPendingStatus').prop('disabled', true).text('Updating...');
-                        },
-                        success: function(res) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Updated',
-                                text: res?.message || 'Status updated successfully.'
-                            });
-                            pendingRowsCache = pendingRowsCache.filter((row) => String(row.id) !== String(selectedId));
-                            $('#selected_pending_payment_id').val('');
-                            $('#pendingSelectedSummary').addClass('d-none');
-                            setPendingControlsEnabled(false);
-                            renderPendingRows();
-                            refreshPendingSubmitState();
-                        },
-                        error: function(xhr) {
-                            const msg = xhr.responseJSON?.message || 'Unable to update status.';
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error',
-                                text: msg
-                            });
-                        },
-                        complete: function() {
-                            $('#submitPendingStatus').text('Update Pending Payment');
-                            refreshPendingSubmitState();
-                        }
-                    });
                 });
             @endif
 
@@ -2524,6 +2387,47 @@
 
                 const tabNumber = parseInt($('#submit-button').attr('tab-number'), 10) || currentTab;
                 const $form = $('#voucherForm');
+                const paymentType = String($('#payment_type').val() || '');
+                const isCashOutBankFlow = VOUCHER_TYPE === 'CP' && (paymentType === '2' || paymentType === '3');
+                if (isCashOutBankFlow) {
+                    const selectedPendingId = String($('#selected_pending_payment_id').val() || '').trim();
+                    const pendingStatus = String($('#pending_status').val() || '').trim();
+                    const passingDate = String($('#passing_date').val() || '').trim();
+                    const detail = String($('#detail').val() || '').trim();
+
+                    if (!selectedPendingId) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Pending voucher required',
+                            text: 'Please select a pending Online/Check voucher before saving.'
+                        });
+                        return;
+                    }
+                    if (!pendingStatus) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Status required',
+                            text: 'Please select a pending status before saving.'
+                        });
+                        return;
+                    }
+                    if (!passingDate) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Passing date required',
+                            text: 'Please select passing date before saving.'
+                        });
+                        return;
+                    }
+                    if (!detail) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Details required',
+                            text: 'Please enter details before saving.'
+                        });
+                        return;
+                    }
+                }
                 const formData = new FormData($form[0]);
                 formData.append('_token', $('meta[name="csrf-token"]').attr('content'));
                 $.ajaxSetup({
@@ -2558,7 +2462,7 @@
                         Swal.fire({
                             icon: 'success',
                             title: 'Saved!',
-                            text: 'Voucher saved successfully.'
+                            text: response?.message || 'Voucher saved successfully.'
                         });
                         // $form.trigger('reset');
 

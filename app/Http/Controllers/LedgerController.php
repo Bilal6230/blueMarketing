@@ -90,6 +90,16 @@ class LedgerController extends Controller
         $voucherNumber = (int) ($voucherNumberParts[1] ?? 0);
         $cleanAmount = (float) str_replace(',', '', (string) $request->input('amount'));
         $paymentType = (int) $request->input('payment_type');
+        $isCashOutPendingClearance = in_array($paymentType, [2, 3], true) && $effectiveVoucherType === 'CP';
+        $selectedPendingPaymentId = (int) $request->input('selected_pending_payment_id');
+        $pendingStatus = (int) $request->input('pending_status');
+        if ($isCashOutPendingClearance && (!$selectedPendingPaymentId || !in_array($pendingStatus, [1, 2, 3], true))) {
+            return response()->json([
+                'status' => 'error',
+                'error_key' => 'validation_error',
+                'message' => 'Please select a pending voucher and valid status before saving.'
+            ], 422);
+        }
         $amount_in = $effectiveVoucherType === 'CR' ? $cleanAmount : 0;
         $amount_out = $effectiveVoucherType === 'CP' ? $cleanAmount : 0;
 
@@ -190,23 +200,59 @@ class LedgerController extends Controller
                 $detail = $request->input('detail') . ' (Bank: ' . $bankName . ' cheque No: ' . $customerLedger->t_number . ' Passing Date: ' . $request->passing_date . ')';
             }
 
-            $data = null;
-            if (!$isPendingCashInBankPayment) {
-                $data = Ledger::create([
-                    'customer_ledger_id' => $customerLedger->id,
-                    'voucher_number' => $voucherNumber,
-                    'type' => $effectiveVoucherType,
-                    'type_id' => $lastId + 1,
-                    'project_head_subheads_id' => $projectHeadSubhead->id,
-                    'reference' => $request->reference,
-                    'amount_in' => $amount_in,
-                    'amount_out' => $amount_out,
-                    'is_active' => 1,
-                    'date' => $request->date,
-                    'detail' => $detail,
-                    'update_by' => Auth::user()->id,
-                    'create_by' => Auth::user()->id,
-                    'status' => 0,
+            $data = Ledger::create([
+                'customer_ledger_id' => $customerLedger->id,
+                'voucher_number' => $voucherNumber,
+                'type' => $effectiveVoucherType,
+                'type_id' => $lastId + 1,
+                'project_head_subheads_id' => $projectHeadSubhead->id,
+                'reference' => $request->reference,
+                'amount_in' => $amount_in,
+                'amount_out' => $amount_out,
+                'is_active' => 1,
+                'date' => $request->date,
+                'detail' => $detail,
+                'update_by' => Auth::user()->id,
+                'create_by' => Auth::user()->id,
+                'status' => 0,
+            ]);
+
+            if ($isCashOutPendingClearance) {
+                $pendingCustomerLedger = CustomerLedger::where('project_id', $selectedProjectId)
+                    ->where('id', $selectedPendingPaymentId)
+                    ->where('payment_type', $paymentType)
+                    ->where('passing_status', 0)
+                    ->where('is_active', 1)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$pendingCustomerLedger) {
+                    DB::rollBack();
+                    return response()->json([
+                        'status' => 'error',
+                        'error_key' => 'invalid_pending_payment',
+                        'message' => 'Selected pending payment is no longer available. Please refresh and try again.'
+                    ], 422);
+                }
+
+                $pendingBankName = $pendingCustomerLedger->bank_id ? getBankNameById($pendingCustomerLedger->bank_id) : null;
+                $clearedByVoucher = $effectiveVoucherType . '-' . $voucherNumber;
+                $pendingCustomerLedger->update([
+                    'passing_status' => $pendingStatus,
+                    'note' => $request->input('detail'),
+                    'bank_post_at' => $request->input('passing_date'),
+                ]);
+
+                $pendingCustomerLedger->addCheckHistory([
+                    'id' => $pendingCustomerLedger->id,
+                    'check_number' => $pendingCustomerLedger->t_number,
+                    'passing_date' => $request->input('passing_date'),
+                    'passing_status' => $pendingStatus,
+                    'description_note' => $request->input('detail'),
+                    'bank_name' => $pendingBankName,
+                    'credit_account_id' => $projectHeadSubhead->id,
+                    'cleared_by_voucher' => $clearedByVoucher,
+                    'updated_by' => Auth::id(),
                 ]);
             }
             session(['last_submit_date' => $request->date]);
@@ -215,10 +261,16 @@ class LedgerController extends Controller
                 DraftLedger::find($request->input('id'))->delete();
             }
             DB::commit();
+            $flowType = $isPendingCashInBankPayment ? 'posted_pending_clearance' : 'posted';
+            $successMessage = $isPendingCashInBankPayment
+                ? 'Voucher saved successfully. Payment status is pending clearance.'
+                : 'Data saved successfully.';
             return response()->json([
                 'status' => 'success',
-                'message' => 'Data saved successfully.',
+                'flow_type' => $flowType,
+                'message' => $successMessage,
                 'data' => $data,
+                'customer_ledger_id' => $customerLedger->id,
                 'voucher_number' => $voucherNumber,
                 'voucher_display' => $effectiveVoucherType . '-' . $voucherNumber,
             ], 200);
