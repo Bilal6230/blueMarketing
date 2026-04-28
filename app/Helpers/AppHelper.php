@@ -824,6 +824,13 @@ if (!function_exists('loadAttendanceWeek')) {
 if (!function_exists('numberToUrduWords')) {
     function numberToUrduWords($number)
     {
+        $number = str_replace(',', '', (string) $number);
+        $number = is_numeric($number) ? (int) floor((float) $number) : 0;
+
+        if ($number < 0) {
+            $number = abs($number);
+        }
+
         $words = [
             0 => 'صفر',
             1 => 'ایک',
@@ -940,7 +947,7 @@ if (!function_exists('numberToUrduWords')) {
         ];
 
         if ($number < 100) {
-            return $words[$number];
+            return $words[$number] ?? (string) $number;
         }
 
         if ($number < 1000) {
