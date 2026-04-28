@@ -258,23 +258,13 @@
                                                             style="display: none;">
                                                             <div class="card border">
                                                                 <div class="card-header py-2">
-                                                                    <strong>Pending Online/Check Clearance</strong>
+                                                                    <strong id="pendingPanelTitle">Pending Online Payments</strong>
                                                                 </div>
                                                                 <div class="card-body p-2">
                                                                     <div class="alert alert-info py-2 mb-2">
                                                                         Select a pending Online/Check voucher to clear, return, or mark as bounced.
                                                                     </div>
                                                                     <input type="hidden" id="selected_pending_payment_id">
-                                                                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                                                                        <div class="btn-group btn-group-sm" role="group">
-                                                                            <button type="button" class="btn btn-outline-secondary active pending-filter-chip" data-filter="all">All</button>
-                                                                            <button type="button" class="btn btn-outline-secondary pending-filter-chip" data-filter="2">Online</button>
-                                                                            <button type="button" class="btn btn-outline-secondary pending-filter-chip" data-filter="3">Check</button>
-                                                                        </div>
-                                                                        <input type="text" class="form-control form-control-sm" id="pendingSearchInput"
-                                                                            placeholder="Search voucher/ref/number/customer/bank" style="max-width:320px;">
-                                                                        <button type="button" class="btn btn-sm btn-outline-primary" id="pendingRefreshBtn">Refresh</button>
-                                                                    </div>
                                                                     <div class="table-responsive mb-2">
                                                                         <table class="table table-sm table-bordered mb-0"
                                                                             id="pendingPaymentsTable">
@@ -308,26 +298,6 @@
                                                                                 <option value="1">Pass</option>
                                                                                 <option value="2">Return</option>
                                                                                 <option value="3">Cheque Bounce</option>
-                                                                            </select>
-                                                                        </div>
-                                                                        <div class="col-md-3 bank-ledger-fields">
-                                                                            <label class="fbox mb-1">Head Account</label>
-                                                                            <select class="form-control form-control-sm"
-                                                                                id="pending_accounts_id">
-                                                                                <option value="">Select head</option>
-                                                                                @foreach ($headaccounts as $v)
-                                                                                    <option
-                                                                                        value="{{ $v->head_accounting_id }}">
-                                                                                        {{ $v->headAccounting->name ?? '' }}
-                                                                                    </option>
-                                                                                @endforeach
-                                                                            </select>
-                                                                        </div>
-                                                                        <div class="col-md-3 bank-ledger-fields">
-                                                                            <label class="fbox mb-1">Bank Account</label>
-                                                                            <select class="form-control form-control-sm"
-                                                                                id="pending_subaccounts_id">
-                                                                                <option value="">Select account</option>
                                                                             </select>
                                                                         </div>
                                                                         <div class="col-md-3">
@@ -1236,25 +1206,25 @@
                 const pendingStatusUpdateUrlTemplate =
                     "{{ route('finance.voucher.pending_bank_payments.status', ['customerLedger' => 'LEDGER_ID']) }}";
                 let pendingRowsCache = [];
-                let pendingFilterType = 'all';
-                let pendingSearchTerm = '';
+                let activePendingPaymentType = '2';
+
+                function getPendingTypeText(paymentType) {
+                    return String(paymentType) === '3' ? 'Check' : 'Online';
+                }
 
                 function setPendingControlsEnabled(enabled) {
                     $('#pending_status').prop('disabled', !enabled);
                     $('#pending_note').prop('disabled', !enabled);
                     $('#pending_bank_post_at').prop('disabled', !enabled);
-                    $('#pending_accounts_id').prop('disabled', !enabled);
-                    $('#pending_subaccounts_id').prop('disabled', !enabled);
                 }
 
                 function refreshPendingSubmitState() {
                     const selectedId = $('#selected_pending_payment_id').val();
                     const passingStatus = $('#pending_status').val();
                     const note = $('#pending_note').val().trim();
-                    const bankPostAt = $('#pending_bank_post_at').val();
-                    const accountsId = $('#pending_accounts_id').val();
-                    const subaccountsId = $('#pending_subaccounts_id').val();
-                    const passValid = passingStatus !== '1' || (bankPostAt && accountsId && subaccountsId);
+                    const accountsId = $('#accounts_id').val();
+                    const subaccountsId = $('#subaccounts_id').val();
+                    const passValid = passingStatus !== '1' || (accountsId && subaccountsId);
                     $('#submitPendingStatus').prop('disabled', !(selectedId && passingStatus && note && passValid));
                 }
 
@@ -1271,18 +1241,12 @@
                 function renderPendingRows() {
                     const $tbody = $('#pendingPaymentsTable tbody');
                     $tbody.empty();
-                    const filtered = pendingRowsCache.filter((item) => {
-                        const typeMatch = pendingFilterType === 'all' ? true : String(item.payment_type) === pendingFilterType;
-                        if (!typeMatch) return false;
-                        if (!pendingSearchTerm) return true;
-                        const haystack = [
-                            item.reference, item.t_number, item.customer, item.bank, item.transaction_type
-                        ].join(' ').toLowerCase();
-                        return haystack.includes(pendingSearchTerm.toLowerCase());
-                    });
+                    const filtered = pendingRowsCache;
+                    const pendingTypeText = getPendingTypeText(activePendingPaymentType);
+                    $('#pendingPanelTitle').text(`Pending ${pendingTypeText} Payments`);
 
                     if (!filtered.length) {
-                        $tbody.append('<tr><td colspan="11" class="text-center text-muted">No pending online/check payments found for this project.</td></tr>');
+                        $tbody.append(`<tr><td colspan="11" class="text-center text-muted">No pending ${pendingTypeText} payments found for this project.</td></tr>`);
                         return;
                     }
 
@@ -1316,6 +1280,7 @@
 
                 function loadPendingPayments() {
                     const paymentType = $('#payment_type').val();
+                    activePendingPaymentType = (paymentType === '3') ? '3' : '2';
                     const requestData = {};
                     if (paymentType === '2' || paymentType === '3') {
                         requestData.payment_type = paymentType;
@@ -1341,38 +1306,14 @@
 
                 function togglePendingBankAccountFields() {
                     const status = $('#pending_status').val();
-                    if (status === '1') {
-                        $('.bank-ledger-fields').show();
-                    } else {
-                        $('.bank-ledger-fields').hide();
-                        $('#pending_accounts_id').val('');
-                        $('#pending_subaccounts_id').empty().append(
-                            '<option value="">Select account</option>');
-                    }
                     setPendingStatusHelper();
                 }
 
                 $('#pending_status').on('change', togglePendingBankAccountFields);
-                $('#pending_note, #pending_bank_post_at, #pending_accounts_id, #pending_subaccounts_id').on('input change', refreshPendingSubmitState);
+                $('#pending_note, #pending_bank_post_at, #accounts_id, #subaccounts_id').on('input change', refreshPendingSubmitState);
                 setPendingControlsEnabled(false);
                 togglePendingBankAccountFields();
                 setPendingStatusHelper();
-
-                $(document).on('click', '.pending-filter-chip', function() {
-                    $('.pending-filter-chip').removeClass('active');
-                    $(this).addClass('active');
-                    pendingFilterType = String($(this).data('filter'));
-                    renderPendingRows();
-                });
-
-                $('#pendingSearchInput').on('input', function() {
-                    pendingSearchTerm = $(this).val() || '';
-                    renderPendingRows();
-                });
-
-                $('#pendingRefreshBtn').on('click', function() {
-                    loadPendingPayments();
-                });
 
                 $(document).on('change', 'input[name="selected_pending_payment"]', function() {
                     const selectedId = $(this).val();
@@ -1393,41 +1334,13 @@
                     refreshPendingSubmitState();
                 });
 
-                $('#pending_accounts_id').on('change', function() {
-                    const accountID = $(this).val();
-                    const $subaccounts = $('#pending_subaccounts_id');
-                    $subaccounts.empty().append('<option value="">Select account</option>');
-                    if (!accountID) {
-                        return;
-                    }
-                    $.ajax({
-                        url: '{{ route('get_account') }}',
-                        type: 'POST',
-                        dataType: 'json',
-                        data: {
-                            accountID: accountID,
-                            action: 'get_child',
-                            _token: '{{ csrf_token() }}'
-                        },
-                        success: function(data) {
-                            const filteredData = $.grep(data, function(item) {
-                                return item.head_accounting_id == accountID;
-                            });
-                            $.each(filteredData, function(_, value) {
-                                $subaccounts.append('<option value="' + value.subhead_accounting_id +
-                                    '">' + value.subhead_accounting.name + '</option>');
-                            });
-                        }
-                    });
-                });
-
                 $('#submitPendingStatus').on('click', function() {
                     const selectedId = $('#selected_pending_payment_id').val();
                     const passingStatus = $('#pending_status').val();
                     const note = $('#pending_note').val().trim();
                     const bankPostAt = $('#pending_bank_post_at').val();
-                    const accountsId = $('#pending_accounts_id').val();
-                    const subaccountsId = $('#pending_subaccounts_id').val();
+                    const accountsId = $('#accounts_id').val();
+                    const subaccountsId = $('#subaccounts_id').val();
 
                     if (!selectedId) {
                         Swal.fire({
@@ -1449,7 +1362,7 @@
                         Swal.fire({
                             icon: 'warning',
                             title: 'Account required',
-                            text: 'Please select head and bank account for pass.'
+                            text: 'Please select Accounts and Child Account in the main form for pass.'
                         });
                         return;
                     }
@@ -1508,6 +1421,9 @@
                     $('.bank_group').css('display', 'block');
                     @if ($voucherType === 'CP')
                         $('#pendingPaymentsSection').show();
+                        $('#selected_pending_payment_id').val('');
+                        $('#pendingSelectedSummary').addClass('d-none');
+                        setPendingControlsEnabled(false);
                         loadPendingPayments();
                     @endif
                 } else {
@@ -1515,6 +1431,10 @@
                     $('.bank_group').css('display', 'none');
                     @if ($voucherType === 'CP')
                         $('#pendingPaymentsSection').hide();
+                        $('#selected_pending_payment_id').val('');
+                        $('#pendingSelectedSummary').addClass('d-none');
+                        pendingRowsCache = [];
+                        renderPendingRows();
                     @endif
                 }
             });

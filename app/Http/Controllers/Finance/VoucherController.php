@@ -850,8 +850,8 @@ class VoucherController extends Controller
             'passing_status' => 'required|in:1,2,3',
             'note' => 'required|string|max:1000',
             'bank_post_at' => 'nullable|date',
-            'accounts_id' => 'required_if:passing_status,1',
-            'subaccounts_id' => 'required_if:passing_status,1',
+            'accounts_id' => 'nullable|integer',
+            'subaccounts_id' => 'nullable|integer',
         ]);
 
         try {
@@ -867,13 +867,22 @@ class VoucherController extends Controller
 
                 $creditAccountId = null;
                 if ((int) $validated['passing_status'] === 1) {
-                    $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', $validated['accounts_id'])
-                        ->where('subhead_accounting_id', $validated['subaccounts_id'])
-                        ->where('project_id', $selectedProjectId)
-                        ->value('id');
+                    $accountsId = $validated['accounts_id'] ?? null;
+                    $subaccountsId = $validated['subaccounts_id'] ?? null;
+
+                    if ($accountsId && $subaccountsId) {
+                        $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', $accountsId)
+                            ->where('subhead_accounting_id', $subaccountsId)
+                            ->where('project_id', $selectedProjectId)
+                            ->value('id');
+                    }
 
                     if (!$creditAccountId) {
-                        throw new \RuntimeException('Selected bank account is invalid for this project.');
+                        $creditAccountId = optional(optional($lockedLedger->ledger)->projectHeadSubhead)->id;
+                    }
+
+                    if (!$creditAccountId) {
+                        throw new \RuntimeException('Please select valid Accounts and Child Account in the main form.');
                     }
                 }
 
