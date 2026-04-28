@@ -789,11 +789,6 @@
                     tsSubAccounts.clearOptions();
                     tsSubAccounts.refreshOptions(false);
                 }
-                const tabNo = parseInt($('#submit-button').attr('tab-number'), 10) || 1;
-                if (store?.tabs?.[tabNo]?.formData) {
-                    store.tabs[tabNo].formData.accounts_id = '';
-                    store.tabs[tabNo].formData.subaccounts_id = '';
-                }
             }
 
             function toggleAccountFieldsLoading(isLoading) {
@@ -1304,6 +1299,25 @@
                     });
                 }
 
+                window.syncPendingPanelFromPaymentType = function() {
+                    const paymentType = String($('#payment_type').val() || '');
+                    if (paymentType === '2' || paymentType === '3') {
+                        $('.bank_group').css('display', 'block');
+                        $('#pendingPaymentsSection').show();
+                        $('#selected_pending_payment_id').val('');
+                        $('#pendingSelectedSummary').addClass('d-none');
+                        setPendingControlsEnabled(false);
+                        loadPendingPayments();
+                    } else {
+                        $('.bank_group').css('display', 'none');
+                        $('#pendingPaymentsSection').hide();
+                        $('#selected_pending_payment_id').val('');
+                        $('#pendingSelectedSummary').addClass('d-none');
+                        pendingRowsCache = [];
+                        renderPendingRows();
+                    }
+                };
+
                 function togglePendingBankAccountFields() {
                     const status = $('#pending_status').val();
                     setPendingStatusHelper();
@@ -1415,28 +1429,17 @@
             $('#payment_type').change(function(e) {
 
                 e.preventDefault();
-
-                if ($(this).val() != '1') {
-
-                    $('.bank_group').css('display', 'block');
-                    @if ($voucherType === 'CP')
-                        $('#pendingPaymentsSection').show();
-                        $('#selected_pending_payment_id').val('');
-                        $('#pendingSelectedSummary').addClass('d-none');
-                        setPendingControlsEnabled(false);
-                        loadPendingPayments();
-                    @endif
-                } else {
-
-                    $('.bank_group').css('display', 'none');
-                    @if ($voucherType === 'CP')
-                        $('#pendingPaymentsSection').hide();
-                        $('#selected_pending_payment_id').val('');
-                        $('#pendingSelectedSummary').addClass('d-none');
-                        pendingRowsCache = [];
-                        renderPendingRows();
-                    @endif
-                }
+                @if ($voucherType === 'CP')
+                    if (typeof window.syncPendingPanelFromPaymentType === 'function') {
+                        window.syncPendingPanelFromPaymentType();
+                    }
+                @else
+                    if ($(this).val() != '1') {
+                        $('.bank_group').css('display', 'block');
+                    } else {
+                        $('.bank_group').css('display', 'none');
+                    }
+                @endif
             });
             $('#e_payment_type').change(function(e) {
 
@@ -1450,6 +1453,14 @@
                     $('.e_bank_group').css('display', 'none');
                 }
             });
+
+            @if ($voucherType === 'CP')
+                setTimeout(function() {
+                    if (typeof window.syncPendingPanelFromPaymentType === 'function') {
+                        window.syncPendingPanelFromPaymentType();
+                    }
+                }, 0);
+            @endif
 
             $('#e_acct_type').change(function() {
                 var acctType = $(this).val();
@@ -2242,6 +2253,9 @@
                 setVoucherNumber(INITIAL_VOUCHER_NUMBER);
             } else {
                 setVoucherNumber(restoredVoucherNumber);
+            }
+            if (typeof window.syncPendingPanelFromPaymentType === 'function') {
+                setTimeout(window.syncPendingPanelFromPaymentType, 0);
             }
             persist();
 
