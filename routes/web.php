@@ -234,6 +234,11 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::get('finance/voucher/print/{id}', 'print')->middleware(['permission:read voucher'])->name('finance.voucher.print');
     });
 
+    Route::controller(App\Http\Controllers\Finance\PaymentClearanceController::class)->group(function () {
+        Route::get('finance/payment-clearance', 'index')->middleware(['permission:read voucher'])->name('finance.payment_clearance.index');
+        Route::get('finance/payment-clearance/data', 'data')->middleware(['permission:read voucher'])->name('finance.payment_clearance.data');
+    });
+
     Route::controller(DastiCashController::class)->prefix('dasticash')->name('dasticash.')->group(function () {
         Route::post('/store', 'store')->middleware(['permission:create dasticash'])->name('store');
         Route::get('/{id}/edit', 'edit')->middleware(['permission:update dasticash'])->name('edit');
