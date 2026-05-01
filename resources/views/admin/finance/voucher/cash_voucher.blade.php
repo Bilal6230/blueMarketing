@@ -1179,9 +1179,64 @@
                 const pendingFetchUrl = "{{ route('finance.voucher.pending_bank_payments') }}";
                 let pendingRowsCache = [];
                 let activePendingPaymentType = '2';
+                const pendingAmountMismatchMessage = 'Amount must match the selected pending voucher.';
 
                 function getPendingTypeText(paymentType) {
                     return String(paymentType) === '3' ? 'Check' : 'Online';
+                }
+
+                function parseMoneyValue(value) {
+                    const normalized = String(value || '').replace(/,/g, '').trim();
+                    if (normalized === '' || Number.isNaN(Number(normalized))) {
+                        return null;
+                    }
+
+                    return Number(normalized);
+                }
+
+                function formatMoneyValue(value) {
+                    const numericValue = Number(value || 0);
+                    return numericValue.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    });
+                }
+
+                function normalizeMoneyValue(value) {
+                    const parsed = parseMoneyValue(value);
+                    return parsed === null ? null : parsed.toFixed(2);
+                }
+
+                function syncPendingAmountLock(selected = null, clearAmount = false) {
+                    const $amountInput = $('#numberInput');
+
+                    if (selected) {
+                        $amountInput
+                            .val(formatMoneyValue(selected.amount || 0))
+                            .prop('readonly', true)
+                            .attr('data-locked-from-pending', '1')
+                            .attr('data-pending-amount', normalizeMoneyValue(selected.amount || 0));
+                    } else {
+                        const wasLocked = $amountInput.attr('data-locked-from-pending') === '1';
+                        $amountInput
+                            .prop('readonly', false)
+                            .removeAttr('data-locked-from-pending')
+                            .removeAttr('data-pending-amount');
+
+                        if (clearAmount && wasLocked) {
+                            $amountInput.val('');
+                        }
+                    }
+
+                    convertToWords();
+                }
+
+                function clearPendingSelection(clearAmount = false) {
+                    $('#selected_pending_payment_id').val('');
+                    $('#pendingPaymentsTable tbody tr').removeClass('table-active');
+                    $('input[name="selected_pending_payment"]').prop('checked', false);
+                    $('#pendingSelectedSummary').addClass('d-none');
+                    syncPendingAmountLock(null, clearAmount);
                 }
 
                 function renderPendingRows() {
@@ -1212,7 +1267,7 @@
                             <td>${typeBadge}</td>
                             <td>${item.bank || ''}</td>
                             <td>${item.t_number || ''}</td>
-                            <td>${item.amount || 0}</td>
+                            <td>${formatMoneyValue(item.amount || 0)}</td>
                             <td>${item.passing_date || ''}${pendingDays !== '' ? ` <small class="text-muted">(${pendingDays}d)</small>` : ''}</td>
                         </tr>`;
                         $tbody.append(row);
@@ -1258,15 +1313,13 @@
                     if (paymentType === '2' || paymentType === '3') {
                         $('.bank_group').css('display', 'block');
                         $('#pendingPaymentsSection').show();
-                        $('#selected_pending_payment_id').val('');
-                        $('#pendingSelectedSummary').addClass('d-none');
+                        clearPendingSelection(true);
                         loadPendingPayments();
                     } else {
                         $('.bank_group').css('display', 'none');
                         $('#pendingPaymentsSection').hide();
                         $('#pending_status').val('1');
-                        $('#selected_pending_payment_id').val('');
-                        $('#pendingSelectedSummary').addClass('d-none');
+                        clearPendingSelection(true);
                         pendingRowsCache = [];
                         renderPendingRows();
                     }
@@ -1280,11 +1333,13 @@
                     const selected = pendingRowsCache.find((row) => String(row.id) === String(selectedId));
                     if (selected) {
                         $('#pendingSummaryText').text(
-                            `${selected.voucher_number_display || ('Pending #' + selected.id)} | ${selected.transaction_type === 'PPR' ? 'Received Payment' : 'Cash In'} | ${selected.bank || 'N/A'} | ${selected.t_number || 'N/A'} | ${selected.amount || 0}`
+                            `${selected.voucher_number_display || ('Pending #' + selected.id)} | ${selected.transaction_type === 'PPR' ? 'Received Payment' : 'Cash In'} | ${selected.bank || 'N/A'} | ${selected.t_number || 'N/A'} | ${formatMoneyValue(selected.amount || 0)}`
                         );
                         $('#pendingSelectedSummary').removeClass('d-none');
+                        syncPendingAmountLock(selected);
                     } else {
                         $('#pendingSelectedSummary').addClass('d-none');
+                        syncPendingAmountLock(null, false);
                     }
                 });
             @endif
@@ -2394,6 +2449,9 @@
                     const pendingStatus = String($('#pending_status').val() || '').trim();
                     const passingDate = String($('#passing_date').val() || '').trim();
                     const detail = String($('#detail').val() || '').trim();
+                    const selectedPendingRow = pendingRowsCache.find((row) => String(row.id) === selectedPendingId);
+                    const submittedAmount = normalizeMoneyValue($('#numberInput').val());
+                    const pendingAmount = selectedPendingRow ? normalizeMoneyValue(selectedPendingRow.amount) : null;
 
                     if (!selectedPendingId) {
                         Swal.fire({
@@ -2424,6 +2482,14 @@
                             icon: 'warning',
                             title: 'Details required',
                             text: 'Please enter details before saving.'
+                        });
+                        return;
+                    }
+                    if (!selectedPendingRow || !submittedAmount || !pendingAmount || submittedAmount !== pendingAmount) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Amount mismatch',
+                            text: pendingAmountMismatchMessage
                         });
                         return;
                     }

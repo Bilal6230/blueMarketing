@@ -118,11 +118,45 @@ class LedgerController extends Controller
 
         DB::beginTransaction();
         try {
+            $pendingCustomerLedger = null;
+
             if ($paymentType === 1) {
                 $t_number = $bank_id = null;
             } else {
                 $t_number = $request->input('t_number');
                 $bank_id = $request->input('bank_id');
+            }
+
+            if ($isCashOutPendingClearance) {
+                $pendingCustomerLedger = CustomerLedger::where('project_id', $selectedProjectId)
+                    ->where('id', $selectedPendingPaymentId)
+                    ->where('payment_type', $paymentType)
+                    ->where('passing_status', 0)
+                    ->where('is_active', 1)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$pendingCustomerLedger) {
+                    DB::rollBack();
+                    return response()->json([
+                        'status' => 'error',
+                        'error_key' => 'invalid_pending_payment',
+                        'message' => 'Selected pending payment is no longer available. Please refresh and try again.'
+                    ], 422);
+                }
+
+                $pendingAmount = $this->normalizeVoucherAmount(
+                    ($pendingCustomerLedger->amount_out > 0) ? $pendingCustomerLedger->amount_out : $pendingCustomerLedger->amount_in
+                );
+
+                if (!$this->voucherAmountsMatch($cleanAmount, $pendingAmount)) {
+                    DB::rollBack();
+                    return response()->json([
+                        'status' => 'error',
+                        'error_key' => 'pending_amount_mismatch',
+                        'message' => 'Amount must match the selected pending voucher.'
+                    ], 422);
+                }
             }
 
             $customerID = $projectHeadSubhead?->customer_id;
@@ -218,23 +252,6 @@ class LedgerController extends Controller
             ]);
 
             if ($isCashOutPendingClearance) {
-                $pendingCustomerLedger = CustomerLedger::where('project_id', $selectedProjectId)
-                    ->where('id', $selectedPendingPaymentId)
-                    ->where('payment_type', $paymentType)
-                    ->where('passing_status', 0)
-                    ->where('is_active', 1)
-                    ->lockForUpdate()
-                    ->first();
-
-                if (!$pendingCustomerLedger) {
-                    DB::rollBack();
-                    return response()->json([
-                        'status' => 'error',
-                        'error_key' => 'invalid_pending_payment',
-                        'message' => 'Selected pending payment is no longer available. Please refresh and try again.'
-                    ], 422);
-                }
-
                 $pendingBankName = $pendingCustomerLedger->bank_id ? getBankNameById($pendingCustomerLedger->bank_id) : null;
                 $clearedByVoucher = $effectiveVoucherType . '-' . $voucherNumber;
                 $pendingCustomerLedger->update([
@@ -294,6 +311,17 @@ class LedgerController extends Controller
             ], 500);
         }
     }
+
+    private function normalizeVoucherAmount($amount): string
+    {
+        return number_format((float) str_replace(',', '', (string) $amount), 2, '.', '');
+    }
+
+    private function voucherAmountsMatch($submittedAmount, $pendingAmount): bool
+    {
+        return $this->normalizeVoucherAmount($submittedAmount) === $this->normalizeVoucherAmount($pendingAmount);
+    }
+
     public function saveAsDraft(Request $request)
     {
         $selectedProjectId = getSelectedTown();
