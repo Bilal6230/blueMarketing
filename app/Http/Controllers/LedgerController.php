@@ -455,11 +455,75 @@ class LedgerController extends Controller
 
     public function show(Request $request)
     {
-        $data_list = Ledger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project', 'customerLedger')->where(['id' => $request->id])->first();
+        $selectedProjectId = getSelectedTown();
+        $data_list = Ledger::with([
+            'customerLedger',
+            'projectHeadSubhead.headAccounting',
+            'projectHeadSubhead.subheadAccounting',
+            'projectHeadSubhead.project',
+        ])
+            ->where('id', $request->id)
+            ->whereHas('projectHeadSubhead', function ($query) use ($selectedProjectId) {
+                $query->where('project_id', $selectedProjectId);
+            })
+            ->first();
+
+        if (!$data_list) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Voucher not found for the selected project.',
+                'data' => null,
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        $projectHeadSubhead = $data_list->projectHeadSubhead;
+        $customerLedger = $data_list->customerLedger;
+
         return response()->json([
-            'status' => Response::HTTP_OK,
-            'message' => 'Data Project by id',
-            'data' => $data_list
+            'status' => 'success',
+            'message' => 'Voucher loaded successfully.',
+            'data' => [
+                'id' => $data_list->id,
+                'type' => $data_list->type,
+                'voucher_number_display' => ($data_list->type ?? '') . '-' . ($data_list->voucher_number ?? ''),
+                'voucher_number' => $data_list->voucher_number,
+                'date' => $data_list->date,
+                'detail' => $data_list->detail,
+                'amount_in' => $data_list->amount_in,
+                'amount_out' => $data_list->amount_out,
+                'project_head_subheads_id' => $data_list->project_head_subheads_id,
+                'project_head_subhead' => $projectHeadSubhead ? [
+                    'id' => $projectHeadSubhead->id,
+                    'head_accounting_id' => $projectHeadSubhead->head_accounting_id,
+                    'subhead_accounting_id' => $projectHeadSubhead->subhead_accounting_id,
+                    'project_id' => $projectHeadSubhead->project_id,
+                    'head_accounting' => $projectHeadSubhead->headAccounting ? [
+                        'id' => $projectHeadSubhead->headAccounting->id,
+                        'name' => $projectHeadSubhead->headAccounting->name,
+                        'acct_type' => $projectHeadSubhead->headAccounting->acct_type,
+                    ] : null,
+                    'subhead_accounting' => $projectHeadSubhead->subheadAccounting ? [
+                        'id' => $projectHeadSubhead->subheadAccounting->id,
+                        'name' => $projectHeadSubhead->subheadAccounting->name,
+                        'phone' => $projectHeadSubhead->subheadAccounting->phone,
+                        'cnic' => $projectHeadSubhead->subheadAccounting->cnic,
+                    ] : null,
+                    'project' => $projectHeadSubhead->project ? [
+                        'id' => $projectHeadSubhead->project->id,
+                        'project' => $projectHeadSubhead->project->project,
+                    ] : null,
+                ] : null,
+                'customer_ledger' => $customerLedger ? [
+                    'id' => $customerLedger->id,
+                    'payment_type' => $customerLedger->payment_type,
+                    't_number' => $customerLedger->t_number,
+                    'bank_id' => $customerLedger->bank_id,
+                    'passing_date' => $customerLedger->passing_date,
+                    'passing_status' => $customerLedger->passing_status,
+                    'note' => $customerLedger->note,
+                    'bank_post_at' => $customerLedger->bank_post_at,
+                ] : null,
+            ]
         ], Response::HTTP_OK);
     }
     public function customerLedgerShow(Request $request)
@@ -600,48 +664,91 @@ class LedgerController extends Controller
 
     public function update(Request $request)
     {
-        $rules = [
-            'amount' => ['required'],
-            'detail' => ['required'],
-            'accounts_id' => ['required'],
-            'subaccounts_id' => ['required'],
-        ];
-
         $selectedProjectId = getSelectedTown();
-        $validator = Validator::make($request->all(), $rules);
+        $validator = Validator::make($request->all(), [
+            'id' => ['required', 'integer'],
+            'amount' => [
+                'required',
+                function ($attribute, $value, $fail) {
+                    $clean = str_replace(',', '', (string) $value);
+                    if (!is_numeric($clean) || (float) $clean <= 0) {
+                        $fail('Amount must be a valid number greater than zero.');
+                    }
+                }
+            ],
+            'detail' => ['required', 'string', 'max:255'],
+            'accounts_id' => ['required', 'integer'],
+            'subaccounts_id' => ['required', 'integer'],
+            'date' => ['required', 'date'],
+            'payment_type' => ['required', 'integer', 'in:1,2,3'],
+            't_number' => ['required_if:payment_type,2,3', 'nullable', 'string', 'max:255'],
+            'bank_id' => ['required_if:payment_type,2,3', 'nullable', 'integer'],
+            'passing_date' => ['required_if:payment_type,2,3', 'nullable', 'date'],
+            'passing_status' => ['nullable', 'integer', 'in:0,1,2,3'],
+        ]);
         if ($validator->fails()) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $validator->errors()->first() ?: 'Please correct the highlighted fields and try again.',
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+
             return back()->withErrors($validator)->withInput();
         }
 
-        $cleanAmount = str_replace(',', '', $request->amount);
-        $voucherValue = $request->input('voucher');
-        $firstTwoDigits = substr($voucherValue, 0, 2);
-        $amount_in = $amount_out = 0;
-
-        if ($firstTwoDigits === 'CR') {
-            $amount_in = $cleanAmount;
-        } elseif ($firstTwoDigits === 'CP') {
-            $amount_out = $cleanAmount;
-        }
+        $cleanAmount = (float) str_replace(',', '', (string) $request->amount);
+        $paymentType = (int) $request->payment_type;
 
         $projectHeadSubhead = ProjectHeadSubhead::where('head_accounting_id', $request->accounts_id)
             ->where('subhead_accounting_id', $request->subaccounts_id)
             ->where('project_id', $selectedProjectId)
-            ->firstOrFail();
+            ->first();
 
-        $newValues = [
-            'project_head_subheads_id' => $projectHeadSubhead->id,
-            'reference' => $request->reference,
-            'amount_in' => $amount_in,
-            'amount_out' => $amount_out,
-            'is_active' => 1,
-            'date' => $request->date,
-            'detail' => $request->detail,
-        ];
+        if (!$projectHeadSubhead) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Selected account and child account are not valid for this project.',
+            ], 422);
+        }
+
+        $ledger = Ledger::with(['customerLedger'])
+            ->where('id', $request->id)
+            ->whereHas('projectHeadSubhead', function ($query) use ($selectedProjectId) {
+                $query->where('project_id', $selectedProjectId);
+            })
+            ->first();
+
+        if (!$ledger) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Voucher not found for the selected project.',
+            ], 404);
+        }
 
         DB::beginTransaction();
         try {
-            $ledger = Ledger::findOrFail($request->id);
+            $ledger = Ledger::with(['customerLedger'])
+                ->where('id', $request->id)
+                ->whereHas('projectHeadSubhead', function ($query) use ($selectedProjectId) {
+                    $query->where('project_id', $selectedProjectId);
+                })
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $amount_in = $ledger->type === 'CR' ? $cleanAmount : 0;
+            $amount_out = $ledger->type === 'CP' ? $cleanAmount : 0;
+
+            $newValues = [
+                'project_head_subheads_id' => $projectHeadSubhead->id,
+                'amount_in' => $amount_in,
+                'amount_out' => $amount_out,
+                'is_active' => 1,
+                'date' => $request->date,
+                'detail' => $request->detail,
+                'update_by' => Auth::id(),
+            ];
 
             $oldValues = $ledger->only(array_keys($newValues));
             // ✅ Check permissions: Super Admin or direct-update
@@ -649,8 +756,51 @@ class LedgerController extends Controller
                 // 🔓 Directly update the ledger
                 $ledger->update($newValues);
 
+                if ($ledger->customerLedger) {
+                    $customerLedger = CustomerLedger::where('id', $ledger->customerLedger->id)
+                        ->where('project_id', $selectedProjectId)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if ($customerLedger) {
+                        $customerLedgerValues = [
+                            'project_id' => $selectedProjectId,
+                            'customer_id' => $projectHeadSubhead->customer_id,
+                            'plot_id' => $projectHeadSubhead->plot_id,
+                            'amount_in' => $amount_in,
+                            'amount_out' => $amount_out,
+                            'description' => $request->detail,
+                            'date' => $request->date,
+                            'payment_type' => $paymentType,
+                        ];
+
+                        if (in_array($paymentType, [2, 3], true)) {
+                            $customerLedgerValues['t_number'] = $request->t_number;
+                            $customerLedgerValues['bank_id'] = $request->bank_id;
+                            $customerLedgerValues['passing_date'] = $request->passing_date;
+                            $customerLedgerValues['note'] = $request->detail;
+                            $customerLedgerValues['bank_post_at'] = $request->passing_date;
+
+                            if ($request->filled('passing_status')) {
+                                $customerLedgerValues['passing_status'] = (int) $request->passing_status;
+                            } elseif ($ledger->type === 'CR' && $customerLedger->passing_status === null) {
+                                $customerLedgerValues['passing_status'] = 0;
+                            }
+                        } else {
+                            $customerLedgerValues['t_number'] = null;
+                            $customerLedgerValues['bank_id'] = null;
+                            $customerLedgerValues['passing_date'] = null;
+                        }
+
+                        $customerLedger->update($customerLedgerValues);
+                    }
+                }
+
                 DB::commit();
-                return back()->with('success', 'Record updated successfully (direct update).');
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Voucher updated successfully.',
+                ]);
             }
             // 🔒 For others: Create or update a pending update
             $pendingUpdate = PendingUpdate::where('table_name', 'ledgers')
@@ -676,10 +826,23 @@ class LedgerController extends Controller
             }
 
             DB::commit();
-            return back()->with('success', 'Your changes have been submitted and are pending admin approval.');
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Your changes have been submitted and are pending admin approval.',
+            ]);
         } catch (\Throwable $th) {
             DB::rollBack();
-            return back()->with('error', 'Failed to submit update: ' . $th->getMessage());
+            Log::error('voucher_update_failed', [
+                'ledger_id' => $request->id,
+                'project_id' => $selectedProjectId,
+                'user_id' => Auth::id(),
+                'error' => $th->getMessage(),
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to update voucher right now.',
+            ], 500);
         }
     }
 

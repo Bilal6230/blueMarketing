@@ -2751,46 +2751,39 @@
     <div class="modal fade" id="modal-edit">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header {{ $class }}">
-                    <h4 class="modal-title">Edit Voucher</h4>
+                <div class="modal-header bg-secondary text-white">
+                    <h4 class="modal-title" id="editVoucherModalTitle">Edit Voucher</h4>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div class="modal-body">
-                    <form action="{{ route('ledger.update') }}" method="POST" enctype="multipart/form-data">
+                    <form action="{{ route('ledger.update') }}" method="POST" enctype="multipart/form-data"
+                        id="editVoucherForm">
                         @csrf
                         @method('PUT')
                         <div class="row">
 
                             <div class="col-sm-12">
                                 <div class="row">
-                                    <div class="col-sm-3">
+                                    <div class="col-sm-6">
                                         <div class="input-group">
-                                            <label class="fbox">Serial No.</label>
+                                            <label class="fbox">Voucher Number</label>
                                             <div class="input-group">
-
-                                                <input id="e_reference" type="text"
-                                                    class="form-control @error('reference') is-invalid @enderror"
-                                                    name="reference" value="{{ old('reference') }}" autocomplete="off">
-                                                @error('reference')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-sm-3">
-                                        <div class="input-group">
-                                            <label class="fbox">Reference No.</label>
-                                            <div class="input-group">
-                                                <input type="text" value="1" name="action" hidden />
-                                                <input id="e_voucher" type="text" class="form-control "
-                                                    name="voucher" autocomplete="off" readonly>
-
+                                                <input id="e_voucher_number_display" type="text" class="form-control"
+                                                    readonly>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="col-sm-6">
+                                        <div class="input-group">
+                                            <label class="fbox">Voucher Type</label>
+                                            <div class="input-group">
+                                                <input id="e_voucher_type" type="text" class="form-control" readonly>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-12 mt-3">
                                         <div class="input-group">
                                             <label class="fbox">Date</label>
                                             <div class="input-group">
@@ -2960,7 +2953,7 @@
                             </div>
                             <div class="mb-3 col-sm-3">
                                 <div class="input-group e_bank_group" style="display: none">
-                                    <label class="fbox">Number</label>
+                                    <label class="fbox">Number / Transaction or Cheque No</label>
                                     <div class="input-group">
                                         <input id="e_t_number" type="text"
                                             class="form-control @error('t_number') is-invalid @enderror"
@@ -3000,6 +2993,21 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="mb-3 col-sm-3">
+                                <div class="input-group e_status_group" style="display: none">
+                                    <label class="fbox">Status</label>
+                                    <div class="input-group">
+                                        <select class="js-tomselect" placeholder=" " name="passing_status"
+                                            id="e_passing_status">
+                                            <option value="">Select Status</option>
+                                            <option value="0">Pending</option>
+                                            <option value="1">Pass</option>
+                                            <option value="2">Return</option>
+                                            <option value="3">Cheque Bounce</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div class="mb-3 col-sm-12">
                             <div id="eWordingAmount"></div>
@@ -3023,7 +3031,7 @@
                         <div class="modal-footer justify-content-between">
                             <input type="hidden" name="id" id="id">
                             <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                            <button type="submit" class="btn btn-primary">Update</button>
+                            <button type="submit" class="btn btn-primary" id="editVoucherSubmitBtn">Update</button>
                         </div>
                     </form>
                 </div>
@@ -3082,4 +3090,472 @@
             </div>
         </div>
     </div>
+    <script>
+        $(function() {
+            const editModalState = {
+                voucherRequestToken: 0,
+                accountsRequestToken: 0,
+                subAccountsRequestToken: 0,
+            };
+
+            function getTomSelectInstance(selector) {
+                return $(selector)[0]?.tomselect || null;
+            }
+
+            function setEditFieldDisabled(selector, disabled) {
+                const $field = $(selector);
+                $field.prop('disabled', disabled);
+                const tomSelect = getTomSelectInstance(selector);
+                if (tomSelect) {
+                    if (disabled) {
+                        tomSelect.disable();
+                    } else {
+                        tomSelect.enable();
+                    }
+                }
+            }
+
+            function resetTomSelectOptions(selector) {
+                const tomSelect = getTomSelectInstance(selector);
+                if (!tomSelect) {
+                    return;
+                }
+
+                tomSelect.clear(true);
+                tomSelect.clearOptions();
+                tomSelect.refreshOptions(false);
+            }
+
+            function setTomSelectOptions(selector, options, selectedValue = '') {
+                const tomSelect = getTomSelectInstance(selector);
+                if (!tomSelect) {
+                    return;
+                }
+
+                tomSelect.clear(true);
+                tomSelect.clearOptions();
+
+                options.forEach(function(option) {
+                    tomSelect.addOption(option);
+                });
+
+                tomSelect.refreshOptions(false);
+
+                if (selectedValue !== null && selectedValue !== undefined && String(selectedValue) !== '') {
+                    tomSelect.setValue(String(selectedValue), true);
+                }
+            }
+
+            function toggleEditPaymentFields(paymentType, keepValues = true) {
+                const isBankPayment = String(paymentType) === '2' || String(paymentType) === '3';
+
+                $('.e_bank_group').toggle(isBankPayment);
+                $('.e_status_group').toggle(isBankPayment);
+
+                if (!isBankPayment && !keepValues) {
+                    $('#e_t_number').val('');
+                    $('#e_passing_date').val('');
+
+                    const bankSelect = getTomSelectInstance('#e_bank_id');
+                    if (bankSelect) {
+                        bankSelect.clear(true);
+                    }
+
+                    const statusSelect = getTomSelectInstance('#e_passing_status');
+                    if (statusSelect) {
+                        statusSelect.clear(true);
+                    }
+                }
+            }
+
+            function setEditModalHeader(type) {
+                const $header = $('#modal-edit .modal-header');
+                const $title = $('#editVoucherModalTitle');
+                const $submit = $('#editVoucherSubmitBtn');
+
+                $header.removeClass('bg-success bg-danger bg-secondary text-white');
+                $submit.removeClass('btn-success btn-danger btn-primary');
+
+                if (type === 'CR') {
+                    $header.addClass('bg-success text-white');
+                    $submit.addClass('btn-success');
+                    $title.text('Edit Cash In Voucher');
+                } else if (type === 'CP') {
+                    $header.addClass('bg-danger text-white');
+                    $submit.addClass('btn-danger');
+                    $title.text('Edit Cash Out Voucher');
+                } else {
+                    $header.addClass('bg-secondary text-white');
+                    $submit.addClass('btn-primary');
+                    $title.text('Edit Voucher');
+                }
+            }
+
+            function clearEditModal() {
+                const form = document.getElementById('editVoucherForm');
+                if (form) {
+                    form.reset();
+                }
+
+                $('#id').val('');
+                $('#e_voucher_number_display').val('');
+                $('#e_voucher_type').val('');
+                $('#e_amount').val('');
+                $('#e_detail').val('');
+                $('#e_t_number').val('');
+                $('#e_passing_date').val('');
+                $('#eWordingAmount').text('');
+                $('#editVoucherForm .is-invalid').removeClass('is-invalid');
+
+                ['#e_acct_type', '#e_accounts_id', '#e_subaccounts_id', '#e_payment_type', '#e_bank_id', '#e_passing_status']
+                    .forEach(function(selector) {
+                        const tomSelect = getTomSelectInstance(selector);
+                        if (tomSelect) {
+                            tomSelect.clear(true);
+                        }
+                    });
+
+                resetTomSelectOptions('#e_accounts_id');
+                resetTomSelectOptions('#e_subaccounts_id');
+                toggleEditPaymentFields('1', false);
+                setEditFieldDisabled('#e_accounts_id', true);
+                setEditFieldDisabled('#e_subaccounts_id', true);
+                setEditModalHeader('');
+            }
+
+            function populateEditDate(value) {
+                const dateInput = document.getElementById('e_date');
+                if (!dateInput) {
+                    return;
+                }
+
+                if (dateInput._flatpickr) {
+                    dateInput._flatpickr.setDate(value || '', true, 'Y-m-d');
+                } else {
+                    $('#e_date').val(value || '');
+                }
+            }
+
+            function loadEditSubAccounts(accountID, selectedSubheadId = '') {
+                resetTomSelectOptions('#e_subaccounts_id');
+                setEditFieldDisabled('#e_subaccounts_id', true);
+
+                if (!accountID) {
+                    return;
+                }
+
+                const requestToken = ++editModalState.subAccountsRequestToken;
+
+                $.ajax({
+                    url: '{{ route('get_account') }}',
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        accountID: accountID,
+                        action: 'get_child',
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(data) {
+                        if (requestToken !== editModalState.subAccountsRequestToken) {
+                            return;
+                        }
+
+                        const options = $.map(data || [], function(item) {
+                            const balance = Number(item.balance || 0).toLocaleString();
+                            return {
+                                value: String(item.subhead_accounting_id),
+                                text: `${item.subhead_accounting?.name || ''} - Balance: ${balance}`
+                            };
+                        });
+
+                        setTomSelectOptions('#e_subaccounts_id', options, selectedSubheadId);
+                        setEditFieldDisabled('#e_subaccounts_id', false);
+                    },
+                    error: function() {
+                        if (requestToken !== editModalState.subAccountsRequestToken) {
+                            return;
+                        }
+
+                        setEditFieldDisabled('#e_subaccounts_id', false);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Unable to load child accounts for the selected account.'
+                        });
+                    }
+                });
+            }
+
+            function loadEditAccounts(acctType, selectedHeadId = '', selectedSubheadId = '') {
+                resetTomSelectOptions('#e_accounts_id');
+                resetTomSelectOptions('#e_subaccounts_id');
+                setEditFieldDisabled('#e_accounts_id', true);
+                setEditFieldDisabled('#e_subaccounts_id', true);
+
+                if (!acctType) {
+                    return;
+                }
+
+                const requestToken = ++editModalState.accountsRequestToken;
+
+                $.ajax({
+                    url: '{{ route('get_account') }}',
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        acct_type: acctType,
+                        action: 'get_head',
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(data) {
+                        if (requestToken !== editModalState.accountsRequestToken) {
+                            return;
+                        }
+
+                        const options = $.map(data || [], function(item) {
+                            return {
+                                value: String(item.head_accounting_id),
+                                text: item.head_accounting?.name || ''
+                            };
+                        });
+
+                        setTomSelectOptions('#e_accounts_id', options, selectedHeadId);
+                        setEditFieldDisabled('#e_accounts_id', false);
+
+                        if (selectedHeadId) {
+                            loadEditSubAccounts(selectedHeadId, selectedSubheadId);
+                        }
+                    },
+                    error: function() {
+                        if (requestToken !== editModalState.accountsRequestToken) {
+                            return;
+                        }
+
+                        setEditFieldDisabled('#e_accounts_id', false);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Unable to load accounts for the selected account type.'
+                        });
+                    }
+                });
+            }
+
+            $(document).off('click', '.btn-edit');
+            $('#e_payment_type').off('change');
+            $('#e_acct_type').off('change');
+            $('#e_accounts_id').off('change');
+            $('#editVoucherForm').off('submit');
+
+            $('#e_payment_type').on('change', function(e) {
+                e.preventDefault();
+                toggleEditPaymentFields($(this).val(), false);
+            });
+
+            $('#e_acct_type').on('change', function() {
+                loadEditAccounts($(this).val());
+            });
+
+            $('#e_accounts_id').on('change', function() {
+                loadEditSubAccounts($(this).val());
+            });
+
+            $(document).on('click', '.btn-edit', function() {
+                const id = $(this).attr('data-id');
+                const requestToken = ++editModalState.voucherRequestToken;
+
+                clearEditModal();
+                $('#id').val(id);
+                $('#editVoucherSubmitBtn').prop('disabled', true).text('Loading...');
+
+                $('#modal-loading').modal({
+                    backdrop: 'static',
+                    keyboard: false,
+                    show: true
+                });
+
+                $.ajax({
+                    url: "{{ route('ledger.show') }}",
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        id: id,
+                        _token: "{{ csrf_token() }}"
+                    },
+                    success: function(response) {
+                        if (requestToken !== editModalState.voucherRequestToken) {
+                            return;
+                        }
+
+                        const data = response.data || {};
+                        const voucherType = data.type || '';
+                        const projectHeadSubhead = data.project_head_subhead || {};
+                        const customerLedger = data.customer_ledger || {};
+                        const acctType = projectHeadSubhead.head_accounting?.acct_type || '';
+                        const headId = projectHeadSubhead.head_accounting_id || projectHeadSubhead.head_accounting?.id || '';
+                        const subheadId = projectHeadSubhead.subhead_accounting_id || projectHeadSubhead.subhead_accounting?.id || '';
+                        const paymentType = customerLedger.payment_type || '1';
+                        const amount = voucherType === 'CP' ? (data.amount_out || 0) : (data.amount_in || 0);
+
+                        setEditModalHeader(voucherType);
+                        $('#e_voucher_number_display').val(data.voucher_number_display || '');
+                        $('#e_voucher_type').val(voucherType);
+                        populateEditDate(data.date || '');
+                        $('#e_amount').val(amount ? Number(amount).toLocaleString() : '');
+                        $('#e_detail').val(data.detail || '');
+                        $('#e_t_number').val(customerLedger.t_number || '');
+                        $('#e_passing_date').val(customerLedger.passing_date || '');
+                        $('#eWordingAmount').text(amount ? numberToWords.toWords(String(amount)) : '');
+
+                        const paymentSelect = getTomSelectInstance('#e_payment_type');
+                        if (paymentSelect) {
+                            paymentSelect.setValue(String(paymentType), true);
+                        }
+
+                        const bankSelect = getTomSelectInstance('#e_bank_id');
+                        if (bankSelect) {
+                            if (customerLedger.bank_id !== null && customerLedger.bank_id !== undefined && customerLedger.bank_id !== '') {
+                                bankSelect.setValue(String(customerLedger.bank_id), true);
+                            } else {
+                                bankSelect.clear(true);
+                            }
+                        }
+
+                        const statusSelect = getTomSelectInstance('#e_passing_status');
+                        if (statusSelect) {
+                            if (customerLedger.passing_status !== null && customerLedger.passing_status !== undefined && customerLedger.passing_status !== '') {
+                                statusSelect.setValue(String(customerLedger.passing_status), true);
+                            } else {
+                                statusSelect.clear(true);
+                            }
+                        }
+
+                        toggleEditPaymentFields(paymentType, true);
+
+                        const accTypeSelect = getTomSelectInstance('#e_acct_type');
+                        if (accTypeSelect) {
+                            accTypeSelect.setValue(String(acctType), true);
+                        }
+
+                        loadEditAccounts(acctType, headId, subheadId);
+
+                        $('#modal-loading').modal('hide');
+                        $('#editVoucherSubmitBtn').prop('disabled', false).text('Update');
+                        $('#modal-edit').modal({
+                            backdrop: 'static',
+                            keyboard: false,
+                            show: true
+                        });
+                    },
+                    error: function(xhr) {
+                        if (requestToken !== editModalState.voucherRequestToken) {
+                            return;
+                        }
+
+                        $('#modal-loading').modal('hide');
+                        $('#editVoucherSubmitBtn').prop('disabled', false).text('Update');
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: xhr.responseJSON?.message || 'Unable to load voucher details right now.'
+                        });
+                    }
+                });
+            });
+
+            $('#editVoucherForm').on('submit', function(e) {
+                e.preventDefault();
+
+                const $form = $(this);
+                const paymentType = String($('#e_payment_type').val() || '');
+                const amountRaw = String($('#e_amount').val() || '').replace(/,/g, '').trim();
+                const accountType = String($('#e_acct_type').val() || '').trim();
+                const accountId = String($('#e_accounts_id').val() || '').trim();
+                const subAccountId = String($('#e_subaccounts_id').val() || '').trim();
+                const detail = String($('#e_detail').val() || '').trim();
+                const date = String($('#e_date').val() || '').trim();
+                const tNumber = String($('#e_t_number').val() || '').trim();
+                const bankId = String($('#e_bank_id').val() || '').trim();
+                const passingDate = String($('#e_passing_date').val() || '').trim();
+                let validationMessage = '';
+
+                $('#editVoucherForm .is-invalid').removeClass('is-invalid');
+
+                if (!amountRaw || isNaN(amountRaw) || Number(amountRaw) <= 0) {
+                    validationMessage = 'Valid amount is required.';
+                    $('#e_amount').addClass('is-invalid');
+                } else if (!accountType) {
+                    validationMessage = 'Account Type is required.';
+                    $('#e_acct_type').addClass('is-invalid');
+                } else if (!accountId || !getTomSelectInstance('#e_accounts_id')?.options?.[accountId]) {
+                    validationMessage = 'Account is required.';
+                    $('#e_accounts_id').addClass('is-invalid');
+                } else if (!subAccountId || !getTomSelectInstance('#e_subaccounts_id')?.options?.[subAccountId]) {
+                    validationMessage = 'Child Account is required.';
+                    $('#e_subaccounts_id').addClass('is-invalid');
+                } else if (!date) {
+                    validationMessage = 'Date is required.';
+                    $('#e_date').addClass('is-invalid');
+                } else if (!detail) {
+                    validationMessage = 'Details are required.';
+                    $('#e_detail').addClass('is-invalid');
+                } else if ((paymentType === '2' || paymentType === '3') && !tNumber) {
+                    validationMessage = 'Number is required for online/check payment.';
+                    $('#e_t_number').addClass('is-invalid');
+                } else if ((paymentType === '2' || paymentType === '3') && !bankId) {
+                    validationMessage = 'Bank is required for online/check payment.';
+                    $('#e_bank_id').addClass('is-invalid');
+                } else if ((paymentType === '2' || paymentType === '3') && !passingDate) {
+                    validationMessage = 'Passing date is required for online/check payment.';
+                    $('#e_passing_date').addClass('is-invalid');
+                }
+
+                if (validationMessage) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Validation error',
+                        text: validationMessage
+                    });
+                    return;
+                }
+
+                const formData = new FormData($form[0]);
+                formData.set('_token', $('meta[name="csrf-token"]').attr('content'));
+
+                $.ajax({
+                    url: $form.attr('action'),
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    dataType: 'json',
+                    beforeSend: function() {
+                        $('#editVoucherSubmitBtn').prop('disabled', true).text('Updating...');
+                    },
+                    success: function(response) {
+                        $('#modal-edit').modal('hide');
+                        if (typeof renderDataTable === 'function') {
+                            renderDataTable();
+                        }
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Updated',
+                            text: response?.message || 'Voucher updated successfully.'
+                        });
+                    },
+                    error: function(xhr) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: xhr.responseJSON?.message || 'Unable to update voucher right now.'
+                        });
+                    },
+                    complete: function() {
+                        $('#editVoucherSubmitBtn').prop('disabled', false).text('Update');
+                    }
+                });
+            });
+        });
+    </script>
 @endsection
