@@ -1359,7 +1359,47 @@
                     }
                 @endif
             });
-            function applyEditModalTheme(voucherType) {
+            function normalizeDateForInput(value) {
+                if (!value) return '';
+                const raw = String(value).trim();
+                if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
+                    return raw.substring(0, 10);
+                }
+                return raw;
+            }
+
+            function setDateInputValue(selector, value) {
+                const normalized = normalizeDateForInput(value);
+                const el = document.querySelector(selector);
+                if (!el) return;
+
+                if (el._flatpickr) {
+                    el._flatpickr.setDate(normalized || null, false, 'Y-m-d');
+                } else {
+                    $(selector).val(normalized);
+                }
+            }
+
+            function ensureEditDatePickersInitialized() {
+                [
+                    '#edit_date',
+                    '#edit_passing_date'
+                ].forEach(function(selector) {
+                    const el = document.querySelector(selector);
+                    if (!el || el._flatpickr || typeof flatpickr === 'undefined') {
+                        return;
+                    }
+
+                    flatpickr(el, {
+                        enableTime: false,
+                        dateFormat: "Y-m-d",
+                        altInput: true,
+                        altFormat: "F j, Y"
+                    });
+                });
+            }
+
+            function applyEditVoucherTheme(voucherType) {
                 const $header = $('#modal-edit .modal-header');
                 const $title = $('#modal-edit-title');
                 const $updateButton = $('#edit-update-button');
@@ -1374,11 +1414,11 @@
                     $updateButton.removeClass('btn-primary').addClass('btn-success');
                 } else if (voucherType === 'CP') {
                     $header.css({
-                        'background-color': '#28a745',
+                        'background-color': '#dc3545',
                         'color': '#fff'
                     });
                     $title.text('Edit Cash Out Voucher');
-                    $updateButton.removeClass('btn-primary').addClass('btn-success');
+                    $updateButton.removeClass('btn-primary').addClass('btn-danger');
                 } else {
                     $header.addClass('bg-secondary');
                     $header.css({
@@ -1393,11 +1433,11 @@
                 $('#edit_id').val('');
                 $('#edit_voucher_number').val('');
                 $('#edit_voucher_type').val('');
-                $('#edit_date').val('');
+                setDateInputValue('#edit_date', '');
                 $('#edit_amount').val('');
                 $('#edit_detail').val('');
                 $('#edit_t_number').val('');
-                $('#edit_passing_date').val('');
+                setDateInputValue('#edit_passing_date', '');
                 $('#edit_passing_status').val('');
                 $('#edit_t_number_label').text('Number');
 
@@ -1571,23 +1611,21 @@
                         _token: "{{ csrf_token() }}"
                     },
                     success: function(data) {
-                        var payload = data.data || {};
-                        flatpickr('#edit_date', {
-                            enableTime: false,
-                            dateFormat: "Y-m-d",
-                            defaultDate: payload.date
-                        });
+                        const d = data.data || {};
+                        const cl = d.customer_ledger || {};
+                        ensureEditDatePickersInitialized();
 
-                        const voucherType = payload.type || '';
-                        const paymentType = Number(payload.customer_ledger?.payment_type || 1);
-                        const passingStatus = payload.customer_ledger?.passing_status;
-                        let amount = Number(payload.amount_display || 0);
+                        const voucherType = d.type || '';
+                        const paymentType = Number(cl.payment_type || 1);
+                        const passingStatus = cl.passing_status;
+                        let amount = Number(d.amount_display || 0);
 
-                        applyEditModalTheme(voucherType);
-                        $("#edit_voucher_number").val(payload.voucher_number_display || '');
+                        applyEditVoucherTheme(d.type);
+                        $("#edit_voucher_number").val(d.voucher_number_display || '');
                         $("#edit_voucher_type").val(voucherType);
+                        setDateInputValue('#edit_date', d.date);
                         $("#edit_amount").val(amount);
-                        $("#edit_detail").val(payload.detail ?? '');
+                        $("#edit_detail").val(d.detail ?? '');
                         $('#eWordingAmount').text(numberToWords.toWords(amount));
 
                         let eAccTypeSelect = $('#edit_acct_type')[0]?.tomselect;
@@ -1597,9 +1635,9 @@
                         let eBankSelect = $('#edit_bank_id')[0]?.tomselect;
                         let eStatusSelect = $('#edit_passing_status')[0]?.tomselect;
 
-                        const accountTypeId = String(payload.account_type_id || '');
-                        const headId = String(payload.head_accounting_id || '');
-                        const subheadId = String(payload.subhead_accounting_id || '');
+                        const accountTypeId = String(d.account_type_id || '');
+                        const headId = String(d.head_accounting_id || '');
+                        const subheadId = String(d.subhead_accounting_id || '');
 
                         if (eAccTypeSelect && accountTypeId) {
                             eAccTypeSelect.setValue(accountTypeId, true);
@@ -1638,10 +1676,16 @@
                                 if (eTypeSelect) {
                                     eTypeSelect.setValue(String(paymentType), true);
                                 }
-                                $('#edit_t_number').val(payload.customer_ledger?.t_number || '');
-                                $('#edit_passing_date').val(payload.customer_ledger?.passing_date || '');
-                                if (eBankSelect && payload.customer_ledger?.bank_id) {
-                                    eBankSelect.setValue(String(payload.customer_ledger.bank_id), true);
+                                $('#edit_t_number').val(cl.t_number || '');
+                                setDateInputValue('#edit_passing_date', cl.passing_date);
+                                console.log('edit modal date mapping', {
+                                    voucher_date: d.date,
+                                    passing_date_from_response: cl.passing_date,
+                                    normalized_passing_date: normalizeDateForInput(cl.passing_date),
+                                    field_value_after_set: $('#edit_passing_date').val()
+                                });
+                                if (eBankSelect && cl.bank_id) {
+                                    eBankSelect.setValue(String(cl.bank_id), true);
                                 }
                                 if (eStatusSelect && passingStatus !== null && passingStatus !== undefined && String(passingStatus) !== '') {
                                     eStatusSelect.setValue(String(passingStatus), true);
@@ -1659,10 +1703,16 @@
                             if (eTypeSelect) {
                                 eTypeSelect.setValue(String(paymentType), true);
                             }
-                            $('#edit_t_number').val(payload.customer_ledger?.t_number || '');
-                            $('#edit_passing_date').val(payload.customer_ledger?.passing_date || '');
-                            if (eBankSelect && payload.customer_ledger?.bank_id) {
-                                eBankSelect.setValue(String(payload.customer_ledger.bank_id), true);
+                            $('#edit_t_number').val(cl.t_number || '');
+                            setDateInputValue('#edit_passing_date', cl.passing_date);
+                            console.log('edit modal date mapping', {
+                                voucher_date: d.date,
+                                passing_date_from_response: cl.passing_date,
+                                normalized_passing_date: normalizeDateForInput(cl.passing_date),
+                                field_value_after_set: $('#edit_passing_date').val()
+                            });
+                            if (eBankSelect && cl.bank_id) {
+                                eBankSelect.setValue(String(cl.bank_id), true);
                             }
                             if (eStatusSelect && passingStatus !== null && passingStatus !== undefined && String(passingStatus) !== '') {
                                 eStatusSelect.setValue(String(passingStatus), true);
