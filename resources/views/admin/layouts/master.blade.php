@@ -59,6 +59,7 @@
     <link rel="stylesheet" href="{{ asset('template/admin/dist/css/custom.css') }}?v={{ time() }}">
     <link rel="stylesheet" href="{{ asset('template/admin/dist/css/theme.css') }}?v={{ time() }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
     @stack('style')
     <style>
         div#load_screen {
@@ -127,6 +128,61 @@
         .voucher-tab-remove i {
             font-size: 10px;
         }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 45px;
+            height: 21px;
+            margin-bottom: 0;
+            margin-top: 15px;
+            margin-left: 11px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background-color: #dc3545;
+            transition: .4s;
+            border-radius: 50px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 15px;
+            width: 15px;
+            left: 4px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, .2);
+        }
+
+        input:checked + .slider {
+            background-color: #28a745;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+
+        .slider.round {
+            border-radius: 34px;
+        }
+
+        .status-loading {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
     </style>
 </head>
 
@@ -190,6 +246,7 @@
     <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
     @yield('js')
     @include('admin.layouts.script')
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <!-- jQuery UI 1.11.4 -->
     <script src="{{ asset('template/admin/plugins/jquery-ui/jquery-ui.min.js') }}"></script>
     <!-- Resolve conflict in jQuery UI tooltip with Bootstrap tooltip -->
@@ -491,7 +548,7 @@
                     }
                 });
             });
-       
+
         });
     </script>
 

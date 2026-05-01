@@ -53,6 +53,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
 
     Route::controller(UserController::class)->group(function () {
         Route::get('user', 'index')->middleware(['permission:read user'])->name('user.index');
+        Route::post('/user/status-toggle', 'toggleStatus')->name('user.status.toggle');
         Route::post('user', 'store')->middleware(['permission:create user'])->name('user.store');
         Route::post('user/show', 'show')->middleware(['permission:read user'])->name('user.show');
         Route::put('user', 'update')->middleware(['permission:update user'])->name('user.update');

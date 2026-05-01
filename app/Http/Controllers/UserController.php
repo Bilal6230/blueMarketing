@@ -91,6 +91,17 @@ class UserController extends Controller
             'data'      => $user[0]
         ], Response::HTTP_OK);
     }
+    public function toggleStatus(Request $request)
+    {
+        $user = User::findOrFail($request->id);
+        $user->status_id = $request->status_id;
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => $user->status_id ? 'User Activated Successfully' : 'User Deactivated Successfully'
+        ]);
+    }
 
     public function update(Request $request)
     {

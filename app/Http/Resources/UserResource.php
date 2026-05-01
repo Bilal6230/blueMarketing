@@ -24,6 +24,7 @@ class UserResource extends JsonResource
             'department'         => $this->department,
             'address'         => $this->address,
             'avatar'         => $this->avatar,
+            'status_id'         => $this->status_id,
             'role'          => implode(",", $this->getRoleNames()->toArray()),
             'created_at'    => date('d-m-Y H:i:s', strtotime($this->created_at)),
             'updated_at'    => date('d-m-Y H:i:s', strtotime($this->updated_at))
