@@ -29,7 +29,7 @@
                             @can('create plot')
                                 <div class="card-header">
                                     <h3 class="card-title">
-                                        <a href="#" class="btn btn-sm btn-success" data-toggle="modal"
+                                        <a href="#" class="btn btn-sm btn-success btn-add-plot" data-toggle="modal"
                                             data-target="#modal-tambah" data-backdrop="static" data-keyboard="false"><i
                                                 class="fas fa-plus"></i> Add</a>
                                     </h3>
@@ -44,6 +44,7 @@
                                             <th>Unit Type</th>
                                             <th>Unit Name</th>
                                             <th>Size</th>
+                                            <th>Amount</th>
                                             <th>Road</th>
                                             <th>Sold</th>
                                             <th>Status</th>
@@ -64,6 +65,7 @@
                                                 </td>
 
                                                 <td>{{ $i->size }} {{ Setting::getUnitTypes($i->unit) }}</td>
+                                                <td>{{ number_format($i->amount ?? 0, 2) }}</td>
                                                 <td>{{ Setting::getRoadSide($i->road_id) }} </td>
                                                 <td>{{ Setting::sale_status($i->sold) }}</td>
                                                 <td>{{ Setting::getStatus($i->is_active) }}</td>
@@ -137,6 +139,7 @@
                     success: function(data) {
                         console.log(data);
                         var data = data.data;
+                        $("#edit_amount").val(data.amount ?? '0.00');
                         $("#project_id").val(data.project_id);
                         $("#old_project").val(data.project_id);
                         $("#type").val(data.type);
@@ -157,6 +160,10 @@
                         });
                     },
                 });
+            });
+
+            $(document).on("click", '.btn-add-plot', function() {
+                $("#amount").val('0.00');
             });
 
             $(document).on("click", '.btn-delete', function() {
@@ -260,6 +267,20 @@
 
                                         </select>
                                         @error('unit')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-3">
+                                <div class="input-group">
+                                    <label class="fbox">Plot Amount</label>
+                                    <div class="input-group">
+                                        <input type="text" id="amount"
+                                            class="form-control @error('amount') is-invalid @enderror"
+                                            placeholder="Plot Amount" name="amount"
+                                            value="{{ old('amount', '0.00') }}">
+                                        @error('amount')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
@@ -442,6 +463,20 @@
 
                                         </select>
                                         @error('unit')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-3">
+                                <div class="input-group">
+                                    <label class="fbox">Plot Amount</label>
+                                    <div class="input-group">
+                                        <input id="edit_amount" type="text"
+                                            class="form-control @error('amount') is-invalid @enderror"
+                                            placeholder="Plot Amount" name="amount"
+                                            value="{{ old('amount', '0.00') }}">
+                                        @error('amount')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>

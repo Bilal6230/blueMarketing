@@ -14,6 +14,7 @@ class Plot extends Model
         'type',
         'size',
         'unit',
+        'amount',
         'description',
         'is_corner',
         'project_id',
@@ -24,6 +25,10 @@ class Plot extends Model
         'plot_history',
         'create_by',
 
+    ];
+
+    protected $casts = [
+        'amount' => 'decimal:2',
     ];
 
     public function holdPlots()

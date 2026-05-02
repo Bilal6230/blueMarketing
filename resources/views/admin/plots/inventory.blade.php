@@ -122,6 +122,56 @@
                     </div>
                 </div>
 
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h2 class="section-title"><i class="fas fa-coins"></i> Inventory Value</h2>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <div class="small-box bg-info">
+                            <div class="inner">
+                                <h3>{{ number_format($totalInventoryValue, 2) }}</h3>
+                                <p>Total Inventory Value</p>
+                            </div>
+                            <div class="icon">
+                                <i class="fas fa-wallet"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <div class="small-box bg-success">
+                            <div class="inner">
+                                <h3>{{ number_format($soldInventoryValue, 2) }}</h3>
+                                <p>Sold Inventory Value</p>
+                            </div>
+                            <div class="icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <div class="small-box bg-danger">
+                            <div class="inner">
+                                <h3>{{ number_format($unsoldInventoryValue, 2) }}</h3>
+                                <p>Unsold Inventory Value</p>
+                            </div>
+                            <div class="icon">
+                                <i class="fas fa-times-circle"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <div class="small-box bg-warning">
+                            <div class="inner">
+                                <h3>{{ number_format($holdInventoryValue, 2) }}</h3>
+                                <p>Hold Inventory Value</p>
+                            </div>
+                            <div class="icon">
+                                <i class="fas fa-pause-circle"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Charts Section -->
                 <div class="row mb-4">
                     <div class="col-12">

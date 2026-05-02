@@ -58,6 +58,9 @@ class PlotController extends Controller
      */
     public function store(Request $request)
     {
+        $amount = str_replace(',', '', (string) $request->amount);
+        $request->merge(['amount' => $amount]);
+
         $validator = Validator::make($request->all(), [
             'name'      => [
                                 'required',
@@ -70,6 +73,7 @@ class PlotController extends Controller
             'type'      => ['required', 'string',  'max:255'],
             'size'      => ['required', 'numeric',  'max:255'],
             'unit'      => ['required', 'string',  'max:255'],
+            'amount'    => ['required', 'numeric', 'min:0'],
             'is_corner' => ['required'],
             'project_id' => ['required'],
             'road_id'   => ['required'],
@@ -88,6 +92,7 @@ class PlotController extends Controller
                 'type'         => $request->type,
                 'size'         => $request->size,
                 'unit'         => $request->unit,
+                'amount'       => $amount,
                 'is_corner'         => $request->is_corner,
                 'project_id'         => $request->project_id,
                 'road_id'         => $request->road_id,
@@ -164,12 +169,16 @@ class PlotController extends Controller
      */
     public function update(Request $request, Plot $plot)
     {
+        $amount = str_replace(',', '', (string) $request->amount);
+        $request->merge(['amount' => $amount]);
+
         // Validate the incoming request data
         $validator = Validator::make($request->all(), [
             'name'      => ['required', 'string', 'max:255'],
             'type'      => ['required', 'string', 'max:255'],
             'size'      => ['required', 'numeric'],
             'unit'      => ['required', 'string'],
+            'amount'    => ['required', 'numeric', 'min:0'],
             'is_corner' => ['required', 'boolean'],
             'project_id' => ['required', 'integer'],
             'road_id'   => ['required', 'integer'],
@@ -196,6 +205,7 @@ class PlotController extends Controller
                 'type'          => $request->type,
                 'size'          => $request->size,
                 'unit'          => $request->unit,
+                'amount'        => $amount,
                 'is_corner'     => (bool) $request->is_corner,
                 'project_id'    => $request->project_id,
                 'road_id'       => $request->road_id,
@@ -348,6 +358,10 @@ class PlotController extends Controller
         $soldSize = $soldPlots->sum('size');
         $unsoldSize = $unsoldPlots->sum('size');
         $holdSize = $holdPlots->sum('size');
+        $totalInventoryValue = $totalPlots->sum('amount');
+        $soldInventoryValue = $soldPlots->sum('amount');
+        $unsoldInventoryValue = $unsoldPlots->sum('amount');
+        $holdInventoryValue = $holdPlots->sum('amount');
 
         // Chart Data: Total Plots
 
@@ -392,7 +406,11 @@ class PlotController extends Controller
             'chartData',
             'sizeChartData',
             'residentialChartData',
-            'shopsChartData'
+            'shopsChartData',
+            'totalInventoryValue',
+            'soldInventoryValue',
+            'unsoldInventoryValue',
+            'holdInventoryValue'
         ))->with('title', 'Plots Inventory');
     }
 
