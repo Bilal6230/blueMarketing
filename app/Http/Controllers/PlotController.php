@@ -362,6 +362,11 @@ class PlotController extends Controller
         $soldInventoryValue = $soldPlots->sum('amount');
         $unsoldInventoryValue = $unsoldPlots->sum('amount');
         $holdInventoryValue = $holdPlots->sum('amount');
+        $valueChartData = [
+            'sold' => (float) $soldInventoryValue,
+            'pending' => (float) $unsoldInventoryValue,
+            'hold' => (float) $holdInventoryValue,
+        ];
 
         // Chart Data: Total Plots
 
@@ -410,7 +415,8 @@ class PlotController extends Controller
             'totalInventoryValue',
             'soldInventoryValue',
             'unsoldInventoryValue',
-            'holdInventoryValue'
+            'holdInventoryValue',
+            'valueChartData'
         ))->with('title', 'Plots Inventory');
     }
 

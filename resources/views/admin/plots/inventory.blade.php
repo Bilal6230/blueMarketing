@@ -257,6 +257,30 @@
                     </div>
                 </div>
 
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3 class="chart-title"><i class="fas fa-coins"></i> Inventory Value</h3>
+                            </div>
+                            <div class="chart-body">
+                                <canvas id="inventoryValueChart"></canvas>
+                                <div id="inventoryValueChartEmpty" style="display:none;" class="text-muted text-center py-3">
+                                    No inventory value data available.
+                                </div>
+                            </div>
+                            <div class="chart-footer">
+                                <div class="chart-stats">
+                                    <span class="chart-stat"><i class="fas fa-circle text-success"></i> Sold: {{ number_format($valueChartData['sold'], 2) }}</span>
+                                    <span class="chart-stat"><i class="fas fa-circle text-danger"></i> Pending: {{ number_format($valueChartData['pending'], 2) }}</span>
+                                    <span class="chart-stat"><i class="fas fa-circle text-warning"></i> Hold: {{ number_format($valueChartData['hold'], 2) }}</span>
+                                    <span class="chart-stat"><i class="fas fa-circle text-primary"></i> Total: {{ number_format($totalInventoryValue, 2) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Shops Section -->
                 <div class="row mb-4">
                     <div class="col-12">
@@ -390,7 +414,7 @@
 @section('js')
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        function createPieChart(canvasId, labels, data, colors) {
+        function createPieChart(canvasId, labels, data, colors, options = {}) {
             new Chart(document.getElementById(canvasId), {
                 type: 'pie',
                 data: {
@@ -405,6 +429,21 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = Number(context.raw || 0);
+                                    const total = context.dataset.data.reduce((sum, current) => sum + Number(current || 0), 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+
+                                    if (options.money) {
+                                        return `${context.label}: ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${percentage}%)`;
+                                    }
+
+                                    return `${context.label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        },
                         legend: {
                             position: 'bottom',
                             labels: {
@@ -437,5 +476,21 @@
         createPieChart('shopsChart', ['Sold', 'Unsold', 'Hold'],
             [{{ $shopsChartData['sold'] }}, {{ $shopsChartData['unsold'] }}, {{ $shopsChartData['hold'] }}],
             ['#11998e', '#ff416c', '#f7971e']);
+
+        const inventoryValueSold = {{ $valueChartData['sold'] }};
+        const inventoryValuePending = {{ $valueChartData['pending'] }};
+        const inventoryValueHold = {{ $valueChartData['hold'] }};
+        const inventoryValueTotal = inventoryValueSold + inventoryValuePending + inventoryValueHold;
+
+        if (inventoryValueTotal > 0) {
+            createPieChart('inventoryValueChart', ['Sold', 'Pending', 'Hold'],
+                [inventoryValueSold, inventoryValuePending, inventoryValueHold],
+                ['#11998e', '#ff416c', '#f7971e'], {
+                    money: true
+                });
+        } else {
+            document.getElementById('inventoryValueChart').style.display = 'none';
+            document.getElementById('inventoryValueChartEmpty').style.display = 'block';
+        }
     </script>
 @endsection
