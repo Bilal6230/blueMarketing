@@ -397,7 +397,7 @@
                                                 <th>Detail</th>
                                                 <th>Amount</th>
                                                 <th>Type</th>
-                                                <th>Approve</th>
+                                                {{-- <th>Approve</th> --}}
 
 
                                                 @canany(['read slip', 'delete slip', 'can approve'])
@@ -481,10 +481,10 @@
                                                             {{ getPaymentTypeDetails($i->payment_type)['name'] }}
                                                         </span>
                                                     </td>
-
+{{-- 
                                                     <td>
                                                         {{ approveStatus($i->is_approve) }}
-                                                    </td>
+                                                    </td> --}}
 
 
                                                     @canany(['read slip', 'update voucher', 'delete slip', 'can approve'])

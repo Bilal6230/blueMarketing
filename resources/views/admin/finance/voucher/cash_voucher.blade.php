@@ -1207,15 +1207,34 @@
                     return parsed === null ? null : parsed.toFixed(2);
                 }
 
+                function parseAmountForWords(value) {
+                    const clean = String(value ?? '').replace(/,/g, '').trim();
+                    if (clean === '') return null;
+                    const number = Number(clean);
+                    if (!Number.isFinite(number)) return null;
+                    return number;
+                }
+
+                function clearAmountWords() {
+                    $('#wordingAmount').text('');
+                }
+
                 function syncPendingAmountLock(selected = null, clearAmount = false) {
                     const $amountInput = $('#numberInput');
 
                     if (selected) {
+                        const formattedAmount = formatMoneyValue(selected.amount || 0);
                         $amountInput
-                            .val(formatMoneyValue(selected.amount || 0))
+                            .val(formattedAmount)
                             .prop('readonly', true)
                             .attr('data-locked-from-pending', '1')
                             .attr('data-pending-amount', normalizeMoneyValue(selected.amount || 0));
+
+                        if (parseAmountForWords(formattedAmount) !== null) {
+                            convertToWords(formattedAmount);
+                        } else {
+                            clearAmountWords();
+                        }
                     } else {
                         const wasLocked = $amountInput.attr('data-locked-from-pending') === '1';
                         $amountInput
@@ -1225,17 +1244,31 @@
 
                         if (clearAmount && wasLocked) {
                             $amountInput.val('');
+                            clearAmountWords();
+                            return;
+                        }
+
+                        const currentAmount = $amountInput.val();
+                        if (parseAmountForWords(currentAmount) !== null) {
+                            convertToWords(currentAmount);
+                        } else {
+                            clearAmountWords();
                         }
                     }
-
-                    convertToWords();
                 }
 
                 function clearPendingSelection(clearAmount = false) {
+                    const $amountInput = $('#numberInput');
+                    const wasLocked = $amountInput.attr('data-locked-from-pending') === '1';
+
                     $('#selected_pending_payment_id').val('');
                     $('#pendingPaymentsTable tbody tr').removeClass('table-active');
                     $('input[name="selected_pending_payment"]').prop('checked', false);
                     $('#pendingSelectedSummary').addClass('d-none');
+                    $('#pendingSummaryText').text('');
+                    if (clearAmount && wasLocked) {
+                        clearAmountWords();
+                    }
                     syncPendingAmountLock(null, clearAmount);
                 }
 
@@ -1320,6 +1353,7 @@
                         $('#pendingPaymentsSection').hide();
                         $('#pending_status').val('1');
                         clearPendingSelection(true);
+                        clearAmountWords();
                         pendingRowsCache = [];
                         renderPendingRows();
                     }
@@ -1750,8 +1784,13 @@
                 });
             });
 
-            $('#numberInput').on('input', function() {
-                convertToWords();
+            $('#numberInput').on('input change', function() {
+                const value = $(this).val();
+                if (parseAmountForWords(value) === null) {
+                    clearAmountWords();
+                    return;
+                }
+                convertToWords(value);
             });
             $('#edit_amount').on('input', function() {
                 eConvertToWords();
@@ -1906,15 +1945,38 @@
 
         });
 
+        function parseAmountForWords(value) {
+            const clean = String(value ?? '').replace(/,/g, '').trim();
+            if (clean === '') return null;
+            const number = Number(clean);
+            if (!Number.isFinite(number)) return null;
+            return number;
+        }
 
-        function convertToWords() {
-            var numberInput = document.getElementById('numberInput').value;
+        function clearAmountWords() {
+            $('#wordingAmount').text('');
+        }
 
-            var numericValue = numberInput.replace(/,/g, '');
+        function convertToWords(value) {
+            var numberInput = value;
+            if (numberInput === undefined) {
+                numberInput = document.getElementById('numberInput')?.value;
+            }
+
+            var numericValue = parseAmountForWords(numberInput);
+            var wordingTarget = document.getElementById('wordingAmount');
+
+            if (numericValue === null || numericValue <= 0) {
+                clearAmountWords();
+                return;
+            }
+
+            if (!wordingTarget) {
+                return;
+            }
 
             var wordingAmount = numberToWords.toWords(numericValue);
-
-            document.getElementById('wordingAmount').innerText = wordingAmount;
+            wordingTarget.innerText = wordingAmount;
         }
 
         function eConvertToWords() {

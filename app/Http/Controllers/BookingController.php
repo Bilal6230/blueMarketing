@@ -2119,14 +2119,77 @@ class BookingController extends Controller
             switch ($action) {
                 case 'customer_report':
                     $x['title'] = 'Customer Report';
-                    $x['data'] = CustomerLedger::with('customer_list', 'plot_list', 'project_list')
-                        ->where('customer_id', $customer_id)->where('is_active', 1)->where('is_approve', 1)
+                    $x['data'] = CustomerLedger::with('customer_list', 'plot_list', 'project_list', 'ledger')
+                        ->where('project_id', getSelectedTown())
+                        ->where('customer_id', $customer_id)
+                        ->where('is_active', 1)
+                        ->where(function ($query) {
+                            $query->where('is_approve', 1)
+                                ->orWhereIn('transaction_type', ['CR', 'PPR']);
+                        })
                         ->when($request->input('plot_id'), function ($query) use ($request) {
                             return $query->where('plot_id', $request->input('plot_id'));
                         })
                         ->orderBy('plot_id')
+                        ->orderBy('date')
                         ->orderBy('id')
-                        ->get();
+                        ->get()
+                        ->unique('id')
+                        ->values()
+                        ->map(function ($row) {
+                            $ledger = $row->ledger;
+                            $transactionType = strtoupper(trim((string) $row->transaction_type));
+                            $typeId = trim((string) ($row->type_id ?? ''));
+                            $reference = trim((string) ($row->reference ?? ''));
+                            $ledgerType = trim((string) optional($ledger)->type);
+                            $ledgerVoucherNumber = trim((string) (optional($ledger)->voucher_number ?? optional($ledger)->voucher));
+                            $displayAmount = (float) (($row->amount_out > 0) ? $row->amount_out : $row->amount_in);
+                            $paymentTypeDetails = getPaymentTypeDetails($row->payment_type);
+                            $statusMeta = collect(check_status())->firstWhere('id', $row->passing_status);
+
+                            if ($ledgerType !== '' && $ledgerVoucherNumber !== '') {
+                                $voucherNumberDisplay = $ledgerType . '-' . $ledgerVoucherNumber;
+                            } elseif ($transactionType === 'PPR' && $typeId !== '') {
+                                $voucherNumberDisplay = 'PPR-' . $typeId;
+                            } elseif ($transactionType === 'CR' && $typeId !== '') {
+                                $voucherNumberDisplay = 'CR-' . $typeId;
+                            } elseif ($reference !== '' && preg_match('/[A-Za-z]/', $reference)) {
+                                $voucherNumberDisplay = $reference;
+                            } else {
+                                $voucherNumberDisplay = 'Pending #' . $row->id;
+                            }
+
+                            if ($transactionType === 'PPR') {
+                                $sourceLabel = 'Received Payment';
+                            } elseif ($transactionType === 'CR') {
+                                $sourceLabel = 'Cash In';
+                            } else {
+                                $sourceLabel = $transactionType !== '' ? $transactionType : 'Entry';
+                            }
+
+                            $row->setAttribute('voucher_number_display', $voucherNumberDisplay);
+                            $row->setAttribute('source_label', $sourceLabel);
+                            $row->setAttribute('display_amount', $displayAmount);
+                            $row->setAttribute('balance_delta', (float) $row->amount_in - (float) $row->amount_out);
+                            $row->setAttribute('payment_type_label', $paymentTypeDetails['name'] ?? '-');
+                            $row->setAttribute(
+                                'passing_status_label',
+                                in_array((int) $row->payment_type, [2, 3], true) && $statusMeta
+                                    ? ($statusMeta['name'] ?? '-')
+                                    : '-'
+                            );
+                            $row->setAttribute(
+                                'report_description',
+                                trim(collect([
+                                    $voucherNumberDisplay,
+                                    $sourceLabel,
+                                    $reference !== '' ? 'Slip: ' . $reference : null,
+                                    $row->description,
+                                ])->filter()->implode(' | '))
+                            );
+
+                            return $row;
+                        });
 
                     // dd( $x['data']);
                     return view('admin.reports.bookings.customer', $x);
