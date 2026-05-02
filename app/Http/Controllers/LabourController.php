@@ -309,6 +309,7 @@ class LabourController extends Controller
                     'overtime' => number_format($totalOT, 0),
                     'amount' => number_format($amount, 0),
                     'remaningAmount' => number_format($remaningAmount, 0),
+                    'remaningAmounts' => $remaningAmount,
                     'advance' => $labour->advance,
                     'amount_raw' => $amount,
                     'ratings' => number_format($ratings, 1),
@@ -318,6 +319,7 @@ class LabourController extends Controller
                 ];
             });
         $x['total_amount'] = $personWiseReports->sum('amount_raw');
+        $x['total_remaningAmount'] = $personWiseReports->sum('remaningAmounts');
         // Render table partial
         return $x;
     }

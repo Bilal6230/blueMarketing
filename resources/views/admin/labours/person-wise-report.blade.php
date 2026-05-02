@@ -38,8 +38,9 @@ Daily Wage: Rs {{ $report['rate'] }}
     </tr>
 @endforeach
 <tr>
-    <td colspan="8" style="text-align:right;">Total</td>
+    <td colspan="7" style="text-align:right;">Total</td>
     <td>{{ $total_amount ?? '' }}</td>
+    <td>{{ $total_remaningAmount ?? '' }}</td>
     <td>
         <div class="">
             Total Amount: <span id="totalVoucherAmount" style="color: #ff0d0d;"></span>
