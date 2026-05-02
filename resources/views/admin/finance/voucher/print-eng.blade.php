@@ -109,7 +109,7 @@
 
         <!-- HEADER -->
         @php
-            $display = Setting::getValue('print_status') == '0' ? 'display:none !important;' : '';
+            $display = Setting::getValue($voucher->type . '_Receipt_Header') == '0' ? 'display:none !important;' : '';
         @endphp
         @include('admin.partials.print_branding_header', [
             'branding' => $branding,
