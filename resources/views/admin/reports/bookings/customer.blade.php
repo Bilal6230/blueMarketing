@@ -69,11 +69,14 @@
 
     <table dir="@if( Config::get('app.locale') == 'ar' ){{'rtl'}}@endif" style="width: 100%;border-collapse: collapse;">
         <tr class="table-header" style="background-color: rgb(1, 75, 148); color: white;">
-            <td style="border:1px dotted #222;padding:1px 3px;width:35%;text-align:center">Date</td>
-            <td style="border:1px dotted #222;padding:1px 3px;width:15%;text-align:center">Description</td>
-            <td style="border:1px dotted #222;padding:1px 3px;width:7%;text-align:center">CR</td>
-            <td style="border:1px dotted #222;padding:1px 3px;width:7%;text-align:center">DR</td>
-            <td style="border:1px dotted #222;padding:1px 3px;width:7%;text-align:center">Balance</td>
+            <td style="border:1px dotted #222;padding:1px 3px;width:12%;text-align:center">Date</td>
+            <td style="border:1px dotted #222;padding:1px 3px;width:14%;text-align:center">Voucher No.</td>
+            <td style="border:1px dotted #222;padding:1px 3px;width:12%;text-align:center">Type</td>
+            <td style="border:1px dotted #222;padding:1px 3px;width:32%;text-align:center">Description</td>
+            <td style="border:1px dotted #222;padding:1px 3px;width:10%;text-align:center">Payment</td>
+            <td style="border:1px dotted #222;padding:1px 3px;width:10%;text-align:center">Status</td>
+            <td style="border:1px dotted #222;padding:1px 3px;width:10%;text-align:center">Amount</td>
+            <td style="border:1px dotted #222;padding:1px 3px;width:10%;text-align:center">Balance</td>
         </tr>
         <?php
             $balance = 0;
@@ -84,12 +87,27 @@
                 <td style="border:1px dotted #222;padding:1px 3px;font-size: 10px;line-height: 1.2;">
                     {{ $d->date }}
                 </td>
-                <td style="border:1px dotted #222;padding:1px 3px;text-align:center;font-size: 10px;">{{ $d->reference }} {{ $d->description }} </td>
-                <td style="border:1px dotted #222;padding:1px 3px;text-align:center;font-size: 10px;">{{ Setting::formatAmount($d->amount_in) }}</td>
-                <td style="border:1px dotted #222;padding:1px 3px;width:7%;text-align:center">{{ Setting::formatAmount($d->amount_out)  }}</td>
+                <td style="border:1px dotted #222;padding:1px 3px;text-align:center;font-size: 10px;">
+                    {{ $d->voucher_number_display ?? '-' }}
+                </td>
+                <td style="border:1px dotted #222;padding:1px 3px;text-align:center;font-size: 10px;">
+                    {{ $d->source_label ?? '-' }}
+                </td>
+                <td style="border:1px dotted #222;padding:1px 3px;font-size: 10px;">
+                    {{ $d->report_description ?? trim(($d->reference ?? '') . ' ' . ($d->description ?? '')) }}
+                </td>
+                <td style="border:1px dotted #222;padding:1px 3px;text-align:center;font-size: 10px;">
+                    {{ $d->payment_type_label ?? '-' }}
+                </td>
+                <td style="border:1px dotted #222;padding:1px 3px;text-align:center;font-size: 10px;">
+                    {{ $d->passing_status_label ?? '-' }}
+                </td>
+                <td style="border:1px dotted #222;padding:1px 3px;text-align:center;font-size: 10px;">
+                    {{ Setting::formatAmount($d->display_amount ?? 0) }}
+                </td>
                 <td style="border:1px dotted #222;border-right:1px solid #222;padding:1px 3px;text-align:center;font-size: 10px;">
                 @php
-                    $balance += $d->amount_in - $d->amount_out;
+                    $balance += $d->balance_delta ?? ((float) ($d->amount_in ?? 0) - (float) ($d->amount_out ?? 0));
                 @endphp
                 {{ Setting::roundformatAmount($balance)  }}
                 </td>
