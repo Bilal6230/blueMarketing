@@ -1207,15 +1207,34 @@
                     return parsed === null ? null : parsed.toFixed(2);
                 }
 
+                function parseAmountForWords(value) {
+                    const clean = String(value ?? '').replace(/,/g, '').trim();
+                    if (clean === '') return null;
+                    const number = Number(clean);
+                    if (!Number.isFinite(number)) return null;
+                    return number;
+                }
+
+                function clearAmountWords() {
+                    $('#wordingAmount').text('');
+                }
+
                 function syncPendingAmountLock(selected = null, clearAmount = false) {
                     const $amountInput = $('#numberInput');
 
                     if (selected) {
+                        const formattedAmount = formatMoneyValue(selected.amount || 0);
                         $amountInput
-                            .val(formatMoneyValue(selected.amount || 0))
+                            .val(formattedAmount)
                             .prop('readonly', true)
                             .attr('data-locked-from-pending', '1')
                             .attr('data-pending-amount', normalizeMoneyValue(selected.amount || 0));
+
+                        if (parseAmountForWords(formattedAmount) !== null) {
+                            convertToWords(formattedAmount);
+                        } else {
+                            clearAmountWords();
+                        }
                     } else {
                         const wasLocked = $amountInput.attr('data-locked-from-pending') === '1';
                         $amountInput
@@ -1225,17 +1244,31 @@
 
                         if (clearAmount && wasLocked) {
                             $amountInput.val('');
+                            clearAmountWords();
+                            return;
+                        }
+
+                        const currentAmount = $amountInput.val();
+                        if (parseAmountForWords(currentAmount) !== null) {
+                            convertToWords(currentAmount);
+                        } else {
+                            clearAmountWords();
                         }
                     }
-
-                    convertToWords();
                 }
 
                 function clearPendingSelection(clearAmount = false) {
+                    const $amountInput = $('#numberInput');
+                    const wasLocked = $amountInput.attr('data-locked-from-pending') === '1';
+
                     $('#selected_pending_payment_id').val('');
                     $('#pendingPaymentsTable tbody tr').removeClass('table-active');
                     $('input[name="selected_pending_payment"]').prop('checked', false);
                     $('#pendingSelectedSummary').addClass('d-none');
+                    $('#pendingSummaryText').text('');
+                    if (clearAmount && wasLocked) {
+                        clearAmountWords();
+                    }
                     syncPendingAmountLock(null, clearAmount);
                 }
 
@@ -1320,6 +1353,7 @@
                         $('#pendingPaymentsSection').hide();
                         $('#pending_status').val('1');
                         clearPendingSelection(true);
+                        clearAmountWords();
                         pendingRowsCache = [];
                         renderPendingRows();
                     }
@@ -1359,17 +1393,147 @@
                     }
                 @endif
             });
-            $('#e_payment_type').change(function(e) {
-
-                e.preventDefault();
-
-                if ($(this).val() != '1') {
-
-                    $('.e_bank_group').css('display', 'block');
-                } else {
-
-                    $('.e_bank_group').css('display', 'none');
+            function normalizeDateForInput(value) {
+                if (!value) return '';
+                const raw = String(value).trim();
+                if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
+                    return raw.substring(0, 10);
                 }
+                return raw;
+            }
+
+            function setDateInputValue(selector, value) {
+                const normalized = normalizeDateForInput(value);
+                const el = document.querySelector(selector);
+                if (!el) return;
+
+                if (el._flatpickr) {
+                    el._flatpickr.setDate(normalized || null, false, 'Y-m-d');
+                } else {
+                    $(selector).val(normalized);
+                }
+            }
+
+            function ensureEditDatePickersInitialized() {
+                [
+                    '#edit_date',
+                    '#edit_passing_date'
+                ].forEach(function(selector) {
+                    const el = document.querySelector(selector);
+                    if (!el || el._flatpickr || typeof flatpickr === 'undefined') {
+                        return;
+                    }
+
+                    flatpickr(el, {
+                        enableTime: false,
+                        dateFormat: "Y-m-d",
+                        altInput: true,
+                        altFormat: "F j, Y"
+                    });
+                });
+            }
+
+            function applyEditVoucherTheme(voucherType) {
+                const $header = $('#modal-edit .modal-header');
+                const $title = $('#modal-edit-title');
+                const $updateButton = $('#edit-update-button');
+                $header.removeClass('cash-in cash-out bg-secondary');
+                $updateButton.removeClass('btn-success btn-danger btn-primary').addClass('btn-primary');
+                if (voucherType === 'CR') {
+                    $header.css({
+                        'background-color': '#28a745',
+                        'color': '#fff'
+                    });
+                    $title.text('Edit Cash In Voucher');
+                    $updateButton.removeClass('btn-primary').addClass('btn-success');
+                } else if (voucherType === 'CP') {
+                    $header.css({
+                        'background-color': '#dc3545',
+                        'color': '#fff'
+                    });
+                    $title.text('Edit Cash Out Voucher');
+                    $updateButton.removeClass('btn-primary').addClass('btn-danger');
+                } else {
+                    $header.addClass('bg-secondary');
+                    $header.css({
+                        'background-color': '',
+                        'color': ''
+                    });
+                    $title.text('Edit Voucher');
+                }
+            }
+
+            function resetEditModalFields() {
+                $('#edit_id').val('');
+                $('#edit_voucher_number').val('');
+                $('#edit_voucher_type').val('');
+                setDateInputValue('#edit_date', '');
+                $('#edit_amount').val('');
+                $('#edit_detail').val('');
+                $('#edit_t_number').val('');
+                setDateInputValue('#edit_passing_date', '');
+                $('#edit_passing_status').val('');
+                $('#edit_t_number_label').text('Number');
+
+                const selectIds = ['edit_acct_type', 'edit_accounts_id', 'edit_subaccounts_id', 'edit_payment_type', 'edit_bank_id', 'edit_passing_status'];
+                selectIds.forEach(function(selectId) {
+                    const ts = $('#' + selectId)[0]?.tomselect;
+                    if (ts) {
+                        ts.clear(true);
+                    }
+                });
+
+                $('.edit-bank-field').hide();
+                $('#edit_passing_status_group').hide();
+                $('#edit-update-button').prop('disabled', false).text('Update');
+            }
+
+            function syncEditPaymentFields(paymentType, passingStatus) {
+                const type = Number(paymentType || 1);
+                const hasStatusValue = passingStatus !== null && passingStatus !== undefined && String(passingStatus) !== '';
+                const showBankFields = type === 2 || type === 3;
+                $('.edit-bank-field').toggle(showBankFields);
+                if (type === 2) {
+                    $('#edit_t_number_label').text('Transaction Number');
+                } else if (type === 3) {
+                    $('#edit_t_number_label').text('Cheque Number');
+                } else {
+                    $('#edit_t_number_label').text('Number');
+                }
+
+                const shouldShowStatus = showBankFields && hasStatusValue;
+                $('#edit_passing_status_group').toggle(shouldShowStatus);
+            }
+
+            function loadEditAccountsByType(acctType) {
+                return $.ajax({
+                    url: '{{ route('get_account') }}',
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        acct_type: acctType,
+                        action: 'get_head',
+                        _token: '{{ csrf_token() }}'
+                    }
+                });
+            }
+
+            function loadEditSubaccountsByHead(headId) {
+                return $.ajax({
+                    url: '{{ route('get_account') }}',
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        accountID: headId,
+                        action: 'get_child',
+                        _token: '{{ csrf_token() }}'
+                    }
+                });
+            }
+
+            $('#edit_payment_type').change(function(e) {
+                e.preventDefault();
+                syncEditPaymentFields($(this).val(), $('#edit_passing_status').val());
             });
 
             @if ($voucherType === 'CP')
@@ -1380,109 +1544,63 @@
                 }, 0);
             @endif
 
-            $('#e_acct_type').change(function() {
+            $('#edit_acct_type').change(function() {
                 var acctType = $(this).val();
                 if (acctType) {
-                    $.ajax({
-                        url: '{{ route('get_account') }}',
-                        type: 'POST',
-                        dataType: 'json',
-                        data: {
-                            acct_type: acctType,
-                            action: 'get_head',
-                            _token: '{{ csrf_token() }}'
-                        },
-                        success: function(data) {
-                            let accountsEl = $('#e_accounts_id')[0]; // DOM element
-                            let tsAccounts = accountsEl.tomselect; // TomSelect instance
-
-                            let subAccountsEl = $('#e_subaccounts_id')[0];
-                            let tsSubAccounts = subAccountsEl.tomselect;
-
-                            if (tsAccounts) {
-                                // tsAccounts.addOption({
-                                //     value: '',
-                                //     text: 'Select an option'
-                                // });
-                                tsAccounts.setValue('', true);
-                                tsAccounts.clearOptions(); // clear old options
-
-                                $.each(data, function(key, value) {
-                                    tsAccounts.addOption({
-                                        value: value.head_accounting_id,
-                                        text: value.head_accounting.name
-                                    });
+                    loadEditAccountsByType(acctType).done(function(data) {
+                        let tsAccounts = $('#edit_accounts_id')[0]?.tomselect;
+                        let tsSubAccounts = $('#edit_subaccounts_id')[0]?.tomselect;
+                        if (tsAccounts) {
+                            tsAccounts.clear(true);
+                            tsAccounts.clearOptions();
+                            $.each(data, function(key, value) {
+                                tsAccounts.addOption({
+                                    value: value.head_accounting_id,
+                                    text: value.head_accounting.name
                                 });
-
-                                tsAccounts.refreshOptions(false);
-                            }
-
-                            if (tsSubAccounts) {
-                                tsSubAccounts.setValue('', true);
-                                tsSubAccounts.clearOptions(); // also clear subaccounts
-                            }
-                        },
-                        error: function() {
-                            console.log('Error fetching accounts');
+                            });
+                            tsAccounts.refreshOptions(false);
                         }
+                        if (tsSubAccounts) {
+                            tsSubAccounts.clear(true);
+                            tsSubAccounts.clearOptions();
+                        }
+                    }).fail(function() {
+                        console.log('Error fetching accounts');
                     });
                 } else {
-                    let tsAccounts = $('#e_accounts_id')[0].tomselect;
-                    let tsSubAccounts = $('#e_subaccounts_id')[0].tomselect;
+                    let tsAccounts = $('#edit_accounts_id')[0].tomselect;
+                    let tsSubAccounts = $('#edit_subaccounts_id')[0].tomselect;
                     if (tsAccounts) tsAccounts.clearOptions();
                     if (tsSubAccounts) tsSubAccounts.clearOptions();
                 }
             });
 
-            $('#e_accounts_id').change(function() {
+            $('#edit_accounts_id').change(function() {
                 var accountID = $(this).val();
 
                 if (accountID) {
-                    $.ajax({
-                        url: '{{ route('get_account') }}',
-                        type: 'POST',
-                        dataType: 'json',
-                        data: {
-                            accountID: accountID,
-                            action: 'get_child',
-                            _token: '{{ csrf_token() }}'
-                        },
-                        success: function(data) {
-                            let subAccountsSelect = $('#e_subaccounts_id')[0].tomselect;
-
-                            // Filter only matching items
-                            let filteredData = $.grep(data, function(item) {
-                                return item.head_accounting_id == accountID;
+                    loadEditSubaccountsByHead(accountID).done(function(data) {
+                        let subAccountsSelect = $('#edit_subaccounts_id')[0].tomselect;
+                        let filteredData = $.grep(data, function(item) {
+                            return item.head_accounting_id == accountID;
+                        });
+                        subAccountsSelect.clear(true);
+                        subAccountsSelect.clearOptions();
+                        $.each(filteredData, function(key, value) {
+                            subAccountsSelect.addOption({
+                                value: value.subhead_accounting_id,
+                                text: value.subhead_accounting.name + ' — Balance: ' + value.balance
                             });
-
-                            // Clear and add placeholder
-                            // subAccountsSelect.addOption({
-                            //     value: '',
-                            //     text: 'Select an option'
-                            // });
-                            subAccountsSelect.setValue('', true);
-                            subAccountsSelect.clearOptions();
-
-                            // Append new options
-                            $.each(filteredData, function(key, value) {
-                                subAccountsSelect.addOption({
-                                    value: value.subhead_accounting_id,
-                                    text: value.subhead_accounting.name +
-                                        ' — Balance: ' + value.balance
-                                });
-                            });
-
-                            // Refresh TomSelect dropdown
-                            subAccountsSelect.refreshOptions(false);
-
-                        }
+                        });
+                        subAccountsSelect.refreshOptions(false);
                     });
                 } else {
-                    $('#e_subaccounts_id')[0].tomselect.clearOptions();
+                    $('#edit_subaccounts_id')[0].tomselect.clearOptions();
                 }
             });
 
-            $('#e_subaccounts_id').change(function() {
+            $('#edit_subaccounts_id').change(function() {
                 var subaccountId = $(this).val();
 
                 if (subaccountId !== '') {
@@ -1495,7 +1613,7 @@
                         },
                         success: function(response) {
                             let headId = response.headId;
-                            let acctSelect = $('#e_accounts_id')[0].tomselect;
+                            let acctSelect = $('#edit_accounts_id')[0].tomselect;
                             if (!acctSelect.getValue()) {
                                 acctSelect.setValue(headId, true);
                             }
@@ -1510,7 +1628,9 @@
 
             $(document).on("click", '.btn-edit', function() {
                 let id = $(this).attr("data-id");
-                $('#id').val(id);
+                resetEditModalFields();
+                $('#edit_id').val(id);
+                $('#edit-update-button').prop('disabled', true).text('Loading...');
                 $('#modal-loading').modal({
                     backdrop: 'static',
                     keyboard: false,
@@ -1525,73 +1645,131 @@
                         _token: "{{ csrf_token() }}"
                     },
                     success: function(data) {
-                        var data = data.data;
-                        $("#e_reference").val(data.reference);
+                        const d = data.data || {};
+                        const cl = d.customer_ledger || {};
+                        ensureEditDatePickersInitialized();
 
-                        flatpickr('#e_date', {
-                            enableTime: false,
-                            dateFormat: "Y-m-d",
-                            defaultDate: data
-                                .date
-                        });
+                        const voucherType = d.type || '';
+                        const paymentType = Number(cl.payment_type || 1);
+                        const passingStatus = cl.passing_status;
+                        let amount = Number(d.amount_display || 0);
 
-                        $("#e_voucher").val(data.type + '-0000' + data.type_id);
-                        let amount = 0;
-	                        if (data.type == 'CR') {
-	                            amount = data.amount_in;
-	                        } else if (data.type == 'CP') {
-	                            amount = data.amount_out;
-	                        }
-	                        $("#e_amount").val(amount);
-	                        $("#e_detail").val(data.detail ?? '');
-	                        $('#eWordingAmount').text(numberToWords.toWords(amount));
-	                        $('#modal-loading').modal('hide');
-	                        $('#modal-edit').modal({
-                            backdrop: 'static',
-                            keyboard: false,
-                            show: true
-                        });
-                        let acct_type = data.project_head_subhead.head_accounting.acct_type;
-                        let eAccTypeSelect = $('#e_acct_type')[0].tomselect;
-                        eAccTypeSelect.setValue(acct_type, true);
+                        applyEditVoucherTheme(d.type);
+                        $("#edit_voucher_number").val(d.voucher_number_display || '');
+                        $("#edit_voucher_type").val(voucherType);
+                        setDateInputValue('#edit_date', d.date);
+                        $("#edit_amount").val(amount);
+                        $("#edit_detail").val(d.detail ?? '');
+                        $('#eWordingAmount').text(numberToWords.toWords(amount));
 
-                        let headId = data.project_head_subhead.head_accounting.id;
-                        let eAccSelect = $('#e_accounts_id')[0].tomselect;
-                        eAccSelect.setValue(headId, true);
+                        let eAccTypeSelect = $('#edit_acct_type')[0]?.tomselect;
+                        let eAccSelect = $('#edit_accounts_id')[0]?.tomselect;
+                        let eSubAccSelect = $('#edit_subaccounts_id')[0]?.tomselect;
+                        let eTypeSelect = $('#edit_payment_type')[0]?.tomselect;
+                        let eBankSelect = $('#edit_bank_id')[0]?.tomselect;
+                        let eStatusSelect = $('#edit_passing_status')[0]?.tomselect;
 
-                        let subheadId = data.project_head_subhead.subhead_accounting.id;
-                        let eSubAccSelect = $('#e_subaccounts_id')[0].tomselect;
-                        eSubAccSelect.setValue(subheadId, true);
+                        const accountTypeId = String(d.account_type_id || '');
+                        const headId = String(d.head_accounting_id || '');
+                        const subheadId = String(d.subhead_accounting_id || '');
 
-                        // if (data.customer_ledger != null) {
-                        // $('.customer-detail').removeClass('d-none');
-                        let customerId = data.customer_ledger?.customer_id;
-                        let eCustomerSelect = $('#e_customer_id')[0].tomselect;
-                        eCustomerSelect.setValue(customerId, true);
-
-                        let plotId = data.customer_ledger?.plot_id;
-                        let ePlotSelect = $('#e_plot_id')[0].tomselect;
-                        ePlotSelect.setValue(plotId, true);
-
-                        let typeId = data.customer_ledger?.payment_type;
-                        let eTypeSelect = $('#e_payment_type')[0].tomselect;
-                        eTypeSelect.setValue(typeId, true);
-                        if (typeId == 1 || typeId == null || typeId == '') {
-                            $('.e_bank_group').css('display', 'none');
-                        } else {
-                            $('.e_bank_group').css('display', 'block');
-                            let bankId = data.customer_ledger?.bank_id;
-                            let eBankSelect = $('#e_bank_id')[0].tomselect;
-                            eBankSelect.setValue(bankId, true);
-                            let tNumber = data.customer_ledger?.t_number;
-                            $('#e_t_number').val(tNumber);
-                            let passingDate = data.customer_ledger?.passing_date;
-                            $('#e_passing_date').val(passingDate);
+                        if (eAccTypeSelect && accountTypeId) {
+                            eAccTypeSelect.setValue(accountTypeId, true);
                         }
-                        // }else{
-                        //     $('.customer-detail').addClass('d-none');
-                        // }
+
+                        loadEditAccountsByType(accountTypeId).done(function(accountsData) {
+                            if (eAccSelect) {
+                                eAccSelect.clear(true);
+                                eAccSelect.clearOptions();
+                                $.each(accountsData, function(key, value) {
+                                    eAccSelect.addOption({
+                                        value: value.head_accounting_id,
+                                        text: value.head_accounting.name
+                                    });
+                                });
+                                eAccSelect.refreshOptions(false);
+                                eAccSelect.setValue(headId, true);
+                            }
+                            loadEditSubaccountsByHead(headId).done(function(subData) {
+                                if (eSubAccSelect) {
+                                    eSubAccSelect.clear(true);
+                                    eSubAccSelect.clearOptions();
+                                    let filteredData = $.grep(subData, function(item) {
+                                        return String(item.head_accounting_id) === String(headId);
+                                    });
+                                    $.each(filteredData, function(key, value) {
+                                        eSubAccSelect.addOption({
+                                            value: value.subhead_accounting_id,
+                                            text: value.subhead_accounting.name + ' — Balance: ' + value.balance
+                                        });
+                                    });
+                                    eSubAccSelect.refreshOptions(false);
+                                    eSubAccSelect.setValue(subheadId, true);
+                                }
+                            }).always(function() {
+                                if (eTypeSelect) {
+                                    eTypeSelect.setValue(String(paymentType), true);
+                                }
+                                $('#edit_t_number').val(cl.t_number || '');
+                                setDateInputValue('#edit_passing_date', cl.passing_date);
+                                console.log('edit modal date mapping', {
+                                    voucher_date: d.date,
+                                    passing_date_from_response: cl.passing_date,
+                                    normalized_passing_date: normalizeDateForInput(cl.passing_date),
+                                    field_value_after_set: $('#edit_passing_date').val()
+                                });
+                                if (eBankSelect && cl.bank_id) {
+                                    eBankSelect.setValue(String(cl.bank_id), true);
+                                }
+                                if (eStatusSelect && passingStatus !== null && passingStatus !== undefined && String(passingStatus) !== '') {
+                                    eStatusSelect.setValue(String(passingStatus), true);
+                                }
+                                syncEditPaymentFields(paymentType, passingStatus);
+                                $('#edit-update-button').prop('disabled', false).text('Update');
+                                $('#modal-loading').modal('hide');
+                                $('#modal-edit').modal({
+                                    backdrop: 'static',
+                                    keyboard: false,
+                                    show: true
+                                });
+                            });
+                        }).fail(function() {
+                            if (eTypeSelect) {
+                                eTypeSelect.setValue(String(paymentType), true);
+                            }
+                            $('#edit_t_number').val(cl.t_number || '');
+                            setDateInputValue('#edit_passing_date', cl.passing_date);
+                            console.log('edit modal date mapping', {
+                                voucher_date: d.date,
+                                passing_date_from_response: cl.passing_date,
+                                normalized_passing_date: normalizeDateForInput(cl.passing_date),
+                                field_value_after_set: $('#edit_passing_date').val()
+                            });
+                            if (eBankSelect && cl.bank_id) {
+                                eBankSelect.setValue(String(cl.bank_id), true);
+                            }
+                            if (eStatusSelect && passingStatus !== null && passingStatus !== undefined && String(passingStatus) !== '') {
+                                eStatusSelect.setValue(String(passingStatus), true);
+                            }
+                            syncEditPaymentFields(paymentType, passingStatus);
+                            $('#edit-update-button').prop('disabled', false).text('Update');
+                            $('#modal-loading').modal('hide');
+                            $('#modal-edit').modal({
+                                backdrop: 'static',
+                                keyboard: false,
+                                show: true
+                            });
+                        });
                     },
+                    error: function(xhr) {
+                        $('#modal-loading').modal('hide');
+                        $('#edit-update-button').prop('disabled', false).text('Update');
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Unable to load voucher',
+                            text: xhr?.responseJSON?.message || 'Failed to open voucher for edit.'
+                        });
+                    }
                 });
             });
 
@@ -1606,11 +1784,96 @@
                 });
             });
 
-            $('#numberInput').on('input', function() {
-                convertToWords();
+            $('#numberInput').on('input change', function() {
+                const value = $(this).val();
+                if (parseAmountForWords(value) === null) {
+                    clearAmountWords();
+                    return;
+                }
+                convertToWords(value);
             });
-            $('#e_amount').on('input', function() {
+            $('#edit_amount').on('input', function() {
                 eConvertToWords();
+            });
+
+            $('#edit-voucher-form').on('submit', function(e) {
+                e.preventDefault();
+                const $btn = $('#edit-update-button');
+                const paymentType = String($('#edit_payment_type').val() || '');
+                const payload = {
+                    _token: '{{ csrf_token() }}',
+                    _method: 'PUT',
+                    id: $('#edit_id').val(),
+                    date: $('#edit_date').val(),
+                    accounts_id: $('#edit_accounts_id').val(),
+                    subaccounts_id: $('#edit_subaccounts_id').val(),
+                    amount: $('#edit_amount').val(),
+                    detail: $('#edit_detail').val(),
+                    payment_type: paymentType,
+                    t_number: $('#edit_t_number').val(),
+                    bank_id: $('#edit_bank_id').val(),
+                    passing_date: $('#edit_passing_date').val(),
+                    passing_status: $('#edit_passing_status').val()
+                };
+                if (!payload.passing_status && payload.passing_status !== 0) {
+                    delete payload.passing_status;
+                }
+
+                if (!payload.amount || Number(String(payload.amount).replace(/,/g, '')) <= 0) {
+                    Swal.fire({ icon: 'warning', title: 'Validation error', text: 'Amount is required.' });
+                    return;
+                }
+                if (!payload.accounts_id) {
+                    Swal.fire({ icon: 'warning', title: 'Validation error', text: 'Account is required.' });
+                    return;
+                }
+                if (!payload.subaccounts_id) {
+                    Swal.fire({ icon: 'warning', title: 'Validation error', text: 'Child account is required.' });
+                    return;
+                }
+                if (!payload.detail) {
+                    Swal.fire({ icon: 'warning', title: 'Validation error', text: 'Detail is required.' });
+                    return;
+                }
+                if (!paymentType) {
+                    Swal.fire({ icon: 'warning', title: 'Validation error', text: 'Payment type is required.' });
+                    return;
+                }
+                if ((paymentType === '2' || paymentType === '3') && (!payload.t_number || !payload.bank_id || !payload.passing_date)) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Validation error',
+                        text: 'Number, bank and passing date are required for Online/Check.'
+                    });
+                    return;
+                }
+
+                $btn.prop('disabled', true).text('Updating...');
+                $.ajax({
+                    url: "{{ route('ledger.update') }}",
+                    type: "POST",
+                    dataType: "JSON",
+                    data: payload,
+                    success: function(response) {
+                        $('#modal-edit').modal('hide');
+                        $('#table-data').DataTable().ajax.reload(null, false);
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Updated',
+                            text: response?.message || 'Voucher updated successfully.'
+                        });
+                    },
+                    error: function(xhr) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Update failed',
+                            text: xhr?.responseJSON?.message || 'Unable to update voucher.'
+                        });
+                    },
+                    complete: function() {
+                        $btn.prop('disabled', false).text('Update');
+                    }
+                });
             });
             $(document).on("click", "#submit-button", function(e) {
                 e.preventDefault();
@@ -1682,19 +1945,42 @@
 
         });
 
+        function parseAmountForWords(value) {
+            const clean = String(value ?? '').replace(/,/g, '').trim();
+            if (clean === '') return null;
+            const number = Number(clean);
+            if (!Number.isFinite(number)) return null;
+            return number;
+        }
 
-        function convertToWords() {
-            var numberInput = document.getElementById('numberInput').value;
+        function clearAmountWords() {
+            $('#wordingAmount').text('');
+        }
 
-            var numericValue = numberInput.replace(/,/g, '');
+        function convertToWords(value) {
+            var numberInput = value;
+            if (numberInput === undefined) {
+                numberInput = document.getElementById('numberInput')?.value;
+            }
+
+            var numericValue = parseAmountForWords(numberInput);
+            var wordingTarget = document.getElementById('wordingAmount');
+
+            if (numericValue === null || numericValue <= 0) {
+                clearAmountWords();
+                return;
+            }
+
+            if (!wordingTarget) {
+                return;
+            }
 
             var wordingAmount = numberToWords.toWords(numericValue);
-
-            document.getElementById('wordingAmount').innerText = wordingAmount;
+            wordingTarget.innerText = wordingAmount;
         }
 
         function eConvertToWords() {
-            var numberInput = document.getElementById('e_amount').value;
+            var numberInput = document.getElementById('edit_amount').value;
 
             var numericValue = numberInput.replace(/,/g, '');
 
@@ -2751,50 +3037,37 @@
     <div class="modal fade" id="modal-edit">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header {{ $class }}">
-                    <h4 class="modal-title">Edit Voucher</h4>
+                <div class="modal-header bg-secondary">
+                    <h4 class="modal-title" id="modal-edit-title">Edit Voucher</h4>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div class="modal-body">
-                    <form action="{{ route('ledger.update') }}" method="POST" enctype="multipart/form-data">
+                    <form id="edit-voucher-form" action="{{ route('ledger.update') }}" method="POST"
+                        enctype="multipart/form-data">
                         @csrf
                         @method('PUT')
                         <div class="row">
 
                             <div class="col-sm-12">
                                 <div class="row">
-                                    <div class="col-sm-3">
-                                        <div class="input-group">
-                                            <label class="fbox">Serial No.</label>
-                                            <div class="input-group">
-
-                                                <input id="e_reference" type="text"
-                                                    class="form-control @error('reference') is-invalid @enderror"
-                                                    name="reference" value="{{ old('reference') }}" autocomplete="off">
-                                                @error('reference')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-sm-3">
+                                    <div class="col-sm-4">
                                         <div class="input-group">
                                             <label class="fbox">Reference No.</label>
                                             <div class="input-group">
                                                 <input type="text" value="1" name="action" hidden />
-                                                <input id="e_voucher" type="text" class="form-control "
-                                                    name="voucher" autocomplete="off" readonly>
+                                                <input id="edit_voucher_number" type="text" class="form-control"
+                                                    name="edit_voucher_number" autocomplete="off" readonly>
 
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="col-sm-6">
+                                    <div class="col-sm-8">
                                         <div class="input-group">
                                             <label class="fbox">Date</label>
                                             <div class="input-group">
-                                                <input type="text" id="e_date" name="date"
+                                                <input type="text" id="edit_date" name="date"
                                                     class="date_database form-control" data-input>
                                                 @error('date')
                                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -2815,7 +3088,7 @@
                                             <label class="fbox">Account Type</label>
                                             <div class="input-group">
                                                 <select class="js-tomselect" placeholder=" " name="acct_type"
-                                                    id="e_acct_type">
+                                                    id="edit_acct_type">
                                                     <option value="">Select Account Type</option>
                                                     @foreach ($accountTypes as $accountType)
                                                         <option value="{{ $accountType->id }}">{{ $accountType->name }}</option>
@@ -2832,7 +3105,7 @@
                                             <label class="fbox">Accounts</label>
                                             <div class="input-group">
                                                 <select class="js-tomselect" placeholder=" " name="accounts_id"
-                                                    id="e_accounts_id">
+                                                    id="edit_accounts_id">
                                                     <option value=""></option>
                                                     @foreach ($headaccounts as $v)
                                                         <option value="{{ $v->head_accounting_id }}">
@@ -2859,7 +3132,7 @@
                                             <label class="fbox">Child Account</label>
                                             <div class="input-group">
                                                 <select class="js-tomselect" placeholder=" " name="subaccounts_id"
-                                                    id="e_subaccounts_id">
+                                                    id="edit_subaccounts_id">
                                                     <option value=""></option>
                                                     @foreach ($partyaccounts as $v)
                                                         @php
@@ -2884,7 +3157,7 @@
                                         <div class="input-group">
                                             <label class="fbox">Amount</label>
                                             <div class="input-group">
-                                                <input id="e_amount" oninput="formatAmount(this)" type="text"
+                                                <input id="edit_amount" oninput="formatAmount(this)" type="text"
                                                     class="form-control @error('amount') is-invalid @enderror"
                                                     placeholder="Amount" name="amount" value="{{ old('amount') }}">
                                                 @error('amount')
@@ -2944,10 +3217,19 @@
                             </div> --}}
                             <div class="mb-3 col-sm-3">
                                 <div class="input-group">
+                                    <label class="fbox">Voucher Type</label>
+                                    <div class="input-group">
+                                        <input id="edit_voucher_type" type="text" class="form-control"
+                                            name="edit_voucher_type" autocomplete="off" readonly>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3 col-sm-3">
+                                <div class="input-group">
                                     <label class="fbox">Payment Type</label>
                                     <div class="input-group">
                                         <select class="js-tomselect" placeholder=" " name="payment_type"
-                                            id="e_payment_type">
+                                            id="edit_payment_type">
                                             <option value="1">Cash</option>
                                             <option value="2">Online</option>
                                             <option value="3">Check</option>
@@ -2959,12 +3241,12 @@
                                 </div>
                             </div>
                             <div class="mb-3 col-sm-3">
-                                <div class="input-group e_bank_group" style="display: none">
-                                    <label class="fbox">Number</label>
+                                <div class="input-group edit-bank-field" style="display: none">
+                                    <label class="fbox" id="edit_t_number_label">Number</label>
                                     <div class="input-group">
-                                        <input id="e_t_number" type="text"
+                                        <input id="edit_t_number" type="text"
                                             class="form-control @error('t_number') is-invalid @enderror"
-                                            placeholder="Transaction Number" name="t_number"
+                                            placeholder="Number" name="t_number"
                                             value="{{ old('t_number') }}">
                                         @error('amount')
                                             <div class="invalid-feedback">{{ $message }}</div>
@@ -2973,10 +3255,10 @@
                                 </div>
                             </div>
                             <div class="mb-3 col-sm-3">
-                                <div class="input-group e_bank_group" style="display: none">
+                                <div class="input-group edit-bank-field" style="display: none">
                                     <label class="fbox">Bank</label>
                                     <div class="input-group">
-                                        <select class="js-tomselect" placeholder=" " name="bank_id" id="e_bank_id">
+                                        <select class="js-tomselect" placeholder=" " name="bank_id" id="edit_bank_id">
                                             <option value="">Bank</option>
 
                                             @foreach (getPakistanBanks() as $v)
@@ -2989,14 +3271,29 @@
                                 </div>
                             </div>
                             <div class="mb-3 col-sm-3">
-                                <div class="input-group e_bank_group" style="display: none">
+                                <div class="input-group edit-bank-field" style="display: none">
                                     <label class="fbox">Passing Date</label>
                                     <div class="input-group">
                                         <input type="text" name="passing_date" class="date form-control"
-                                            id="e_passing_date" data-input>
+                                            id="edit_passing_date" data-input>
                                         @error('passing_date')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3 col-sm-3">
+                                <div class="input-group" id="edit_passing_status_group" style="display: none">
+                                    <label class="fbox">Status</label>
+                                    <div class="input-group">
+                                        <select class="js-tomselect" placeholder=" " name="passing_status"
+                                            id="edit_passing_status">
+                                            <option value="">Select Status</option>
+                                            <option value="0">Pending</option>
+                                            <option value="1">Pass</option>
+                                            <option value="2">Return</option>
+                                            <option value="3">Cheque Bounce</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>
@@ -3009,7 +3306,7 @@
                                 <div class="input-group">
                                     <label class="fbox">Detail</label>
                                     <div class="input-group">
-                                        <textarea id="e_detail" class="form-control @error('detail') is-invalid @enderror" placeholder="Detail"
+                                        <textarea id="edit_detail" class="form-control @error('detail') is-invalid @enderror" placeholder="Detail"
                                             name="detail" style=" height: 150px;" maxlength="255">{{ old('detail') }}</textarea>
                                         @error('detail')
                                             <div class="invalid-feedback">{{ $message }}</div>
@@ -3021,9 +3318,9 @@
                         </div>
 
                         <div class="modal-footer justify-content-between">
-                            <input type="hidden" name="id" id="id">
+                            <input type="hidden" name="id" id="edit_id">
                             <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                            <button type="submit" class="btn btn-primary">Update</button>
+                            <button type="submit" class="btn btn-primary" id="edit-update-button">Update</button>
                         </div>
                     </form>
                 </div>
