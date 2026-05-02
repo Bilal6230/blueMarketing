@@ -11,7 +11,7 @@ Phone: {{ $report['mobile'] }}
 Role: {{ $report['designation'] }}
 Daily Wage: Rs {{ $report['rate'] }}
 ">
-            {{ $report['name'] ?? '' }} ({{ substr($report['cnic'], -4) }})</td>
+            <a href="{{ Route('labour.history', $report['id'] ) }}" target="_blank">{{ $report['name'] ?? '' }} ({{ substr($report['cnic'], -4) }})</a></td>
         <td>{{ $report['mobile'] ?? '' }}</td>
         <td>{{ $report['designation'] ?? '' }}</td>
         <td>PKR {{ $report['rate'] ?? '' }}</td>

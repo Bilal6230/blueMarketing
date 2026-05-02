@@ -76,14 +76,27 @@ class LabourController extends Controller
     public function labourHistory($id)
     {
         $x['title'] = 'Labour History';
-        $x['labour'] = $labour = Labour::find($id);
-        $labourAttendances = LabourAttendance::where('labour_id', $id)->where('status', 'present')->get();
+        $x['labour'] = $labour = Labour::with([
+            'attendances' => fn ($q) => $q->where('status', 'present')->orderBy('date'),
+            'labourLedgers'
+        ])->findOrFail($id);
+
+        $labourAttendances = $labour->attendances;
+
+        // payments grouped by date
+        $paymentsByDate = $labour->labourLedgers
+            ->groupBy(fn($item) => $item->created_at->toDateString())
+            ->map(fn($items) => $items->sum('amount'));
+
+        $x['paymentsByDate'] = $paymentsByDate;
+
         $x['summary'] = [
-            'total_days'   => $labour->attendances->count(),
+            'total_days'   => $labourAttendances->count(),
             'total_hours'  => $labourAttendances->sum('hours'),
             'total_amount' => $labourAttendances->sum('amount'),
             'unpaid'       => $labourAttendances->sum('amount') - $labour->labourLedgers->sum('amount'),
         ];
+
         return view('admin.labours.history', $x);
     }
 
