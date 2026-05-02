@@ -24,11 +24,12 @@
 
         <!-- Change Rate -->
         <button type="button"
-                class="icon-btn changeRateBtn"
-                title="Change Rate"
-                data-id="{{ $labour->id }}"
-                data-name="{{ $labour->name }}"
-                data-rate="{{ $labour->daily_wage }}">
+            class="icon-btn changeRateBtn"
+            title="Change Rate"
+            data-id="{{ $labour->id }}"
+            data-name="{{ $labour->name }}"
+            data-rate="{{ $labour->daily_wage }}"
+            data-last-voucher="{{ $labour->last_voucher_created_at ? \Carbon\Carbon::parse($labour->last_voucher_created_at)->format('Y-m-d') : now()->format('Y-m-d') }}">
             <i class="fa fa-money-bill-wave"></i>
         </button>
     </td>
