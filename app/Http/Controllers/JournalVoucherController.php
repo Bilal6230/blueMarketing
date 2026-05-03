@@ -74,7 +74,7 @@ class JournalVoucherController extends Controller
             $data = $vouchers->map(function ($voucher) {
                 return [
                     'id' => $voucher->id,
-                    'voucher_number' => 'JV-' . get_jv_number($voucher->voucher_number),
+                    'voucher_number' => 'SV-' . get_jv_number($voucher->voucher_number),
                     'reference' => $voucher->reference,
                     'date' => $voucher->date,
                     'description' => $voucher->description,

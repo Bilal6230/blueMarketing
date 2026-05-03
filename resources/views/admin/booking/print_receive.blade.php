@@ -18,8 +18,8 @@
             margin: 0;
             color: #000;
             font-family: Arial, sans-serif;
-            font-size: 10.5px;
-            line-height: 1.25;
+            font-size: 10px;
+            line-height: 1.2;
             background: #fff;
         }
 
@@ -28,7 +28,7 @@
             max-width: 185mm;
             margin: 0 auto;
             border: 1.2px solid #000;
-            padding: 8px 10px 10px;
+            padding: 7px 9px 9px;
         }
 
         .header {
@@ -51,8 +51,8 @@
         }
 
         .logo {
-            width: 44px;
-            height: 44px;
+            width: 42px;
+            height: 42px;
             object-fit: contain;
         }
 
@@ -63,7 +63,7 @@
 
         .company {
             margin: 0;
-            font-size: 17px;
+            font-size: 16px;
             font-weight: 700;
             letter-spacing: .15px;
         }
@@ -79,7 +79,7 @@
             display: inline-block;
             padding: 1px 10px 2px;
             border: 1px solid #000;
-            font-size: 10px;
+            font-size: 9.5px;
             font-weight: 700;
             letter-spacing: .65px;
             text-transform: uppercase;
@@ -100,14 +100,14 @@
         }
 
         .sheet td {
-            padding: 3px 4px;
+            padding: 2px 4px;
             vertical-align: bottom;
         }
 
         .field {
             width: 100%;
             border-collapse: collapse;
-            table-layout: fixed;
+            table-layout: auto;
         }
 
         .field td {
@@ -116,15 +116,21 @@
         }
 
         .label {
-            width: 28%;
+            width: auto;
+            padding-right: 6px;
+            font-size: 9.5px;
             font-weight: 700;
             white-space: nowrap;
         }
 
         .value-line {
             border-bottom: 1px solid #000;
+            width: 100%;
             min-height: 18px;
             padding-bottom: 2px;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1.2;
             word-break: break-word;
         }
 
@@ -134,7 +140,7 @@
 
         .value-line.amount {
             font-size: 13px;
-            font-weight: 700;
+            font-weight: 800;
             text-align: center;
         }
 
@@ -143,13 +149,16 @@
         }
 
         .row-gap td {
-            padding-top: 5px;
+            padding-top: 4px;
         }
 
         .full-line {
             border-bottom: 1px solid #000;
             min-height: 18px;
             padding-bottom: 2px;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1.2;
             word-break: break-word;
         }
 
@@ -161,8 +170,11 @@
 
         .statement-line {
             border-bottom: 1px solid #000;
-            min-height: 36px;
+            min-height: 26px;
             padding: 2px 0 3px;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1.2;
             word-break: break-word;
         }
 
@@ -174,7 +186,7 @@
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            margin-top: 14px;
+            margin-top: 12px;
         }
 
         .signature-row td {
@@ -186,8 +198,23 @@
 
         .signature-line {
             border-top: 1px solid #000;
-            padding-top: 18px;
+            padding-top: 14px;
+            font-size: 10px;
             font-weight: 700;
+        }
+
+        .nowrap {
+            white-space: nowrap;
+        }
+
+        .value-strong {
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .value-wrap {
+            white-space: normal;
+            word-break: break-word;
         }
 
         .small {
@@ -335,7 +362,7 @@
 
         <table class="sheet">
             <tr>
-                <td style="width: 34%;">
+                <td style="width: 30%;">
                     <table class="field">
                         <tr>
                             <td class="label">Date</td>
@@ -343,7 +370,7 @@
                         </tr>
                     </table>
                 </td>
-                <td style="width: 33%;">
+                <td style="width: 25%;">
                     <table class="field">
                         <tr>
                             <td class="label">Slip No</td>
@@ -351,26 +378,34 @@
                         </tr>
                     </table>
                 </td>
-                <td style="width: 33%;">
+                <td style="width: 45%;">
                     <table class="field">
                         <tr>
-                            <td class="label">Status</td>
-                            <td class="value-line">{{ approveStatus($voucher->is_approve) }}</td>
+                            <td class="label">Received By</td>
+                            <td class="value-line value-strong value-wrap">{{ $customerName }}</td>
                         </tr>
                     </table>
                 </td>
             </tr>
 
             <tr class="row-gap">
-                <td colspan="2">
+                <td style="width: 40%;">
                     <table class="field">
                         <tr>
                             <td class="label">Buyer Name</td>
-                            <td class="value-line">{{ $customerName }}</td>
+                            <td class="value-line value-wrap">{{ $customerName }}</td>
                         </tr>
                     </table>
                 </td>
-                <td>
+                <td style="width: 35%;">
+                    <table class="field">
+                        <tr>
+                            <td class="label">Father Name</td>
+                            <td class="value-line value-wrap">{{ $guardianName }}</td>
+                        </tr>
+                    </table>
+                </td>
+                <td style="width: 25%;">
                     <table class="field">
                         <tr>
                             <td class="label">Phone</td>
@@ -384,24 +419,24 @@
                 <td>
                     <table class="field">
                         <tr>
-                            <td class="label">Guardian</td>
-                            <td class="value-line">{{ $guardianName }}</td>
-                        </tr>
-                    </table>
-                </td>
-                <td>
-                    <table class="field">
-                        <tr>
                             <td class="label">Plot / Shop</td>
-                            <td class="value-line">{{ $plotLabel }}</td>
+                            <td class="value-line value-wrap">{{ $plotLabel }}</td>
                         </tr>
                     </table>
                 </td>
                 <td>
                     <table class="field">
                         <tr>
-                            <td class="label">Received By</td>
-                            <td class="value-line">{{ $receivedThrough }}</td>
+                            <td class="label">Received Through</td>
+                            <td class="value-line value-wrap">{{ $receivedThrough }}</td>
+                        </tr>
+                    </table>
+                </td>
+                <td>
+                    <table class="field">
+                        <tr>
+                            <td class="label">Bank</td>
+                            <td class="value-line value-wrap">{{ $bankName }}</td>
                         </tr>
                     </table>
                 </td>
@@ -412,26 +447,18 @@
                     <table class="field">
                         <tr>
                             <td style="width: 11%;" class="label">Address</td>
-                            <td class="value-line">{{ $address }}</td>
+                            <td class="value-line value-wrap">{{ $address }}</td>
                         </tr>
                     </table>
                 </td>
             </tr>
 
             <tr class="row-gap">
-                <td colspan="2">
+                <td colspan="3">
                     <table class="field">
                         <tr>
                             <td style="width: 17%;" class="label">Project / Block / Size</td>
-                            <td class="value-line">{{ $projectBlockSize }}</td>
-                        </tr>
-                    </table>
-                </td>
-                <td>
-                    <table class="field">
-                        <tr>
-                            <td class="label">Bank</td>
-                            <td class="value-line">{{ $bankName }}</td>
+                            <td class="value-line value-wrap">{{ $projectBlockSize }}</td>
                         </tr>
                     </table>
                 </td>
@@ -450,14 +477,14 @@
                     <table class="field">
                         <tr>
                             <td style="width: 13%;" class="label">Transaction No</td>
-                            <td class="value-line">{{ $transactionNo }}</td>
+                            <td class="value-line value-wrap">{{ $transactionNo }}</td>
                         </tr>
                     </table>
                 </td>
             </tr>
 
             <tr class="row-gap">
-                <td>
+                <td style="width: 32%;">
                     <table class="field">
                         <tr>
                             <td class="label">Amount</td>
@@ -465,32 +492,9 @@
                         </tr>
                     </table>
                 </td>
-                <td>
-                    <table class="field">
-                        <tr>
-                            <td class="label">Short Amount</td>
-                            <td class="value-line center">{{ $shortAmount }}</td>
-                        </tr>
-                    </table>
-                </td>
-                <td>
-                    <table class="field">
-                        <tr>
-                            <td class="label">Total Balance</td>
-                            <td class="value-line center">{{ $balanceAmount }}</td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
-
-            <tr class="row-gap">
-                <td colspan="3">
-                    <table class="field">
-                        <tr>
-                            <td style="width: 12%;" class="label">Amount in Words</td>
-                            <td class="value-line tall">{{ $amountInWords }}</td>
-                        </tr>
-                    </table>
+                <td colspan="2" style="width: 68%;">
+                    <div class="label nowrap">Amount in Words</div>
+                    <div class="value-line tall value-wrap">{{ $amountInWords }}</div>
                 </td>
             </tr>
 
@@ -510,6 +514,26 @@
                         </tr>
                     </table>
                 </td>
+            </tr>
+
+            <tr class="row-gap">
+                <td>
+                    <table class="field">
+                        <tr>
+                            <td class="label">Short Amount</td>
+                            <td class="value-line center">{{ $shortAmount }}</td>
+                        </tr>
+                    </table>
+                </td>
+                <td>
+                    <table class="field">
+                        <tr>
+                            <td class="label">Total Balance</td>
+                            <td class="value-line center">{{ $balanceAmount }}</td>
+                        </tr>
+                    </table>
+                </td>
+                <td></td>
             </tr>
         </table>
 

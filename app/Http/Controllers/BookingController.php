@@ -284,6 +284,15 @@ class BookingController extends Controller
                 'status' => 0,
             ]);
             $this->postResaleProfitSplit($booking, $creditAccountId, $plotType, $plotName);
+            $this->createSalesVoucher([
+                'project_id' => (int) $booking->project_id,
+                'reference' => 'BOOKING-' . $booking->id,
+                'date' => $booking->booking_date,
+                'description' => 'New Booking: Plot ' . $plotType . $plotName . ' booked by ' . trim($customer->first_name . ' ' . $customer->last_name),
+                'total_amount' => $booking->total_price,
+                'source_type' => 'BOOKING',
+                'source_id' => $booking->id,
+            ]);
 
             DB::commit();
 
@@ -572,6 +581,20 @@ class BookingController extends Controller
                         $request,
                         $userId
                     );
+
+                    $oldLead = Lead::find($oldCustomerId);
+                    $oldCustomerName = trim((optional($oldLead)->first_name ?? '') . ' ' . (optional($oldLead)->last_name ?? ''));
+                    $newCustomerName = trim($customer->first_name . ' ' . $customer->last_name);
+
+                    $this->createSalesVoucher([
+                        'project_id' => (int) $booking->project_id,
+                        'reference' => 'TRANSFER-' . $booking->id,
+                        'date' => $booking->booking_date,
+                        'description' => 'File Transfer: Plot ' . $plotType . $plotName . ' transferred from ' . ($oldCustomerName ?: 'Old Customer') . ' to ' . ($newCustomerName ?: 'New Customer'),
+                        'total_amount' => $newAmount,
+                        'source_type' => 'TRANSFER',
+                        'source_id' => $booking->id,
+                    ]);
                 }
             });
             session(['last_submit_date' => $request->booking_date]);
@@ -597,6 +620,52 @@ class BookingController extends Controller
         if ($value === null)
             return '0';
         return str_replace(',', '', (string) $value);
+    }
+
+    private function nextSalesVoucherNumber(int $projectId): int
+    {
+        return ((int) JournalVoucher::where('project_id', $projectId)
+            ->where('type', 'SV')
+            ->lockForUpdate()
+            ->max('voucher_number')) + 1;
+    }
+
+    private function createSalesVoucher(array $payload): ?JournalVoucher
+    {
+        $projectId = (int) ($payload['project_id'] ?? getSelectedTown());
+        $sourceType = strtoupper((string) ($payload['source_type'] ?? 'SOURCE'));
+        $sourceId = (string) ($payload['source_id'] ?? '');
+        $reference = trim((string) ($payload['reference'] ?? ($sourceType . '-' . $sourceId)));
+
+        if ($projectId <= 0 || $reference === '') {
+            return null;
+        }
+
+        $existingVoucher = JournalVoucher::where('project_id', $projectId)
+            ->where('type', 'SV')
+            ->where('reference', $reference)
+            ->first();
+
+        if ($existingVoucher) {
+            return $existingVoucher;
+        }
+
+        $date = !empty($payload['date'])
+            ? Carbon::parse($payload['date'])->format('Y-m-d')
+            : now()->format('Y-m-d');
+
+        return JournalVoucher::create([
+            'voucher_number' => $this->nextSalesVoucherNumber($projectId),
+            'type' => 'SV',
+            'reference' => $reference,
+            'date' => $date,
+            'description' => trim((string) ($payload['description'] ?? 'Sales Voucher')),
+            'total_debit' => $this->pvMoneyToDecimal2($payload['total_amount'] ?? 0),
+            'total_credit' => $this->pvMoneyToDecimal2($payload['total_amount'] ?? 0),
+            'project_id' => $projectId,
+            'created_by' => Auth::id(),
+            'status' => 'pending',
+        ]);
     }
 
     private function plotTypePrefix(int $plotType): string
@@ -2722,6 +2791,13 @@ class BookingController extends Controller
                 // Resolve plot label (for detail)
                 $plotName = Plot::where('id', $booking->plot_id)->value('name') ?: '';
                 $plotPrefix = $this->plotTypePrefix((int) $booking->plot_type); // "R-" / "C-"
+                $customerName = trim(optional($booking->customer)->first_name . ' ' . optional($booking->customer)->last_name);
+                $cancelReference = 'CANCEL-' . $booking->id . '-' . strtoupper($request->action_type);
+                $cancelDescription = 'Booking Cancellation: Plot ' . $plotPrefix . $plotName . ' cancelled for ' . ($customerName ?: 'Customer');
+
+                if ($request->action_type === 'payment_not_received') {
+                    $cancelDescription .= ' - payment not received';
+                }
 
                 // Customer pivot (must exist)
                 $phsCustomer = ProjectHeadSubhead::where('project_id', $booking->project_id)
@@ -2738,18 +2814,14 @@ class BookingController extends Controller
                 $totalSaleId = $this->totalSaleAccountId((int) $booking->project_id);
                 $totalDebit = 0;
                 $totalCredit = 0;
-                $lastVoucherId = getLastSVVNumber() ?? 0;
-                $selectedProjectId = getSelectedTown();
-                $journalVoucher = JournalVoucher::create([
-                    'voucher_number' => $lastVoucherId + 1,
-                    'type' => 'SV',
-                    'reference' => $request->reference,
+                $journalVoucher = $this->createSalesVoucher([
+                    'project_id' => (int) $booking->project_id,
+                    'reference' => $cancelReference,
                     'date' => now()->format('Y-m-d'),
-                    'description' => $request->description,
-                    'total_debit' => 0, // Add total debit
-                    'total_credit' => 0, // Add total credit
-                    'created_by' => auth()->id(),
-                    'project_id' => $selectedProjectId,
+                    'description' => $cancelDescription,
+                    'total_amount' => $sale,
+                    'source_type' => 'CANCEL',
+                    'source_id' => $booking->id,
                 ]);
                 // Marker to avoid duplicates (optional but safe)
                 $marker = 'CANCEL#' . $booking->id;
