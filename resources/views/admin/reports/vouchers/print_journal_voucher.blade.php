@@ -56,6 +56,9 @@
     @php
         $voucherType = $voucher->type ?: 'JV';
         $voucherTitle = $voucherType === 'SV' ? 'General Sales Voucher' : 'Journal Voucher';
+        $voucherDisplayNumber = $voucherType === 'SV'
+            ? (int) $voucher->voucher_number
+            : get_jv_number($voucher->voucher_number);
     @endphp
     <div class="voucher-container">
         <!-- Voucher Header -->
@@ -67,7 +70,7 @@
         <table class="table table-bordered voucher-details">
             <tr>
                 <th>Voucher No.</th>
-                <td>{{ $voucherType }}-{{ get_jv_number($voucher->voucher_number) }}</td>
+                <td>{{ $voucherType }}-{{ $voucherDisplayNumber }}</td>
                 <th>Date</th>
                 <td>{{ $voucher->date }}</td>
             </tr>

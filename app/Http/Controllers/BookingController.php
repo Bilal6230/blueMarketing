@@ -234,14 +234,22 @@ class BookingController extends Controller
 
 
 
+            $salesVoucher = $this->createSalesVoucher([
+                'project_id' => (int) $booking->project_id,
+                'reference' => 'BOOKING-' . $booking->id,
+                'date' => $booking->booking_date,
+                'description' => 'New Booking: Plot ' . $plotType . $plotName . ' booked by ' . trim($customer->first_name . ' ' . $customer->last_name),
+                'total_amount' => $booking->total_price,
+                'source_type' => 'BOOKING',
+                'source_id' => $booking->id,
+            ]);
+
             // Create ledger entry
-            $lastId = getLastLedgerIdByType("BO");
-            $voucherNumber = getVocuherNumber('BO');
             Ledger::create([
                 'customer_ledger_id' => $customerLedger->id,
-                'type' => 'BO',
-                'voucher_number' => $voucherNumber,
-                'type_id' => $lastId + 1,
+                'type' => 'SV',
+                'voucher_number' => $salesVoucher->voucher_number,
+                'type_id' => $salesVoucher->id,
                 'project_head_subheads_id' => $pivot->id,
                 'reference' => $booking->id,
                 'amount_in' => 0.00,
@@ -265,13 +273,11 @@ class BookingController extends Controller
             }
 
             // Create credit ledger entry
-            $voucherNumber = getVocuherNumber('CR');
-
             Ledger::create([
                 'customer_ledger_id' => $customerLedger->id,
-                'type' => 'CR',
-                'voucher_number' => $voucherNumber,
-                'type_id' => $lastId + 2,
+                'type' => 'SV',
+                'voucher_number' => $salesVoucher->voucher_number,
+                'type_id' => $salesVoucher->id,
                 'project_head_subheads_id' => $creditAccountId,
                 'reference' => $booking->id,
                 'amount_in' => $booking->total_price,
@@ -283,16 +289,7 @@ class BookingController extends Controller
                 'create_by' => Auth::user()->id,
                 'status' => 0,
             ]);
-            $this->postResaleProfitSplit($booking, $creditAccountId, $plotType, $plotName);
-            $this->createSalesVoucher([
-                'project_id' => (int) $booking->project_id,
-                'reference' => 'BOOKING-' . $booking->id,
-                'date' => $booking->booking_date,
-                'description' => 'New Booking: Plot ' . $plotType . $plotName . ' booked by ' . trim($customer->first_name . ' ' . $customer->last_name),
-                'total_amount' => $booking->total_price,
-                'source_type' => 'BOOKING',
-                'source_id' => $booking->id,
-            ]);
+            $this->postResaleProfitSplit($booking, $creditAccountId, $plotType, $plotName, $salesVoucher);
 
             DB::commit();
 
@@ -353,7 +350,7 @@ class BookingController extends Controller
 
         return (int) $phs->id;
     }
-    private function postResaleProfitSplit($booking, int $totalSaleAccountId, string $plotType, string $plotName): void
+    private function postResaleProfitSplit($booking, int $totalSaleAccountId, string $plotType, string $plotName, JournalVoucher $salesVoucher): void
     {
         // Find latest cancelled booking for this plot (excluding current booking)
         $lastCancelled = Booking::where('plot_id', $booking->plot_id)
@@ -417,11 +414,10 @@ class BookingController extends Controller
 
         // 2) CR Party Profit (optional)
         if ($partyProfitAccId && bccomp($partyProfitCredit, '0.00', 2) === 1) {
-            $voucherNumber = getVocuherNumber('CR');
             Ledger::create([
-                'type' => 'CR',
-                'type_id' => $this->nextTypeId('CR'),
-                'voucher_number' => $voucherNumber,
+                'type' => 'SV',
+                'type_id' => $salesVoucher->id,
+                'voucher_number' => $salesVoucher->voucher_number,
                 'project_head_subheads_id' => $partyProfitAccId,
                 'reference' => $booking->id,
                 'amount_in' => $partyProfitCredit,
@@ -437,11 +433,10 @@ class BookingController extends Controller
 
         // 3) CR Resale Profit
         if (bccomp($resaleProfitCredit, '0.00', 2) === 1) {
-            $voucherNumber = getVocuherNumber('CR');
             Ledger::create([
-                'type' => 'CR',
-                'type_id' => $this->nextTypeId('CR'),
-                'voucher_number' => $voucherNumber,
+                'type' => 'SV',
+                'type_id' => $salesVoucher->id,
+                'voucher_number' => $salesVoucher->voucher_number,
                 'project_head_subheads_id' => $resaleProfitAccId,
                 'reference' => $booking->id,
                 'amount_in' => $resaleProfitCredit,
@@ -571,22 +566,10 @@ class BookingController extends Controller
                         throw new \Exception('Old booking amount is invalid for transfer.');
                     }
 
-                    $this->postFileTransferEntries(
-                        $booking,
-                        $oldCustomerId,
-                        $oldAmount,
-                        $newAmount,
-                        $plotType,
-                        $plotName,
-                        $request,
-                        $userId
-                    );
-
                     $oldLead = Lead::find($oldCustomerId);
                     $oldCustomerName = trim((optional($oldLead)->first_name ?? '') . ' ' . (optional($oldLead)->last_name ?? ''));
                     $newCustomerName = trim($customer->first_name . ' ' . $customer->last_name);
-
-                    $this->createSalesVoucher([
+                    $salesVoucher = $this->createSalesVoucher([
                         'project_id' => (int) $booking->project_id,
                         'reference' => 'TRANSFER-' . $booking->id,
                         'date' => $booking->booking_date,
@@ -595,6 +578,18 @@ class BookingController extends Controller
                         'source_type' => 'TRANSFER',
                         'source_id' => $booking->id,
                     ]);
+
+                    $this->postFileTransferEntries(
+                        $booking,
+                        $oldCustomerId,
+                        $oldAmount,
+                        $newAmount,
+                        $plotType,
+                        $plotName,
+                        $request,
+                        $userId,
+                        $salesVoucher
+                    );
                 }
             });
             session(['last_submit_date' => $request->booking_date]);
@@ -814,7 +809,8 @@ class BookingController extends Controller
         string $plotType,
         string $plotName,
         Request $request,
-        int $userId
+        int $userId,
+        JournalVoucher $salesVoucher
     ): void {
         // Profit = new - old (only if positive)
         $profit = bcsub($newAmount, $oldAmount, 2);
@@ -863,11 +859,10 @@ class BookingController extends Controller
          * 50 lac Total Sale Debit
          * 10 lac Party Profit Debit
          */
-        $voucherNumber = getVocuherNumber('BO');
         Ledger::create([
-            'type' => 'BO',
-            'voucher_number' => $voucherNumber,
-            'type_id' => $this->nextLedgerTypeId('BO'),
+            'type' => 'SV',
+            'voucher_number' => $salesVoucher->voucher_number,
+            'type_id' => $salesVoucher->id,
             'project_head_subheads_id' => $totalSalePhsId,
             'reference' => $booking->id,
             'amount_in' => 0.00,
@@ -881,11 +876,10 @@ class BookingController extends Controller
         ]);
 
         if ($partyProfitPhsId && bccomp($profit, '0.00', 2) === 1) {
-            $voucherNumber = getVocuherNumber('CP');
             Ledger::create([
-                'type' => 'CP',
-                'voucher_number' => $voucherNumber,
-                'type_id' => $this->nextLedgerTypeId('CP'),
+                'type' => 'SV',
+                'voucher_number' => $salesVoucher->voucher_number,
+                'type_id' => $salesVoucher->id,
                 'project_head_subheads_id' => $partyProfitPhsId,
                 'reference' => $booking->id,
                 'amount_in' => 0.00,
@@ -921,11 +915,10 @@ class BookingController extends Controller
             'is_approve' => 1,
             'is_active' => 1,
         ]);
-        $voucherNumber = getVocuherNumber('CR');
         Ledger::create([
-            'type' => 'CR',
-            'voucher_number' => $voucherNumber,
-            'type_id' => $this->nextLedgerTypeId('CR'),
+            'type' => 'SV',
+            'voucher_number' => $salesVoucher->voucher_number,
+            'type_id' => $salesVoucher->id,
             'project_head_subheads_id' => $oldCustomerPivot->id,
             'reference' => $booking->id,
             'customer_ledger_id' => $oldPrincipalCL->id,
@@ -954,13 +947,10 @@ class BookingController extends Controller
                 'is_approve' => 1,
                 'is_active' => 1,
             ]);
-
-            $voucherNumber = getVocuherNumber('CR');
-
             Ledger::create([
-                'type' => 'CR',
-                'type_id' => $this->nextLedgerTypeId('CR'),
-                'voucher_number' => $voucherNumber,
+                'type' => 'SV',
+                'type_id' => $salesVoucher->id,
+                'voucher_number' => $salesVoucher->voucher_number,
                 'project_head_subheads_id' => $oldCustomerPivot->id,
                 'reference' => $booking->id,
                 'customer_ledger_id' => $oldProfitCL->id,
@@ -994,13 +984,10 @@ class BookingController extends Controller
             'is_approve' => 1,
             'is_active' => 1,
         ]);
-
-        $voucherNumber = getVocuherNumber('CP');
-
         Ledger::create([
-            'type' => 'CP',
-            'voucher_number' => $voucherNumber,
-            'type_id' => $this->nextLedgerTypeId('CP'),
+            'type' => 'SV',
+            'voucher_number' => $salesVoucher->voucher_number,
+            'type_id' => $salesVoucher->id,
             'project_head_subheads_id' => $newCustomerPivot->id,
             'reference' => $booking->id,
             'customer_ledger_id' => $newCL->id,
@@ -1021,11 +1008,10 @@ class BookingController extends Controller
          * 50 lac Total Sale Credit
          * 10 lac Party Profit Credit
          */
-        $voucherNumber = getVocuherNumber('BO');
         Ledger::create([
-            'type' => 'BO',
-            'voucher_number' => $voucherNumber,
-            'type_id' => $this->nextLedgerTypeId('BO'),
+            'type' => 'SV',
+            'voucher_number' => $salesVoucher->voucher_number,
+            'type_id' => $salesVoucher->id,
             'project_head_subheads_id' => $totalSalePhsId,
             'reference' => $booking->id,
             'amount_in' => $oldAmount,
@@ -1039,11 +1025,10 @@ class BookingController extends Controller
         ]);
 
         if ($partyProfitPhsId && bccomp($profit, '0.00', 2) === 1) {
-            $voucherNumber = getVocuherNumber('CR');
             Ledger::create([
-                'type' => 'CR',
-                'voucher_number' => $voucherNumber,
-                'type_id' => $this->nextLedgerTypeId('CR'),
+                'type' => 'SV',
+                'voucher_number' => $salesVoucher->voucher_number,
+                'type_id' => $salesVoucher->id,
                 'project_head_subheads_id' => $partyProfitPhsId,
                 'reference' => $booking->id,
                 'amount_in' => $profit,
@@ -1092,11 +1077,10 @@ class BookingController extends Controller
                 'passing_date' => $request->input('passing_date'),
             ]);
 
-            $voucherNumber = getVocuherNumber('CP');
             Ledger::create([
-                'type' => 'CP',
-                'voucher_number' => $voucherNumber,
-                'type_id' => $this->nextLedgerTypeId('CP'),
+                'type' => 'SV',
+                'voucher_number' => $salesVoucher->voucher_number,
+                'type_id' => $salesVoucher->id,
                 'project_head_subheads_id' => $feePayerPivot->id,
                 'reference' => $booking->id,
                 'customer_ledger_id' => $feeCL->id,
@@ -1112,11 +1096,10 @@ class BookingController extends Controller
 
             // Credit File Transfer Fee account (CR) (auto-create allowed)
             $feeAccountId = $this->systemAccountIdBySubheadName((int) $booking->project_id, 16, 'File Transfer Fee', true);
-            $voucherNumber = getVocuherNumber('CR');
             Ledger::create([
-                'type' => 'CR',
-                'voucher_number' => $voucherNumber,
-                'type_id' => $this->nextLedgerTypeId('CR'),
+                'type' => 'SV',
+                'voucher_number' => $salesVoucher->voucher_number,
+                'type_id' => $salesVoucher->id,
                 'project_head_subheads_id' => $feeAccountId,
                 'reference' => $booking->id,
                 'amount_in' => $partyFee,
@@ -2832,7 +2815,7 @@ class BookingController extends Controller
                 if ($alreadyPosted) {
                     return;
                 }
-                $voucherNumber = getVocuherNumber('SV');
+                $voucherNumber = $journalVoucher->voucher_number;
                 // 1) Debit Total Sale (SV out) = sale amount
                 JournalVoucherDetail::create([
                     'journal_voucher_id' => $journalVoucher->id,
@@ -2870,7 +2853,7 @@ class BookingController extends Controller
                     'amount_out' => 0,
                     'description' => "Plot Cancellation Refund {$plotPrefix}{$plotName}",
                 ]);
-                $voucherNumber = getVocuherNumber('SV');
+                $voucherNumber = $journalVoucher->voucher_number;
                 // 1) Debit Total Sale (SV out) = sale amount
                 JournalVoucherDetail::create([
                     'journal_voucher_id' => $journalVoucher->id,
@@ -2909,7 +2892,7 @@ class BookingController extends Controller
                             'Deduction',
                             true // create if missing
                         );
-                        $voucherNumber = getVocuherNumber('SV');
+                        $voucherNumber = $journalVoucher->voucher_number;
                         // 1) Debit Total Sale (SV out) = sale amount
                         JournalVoucherDetail::create([
                             'journal_voucher_id' => $journalVoucher->id,
@@ -2943,7 +2926,7 @@ class BookingController extends Controller
                             'Party Profit',
                             true // must exist
                         );
-                        $voucherNumber = getVocuherNumber('SV');
+                        $voucherNumber = $journalVoucher->voucher_number;
                         JournalVoucherDetail::create([
                             'journal_voucher_id' => $journalVoucher->id,
                             'account_id' => $partyProfitAccId,

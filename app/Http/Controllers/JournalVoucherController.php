@@ -31,11 +31,20 @@ class JournalVoucherController extends Controller
         $selectedProjectId = getSelectedTown();
 
         // Build base query for vouchers
-        $query = JournalVoucher::latest()->where('project_id', $selectedProjectId)->where('type', 'JV');
+        $baseQuery = JournalVoucher::latest()->where('project_id', $selectedProjectId)->where('type', 'JV');
+        $query = clone $baseQuery;
 
         // Apply filters if they exist
-        if ($request->has('filter_voucher_number') && $request->filter_voucher_number) {
-            $query->where('voucher_number', 'like', '%' . $request->filter_voucher_number . '%');
+        $voucherNumberFilter = trim((string) $request->input('filter_voucher_number', ''));
+        if ($voucherNumberFilter !== '') {
+            $normalizedVoucherNumber = preg_replace('/^[A-Z]+-/i', '', $voucherNumberFilter);
+            $normalizedVoucherNumber = ltrim($normalizedVoucherNumber, '0');
+            $normalizedVoucherNumber = $normalizedVoucherNumber === '' ? '0' : $normalizedVoucherNumber;
+
+            $query->where(function ($q) use ($voucherNumberFilter, $normalizedVoucherNumber) {
+                $q->where('voucher_number', 'like', '%' . $voucherNumberFilter . '%')
+                    ->orWhere('voucher_number', 'like', '%' . $normalizedVoucherNumber . '%');
+            });
         }
 
         $minAmount = $request->input('filter_amount_min');
@@ -58,23 +67,37 @@ class JournalVoucherController extends Controller
             $query->whereDate('date', '=', $request->filter_date); // Apply date filter if provided
         }
 
+        $searchValue = trim((string) $request->input('search.value', ''));
+        if ($searchValue !== '') {
+            $normalizedSearchValue = preg_replace('/^[A-Z]+-/i', '', $searchValue);
+            $normalizedSearchValue = ltrim($normalizedSearchValue, '0');
+            $normalizedSearchValue = $normalizedSearchValue === '' ? '0' : $normalizedSearchValue;
+
+            $query->where(function ($q) use ($searchValue, $normalizedSearchValue) {
+                $q->where('voucher_number', 'like', '%' . $searchValue . '%')
+                    ->orWhere('voucher_number', 'like', '%' . $normalizedSearchValue . '%')
+                    ->orWhere('reference', 'like', '%' . $searchValue . '%')
+                    ->orWhere('description', 'like', '%' . $searchValue . '%')
+                    ->orWhere('date', 'like', '%' . $searchValue . '%')
+                    ->orWhere('total_debit', 'like', '%' . $searchValue . '%');
+            });
+        }
+
         // If it's an AJAX request, return JSON data
         if ($request->ajax()) {
             // Pagination parameters
             $start = (int) $request->input('start', 0);
             $length = (int) $request->input('length', 10);
 
-            // Fetch paginated rows
+            $recordsTotal = (clone $baseQuery)->count();
+            $recordsFiltered = (clone $query)->count();
             $vouchers = $query->skip($start)->take($length)->get();
-
-            // Count total records
-            $total = $query->count();
 
             // Prepare the data, including the "actions" column
             $data = $vouchers->map(function ($voucher) {
                 return [
                     'id' => $voucher->id,
-                    'voucher_number' => 'SV-' . get_jv_number($voucher->voucher_number),
+                    'voucher_number' => 'JV-' . get_jv_number($voucher->voucher_number),
                     'reference' => $voucher->reference,
                     'date' => $voucher->date,
                     'description' => $voucher->description,
@@ -86,8 +109,8 @@ class JournalVoucherController extends Controller
             // Return JSON data
             return response()->json([
                 'draw' => $request->input('draw', 1),
-                'recordsTotal' => $total,
-                'recordsFiltered' => $total,
+                'recordsTotal' => $recordsTotal,
+                'recordsFiltered' => $recordsFiltered,
                 'data' => $data
             ]);
         }
@@ -112,11 +135,20 @@ class JournalVoucherController extends Controller
         $selectedProjectId = getSelectedTown();
 
         // Build base query for vouchers
-        $query = JournalVoucher::latest()->where('project_id', $selectedProjectId)->where('type', 'SV');
+        $baseQuery = JournalVoucher::latest()->where('project_id', $selectedProjectId)->where('type', 'SV');
+        $query = clone $baseQuery;
 
         // Apply filters if they exist
-        if ($request->has('filter_voucher_number') && $request->filter_voucher_number) {
-            $query->where('voucher_number', 'like', '%' . $request->filter_voucher_number . '%');
+        $voucherNumberFilter = trim((string) $request->input('filter_voucher_number', ''));
+        if ($voucherNumberFilter !== '') {
+            $normalizedVoucherNumber = preg_replace('/^[A-Z]+-/i', '', $voucherNumberFilter);
+            $normalizedVoucherNumber = ltrim($normalizedVoucherNumber, '0');
+            $normalizedVoucherNumber = $normalizedVoucherNumber === '' ? '0' : $normalizedVoucherNumber;
+
+            $query->where(function ($q) use ($voucherNumberFilter, $normalizedVoucherNumber) {
+                $q->where('voucher_number', 'like', '%' . $voucherNumberFilter . '%')
+                    ->orWhere('voucher_number', 'like', '%' . $normalizedVoucherNumber . '%');
+            });
         }
 
         $minAmount = $request->input('filter_amount_min');
@@ -139,23 +171,37 @@ class JournalVoucherController extends Controller
             $query->whereDate('date', '=', $request->filter_date); // Apply date filter if provided
         }
 
+        $searchValue = trim((string) $request->input('search.value', ''));
+        if ($searchValue !== '') {
+            $normalizedSearchValue = preg_replace('/^[A-Z]+-/i', '', $searchValue);
+            $normalizedSearchValue = ltrim($normalizedSearchValue, '0');
+            $normalizedSearchValue = $normalizedSearchValue === '' ? '0' : $normalizedSearchValue;
+
+            $query->where(function ($q) use ($searchValue, $normalizedSearchValue) {
+                $q->where('voucher_number', 'like', '%' . $searchValue . '%')
+                    ->orWhere('voucher_number', 'like', '%' . $normalizedSearchValue . '%')
+                    ->orWhere('reference', 'like', '%' . $searchValue . '%')
+                    ->orWhere('description', 'like', '%' . $searchValue . '%')
+                    ->orWhere('date', 'like', '%' . $searchValue . '%')
+                    ->orWhere('total_debit', 'like', '%' . $searchValue . '%');
+            });
+        }
+
         // If it's an AJAX request, return JSON data
         if ($request->ajax()) {
             // Pagination parameters
             $start = (int) $request->input('start', 0);
             $length = (int) $request->input('length', 10);
 
-            // Fetch paginated rows
+            $recordsTotal = (clone $baseQuery)->count();
+            $recordsFiltered = (clone $query)->count();
             $vouchers = $query->skip($start)->take($length)->get();
-
-            // Count total records
-            $total = $query->count();
 
             // Prepare the data, including the "actions" column
             $data = $vouchers->map(function ($voucher) {
                 return [
                     'id' => $voucher->id,
-                    'voucher_number' => 'JV-' . get_jv_number($voucher->voucher_number),
+                    'voucher_number' => 'SV-' . (int) $voucher->voucher_number,
                     'reference' => $voucher->reference,
                     'date' => $voucher->date,
                     'description' => $voucher->description,
@@ -167,8 +213,8 @@ class JournalVoucherController extends Controller
             // Return JSON data
             return response()->json([
                 'draw' => $request->input('draw', 1),
-                'recordsTotal' => $total,
-                'recordsFiltered' => $total,
+                'recordsTotal' => $recordsTotal,
+                'recordsFiltered' => $recordsFiltered,
                 'data' => $data
             ]);
         }
