@@ -3,10 +3,11 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Receive Plot Payment Slip</title>
+    <title>Slip Book</title>
+
     <style>
         @page {
-            size: A4;
+            size: A5 landscape;
             margin: 10mm;
         }
 
@@ -16,188 +17,167 @@
 
         body {
             margin: 0;
-            color: #000;
-            font-family: Arial, sans-serif;
-            font-size: 10.5px;
-            line-height: 1.25;
-            background: #fff;
+            background: #ffffff;
+            color: #000000;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 13px;
+            line-height: 1.35;
         }
 
         .slip {
             width: 100%;
-            max-width: 185mm;
+            max-width: 270mm;
             margin: 0 auto;
-            border: 1.2px solid #000;
-            padding: 8px 10px 10px;
+            padding: 6px 8px;
         }
 
         .header {
             display: table;
             width: 100%;
-            /* table-layout: fixed; */
-            border-bottom: 1.2px solid #000;
-            padding-bottom: 6px;
-            margin-bottom: 7px;
+            table-layout: fixed;
+            margin-bottom: 14px;
         }
 
-        .header-cell {
+        .header-left,
+        .header-center,
+        .header-right {
             display: table-cell;
-            vertical-align: middle;
+            vertical-align: top;
         }
 
         .header-left {
-            width: 110px;
-            text-align: left;
-        }
-
-        .logo {
-            width: 44px;
-            height: 44px;
-            object-fit: contain;
+            width: 28%;
+            /* padding-top: 20px; */
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.35;
         }
 
         .header-center {
+            width: 44%;
             text-align: center;
-            padding: 0 8px;
-        }
-
-        .company {
-            margin: 0;
-            font-size: 17px;
-            font-weight: 700;
-            letter-spacing: .15px;
-        }
-
-        .address {
-            max-width: 82%;
-            margin: 2px auto 4px;
-            font-size: 9px;
-            line-height: 1.28;
-        }
-
-        .title {
-            display: inline-block;
-            padding: 1px 10px 2px;
-            border: 1px solid #000;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: .65px;
-            text-transform: uppercase;
         }
 
         .header-right {
-            width: 110px;
+            width: 28%;
             text-align: right;
-            font-size: 9px;
-            line-height: 1.3;
-            white-space: nowrap;
+            padding-top: 4px;
         }
 
-        .sheet {
+        .slip-book {
+            font-size: 30px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .logo {
+            max-width: 90px;
+            max-height: 90px;
+            object-fit: contain;
+            display: block;
+            /* margin: 0 auto 2px; */
+            margin-left: auto;
+        }
+
+        .company-name {
+            margin: 0;
+            font-size: 26px;
+            font-weight: 700;
+            line-height: 1.1;
+        }
+        .company{
+            margin: 0;
+        }
+
+        .company-subtitle {
+            font-size: 13px;
+            margin-top: 2px;
+        }
+
+        .form-row {
+            display: table;
             width: 100%;
-            border-collapse: collapse;
             table-layout: fixed;
+            margin-bottom: 18px;
         }
 
-        .sheet td {
-            padding: 3px 4px;
+        .form-col {
+            display: table-cell;
             vertical-align: bottom;
+            padding-right: 20px;
+        }
+
+        .form-col:last-child {
+            padding-right: 0;
         }
 
         .field {
+            display: table;
             width: 100%;
-            border-collapse: collapse;
             table-layout: fixed;
-        }
-
-        .field td {
-            padding: 1px 2px;
-            vertical-align: bottom;
         }
 
         .label {
-            width: 28%;
+            display: table-cell;
+            width: 50px;
             font-weight: 700;
             white-space: nowrap;
-        }
-
-        .value-line {
-            border-bottom: 1px solid #000;
-            min-height: 18px;
-            padding-bottom: 2px;
-            word-break: break-word;
-        }
-
-        .value-line.tall {
-            min-height: 32px;
-        }
-
-        .value-line.amount {
-            font-size: 13px;
-            font-weight: 700;
-            text-align: center;
-        }
-
-        .value-line.center {
-            text-align: center;
-        }
-
-        .row-gap td {
-            padding-top: 5px;
-        }
-
-        .full-line {
-            border-bottom: 1px solid #000;
-            min-height: 18px;
-            padding-bottom: 2px;
-            word-break: break-word;
-        }
-
-        .statement {
-            padding-top: 3px;
-            min-height: 22px;
-            word-break: break-word;
-        }
-
-        .statement-line {
-            border-bottom: 1px solid #000;
-            min-height: 36px;
-            padding: 2px 0 3px;
-            word-break: break-word;
-        }
-
-        .remarks-row {
-            margin-top: 5px;
-        }
-
-        .signature-row {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-            margin-top: 14px;
-        }
-
-        .signature-row td {
-            width: 25%;
-            padding: 0 6px;
-            text-align: center;
             vertical-align: bottom;
+            padding-right: 6px;
+            text-align: left;
+            font-size: 18px;
         }
 
-        .signature-line {
-            border-top: 1px solid #000;
-            padding-top: 18px;
+        .label.small {
+            width: 75px;
+        }
+
+        .label.medium {
+            width: 100px;
+        }
+
+        .label.large {
+            width: 125px;
+        }
+
+        .value {
+            display: table-cell;
+            min-height: 24px;
+            border-bottom: 1px solid #000000;
+            padding: 0 8px 3px;
+            vertical-align: bottom;
+            word-break: break-word;
+            font-size: 16px;
+        }
+
+        .value.center {
+            text-align: center;
+        }
+
+        .value.amount {
+            text-align: center;
             font-weight: 700;
+            font-size: 16px;
         }
 
-        .small {
-            font-size: 9.2px;
+        .value.long {
+            min-height: 34px;
+        }
+
+        .bottom-row {
+            margin-top: 24px;
+        }
+        .short{
+            width: 135px !important;
         }
 
         @media print {
+            body {
+                font-size: 13px;
+            }
+
             .slip {
                 max-width: none;
-                padding: 7px 9px 9px;
             }
         }
     </style>
@@ -205,12 +185,12 @@
 
 <body>
     @php
-        $ledger = $voucher->ledger;
+        $ledger = $voucher->ledger ?? null;
         $projectHeadSubhead = optional($ledger)->projectHeadSubhead;
-        $customer = $voucher->customer_list;
+        $customer = $voucher->customer_list ?? null;
         $fallbackCustomer = optional($projectHeadSubhead)->subheadAccounting;
-        $plot = $voucher->plot_list ?: optional($projectHeadSubhead)->plot;
-        $project = optional($projectHeadSubhead)->project ?: $voucher->project_list;
+        $plot = $voucher->plot_list ?? null ?: optional($projectHeadSubhead)->plot;
+        $project = optional($projectHeadSubhead)->project ?: $voucher->project_list ?? null;
 
         $toWords = function ($number) use (&$toWords) {
             $number = (int) $number;
@@ -250,18 +230,20 @@
             ];
 
             if ($number < 20) {
-                return $ones[$number];
+                return $ones[$number] ?? (string) $number;
             }
 
             if ($number < 100) {
                 $ten = intdiv($number, 10);
                 $remainder = $number % 10;
+
                 return $tens[$ten] . ($remainder ? ' ' . $ones[$remainder] : '');
             }
 
             if ($number < 1000) {
                 $hundreds = intdiv($number, 100);
                 $remainder = $number % 100;
+
                 return $ones[$hundreds] . ' Hundred' . ($remainder ? ' ' . $toWords($remainder) : '');
             }
 
@@ -275,6 +257,7 @@
                 if ($number >= $divisor) {
                     $quotient = intdiv($number, $divisor);
                     $remainder = $number % $divisor;
+
                     return $toWords($quotient) . ' ' . $label . ($remainder ? ' ' . $toWords($remainder) : '');
                 }
             }
@@ -282,44 +265,55 @@
             return (string) $number;
         };
 
-        $receiptNo = $ledger->voucher_number ?? $ledger->voucher ?? '-';
+        $receiptNo = optional($ledger)->voucher_number ?? (optional($ledger)->voucher ?? '-');
+
         $customerName = trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? ''));
         if ($customerName === '') {
             $customerName = $fallbackCustomer->name ?? '-';
         }
 
-        $phone = $customer->phone_number ?? $customer->mobile_number ?? $fallbackCustomer->phone ?? '-';
-        $guardianName = $customer->father_name ?? $customer->relate ?? '-';
-        $address = $customer->home_address ?? '-';
-        $plotLabel = $plot ? (Setting::getPlotTypeShort($plot->type) . '-' . $plot->name) : '-';
-        $plotSize = $plot && $plot->size ? trim($plot->size . ' ' . ($plot->unit ?? '')) : '-';
-        $projectName = $project->project ?? '-';
-        $projectBlockSize = trim(
-            collect([
-                $projectName,
-                $plotSize !== '-' ? 'Block / Size: ' . $plotSize : null,
-            ])
-                ->filter()
-                ->implode(' | '),
-        );
-        $projectBlockSize = $projectBlockSize !== '' ? $projectBlockSize : '-';
+        $phone = $customer->phone_number ?? ($customer->mobile_number ?? ($fallbackCustomer->phone ?? '-'));
+
+        $guardianName = $customer->father_name ?? ($customer->relate ?? '-');
+
+        $address = $customer->home_address ?? ($fallbackCustomer->address ?? '-');
+
+        $receivedThrough = $voucher->note ?? '-';
+
+        $plotLabel = '-';
+        if ($plot) {
+            $plotType = Setting::getPlotTypeShort($plot->type);
+            $plotLabel = trim($plotType . '-' . ($plot->name ?? ''), '-');
+            $plotLabel = $plotLabel !== '' ? $plotLabel.' ('.$plot->size.')' : '-';
+        }
+
         $amount = (float) ($voucher->amount_out ?? 0);
         $amountDisplay = number_format($amount, 2);
+
         $wholeAmount = (int) floor($amount);
         $decimalAmount = (int) round(($amount - $wholeAmount) * 100);
+
         $amountInWords = $toWords($wholeAmount) . ' Rupees';
         if ($decimalAmount > 0) {
             $amountInWords .= ' and ' . $toWords($decimalAmount) . ' Paisa';
         }
         $amountInWords .= ' Only';
-        $paymentMode = getPaymentTypeDetails($voucher->payment_type)['name'] ?? '-';
-        $transactionNo = $voucher->t_number ?? $ledger->reference ?? '-';
-        $bankName = $voucher->bank_id ? getBankNameById($voucher->bank_id) : '-';
-        $remarks = $voucher->description ?? $ledger->detail ?? '-';
-        $receivedThrough = $voucher->note ?? '-';
-        $shortAmount = '-';
-        $balanceAmount = '-';
-        $branding = getProjectPrintBranding($project);
+
+        $paymentFor = $voucher->payment_for ?? ($voucher->purpose ?? '-');
+
+        $additionalDetails = $voucher->description ?? (optional($ledger)->detail ?? '-');
+
+        $cash = getPaymentTypeDetails($voucher->payment_type)['name'] ?? '-';
+
+        $totalBalanceAmount = $balance;
+        $shortAmount = $balances;
+
+        $branding = function_exists('getProjectPrintBranding') ? getProjectPrintBranding($project) : [];
+
+        $companyName = $branding['title'] ?? 'Jallundhar Commercial Center';
+        $companySubtitle = $branding['address'] ?? 'Commercial Center';
+        $companyPhone = $branding['phone'] ?? '0322-6777570 / 0300-3821088';
+        $logo = $branding['logo'] ?? null;
     @endphp
 
     <div class="slip">
@@ -333,194 +327,135 @@
             'extraHtml' => '<div class="title">Receive Plot Payment Slip</div>',
         ])
 
-        <table class="sheet">
-            <tr>
-                <td style="width: 34%;">
-                    <table class="field">
-                        <tr>
-                            <td class="label">Date</td>
-                            <td class="value-line">{{ $voucher->date ?? '-' }}</td>
-                        </tr>
-                    </table>
-                </td>
-                <td style="width: 33%;">
-                    <table class="field">
-                        <tr>
-                            <td class="label">Slip No</td>
-                            <td class="value-line">{{ $receiptNo }}</td>
-                        </tr>
-                    </table>
-                </td>
-                <td style="width: 33%;">
-                    <table class="field">
-                        <tr>
-                            <td class="label">Status</td>
-                            <td class="value-line">{{ approveStatus($voucher->is_approve) }}</td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
+        <div class="form-row">
+            <div class="form-col" style="width: 33.33%;">
+                <div class="field">
+                    <div class="label">Date</div>
+                    <div class="value">{{ $voucher->date ?? '-' }}</div>
+                </div>
+            </div>
 
-            <tr class="row-gap">
-                <td colspan="2">
-                    <table class="field">
-                        <tr>
-                            <td class="label">Buyer Name</td>
-                            <td class="value-line">{{ $customerName }}</td>
-                        </tr>
-                    </table>
-                </td>
-                <td>
-                    <table class="field">
-                        <tr>
-                            <td class="label">Phone</td>
-                            <td class="value-line">{{ $phone }}</td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
+            <div class="form-col" style="width: 33.33%;">
+                <div class="field">
+                    <div class="label small">Phone</div>
+                    <div class="value">{{ $phone }}</div>
+                </div>
+            </div>
 
-            <tr class="row-gap">
-                <td>
-                    <table class="field">
-                        <tr>
-                            <td class="label">Guardian</td>
-                            <td class="value-line">{{ $guardianName }}</td>
-                        </tr>
-                    </table>
-                </td>
-                <td>
-                    <table class="field">
-                        <tr>
-                            <td class="label">Plot / Shop</td>
-                            <td class="value-line">{{ $plotLabel }}</td>
-                        </tr>
-                    </table>
-                </td>
-                <td>
-                    <table class="field">
-                        <tr>
-                            <td class="label">Received By</td>
-                            <td class="value-line">{{ $receivedThrough }}</td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
+            <div class="form-col" style="width: 33.33%;">
+                <div class="field">
+                    <div class="label medium">SR Number</div>
+                    <div class="value center">{{ $receiptNo }}</div>
+                </div>
+            </div>
+        </div>
 
-            <tr class="row-gap">
-                <td colspan="3">
-                    <table class="field">
-                        <tr>
-                            <td style="width: 11%;" class="label">Address</td>
-                            <td class="value-line">{{ $address }}</td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
+        <div class="form-row">
+            <div class="form-col" style="width: 50%;">
+                <div class="field">
+                    <div class="label">Name</div>
+                    <div class="value">{{ $customerName }}</div>
+                </div>
+            </div>
 
-            <tr class="row-gap">
-                <td colspan="2">
-                    <table class="field">
-                        <tr>
-                            <td style="width: 17%;" class="label">Project / Block / Size</td>
-                            <td class="value-line">{{ $projectBlockSize }}</td>
-                        </tr>
-                    </table>
-                </td>
-                <td>
-                    <table class="field">
-                        <tr>
-                            <td class="label">Bank</td>
-                            <td class="value-line">{{ $bankName }}</td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
+            <div class="form-col" style="width: 50%;">
+                <div class="field">
+                    <div class="label">S/O</div>
+                    <div class="value">{{ $guardianName }}</div>
+                </div>
+            </div>
 
-            <tr class="row-gap">
-                <td>
-                    <table class="field">
-                        <tr>
-                            <td class="label">Mode</td>
-                            <td class="value-line">{{ $paymentMode }}</td>
-                        </tr>
-                    </table>
-                </td>
-                <td colspan="2">
-                    <table class="field">
-                        <tr>
-                            <td style="width: 13%;" class="label">Transaction No</td>
-                            <td class="value-line">{{ $transactionNo }}</td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
+        </div>
 
-            <tr class="row-gap">
-                <td>
-                    <table class="field">
-                        <tr>
-                            <td class="label">Amount</td>
-                            <td class="value-line amount">{{ $amountDisplay }}</td>
-                        </tr>
-                    </table>
-                </td>
-                <td>
-                    <table class="field">
-                        <tr>
-                            <td class="label">Short Amount</td>
-                            <td class="value-line center">{{ $shortAmount }}</td>
-                        </tr>
-                    </table>
-                </td>
-                <td>
-                    <table class="field">
-                        <tr>
-                            <td class="label">Total Balance</td>
-                            <td class="value-line center">{{ $balanceAmount }}</td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
+        <div class="form-row">
+            <div class="form-col" style="width: 65%;">
+                <div class="field">
+                    <div class="label small">Address</div>
+                    <div class="value">{{ $address }}</div>
+                </div>
+            </div>
 
-            <tr class="row-gap">
-                <td colspan="3">
-                    <table class="field">
-                        <tr>
-                            <td style="width: 12%;" class="label">Amount in Words</td>
-                            <td class="value-line tall">{{ $amountInWords }}</td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
+            <div class="form-col" style="width: 35%;">
+                <div class="field">
+                    <div class="label medium">Plot / Shop</div>
+                    <div class="value">{{ $plotLabel }}</div>
+                </div>
+            </div>
+        </div>
 
-            <tr class="row-gap">
-                <td colspan="3" class="small">
-                    Received from <span class="full-line statement">{{ $customerName }}</span>
-                    against plot / project <span class="full-line statement">{{ $plotLabel }} / {{ $projectBlockSize }}</span>
-                </td>
-            </tr>
+        <div class="form-row">
+            <div class="form-col" style="width: 30%;">
+                <div class="field">
+                    <div class="label small">Amount</div>
+                    <div class="value amount">{{ $amountDisplay }}</div>
+                </div>
+            </div>
+            <div class="form-col" style="width: 70%;">
+                <div class="field">
+                    <div class="label medium">
+                     in Words</div>
+                    <div class="value">{{ $amountInWords }}</div>
+                </div>
+            </div>
 
-            <tr class="row-gap remarks-row">
-                <td colspan="3">
-                    <table class="field">
-                        <tr>
-                            <td style="width: 8%;" class="label">Remarks</td>
-                            <td class="statement-line">{{ $remarks }}</td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
-        </table>
 
-        <table class="signature-row">
-            <tr>
-                <td><div class="signature-line">Prepared By</div></td>
-                <td><div class="signature-line">Received By</div></td>
-                <td><div class="signature-line">Accounts</div></td>
-                <td><div class="signature-line">Authorized Sign</div></td>
-            </tr>
-        </table>
+        </div>
+        <div class="form-row">
+
+            <div class="form-col" style="width: 25%;">
+                <div class="field">
+                    <div class="label small">Cash</div>
+                    <div class="value">{{ $cash }}</div>
+                </div>
+            </div>
+            <div class="form-col" style="width: 45%;">
+                <div class="field">
+                    <div class="label short">Payment For</div>
+                    <div class="value">{{ $paymentFor }}</div>
+                </div>
+            </div>
+            <div class="form-col" style="width: 30%;">
+                <div class="field">
+                    <div class="label medium">Through</div>
+                    <div class="value"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-row">
+
+
+            <div class="form-col" style="width: 100%;">
+                <div class="field">
+                    <div class="label large">Add. Details</div>
+                    <div class="value long">{{ $additionalDetails }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-row bottom-row">
+            <div class="form-col" style="width: 33.33%;">
+                <div class="field">
+                    <div class="label large">Total Balance</div>
+                    <div class="value center">{{ $totalBalanceAmount }}</div>
+                </div>
+            </div>
+
+            <div class="form-col" style="width: 36.33%;">
+                <div class="field">
+                    <div class="label short">PayAble Short</div>
+                    <div class="value center">{{ $shortAmount }}</div>
+                </div>
+            </div>
+
+            <div class="form-col" style="width: 30.33%;">
+                <div class="field">
+                    <div class="label short">Receiver Sign</div>
+                    <div class="value"></div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <script>

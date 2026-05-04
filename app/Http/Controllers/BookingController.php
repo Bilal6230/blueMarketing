@@ -2483,7 +2483,7 @@ class BookingController extends Controller
 
     public function printCashIn($id)
     {
-        $x['voucher'] = CustomerLedger::with([
+        $x['voucher'] = $customerLedger = CustomerLedger::with([
             'bookingVoucher',
             'customer_list',
             'plot_list',
@@ -2495,6 +2495,41 @@ class BookingController extends Controller
             ->where('id', $id)
             ->where('project_id', getSelectedTown())
             ->firstOrFail();
+
+        $today = Carbon::today()->toDateString();
+
+        $booking = Booking::where('customer_id', $customerLedger->customer_id)
+            ->where('cancel_status', '0')
+            ->where('plot_id', $customerLedger->plot_id)
+            ->first();
+
+        if (!$booking) {
+            $x['balance'] = 0;
+            $x['balances'] = 0;
+
+            return view('admin.booking.print_receive', $x);
+        }
+
+        $customerLedgersQuery = CustomerLedger::where('customer_id', $customerLedger->customer_id)
+            ->where('is_active', 1)
+            ->where('transaction_type', 'PPR')
+            ->when($customerLedger->plot_id, function ($query) use ($customerLedger) {
+                return $query->where('plot_id', $customerLedger->plot_id);
+            });
+
+        $ledgerAmountIn = (float) (clone $customerLedgersQuery)->sum('amount_in');
+        $ledgerAmountOut = (float) (clone $customerLedgersQuery)->sum('amount_out');
+
+        $allBookingAmount = (float) BookingDetail::where('booking_id', $booking->id)
+            ->sum('amount');
+
+        $dueBookingAmount = (float) BookingDetail::where('booking_id', $booking->id)
+            ->whereDate('due_date', '<=', $today)
+            ->sum('amount');
+
+        $x['balance'] = $allBookingAmount + $ledgerAmountIn - $ledgerAmountOut;
+
+        $x['balances'] = $dueBookingAmount + $ledgerAmountIn - $ledgerAmountOut;
 
         return view('admin.booking.print_receive', $x);
     }
