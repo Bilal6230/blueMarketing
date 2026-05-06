@@ -28,6 +28,7 @@ class JournalVoucherDetail extends Model
         'debit',
         'credit',
         'description',
+        'created_by',
     ];
 
     /**

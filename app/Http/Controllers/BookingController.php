@@ -245,18 +245,14 @@ class BookingController extends Controller
             ]);
 
             // Create ledger entry
-            Ledger::create([
-                'customer_ledger_id' => $customerLedger->id,
-                'type' => 'SV',
-                'voucher_number' => $salesVoucher->voucher_number,
-                'type_id' => $salesVoucher->id,
-                'project_head_subheads_id' => $pivot->id,
+            $this->recordSalesVoucherEntry($salesVoucher, [
+                'account_id' => $pivot->id,
                 'reference' => $booking->id,
-                'amount_in' => 0.00,
+                'customer_ledger_id' => $customerLedger->id,
+                'amount_in' => 0,
                 'amount_out' => $booking->total_price,
-                'is_active' => 1,
                 'date' => $booking->booking_date,
-                'detail' => 'Booking for plot ' . $plotType . $plotName,
+                'description' => 'Booking for plot ' . $plotType . $plotName,
                 'update_by' => Auth::user()->id,
                 'create_by' => Auth::user()->id,
                 'status' => 0,
@@ -273,18 +269,14 @@ class BookingController extends Controller
             }
 
             // Create credit ledger entry
-            Ledger::create([
-                'customer_ledger_id' => $customerLedger->id,
-                'type' => 'SV',
-                'voucher_number' => $salesVoucher->voucher_number,
-                'type_id' => $salesVoucher->id,
-                'project_head_subheads_id' => $creditAccountId,
+            $this->recordSalesVoucherEntry($salesVoucher, [
+                'account_id' => $creditAccountId,
                 'reference' => $booking->id,
+                'customer_ledger_id' => $customerLedger->id,
                 'amount_in' => $booking->total_price,
-                'amount_out' => 0.00,
-                'is_active' => 1,
+                'amount_out' => 0,
                 'date' => $booking->booking_date,
-                'detail' => 'Booking for plot ' . $plotType . $plotName,
+                'description' => 'Booking for plot ' . $plotType . $plotName,
                 'update_by' => Auth::user()->id,
                 'create_by' => Auth::user()->id,
                 'status' => 0,
@@ -414,17 +406,13 @@ class BookingController extends Controller
 
         // 2) CR Party Profit (optional)
         if ($partyProfitAccId && bccomp($partyProfitCredit, '0.00', 2) === 1) {
-            Ledger::create([
-                'type' => 'SV',
-                'type_id' => $salesVoucher->id,
-                'voucher_number' => $salesVoucher->voucher_number,
-                'project_head_subheads_id' => $partyProfitAccId,
+            $this->recordSalesVoucherEntry($salesVoucher, [
+                'account_id' => $partyProfitAccId,
                 'reference' => $booking->id,
                 'amount_in' => $partyProfitCredit,
-                'amount_out' => 0.00,
-                'is_active' => 1,
+                'amount_out' => 0,
                 'date' => $date,
-                'detail' => $marker . " | Party Profit Credit | {$plotType}{$plotName}",
+                'description' => $marker . " | Party Profit Credit | {$plotType}{$plotName}",
                 'update_by' => $userId,
                 'create_by' => $userId,
                 'status' => 0,
@@ -433,17 +421,13 @@ class BookingController extends Controller
 
         // 3) CR Resale Profit
         if (bccomp($resaleProfitCredit, '0.00', 2) === 1) {
-            Ledger::create([
-                'type' => 'SV',
-                'type_id' => $salesVoucher->id,
-                'voucher_number' => $salesVoucher->voucher_number,
-                'project_head_subheads_id' => $resaleProfitAccId,
+            $this->recordSalesVoucherEntry($salesVoucher, [
+                'account_id' => $resaleProfitAccId,
                 'reference' => $booking->id,
                 'amount_in' => $resaleProfitCredit,
-                'amount_out' => 0.00,
-                'is_active' => 1,
+                'amount_out' => 0,
                 'date' => $date,
-                'detail' => $marker . " | Resale Profit Credit | {$plotType}{$plotName}",
+                'description' => $marker . " | Resale Profit Credit | {$plotType}{$plotName}",
                 'update_by' => $userId,
                 'create_by' => $userId,
                 'status' => 0,
@@ -619,13 +603,15 @@ class BookingController extends Controller
 
     private function nextSalesVoucherNumber(int $projectId): int
     {
-        return ((int) JournalVoucher::where('project_id', $projectId)
+        return ((int) JournalVoucher::query()
+            ->where('project_id', $projectId)
             ->where('type', 'SV')
             ->lockForUpdate()
-            ->max('voucher_number')) + 1;
+            ->orderByDesc('voucher_number')
+            ->value('voucher_number')) + 1;
     }
 
-    private function createSalesVoucher(array $payload): ?JournalVoucher
+    private function createSalesVoucher(array $payload): JournalVoucher
     {
         $projectId = (int) ($payload['project_id'] ?? getSelectedTown());
         $sourceType = strtoupper((string) ($payload['source_type'] ?? 'SOURCE'));
@@ -633,7 +619,7 @@ class BookingController extends Controller
         $reference = trim((string) ($payload['reference'] ?? ($sourceType . '-' . $sourceId)));
 
         if ($projectId <= 0 || $reference === '') {
-            return null;
+            throw new \InvalidArgumentException('Project ID and reference are required for sales voucher creation.');
         }
 
         $existingVoucher = JournalVoucher::where('project_id', $projectId)
@@ -648,19 +634,72 @@ class BookingController extends Controller
         $date = !empty($payload['date'])
             ? Carbon::parse($payload['date'])->format('Y-m-d')
             : now()->format('Y-m-d');
+        $description = trim((string) ($payload['description'] ?? 'Sales Voucher'));
 
         return JournalVoucher::create([
             'voucher_number' => $this->nextSalesVoucherNumber($projectId),
             'type' => 'SV',
             'reference' => $reference,
             'date' => $date,
-            'description' => trim((string) ($payload['description'] ?? 'Sales Voucher')),
+            'description' => $description,
             'total_debit' => $this->pvMoneyToDecimal2($payload['total_amount'] ?? 0),
             'total_credit' => $this->pvMoneyToDecimal2($payload['total_amount'] ?? 0),
             'project_id' => $projectId,
             'created_by' => Auth::id(),
             'status' => 'pending',
         ]);
+    }
+
+    private function addSalesVoucherDetail(JournalVoucher $voucher, array $payload): JournalVoucherDetail
+    {
+        $detail = JournalVoucherDetail::firstOrCreate([
+            'journal_voucher_id' => $voucher->id,
+            'account_id' => $payload['account_id'],
+            'debit' => $this->pvMoneyToDecimal2($payload['amount_in'] ?? 0),
+            'credit' => $this->pvMoneyToDecimal2($payload['amount_out'] ?? 0),
+            'description' => trim((string) ($payload['description'] ?? 'Sales Voucher')),
+        ], [
+            'created_by' => Auth::id(),
+        ]);
+
+        $this->syncSalesVoucherTotals($voucher);
+
+        return $detail;
+    }
+
+    private function createSalesVoucherLedger(JournalVoucher $voucher, array $payload): Ledger
+    {
+        return Ledger::firstOrCreate([
+            'type' => 'SV',
+            'type_id' => $voucher->id,
+            'voucher_number' => $voucher->voucher_number,
+            'project_head_subheads_id' => $payload['account_id'],
+            'reference' => $payload['reference'],
+            'amount_in' => $this->pvMoneyToDecimal2($payload['amount_in'] ?? 0),
+            'amount_out' => $this->pvMoneyToDecimal2($payload['amount_out'] ?? 0),
+            'detail' => trim((string) ($payload['description'] ?? 'Sales Voucher')),
+            'date' => $payload['date'],
+        ], [
+            'customer_ledger_id' => $payload['customer_ledger_id'] ?? null,
+            'is_active' => $payload['is_active'] ?? 1,
+            'create_by' => $payload['create_by'] ?? Auth::id(),
+            'update_by' => $payload['update_by'] ?? Auth::id(),
+            'status' => $payload['status'] ?? 0,
+        ]);
+    }
+
+    private function recordSalesVoucherEntry(JournalVoucher $voucher, array $payload): void
+    {
+        $this->addSalesVoucherDetail($voucher, $payload);
+        $this->createSalesVoucherLedger($voucher, $payload);
+    }
+
+    private function syncSalesVoucherTotals(JournalVoucher $voucher): void
+    {
+        $voucher->forceFill([
+            'total_debit' => $this->pvMoneyToDecimal2($voucher->details()->sum('debit')),
+            'total_credit' => $this->pvMoneyToDecimal2($voucher->details()->sum('credit')),
+        ])->save();
     }
 
     private function plotTypePrefix(int $plotType): string
@@ -859,34 +898,26 @@ class BookingController extends Controller
          * 50 lac Total Sale Debit
          * 10 lac Party Profit Debit
          */
-        Ledger::create([
-            'type' => 'SV',
-            'voucher_number' => $salesVoucher->voucher_number,
-            'type_id' => $salesVoucher->id,
-            'project_head_subheads_id' => $totalSalePhsId,
+        $this->recordSalesVoucherEntry($salesVoucher, [
+            'account_id' => $totalSalePhsId,
             'reference' => $booking->id,
-            'amount_in' => 0.00,
+            'amount_in' => 0,
             'amount_out' => $oldAmount,
-            'is_active' => 1,
             'date' => $booking->booking_date,
-            'detail' => "Total Sale Settlement OUT (Old Party) - {$plotType}{$plotName}",
+            'description' => "Total Sale Settlement OUT (Old Party) - {$plotType}{$plotName}",
             'update_by' => $userId,
             'create_by' => $userId,
             'status' => 0,
         ]);
 
         if ($partyProfitPhsId && bccomp($profit, '0.00', 2) === 1) {
-            Ledger::create([
-                'type' => 'SV',
-                'voucher_number' => $salesVoucher->voucher_number,
-                'type_id' => $salesVoucher->id,
-                'project_head_subheads_id' => $partyProfitPhsId,
+            $this->recordSalesVoucherEntry($salesVoucher, [
+                'account_id' => $partyProfitPhsId,
                 'reference' => $booking->id,
-                'amount_in' => 0.00,
+                'amount_in' => 0,
                 'amount_out' => $profit,
-                'is_active' => 1,
                 'date' => $booking->booking_date,
-                'detail' => "Party Profit Settlement OUT (Old Party) - {$plotType}{$plotName}",
+                'description' => "Party Profit Settlement OUT (Old Party) - {$plotType}{$plotName}",
                 'update_by' => $userId,
                 'create_by' => $userId,
                 'status' => 0,
@@ -915,18 +946,14 @@ class BookingController extends Controller
             'is_approve' => 1,
             'is_active' => 1,
         ]);
-        Ledger::create([
-            'type' => 'SV',
-            'voucher_number' => $salesVoucher->voucher_number,
-            'type_id' => $salesVoucher->id,
-            'project_head_subheads_id' => $oldCustomerPivot->id,
+        $this->recordSalesVoucherEntry($salesVoucher, [
+            'account_id' => $oldCustomerPivot->id,
             'reference' => $booking->id,
             'customer_ledger_id' => $oldPrincipalCL->id,
             'amount_in' => $oldAmount,
-            'amount_out' => 0.00,
-            'is_active' => 1,
+            'amount_out' => 0,
             'date' => $booking->booking_date,
-            'detail' => "Old Party Credit  - {$plotType}{$plotName}",
+            'description' => "Old Party Credit  - {$plotType}{$plotName}",
             'update_by' => $userId,
             'create_by' => $userId,
             'status' => 0,
@@ -947,18 +974,14 @@ class BookingController extends Controller
                 'is_approve' => 1,
                 'is_active' => 1,
             ]);
-            Ledger::create([
-                'type' => 'SV',
-                'type_id' => $salesVoucher->id,
-                'voucher_number' => $salesVoucher->voucher_number,
-                'project_head_subheads_id' => $oldCustomerPivot->id,
+            $this->recordSalesVoucherEntry($salesVoucher, [
+                'account_id' => $oldCustomerPivot->id,
                 'reference' => $booking->id,
                 'customer_ledger_id' => $oldProfitCL->id,
                 'amount_in' => $profit,
-                'amount_out' => 0.00,
-                'is_active' => 1,
+                'amount_out' => 0,
                 'date' => $booking->booking_date,
-                'detail' => "Old Party Credit (Profit) - {$plotType}{$plotName}",
+                'description' => "Old Party Credit (Profit) - {$plotType}{$plotName}",
                 'update_by' => $userId,
                 'create_by' => $userId,
                 'status' => 0,
@@ -984,18 +1007,14 @@ class BookingController extends Controller
             'is_approve' => 1,
             'is_active' => 1,
         ]);
-        Ledger::create([
-            'type' => 'SV',
-            'voucher_number' => $salesVoucher->voucher_number,
-            'type_id' => $salesVoucher->id,
-            'project_head_subheads_id' => $newCustomerPivot->id,
+        $this->recordSalesVoucherEntry($salesVoucher, [
+            'account_id' => $newCustomerPivot->id,
             'reference' => $booking->id,
             'customer_ledger_id' => $newCL->id,
-            'amount_in' => 0.00,
+            'amount_in' => 0,
             'amount_out' => $newAmount,
-            'is_active' => 1,
             'date' => $booking->booking_date,
-            'detail' => "New Party Payment OUT - {$plotType}{$plotName}",
+            'description' => "New Party Payment OUT - {$plotType}{$plotName}",
             'update_by' => $userId,
             'create_by' => $userId,
             'status' => 0,
@@ -1008,34 +1027,26 @@ class BookingController extends Controller
          * 50 lac Total Sale Credit
          * 10 lac Party Profit Credit
          */
-        Ledger::create([
-            'type' => 'SV',
-            'voucher_number' => $salesVoucher->voucher_number,
-            'type_id' => $salesVoucher->id,
-            'project_head_subheads_id' => $totalSalePhsId,
+        $this->recordSalesVoucherEntry($salesVoucher, [
+            'account_id' => $totalSalePhsId,
             'reference' => $booking->id,
             'amount_in' => $oldAmount,
-            'amount_out' => 0.00,
-            'is_active' => 1,
+            'amount_out' => 0,
             'date' => $booking->booking_date,
-            'detail' => "Total Sale Settlement IN (New Party) - {$plotType}{$plotName}",
+            'description' => "Total Sale Settlement IN (New Party) - {$plotType}{$plotName}",
             'update_by' => $userId,
             'create_by' => $userId,
             'status' => 0,
         ]);
 
         if ($partyProfitPhsId && bccomp($profit, '0.00', 2) === 1) {
-            Ledger::create([
-                'type' => 'SV',
-                'voucher_number' => $salesVoucher->voucher_number,
-                'type_id' => $salesVoucher->id,
-                'project_head_subheads_id' => $partyProfitPhsId,
+            $this->recordSalesVoucherEntry($salesVoucher, [
+                'account_id' => $partyProfitPhsId,
                 'reference' => $booking->id,
                 'amount_in' => $profit,
-                'amount_out' => 0.00,
-                'is_active' => 1,
+                'amount_out' => 0,
                 'date' => $booking->booking_date,
-                'detail' => "Party Profit Settlement IN (New Party) - {$plotType}{$plotName}",
+                'description' => "Party Profit Settlement IN (New Party) - {$plotType}{$plotName}",
                 'update_by' => $userId,
                 'create_by' => $userId,
                 'status' => 0,
@@ -1077,18 +1088,14 @@ class BookingController extends Controller
                 'passing_date' => $request->input('passing_date'),
             ]);
 
-            Ledger::create([
-                'type' => 'SV',
-                'voucher_number' => $salesVoucher->voucher_number,
-                'type_id' => $salesVoucher->id,
-                'project_head_subheads_id' => $feePayerPivot->id,
+            $this->recordSalesVoucherEntry($salesVoucher, [
+                'account_id' => $feePayerPivot->id,
                 'reference' => $booking->id,
                 'customer_ledger_id' => $feeCL->id,
-                'amount_in' => 0.00,
+                'amount_in' => 0,
                 'amount_out' => $partyFee,
-                'is_active' => 1,
                 'date' => $booking->booking_date,
-                'detail' => "File Transfer Fee OUT - {$plotType}{$plotName}",
+                'description' => "File Transfer Fee OUT - {$plotType}{$plotName}",
                 'update_by' => $userId,
                 'create_by' => $userId,
                 'status' => 0,
@@ -1096,17 +1103,13 @@ class BookingController extends Controller
 
             // Credit File Transfer Fee account (CR) (auto-create allowed)
             $feeAccountId = $this->systemAccountIdBySubheadName((int) $booking->project_id, 16, 'File Transfer Fee', true);
-            Ledger::create([
-                'type' => 'SV',
-                'voucher_number' => $salesVoucher->voucher_number,
-                'type_id' => $salesVoucher->id,
-                'project_head_subheads_id' => $feeAccountId,
+            $this->recordSalesVoucherEntry($salesVoucher, [
+                'account_id' => $feeAccountId,
                 'reference' => $booking->id,
                 'amount_in' => $partyFee,
-                'amount_out' => 0.00,
-                'is_active' => 1,
+                'amount_out' => 0,
                 'date' => $booking->booking_date,
-                'detail' => "File Transfer Fee IN - {$plotType}{$plotName}",
+                'description' => "File Transfer Fee IN - {$plotType}{$plotName}",
                 'update_by' => $userId,
                 'create_by' => $userId,
                 'status' => 0,
@@ -2795,17 +2798,6 @@ class BookingController extends Controller
 
                 // System accounts under Project Sale (head=16)
                 $totalSaleId = $this->totalSaleAccountId((int) $booking->project_id);
-                $totalDebit = 0;
-                $totalCredit = 0;
-                $journalVoucher = $this->createSalesVoucher([
-                    'project_id' => (int) $booking->project_id,
-                    'reference' => $cancelReference,
-                    'date' => now()->format('Y-m-d'),
-                    'description' => $cancelDescription,
-                    'total_amount' => $sale,
-                    'source_type' => 'CANCEL',
-                    'source_id' => $booking->id,
-                ]);
                 // Marker to avoid duplicates (optional but safe)
                 $marker = 'CANCEL#' . $booking->id;
                 $alreadyPosted = Ledger::where('reference', $booking->id)
@@ -2815,28 +2807,22 @@ class BookingController extends Controller
                 if ($alreadyPosted) {
                     return;
                 }
-                $voucherNumber = $journalVoucher->voucher_number;
-                // 1) Debit Total Sale (SV out) = sale amount
-                JournalVoucherDetail::create([
-                    'journal_voucher_id' => $journalVoucher->id,
-                    'account_id' => $totalSaleId,
-                    'debit' => 0,
-                    'credit' => $sale ?? 0,
-                    'description' => $marker . " | Cancel Reverse Total Sale | {$plotPrefix}{$plotName}",
-                    'created_by' => auth()->id(),
-                ]);
-                $totalCredit += $sale;
-                Ledger::create([
-                    'type' => 'SV',
-                    'type_id' => $journalVoucher->id,
-                    'voucher_number' => $voucherNumber,
-                    'project_head_subheads_id' => $totalSaleId,
-                    'reference' => $booking->id,
-                    'amount_in' => 0.00,
-                    'amount_out' => $sale,
-                    'is_active' => 1,
+                $salesVoucher = $this->createSalesVoucher([
+                    'project_id' => (int) $booking->project_id,
+                    'reference' => $cancelReference,
                     'date' => $booking->booking_date,
-                    'detail' => $marker . " | Cancel Reverse Total Sale | {$plotPrefix}{$plotName}",
+                    'description' => $cancelDescription,
+                    'total_amount' => $sale,
+                    'source_type' => 'CANCEL',
+                    'source_id' => $booking->id,
+                ]);
+                $this->recordSalesVoucherEntry($salesVoucher, [
+                    'account_id' => $totalSaleId,
+                    'reference' => $booking->id,
+                    'amount_in' => 0,
+                    'amount_out' => $sale,
+                    'date' => $booking->booking_date,
+                    'description' => $marker . " | Cancel Reverse Total Sale | {$plotPrefix}{$plotName}",
                     'update_by' => $userId,
                     'create_by' => $userId,
                     'status' => 0,
@@ -2853,30 +2839,14 @@ class BookingController extends Controller
                     'amount_out' => 0,
                     'description' => "Plot Cancellation Refund {$plotPrefix}{$plotName}",
                 ]);
-                $voucherNumber = $journalVoucher->voucher_number;
-                // 1) Debit Total Sale (SV out) = sale amount
-                JournalVoucherDetail::create([
-                    'journal_voucher_id' => $journalVoucher->id,
+                $this->recordSalesVoucherEntry($salesVoucher, [
                     'account_id' => $phsCustomer->id,
-                    'debit' => $customerCredit,
-                    'credit' => 0,
-                    'description' => $marker . " | Customer Credit | {$plotPrefix}{$plotName}",
-                    'created_by' => auth()->id(),
-                ]);
-                $totalDebit += $customerCredit;
-                Ledger::create([
-                    'type' => 'SV',
-                    'type_id' => $journalVoucher->id,
-                    'voucher_number' => $voucherNumber,
-
-                    'project_head_subheads_id' => $phsCustomer->id,
                     'reference' => $booking->id,
                     'customer_ledger_id' => $cl->id,
                     'amount_in' => $customerCredit,
-                    'amount_out' => 0.00,
-                    'is_active' => 1,
+                    'amount_out' => 0,
                     'date' => $booking->booking_date,
-                    'detail' => $marker . " | Customer Credit | {$plotPrefix}{$plotName}",
+                    'description' => $marker . " | Customer Credit | {$plotPrefix}{$plotName}",
                     'update_by' => $userId,
                     'create_by' => $userId,
                     'status' => 0,
@@ -2892,28 +2862,13 @@ class BookingController extends Controller
                             'Deduction',
                             true // create if missing
                         );
-                        $voucherNumber = $journalVoucher->voucher_number;
-                        // 1) Debit Total Sale (SV out) = sale amount
-                        JournalVoucherDetail::create([
-                            'journal_voucher_id' => $journalVoucher->id,
+                        $this->recordSalesVoucherEntry($salesVoucher, [
                             'account_id' => $deductionAccId,
-                            'debit' => $adj,
-                            'credit' => 0,
-                            'description' => $marker . " | Deduction Credit | {$plotPrefix}{$plotName}",
-                            'created_by' => $userId,
-                        ]);
-                        $totalDebit += $adj;
-                        Ledger::create([
-                            'type' => 'SV',
-                            'type_id' => $journalVoucher->id,
-                            'voucher_number' => $voucherNumber,
-                            'project_head_subheads_id' => $deductionAccId,
                             'reference' => $booking->id,
                             'amount_in' => $adj,
-                            'amount_out' => 0.00,
-                            'is_active' => 1,
+                            'amount_out' => 0,
                             'date' => $booking->booking_date,
-                            'detail' => $marker . " | Deduction Credit | {$plotPrefix}{$plotName}",
+                            'description' => $marker . " | Deduction Credit | {$plotPrefix}{$plotName}",
                             'update_by' => $userId,
                             'create_by' => $userId,
                             'status' => 0,
@@ -2926,27 +2881,13 @@ class BookingController extends Controller
                             'Party Profit',
                             true // must exist
                         );
-                        $voucherNumber = $journalVoucher->voucher_number;
-                        JournalVoucherDetail::create([
-                            'journal_voucher_id' => $journalVoucher->id,
+                        $this->recordSalesVoucherEntry($salesVoucher, [
                             'account_id' => $partyProfitAccId,
-                            'debit' => 0.00,
-                            'credit' => $adj,
-                            'description' => $marker . " | Party Profit Debit | {$plotPrefix}{$plotName}",
-                            'created_by' => $userId,
-                        ]);
-                        $totalCredit += $adj;
-                        Ledger::create([
-                            'type' => 'SV',
-                            'type_id' => $journalVoucher->id,
-                            'voucher_number' => $voucherNumber,
-                            'project_head_subheads_id' => $partyProfitAccId,
                             'reference' => $booking->id,
-                            'amount_in' => 0.00,
+                            'amount_in' => 0,
                             'amount_out' => $adj,
-                            'is_active' => 1,
                             'date' => $booking->booking_date,
-                            'detail' => $marker . " | Party Profit Debit | {$plotPrefix}{$plotName}",
+                            'description' => $marker . " | Party Profit Debit | {$plotPrefix}{$plotName}",
                             'update_by' => $userId,
                             'create_by' => $userId,
                             'status' => 0,
@@ -2954,9 +2895,6 @@ class BookingController extends Controller
                     }
                 }
                 $this->attechCustomerToOldProjectSale($booking->project_id, $booking->customer_id, $booking->plot_id);
-                $journalVoucher->total_debit = $totalDebit;
-                $journalVoucher->total_credit = $totalCredit;
-                $journalVoucher->save();
             });
 
             return response()->json(['message' => 'Booking canceled successfully.']);

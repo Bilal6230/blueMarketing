@@ -55,7 +55,7 @@
 <body>
     @php
         $voucherType = $voucher->type ?: 'JV';
-        $voucherTitle = $voucherType === 'SV' ? 'General Sales Voucher' : 'Journal Voucher';
+        $voucherTitle = $voucherType === 'SV' ? 'General Sales Voucher' : 'General Journal Voucher';
         $voucherDisplayNumber = $voucherType === 'SV'
             ? (int) $voucher->voucher_number
             : get_jv_number($voucher->voucher_number);
@@ -95,21 +95,25 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($voucher->details as $detail)
+                @forelse($voucher->details as $detail)
                     <tr>
                         <td>{{ $detail->account->headAccounting->name ?? 'N/A' }}</td>
                         <td>{{ $detail->account->subheadAccounting->name ?? 'N/A' }}</td>
                         <td>{{ $detail->description }}</td>
-                        <td>{{ number_format($detail->credit, 2) }}</td>
                         <td>{{ number_format($detail->debit, 2) }}</td>
+                        <td>{{ number_format($detail->credit, 2) }}</td>
                     </tr>
-                @endforeach
+                @empty
+                    <tr>
+                        <td colspan="5" class="text-center">No voucher details available.</td>
+                    </tr>
+                @endforelse
             </tbody>
             <tfoot>
                 <tr>
                     <td colspan="3" class="text-end"><strong>Total:</strong></td>
-                    <td><strong>{{ number_format($voucher->total_credit, 2) }}</strong></td>
                     <td><strong>{{ number_format($voucher->total_debit, 2) }}</strong></td>
+                    <td><strong>{{ number_format($voucher->total_credit, 2) }}</strong></td>
                 </tr>
             </tfoot>
         </table>

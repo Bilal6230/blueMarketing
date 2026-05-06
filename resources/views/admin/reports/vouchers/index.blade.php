@@ -1,6 +1,9 @@
 @extends('admin.layouts.master')
 
 @section('content')
+    @php
+        $showActions = auth()->user()->canany(['edit jv', 'delete jv', 'print jv']);
+    @endphp
     <div class="content-wrapper">
         <div class="content">
             <div class="container-fluid mt-1">
@@ -69,51 +72,12 @@
                                     <th style="background-color:black">Date</th>
                                     <th style="background-color:black">Description</th>
                                     <th style="background-color:black">Amount</th>
-                                    @canany(['edit jv', 'delete jv'])
+                                    @if ($showActions)
                                         <th style="background-color:black">Actions</th>
-                                    @endcanany
+                                    @endif
                                 </tr>
                             </thead>
-
-                            <tbody>
-                                @foreach ($vouchers as $voucher)
-                                    <tr>
-                                        <td>{{ $voucher->id }}</td>
-                                        <td>
-                                            @if ($type === 'SV')
-                                                SV-{{ (int) $voucher->voucher_number }}
-                                            @else
-                                                JV-{{ get_jv_number($voucher->voucher_number) }}
-                                            @endif
-                                        </td>
-                                        <td>{{ $voucher->reference }}</td>
-                                        <td>{{ $voucher->date }}</td>
-                                        <td>{{ $voucher->description }}</td>
-                                        <td>{{ $voucher->total_debit }}</td>
-                                        @canany(['edit jv', 'delete jv', 'print jv'])
-                                            <td>
-                                                @can('edit jv')
-                                                    <a href="{{ route('journal.voucher.edit', $voucher->id) }}"
-                                                        class="btn btn-sm btn-warning">
-                                                        <i class="fas fa-edit"></i> Edit
-                                                    </a>
-                                                @endcan
-                                                @can('delete jv')
-                                                    <button class="btn btn-sm btn-danger delete-btn" data-id="{{ $voucher->id }}">
-                                                        <i class="fas fa-trash"></i> Delete
-                                                    </button>
-                                                @endcan
-                                                @can('print jv')
-                                                    <a href="{{ route('journal.voucher.print', $voucher->id) }}" target="_blank"
-                                                        class="btn btn-sm btn-info">
-                                                        <i class="fas fa-print"></i> Print
-                                                    </a>
-                                                @endcan
-                                            </td>
-                                        @endcanany
-                                    </tr>
-                                @endforeach
-                            </tbody>
+                            <tbody></tbody>
                         </table>
 
                     </div>
@@ -152,6 +116,7 @@
 @section('js')
     <script>
         const voucherDataUrl = @json($type === 'SV' ? route('sales.voucher.index') : route('journal.voucher.index'));
+        const showActions = @json($showActions);
         let journalTable;
 
         $(document).ready(function() {
@@ -226,12 +191,14 @@
                     {
                         data: 'total_debit',
                         name: 'total_debit'
-                    },
-                    {
+                    }
+                    @if ($showActions)
+                    , {
                         data: 'actions',
                         orderable: false,
                         searchable: false
                     }
+                    @endif
                 ]
             });
         }

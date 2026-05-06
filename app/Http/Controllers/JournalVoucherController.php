@@ -135,19 +135,22 @@ class JournalVoucherController extends Controller
         $selectedProjectId = getSelectedTown();
 
         // Build base query for vouchers
-        $baseQuery = JournalVoucher::latest()->where('project_id', $selectedProjectId)->where('type', 'SV');
+        $baseQuery = JournalVoucher::query()
+            ->where('project_id', $selectedProjectId)
+            ->where('type', 'SV');
         $query = clone $baseQuery;
 
         // Apply filters if they exist
         $voucherNumberFilter = trim((string) $request->input('filter_voucher_number', ''));
         if ($voucherNumberFilter !== '') {
-            $normalizedVoucherNumber = preg_replace('/^[A-Z]+-/i', '', $voucherNumberFilter);
-            $normalizedVoucherNumber = ltrim($normalizedVoucherNumber, '0');
-            $normalizedVoucherNumber = $normalizedVoucherNumber === '' ? '0' : $normalizedVoucherNumber;
+            $normalizedVoucherNumber = $this->normalizeVoucherNumberInput($voucherNumberFilter, 'SV');
 
             $query->where(function ($q) use ($voucherNumberFilter, $normalizedVoucherNumber) {
-                $q->where('voucher_number', 'like', '%' . $voucherNumberFilter . '%')
-                    ->orWhere('voucher_number', 'like', '%' . $normalizedVoucherNumber . '%');
+                if ($normalizedVoucherNumber !== null) {
+                    $q->where('voucher_number', (int) $normalizedVoucherNumber);
+                } else {
+                    $q->where('voucher_number', 'like', '%' . $voucherNumberFilter . '%');
+                }
             });
         }
 
@@ -173,17 +176,19 @@ class JournalVoucherController extends Controller
 
         $searchValue = trim((string) $request->input('search.value', ''));
         if ($searchValue !== '') {
-            $normalizedSearchValue = preg_replace('/^[A-Z]+-/i', '', $searchValue);
-            $normalizedSearchValue = ltrim($normalizedSearchValue, '0');
-            $normalizedSearchValue = $normalizedSearchValue === '' ? '0' : $normalizedSearchValue;
+            $normalizedSearchValue = $this->normalizeVoucherNumberInput($searchValue, 'SV');
 
             $query->where(function ($q) use ($searchValue, $normalizedSearchValue) {
                 $q->where('voucher_number', 'like', '%' . $searchValue . '%')
-                    ->orWhere('voucher_number', 'like', '%' . $normalizedSearchValue . '%')
                     ->orWhere('reference', 'like', '%' . $searchValue . '%')
                     ->orWhere('description', 'like', '%' . $searchValue . '%')
                     ->orWhere('date', 'like', '%' . $searchValue . '%')
-                    ->orWhere('total_debit', 'like', '%' . $searchValue . '%');
+                    ->orWhere('total_debit', 'like', '%' . $searchValue . '%')
+                    ->orWhere('total_credit', 'like', '%' . $searchValue . '%');
+
+                if ($normalizedSearchValue !== null) {
+                    $q->orWhere('voucher_number', (int) $normalizedSearchValue);
+                }
             });
         }
 
@@ -195,6 +200,20 @@ class JournalVoucherController extends Controller
 
             $recordsTotal = (clone $baseQuery)->count();
             $recordsFiltered = (clone $query)->count();
+
+            $orderableColumns = [
+                0 => 'id',
+                1 => 'voucher_number',
+                2 => 'reference',
+                3 => 'date',
+                4 => 'description',
+                5 => 'total_debit',
+            ];
+            $orderColumnIndex = (int) $request->input('order.0.column', 0);
+            $orderDirection = strtolower((string) $request->input('order.0.dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+            $orderColumn = $orderableColumns[$orderColumnIndex] ?? 'id';
+
+            $query->orderBy($orderColumn, $orderDirection);
             $vouchers = $query->skip($start)->take($length)->get();
 
             // Prepare the data, including the "actions" column
@@ -220,9 +239,22 @@ class JournalVoucherController extends Controller
         }
 
         // For non-AJAX requests, return the view
-        $x['vouchers'] = $query->get(); // Fetch all vouchers initially
+        $x['vouchers'] = $query->orderByDesc('id')->get(); // Fetch all vouchers initially
 
         return view('admin.reports.vouchers.index', $x);
+    }
+
+    private function normalizeVoucherNumberInput(string $value, string $prefix): ?string
+    {
+        $normalized = strtoupper(trim($value));
+        $normalized = preg_replace('/^' . preg_quote(strtoupper($prefix), '/') . '\s*-\s*/', '', $normalized);
+        $normalized = ltrim($normalized, '0');
+
+        if ($normalized === '') {
+            $normalized = '0';
+        }
+
+        return ctype_digit($normalized) ? $normalized : null;
     }
 
 
