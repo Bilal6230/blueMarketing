@@ -117,9 +117,14 @@
     <script>
         const voucherDataUrl = @json($type === 'SV' ? route('sales.voucher.index') : route('journal.voucher.index'));
         const showActions = @json($showActions);
+        const isSalesVoucherPage = @json($type === 'SV');
         let journalTable;
 
         $(document).ready(function() {
+            if (isSalesVoucherPage) {
+                $('#filter_date').val('');
+            }
+
             journalTable = renderDataTable();
 
             $('#applyFilters').on('click', function() {
@@ -163,7 +168,11 @@
                         d.filter_amount_min = $('#filter_amount_min').val();
                         d.filter_amount_max = $('#filter_amount_max').val();
                         d.filter_reference = $('#filter_reference').val();
-                        d.filter_date = $('#filter_date').val();
+
+                        const filterDate = $('#filter_date').val();
+                        if (filterDate) {
+                            d.filter_date = filterDate;
+                        }
                     },
                     dataSrc: 'data'
                 },
