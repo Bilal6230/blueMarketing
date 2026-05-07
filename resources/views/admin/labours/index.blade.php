@@ -1761,7 +1761,7 @@
 	                                    $('#createVoucherForm .error')
 	                                        .text('')
 	                                        .addClass('d-none');
-	
+
 	                                    // Optional: clear table
 	                                    $('#siteReportTableBody').html('');
 	                                    loadSiteVouchers($('#repSite').val());
@@ -1910,14 +1910,31 @@
                 // Show Modal
                 $('#editLabourModal').modal('show');
             });
-            $(document).on('click', '.changeRateBtn', function() {
-                // Show Modal
-                let row = $(this).closest('tr');
+            $(document).on('click', '.changeRateBtn', function () {
+                let btn = $(this);
 
-                $('#editLabourId').val(row.data('id'));
-                $('#editName').val(row.data('name'));
-                $('#currentLabRate').val(row.data('rate'));
-                $('#editRate').val(row.data('rate'));
+                let labourId = btn.data('id');
+                let labourName = btn.data('name');
+                let labourRate = btn.data('rate');
+                let lastVoucherDate = btn.data('last-voucher');
+                $('#editLabourId').val(labourId);
+                $('#editName').val(labourName);
+                $('#currentLabRate').val(labourRate);
+                $('#editRate').val(labourRate);
+
+                // destroy old flatpickr instance if exists
+                if ($('#applyFromDate')[0]._flatpickr) {
+                    $('#applyFromDate')[0]._flatpickr.destroy();
+                }
+
+                // init datepicker
+                flatpickr("#applyFromDate", {
+                    dateFormat: "Y-m-d",
+                    minDate: lastVoucherDate,   // cannot select before last voucher date
+                    maxDate: "today",           // future disabled
+                    defaultDate: "today"
+                });
+
                 $('#changeLabourRateModal').modal('show');
             });
             $(document).on('click', '.editSiteBtn', function() {

@@ -108,13 +108,16 @@
     <div class="voucher">
 
         <!-- HEADER -->
+        @php
+            $display = Setting::getValue($voucher->type . '_Receipt_Header') == '0' ? 'display:none !important;' : '';
+        @endphp
         @include('admin.partials.print_branding_header', [
             'branding' => $branding,
             'wrapperClass' => 'header-container',
             'logoClass' => 'logo',
             'centerClass' => 'center',
-            'centerStyle' => Setting::getValue('print_status') == '0' ? 'display:none !important;' : '',
-            'rightStyle' => Setting::getValue('print_status') == '0' ? 'display:none !important;' : '',
+            'centerStyle' => $display,
+            'rightStyle' => $display,
             'extraHtml' => $voucherBadge,
         ])
 
@@ -170,7 +173,7 @@
         </table>
 
         <!-- Signatures -->
-        <table class="signature-row">
+        <table class="signature-row" style="{{ $display }}">
             <tr>
                 <td>Manager: <span class="under-line"
                         style="display: inline-block;width: 40%;text-align: center;"></span></td>

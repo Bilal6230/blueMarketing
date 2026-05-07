@@ -11,7 +11,7 @@ Phone: {{ $report['mobile'] }}
 Role: {{ $report['designation'] }}
 Daily Wage: Rs {{ $report['rate'] }}
 ">
-            {{ $report['name'] ?? '' }} ({{ substr($report['cnic'], -4) }})</td>
+            <a href="{{ Route('labour.history', $report['id'] ) }}" target="_blank">{{ $report['name'] ?? '' }} ({{ substr($report['cnic'], -4) }})</a></td>
         <td>{{ $report['mobile'] ?? '' }}</td>
         <td>{{ $report['designation'] ?? '' }}</td>
         <td>PKR {{ $report['rate'] ?? '' }}</td>
@@ -38,8 +38,9 @@ Daily Wage: Rs {{ $report['rate'] }}
     </tr>
 @endforeach
 <tr>
-    <td colspan="8" style="text-align:right;">Total</td>
+    <td colspan="7" style="text-align:right;">Total</td>
     <td>{{ $total_amount ?? '' }}</td>
+    <td>{{ $total_remaningAmount ?? '' }}</td>
     <td>
         <div class="">
             Total Amount: <span id="totalVoucherAmount" style="color: #ff0d0d;"></span>

@@ -39,7 +39,7 @@
                                 <div class="tab-content">
                                     @foreach ($category as $i)
                                         @php
-                                            $settings = \App\Models\Setting::where(['category' => $i->category])->get();
+                                            $settings = \App\Models\Setting::where('type', '!=', 'toggle')->where(['category' => $i->category])->get();
                                         @endphp
                                         <div class="tab-pane {{ $loop->iteration == 1 ? 'active' : '' }}"
                                             id="{{ $i->category }}">
@@ -80,18 +80,41 @@
                                                                     </div> --}}
                                                                 </div>
                                                                 <small class="text-primary">Click to select file</small>
-                                                            @elseif($set->type == 'toggle')
-                                                                <div class="custom-control custom-switch">
-                                                                    <input type="hidden" name="key[]"
-                                                                        value="{{ $set->key }}">
-                                                                    <input type="checkbox" class="custom-control-input"
-                                                                        id="{{ $set->key }}" name="value[]"
-                                                                        value="1"
-                                                                        {{ $set->value == 1 ? 'checked' : '' }}>
-                                                                    <label class="custom-control-label"
-                                                                        for="{{ $set->key }}">{{ $set->name }}</label>
-                                                                </div>
                                                             @endif
+                                                        </div>
+                                                    </div>
+                                                @endforeach
+                                                @php
+                                                    $settings = \App\Models\Setting::where('type', 'toggle')->get();
+                                                @endphp
+                                                @foreach ($types as $type)
+                                                    @php
+                                                        $keyType = $type . '_Receipt_Header';
+                                                    @endphp
+
+                                                    <div class="form-group row">
+                                                        <label class="col-sm-2 col-form-label">
+                                                            {{ str_replace('Application ', '', $type) }} Receipt Header
+                                                        </label>
+
+                                                        <div class="col-sm-10">
+                                                            <div class="custom-control custom-switch">
+
+                                                                {{-- always send 0 --}}
+                                                                <input type="hidden" name="toggles[{{ $keyType }}]" value="0">
+
+                                                                {{-- checked sends 1 --}}
+                                                                <input type="checkbox"
+                                                                    class="custom-control-input"
+                                                                    id="{{ $type }}"
+                                                                    name="toggles[{{ $keyType }}]"
+                                                                    value="1"
+                                                                    {{ $settings->where('key', $keyType)->first()?->value == 1 ? 'checked' : '' }}>
+
+                                                                <label class="custom-control-label" for="{{ $type }}">
+                                                                    {{ $type }} Receipt Header
+                                                                </label>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 @endforeach

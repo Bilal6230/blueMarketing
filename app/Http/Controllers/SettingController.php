@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Ledger;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -13,7 +14,8 @@ class SettingController extends Controller
     public function index()
     {
         $x['title']     = 'Setting';
-        $x['category']  = Setting::select('category')->groupBy('category')->get();
+        $x['types'] = Ledger::distinct()->pluck('type')->toArray();
+        $x['category']  = Setting::where('type', '!=', 'toggle')->select('category')->groupBy('category')->get();
         return view('admin.setting', $x);
     }
 
@@ -56,26 +58,71 @@ class SettingController extends Controller
     public function update(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'key'       => ['required']
+            'key' => ['nullable'],
+            'toggles' => ['nullable', 'array'],
         ]);
+
         if ($validator->fails()) {
-            return back()->withErrors($validator)
-                ->withInput();
+            return back()->withErrors($validator)->withInput();
         }
+
         try {
-            for ($i = 0; $i < count($request->key); $i++) {
-                if($request->key[$i] == 'print_status'){
-                    $value = isset($request->value[$i]) ? 1 : 0;
-                }else{
-                    $value = $request->value[$i];
+            /**
+             * Normal settings (text, textarea, file)
+             */
+            if ($request->filled('key')) {
+                foreach ($request->key as $i => $key) {
+                    $keyValue = str_replace('_', ' ', $key);
+                    $value = $request->value[$i] ?? null;
+
+                    $setting = Setting::firstOrNew(['key' => $key]);
+
+                    if ($setting->exists) {
+                        $setting->update([
+                            'value' => $value
+                        ]);
+                    } else {
+                        $setting->fill([
+                            'key'      => $key,
+                            'value'    => $value,
+                            'name'     => $keyValue,
+                            'type'     => 'text',
+                            'category' => 'information',
+                        ])->save();
+                    }
                 }
-                Setting::where(['key' => $request->key[$i]])->update(['value' => $value]);
             }
+
+            /**
+             * Toggle settings
+             */
+            if ($request->filled('toggles')) {
+                foreach ($request->toggles as $key => $value) {
+                    $keyValue = str_replace('_', ' ', $key);
+
+                    $setting = Setting::firstOrNew(['key' => $key]);
+
+                    if ($setting->exists) {
+                        $setting->update([
+                            'value' => $value
+                        ]);
+                    } else {
+                        $setting->fill([
+                            'key'      => $key,
+                            'value'    => $value,
+                            'name'     => $keyValue,
+                            'type'     => 'toggle',
+                            'category' => 'information',
+                        ])->save();
+                    }
+                }
+            }
+
             Alert::success('Notification', 'Settings saved successfully')->toToast()->toHtml();
         } catch (\Throwable $th) {
-            dd($th->getMessage());
             Alert::error('Notification', 'Settings failed to save : ' . $th->getMessage())->toToast()->toHtml();
         }
+
         return back();
     }
 

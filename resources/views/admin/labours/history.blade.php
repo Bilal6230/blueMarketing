@@ -176,10 +176,18 @@
                             <th>Rate</th>
                             <th>Amount</th>
                             <th>Payment</th>
+                            <th>Running Balance</th>
                         </tr>
                     </thead>
                     <tbody>
+                        @php $runningBalance = 0; @endphp
+
                         @forelse($labour->attendances as $att)
+                            @php
+                                $payment = $paymentsByDate[$att->date] ?? 0;
+                                $runningBalance += $att->amount - $payment;
+                            @endphp
+
                             <tr>
                                 <td>{{ $att->date }}</td>
                                 <td>{{ $att->site->site_name ?? '-' }}</td>
@@ -192,17 +200,12 @@
                                 <td>{{ $att->ot_hours }}</td>
                                 <td>{{ number_format($att->rate ?? 0, 2) }}</td>
                                 <td>Rs {{ number_format($att->amount, 2) }}</td>
-                                <td>Rs
-                                    {{
-                                        $labour->labourLedgers
-                                            ->where(fn($q) => $q->created_at->toDateString() === $att->date)
-                                            ->sum('amount')
-                                    }}
-                                </td>
+                                <td>Rs {{ number_format($payment, 2) }}</td>
+                                <td>Rs {{ number_format($runningBalance, 2) }}</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="empty">No attendance records found</td>
+                                <td colspan="9" class="empty">No attendance records found</td>
                             </tr>
                         @endforelse
                     </tbody>
