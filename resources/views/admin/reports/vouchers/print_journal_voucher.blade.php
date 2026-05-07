@@ -53,17 +53,24 @@
     </style>
 </head>
 <body>
+    @php
+        $voucherType = $voucher->type ?: 'JV';
+        $voucherTitle = $voucherType === 'SV' ? 'General Sales Voucher' : 'General Journal Voucher';
+        $voucherDisplayNumber = $voucherType === 'SV'
+            ? (int) $voucher->voucher_number
+            : get_jv_number($voucher->voucher_number);
+    @endphp
     <div class="voucher-container">
         <!-- Voucher Header -->
         <div class="voucher-header">
-            <h2>Journal Voucher</h2>
+            <h2>{{ $voucherTitle }}</h2>
         </div>
 
         <!-- Voucher Details in 4 Columns -->
         <table class="table table-bordered voucher-details">
             <tr>
                 <th>Voucher No.</th>
-                <td>JV-{{get_jv_number($voucher->voucher_number)}}</td>
+                <td>{{ $voucherType }}-{{ $voucherDisplayNumber }}</td>
                 <th>Date</th>
                 <td>{{ $voucher->date }}</td>
             </tr>
@@ -88,21 +95,25 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($voucher->details as $detail)
+                @forelse($voucher->details as $detail)
                     <tr>
                         <td>{{ $detail->account->headAccounting->name ?? 'N/A' }}</td>
                         <td>{{ $detail->account->subheadAccounting->name ?? 'N/A' }}</td>
                         <td>{{ $detail->description }}</td>
-                        <td>{{ number_format($detail->credit, 2) }}</td>
                         <td>{{ number_format($detail->debit, 2) }}</td>
+                        <td>{{ number_format($detail->credit, 2) }}</td>
                     </tr>
-                @endforeach
+                @empty
+                    <tr>
+                        <td colspan="5" class="text-center">No voucher details available.</td>
+                    </tr>
+                @endforelse
             </tbody>
             <tfoot>
                 <tr>
                     <td colspan="3" class="text-end"><strong>Total:</strong></td>
-                    <td><strong>{{ number_format($voucher->total_credit, 2) }}</strong></td>
                     <td><strong>{{ number_format($voucher->total_debit, 2) }}</strong></td>
+                    <td><strong>{{ number_format($voucher->total_credit, 2) }}</strong></td>
                 </tr>
             </tfoot>
         </table>
