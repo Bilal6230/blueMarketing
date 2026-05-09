@@ -939,7 +939,7 @@
 	                            </tbody>
 	                        </table>
 	                    </div>
-	                    <div class="table-scroll max-height">
+	                    <div class="table-scroll" style="max-height: 300px;">
 	                        <table id="siteReportTable table">
 	                            <thead>
 	                                <tr>
