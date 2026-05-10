@@ -658,8 +658,6 @@ class BookingController extends Controller
             'debit' => $this->pvMoneyToDecimal2($payload['amount_in'] ?? 0),
             'credit' => $this->pvMoneyToDecimal2($payload['amount_out'] ?? 0),
             'description' => trim((string) ($payload['description'] ?? 'Sales Voucher')),
-        ], [
-            'created_by' => Auth::id(),
         ]);
 
         $this->syncSalesVoucherTotals($voucher);
@@ -1793,6 +1791,7 @@ class BookingController extends Controller
             'tdate' => $request->input('tdate'),
             'status' => $request->input('status'),
         ];
+        $x['nextVoucherNumber'] = $this->getNextBookingVoucherNumberForProject((int) $selectedProjectId, 'PPR');
 
         return view('admin.booking.receive', $x);
     }
@@ -1972,6 +1971,8 @@ class BookingController extends Controller
                     DB::transaction(function () use ($request, $customer_id) {
                         $payment_type = $request->input('payment_type');
                         $isPendingBankPayment = in_array((int) $payment_type, [2, 3], true);
+                        $projectId = (int) $request->input('project_id');
+                        $displayVoucherNumber = $this->allocateNextBookingVoucherNumber($projectId, 'PPR');
                         if ($payment_type == 1) {
                             $t_number = $bank_id = null;
                         } else {
@@ -1984,7 +1985,7 @@ class BookingController extends Controller
                             'transaction_type' => 'PPR',
                             'type_id' => get_new_typeID('PPR'),
                             'reference' => $request->input('reference'),
-                            'project_id' => $request->input('project_id'),
+                            'project_id' => $projectId,
                             'plot_id' => $request->input('plot_id'),
                             'amount_in' => 0,
                             'amount_out' => str_replace(',', '', $request->input('amount')),
@@ -2010,7 +2011,7 @@ class BookingController extends Controller
                         }
 
                         $ledgerType = 'PPR';
-                        $voucherNumber = getVocuherNumber($ledgerType);
+                        $voucherNumber = $displayVoucherNumber;
                         $lastId = getLastLedgerIdByType($ledgerType);
 
                         $ledger = null;
@@ -2033,7 +2034,7 @@ class BookingController extends Controller
                             ]);
                         }
 
-                        $this->syncBookingVoucherRecord($customerLedger, $ledger);
+                        $this->syncBookingVoucherRecord($customerLedger, $ledger, $displayVoucherNumber > 0 ? $displayVoucherNumber : null);
                     });
 
 
@@ -2589,7 +2590,65 @@ class BookingController extends Controller
         return view('admin.booking.print_receive', $x);
     }
 
-    private function syncBookingVoucherRecord(CustomerLedger $customerLedger, ?Ledger $ledger = null): BookingVoucher
+    private function getNextBookingVoucherNumberForProject(int $projectId, string $voucherSeries = 'PPR'): int
+    {
+        return $this->resolveNextBookingVoucherNumber($projectId, $voucherSeries, false);
+    }
+
+    private function allocateNextBookingVoucherNumber(int $projectId, string $voucherSeries = 'PPR'): int
+    {
+        return $this->resolveNextBookingVoucherNumber($projectId, $voucherSeries, true);
+    }
+
+    private function resolveNextBookingVoucherNumber(int $projectId, string $voucherSeries, bool $lockRows): int
+    {
+        $bookingVoucherQuery = BookingVoucher::query()
+            ->where('project_id', $projectId)
+            ->where('voucher_series', $voucherSeries)
+            ->whereNotNull('voucher_number')
+            ->where('voucher_number', '>', 0);
+
+        if ($lockRows) {
+            $bookingVoucherQuery->lockForUpdate();
+        }
+
+        $bookingVoucherNumbers = $bookingVoucherQuery->pluck('voucher_number');
+
+        $ledgerQuery = Ledger::query()
+            ->join('project_head_subheads', 'project_head_subheads.id', '=', 'ledgers.project_head_subheads_id')
+            ->where('project_head_subheads.project_id', $projectId)
+            ->where('ledgers.type', $voucherSeries)
+            ->whereNotNull('ledgers.voucher_number')
+            ->where('ledgers.voucher_number', '>', 0);
+
+        if ($lockRows) {
+            $ledgerQuery->lockForUpdate();
+        }
+
+        $ledgerNumbers = $ledgerQuery->pluck('ledgers.voucher_number');
+
+        $numbers = $bookingVoucherNumbers->merge($ledgerNumbers)
+            ->map(fn($number) => (int) $number)
+            ->filter(fn(int $number) => $number > 0)
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        $nextNumber = 1;
+
+        foreach ($numbers as $number) {
+            if ($number !== $nextNumber) {
+                break;
+            }
+
+            $nextNumber++;
+        }
+
+        return $nextNumber;
+    }
+
+    private function syncBookingVoucherRecord(CustomerLedger $customerLedger, ?Ledger $ledger = null, ?int $fallbackVoucherNumber = null): BookingVoucher
     {
         $ledger = $ledger ?: $customerLedger->ledger;
         $bookingId = Booking::where('project_id', $customerLedger->project_id)
@@ -2608,7 +2667,7 @@ class BookingController extends Controller
                 'customer_id' => $customerLedger->customer_id,
                 'plot_id' => $customerLedger->plot_id,
                 'voucher_series' => $ledger?->type ?? $customerLedger->transaction_type,
-                'voucher_number' => $ledger?->voucher_number,
+                'voucher_number' => $ledger?->voucher_number ?? $fallbackVoucherNumber ?? $customerLedger->type_id,
                 'slip_reference' => $customerLedger->reference,
                 'payment_type' => $customerLedger->payment_type,
                 'amount' => $customerLedger->amount_out,

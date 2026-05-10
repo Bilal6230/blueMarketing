@@ -118,16 +118,32 @@
         const voucherDataUrl = @json($type === 'SV' ? route('sales.voucher.index') : route('journal.voucher.index'));
         const showActions = @json($showActions);
         const isSalesVoucherPage = @json($type === 'SV');
+        let appliedFilters = {
+            filter_voucher_number: '',
+            filter_date: '',
+            filter_amount_min: '',
+            filter_amount_max: '',
+            filter_reference: ''
+        };
         let journalTable;
 
         $(document).ready(function() {
-            if (isSalesVoucherPage) {
-                $('#filter_date').val('');
-            }
+            $('#filter_voucher_number').val('');
+            $('#filter_date').val('');
+            $('#filter_amount_min').val('');
+            $('#filter_amount_max').val('');
+            $('#filter_reference').val('');
 
             journalTable = renderDataTable();
 
             $('#applyFilters').on('click', function() {
+                appliedFilters = {
+                    filter_voucher_number: $('#filter_voucher_number').val(),
+                    filter_date: $('#filter_date').val(),
+                    filter_amount_min: $('#filter_amount_min').val(),
+                    filter_amount_max: $('#filter_amount_max').val(),
+                    filter_reference: $('#filter_reference').val()
+                };
                 journalTable.ajax.reload();
             });
 
@@ -137,11 +153,14 @@
                 $('#filter_amount_min').val('');
                 $('#filter_amount_max').val('');
                 $('#filter_reference').val('');
+                appliedFilters = {
+                    filter_voucher_number: '',
+                    filter_date: '',
+                    filter_amount_min: '',
+                    filter_amount_max: '',
+                    filter_reference: ''
+                };
                 journalTable.search('').ajax.reload();
-            });
-
-            $('#filter_date, #filter_voucher_number, #filter_reference, #filter_amount_min, #filter_amount_max').on('change', function() {
-                journalTable.ajax.reload();
             });
         });
 
@@ -164,12 +183,12 @@
                     url: voucherDataUrl,
                     type: 'GET',
                     data: function(d) {
-                        d.filter_voucher_number = $('#filter_voucher_number').val();
-                        d.filter_amount_min = $('#filter_amount_min').val();
-                        d.filter_amount_max = $('#filter_amount_max').val();
-                        d.filter_reference = $('#filter_reference').val();
+                        d.filter_voucher_number = appliedFilters.filter_voucher_number;
+                        d.filter_amount_min = appliedFilters.filter_amount_min;
+                        d.filter_amount_max = appliedFilters.filter_amount_max;
+                        d.filter_reference = appliedFilters.filter_reference;
 
-                        const filterDate = $('#filter_date').val();
+                        const filterDate = appliedFilters.filter_date;
                         if (filterDate) {
                             d.filter_date = filterDate;
                         }

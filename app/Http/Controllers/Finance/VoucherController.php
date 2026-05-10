@@ -804,6 +804,7 @@ class VoucherController extends Controller
             'customer_list:id,first_name,last_name,phone_number',
             'plot_list:id,name,type',
             'ledger.projectHeadSubhead.subheadAccounting:id,name',
+            'bookingVoucher:id,customer_ledger_id,voucher_series,voucher_number',
         ])
             ->where('project_id', $selectedProjectId)
             ->where('is_active', 1)
@@ -819,6 +820,8 @@ class VoucherController extends Controller
             ->map(function (CustomerLedger $item) {
                 $ledgerType = trim((string) optional($item->ledger)->type);
                 $ledgerVoucherNumber = trim((string) optional($item->ledger)->voucher_number);
+                $bookingVoucherSeries = trim((string) optional($item->bookingVoucher)->voucher_series);
+                $bookingVoucherNumber = trim((string) optional($item->bookingVoucher)->voucher_number);
                 $transactionType = trim((string) $item->transaction_type);
                 $typeId = trim((string) ($item->type_id ?? ''));
                 $reference = trim((string) ($item->reference ?? ''));
@@ -826,6 +829,8 @@ class VoucherController extends Controller
                 $voucherNumberDisplay = null;
                 if ($ledgerType !== '' && $ledgerVoucherNumber !== '') {
                     $voucherNumberDisplay = $ledgerType . '-' . $ledgerVoucherNumber;
+                } elseif ($transactionType === 'PPR' && $bookingVoucherSeries !== '' && $bookingVoucherNumber !== '') {
+                    $voucherNumberDisplay = $bookingVoucherSeries . '-' . $bookingVoucherNumber;
                 } elseif (in_array($transactionType, ['CR', 'CP'], true) && $typeId !== '') {
                     $voucherNumberDisplay = $transactionType . '-' . $typeId;
                 } elseif ($reference !== '' && preg_match('/[A-Za-z]/', $reference)) {
