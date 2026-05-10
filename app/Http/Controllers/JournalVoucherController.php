@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class JournalVoucherController extends Controller
 {
@@ -68,8 +69,9 @@ class JournalVoucherController extends Controller
             $query->where('reference', 'like', '%' . $request->filter_reference . '%');
         }
 
-        if ($request->has('filter_date') && $request->filter_date) {
-            $query->whereDate('date', '=', $request->filter_date); // Apply date filter if provided
+        $filterDate = $this->normalizeFilterDate($request->input('filter_date'));
+        if ($filterDate !== null) {
+            $query->whereDate('date', '=', $filterDate);
         }
 
         $searchValue = trim((string) $request->input('search.value', ''));
@@ -175,8 +177,9 @@ class JournalVoucherController extends Controller
             $query->where('reference', 'like', '%' . $request->filter_reference . '%');
         }
 
-        if ($request->has('filter_date') && $request->filter_date) {
-            $query->whereDate('date', '=', $request->filter_date); // Apply date filter if provided
+        $filterDate = $this->normalizeFilterDate($request->input('filter_date'));
+        if ($filterDate !== null) {
+            $query->whereDate('date', '=', $filterDate);
         }
 
         $searchValue = trim((string) $request->input('search.value', ''));
@@ -260,6 +263,31 @@ class JournalVoucherController extends Controller
         }
 
         return ctype_digit($normalized) ? $normalized : null;
+    }
+
+    private function normalizeFilterDate(?string $value): ?string
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        foreach (['Y-m-d', 'm/d/Y', 'd/m/Y'] as $format) {
+            try {
+                $date = Carbon::createFromFormat($format, $value);
+                if ($date !== false) {
+                    return $date->format('Y-m-d');
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+
+        try {
+            return Carbon::parse($value)->format('Y-m-d');
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
 
