@@ -47,7 +47,7 @@
                                                                     <input type="text" value="deposit" name="action"
                                                                         hidden />
                                                                     <input type="text" class="form-control " name="voucher"
-                                                                        value="{{ $type }}-{{ getVocuherNumber($type) }}"
+                                                                        value="{{ old('voucher', $type . '-' . ($nextVoucherNumber ?? getVocuherNumber($type))) }}"
                                                                         autocomplete="off" readonly>
 
                                                                 </div>
@@ -416,12 +416,11 @@
 	                                                        $fallbackPlotId = optional($ledgerProjectHeadSubhead)->plot_id;
                                                         $customer = $i->customer ?: optional($customerLedger)->customer_list;
                                                         $plot = $i->plot ?: optional($customerLedger)->plot_list;
-                                                        $project = $i->project ?: optional($customerLedger)->project_list;
                                                         $customerName = trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? ''));
                                                         if ($customerName === '') {
                                                             $customerName = $ledgerSubhead->name ?? '—';
                                                         }
-                                                        $plotSource = $i->plot_list ?: $ledgerPlot;
+                                                        $plotSource = $plot ?: $ledgerPlot;
                                                         $plotPrefix = ($plotSource->type ?? null) == 1 ? 'R-' : (($plotSource->type ?? null) == 2 ? 'C-' : '');
                                                         $plotName = $plotSource ? $plotPrefix . $plotSource->name : '—';
                                                         $referenceValue = $i->reference
@@ -446,6 +445,20 @@
 	                                                            ? Setting::getPlotTypeShort($plotSource->type) . '-' . $plotSource->name
 	                                                            : ($plotLabels[$fallbackPlotId] ?? '—');
 	                                                        $i->reference = $referenceValue;
+                                                        $plotSource = $plot ?: $ledgerPlot;
+                                                        $plotName = ($plotSource && !empty($plotSource->name))
+                                                            ? Setting::getPlotTypeShort($plotSource->type) . '-' . $plotSource->name
+                                                            : ($plotLabels[$fallbackPlotId] ?? '-');
+                                                        $voucherNumber = !empty($i->voucher_series) && !empty($i->voucher_number)
+                                                            ? $i->voucher_series . '-' . $i->voucher_number
+                                                            : ((optional($ledger)->type && (optional($ledger)->voucher_number ?? optional($ledger)->voucher))
+                                                                ? optional($ledger)->type . '-' . (optional($ledger)->voucher_number ?? optional($ledger)->voucher)
+                                                                : '-');
+                                                        $referenceValue = $i->slip_reference
+                                                            ?? optional($customerLedger)->reference
+                                                            ?? optional($ledger)->reference
+                                                            ?? '-';
+                                                        $i->reference = $referenceValue;
                                                     @endphp
                                                     <tr>
                                                         <td>{{ $loop->iteration }}</td>

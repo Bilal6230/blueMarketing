@@ -31,7 +31,12 @@ class JournalVoucherController extends Controller
         $selectedProjectId = getSelectedTown();
 
         // Build base query for vouchers
-        $baseQuery = JournalVoucher::latest()->where('project_id', $selectedProjectId)->where('type', 'JV');
+        $baseQuery = JournalVoucher::latest()
+            ->where('project_id', $selectedProjectId)
+            ->where(function ($query) {
+                $query->where('type', 'JV')
+                    ->orWhereNull('type');
+            });
         $query = clone $baseQuery;
 
         // Apply filters if they exist
@@ -319,6 +324,7 @@ class JournalVoucherController extends Controller
         // Create Journal Voucher Record
         $journalVoucher = JournalVoucher::create([
             'voucher_number' => $lastVoucherId + 1,
+            'type' => 'JV',
             'reference' => $request->reference,
             'date' => $request->date,
             'description' => $request->description,
@@ -461,6 +467,7 @@ class JournalVoucherController extends Controller
             // Update Journal Voucher Record
             $journalVoucher = JournalVoucher::findOrFail($id);
             $journalVoucher->update([
+                'type' => 'JV',
                 'reference' => $request->reference,
                 'date' => $request->date,
                 'description' => $request->description,
