@@ -526,28 +526,9 @@
     <script>
         let isDateChanged = false;
         document.addEventListener('DOMContentLoaded', () => {
-            document.querySelectorAll('.js-tomselect').forEach((el) => {
-                if (el.tomselect) return; // prevent double init
-
-                new TomSelect(el, {
-                    allowEmptyOption: false, // keep empty option
-                    create: false, // no free typing unless you want it
-                    maxItems: el.multiple ? null : 1,
-                    closeAfterSelect: !el.multiple,
-                    placeholder: el.getAttribute('placeholder') || '',
-                    render: {
-                        option_create: null // disable "Create" in dropdown
-                    }
-                });
-
-                // Ensure no option is selected by default
-                el.tomselect.clear(true);
-
-                // Focus input on click so user can type immediately
-                el.tomselect.on('dropdown_open', () => {
-                    el.tomselect.focus();
-                });
-            });
+            // TomSelect instances for this page are initialized by initTomSelects()
+            // in the voucher tab manager below. Avoid a second init here because it
+            // breaks the dependent account/subaccount change flow.
         });
         $(document).ready(function() {
             $(document).on('click', '.btn-view-changes', function() {
@@ -2032,6 +2013,7 @@
                     return;
                 }
                 $(TS_SEL).each(function() {
+                    const selectEl = this;
                     if (this.tomselect) {
                         try {
                             this.tomselect.destroy();
@@ -2043,8 +2025,7 @@
                         maxItems: 1,
                         allowEmptyOption: true,
                         onChange: function () {
-                            $(this.input).trigger('change'); // TomSelect input
-                            // or: $(this.$input).trigger('change'); depending on TS version
+                            $(selectEl).trigger('change');
                         }
                     });
                     const current = $(this).val();
