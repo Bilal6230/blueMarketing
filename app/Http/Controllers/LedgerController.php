@@ -116,183 +116,243 @@ class LedgerController extends Controller
             ], 422);
         }
 
-        DB::beginTransaction();
         try {
-            $pendingCustomerLedger = null;
-
-            if ($paymentType === 1) {
-                $t_number = $bank_id = null;
-            } else {
-                $t_number = $request->input('t_number');
-                $bank_id = $request->input('bank_id');
-            }
-
-            if ($isCashOutPendingClearance) {
-                $pendingCustomerLedger = CustomerLedger::where('project_id', $selectedProjectId)
-                    ->where('id', $selectedPendingPaymentId)
-                    ->where('payment_type', $paymentType)
-                    ->where('passing_status', 0)
-                    ->where('is_active', 1)
-                    ->lockForUpdate()
-                    ->first();
-
-                if (!$pendingCustomerLedger) {
-                    DB::rollBack();
-                    return response()->json([
-                        'status' => 'error',
-                        'error_key' => 'invalid_pending_payment',
-                        'message' => 'Selected pending payment is no longer available. Please refresh and try again.'
-                    ], 422);
-                }
-
-                $pendingAmount = $this->normalizeVoucherAmount(
-                    ($pendingCustomerLedger->amount_out > 0) ? $pendingCustomerLedger->amount_out : $pendingCustomerLedger->amount_in
-                );
-
-                if (!$this->voucherAmountsMatch($cleanAmount, $pendingAmount)) {
-                    DB::rollBack();
-                    return response()->json([
-                        'status' => 'error',
-                        'error_key' => 'pending_amount_mismatch',
-                        'message' => 'Amount must match the selected pending voucher.'
-                    ], 422);
-                }
-            }
-
-            $customerID = $projectHeadSubhead?->customer_id;
-            $plotID = $projectHeadSubhead?->plot_id;
-            $bankName = $bank_id ? getBankNameById($bank_id) : null;
-            $isPendingCashInBankPayment = in_array($paymentType, [2, 3], true) && $effectiveVoucherType === 'CR';
-
-            $customerLedger = CustomerLedger::create([
-                'transaction_type' => $effectiveVoucherType,
-                'type_id' => get_new_typeID($effectiveVoucherType),
-                'reference' => $request->input('reference'),
-                'project_id' => $selectedProjectId ?? null,
-                'customer_id' => $customerID ?? null,
-                'plot_id' => $plotID ?? null,
-                'amount_in' => $amount_in,
-                'amount_out' => $amount_out,
-                'description' => $request->input('detail'),
-                'date' => $request->input('date'),
-                'payment_type' => $paymentType,
-                't_number' => $t_number,
-                'bank_id' => $bank_id,
-                'is_active' => 1,
-                'is_approve' => 0,
-                'passing_date' => $request->input('passing_date'),
-                'passing_status' => $isPendingCashInBankPayment ? 0 : null,
-            ]);
-
-            if ($t_number != null) {
-                $check_slip = $customerLedger->transaction_type . '-' . $customerLedger->reference;
-
-                if ($isPendingCashInBankPayment) {
-                    $customerLedger->update([
-                        'passing_status' => 0,
-                        'note' => null,
-                        'bank_post_at' => null,
-                    ]);
-                } else {
-                    $passing_status = $effectiveVoucherType === 'CP' ? 1 : 0;
-                    $customerLedger->update([
-                        'passing_status' => $passing_status,
-                        'note' => '(' . $check_slip . ') ' . $request->detail,
-                        'bank_post_at' => $request->passing_date,
-                    ]);
-
-                    $customerLedger->addCheckHistory([
-                        'id' => $customerLedger->id,
-                        'check_number' => $customerLedger->t_number,
-                        'passing_date' => $request->passing_date,
-                        'passing_status' => '1',
-                        'description_note' => '(' . $check_slip . ') ' . $request->detail,
-                        'bank_name' => $bankName, // Add bank name to history
-                        'credit_account_id' => $projectHeadSubhead->id, // Add credit account ID to history
-                    ]);
-                }
-            }
-
-            while (
-                Ledger::where('type', $effectiveVoucherType)
-                    ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
-                    ->where('is_active', 1)
-                    ->where('voucher_number', $voucherNumber)
-                    ->lockForUpdate()
-                    ->exists()
+            $responsePayload = DB::transaction(function () use (
+                $request,
+                $paymentType,
+                $selectedProjectId,
+                $selectedPendingPaymentId,
+                $pendingStatus,
+                $cleanAmount,
+                $projectHeadSubhead,
+                $effectiveVoucherType,
+                $voucherNumber,
+                $amount_in,
+                $amount_out,
+                $isCashOutPendingClearance
             ) {
-                $voucherNumber++;
-            }
+                if ($paymentType === 1) {
+                    $t_number = $bank_id = null;
+                } else {
+                    $t_number = $request->input('t_number');
+                    $bank_id = $request->input('bank_id');
+                }
 
-            $lastId = getLastLedgerIdByType($effectiveVoucherType);
-            $detail = $request->input('detail');
-            if ($paymentType === 1 && $effectiveVoucherType === 'CR') {
-                $detail = $request->input('detail') . '(Cash Payment)';
-            } elseif ($paymentType === 2 && $effectiveVoucherType === 'CR') {
-                $detail = $request->input('detail') . ' (Bank: ' . $bankName . ' Account No: ' . $customerLedger->t_number . ' Passing Date: ' . $request->passing_date . ')';
-            } elseif ($paymentType === 3 && $effectiveVoucherType === 'CR') {
-                $detail = $request->input('detail') . ' (Bank: ' . $bankName . ' cheque No: ' . $customerLedger->t_number . ' Passing Date: ' . $request->passing_date . ')';
-            }
+                if ($isCashOutPendingClearance) {
+                    $pendingCustomerLedger = CustomerLedger::where('project_id', $selectedProjectId)
+                        ->where('id', $selectedPendingPaymentId)
+                        ->where('payment_type', $paymentType)
+                        ->where('passing_status', 0)
+                        ->where('is_active', 1)
+                        ->lockForUpdate()
+                        ->first();
 
-            $data = Ledger::create([
-                'customer_ledger_id' => $customerLedger->id,
-                'voucher_number' => $voucherNumber,
-                'type' => $effectiveVoucherType,
-                'type_id' => $lastId + 1,
-                'project_head_subheads_id' => $projectHeadSubhead->id,
-                'reference' => $request->reference,
-                'amount_in' => $amount_in,
-                'amount_out' => $amount_out,
-                'is_active' => 1,
-                'date' => $request->date,
-                'detail' => $detail,
-                'update_by' => Auth::user()->id,
-                'create_by' => Auth::user()->id,
-                'status' => 0,
-            ]);
+                    if (!$pendingCustomerLedger || !in_array((string) $pendingCustomerLedger->transaction_type, ['CR', 'PPR'], true)) {
+                        throw new \RuntimeException('Selected pending payment is no longer available. Please refresh and try again.');
+                    }
 
-            if ($isCashOutPendingClearance) {
-                $pendingBankName = $pendingCustomerLedger->bank_id ? getBankNameById($pendingCustomerLedger->bank_id) : null;
-                $clearedByVoucher = $effectiveVoucherType . '-' . $voucherNumber;
-                $pendingCustomerLedger->update([
-                    'passing_status' => $pendingStatus,
-                    'note' => $request->input('detail'),
-                    'bank_post_at' => $request->input('passing_date'),
-                ]);
+                    $pendingAmount = $this->normalizeVoucherAmount(
+                        ($pendingCustomerLedger->amount_out > 0) ? $pendingCustomerLedger->amount_out : $pendingCustomerLedger->amount_in
+                    );
 
-                $pendingCustomerLedger->addCheckHistory([
-                    'id' => $pendingCustomerLedger->id,
-                    'check_number' => $pendingCustomerLedger->t_number,
+                    if (!$this->voucherAmountsMatch($cleanAmount, $pendingAmount)) {
+                        throw new \RuntimeException('Amount must match the selected pending voucher.');
+                    }
+
+                    $note = $request->input('detail');
+                    $pendingBankName = $pendingCustomerLedger->bank_id ? getBankNameById($pendingCustomerLedger->bank_id) : null;
+                    $clearanceReference = 'BANK_CLEARANCE#' . $pendingCustomerLedger->id;
+
+                    $pendingCustomerLedger->update([
+                        'passing_status' => $pendingStatus,
+                        'note' => $note,
+                        'bank_post_at' => $request->input('passing_date'),
+                    ]);
+
+                    $pendingCustomerLedger->addCheckHistory([
+                        'id' => $pendingCustomerLedger->id,
+                        'check_number' => $pendingCustomerLedger->t_number,
+                        'passing_date' => $request->input('passing_date'),
+                        'passing_status' => $pendingStatus,
+                        'description_note' => $note,
+                        'bank_name' => $pendingBankName,
+                        'credit_account_id' => $projectHeadSubhead->id,
+                        'cleared_by_voucher' => null,
+                        'updated_by' => Auth::id(),
+                    ]);
+
+                    $bankClearanceLedger = null;
+                    if ($pendingStatus === 1) {
+                        $bankClearanceLedger = Ledger::where('customer_ledger_id', $pendingCustomerLedger->id)
+                            ->where('type', 'BR')
+                            ->where('reference', $clearanceReference)
+                            ->lockForUpdate()
+                            ->first();
+
+                        if (!$bankClearanceLedger) {
+                            $resolvedAmount = (float) (($pendingCustomerLedger->amount_out > 0)
+                                ? $pendingCustomerLedger->amount_out
+                                : $pendingCustomerLedger->amount_in);
+
+                            $bankClearanceLedger = Ledger::create([
+                                'customer_ledger_id' => $pendingCustomerLedger->id,
+                                'voucher_number' => getVocuherNumber('BR'),
+                                'type' => 'BR',
+                                'type_id' => ((int) getLastLedgerIdByType('BR')) + 1,
+                                'project_head_subheads_id' => $projectHeadSubhead->id,
+                                'reference' => $clearanceReference,
+                                'amount_in' => 0.00,
+                                'amount_out' => $resolvedAmount,
+                                'is_active' => 1,
+                                'date' => $request->input('passing_date') ?: now()->toDateString(),
+                                'detail' => $note,
+                                'update_by' => Auth::id(),
+                                'create_by' => Auth::id(),
+                                'status' => 0,
+                            ]);
+                        }
+                    }
+
+                    session(['last_submit_date' => $request->date]);
+
+                    if ($request->id) {
+                        DraftLedger::find($request->input('id'))?->delete();
+                    }
+
+                    return [
+                        'status' => 'success',
+                        'flow_type' => 'pending_payment_status_updated',
+                        'message' => 'Payment status updated successfully.',
+                        'data' => $bankClearanceLedger,
+                        'customer_ledger_id' => $pendingCustomerLedger->id,
+                        'voucher_number' => $bankClearanceLedger?->voucher_number,
+                        'voucher_display' => $bankClearanceLedger ? ('BR-' . $bankClearanceLedger->voucher_number) : null,
+                    ];
+                }
+
+                $customerID = $projectHeadSubhead?->customer_id;
+                $plotID = $projectHeadSubhead?->plot_id;
+                $bankName = $bank_id ? getBankNameById($bank_id) : null;
+                $isPendingCashInBankPayment = in_array($paymentType, [2, 3], true) && $effectiveVoucherType === 'CR';
+
+                $customerLedger = CustomerLedger::create([
+                    'transaction_type' => $effectiveVoucherType,
+                    'type_id' => get_new_typeID($effectiveVoucherType),
+                    'reference' => $request->input('reference'),
+                    'project_id' => $selectedProjectId ?? null,
+                    'customer_id' => $customerID ?? null,
+                    'plot_id' => $plotID ?? null,
+                    'amount_in' => $amount_in,
+                    'amount_out' => $amount_out,
+                    'description' => $request->input('detail'),
+                    'date' => $request->input('date'),
+                    'payment_type' => $paymentType,
+                    't_number' => $t_number,
+                    'bank_id' => $bank_id,
+                    'is_active' => 1,
+                    'is_approve' => 0,
                     'passing_date' => $request->input('passing_date'),
-                    'passing_status' => $pendingStatus,
-                    'description_note' => $request->input('detail'),
-                    'bank_name' => $pendingBankName,
-                    'credit_account_id' => $projectHeadSubhead->id,
-                    'cleared_by_voucher' => $clearedByVoucher,
-                    'updated_by' => Auth::id(),
+                    'passing_status' => $isPendingCashInBankPayment ? 0 : null,
                 ]);
-            }
-            session(['last_submit_date' => $request->date]);
 
-            if ($request->id) {
-                DraftLedger::find($request->input('id'))->delete();
-            }
-            DB::commit();
-            $flowType = $isPendingCashInBankPayment ? 'posted_pending_clearance' : 'posted';
-            $successMessage = $isPendingCashInBankPayment
-                ? 'Voucher saved successfully. Payment status is pending clearance.'
-                : 'Data saved successfully.';
+                if ($t_number != null) {
+                    $check_slip = $customerLedger->transaction_type . '-' . $customerLedger->reference;
+
+                    if ($isPendingCashInBankPayment) {
+                        $customerLedger->update([
+                            'passing_status' => 0,
+                            'note' => null,
+                            'bank_post_at' => null,
+                        ]);
+                    } else {
+                        $passing_status = $effectiveVoucherType === 'CP' ? 1 : 0;
+                        $customerLedger->update([
+                            'passing_status' => $passing_status,
+                            'note' => '(' . $check_slip . ') ' . $request->detail,
+                            'bank_post_at' => $request->passing_date,
+                        ]);
+
+                        $customerLedger->addCheckHistory([
+                            'id' => $customerLedger->id,
+                            'check_number' => $customerLedger->t_number,
+                            'passing_date' => $request->passing_date,
+                            'passing_status' => '1',
+                            'description_note' => '(' . $check_slip . ') ' . $request->detail,
+                            'bank_name' => $bankName,
+                            'credit_account_id' => $projectHeadSubhead->id,
+                        ]);
+                    }
+                }
+
+                $resolvedVoucherNumber = $voucherNumber;
+                while (
+                    Ledger::where('type', $effectiveVoucherType)
+                        ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
+                        ->where('is_active', 1)
+                        ->where('voucher_number', $resolvedVoucherNumber)
+                        ->lockForUpdate()
+                        ->exists()
+                ) {
+                    $resolvedVoucherNumber++;
+                }
+
+                $lastId = getLastLedgerIdByType($effectiveVoucherType);
+                $detail = $request->input('detail');
+                if ($paymentType === 1 && $effectiveVoucherType === 'CR') {
+                    $detail = $request->input('detail') . '(Cash Payment)';
+                } elseif ($paymentType === 2 && $effectiveVoucherType === 'CR') {
+                    $detail = $request->input('detail') . ' (Bank: ' . $bankName . ' Account No: ' . $customerLedger->t_number . ' Passing Date: ' . $request->passing_date . ')';
+                } elseif ($paymentType === 3 && $effectiveVoucherType === 'CR') {
+                    $detail = $request->input('detail') . ' (Bank: ' . $bankName . ' cheque No: ' . $customerLedger->t_number . ' Passing Date: ' . $request->passing_date . ')';
+                }
+
+                $data = Ledger::create([
+                    'customer_ledger_id' => $customerLedger->id,
+                    'voucher_number' => $resolvedVoucherNumber,
+                    'type' => $effectiveVoucherType,
+                    'type_id' => $lastId + 1,
+                    'project_head_subheads_id' => $projectHeadSubhead->id,
+                    'reference' => $request->reference,
+                    'amount_in' => $amount_in,
+                    'amount_out' => $amount_out,
+                    'is_active' => 1,
+                    'date' => $request->date,
+                    'detail' => $detail,
+                    'update_by' => Auth::user()->id,
+                    'create_by' => Auth::user()->id,
+                    'status' => 0,
+                ]);
+
+                session(['last_submit_date' => $request->date]);
+
+                if ($request->id) {
+                    DraftLedger::find($request->input('id'))?->delete();
+                }
+
+                $flowType = $isPendingCashInBankPayment ? 'posted_pending_clearance' : 'posted';
+                $successMessage = $isPendingCashInBankPayment
+                    ? 'Voucher saved successfully. Payment status is pending clearance.'
+                    : 'Data saved successfully.';
+
+                return [
+                    'status' => 'success',
+                    'flow_type' => $flowType,
+                    'message' => $successMessage,
+                    'data' => $data,
+                    'customer_ledger_id' => $customerLedger->id,
+                    'voucher_number' => $resolvedVoucherNumber,
+                    'voucher_display' => $effectiveVoucherType . '-' . $resolvedVoucherNumber,
+                ];
+            });
+
+            return response()->json($responsePayload, 200);
+        } catch (\RuntimeException $e) {
             return response()->json([
-                'status' => 'success',
-                'flow_type' => $flowType,
-                'message' => $successMessage,
-                'data' => $data,
-                'customer_ledger_id' => $customerLedger->id,
-                'voucher_number' => $voucherNumber,
-                'voucher_display' => $effectiveVoucherType . '-' . $voucherNumber,
-            ], 200);
+                'status' => 'error',
+                'error_key' => 'pending_payment_invalid_state',
+                'message' => $e->getMessage(),
+            ], 422);
         } catch (\Throwable $th) {
-            DB::rollBack();
             Log::error('voucher_store_failed', [
                 'user_id' => Auth::id(),
                 'project_id' => getSelectedTown(),

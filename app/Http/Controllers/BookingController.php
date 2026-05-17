@@ -2014,8 +2014,11 @@ class BookingController extends Controller
                         $voucherNumber = $displayVoucherNumber;
                         $lastId = getLastLedgerIdByType($ledgerType);
 
-                        $ledger = null;
-                        if (!$isPendingBankPayment) {
+                        $ledger = Ledger::where('customer_ledger_id', $customerLedger->id)
+                            ->where('type', $ledgerType)
+                            ->first();
+
+                        if (!$ledger) {
                             $ledger = Ledger::create([
                                 'customer_ledger_id' => $customerLedger->id,
                                 'type' => $ledgerType,

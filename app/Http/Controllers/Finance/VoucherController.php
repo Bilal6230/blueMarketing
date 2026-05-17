@@ -809,6 +809,7 @@ class VoucherController extends Controller
             ->where('project_id', $selectedProjectId)
             ->where('is_active', 1)
             ->whereIn('payment_type', [2, 3])
+            ->whereIn('transaction_type', ['CR', 'PPR'])
             ->where('passing_status', 0)
             ->orderByDesc('id');
 
@@ -858,6 +859,8 @@ class VoucherController extends Controller
                     'payment_type' => (int) $item->payment_type,
                     'child_account' => optional(optional($item->ledger)->projectHeadSubhead)->subheadAccounting?->name,
                     'pending_days' => $item->date ? now()->diffInDays(\Carbon\Carbon::parse($item->date)) : null,
+                    'ledger_exists' => (bool) $item->ledger,
+                    'ledger_id' => $item->ledger?->id,
                 ];
             });
 

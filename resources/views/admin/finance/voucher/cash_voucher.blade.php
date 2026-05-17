@@ -277,12 +277,12 @@
                                                         <div class="col-12 mt-3" id="pendingPaymentsSection"
                                                             style="display: none;">
                                                             <div class="card border">
-                                                                <div class="card-header py-2">
-                                                                    <strong id="pendingPanelTitle">Pending Online Payments</strong>
+                                                            <div class="card-header py-2">
+                                                                    <strong id="pendingPanelTitle">Pending Online/Check Clearance</strong>
                                                                 </div>
                                                                 <div class="card-body p-2">
                                                                     <div class="alert alert-info py-2 mb-2">
-                                                                        Select a pending Online/Check voucher to clear, return, or mark as bounced.
+                                                                        Select a pending Online/Check receipt to update clearance status only. The selected amount stays locked and no duplicate Cash-Out voucher is created for the original receipt.
                                                                     </div>
                                                                     <input type="hidden" id="selected_pending_payment_id"
                                                                         name="selected_pending_payment_id" value="">
@@ -1258,10 +1258,10 @@
                     $tbody.empty();
                     const filtered = pendingRowsCache;
                     const pendingTypeText = getPendingTypeText(activePendingPaymentType);
-                    $('#pendingPanelTitle').text(`Pending ${pendingTypeText} Payments`);
+                    $('#pendingPanelTitle').text(`Pending ${pendingTypeText} Clearance Status`);
 
                     if (!filtered.length) {
-                        $tbody.append(`<tr><td colspan="11" class="text-center text-muted">No pending ${pendingTypeText} payments found for this project.</td></tr>`);
+                        $tbody.append(`<tr><td colspan="11" class="text-center text-muted">No pending ${pendingTypeText} receipts found for this project.</td></tr>`);
                         return;
                     }
 
@@ -1300,7 +1300,7 @@
                     if (paymentType === '2' || paymentType === '3') {
                         requestData.payment_type = paymentType;
                     }
-                    $('#pendingPaymentsTable tbody').html('<tr><td colspan="11" class="text-center text-muted">Loading pending payments...</td></tr>');
+                    $('#pendingPaymentsTable tbody').html('<tr><td colspan="11" class="text-center text-muted">Loading pending clearance receipts...</td></tr>');
                     $.ajax({
                         url: pendingFetchUrl,
                         type: 'GET',
