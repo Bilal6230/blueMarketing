@@ -2016,6 +2016,13 @@ class BookingController extends Controller
                                 && (int) $duplicateLedger->payment_type === (int) $request->input('payment_type')
                                 && trim((string) $duplicateLedger->description) === trim((string) $request->input('detail'));
 
+                            if (in_array((int) $request->input('payment_type'), [2, 3], true)) {
+                                $samePayload = $samePayload
+                                    && trim((string) $duplicateLedger->t_number) === trim((string) $t_number)
+                                    && (string) ($duplicateLedger->bank_id ?? '') === (string) ($bank_id ?? '')
+                                    && trim((string) $duplicateLedger->passing_date) === trim((string) $request->input('passing_date'));
+                            }
+
                             if (!$samePayload) {
                                 throw new \RuntimeException('A received payment with the same source key already exists.');
                             }

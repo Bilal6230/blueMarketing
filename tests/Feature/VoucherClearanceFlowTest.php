@@ -269,6 +269,59 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertNotNull(collect($response->json('data'))->firstWhere('id', $includedOne->id)['ledger_id']);
     }
 
+    public function test_duplicate_ppr_same_source_key_with_different_transaction_number_is_rejected(): void
+    {
+        $firstResponse = $this->callDeposit($this->depositPayload(2));
+        $firstResponse->assertStatus(302);
+
+        $secondResponse = $this->callDeposit($this->depositPayload(2, [
+            't_number' => 'TXN-999',
+        ]));
+
+        $secondResponse->assertStatus(302);
+        $secondResponse->assertSessionHasErrors('msg');
+        $this->assertSame(1, CustomerLedger::where('transaction_type', 'PPR')->count());
+    }
+
+    public function test_update_pending_bank_payment_status_rejects_non_online_check_payment_types(): void
+    {
+        $pending = $this->createPendingReceipt('CR', 1, $this->project->id, 1000);
+
+        $response = $this->callUpdatePendingBankPaymentStatus($pending->id, [
+            'passing_status' => 2,
+            'note' => 'Status update attempt',
+            'bank_post_at' => '2026-05-24',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJson([
+                'status' => 'error',
+                'error_key' => 'pending_payment_invalid_state',
+            ]);
+    }
+
+    public function test_update_pending_bank_payment_status_stores_updated_by_in_check_history(): void
+    {
+        $pending = $this->createPendingReceipt('PPR', 2, $this->project->id, 1400);
+
+        $response = $this->callUpdatePendingBankPaymentStatus($pending->id, [
+            'passing_status' => 2,
+            'note' => 'Manual clearance status update',
+            'bank_post_at' => '2026-05-24',
+        ]);
+
+        $response->assertOk()
+            ->assertJson([
+                'status' => 'success',
+            ]);
+
+        $pending->refresh();
+        $history = $pending->check_history ?? [];
+
+        $this->assertCount(1, $history);
+        $this->assertSame($this->user->id, $history[0]['updated_by']);
+    }
+
     public static function pendingReceiptPaymentTypesProvider(): array
     {
         return [
@@ -547,9 +600,9 @@ class VoucherClearanceFlowTest extends TestCase
         ]);
     }
 
-    private function depositPayload(int $paymentType): array
+    private function depositPayload(int $paymentType, array $overrides = []): array
     {
-        return [
+        return array_merge([
             'action' => 'deposit',
             'customer_id' => $this->customer->id,
             'project_id' => $this->project->id,
@@ -562,7 +615,7 @@ class VoucherClearanceFlowTest extends TestCase
             't_number' => $paymentType === 1 ? null : 'TXN-001',
             'bank_id' => $paymentType === 1 ? null : 1,
             'passing_date' => $paymentType === 1 ? null : '2026-05-18',
-        ];
+        ], $overrides);
     }
 
     private function cashVoucherPayload(array $overrides = []): array
@@ -690,6 +743,27 @@ class VoucherClearanceFlowTest extends TestCase
         $this->app->instance('request', $request);
 
         $response = $this->app->make(VoucherController::class)->pendingBankPayments($request);
+
+        return TestResponse::fromBaseResponse($response);
+    }
+
+    private function callUpdatePendingBankPaymentStatus(int $customerLedgerId, array $payload, ?int $selectedProjectId = null): TestResponse
+    {
+        $request = Request::create('/admin/finance/voucher/pending-bank-payments/' . $customerLedgerId . '/status', 'POST', $payload);
+        $request->cookies->set('selected_action', (string) ($selectedProjectId ?? $this->project->id));
+        $request->headers->set('Accept', 'application/json');
+        $request->setLaravelSession($this->app['session.store']);
+        $this->app->instance('request', $request);
+
+        try {
+            $response = $this->app->make(VoucherController::class)->updatePendingBankPaymentStatus($request, $customerLedgerId);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            $response = response()->json([
+                'status' => 'error',
+                'error_key' => 'not_found',
+                'message' => 'Pending payment not found.',
+            ], 404);
+        }
 
         return TestResponse::fromBaseResponse($response);
     }

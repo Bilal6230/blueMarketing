@@ -886,6 +886,7 @@ class VoucherController extends Controller
             DB::transaction(function () use ($validated, $customerLedger, $selectedProjectId) {
                 $lockedLedger = CustomerLedger::where('project_id', $selectedProjectId)
                     ->where('id', $customerLedger)
+                    ->whereIn('payment_type', [2, 3])
                     ->whereIn('transaction_type', ['CR', 'PPR'])
                     ->lockForUpdate()
                     ->firstOrFail();
@@ -934,7 +935,7 @@ class VoucherController extends Controller
                     'description_note' => $note,
                     'bank_name' => $bankName,
                     'credit_account_id' => $creditAccountId,
-                    'user_id' => Auth::id(),
+                    'updated_by' => Auth::id(),
                 ]);
 
                 if ($status === 1) {
