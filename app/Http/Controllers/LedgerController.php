@@ -374,7 +374,29 @@ class LedgerController extends Controller
 
     private function normalizeVoucherAmount($amount): string
     {
-        return number_format((float) str_replace(',', '', (string) $amount), 2, '.', '');
+        $normalized = str_replace(',', '', trim((string) $amount));
+
+        if ($normalized === '' || $normalized === '.') {
+            return '0.00';
+        }
+
+        $negative = str_starts_with($normalized, '-');
+        if ($negative) {
+            $normalized = substr($normalized, 1);
+        }
+
+        [$integerPart, $fractionPart] = array_pad(explode('.', $normalized, 2), 2, '');
+        $integerPart = ltrim(preg_replace('/\D/', '', $integerPart), '0');
+        $fractionPart = preg_replace('/\D/', '', $fractionPart);
+
+        if ($integerPart === '') {
+            $integerPart = '0';
+        }
+
+        $fractionPart = substr(str_pad($fractionPart, 2, '0'), 0, 2);
+        $result = $integerPart . '.' . $fractionPart;
+
+        return $negative && $result !== '0.00' ? '-' . $result : $result;
     }
 
     private function voucherAmountsMatch($submittedAmount, $pendingAmount): bool

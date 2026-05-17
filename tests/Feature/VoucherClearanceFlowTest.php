@@ -660,6 +660,7 @@ class VoucherClearanceFlowTest extends TestCase
     private function callDeposit(array $payload): TestResponse
     {
         $request = Request::create('/admin/booking/plot/voucher', 'POST', $payload);
+        $request->cookies->set('selected_action', (string) $this->project->id);
         $request->setLaravelSession($this->app['session.store']);
         $this->app->instance('request', $request);
 
