@@ -932,13 +932,14 @@
 	                            </thead>
 	                            <tbody id="siteVoucherListBody">
 	                                @include('admin.labours.site-vouchers', [
-	                                    'siteVouchers' => collect(),
+	                                    'siteVouchers' => $siteVouchers,
+	                                    'siteVouchersNotCreated' => $siteVouchersNotCreated,
 	                                    'selectedSite' => null,
 	                                ])
 	                            </tbody>
 	                        </table>
 	                    </div>
-	                    <div class="table-scroll max-height">
+	                    <div class="table-scroll" style="max-height: 300px;">
 	                        <table id="siteReportTable table">
 	                            <thead>
 	                                <tr>
@@ -1676,11 +1677,15 @@
 	            }
 
 	            function loadSiteVouchers(siteId = $('#repSite').val()) {
+	                let start_date = $('#repStartDate').val();
+	                let end_date = $('#repEndDate').val();
 	                $.ajax({
 	                    url: "{{ route('labours.site.vouchers') }}",
 	                    type: "GET",
 	                    data: {
-	                        site_id: siteId
+	                        site_id: siteId,
+                            start_date: start_date,
+                            end_date: end_date
 	                    },
 	                    success: function(res) {
 	                        if (res.success) {
@@ -1698,11 +1703,16 @@
 	                });
 	            }
 
-	            $(document).on('change', '#repSite', function() {
+	            $(document).on('change', '#repSite, #repFrom', function() {
 	                resetSiteVoucherForm();
 	                $('#siteReportTableBody').html('');
-	                loadSiteVouchers($(this).val());
+                    let site_id = $('#repSite').val();
+	                loadSiteVouchers(site_id);
 	            });
+                $(document).on('click', '#prevWeek, #nextWeek', function() {
+                    let site_id = $('#repSite').val();
+	                loadSiteVouchers(site_id);
+                })
 
 	            $(document).on('click', '#createVoucher', function(e) {
 	                e.preventDefault();
@@ -1765,7 +1775,7 @@
 	                                    // Optional: clear table
 	                                    $('#siteReportTableBody').html('');
 	                                    loadSiteVouchers($('#repSite').val());
-	
+
 	                                }
 	                            },
 
@@ -2416,16 +2426,16 @@
             });
 	            $(document).on('click', '#reportBtnSiteRun, #voucherBtnSiteRun', function(e) {
 	                e.preventDefault();
-	
+
 	                resetSiteVoucherForm();
-	
+
 	                let id = $(this).attr('id');
 	                let week = $('#repFrom').val();
 	                let start_date = $('#repStartDate').val();
 	                let end_date = $('#repEndDate').val();
 	                let site = $('#repSite').val();
 	                loadSiteVouchers(site);
-	
+
 	                let data = {
 	                    _token: "{{ csrf_token() }}",
                     week: week,

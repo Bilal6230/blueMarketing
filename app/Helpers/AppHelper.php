@@ -760,7 +760,7 @@ if (!function_exists('getLastJvVNumber')) {
     function getLastJvVNumber()
     {
         $selectedProjectId = getSelectedTown();
-        return JournalVoucher::where('project_id', $selectedProjectId)->where('type', 'JV')->withTrashed()->latest()->value('voucher_number');
+        return JournalVoucher::where('project_id', $selectedProjectId)->where('type', 'JV')->withTrashed()->orderBy('id', 'desc')->value('voucher_number');
     }
 }
 if (!function_exists('getLastSVVNumber')) {

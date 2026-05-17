@@ -63,6 +63,8 @@ class LabourController extends Controller
 
 
         $x['headaccounts'] = $data_list;
+        $x['siteVouchers'] = $this->getSiteVoucherList(null, $selectedProjectId, $start->format('Y-m-d'), $end->format('Y-m-d'))['vouchers'];
+        $x['siteVouchersNotCreated'] = $this->getSiteVoucherList(null, $selectedProjectId, $start->format('Y-m-d'), $end->format('Y-m-d'))['vouchersNotCreated'];
 
         return view('admin.labours.index', $x);
     }
@@ -77,7 +79,7 @@ class LabourController extends Controller
     {
         $x['title'] = 'Labour History';
         $x['labour'] = $labour = Labour::with([
-            'attendances' => fn ($q) => $q->where('status', 'present')->orderBy('date'),
+            'attendances' => fn($q) => $q->where('status', 'present')->orderBy('date'),
             'labourLedgers'
         ])->findOrFail($id);
 
@@ -666,30 +668,34 @@ class LabourController extends Controller
     {
         $selectedProjectId = getSelectedTown();
         $siteId = $request->site_id;
+        $start_date = $request->start_date;
+        $end_date = $request->end_date;
 
-        if (empty($siteId)) {
-            $view = view('admin.labours.site-vouchers', [
-                'siteVouchers' => collect(),
-                'selectedSite' => null,
-            ])->render();
+        // if (empty($siteId)) {
+        //     $view = view('admin.labours.site-vouchers', [
+        //         'siteVouchers' => collect(),
+        //         'selectedSite' => null,
+        //     ])->render();
 
-            return response()->json([
-                'success' => true,
-                'view' => $view,
-            ]);
-        }
+        //     return response()->json([
+        //         'success' => true,
+        //         'view' => $view,
+        //     ]);
+        // }
 
         $selectedSite = Site::where('project_id', $selectedProjectId)->find($siteId);
 
-        if (!$selectedSite) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid site selected.',
-            ], 422);
-        }
+
+        // if (!$selectedSite) {
+        //     return response()->json([
+        //         'success' => false,
+        //         'message' => 'Invalid site selected.',
+        //     ], 422);
+        // }
 
         $view = view('admin.labours.site-vouchers', [
-            'siteVouchers' => $this->getSiteVoucherList($selectedSite, $selectedProjectId),
+            'siteVouchers' => $this->getSiteVoucherList($selectedSite, $selectedProjectId, $start_date, $end_date)['vouchers'],
+            'siteVouchersNotCreated' => $this->getSiteVoucherList($selectedSite, $selectedProjectId, $start_date, $end_date)['vouchersNotCreated'],
             'selectedSite' => $selectedSite,
         ])->render();
 
@@ -823,19 +829,19 @@ class LabourController extends Controller
                 ], 422);
             }
 
-        $labourNames = collect($labours)->map(function ($labour) {
-            return $labour['name']
-                . ' (' . $labour['days'] . ' days'
-                . ', wage: ' . $labour['rate'] . ')';
-        })->implode(', ');
-        $start = Carbon::parse($request->start_date)->format('d M Y');
-        $end   = Carbon::parse($request->end_date)->format('d M Y');
+            $labourNames = collect($labours)->map(function ($labour) {
+                return $labour['name']
+                    . ' (' . $labour['days'] . ' days'
+                    . ', wage: ' . $labour['rate'] . ')';
+            })->implode(', ');
+            $start = Carbon::parse($request->start_date)->format('d M Y');
+            $end   = Carbon::parse($request->end_date)->format('d M Y');
 
-        $site = Site::find($request->site_id);
-        $siteName = $site?->site_name ?? 'Unknown Site';
-        $voucherDescription = "Labour payment for Site: {$siteName}";
-        $labourAccountDesc = "Labour payable for {$labourNames} ({$start} - {$end})";
-        $siteAccountDesc = "Labour expense charged to Site: {$siteName}";
+            $site = Site::find($request->site_id);
+            $siteName = $site?->site_name ?? 'Unknown Site';
+            $voucherDescription = "Labour payment for Site: {$siteName}";
+            $labourAccountDesc = "Labour payable for {$labourNames} ({$start} - {$end})";
+            $siteAccountDesc = "Labour expense charged to Site: {$siteName}";
 
             $voucherNumber = getVocuherNumber('JV');
             $log->info('labour.createVoucher.voucher_number_computed', [
@@ -925,7 +931,6 @@ class LabourController extends Controller
                 'debit' => $amountRaw,
                 'credit' => 0,
                 'description' => $labourAccountDesc,
-                'created_by' => $authUserId,
             ]);
             $log->info('labour.createVoucher.first_voucher_detail_created', [
                 'trace_id' => $traceId,
@@ -964,7 +969,6 @@ class LabourController extends Controller
                 'debit' => 0,
                 'credit' => $amountRaw,
                 'description' => $labourAccountDesc,
-                'created_by' => $authUserId,
             ]);
             $log->info('labour.createVoucher.second_voucher_detail_created', [
                 'trace_id' => $traceId,
@@ -1052,42 +1056,98 @@ class LabourController extends Controller
         }
     }
 
-    private function getSiteVoucherList(Site $site, int $selectedProjectId)
+    private function getSiteVoucherList(Site $site = null, int $selectedProjectId, string $startDate, string $endDate)
     {
-        $siteVoucherDescription = "Labour payment for Site: {$site->site_name}";
-        $query = JournalVoucher::query()
-            ->with($this->journalVoucherHasSiteIdColumn() ? ['site', 'creator'] : ['creator'])
-            ->where('project_id', $selectedProjectId);
+        $sitename = $site->site_name ?? 'All Sites';
+        $siteVoucherDescription = "Labour payment for Site: {$sitename}";
 
-        if ($this->journalVoucherHasSiteIdColumn()) {
-            $query->where(function ($voucherQuery) use ($site, $siteVoucherDescription) {
-                $voucherQuery->where('site_id', $site->id)
-                    ->orWhere(function ($legacyQuery) use ($site, $siteVoucherDescription) {
-                        $legacyQuery->whereNull('site_id')
-                            ->where('description', $siteVoucherDescription);
+        /*
+    |--------------------------------------------------------------------------
+    | Attendance Query
+    |--------------------------------------------------------------------------
+    */
 
-                        if (!empty($site->subhead_accounting_id)) {
-                            $legacyQuery->whereHas('details', function ($detailQuery) use ($site) {
-                                $detailQuery->where('account_id', $site->subhead_accounting_id)
-                                    ->where('credit', '>', 0);
-                            });
-                        }
-                    });
-            });
+        $attendanceQuery = LabourAttendance::query()
+            ->with('site:id,site_name')
+            ->where('project_id', $selectedProjectId)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->where('voucher_status', '!=', 'created')
+            ->where('status', 'present');
+
+        if ($site) {
+
+            // Return collection for single site too
+            $attendances = $attendanceQuery
+                ->where('site_id', $site->id)
+                ->selectRaw('site_id, SUM(amount) as total_amount')
+                ->groupBy('site_id')
+                ->get();
         } else {
-            $query->where('description', $siteVoucherDescription);
 
-            if (!empty($site->subhead_accounting_id)) {
-                $query->whereHas('details', function ($detailQuery) use ($site) {
-                    $detailQuery->where('account_id', $site->subhead_accounting_id)
-                        ->where('credit', '>', 0);
-                });
-            }
+            // All sites grouped totals
+            $attendances = $attendanceQuery
+                ->selectRaw('site_id, SUM(amount) as total_amount')
+                ->groupBy('site_id')
+                ->orderBy('site_id')
+                ->get();
         }
 
-        return $query->latest('date')
-            ->latest('id')
-            ->get();
+        /*
+    |--------------------------------------------------------------------------
+    | Journal Voucher Query
+    |--------------------------------------------------------------------------
+    */
+
+        $query = JournalVoucher::query()
+            ->with(
+                $this->journalVoucherHasSiteIdColumn()
+                    ? ['site', 'creator']
+                    : ['creator']
+            )
+            ->where('project_id', $selectedProjectId)
+            ->whereBetween('date', [$startDate, $endDate]);
+
+        if ($site) {
+
+            if ($this->journalVoucherHasSiteIdColumn()) {
+
+                $query->where(function ($voucherQuery) use ($site, $siteVoucherDescription) {
+
+                    $voucherQuery->where('site_id', $site->id)
+
+                        ->orWhere(function ($legacyQuery) use ($site, $siteVoucherDescription) {
+
+                            $legacyQuery->whereNull('site_id')
+                                ->where('description', $siteVoucherDescription);
+
+                            if (!empty($site->subhead_accounting_id)) {
+
+                                $legacyQuery->whereHas('details', function ($detailQuery) use ($site) {
+
+                                    $detailQuery->where('account_id', $site->subhead_accounting_id)
+                                        ->where('credit', '>', 0);
+                                });
+                            }
+                        });
+                });
+            } else {
+
+                $query->where('description', 'LIKE', 'Labour payment for Site:%');
+
+                if (!empty($site->subhead_accounting_id)) {
+
+                    $query->whereHas('details', function ($detailQuery) use ($site) {
+
+                        $detailQuery->where('account_id', $site->subhead_accounting_id)
+                            ->where('credit', '>', 0);
+                    });
+                }
+            }
+        }
+        return [
+            'vouchers' => $query->latest('date')->latest('id')->get(),
+            'vouchersNotCreated' => $attendances,
+        ];
     }
 
     private function journalVoucherHasSiteIdColumn(): bool
