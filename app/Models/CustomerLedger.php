@@ -54,6 +54,8 @@ class CustomerLedger extends Model
             'description_note' => $checkDetails['description_note'] ?? null,
             'bank_name' => $checkDetails['bank_name'] ?? null, // Add bank name
             'credit_account_id' => $checkDetails['credit_account_id'] ?? null, // Add credit account ID
+            'cleared_by_voucher' => $checkDetails['cleared_by_voucher'] ?? null,
+            'updated_by' => $checkDetails['updated_by'] ?? null,
             'updated_at' => now(), // Record the update timestamp
         ];
 

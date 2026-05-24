@@ -1971,7 +1971,10 @@ class BookingController extends Controller
                     DB::transaction(function () use ($request, $customer_id) {
                         $payment_type = $request->input('payment_type');
                         $isPendingBankPayment = in_array((int) $payment_type, [2, 3], true);
-                        $projectId = (int) $request->input('project_id');
+                        $projectId = (int) getSelectedTown();
+                        $plotId = (int) $request->input('plot_id');
+                        $reference = trim((string) $request->input('reference'));
+                        $sourceKey = implode('|', [$projectId, 'PPR', $reference, (int) $customer_id, $plotId]);
                         $displayVoucherNumber = $this->allocateNextBookingVoucherNumber($projectId, 'PPR');
                         if ($payment_type == 1) {
                             $t_number = $bank_id = null;
@@ -1980,13 +1983,58 @@ class BookingController extends Controller
                             $bank_id = $request->input('bank_id');
                         }
 
-                        $customerLedger = CustomerLedger::create([
+                        $bookingId = Booking::where('project_id', $projectId)
+                            ->where('customer_id', $customer_id)
+                            ->where('plot_id', $plotId)
+                            ->where('cancel_status', '0')
+                            ->latest('id')
+                            ->value('id');
+
+                        if (!$bookingId) {
+                            throw new \RuntimeException('Selected booking was not found for this project.');
+                        }
+
+                        $plotExistsInProject = Plot::where('id', $plotId)
+                            ->where('project_id', $projectId)
+                            ->exists();
+
+                        if (!$plotExistsInProject) {
+                            throw new \RuntimeException('Selected plot was not found for this project.');
+                        }
+
+                        $duplicateLedger = CustomerLedger::where('project_id', $projectId)
+                            ->where('transaction_type', 'PPR')
+                            ->where('reference', $reference)
+                            ->where('customer_id', $customer_id)
+                            ->where('plot_id', $plotId)
+                            ->lockForUpdate()
+                            ->first();
+
+                        if ($duplicateLedger) {
+                            $samePayload = $this->normalizeDecimalString($duplicateLedger->amount_out) === $this->normalizeDecimalString($request->input('amount'))
+                                && trim((string) $duplicateLedger->date) === trim((string) $request->input('date'))
+                                && (int) $duplicateLedger->payment_type === (int) $request->input('payment_type')
+                                && trim((string) $duplicateLedger->description) === trim((string) $request->input('detail'));
+
+                            if (in_array((int) $request->input('payment_type'), [2, 3], true)) {
+                                $samePayload = $samePayload
+                                    && trim((string) $duplicateLedger->t_number) === trim((string) $t_number)
+                                    && (string) ($duplicateLedger->bank_id ?? '') === (string) ($bank_id ?? '')
+                                    && trim((string) $duplicateLedger->passing_date) === trim((string) $request->input('passing_date'));
+                            }
+
+                            if (!$samePayload) {
+                                throw new \RuntimeException('A received payment with the same source key already exists.');
+                            }
+                        }
+
+                        $customerLedger = $duplicateLedger ?: CustomerLedger::create([
                             'customer_id' => $customer_id,
                             'transaction_type' => 'PPR',
                             'type_id' => get_new_typeID('PPR'),
-                            'reference' => $request->input('reference'),
+                            'reference' => $reference,
                             'project_id' => $projectId,
-                            'plot_id' => $request->input('plot_id'),
+                            'plot_id' => $plotId,
                             'amount_in' => 0,
                             'amount_out' => str_replace(',', '', $request->input('amount')),
                             'description' => $request->input('detail'),
@@ -2001,33 +2049,42 @@ class BookingController extends Controller
                         ]);
 
                         $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', 16)
-                            ->where('project_id', $request->input('project_id'))
-                            ->where('plot_id', $request->input('plot_id'))
+                            ->where('project_id', $projectId)
+                            ->where('plot_id', $plotId)
                             ->where('customer_id', $customer_id)
                             ->value('id');
 
                         if (!$creditAccountId) {
-                            throw new \Exception('Credit account ID not found.');
+                            Log::warning('ppr_credit_account_missing', [
+                                'source_key' => $sourceKey,
+                                'project_id' => $projectId,
+                                'customer_id' => $customer_id,
+                                'plot_id' => $plotId,
+                            ]);
+                            throw new \RuntimeException('Credit account ID not found.');
                         }
 
                         $ledgerType = 'PPR';
                         $voucherNumber = $displayVoucherNumber;
                         $lastId = getLastLedgerIdByType($ledgerType);
 
-                        $ledger = null;
-                        if (!$isPendingBankPayment) {
+                        $ledger = Ledger::where('customer_ledger_id', $customerLedger->id)
+                            ->where('type', $ledgerType)
+                            ->first();
+
+                        if (!$ledger) {
                             $ledger = Ledger::create([
                                 'customer_ledger_id' => $customerLedger->id,
                                 'type' => $ledgerType,
                                 'voucher_number' => $voucherNumber,
                                 'type_id' => ((int) $lastId) + 1,
                                 'project_head_subheads_id' => $creditAccountId,
-                                'reference' => $request->input('reference'),
+                                'reference' => $reference,
                                 'amount_in' => str_replace(',', '', $request->input('amount')),
                                 'amount_out' => 0.00,
                                 'is_active' => 1,
                                 'date' => $request->input('date'),
-                                'detail' => '(Cash slip#' . $request->input('reference') . ') ' . $request->input('detail'),
+                                'detail' => '(Cash slip#' . $reference . ') ' . $request->input('detail'),
                                 'update_by' => Auth::id(),
                                 'create_by' => Auth::id(),
                                 'status' => 0,
@@ -2682,6 +2739,33 @@ class BookingController extends Controller
                 'update_by' => Auth::id(),
             ]
         );
+    }
+
+    private function normalizeDecimalString($amount, int $scale = 2): string
+    {
+        $normalized = str_replace(',', '', trim((string) $amount));
+
+        if ($normalized === '' || $normalized === '.') {
+            return number_format(0, $scale, '.', '');
+        }
+
+        $negative = str_starts_with($normalized, '-');
+        if ($negative) {
+            $normalized = substr($normalized, 1);
+        }
+
+        [$integerPart, $fractionPart] = array_pad(explode('.', $normalized, 2), 2, '');
+        $integerPart = ltrim(preg_replace('/\D/', '', $integerPart), '0');
+        $fractionPart = preg_replace('/\D/', '', $fractionPart);
+
+        if ($integerPart === '') {
+            $integerPart = '0';
+        }
+
+        $fractionPart = substr(str_pad($fractionPart, $scale, '0'), 0, $scale);
+        $result = $integerPart . '.' . $fractionPart;
+
+        return $negative && $result !== '0.' . str_repeat('0', $scale) ? '-' . $result : $result;
     }
 
 
