@@ -1158,9 +1158,9 @@
 
             @if ($voucherType === 'CP')
                 const pendingFetchUrl = "{{ route('finance.voucher.pending_bank_payments') }}";
-                let pendingRowsCache = [];
-                let activePendingPaymentType = '2';
-                const pendingAmountMismatchMessage = 'Amount must match the selected pending voucher.';
+                window.pendingRowsCache = window.pendingRowsCache || [];
+                window.activePendingPaymentType = window.activePendingPaymentType || '2';
+                window.pendingAmountMismatchMessage = 'Amount must match the selected pending voucher.';
 
                 function getPendingTypeText(paymentType) {
                     return String(paymentType) === '3' ? 'Check' : 'Online';
@@ -1183,10 +1183,10 @@
                     });
                 }
 
-                function normalizeMoneyValue(value) {
+                window.normalizePendingMoneyValue = function(value) {
                     const parsed = parseMoneyValue(value);
                     return parsed === null ? null : parsed.toFixed(2);
-                }
+                };
 
                 function parseAmountForWords(value) {
                     const clean = String(value ?? '').replace(/,/g, '').trim();
@@ -1209,7 +1209,7 @@
                             .val(formattedAmount)
                             .prop('readonly', true)
                             .attr('data-locked-from-pending', '1')
-                            .attr('data-pending-amount', normalizeMoneyValue(selected.amount || 0));
+                            .attr('data-pending-amount', window.normalizePendingMoneyValue(selected.amount || 0));
 
                         if (parseAmountForWords(formattedAmount) !== null) {
                             convertToWords(formattedAmount);
@@ -1256,8 +1256,8 @@
                 function renderPendingRows() {
                     const $tbody = $('#pendingPaymentsTable tbody');
                     $tbody.empty();
-                    const filtered = pendingRowsCache;
-                    const pendingTypeText = getPendingTypeText(activePendingPaymentType);
+                    const filtered = window.pendingRowsCache;
+                    const pendingTypeText = getPendingTypeText(window.activePendingPaymentType);
                     $('#pendingPanelTitle').text(`Pending ${pendingTypeText} Payments`);
 
                     if (!filtered.length) {
@@ -1289,13 +1289,13 @@
                 }
 
                 function populatePendingPaymentsTable(rows) {
-                    pendingRowsCache = rows || [];
+                    window.pendingRowsCache = rows || [];
                     renderPendingRows();
                 }
 
                 function loadPendingPayments() {
                     const paymentType = $('#payment_type').val();
-                    activePendingPaymentType = (paymentType === '3') ? '3' : '2';
+                    window.activePendingPaymentType = (paymentType === '3') ? '3' : '2';
                     const requestData = {};
                     if (paymentType === '2' || paymentType === '3') {
                         requestData.payment_type = paymentType;
@@ -1335,7 +1335,7 @@
                         $('#pending_status').val('1');
                         clearPendingSelection(true);
                         clearAmountWords();
-                        pendingRowsCache = [];
+                        window.pendingRowsCache = [];
                         renderPendingRows();
                     }
                 };
@@ -1345,7 +1345,7 @@
                     $('#selected_pending_payment_id').val(selectedId);
                     $('#pendingPaymentsTable tbody tr').removeClass('table-active');
                     $(this).closest('tr').addClass('table-active');
-                    const selected = pendingRowsCache.find((row) => String(row.id) === String(selectedId));
+                    const selected = window.pendingRowsCache.find((row) => String(row.id) === String(selectedId));
                     if (selected) {
                         $('#pendingSummaryText').text(
                             `${selected.voucher_number_display || ('Pending #' + selected.id)} | ${selected.transaction_type === 'PPR' ? 'Received Payment' : 'Cash In'} | ${selected.bank || 'N/A'} | ${selected.t_number || 'N/A'} | ${formatMoneyValue(selected.amount || 0)}`
@@ -2716,9 +2716,9 @@
                     const pendingStatus = String($('#pending_status').val() || '').trim();
                     const passingDate = String($('#passing_date').val() || '').trim();
                     const detail = String($('#detail').val() || '').trim();
-                    const selectedPendingRow = pendingRowsCache.find((row) => String(row.id) === selectedPendingId);
-                    const submittedAmount = normalizeMoneyValue($('#numberInput').val());
-                    const pendingAmount = selectedPendingRow ? normalizeMoneyValue(selectedPendingRow.amount) : null;
+                    const selectedPendingRow = (window.pendingRowsCache || []).find((row) => String(row.id) === selectedPendingId);
+                    const submittedAmount = window.normalizePendingMoneyValue($('#numberInput').val());
+                    const pendingAmount = selectedPendingRow ? window.normalizePendingMoneyValue(selectedPendingRow.amount) : null;
 
                     if (!selectedPendingId) {
                         Swal.fire({
@@ -2756,7 +2756,7 @@
                         Swal.fire({
                             icon: 'warning',
                             title: 'Amount mismatch',
-                            text: pendingAmountMismatchMessage
+                            text: window.pendingAmountMismatchMessage || 'Amount must match the selected pending voucher.'
                         });
                         return;
                     }
