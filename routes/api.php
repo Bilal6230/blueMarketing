@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\V1\Mobile\MobileAuthController;
+use App\Http\Controllers\Api\V1\Mobile\MobileCrmController;
 use App\Http\Controllers\Api\V1\Mobile\MobileDashboardController;
 use App\Http\Controllers\Api\V1\Mobile\MobileProjectController;
 
@@ -47,6 +48,17 @@ Route::prefix('v1/mobile')->group(function () {
         Route::post('auth/logout', [MobileAuthController::class, 'logout']);
         Route::get('projects', [MobileProjectController::class, 'index']);
         Route::get('dashboard', [MobileDashboardController::class, 'index']);
+
+        Route::prefix('crm')->group(function () {
+            Route::get('summary', [MobileCrmController::class, 'summary']);
+            Route::get('leads', [MobileCrmController::class, 'index']);
+            Route::post('leads', [MobileCrmController::class, 'store']);
+            Route::get('leads/{lead}', [MobileCrmController::class, 'show']);
+            Route::put('leads/{lead}', [MobileCrmController::class, 'update']);
+            Route::post('leads/{lead}/follow-up', [MobileCrmController::class, 'followUp']);
+            Route::get('leads/{lead}/history', [MobileCrmController::class, 'history']);
+            Route::post('leads/{lead}/assign', [MobileCrmController::class, 'assign']);
+        });
     });
 });
 
