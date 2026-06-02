@@ -5,6 +5,9 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\ProjectController;
+use App\Http\Controllers\Api\V1\Mobile\MobileAuthController;
+use App\Http\Controllers\Api\V1\Mobile\MobileDashboardController;
+use App\Http\Controllers\Api\V1\Mobile\MobileProjectController;
 
 
 /*
@@ -33,6 +36,17 @@ Route::middleware('form.token.auth')->group(function () {
     Route::post('/leads/active', [LeadController::class, 'activeLeads']);
     Route::post('/leads/summary', [LeadController::class, 'leadSummary']);
     Route::post('/project/booking/summary', [ProjectController::class, 'bookingDetails']);
+});
+
+Route::prefix('v1/mobile')->group(function () {
+    Route::post('auth/login', [MobileAuthController::class, 'login']);
+
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('auth/me', [MobileAuthController::class, 'me']);
+        Route::post('auth/logout', [MobileAuthController::class, 'logout']);
+        Route::get('projects', [MobileProjectController::class, 'index']);
+        Route::get('dashboard', [MobileDashboardController::class, 'index']);
+    });
 });
 
 
