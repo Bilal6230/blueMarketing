@@ -236,7 +236,6 @@ class MobileCrmController extends BaseMobileController
             'zone_id' => ['nullable', 'integer'],
             'home_address' => ['nullable', 'string'],
             'office_address' => ['nullable', 'string'],
-            'is_active' => ['nullable', 'integer'],
             'remarks' => ['nullable', 'string'],
         ]);
 
@@ -280,7 +279,8 @@ class MobileCrmController extends BaseMobileController
 
         $validated = $request->validate([
             'follow_up_date' => ['required', 'date'],
-            'status' => ['nullable'],
+            // TODO: Replace this generic integer check with an explicit allowed status list once the canonical CRM statuses are confirmed.
+            'status' => ['nullable', 'integer'],
             'remarks' => ['nullable', 'string'],
         ]);
 
@@ -293,14 +293,18 @@ class MobileCrmController extends BaseMobileController
 
             $lead->save();
 
-            Work::create([
-                'lead_id' => $lead->id,
-                'comment' => $this->buildFollowUpComment($validated['remarks'] ?? null, $validated['status'] ?? null),
-                'call_status' => is_numeric($validated['status'] ?? null) ? (int) $validated['status'] : null,
-                'user_id' => $user->id,
-                'follow_up' => $lead->follow_up,
-                'type' => 1,
-            ]);
+            $comment = $this->buildFollowUpComment($validated['remarks'] ?? null, $validated['status'] ?? null);
+
+            if ($comment !== null) {
+                Work::create([
+                    'lead_id' => $lead->id,
+                    'comment' => $comment,
+                    'call_status' => isset($validated['status']) ? (int) $validated['status'] : null,
+                    'user_id' => $user->id,
+                    'follow_up' => $lead->follow_up,
+                    'type' => 1,
+                ]);
+            }
         });
 
         return $this->successResponse('Follow-up updated successfully.', [
