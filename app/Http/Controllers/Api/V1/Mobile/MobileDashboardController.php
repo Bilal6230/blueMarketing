@@ -18,16 +18,20 @@ class MobileDashboardController extends BaseMobileController
 
         $user = $request->user();
         $selectedProjectId = $this->resolveSelectedProjectId($request, $user);
-        $crmStats = [
-            'total_leads' => 0,
-            'today_followups' => 0,
-        ];
+        $crmStats = null;
 
-        if ($selectedProjectId !== null) {
-            $crmStats['total_leads'] = Lead::where('project_id', $selectedProjectId)->count();
-            $crmStats['today_followups'] = Lead::where('project_id', $selectedProjectId)
-                ->whereDate('follow_up', now()->toDateString())
-                ->count();
+        if ($user->can('read lead')) {
+            $crmStats = [
+                'total_leads' => 0,
+                'today_followups' => 0,
+            ];
+
+            if ($selectedProjectId !== null) {
+                $crmStats['total_leads'] = Lead::where('project_id', $selectedProjectId)->count();
+                $crmStats['today_followups'] = Lead::where('project_id', $selectedProjectId)
+                    ->whereDate('follow_up', now()->toDateString())
+                    ->count();
+            }
         }
 
         return $this->successResponse('Dashboard loaded.', [

@@ -39,7 +39,8 @@ Route::middleware('form.token.auth')->group(function () {
 });
 
 Route::prefix('v1/mobile')->group(function () {
-    Route::post('auth/login', [MobileAuthController::class, 'login']);
+    Route::post('auth/login', [MobileAuthController::class, 'login'])
+        ->middleware('throttle:5,1');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('auth/me', [MobileAuthController::class, 'me']);
