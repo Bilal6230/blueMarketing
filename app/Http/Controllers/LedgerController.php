@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PendingUpdate;
 use Exception;
+use App\Models\Lead;
 use App\Models\Plot;
 use App\Models\User;
 use App\Models\Ledger;
@@ -161,7 +162,7 @@ class LedgerController extends Controller
 
                     $note = $request->input('detail');
                     $pendingBankName = $pendingCustomerLedger->bank_id ? getBankNameById($pendingCustomerLedger->bank_id) : null;
-                    $clearanceReference = 'BANK_CLEARANCE#' . $pendingCustomerLedger->id;
+                    $clearanceReference = 'CASH_OUT_CLEARANCE#' . $pendingCustomerLedger->id;
 
                     $pendingCustomerLedger->update([
                         'passing_status' => $pendingStatus,
@@ -181,31 +182,54 @@ class LedgerController extends Controller
                         'updated_by' => Auth::id(),
                     ]);
 
-                    $bankClearanceLedger = null;
+                    $cashOutClearanceLedger = null;
                     if ($pendingStatus === 1) {
-                        $bankClearanceLedger = Ledger::where('customer_ledger_id', $pendingCustomerLedger->id)
-                            ->where('type', 'BR')
+                        $cashOutClearanceLedger = Ledger::where('customer_ledger_id', $pendingCustomerLedger->id)
+                            ->where('type', 'CP')
                             ->where('reference', $clearanceReference)
                             ->lockForUpdate()
                             ->first();
 
-                        if (!$bankClearanceLedger) {
+                        if (!$cashOutClearanceLedger) {
                             $resolvedAmount = (float) (($pendingCustomerLedger->amount_out > 0)
                                 ? $pendingCustomerLedger->amount_out
                                 : $pendingCustomerLedger->amount_in);
+                            $sourceReceiptLedger = Ledger::where('customer_ledger_id', $pendingCustomerLedger->id)
+                                ->whereIn('type', ['CR', 'PPR'])
+                                ->orderBy('id')
+                                ->first();
 
-                            $bankClearanceLedger = Ledger::create([
+                            $resolvedVoucherNumber = $voucherNumber;
+                            while (
+                                Ledger::where('type', 'CP')
+                                    ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
+                                    ->where('is_active', 1)
+                                    ->where('voucher_number', $resolvedVoucherNumber)
+                                    ->lockForUpdate()
+                                    ->exists()
+                            ) {
+                                $resolvedVoucherNumber++;
+                            }
+
+                            $cashOutClearanceLedger = Ledger::create([
                                 'customer_ledger_id' => $pendingCustomerLedger->id,
-                                'voucher_number' => getVocuherNumber('BR'),
-                                'type' => 'BR',
-                                'type_id' => ((int) getLastLedgerIdByType('BR')) + 1,
+                                'voucher_number' => $resolvedVoucherNumber,
+                                'type' => 'CP',
+                                'type_id' => ((int) getLastLedgerIdByType('CP')) + 1,
                                 'project_head_subheads_id' => $projectHeadSubhead->id,
                                 'reference' => $clearanceReference,
                                 'amount_in' => 0.00,
                                 'amount_out' => $resolvedAmount,
                                 'is_active' => 1,
-                                'date' => $request->input('passing_date') ?: now()->toDateString(),
-                                'detail' => $note,
+                                'date' => $request->input('passing_date') ?: $request->input('date') ?: now()->toDateString(),
+                                'detail' => $this->buildCashOutClearanceDetail(
+                                    $pendingCustomerLedger,
+                                    $sourceReceiptLedger,
+                                    $projectHeadSubhead,
+                                    $resolvedVoucherNumber,
+                                    $request->input('passing_date') ?: $request->input('date') ?: now()->toDateString(),
+                                    $note
+                                ),
                                 'update_by' => Auth::id(),
                                 'create_by' => Auth::id(),
                                 'status' => 0,
@@ -223,10 +247,10 @@ class LedgerController extends Controller
                         'status' => 'success',
                         'flow_type' => 'pending_payment_status_updated',
                         'message' => 'Payment status updated successfully.',
-                        'data' => $bankClearanceLedger,
+                        'data' => $cashOutClearanceLedger,
                         'customer_ledger_id' => $pendingCustomerLedger->id,
-                        'voucher_number' => $bankClearanceLedger?->voucher_number,
-                        'voucher_display' => $bankClearanceLedger ? ('BR-' . $bankClearanceLedger->voucher_number) : null,
+                        'voucher_number' => $cashOutClearanceLedger?->voucher_number,
+                        'voucher_display' => $cashOutClearanceLedger ? ('CP-' . $cashOutClearanceLedger->voucher_number) : null,
                     ];
                 }
 
@@ -297,14 +321,16 @@ class LedgerController extends Controller
                 }
 
                 $lastId = getLastLedgerIdByType($effectiveVoucherType);
-                $detail = $request->input('detail');
-                if ($paymentType === 1 && $effectiveVoucherType === 'CR') {
-                    $detail = $request->input('detail') . '(Cash Payment)';
-                } elseif ($paymentType === 2 && $effectiveVoucherType === 'CR') {
-                    $detail = $request->input('detail') . ' (Bank: ' . $bankName . ' Account No: ' . $customerLedger->t_number . ' Passing Date: ' . $request->passing_date . ')';
-                } elseif ($paymentType === 3 && $effectiveVoucherType === 'CR') {
-                    $detail = $request->input('detail') . ' (Bank: ' . $bankName . ' cheque No: ' . $customerLedger->t_number . ' Passing Date: ' . $request->passing_date . ')';
-                }
+                $detail = $this->buildCashVoucherDetail(
+                    $effectiveVoucherType,
+                    $paymentType,
+                    $request->input('reference'),
+                    $request->input('date'),
+                    $request->input('passing_date'),
+                    $request->input('detail'),
+                    $bankName,
+                    $customerLedger->t_number
+                );
 
                 $data = Ledger::create([
                     'customer_ledger_id' => $customerLedger->id,
@@ -402,6 +428,158 @@ class LedgerController extends Controller
     private function voucherAmountsMatch($submittedAmount, $pendingAmount): bool
     {
         return $this->normalizeVoucherAmount($submittedAmount) === $this->normalizeVoucherAmount($pendingAmount);
+    }
+
+    private function formatPlotLabel(?Plot $plot): string
+    {
+        if (!$plot) {
+            return 'Unknown Plot';
+        }
+
+        $prefix = match ((int) ($plot->type ?? 0)) {
+            1 => 'R-',
+            2 => 'C-',
+            default => '',
+        };
+
+        return 'Plot ' . trim($prefix . trim((string) ($plot->name ?? '')));
+    }
+
+    private function formatPartyName(?Lead $customer): string
+    {
+        $name = trim((string) (($customer?->first_name ?? '') . ' ' . ($customer?->last_name ?? '')));
+
+        return $name !== '' ? $name : 'Unknown Customer';
+    }
+
+    private function paymentMethodLabel(int $paymentType): string
+    {
+        return match ($paymentType) {
+            2 => 'online transfer',
+            3 => 'cheque',
+            default => 'cash',
+        };
+    }
+
+    private function paymentInstrumentLabel(int $paymentType): ?string
+    {
+        return match ($paymentType) {
+            2 => 'Transaction No',
+            3 => 'Cheque No',
+            default => null,
+        };
+    }
+
+    private function buildCashVoucherDetail(
+        string $voucherType,
+        int $paymentType,
+        ?string $reference,
+        ?string $receiptDate,
+        ?string $passingDate,
+        ?string $narration,
+        ?string $bankName = null,
+        ?string $instrumentNumber = null
+    ): string {
+        if ($voucherType !== 'CR') {
+            return trim((string) $narration);
+        }
+
+        $detail = 'Cash received';
+        if ($paymentType === 1) {
+            $detail .= '.';
+        } else {
+            $detail .= ' via ' . trim(($bankName ? $bankName . ' ' : '') . $this->paymentMethodLabel($paymentType)) . '.';
+        }
+
+        $instrumentLabel = $this->paymentInstrumentLabel($paymentType);
+        if ($instrumentLabel && trim((string) $instrumentNumber) !== '') {
+            $detail .= ' ' . $instrumentLabel . ': ' . trim((string) $instrumentNumber) . '.';
+        }
+
+        if (trim((string) $reference) !== '') {
+            $detail .= ' Receipt Ref: ' . trim((string) $reference) . '.';
+        }
+
+        if (trim((string) $receiptDate) !== '') {
+            $detail .= ' Receipt Date: ' . trim((string) $receiptDate) . '.';
+        }
+
+        if (in_array($paymentType, [2, 3], true) && trim((string) $passingDate) !== '') {
+            $detail .= ' Passing Date: ' . trim((string) $passingDate) . '.';
+        }
+
+        if (trim((string) $narration) !== '') {
+            $detail .= ' Narration: ' . trim((string) $narration) . '.';
+        }
+
+        return $detail;
+    }
+
+    private function buildCashOutClearanceDetail(
+        CustomerLedger $pendingCustomerLedger,
+        ?Ledger $sourceReceiptLedger,
+        ProjectHeadSubhead $destinationAccount,
+        int $cashOutVoucherNumber,
+        ?string $clearanceDate,
+        ?string $narration
+    ): string {
+        $pendingCustomerLedger->loadMissing(['customer_list', 'plot_list', 'bookingVoucher']);
+        $destinationAccount->loadMissing(['headAccounting', 'subheadAccounting']);
+
+        $sourceType = (string) ($pendingCustomerLedger->transaction_type ?? '');
+        $sourceVoucherNumber = $sourceReceiptLedger?->voucher_number
+            ?? ($sourceType === 'PPR' ? $pendingCustomerLedger->bookingVoucher?->voucher_number : null)
+            ?? $pendingCustomerLedger->type_id;
+        $sourceVoucherDisplay = trim($sourceType . '-' . $sourceVoucherNumber, '-');
+        $sourceLabel = $sourceType === 'PPR' ? 'pending received plot payment' : 'pending cash-in receipt';
+        $detail = 'Cleared ' . $sourceLabel . ' ' . $sourceVoucherDisplay . ' through Cash-Out voucher CP-' . $cashOutVoucherNumber . '.';
+
+        $bankName = $pendingCustomerLedger->bank_id ? trim((string) getBankNameById($pendingCustomerLedger->bank_id)) : '';
+        $method = $this->paymentMethodLabel((int) $pendingCustomerLedger->payment_type);
+        $instrumentLabel = $this->paymentInstrumentLabel((int) $pendingCustomerLedger->payment_type);
+        $instrumentNumber = trim((string) ($pendingCustomerLedger->t_number ?? ''));
+        $receiptDate = trim((string) ($pendingCustomerLedger->date ?? ''));
+
+        if ($sourceType === 'PPR') {
+            $detail .= ' Original receipt for ' . $this->formatPlotLabel($pendingCustomerLedger->plot_list) . ' from customer ' . $this->formatPartyName($pendingCustomerLedger->customer_list);
+            if ((int) $pendingCustomerLedger->payment_type === 1) {
+                $detail .= ' by cash.';
+            } else {
+                $detail .= ' via ' . ($bankName !== '' ? $bankName . ' ' : '') . $method . '.';
+            }
+        } else {
+            $detail .= ' Original receipt';
+            if ((int) $pendingCustomerLedger->payment_type === 1) {
+                $detail .= ' by cash.';
+            } else {
+                $detail .= ' via ' . ($bankName !== '' ? $bankName . ' ' : '') . $method . '.';
+            }
+        }
+
+        if ($instrumentLabel && $instrumentNumber !== '') {
+            $detail .= ' ' . $instrumentLabel . ': ' . $instrumentNumber . ',';
+        }
+
+        if ($receiptDate !== '') {
+            $detail .= ' Receipt Date: ' . $receiptDate . '.';
+        }
+
+        $destinationHead = trim((string) ($destinationAccount->headAccounting->name ?? ''));
+        $destinationSubhead = trim((string) ($destinationAccount->subheadAccounting->name ?? ''));
+        $destinationLabel = trim($destinationHead . ($destinationSubhead !== '' ? ' / ' . $destinationSubhead : ''));
+        if ($destinationLabel !== '') {
+            $detail .= ' Cash-out posted to ' . $destinationLabel . '.';
+        }
+
+        if (trim((string) $clearanceDate) !== '') {
+            $detail .= ' Clearance Date: ' . trim((string) $clearanceDate) . '.';
+        }
+
+        if (trim((string) $narration) !== '') {
+            $detail .= ' Narration: ' . trim((string) $narration) . '.';
+        }
+
+        return preg_replace('/\s+/', ' ', trim($detail)) ?? trim($detail);
     }
 
     public function saveAsDraft(Request $request)

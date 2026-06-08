@@ -1850,9 +1850,21 @@ class BookingController extends Controller
                 $customerLedger->update($validated);
 
                 if ($customerLedger->ledger) {
+                    $customer = Lead::find($customerLedger->customer_id);
+                    $plot = Plot::find($customerLedger->plot_id);
                     $ledgerPayload = [
                         'date' => $validated['date'],
-                        'detail' => '(Cash slip#' . $validated['reference'] . ') ' . ($validated['description'] ?? ''),
+                        'detail' => $this->buildPprLedgerDetail(
+                            $plot,
+                            $customer,
+                            (int) ($validated['payment_type'] ?? $customerLedger->payment_type),
+                            $validated['reference'] ?? $customerLedger->reference,
+                            $validated['date'] ?? $customerLedger->date,
+                            $validated['passing_date'] ?? $customerLedger->passing_date,
+                            $validated['description'] ?? $customerLedger->description,
+                            $validated['bank_id'] ?? $customerLedger->bank_id,
+                            $validated['t_number'] ?? $customerLedger->t_number
+                        ),
                     ];
 
                     if (in_array((string) $customerLedger->ledger->type, ['CR', 'PPR'], true)) {
@@ -2072,6 +2084,20 @@ class BookingController extends Controller
                             ->where('type', $ledgerType)
                             ->first();
 
+                        $customer = Lead::find($customer_id);
+                        $plot = Plot::find($plotId);
+                        $pprLedgerDetail = $this->buildPprLedgerDetail(
+                            $plot,
+                            $customer,
+                            (int) $request->input('payment_type'),
+                            $reference,
+                            $request->input('date'),
+                            $request->input('passing_date'),
+                            $request->input('detail'),
+                            $bank_id,
+                            $t_number
+                        );
+
                         if (!$ledger) {
                             $ledger = Ledger::create([
                                 'customer_ledger_id' => $customerLedger->id,
@@ -2084,10 +2110,16 @@ class BookingController extends Controller
                                 'amount_out' => 0.00,
                                 'is_active' => 1,
                                 'date' => $request->input('date'),
-                                'detail' => '(Cash slip#' . $reference . ') ' . $request->input('detail'),
+                                'detail' => $pprLedgerDetail,
                                 'update_by' => Auth::id(),
                                 'create_by' => Auth::id(),
                                 'status' => 0,
+                            ]);
+                        } else {
+                            $ledger->update([
+                                'detail' => $pprLedgerDetail,
+                                'reference' => $reference,
+                                'date' => $request->input('date'),
                             ]);
                         }
 
@@ -2766,6 +2798,96 @@ class BookingController extends Controller
         $result = $integerPart . '.' . $fractionPart;
 
         return $negative && $result !== '0.' . str_repeat('0', $scale) ? '-' . $result : $result;
+    }
+
+    private function formatPlotLabel(?Plot $plot, ?int $plotType = null): string
+    {
+        if (!$plot) {
+            return 'Unknown Plot';
+        }
+
+        $resolvedType = $plotType;
+        if ($resolvedType === null && isset($plot->type) && is_numeric($plot->type)) {
+            $resolvedType = (int) $plot->type;
+        }
+
+        $prefix = $resolvedType !== null ? $this->plotTypePrefix($resolvedType) : '';
+        $plotName = trim((string) ($plot->name ?? ''));
+
+        return 'Plot ' . trim($prefix . $plotName);
+    }
+
+    private function formatPartyName(?Lead $customer): string
+    {
+        $name = trim((string) (($customer?->first_name ?? '') . ' ' . ($customer?->last_name ?? '')));
+
+        return $name !== '' ? $name : 'Unknown Customer';
+    }
+
+    private function paymentMethodLabel(int $paymentType): string
+    {
+        return match ($paymentType) {
+            2 => 'online transfer',
+            3 => 'cheque',
+            default => 'cash',
+        };
+    }
+
+    private function paymentInstrumentLabel(int $paymentType): ?string
+    {
+        return match ($paymentType) {
+            2 => 'Transaction No',
+            3 => 'Cheque No',
+            default => null,
+        };
+    }
+
+    private function buildPprLedgerDetail(
+        ?Plot $plot,
+        ?Lead $customer,
+        int $paymentType,
+        ?string $reference,
+        ?string $receiptDate,
+        ?string $passingDate,
+        ?string $narration,
+        $bankId = null,
+        ?string $instrumentNumber = null,
+        ?int $plotType = null
+    ): string {
+        $plotLabel = $this->formatPlotLabel($plot, $plotType);
+        $customerName = $this->formatPartyName($customer);
+        $bankName = $bankId ? trim((string) getBankNameById($bankId)) : '';
+        $method = $this->paymentMethodLabel($paymentType);
+        $detail = 'Received plot payment for ' . $plotLabel . ' from customer ' . $customerName;
+
+        if ($paymentType === 1) {
+            $detail .= ' by cash.';
+        } else {
+            $detail .= ' via ' . ($bankName !== '' ? $bankName . ' ' : '') . $method . '.';
+        }
+
+        $instrumentLabel = $this->paymentInstrumentLabel($paymentType);
+        if ($instrumentLabel && trim((string) $instrumentNumber) !== '') {
+            $detail .= ' ' . $instrumentLabel . ': ' . trim((string) $instrumentNumber) . '.';
+        }
+
+        if (trim((string) $reference) !== '') {
+            $detail .= ' Receipt Ref: ' . trim((string) $reference) . '.';
+        }
+
+        if (trim((string) $receiptDate) !== '') {
+            $detail .= ' Receipt Date: ' . trim((string) $receiptDate) . '.';
+        }
+
+        if (in_array($paymentType, [2, 3], true) && trim((string) $passingDate) !== '') {
+            $detail .= ' Passing Date: ' . trim((string) $passingDate) . '.';
+        }
+
+        if (trim((string) $narration) !== '') {
+            $detail .= ' Narration: ' . trim((string) $narration) . '.';
+        }
+
+        return $detail;
     }
 
 

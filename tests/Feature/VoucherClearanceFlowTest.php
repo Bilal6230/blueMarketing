@@ -76,7 +76,9 @@ class VoucherClearanceFlowTest extends TestCase
      */
     public function test_ppr_pending_bank_received_payment_creates_ledger_immediately(int $paymentType): void
     {
-        $response = $this->callDeposit($this->depositPayload($paymentType));
+        $response = $this->callDeposit($this->depositPayload($paymentType, [
+            'detail' => 'Installment payment',
+        ]));
 
         $response->assertStatus(302);
 
@@ -87,6 +89,21 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertNotNull($ledger);
         $this->assertSame(0, (int) $customerLedger->passing_status);
         $this->assertSame($ledger->id, $bookingVoucher->ledger_id);
+        $this->assertStringContainsString('Received plot payment', $ledger->detail);
+        $this->assertStringContainsString('Plot R-101', $ledger->detail);
+        $this->assertStringContainsString('Ali Khan', $ledger->detail);
+        $this->assertStringContainsString('Bank Alfalah', $ledger->detail);
+        $this->assertStringContainsString('Receipt Date: 2026-05-17', $ledger->detail);
+        $this->assertStringContainsString('Passing Date: 2026-05-18', $ledger->detail);
+
+        if ($paymentType === 2) {
+            $this->assertStringContainsString('online transfer', $ledger->detail);
+            $this->assertStringContainsString('Transaction No: TXN-001', $ledger->detail);
+            $this->assertStringNotContainsString('Account No', $ledger->detail);
+        } else {
+            $this->assertStringContainsString('cheque', $ledger->detail);
+            $this->assertStringContainsString('Cheque No: TXN-001', $ledger->detail);
+        }
     }
 
     /**
@@ -114,6 +131,43 @@ class VoucherClearanceFlowTest extends TestCase
 
         $this->assertNotNull($ledger);
         $this->assertSame(0, (int) $customerLedger->passing_status);
+
+        if ($paymentType === 2) {
+            $this->assertStringContainsString('Cash received via Bank Alfalah online transfer.', $ledger->detail);
+            $this->assertStringContainsString('Transaction No: TXN-2', $ledger->detail);
+            $this->assertStringNotContainsString('Account No', $ledger->detail);
+        } else {
+            $this->assertStringContainsString('Cash received via Bank Alfalah cheque.', $ledger->detail);
+            $this->assertStringContainsString('Cheque No: TXN-3', $ledger->detail);
+        }
+    }
+
+    public function test_manual_cash_out_still_creates_cp_ledger(): void
+    {
+        $response = $this->callLedgerStore($this->cashVoucherPayload([
+            'voucher' => 'CP-1',
+            'voucher_number' => 'CP-1',
+            'payment_type' => 1,
+            'amount' => '1750',
+            'reference' => 'CP-REF-001',
+        ]));
+
+        $response->assertOk()
+            ->assertJson([
+                'status' => 'success',
+                'flow_type' => 'posted',
+                'voucher_number' => 1,
+                'voucher_display' => 'CP-1',
+            ]);
+
+        $customerLedger = CustomerLedger::where('transaction_type', 'CP')->first();
+        $ledger = Ledger::where('customer_ledger_id', $customerLedger->id)->where('type', 'CP')->first();
+
+        $this->assertNotNull($customerLedger);
+        $this->assertNotNull($ledger);
+        $this->assertSame('CP-REF-001', $ledger->reference);
+        $this->assertSame(1750.0, (float) $ledger->amount_out);
+        $this->assertSame(0.0, (float) $ledger->amount_in);
     }
 
     public function test_cash_out_pending_status_update_does_not_create_cp_records(): void
@@ -149,9 +203,12 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertCount(1, $pending->check_history ?? []);
     }
 
-    public function test_passing_a_pending_payment_creates_one_br_ledger_only_once(): void
+    public function test_passing_a_pending_payment_creates_one_cp_ledger_only_once(): void
     {
-        $pending = $this->createPendingReceipt('CR', 3, $this->project->id, 2200);
+        $pending = $this->createPendingReceipt('CR', 3, $this->project->id, 2200, [
+            'voucher_number' => 1,
+            'transaction_number' => 'CHK-001',
+        ]);
 
         $payload = $this->cashVoucherPayload([
             'voucher' => 'CP-1',
@@ -171,17 +228,29 @@ class VoucherClearanceFlowTest extends TestCase
             ->assertJson([
                 'status' => 'success',
                 'flow_type' => 'pending_payment_status_updated',
+                'voucher_display' => 'CP-1',
             ]);
 
         $pending->refresh();
 
         $this->assertDatabaseHas('ledgers', [
             'customer_ledger_id' => $pending->id,
-            'type' => 'BR',
-            'reference' => 'BANK_CLEARANCE#' . $pending->id,
+            'type' => 'CP',
+            'reference' => 'CASH_OUT_CLEARANCE#' . $pending->id,
             'project_head_subheads_id' => $this->cashVoucherAccount->id,
         ]);
-        $this->assertSame(1, Ledger::where('customer_ledger_id', $pending->id)->where('type', 'BR')->count());
+        $this->assertDatabaseMissing('ledgers', [
+            'customer_ledger_id' => $pending->id,
+            'type' => 'BR',
+        ]);
+        $this->assertSame(1, Ledger::where('customer_ledger_id', $pending->id)->where('type', 'CP')->where('reference', 'CASH_OUT_CLEARANCE#' . $pending->id)->count());
+        $clearanceLedger = Ledger::where('customer_ledger_id', $pending->id)->where('type', 'CP')->where('reference', 'CASH_OUT_CLEARANCE#' . $pending->id)->first();
+        $this->assertNotNull($clearanceLedger);
+        $this->assertStringContainsString('Cleared pending cash-in receipt CR-1 through Cash-Out voucher CP-1.', $clearanceLedger->detail);
+        $this->assertStringContainsString('Bank Alfalah cheque.', $clearanceLedger->detail);
+        $this->assertStringContainsString('Cheque No: CHK-001', $clearanceLedger->detail);
+        $this->assertStringContainsString('Cash-out posted to Cash Voucher / Customer Account.', $clearanceLedger->detail);
+        $this->assertStringContainsString('Clearance Date: 2026-05-21.', $clearanceLedger->detail);
 
         $secondResponse = $this->callLedgerStore($payload);
 
@@ -191,7 +260,49 @@ class VoucherClearanceFlowTest extends TestCase
                 'error_key' => 'pending_payment_invalid_state',
             ]);
 
-        $this->assertSame(1, Ledger::where('customer_ledger_id', $pending->id)->where('type', 'BR')->count());
+        $this->assertSame(1, Ledger::where('customer_ledger_id', $pending->id)->where('type', 'CP')->where('reference', 'CASH_OUT_CLEARANCE#' . $pending->id)->count());
+    }
+
+    public function test_cash_out_pending_clearance_cp_detail_for_original_ppr_contains_expected_narration(): void
+    {
+        $pending = $this->createPendingReceipt('PPR', 2, $this->project->id, 1800, [
+            'reference' => '006230',
+            'detail' => 'Installment payment',
+            'voucher_number' => 13,
+            'transaction_number' => '18408074163',
+            'receipt_date' => '2026-06-03',
+            'passing_date' => '2026-06-03',
+        ]);
+
+        $response = $this->callLedgerStore($this->cashVoucherPayload([
+            'voucher' => 'CP-252',
+            'voucher_number' => 'CP-252',
+            'payment_type' => 2,
+            'amount' => '1800',
+            't_number' => 'CLR-1800',
+            'bank_id' => 1,
+            'selected_pending_payment_id' => $pending->id,
+            'pending_status' => 1,
+            'passing_date' => '2026-06-03',
+            'detail' => 'passed',
+        ]));
+
+        $response->assertOk()
+            ->assertJson([
+                'voucher_display' => 'CP-252',
+            ]);
+
+        $clearanceLedger = Ledger::where('customer_ledger_id', $pending->id)
+            ->where('type', 'CP')
+            ->where('reference', 'CASH_OUT_CLEARANCE#' . $pending->id)
+            ->first();
+
+        $this->assertNotNull($clearanceLedger);
+        $this->assertStringContainsString('Cleared pending received plot payment PPR-13 through Cash-Out voucher CP-252.', $clearanceLedger->detail);
+        $this->assertStringContainsString('Original receipt for Plot R-101 from customer Ali Khan via Bank Alfalah online transfer.', $clearanceLedger->detail);
+        $this->assertStringContainsString('Transaction No: 18408074163', $clearanceLedger->detail);
+        $this->assertStringContainsString('Cash-out posted to Cash Voucher / Customer Account.', $clearanceLedger->detail);
+        $this->assertStringContainsString('Clearance Date: 2026-06-03.', $clearanceLedger->detail);
     }
 
     public function test_return_or_bounce_updates_history_without_creating_br(): void
@@ -217,7 +328,8 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame(1, count($pending->check_history ?? []));
         $this->assertDatabaseMissing('ledgers', [
             'customer_ledger_id' => $pending->id,
-            'type' => 'BR',
+            'type' => 'CP',
+            'reference' => 'CASH_OUT_CLEARANCE#' . $pending->id,
         ]);
     }
 
@@ -529,8 +641,8 @@ class VoucherClearanceFlowTest extends TestCase
         ]);
 
         $this->customer = Lead::create([
-            'first_name' => 'A',
-            'last_name' => 'Customer',
+            'first_name' => 'Ali',
+            'last_name' => 'Khan',
             'phone_number' => '03000000000',
             'is_active' => 1,
             'create_by' => $this->user->id,
@@ -633,24 +745,24 @@ class VoucherClearanceFlowTest extends TestCase
         ], $overrides);
     }
 
-    private function createPendingReceipt(string $transactionType, int $paymentType, int $projectId, float $amount): CustomerLedger
+    private function createPendingReceipt(string $transactionType, int $paymentType, int $projectId, float $amount, array $overrides = []): CustomerLedger
     {
         $customerLedger = CustomerLedger::create([
             'customer_id' => $this->customer->id,
             'project_id' => $projectId,
             'plot_id' => $this->plot->id,
-            'type_id' => 1,
-            'reference' => strtoupper($transactionType) . '-REF-' . $this->faker->unique()->numerify('###'),
+            'type_id' => $overrides['type_id'] ?? 1,
+            'reference' => $overrides['reference'] ?? (strtoupper($transactionType) . '-REF-' . $this->faker->unique()->numerify('###')),
             'payment_type' => $paymentType,
-            't_number' => 'CHK-' . $this->faker->unique()->numerify('###'),
-            'bank_id' => 1,
-            'passing_date' => '2026-05-18',
-            'passing_status' => 0,
-            'date' => '2026-05-17',
+            't_number' => $overrides['transaction_number'] ?? 'CHK-' . $this->faker->unique()->numerify('###'),
+            'bank_id' => $overrides['bank_id'] ?? 1,
+            'passing_date' => $overrides['passing_date'] ?? '2026-05-18',
+            'passing_status' => $overrides['passing_status'] ?? 0,
+            'date' => $overrides['receipt_date'] ?? '2026-05-17',
             'transaction_type' => $transactionType,
             'amount_in' => $transactionType === 'CR' ? $amount : 0,
             'amount_out' => $transactionType === 'PPR' ? $amount : 0,
-            'description' => 'Pending payment',
+            'description' => $overrides['detail'] ?? 'Pending payment',
             'is_active' => 1,
             'is_approve' => 0,
         ]);
@@ -667,7 +779,7 @@ class VoucherClearanceFlowTest extends TestCase
 
         Ledger::create([
             'customer_ledger_id' => $customerLedger->id,
-            'voucher_number' => Ledger::count() + 1,
+            'voucher_number' => $overrides['voucher_number'] ?? (Ledger::count() + 1),
             'type' => $transactionType,
             'type_id' => Ledger::count() + 1,
             'project_head_subheads_id' => $projectHeadSubheadId,
@@ -676,7 +788,7 @@ class VoucherClearanceFlowTest extends TestCase
             'amount_out' => $customerLedger->amount_out,
             'is_active' => 1,
             'date' => $customerLedger->date,
-            'detail' => 'Pending detail',
+            'detail' => $overrides['ledger_detail'] ?? 'Pending detail',
             'update_by' => $this->user->id,
             'create_by' => $this->user->id,
             'status' => 0,
@@ -691,13 +803,13 @@ class VoucherClearanceFlowTest extends TestCase
                 'customer_id' => $this->customer->id,
                 'plot_id' => $this->plot->id,
                 'voucher_series' => 'PPR',
-                'voucher_number' => 1,
+                'voucher_number' => $overrides['voucher_number'] ?? 1,
                 'slip_reference' => $customerLedger->reference,
                 'payment_type' => $paymentType,
                 'amount' => $amount,
                 'receipt_date' => $customerLedger->date,
-                'description' => 'Pending receipt',
-                'bank_id' => 1,
+                'description' => $overrides['detail'] ?? 'Pending receipt',
+                'bank_id' => $overrides['bank_id'] ?? 1,
                 't_number' => $customerLedger->t_number,
                 'passing_date' => $customerLedger->passing_date,
                 'is_active' => 1,
