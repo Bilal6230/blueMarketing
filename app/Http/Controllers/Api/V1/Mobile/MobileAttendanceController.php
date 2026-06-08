@@ -73,7 +73,6 @@ class MobileAttendanceController extends BaseMobileController
 
         $existingPunch = Punch::query()
             ->where('user_id', $user->id)
-            ->where('project_id', $projectId)
             ->whereDate('punch_in', now()->toDateString())
             ->first();
 
@@ -349,6 +348,13 @@ class MobileAttendanceController extends BaseMobileController
                     ->where('id', $record['labour_id'])
                     ->where('project_id', $projectId)
                     ->first();
+
+                $existing = $this->findLabourAttendanceRecord(
+                    (int) $record['labour_id'],
+                    $projectId,
+                    $validated['date'],
+                    $siteId
+                );
 
                 $hours = (float) ($record['hours'] ?? 0);
                 $otHours = (float) ($record['ot_hours'] ?? 0);
