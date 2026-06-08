@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\ProjectController;
+use App\Http\Controllers\Api\V1\Mobile\MobileAttendanceController;
 use App\Http\Controllers\Api\V1\Mobile\MobileAuthController;
 use App\Http\Controllers\Api\V1\Mobile\MobileCrmController;
 use App\Http\Controllers\Api\V1\Mobile\MobileDashboardController;
@@ -58,6 +59,18 @@ Route::prefix('v1/mobile')->group(function () {
             Route::post('leads/{lead}/follow-up', [MobileCrmController::class, 'followUp']);
             Route::get('leads/{lead}/history', [MobileCrmController::class, 'history']);
             Route::post('leads/{lead}/assign', [MobileCrmController::class, 'assign']);
+        });
+
+        Route::prefix('attendance')->group(function () {
+            Route::get('staff/today', [MobileAttendanceController::class, 'staffToday']);
+            Route::post('staff/check-in', [MobileAttendanceController::class, 'staffCheckIn']);
+            Route::post('staff/check-out', [MobileAttendanceController::class, 'staffCheckOut']);
+            Route::get('staff/history', [MobileAttendanceController::class, 'staffHistory']);
+
+            Route::get('labour', [MobileAttendanceController::class, 'labourIndex']);
+            Route::post('labour/mark', [MobileAttendanceController::class, 'markLabour']);
+            Route::get('labour/report', [MobileAttendanceController::class, 'labourReport']);
+            Route::get('labour/payment-summary', [MobileAttendanceController::class, 'labourPaymentSummary']);
         });
     });
 });
