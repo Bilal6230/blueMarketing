@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\Mobile\MobileAuthController;
 use App\Http\Controllers\Api\V1\Mobile\MobileCrmController;
 use App\Http\Controllers\Api\V1\Mobile\MobileDashboardController;
 use App\Http\Controllers\Api\V1\Mobile\MobileProjectController;
+use App\Http\Controllers\Api\V1\Mobile\MobileStockController;
 
 
 /*
@@ -71,6 +72,17 @@ Route::prefix('v1/mobile')->group(function () {
             Route::post('labour/mark', [MobileAttendanceController::class, 'markLabour']);
             Route::get('labour/report', [MobileAttendanceController::class, 'labourReport']);
             Route::get('labour/payment-summary', [MobileAttendanceController::class, 'labourPaymentSummary']);
+        });
+
+        Route::prefix('stock')->group(function () {
+            Route::get('meta', [MobileStockController::class, 'meta']);
+            Route::get('items', [MobileStockController::class, 'items']);
+            Route::get('parties', [MobileStockController::class, 'parties']);
+            Route::get('entries', [MobileStockController::class, 'entries']);
+            Route::get('entries/{entry}', [MobileStockController::class, 'entryDetail']);
+            Route::post('entries/in', [MobileStockController::class, 'storeIn']);
+            Route::post('entries/out', [MobileStockController::class, 'storeOut']);
+            Route::get('report', [MobileStockController::class, 'report']);
         });
     });
 });
