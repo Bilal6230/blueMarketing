@@ -1466,13 +1466,7 @@ class BookingController extends Controller
 
     public function getCustomersbyPlot(Request $request)
     {
-        // Validate the incoming request
-        $request->validate([
-            'project_id' => 'required|integer|exists:projects,id',
-        ]);
-
-        // Retrieve project ID
-        $projectId = $request->input('project_id');
+        $projectId = (int) getSelectedTown();
 
         // Query the database to get unique customers associated with the project
         $customers = Lead::join('bookings', 'leads.id', '=', 'bookings.customer_id')
@@ -1505,7 +1499,7 @@ class BookingController extends Controller
 
     public function getCustomerPlots(Request $request)
     {
-        $projectId = $request->input('project_id');
+        $projectId = (int) getSelectedTown();
         $customerId = $request->input('customer_id');
 
         $customers = Plot::join('bookings', 'plots.id', '=', 'bookings.plot_id')
@@ -1829,9 +1823,10 @@ class BookingController extends Controller
 
         try {
             DB::transaction(function () use ($validated, $id) {
-                $customerLedger = CustomerLedger::with('ledger')
+                $customerLedger = CustomerLedger::with(['ledger', 'bookingVoucher'])
                     ->where('id', $id)
                     ->where('project_id', getSelectedTown())
+                    ->lockForUpdate()
                     ->firstOrFail();
 
                 if (auth()->user()->cannot('direct-update')) {
@@ -1876,7 +1871,7 @@ class BookingController extends Controller
                     $customerLedger->ledger->update($ledgerPayload);
                 }
 
-                $this->syncBookingVoucherRecord($customerLedger->fresh(['ledger']));
+                $this->syncBookingVoucherRecord($customerLedger->fresh(['ledger', 'bookingVoucher']));
             });
         } catch (\Throwable $th) {
             Log::error('Receive plot payment update failed', [
@@ -1987,7 +1982,6 @@ class BookingController extends Controller
                         $plotId = (int) $request->input('plot_id');
                         $reference = trim((string) $request->input('reference'));
                         $sourceKey = implode('|', [$projectId, 'PPR', $reference, (int) $customer_id, $plotId]);
-                        $displayVoucherNumber = $this->allocateNextBookingVoucherNumber($projectId, 'PPR');
                         if ($payment_type == 1) {
                             $t_number = $bank_id = null;
                         } else {
@@ -2059,6 +2053,13 @@ class BookingController extends Controller
                             'passing_date' => $request->input('passing_date'),
                             'passing_status' => $isPendingBankPayment ? 0 : null,
                         ]);
+                        $existingBookingVoucher = BookingVoucher::where('customer_ledger_id', $customerLedger->id)
+                            ->lockForUpdate()
+                            ->first();
+                        $displayVoucherNumber = (int) ($existingBookingVoucher?->voucher_number ?: 0);
+                        if ($displayVoucherNumber <= 0) {
+                            $displayVoucherNumber = $this->allocateNextBookingVoucherNumber($projectId, 'PPR');
+                        }
 
                         $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', 16)
                             ->where('project_id', $projectId)
@@ -2740,12 +2741,25 @@ class BookingController extends Controller
     private function syncBookingVoucherRecord(CustomerLedger $customerLedger, ?Ledger $ledger = null, ?int $fallbackVoucherNumber = null): BookingVoucher
     {
         $ledger = $ledger ?: $customerLedger->ledger;
+        $existingBookingVoucher = BookingVoucher::where('customer_ledger_id', $customerLedger->id)
+            ->lockForUpdate()
+            ->first();
         $bookingId = Booking::where('project_id', $customerLedger->project_id)
             ->where('customer_id', $customerLedger->customer_id)
             ->where('plot_id', $customerLedger->plot_id)
             ->where('cancel_status', '0')
             ->latest('id')
             ->value('id');
+
+        $voucherSeries = $ledger?->type ?? $customerLedger->transaction_type;
+        $voucherNumber = $ledger?->voucher_number ?? $fallbackVoucherNumber ?? $customerLedger->type_id;
+
+        if ((string) $customerLedger->transaction_type === 'PPR') {
+            $voucherSeries = $existingBookingVoucher?->voucher_series
+                ?? (($ledger && (string) $ledger->type === 'PPR') ? 'PPR' : $customerLedger->transaction_type);
+            $voucherNumber = $existingBookingVoucher?->voucher_number
+                ?? (($ledger && (string) $ledger->type === 'PPR') ? $ledger->voucher_number : ($fallbackVoucherNumber ?? $customerLedger->type_id));
+        }
 
         return BookingVoucher::updateOrCreate(
             ['customer_ledger_id' => $customerLedger->id],
@@ -2755,8 +2769,8 @@ class BookingController extends Controller
                 'project_id' => $customerLedger->project_id,
                 'customer_id' => $customerLedger->customer_id,
                 'plot_id' => $customerLedger->plot_id,
-                'voucher_series' => $ledger?->type ?? $customerLedger->transaction_type,
-                'voucher_number' => $ledger?->voucher_number ?? $fallbackVoucherNumber ?? $customerLedger->type_id,
+                'voucher_series' => $voucherSeries,
+                'voucher_number' => $voucherNumber,
                 'slip_reference' => $customerLedger->reference,
                 'payment_type' => $customerLedger->payment_type,
                 'amount' => $customerLedger->amount_out,
@@ -2767,7 +2781,7 @@ class BookingController extends Controller
                 'passing_date' => $customerLedger->passing_date,
                 'is_active' => $customerLedger->is_active,
                 'is_approve' => $customerLedger->is_approve,
-                'create_by' => $ledger?->create_by ?? Auth::id(),
+                'create_by' => $existingBookingVoucher?->create_by ?? $ledger?->create_by ?? Auth::id(),
                 'update_by' => Auth::id(),
             ]
         );
@@ -2836,10 +2850,29 @@ class BookingController extends Controller
     private function paymentInstrumentLabel(int $paymentType): ?string
     {
         return match ($paymentType) {
-            2 => 'Transaction No',
-            3 => 'Cheque No',
+            2 => 'Txn',
+            3 => 'Chq',
             default => null,
         };
+    }
+
+    private function paymentMethodCode(int $paymentType): string
+    {
+        return match ($paymentType) {
+            2 => 'Online',
+            3 => 'Cheque',
+            default => 'Cash',
+        };
+    }
+
+    private function appendDetailPart(array &$parts, string $label, $value): void
+    {
+        $normalized = trim((string) $value);
+        if ($normalized === '') {
+            return;
+        }
+
+        $parts[] = $label . ': ' . $normalized;
     }
 
     private function buildPprLedgerDetail(
@@ -2854,40 +2887,23 @@ class BookingController extends Controller
         ?string $instrumentNumber = null,
         ?int $plotType = null
     ): string {
-        $plotLabel = $this->formatPlotLabel($plot, $plotType);
-        $customerName = $this->formatPartyName($customer);
+        $parts = ['PPR'];
+        $this->appendDetailPart($parts, 'Plot', $plot ? $this->formatPlotLabel($plot, $plotType) : null);
+        $this->appendDetailPart($parts, 'Cust', $customer ? $this->formatPartyName($customer) : null);
+        $this->appendDetailPart($parts, 'Method', $this->paymentMethodCode($paymentType));
+
         $bankName = $bankId ? trim((string) getBankNameById($bankId)) : '';
-        $method = $this->paymentMethodLabel($paymentType);
-        $detail = 'Received plot payment for ' . $plotLabel . ' from customer ' . $customerName;
-
-        if ($paymentType === 1) {
-            $detail .= ' by cash.';
-        } else {
-            $detail .= ' via ' . ($bankName !== '' ? $bankName . ' ' : '') . $method . '.';
+        if (in_array($paymentType, [2, 3], true)) {
+            $this->appendDetailPart($parts, 'Bank', $bankName);
+            $this->appendDetailPart($parts, $paymentType === 2 ? 'Txn' : 'Chq', $instrumentNumber);
+            $this->appendDetailPart($parts, 'Pass', $passingDate);
         }
 
-        $instrumentLabel = $this->paymentInstrumentLabel($paymentType);
-        if ($instrumentLabel && trim((string) $instrumentNumber) !== '') {
-            $detail .= ' ' . $instrumentLabel . ': ' . trim((string) $instrumentNumber) . '.';
-        }
+        $this->appendDetailPart($parts, 'Ref', $reference);
+        $this->appendDetailPart($parts, 'Date', $receiptDate);
+        $this->appendDetailPart($parts, 'Note', $narration);
 
-        if (trim((string) $reference) !== '') {
-            $detail .= ' Receipt Ref: ' . trim((string) $reference) . '.';
-        }
-
-        if (trim((string) $receiptDate) !== '') {
-            $detail .= ' Receipt Date: ' . trim((string) $receiptDate) . '.';
-        }
-
-        if (in_array($paymentType, [2, 3], true) && trim((string) $passingDate) !== '') {
-            $detail .= ' Passing Date: ' . trim((string) $passingDate) . '.';
-        }
-
-        if (trim((string) $narration) !== '') {
-            $detail .= ' Narration: ' . trim((string) $narration) . '.';
-        }
-
-        return $detail;
+        return implode(' | ', $parts);
     }
 
 

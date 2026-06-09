@@ -16,11 +16,14 @@ use App\Models\ProjectHeadSubhead;
 use App\Models\User;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Testing\TestResponse;
+use Mockery;
 use Tests\TestCase;
 
 class VoucherClearanceFlowTest extends TestCase
@@ -89,20 +92,21 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertNotNull($ledger);
         $this->assertSame(0, (int) $customerLedger->passing_status);
         $this->assertSame($ledger->id, $bookingVoucher->ledger_id);
-        $this->assertStringContainsString('Received plot payment', $ledger->detail);
+        $this->assertStringContainsString('PPR |', $ledger->detail);
         $this->assertStringContainsString('Plot R-101', $ledger->detail);
-        $this->assertStringContainsString('Ali Khan', $ledger->detail);
-        $this->assertStringContainsString('Bank Alfalah', $ledger->detail);
-        $this->assertStringContainsString('Receipt Date: 2026-05-17', $ledger->detail);
-        $this->assertStringContainsString('Passing Date: 2026-05-18', $ledger->detail);
+        $this->assertStringContainsString('Cust: Ali Khan', $ledger->detail);
+        $this->assertStringContainsString('Date: 2026-05-17', $ledger->detail);
+        $this->assertStringContainsString('Pass: 2026-05-18', $ledger->detail);
+        $this->assertStringNotContainsString('Received plot payment for', $ledger->detail);
 
         if ($paymentType === 2) {
-            $this->assertStringContainsString('online transfer', $ledger->detail);
-            $this->assertStringContainsString('Transaction No: TXN-001', $ledger->detail);
-            $this->assertStringNotContainsString('Account No', $ledger->detail);
+            $this->assertStringContainsString('Method: Online', $ledger->detail);
+            $this->assertStringContainsString('Bank: Bank Alfalah', $ledger->detail);
+            $this->assertStringContainsString('Txn: TXN-001', $ledger->detail);
         } else {
-            $this->assertStringContainsString('cheque', $ledger->detail);
-            $this->assertStringContainsString('Cheque No: TXN-001', $ledger->detail);
+            $this->assertStringContainsString('Method: Cheque', $ledger->detail);
+            $this->assertStringContainsString('Bank: Bank Alfalah', $ledger->detail);
+            $this->assertStringContainsString('Chq: TXN-001', $ledger->detail);
         }
     }
 
@@ -133,12 +137,14 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame(0, (int) $customerLedger->passing_status);
 
         if ($paymentType === 2) {
-            $this->assertStringContainsString('Cash received via Bank Alfalah online transfer.', $ledger->detail);
-            $this->assertStringContainsString('Transaction No: TXN-2', $ledger->detail);
+            $this->assertStringContainsString('CR |', $ledger->detail);
+            $this->assertStringContainsString('Method: Online', $ledger->detail);
+            $this->assertStringContainsString('Txn: TXN-2', $ledger->detail);
             $this->assertStringNotContainsString('Account No', $ledger->detail);
         } else {
-            $this->assertStringContainsString('Cash received via Bank Alfalah cheque.', $ledger->detail);
-            $this->assertStringContainsString('Cheque No: TXN-3', $ledger->detail);
+            $this->assertStringContainsString('CR |', $ledger->detail);
+            $this->assertStringContainsString('Method: Cheque', $ledger->detail);
+            $this->assertStringContainsString('Chq: TXN-3', $ledger->detail);
         }
     }
 
@@ -253,11 +259,12 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame(1, Ledger::where('customer_ledger_id', $pending->id)->where('type', 'CP')->where('reference', 'CASH_OUT_CLEARANCE#' . $pending->id)->count());
         $clearanceLedger = Ledger::where('customer_ledger_id', $pending->id)->where('type', 'CP')->where('reference', 'CASH_OUT_CLEARANCE#' . $pending->id)->first();
         $this->assertNotNull($clearanceLedger);
-        $this->assertStringContainsString('Cleared pending cash-in receipt CR-1 through Cash-Out voucher CP-1.', $clearanceLedger->detail);
-        $this->assertStringContainsString('Bank Alfalah cheque.', $clearanceLedger->detail);
-        $this->assertStringContainsString('Cheque No: CHK-001', $clearanceLedger->detail);
-        $this->assertStringContainsString('Cash-out posted to Cash Voucher / Customer Account.', $clearanceLedger->detail);
-        $this->assertStringContainsString('Clearance Date: 2026-05-21.', $clearanceLedger->detail);
+        $this->assertStringContainsString('CP Clear', $clearanceLedger->detail);
+        $this->assertStringContainsString('Src: CR-1', $clearanceLedger->detail);
+        $this->assertStringContainsString('Orig: Cheque/Bank Alfalah/Chq CHK-001', $clearanceLedger->detail);
+        $this->assertStringContainsString('To: Cash Voucher/Customer Account', $clearanceLedger->detail);
+        $this->assertStringContainsString('Date: 2026-05-21', $clearanceLedger->detail);
+        $this->assertLessThanOrEqual(260, strlen($clearanceLedger->detail));
         $this->assertSame(1, (int) $pending->passing_status);
         $pendingRowsAfterPass = $this->callPendingBankPayments()->json('data');
         $pendingIdsAfterPass = collect($pendingRowsAfterPass)->pluck('id')->all();
@@ -309,11 +316,14 @@ class VoucherClearanceFlowTest extends TestCase
             ->first();
 
         $this->assertNotNull($clearanceLedger);
-        $this->assertStringContainsString('Cleared pending received plot payment PPR-13 through Cash-Out voucher CP-252.', $clearanceLedger->detail);
-        $this->assertStringContainsString('Original receipt for Plot R-101 from customer Ali Khan via Bank Alfalah online transfer.', $clearanceLedger->detail);
-        $this->assertStringContainsString('Transaction No: 18408074163', $clearanceLedger->detail);
-        $this->assertStringContainsString('Cash-out posted to Cash Voucher / Customer Account.', $clearanceLedger->detail);
-        $this->assertStringContainsString('Clearance Date: 2026-06-03.', $clearanceLedger->detail);
+        $this->assertStringContainsString('CP Clear', $clearanceLedger->detail);
+        $this->assertStringContainsString('Src: PPR-13', $clearanceLedger->detail);
+        $this->assertStringContainsString('Plot: Plot R-101', $clearanceLedger->detail);
+        $this->assertStringContainsString('Cust: Ali Khan', $clearanceLedger->detail);
+        $this->assertStringContainsString('Orig: Online/Bank Alfalah/Txn 18408074163', $clearanceLedger->detail);
+        $this->assertStringContainsString('To: Cash Voucher/Customer Account', $clearanceLedger->detail);
+        $this->assertStringContainsString('Date: 2026-06-03', $clearanceLedger->detail);
+        $this->assertLessThanOrEqual(260, strlen($clearanceLedger->detail));
     }
 
     public function test_return_or_bounce_updates_history_without_creating_br(): void
@@ -413,6 +423,168 @@ class VoucherClearanceFlowTest extends TestCase
         $secondResponse->assertStatus(302);
         $secondResponse->assertSessionHasErrors('msg');
         $this->assertSame(1, CustomerLedger::where('transaction_type', 'PPR')->count());
+    }
+
+    public function test_ppr_update_preserves_voucher_number_and_updates_compact_detail(): void
+    {
+        $mockUser = Mockery::mock($this->user)->makePartial();
+        $mockUser->shouldReceive('cannot')->with('direct-update')->andReturnFalse();
+        Auth::setUser($mockUser);
+
+        $this->callDeposit($this->depositPayload(2, [
+            'reference' => 'UPD-001',
+            'detail' => 'Initial note',
+            't_number' => 'TXN-INIT',
+        ]))->assertStatus(302);
+
+        $customerLedger = CustomerLedger::where('transaction_type', 'PPR')->firstOrFail();
+        $ledger = Ledger::where('customer_ledger_id', $customerLedger->id)->where('type', 'PPR')->firstOrFail();
+        $bookingVoucher = BookingVoucher::where('customer_ledger_id', $customerLedger->id)->firstOrFail();
+        $originalLedgerVoucherNumber = (int) $ledger->voucher_number;
+        $originalBookingVoucherNumber = (int) $bookingVoucher->voucher_number;
+
+        $response = $this->callUpdateCashIn($customerLedger->id, [
+            'reference' => 'UPD-001',
+            'date' => '2026-05-19',
+            'amount_out' => '2500',
+            'description' => 'Updated note',
+            'payment_type' => 3,
+            't_number' => 'CHQ-12345',
+            'bank_id' => 1,
+            'passing_date' => '2026-05-20',
+        ]);
+
+        $response->assertStatus(302);
+
+        $customerLedger->refresh();
+        $ledger->refresh();
+        $bookingVoucher->refresh();
+
+        $this->assertSame($originalLedgerVoucherNumber, (int) $ledger->voucher_number);
+        $this->assertSame($originalBookingVoucherNumber, (int) $bookingVoucher->voucher_number);
+        $this->assertSame(1, Ledger::where('customer_ledger_id', $customerLedger->id)->where('type', 'PPR')->count());
+        $this->assertStringContainsString('PPR |', $ledger->detail);
+        $this->assertStringContainsString('Method: Cheque', $ledger->detail);
+        $this->assertStringContainsString('Chq: CHQ-12345', $ledger->detail);
+        $this->assertStringContainsString('Note: Updated note', $ledger->detail);
+    }
+
+    public function test_ppr_create_ignores_forged_project_id_and_uses_selected_town(): void
+    {
+        $response = $this->callDeposit($this->depositPayload(2, [
+            'project_id' => $this->otherProject->id,
+            'reference' => 'FORGED-001',
+        ]));
+
+        $response->assertStatus(302);
+
+        $customerLedger = CustomerLedger::where('transaction_type', 'PPR')->where('reference', 'FORGED-001')->firstOrFail();
+        $this->assertSame($this->project->id, (int) $customerLedger->project_id);
+        $this->assertDatabaseMissing('customer_ledger', [
+            'reference' => 'FORGED-001',
+            'project_id' => $this->otherProject->id,
+        ]);
+    }
+
+    public function test_ppr_update_rejects_cross_project_even_with_forged_project_id(): void
+    {
+        $foreignPlot = Plot::create([
+            'name' => '202',
+            'type' => '1',
+            'size' => '5',
+            'unit' => 'marla',
+            'description' => 'Foreign Plot',
+            'project_id' => $this->otherProject->id,
+            'road_id' => 1,
+            'facing_id' => 1,
+            'is_active' => 1,
+            'create_by' => $this->user->id,
+            'amount' => 0,
+        ]);
+
+        $foreignLedger = CustomerLedger::create([
+            'customer_id' => $this->customer->id,
+            'project_id' => $this->otherProject->id,
+            'plot_id' => $foreignPlot->id,
+            'type_id' => 33,
+            'reference' => 'FOREIGN-UPD',
+            'payment_type' => 2,
+            't_number' => 'TXN-FOREIGN',
+            'bank_id' => 1,
+            'passing_date' => '2026-05-18',
+            'passing_status' => 0,
+            'date' => '2026-05-17',
+            'transaction_type' => 'PPR',
+            'amount_in' => 0,
+            'amount_out' => 1200,
+            'description' => 'Foreign pending payment',
+            'is_active' => 1,
+            'is_approve' => 0,
+        ]);
+
+        Ledger::create([
+            'customer_ledger_id' => $foreignLedger->id,
+            'voucher_number' => 44,
+            'type' => 'PPR',
+            'type_id' => 44,
+            'project_head_subheads_id' => ProjectHeadSubhead::create([
+                'project_id' => $this->otherProject->id,
+                'head_accounting_id' => 16,
+                'subhead_accounting_id' => 20,
+                'plot_id' => $foreignPlot->id,
+                'customer_id' => $this->customer->id,
+            ])->id,
+            'reference' => 'FOREIGN-UPD',
+            'amount_in' => 1200,
+            'amount_out' => 0,
+            'is_active' => 1,
+            'date' => '2026-05-17',
+            'detail' => 'Foreign detail',
+            'update_by' => $this->user->id,
+            'create_by' => $this->user->id,
+            'status' => 0,
+        ]);
+
+        BookingVoucher::create([
+            'booking_id' => null,
+            'customer_ledger_id' => $foreignLedger->id,
+            'ledger_id' => Ledger::latest('id')->value('id'),
+            'project_id' => $this->otherProject->id,
+            'customer_id' => $this->customer->id,
+            'plot_id' => $foreignPlot->id,
+            'voucher_series' => 'PPR',
+            'voucher_number' => 44,
+            'slip_reference' => 'FOREIGN-UPD',
+            'payment_type' => 2,
+            'amount' => 1200,
+            'receipt_date' => '2026-05-17',
+            'description' => 'Foreign pending payment',
+            'bank_id' => 1,
+            't_number' => 'TXN-FOREIGN',
+            'passing_date' => '2026-05-18',
+            'is_active' => 1,
+            'is_approve' => 0,
+            'create_by' => $this->user->id,
+            'update_by' => $this->user->id,
+        ]);
+
+        $response = $this->callUpdateCashIn($foreignLedger->id, [
+            'reference' => 'FOREIGN-UPD',
+            'date' => '2026-05-20',
+            'amount_out' => '1400',
+            'description' => 'Should fail',
+            'payment_type' => 2,
+            't_number' => 'TXN-FOREIGN-2',
+            'bank_id' => 1,
+            'passing_date' => '2026-05-21',
+            'project_id' => $this->project->id,
+        ]);
+
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors('msg');
+        $foreignLedger->refresh();
+        $this->assertSame('Foreign pending payment', $foreignLedger->description);
+        $this->assertSame($this->otherProject->id, (int) $foreignLedger->project_id);
     }
 
     public function test_update_pending_bank_payment_status_rejects_non_online_check_payment_types(): void
@@ -850,6 +1022,18 @@ class VoucherClearanceFlowTest extends TestCase
         $this->app->instance('request', $request);
 
         $response = $this->app->make(BookingController::class)->deposit($request);
+
+        return TestResponse::fromBaseResponse($response);
+    }
+
+    private function callUpdateCashIn(int $id, array $payload, ?int $selectedProjectId = null): TestResponse
+    {
+        $request = Request::create('/admin/booking/plot/voucher/update/' . $id, 'POST', $payload);
+        $request->cookies->set('selected_action', (string) ($selectedProjectId ?? $this->project->id));
+        $request->setLaravelSession($this->app['session.store']);
+        $this->app->instance('request', $request);
+
+        $response = $this->app->make(BookingController::class)->updateCashIn($request, $id);
 
         return TestResponse::fromBaseResponse($response);
     }

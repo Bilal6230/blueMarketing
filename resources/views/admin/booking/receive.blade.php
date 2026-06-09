@@ -93,27 +93,7 @@
                                             <div class="row">
                                                 <div class="col-sm-6">
                                                     <div class="row">
-                                                        <div class="col-sm-6">
-                                                            <div class="input-group">
-                                                                <label class="fbox">Projects</label>
-                                                                <div class="input-group">
-                                                                    <select class="form-control select2" name="project_id"
-                                                                        id="project_id">
-                                                                        <option value="">Select an option</option>
-
-                                                                        @foreach ($projects as $v)
-                                                                            <option value="{{ $v->id }}">
-                                                                                {{ $v->project }}</option>
-                                                                        @endforeach
-                                                                    </select>
-                                                                    @error('project_id')
-                                                                        <div class="invalid-feedback">{{ $message }}</div>
-                                                                    @enderror
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <div class="col-sm-6">
+                                                        <div class="col-sm-12">
                                                             <div class="input-group">
                                                                 <label class="fbox">Customer</label>
                                                                 <div class="input-group">
@@ -1164,13 +1144,12 @@
             });
 
 
-            function fetchCustomers(projectId) {
+            function fetchCustomers() {
                 $.ajax({
                     url: '/admin/get-customers-byplot', // URL to your route
                     type: 'POST', // Use POST method for sending data
                     data: {
-                        _token: '{{ csrf_token() }}', // Add CSRF token
-                        project_id: projectId // Pass project ID to server
+                        _token: '{{ csrf_token() }}' // Add CSRF token
                     },
                     success: function(data) {
                         // Populate customer dropdown with retrieved data
@@ -1190,20 +1169,7 @@
             }
 
 
-            // Event listener for project dropdown change
-            $('#project_id').change(function() {
-                // Get selected project ID
-                var projectId = $(this).val();
-
-                // If a project is selected, fetch customers
-                if (projectId) {
-                    fetchCustomers(projectId);
-                } else {
-                    // If no project is selected, empty the customer dropdown
-                    $('#customer_id').empty();
-                    $('#customer_id').append('<option value="">Select customer</option>');
-                }
-            });
+            fetchCustomers();
 
             $('#customer_id').change(function(e) {
                 e.preventDefault();
@@ -1225,7 +1191,6 @@
                     type: 'POST', // Use POST method for sending data
                     data: {
                         _token: '{{ csrf_token() }}', // Add CSRF token
-                        project_id: '{{ getSelectedTown() }}',
                         customer_id: customerId // Pass project ID to server
                     },
                     success: function(data) {

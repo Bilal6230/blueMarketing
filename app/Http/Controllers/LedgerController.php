@@ -468,10 +468,29 @@ class LedgerController extends Controller
     private function paymentInstrumentLabel(int $paymentType): ?string
     {
         return match ($paymentType) {
-            2 => 'Transaction No',
-            3 => 'Cheque No',
+            2 => 'Txn',
+            3 => 'Chq',
             default => null,
         };
+    }
+
+    private function paymentMethodCode(int $paymentType): string
+    {
+        return match ($paymentType) {
+            2 => 'Online',
+            3 => 'Cheque',
+            default => 'Cash',
+        };
+    }
+
+    private function appendDetailPart(array &$parts, string $label, $value): void
+    {
+        $normalized = trim((string) $value);
+        if ($normalized === '') {
+            return;
+        }
+
+        $parts[] = $label . ': ' . $normalized;
     }
 
     private function buildCashVoucherDetail(
@@ -488,35 +507,20 @@ class LedgerController extends Controller
             return trim((string) $narration);
         }
 
-        $detail = 'Cash received';
-        if ($paymentType === 1) {
-            $detail .= '.';
-        } else {
-            $detail .= ' via ' . trim(($bankName ? $bankName . ' ' : '') . $this->paymentMethodLabel($paymentType)) . '.';
+        $parts = ['CR'];
+        $this->appendDetailPart($parts, 'Method', $this->paymentMethodCode($paymentType));
+
+        if (in_array($paymentType, [2, 3], true)) {
+            $this->appendDetailPart($parts, 'Bank', $bankName);
+            $this->appendDetailPart($parts, $paymentType === 2 ? 'Txn' : 'Chq', $instrumentNumber);
+            $this->appendDetailPart($parts, 'Pass', $passingDate);
         }
 
-        $instrumentLabel = $this->paymentInstrumentLabel($paymentType);
-        if ($instrumentLabel && trim((string) $instrumentNumber) !== '') {
-            $detail .= ' ' . $instrumentLabel . ': ' . trim((string) $instrumentNumber) . '.';
-        }
+        $this->appendDetailPart($parts, 'Ref', $reference);
+        $this->appendDetailPart($parts, 'Date', $receiptDate);
+        $this->appendDetailPart($parts, 'Note', $narration);
 
-        if (trim((string) $reference) !== '') {
-            $detail .= ' Receipt Ref: ' . trim((string) $reference) . '.';
-        }
-
-        if (trim((string) $receiptDate) !== '') {
-            $detail .= ' Receipt Date: ' . trim((string) $receiptDate) . '.';
-        }
-
-        if (in_array($paymentType, [2, 3], true) && trim((string) $passingDate) !== '') {
-            $detail .= ' Passing Date: ' . trim((string) $passingDate) . '.';
-        }
-
-        if (trim((string) $narration) !== '') {
-            $detail .= ' Narration: ' . trim((string) $narration) . '.';
-        }
-
-        return $detail;
+        return implode(' | ', $parts);
     }
 
     private function buildCashOutClearanceDetail(
@@ -535,55 +539,35 @@ class LedgerController extends Controller
             ?? ($sourceType === 'PPR' ? $pendingCustomerLedger->bookingVoucher?->voucher_number : null)
             ?? $pendingCustomerLedger->type_id;
         $sourceVoucherDisplay = trim($sourceType . '-' . $sourceVoucherNumber, '-');
-        $sourceLabel = $sourceType === 'PPR' ? 'pending received plot payment' : 'pending cash-in receipt';
-        $detail = 'Cleared ' . $sourceLabel . ' ' . $sourceVoucherDisplay . ' through Cash-Out voucher CP-' . $cashOutVoucherNumber . '.';
+        $parts = ['CP Clear'];
+        $this->appendDetailPart($parts, 'Src', $sourceVoucherDisplay);
+        if ($sourceType === 'PPR') {
+            $this->appendDetailPart($parts, 'Plot', $pendingCustomerLedger->plot_list ? $this->formatPlotLabel($pendingCustomerLedger->plot_list) : null);
+            $this->appendDetailPart($parts, 'Cust', $pendingCustomerLedger->customer_list ? $this->formatPartyName($pendingCustomerLedger->customer_list) : null);
+        } elseif ($pendingCustomerLedger->customer_list) {
+            $this->appendDetailPart($parts, 'Cust', $this->formatPartyName($pendingCustomerLedger->customer_list));
+        }
 
         $bankName = $pendingCustomerLedger->bank_id ? trim((string) getBankNameById($pendingCustomerLedger->bank_id)) : '';
-        $method = $this->paymentMethodLabel((int) $pendingCustomerLedger->payment_type);
+        $origParts = [$this->paymentMethodCode((int) $pendingCustomerLedger->payment_type)];
+        if ($bankName !== '') {
+            $origParts[] = $bankName;
+        }
         $instrumentLabel = $this->paymentInstrumentLabel((int) $pendingCustomerLedger->payment_type);
         $instrumentNumber = trim((string) ($pendingCustomerLedger->t_number ?? ''));
-        $receiptDate = trim((string) ($pendingCustomerLedger->date ?? ''));
-
-        if ($sourceType === 'PPR') {
-            $detail .= ' Original receipt for ' . $this->formatPlotLabel($pendingCustomerLedger->plot_list) . ' from customer ' . $this->formatPartyName($pendingCustomerLedger->customer_list);
-            if ((int) $pendingCustomerLedger->payment_type === 1) {
-                $detail .= ' by cash.';
-            } else {
-                $detail .= ' via ' . ($bankName !== '' ? $bankName . ' ' : '') . $method . '.';
-            }
-        } else {
-            $detail .= ' Original receipt';
-            if ((int) $pendingCustomerLedger->payment_type === 1) {
-                $detail .= ' by cash.';
-            } else {
-                $detail .= ' via ' . ($bankName !== '' ? $bankName . ' ' : '') . $method . '.';
-            }
-        }
-
         if ($instrumentLabel && $instrumentNumber !== '') {
-            $detail .= ' ' . $instrumentLabel . ': ' . $instrumentNumber . ',';
+            $origParts[] = $instrumentLabel . ' ' . $instrumentNumber;
         }
-
-        if ($receiptDate !== '') {
-            $detail .= ' Receipt Date: ' . $receiptDate . '.';
-        }
+        $this->appendDetailPart($parts, 'Orig', implode('/', $origParts));
 
         $destinationHead = trim((string) ($destinationAccount->headAccounting->name ?? ''));
         $destinationSubhead = trim((string) ($destinationAccount->subheadAccounting->name ?? ''));
-        $destinationLabel = trim($destinationHead . ($destinationSubhead !== '' ? ' / ' . $destinationSubhead : ''));
-        if ($destinationLabel !== '') {
-            $detail .= ' Cash-out posted to ' . $destinationLabel . '.';
-        }
+        $destinationLabel = trim($destinationHead . ($destinationSubhead !== '' ? '/' . $destinationSubhead : ''));
+        $this->appendDetailPart($parts, 'To', $destinationLabel);
+        $this->appendDetailPart($parts, 'Date', $clearanceDate);
+        $this->appendDetailPart($parts, 'Note', $narration);
 
-        if (trim((string) $clearanceDate) !== '') {
-            $detail .= ' Clearance Date: ' . trim((string) $clearanceDate) . '.';
-        }
-
-        if (trim((string) $narration) !== '') {
-            $detail .= ' Narration: ' . trim((string) $narration) . '.';
-        }
-
-        return preg_replace('/\s+/', ' ', trim($detail)) ?? trim($detail);
+        return implode(' | ', $parts);
     }
 
     public function saveAsDraft(Request $request)
