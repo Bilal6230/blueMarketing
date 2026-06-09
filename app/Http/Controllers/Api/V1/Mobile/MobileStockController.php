@@ -1044,8 +1044,21 @@ class MobileStockController extends BaseMobileController
         bool $createIfMissing = false,
         ?int $userId = null
     ): int {
-        $head = HeadAccounting::where('id', $headName)->first();
-        $subhead = SubheadAccounting::where('id', $subheadName)->first();
+        $headQuery = HeadAccounting::query();
+        if (ctype_digit($headName)) {
+            $headQuery->where('id', (int) $headName);
+        } else {
+            $headQuery->where('name', $headName);
+        }
+        $head = $headQuery->first();
+
+        $subheadQuery = SubheadAccounting::query();
+        if (ctype_digit($subheadName)) {
+            $subheadQuery->where('id', (int) $subheadName);
+        } else {
+            $subheadQuery->where('name', $subheadName);
+        }
+        $subhead = $subheadQuery->first();
 
         if (!$head && $createIfMissing) {
             $head = HeadAccounting::create([

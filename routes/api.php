@@ -79,7 +79,8 @@ Route::prefix('v1/mobile')->group(function () {
             Route::get('items', [MobileStockController::class, 'items']);
             Route::get('parties', [MobileStockController::class, 'parties']);
             Route::get('entries', [MobileStockController::class, 'entries']);
-            Route::get('entries/{entry}', [MobileStockController::class, 'entryDetail']);
+            Route::get('entries/{entry}', [MobileStockController::class, 'entryDetail'])
+                ->whereNumber('entry');
             Route::post('entries/in', [MobileStockController::class, 'storeIn']);
             Route::post('entries/out', [MobileStockController::class, 'storeOut']);
             Route::get('report', [MobileStockController::class, 'report']);
