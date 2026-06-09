@@ -1253,6 +1253,32 @@
                     syncPendingAmountLock(null, clearAmount);
                 }
 
+                function removeProcessedPendingRow(response) {
+                    const responseIds = [
+                        String(response?.selected_pending_payment_id || '').trim(),
+                        String(response?.customer_ledger_id || '').trim()
+                    ].filter(Boolean);
+
+                    if (!responseIds.length) {
+                        return;
+                    }
+
+                    window.pendingRowsCache = (window.pendingRowsCache || []).filter((row) => !responseIds.includes(String(row.id)));
+                }
+
+                function resetPendingPaymentsUiAfterProcess(response) {
+                    removeProcessedPendingRow(response);
+                    $('#selected_pending_payment_id').val('');
+                    clearPendingSelection(true);
+                    populatePendingPaymentsTable(window.pendingRowsCache || []);
+
+                    if (typeof loadPendingPayments === 'function') {
+                        loadPendingPayments();
+                    } else {
+                        $('#payment_type').trigger('change');
+                    }
+                }
+
                 function renderPendingRows() {
                     const $tbody = $('#pendingPaymentsTable tbody');
                     $tbody.empty();
@@ -2781,6 +2807,10 @@
                     },
                     success: function(response) {
                         console.log(response, tabNumber);
+
+                        if (response?.flow_type === 'pending_payment_status_updated') {
+                            resetPendingPaymentsUiAfterProcess(response);
+                        }
 
                         // Remove the saved tab and keep indices contiguous
                         removeTab(tabNumber);

@@ -190,6 +190,8 @@ class VoucherClearanceFlowTest extends TestCase
             ->assertJson([
                 'status' => 'success',
                 'flow_type' => 'pending_payment_status_updated',
+                'pending_status' => 2,
+                'selected_pending_payment_id' => $pending->id,
             ]);
 
         $pending->refresh();
@@ -201,6 +203,9 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertDatabaseMissing('ledgers', ['type' => 'CP']);
         $this->assertDatabaseMissing('ledgers', ['type' => 'BR']);
         $this->assertCount(1, $pending->check_history ?? []);
+        $pendingRowsAfterReturn = $this->callPendingBankPayments()->json('data');
+        $pendingIdsAfterReturn = collect($pendingRowsAfterReturn)->pluck('id')->all();
+        $this->assertNotContains($pending->id, $pendingIdsAfterReturn);
     }
 
     public function test_passing_a_pending_payment_creates_one_cp_ledger_only_once(): void
@@ -228,6 +233,8 @@ class VoucherClearanceFlowTest extends TestCase
             ->assertJson([
                 'status' => 'success',
                 'flow_type' => 'pending_payment_status_updated',
+                'pending_status' => 1,
+                'selected_pending_payment_id' => $pending->id,
                 'voucher_display' => 'CP-1',
             ]);
 
@@ -251,6 +258,10 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertStringContainsString('Cheque No: CHK-001', $clearanceLedger->detail);
         $this->assertStringContainsString('Cash-out posted to Cash Voucher / Customer Account.', $clearanceLedger->detail);
         $this->assertStringContainsString('Clearance Date: 2026-05-21.', $clearanceLedger->detail);
+        $this->assertSame(1, (int) $pending->passing_status);
+        $pendingRowsAfterPass = $this->callPendingBankPayments()->json('data');
+        $pendingIdsAfterPass = collect($pendingRowsAfterPass)->pluck('id')->all();
+        $this->assertNotContains($pending->id, $pendingIdsAfterPass);
 
         $secondResponse = $this->callLedgerStore($payload);
 
@@ -321,7 +332,13 @@ class VoucherClearanceFlowTest extends TestCase
             'passing_date' => '2026-05-22',
         ]));
 
-        $response->assertOk();
+        $response->assertOk()
+            ->assertJson([
+                'status' => 'success',
+                'flow_type' => 'pending_payment_status_updated',
+                'pending_status' => 3,
+                'selected_pending_payment_id' => $pending->id,
+            ]);
         $pending->refresh();
 
         $this->assertSame(3, (int) $pending->passing_status);
@@ -331,6 +348,9 @@ class VoucherClearanceFlowTest extends TestCase
             'type' => 'CP',
             'reference' => 'CASH_OUT_CLEARANCE#' . $pending->id,
         ]);
+        $pendingRowsAfterBounce = $this->callPendingBankPayments()->json('data');
+        $pendingIdsAfterBounce = collect($pendingRowsAfterBounce)->pluck('id')->all();
+        $this->assertNotContains($pending->id, $pendingIdsAfterBounce);
     }
 
     public function test_cross_project_selected_pending_payment_id_is_rejected(): void

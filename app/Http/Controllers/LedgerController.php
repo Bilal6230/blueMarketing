@@ -182,6 +182,8 @@ class LedgerController extends Controller
                         'updated_by' => Auth::id(),
                     ]);
 
+                    $pendingCustomerLedger->refresh();
+
                     $cashOutClearanceLedger = null;
                     if ($pendingStatus === 1) {
                         $cashOutClearanceLedger = Ledger::where('customer_ledger_id', $pendingCustomerLedger->id)
@@ -249,6 +251,8 @@ class LedgerController extends Controller
                         'message' => 'Payment status updated successfully.',
                         'data' => $cashOutClearanceLedger,
                         'customer_ledger_id' => $pendingCustomerLedger->id,
+                        'selected_pending_payment_id' => $pendingCustomerLedger->id,
+                        'pending_status' => $pendingCustomerLedger->passing_status,
                         'voucher_number' => $cashOutClearanceLedger?->voucher_number,
                         'voucher_display' => $cashOutClearanceLedger ? ('CP-' . $cashOutClearanceLedger->voucher_number) : null,
                     ];
