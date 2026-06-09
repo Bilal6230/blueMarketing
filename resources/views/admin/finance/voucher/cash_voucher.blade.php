@@ -1266,7 +1266,7 @@
                     window.pendingRowsCache = (window.pendingRowsCache || []).filter((row) => !responseIds.includes(String(row.id)));
                 }
 
-                function resetPendingPaymentsUiAfterProcess(response) {
+                window.resetPendingPaymentsUiAfterProcess = function(response) {
                     removeProcessedPendingRow(response);
                     $('#selected_pending_payment_id').val('');
                     clearPendingSelection(true);
@@ -1277,7 +1277,7 @@
                     } else {
                         $('#payment_type').trigger('change');
                     }
-                }
+                };
 
                 function renderPendingRows() {
                     const $tbody = $('#pendingPaymentsTable tbody');
@@ -2809,7 +2809,9 @@
                         console.log(response, tabNumber);
 
                         if (response?.flow_type === 'pending_payment_status_updated') {
-                            resetPendingPaymentsUiAfterProcess(response);
+                            if (typeof window.resetPendingPaymentsUiAfterProcess === 'function') {
+                                window.resetPendingPaymentsUiAfterProcess(response);
+                            }
                         }
 
                         // Remove the saved tab and keep indices contiguous
