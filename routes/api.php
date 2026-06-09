@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\Mobile\MobileAuthController;
 use App\Http\Controllers\Api\V1\Mobile\MobileCrmController;
 use App\Http\Controllers\Api\V1\Mobile\MobileDashboardController;
 use App\Http\Controllers\Api\V1\Mobile\MobileProjectController;
+use App\Http\Controllers\Api\V1\Mobile\MobileReportsController;
 use App\Http\Controllers\Api\V1\Mobile\MobileStockController;
 
 
@@ -84,6 +85,21 @@ Route::prefix('v1/mobile')->group(function () {
             Route::post('entries/in', [MobileStockController::class, 'storeIn']);
             Route::post('entries/out', [MobileStockController::class, 'storeOut']);
             Route::get('report', [MobileStockController::class, 'report']);
+        });
+
+        Route::prefix('reports')->group(function () {
+            Route::get('inventory', [MobileReportsController::class, 'inventory']);
+            Route::get('projects', [MobileReportsController::class, 'projects']);
+            Route::get('projects/{project}', [MobileReportsController::class, 'projectDetail'])
+                ->whereNumber('project');
+            Route::get('projects/{project}/plots', [MobileReportsController::class, 'projectPlots'])
+                ->whereNumber('project');
+            Route::get('projects/{project}/bookings', [MobileReportsController::class, 'projectBookings'])
+                ->whereNumber('project');
+            Route::get('projects/{project}/recovery', [MobileReportsController::class, 'projectRecovery'])
+                ->whereNumber('project');
+            Route::get('projects/{project}/customers', [MobileReportsController::class, 'projectCustomers'])
+                ->whereNumber('project');
         });
     });
 });
