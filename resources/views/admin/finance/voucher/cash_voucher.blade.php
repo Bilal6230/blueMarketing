@@ -1253,6 +1253,32 @@
                     syncPendingAmountLock(null, clearAmount);
                 }
 
+                function removeProcessedPendingRow(response) {
+                    const responseIds = [
+                        String(response?.selected_pending_payment_id || '').trim(),
+                        String(response?.customer_ledger_id || '').trim()
+                    ].filter(Boolean);
+
+                    if (!responseIds.length) {
+                        return;
+                    }
+
+                    window.pendingRowsCache = (window.pendingRowsCache || []).filter((row) => !responseIds.includes(String(row.id)));
+                }
+
+                window.resetPendingPaymentsUiAfterProcess = function(response) {
+                    removeProcessedPendingRow(response);
+                    $('#selected_pending_payment_id').val('');
+                    clearPendingSelection(true);
+                    populatePendingPaymentsTable(window.pendingRowsCache || []);
+
+                    if (typeof loadPendingPayments === 'function') {
+                        loadPendingPayments();
+                    } else {
+                        $('#payment_type').trigger('change');
+                    }
+                };
+
                 function renderPendingRows() {
                     const $tbody = $('#pendingPaymentsTable tbody');
                     $tbody.empty();
@@ -1758,10 +1784,94 @@
                 let id = $(this).attr("data-id");
                 let name = $(this).attr("data-name");
                 $("#did").val(id);
+                cashVoucherIsDeleting = false;
+                setDeleteModalProcessing($('#modal-delete'), false);
                 $('#modal-delete').modal({
                     backdrop: 'static',
                     keyboard: false,
                     show: true
+                });
+            });
+
+            let cashVoucherIsDeleting = false;
+
+            function setDeleteModalProcessing($modal, isProcessing, message = null) {
+                const $text = $modal.find('.modal-text');
+                const defaultText = $text.data('default-text') || 'Are you sure you want to delete?';
+                const $submitButton = $modal.find('button[type="submit"]');
+                const $closeButtons = $modal.find('[data-dismiss="modal"], .close, .btn-default');
+
+                if (!$submitButton.data('default-html')) {
+                    $submitButton.data('default-html', $submitButton.html());
+                }
+
+                if (isProcessing) {
+                    $submitButton
+                        .prop('disabled', true)
+                        .html('<span class="spinner-border spinner-border-sm mr-1"></span> Checking ledger...');
+                    $closeButtons.prop('disabled', true);
+                    $text.text(message || 'Checking voucher status in ledger. Please wait...');
+                    return;
+                }
+
+                $submitButton
+                    .prop('disabled', false)
+                    .html($submitButton.data('default-html') || 'Yes');
+                $closeButtons.prop('disabled', false);
+                $text.html(defaultText + ' <b id="delete-data"></b>');
+            }
+
+            $('#cashVoucherDeleteForm').on('submit', function(e) {
+                e.preventDefault();
+
+                if (cashVoucherIsDeleting) {
+                    return;
+                }
+
+                const $form = $(this);
+                const $modal = $('#modal-delete');
+                cashVoucherIsDeleting = true;
+
+                setDeleteModalProcessing($modal, true);
+
+                $.ajax({
+                    url: $form.attr('action'),
+                    type: 'POST',
+                    dataType: 'json',
+                    headers: {
+                        'Accept': 'application/json'
+                    },
+                    data: $form.serialize(),
+                    success: function(response) {
+                        $('#modal-delete').modal('hide');
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Deleted',
+                            text: response?.message || 'Voucher deleted successfully.'
+                        });
+
+                        if ($.fn.DataTable.isDataTable('#table-data')) {
+                            $('#table-data').DataTable().ajax.reload(null, false);
+                        } else {
+                            window.location.reload();
+                        }
+                    },
+                    error: function(xhr) {
+                        const response = xhr?.responseJSON || {};
+                        const isPostedBlock = response?.error_key === 'voucher_posted_to_ledger';
+
+                        Swal.fire({
+                            icon: isPostedBlock ? 'warning' : 'error',
+                            title: isPostedBlock ? 'Cannot Delete' : 'Delete Failed',
+                            text: isPostedBlock
+                                ? 'Cannot delete this voucher because it has already been posted to the ledger.'
+                                : (response?.message || 'Unable to delete voucher.')
+                        });
+                    },
+                    complete: function() {
+                        setDeleteModalProcessing($modal, false);
+                        cashVoucherIsDeleting = false;
+                    }
                 });
             });
 
@@ -2782,6 +2892,12 @@
                     success: function(response) {
                         console.log(response, tabNumber);
 
+                        if (response?.flow_type === 'pending_payment_status_updated') {
+                            if (typeof window.resetPendingPaymentsUiAfterProcess === 'function') {
+                                window.resetPendingPaymentsUiAfterProcess(response);
+                            }
+                        }
+
                         // Remove the saved tab and keep indices contiguous
                         removeTab(tabNumber);
                         // reindexTabs();
@@ -3319,10 +3435,11 @@
                     </button>
                 </div>
                 <div class="modal-body">
-                    <form action="{{ route('ledger.destroy') }}" method="POST" enctype="multipart/form-data">
+                    <form action="{{ route('ledger.destroy') }}" method="POST" enctype="multipart/form-data"
+                        id="cashVoucherDeleteForm">
                         @csrf
                         @method('DELETE')
-                        <p class="modal-text">Are you sure you want to delete? <b id="delete-data"></b></p>
+                        <p class="modal-text" data-default-text="Are you sure you want to delete?">Are you sure you want to delete? <b id="delete-data"></b></p>
                         <textarea name="delete_reason" id="" cols="60"></textarea>
                         <input type="hidden" name="id" id="did">
                 </div>

@@ -93,27 +93,7 @@
                                             <div class="row">
                                                 <div class="col-sm-6">
                                                     <div class="row">
-                                                        <div class="col-sm-6">
-                                                            <div class="input-group">
-                                                                <label class="fbox">Projects</label>
-                                                                <div class="input-group">
-                                                                    <select class="form-control select2" name="project_id"
-                                                                        id="project_id">
-                                                                        <option value="">Select an option</option>
-
-                                                                        @foreach ($projects as $v)
-                                                                            <option value="{{ $v->id }}">
-                                                                                {{ $v->project }}</option>
-                                                                        @endforeach
-                                                                    </select>
-                                                                    @error('project_id')
-                                                                        <div class="invalid-feedback">{{ $message }}</div>
-                                                                    @enderror
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <div class="col-sm-6">
+                                                        <div class="col-sm-12">
                                                             <div class="input-group">
                                                                 <label class="fbox">Customer</label>
                                                                 <div class="input-group">
@@ -397,7 +377,7 @@
                                                 <th>Detail</th>
                                                 <th>Amount</th>
                                                 <th>Type</th>
-                                                {{-- <th>Approve</th> --}}
+                                                <th>Status</th>
 
 
                                                 @canany(['read slip', 'delete slip', 'can approve'])
@@ -487,17 +467,50 @@
                                                             {{ Setting::roundformatAmount($i->amount ?? $i->amount_out ?? optional($customerLedger)->amount_out ?? 0) }}
                                                         </td>
 
-                                                    <td>
-                                                        <span
-                                                            class="badge {{ getPaymentTypeDetails($i->payment_type)['badge'] }}"
-                                                            style="width: 80%">
-                                                            {{ getPaymentTypeDetails($i->payment_type)['name'] }}
-                                                        </span>
-                                                    </td>
-{{-- 
-                                                    <td>
-                                                        {{ approveStatus($i->is_approve) }}
-                                                    </td> --}}
+                                                        <td>
+                                                            <span
+                                                                class="badge {{ getPaymentTypeDetails($i->payment_type)['badge'] }}"
+                                                                style="width: 80%">
+                                                                {{ getPaymentTypeDetails($i->payment_type)['name'] }}
+                                                            </span>
+                                                        </td>
+                                                        @php
+                                                            $approvalBadgeClass =
+                                                                (int) $i->is_approve === 1
+                                                                    ? 'badge-success'
+                                                                    : ((int) $i->is_approve === 2
+                                                                        ? 'badge-danger'
+                                                                        : 'badge-warning');
+                                                            $approvalLabel =
+                                                                (int) $i->is_approve === 1
+                                                                    ? 'Approved'
+                                                                    : ((int) $i->is_approve === 2
+                                                                        ? 'Rejected'
+                                                                        : 'Pending Approval');
+                                                            $clearanceLabel = !in_array((int) $i->payment_type, [2, 3], true)
+                                                                ? 'Posted'
+                                                                : match (is_null($i->passing_status) ? null : (int) $i->passing_status) {
+                                                                    0 => 'Pending Clearance',
+                                                                    1 => 'Passed',
+                                                                    2 => 'Returned',
+                                                                    3 => 'Bounced',
+                                                                    default => 'Posted',
+                                                                };
+                                                            $clearanceBadgeClass = match ($clearanceLabel) {
+                                                                'Passed', 'Posted' => 'badge-success',
+                                                                'Returned' => 'badge-secondary',
+                                                                'Bounced', 'Rejected' => 'badge-danger',
+                                                                default => 'badge-warning',
+                                                            };
+                                                        @endphp
+                                                        <td>
+                                                            <div class="d-flex flex-column" style="gap: 4px;">
+                                                                <span class="badge {{ $approvalBadgeClass }}">Approval:
+                                                                    {{ $approvalLabel }}</span>
+                                                                <span class="badge {{ $clearanceBadgeClass }}">Clearance:
+                                                                    {{ $clearanceLabel }}</span>
+                                                            </div>
+                                                        </td>
 
 
                                                     @canany(['read slip', 'update voucher', 'delete slip', 'can approve'])
@@ -517,8 +530,7 @@
                                                                         data-bank_id="{{ $i->bank_id }}"
                                                                         data-passing_date="{{ $i->passing_date }}"
                                                                         data-customer="{{ $customerName }}"
-                                                                        data-plot="{{ $plotName }}"
-                                                                        data-project="{{ $project->project ?? '-' }}">
+                                                                        data-plot="{{ $plotName }}">
                                                                         <i class="fas fa-pencil-alt"></i>
                                                                     </button>
                                                                 @endcan
@@ -636,12 +648,6 @@
                         <div class="row">
                             <div class="col-sm-4">
                                 <div class="form-group">
-                                    <label class="fbox">Project</label>
-                                    <input id="edit_project" type="text" class="form-control" readonly>
-                                </div>
-                            </div>
-                            <div class="col-sm-4">
-                                <div class="form-group">
                                     <label class="fbox">Reference</label>
                                     <input id="edit_reference" type="text"
                                         class="form-control @error('reference') is-invalid @enderror"
@@ -734,10 +740,11 @@
                     </button>
                 </div>
                 <div class="modal-body">
-                    <form action="{{ route('booking.customer.destroy') }}" method="POST" enctype="multipart/form-data">
+                    <form action="{{ route('booking.customer.destroy') }}" method="POST" enctype="multipart/form-data"
+                        id="receivedPaymentDeleteForm">
                         @csrf
                         @method('DELETE')
-                        <p class="modal-text">Are you sure you want to delete? <b id="delete-data"></b></p>
+                        <p class="modal-text" data-default-text="Are you sure you want to delete?">Are you sure you want to delete? <b id="delete-data"></b></p>
                         <input type="hidden" name="id" id="did">
                 </div>
                 <div class="modal-footer justify-content-between">
@@ -828,8 +835,12 @@
                                     <td id="view_passing_date">—</td>
                                 </tr>
                                 <tr>
-                                    <th>Status</th>
+                                    <th>Approval Status</th>
                                     <td id="view_status">—</td>
+                                </tr>
+                                <tr>
+                                    <th>Clearance Status</th>
+                                    <td id="view_clearance_status">—</td>
                                 </tr>
                             </table>
                         </div>
@@ -981,7 +992,6 @@
                     $('#edit_voucher').val($(this).data('voucher') || '—');
                     $('#edit_customer').val($(this).data('customer') || '—');
                     $('#edit_plot').val($(this).data('plot') || '—');
-                    $('#edit_project').val($(this).data('project') || '—');
                     $('#edit_reference').val($(this).data('reference') || '');
                     $('#edit_date').val($(this).data('date') || '');
                     $('#edit_amount').val($(this).data('amount') || '');
@@ -1164,13 +1174,12 @@
             });
 
 
-            function fetchCustomers(projectId) {
+            function fetchCustomers() {
                 $.ajax({
                     url: '/admin/get-customers-byplot', // URL to your route
                     type: 'POST', // Use POST method for sending data
                     data: {
-                        _token: '{{ csrf_token() }}', // Add CSRF token
-                        project_id: projectId // Pass project ID to server
+                        _token: '{{ csrf_token() }}' // Add CSRF token
                     },
                     success: function(data) {
                         // Populate customer dropdown with retrieved data
@@ -1190,20 +1199,7 @@
             }
 
 
-            // Event listener for project dropdown change
-            $('#project_id').change(function() {
-                // Get selected project ID
-                var projectId = $(this).val();
-
-                // If a project is selected, fetch customers
-                if (projectId) {
-                    fetchCustomers(projectId);
-                } else {
-                    // If no project is selected, empty the customer dropdown
-                    $('#customer_id').empty();
-                    $('#customer_id').append('<option value="">Select customer</option>');
-                }
-            });
+            fetchCustomers();
 
             $('#customer_id').change(function(e) {
                 e.preventDefault();
@@ -1225,7 +1221,6 @@
                     type: 'POST', // Use POST method for sending data
                     data: {
                         _token: '{{ csrf_token() }}', // Add CSRF token
-                        project_id: '{{ getSelectedTown() }}',
                         customer_id: customerId // Pass project ID to server
                     },
                     success: function(data) {
@@ -1251,10 +1246,90 @@
                 let id = $(this).attr("data-id");
                 let name = $(this).attr("data-name");
                 $("#did").val(id);
+                receivedPaymentIsDeleting = false;
+                setDeleteModalProcessing($('#modal-delete'), false);
                 $('#modal-delete').modal({
                     backdrop: 'static',
                     keyboard: false,
                     show: true
+                });
+            });
+
+            let receivedPaymentIsDeleting = false;
+
+            function setDeleteModalProcessing($modal, isProcessing, message = null) {
+                const $text = $modal.find('.modal-text');
+                const defaultText = $text.data('default-text') || 'Are you sure you want to delete?';
+                const $submitButton = $modal.find('button[type="submit"]');
+                const $closeButtons = $modal.find('[data-dismiss="modal"], .close, .btn-default');
+
+                if (!$submitButton.data('default-html')) {
+                    $submitButton.data('default-html', $submitButton.html());
+                }
+
+                if (isProcessing) {
+                    $submitButton
+                        .prop('disabled', true)
+                        .html('<span class="spinner-border spinner-border-sm mr-1"></span> Checking ledger...');
+                    $closeButtons.prop('disabled', true);
+                    $text.text(message || 'Checking voucher status in ledger. Please wait...');
+                    return;
+                }
+
+                $submitButton
+                    .prop('disabled', false)
+                    .html($submitButton.data('default-html') || 'Yes');
+                $closeButtons.prop('disabled', false);
+                $text.html(defaultText + ' <b id="delete-data"></b>');
+            }
+
+            $('#receivedPaymentDeleteForm').on('submit', function(e) {
+                e.preventDefault();
+
+                if (receivedPaymentIsDeleting) {
+                    return;
+                }
+
+                const $form = $(this);
+                const $modal = $('#modal-delete');
+                receivedPaymentIsDeleting = true;
+
+                setDeleteModalProcessing($modal, true);
+
+                $.ajax({
+                    url: $form.attr('action'),
+                    type: 'POST',
+                    dataType: 'json',
+                    headers: {
+                        'Accept': 'application/json'
+                    },
+                    data: $form.serialize(),
+                    success: function(response) {
+                        $('#modal-delete').modal('hide');
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Deleted',
+                            text: response?.message || 'Voucher deleted successfully.'
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    },
+                    error: function(xhr) {
+                        const response = xhr?.responseJSON || {};
+                        const isPostedBlock = response?.error_key === 'voucher_posted_to_ledger';
+
+                        Swal.fire({
+                            icon: isPostedBlock ? 'warning' : 'error',
+                            title: isPostedBlock ? 'Cannot Delete' : 'Delete Failed',
+                            text: isPostedBlock
+                                ? 'Cannot delete this received-payment voucher because it has already been posted to the ledger.'
+                                : (response?.message || 'Unable to delete voucher.')
+                        });
+                    },
+                    complete: function() {
+                        setDeleteModalProcessing($modal, false);
+                        receivedPaymentIsDeleting = false;
+                    }
                 });
             });
 
@@ -1285,7 +1360,8 @@
                         $('#view_t_number').text(data.t_number || '—');
                         $('#view_bank').text(data.bank_name || data.bank_id || '—');
                         $('#view_passing_date').text(data.passing_date || '—');
-                        $('#view_status').text(data.status_label || '—');
+                        $('#view_status').text(data.approval_status_label || data.status_label || '—');
+                        $('#view_clearance_status').text(data.clearance_status_label || '—');
                         $('#view_customer').text(data.customer?.name || '—');
                         $('#view_phone').text(data.customer?.phone_number || data.customer?.mobile_number || '—');
                         $('#view_cnic').text(data.customer?.nic_number || '—');

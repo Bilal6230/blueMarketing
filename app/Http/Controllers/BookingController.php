@@ -1387,14 +1387,63 @@ class BookingController extends Controller
     {
         $data = [
             'is_active' => "0",
+            'delete_reason' => $request->delete_reason,
         ];
         DB::beginTransaction();
         try {
-            $ledger = CustomerLedger::find($request->id);
+            $selectedProjectId = getSelectedTown();
+            $expectsJson = $request->expectsJson() || $request->ajax();
+
+            $ledger = CustomerLedger::where('id', $request->id)
+                ->where('project_id', $selectedProjectId)
+                ->where('transaction_type', 'PPR')
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $bookingVoucher = BookingVoucher::where('customer_ledger_id', $ledger->id)
+                ->where('project_id', $selectedProjectId)
+                ->lockForUpdate()
+                ->first();
+
+            $postedToLedger = (!is_null(optional($bookingVoucher)->ledger_id))
+                || Ledger::where('customer_ledger_id', $ledger->id)
+                    ->where('type', 'PPR')
+                    ->lockForUpdate()
+                    ->exists();
+
+            if ($postedToLedger) {
+                DB::rollBack();
+
+                if ($expectsJson) {
+                    return response()->json([
+                        'status' => 'error',
+                        'error_key' => 'voucher_posted_to_ledger',
+                        'message' => 'Cannot delete this received-payment voucher because it has already been posted to the ledger.'
+                    ], 422);
+                }
+
+                Alert::warning(
+                    'Cannot Delete',
+                    'Cannot delete this received-payment voucher because it has already been posted to the ledger.'
+                )->toToast()->toHtml();
+
+                return back();
+            }
 
             if (Auth::user()->hasRole('super-admin') || Auth::user()->can('direct-update')) {
-                $ledger->update(['is_active' => 0]);
+                $ledger->forceFill($data)->save();
+                if ($bookingVoucher) {
+                    $bookingVoucher->forceFill($data)->save();
+                }
                 DB::commit();
+
+                if ($expectsJson) {
+                    return response()->json([
+                        'status' => 'success',
+                        'message' => 'Voucher deleted successfully.',
+                        'id' => $ledger->id,
+                    ]);
+                }
 
                 Alert::success('Notification', 'Voucher <b>' . $ledger->detail . '</b> deleted successfully.')
                     ->toToast()->toHtml();
@@ -1410,10 +1459,41 @@ class BookingController extends Controller
                 'submitted_by' => Auth::id(),
             ]);
             DB::commit();
+
+            if ($expectsJson) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Delete request submitted for approval.',
+                    'id' => $ledger->id,
+                ]);
+            }
+
             Alert::info('Notification', 'Delete request for <b>' . $ledger->detail . '</b> is pending admin approval.')
+                ->toToast()->toHtml();
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $th) {
+            DB::rollBack();
+
+            if (($request->expectsJson() || $request->ajax())) {
+                return response()->json([
+                    'status' => 'error',
+                    'error_key' => 'not_found',
+                    'message' => 'Received-payment voucher not found for the selected project.'
+                ], 404);
+            }
+
+            Alert::error('Notification', 'Received-payment voucher not found for the selected project.')
                 ->toToast()->toHtml();
         } catch (\Throwable $th) {
             DB::rollback();
+
+            if (($request->expectsJson() || $request->ajax())) {
+                return response()->json([
+                    'status' => 'error',
+                    'error_key' => 'delete_failed',
+                    'message' => 'Failed to delete voucher: ' . $th->getMessage(),
+                ], 500);
+            }
+
             Alert::error('Notification', 'Data <b>' . $ledger->name . '</b> failed to delete: ' . $th->getMessage())->toToast()->toHtml();
         }
         return back();
@@ -1466,13 +1546,7 @@ class BookingController extends Controller
 
     public function getCustomersbyPlot(Request $request)
     {
-        // Validate the incoming request
-        $request->validate([
-            'project_id' => 'required|integer|exists:projects,id',
-        ]);
-
-        // Retrieve project ID
-        $projectId = $request->input('project_id');
+        $projectId = (int) getSelectedTown();
 
         // Query the database to get unique customers associated with the project
         $customers = Lead::join('bookings', 'leads.id', '=', 'bookings.customer_id')
@@ -1505,7 +1579,7 @@ class BookingController extends Controller
 
     public function getCustomerPlots(Request $request)
     {
-        $projectId = $request->input('project_id');
+        $projectId = (int) getSelectedTown();
         $customerId = $request->input('customer_id');
 
         $customers = Plot::join('bookings', 'plots.id', '=', 'bookings.plot_id')
@@ -1829,9 +1903,10 @@ class BookingController extends Controller
 
         try {
             DB::transaction(function () use ($validated, $id) {
-                $customerLedger = CustomerLedger::with('ledger')
+                $customerLedger = CustomerLedger::with(['ledger', 'bookingVoucher'])
                     ->where('id', $id)
                     ->where('project_id', getSelectedTown())
+                    ->lockForUpdate()
                     ->firstOrFail();
 
                 if (auth()->user()->cannot('direct-update')) {
@@ -1876,7 +1951,7 @@ class BookingController extends Controller
                     $customerLedger->ledger->update($ledgerPayload);
                 }
 
-                $this->syncBookingVoucherRecord($customerLedger->fresh(['ledger']));
+                $this->syncBookingVoucherRecord($customerLedger->fresh(['ledger', 'bookingVoucher']));
             });
         } catch (\Throwable $th) {
             Log::error('Receive plot payment update failed', [
@@ -1987,7 +2062,6 @@ class BookingController extends Controller
                         $plotId = (int) $request->input('plot_id');
                         $reference = trim((string) $request->input('reference'));
                         $sourceKey = implode('|', [$projectId, 'PPR', $reference, (int) $customer_id, $plotId]);
-                        $displayVoucherNumber = $this->allocateNextBookingVoucherNumber($projectId, 'PPR');
                         if ($payment_type == 1) {
                             $t_number = $bank_id = null;
                         } else {
@@ -2059,6 +2133,13 @@ class BookingController extends Controller
                             'passing_date' => $request->input('passing_date'),
                             'passing_status' => $isPendingBankPayment ? 0 : null,
                         ]);
+                        $existingBookingVoucher = BookingVoucher::where('customer_ledger_id', $customerLedger->id)
+                            ->lockForUpdate()
+                            ->first();
+                        $displayVoucherNumber = (int) ($existingBookingVoucher?->voucher_number ?: 0);
+                        if ($displayVoucherNumber <= 0) {
+                            $displayVoucherNumber = $this->allocateNextBookingVoucherNumber($projectId, 'PPR');
+                        }
 
                         $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', 16)
                             ->where('project_id', $projectId)
@@ -2572,6 +2653,8 @@ class BookingController extends Controller
         $plot = $dataList->plot_list;
         $project = $dataList->project_list;
         $ledger = $dataList->ledger;
+        $approvalStatusLabel = $this->approvalStatusLabel((int) $dataList->is_approve);
+        $clearanceStatusLabel = $this->clearanceStatusLabel((int) $dataList->payment_type, $dataList->passing_status);
 
         return response()->json([
             'status' => Response::HTTP_OK,
@@ -2590,6 +2673,9 @@ class BookingController extends Controller
                 'passing_date' => $dataList->passing_date,
                 'status' => $dataList->is_approve,
                 'status_label' => approveStatus($dataList->is_approve),
+                'approval_status_label' => $approvalStatusLabel,
+                'clearance_status_label' => $clearanceStatusLabel,
+                'combined_status_label' => $approvalStatusLabel . ' / ' . $clearanceStatusLabel,
                 'created_at' => optional($dataList->created_at)->format('Y-m-d H:i:s'),
                 'customer' => [
                     'id' => $customer?->id,
@@ -2740,12 +2826,25 @@ class BookingController extends Controller
     private function syncBookingVoucherRecord(CustomerLedger $customerLedger, ?Ledger $ledger = null, ?int $fallbackVoucherNumber = null): BookingVoucher
     {
         $ledger = $ledger ?: $customerLedger->ledger;
+        $existingBookingVoucher = BookingVoucher::where('customer_ledger_id', $customerLedger->id)
+            ->lockForUpdate()
+            ->first();
         $bookingId = Booking::where('project_id', $customerLedger->project_id)
             ->where('customer_id', $customerLedger->customer_id)
             ->where('plot_id', $customerLedger->plot_id)
             ->where('cancel_status', '0')
             ->latest('id')
             ->value('id');
+
+        $voucherSeries = $ledger?->type ?? $customerLedger->transaction_type;
+        $voucherNumber = $ledger?->voucher_number ?? $fallbackVoucherNumber ?? $customerLedger->type_id;
+
+        if ((string) $customerLedger->transaction_type === 'PPR') {
+            $voucherSeries = $existingBookingVoucher?->voucher_series
+                ?? (($ledger && (string) $ledger->type === 'PPR') ? 'PPR' : $customerLedger->transaction_type);
+            $voucherNumber = $existingBookingVoucher?->voucher_number
+                ?? (($ledger && (string) $ledger->type === 'PPR') ? $ledger->voucher_number : ($fallbackVoucherNumber ?? $customerLedger->type_id));
+        }
 
         return BookingVoucher::updateOrCreate(
             ['customer_ledger_id' => $customerLedger->id],
@@ -2755,8 +2854,8 @@ class BookingController extends Controller
                 'project_id' => $customerLedger->project_id,
                 'customer_id' => $customerLedger->customer_id,
                 'plot_id' => $customerLedger->plot_id,
-                'voucher_series' => $ledger?->type ?? $customerLedger->transaction_type,
-                'voucher_number' => $ledger?->voucher_number ?? $fallbackVoucherNumber ?? $customerLedger->type_id,
+                'voucher_series' => $voucherSeries,
+                'voucher_number' => $voucherNumber,
                 'slip_reference' => $customerLedger->reference,
                 'payment_type' => $customerLedger->payment_type,
                 'amount' => $customerLedger->amount_out,
@@ -2767,7 +2866,7 @@ class BookingController extends Controller
                 'passing_date' => $customerLedger->passing_date,
                 'is_active' => $customerLedger->is_active,
                 'is_approve' => $customerLedger->is_approve,
-                'create_by' => $ledger?->create_by ?? Auth::id(),
+                'create_by' => $existingBookingVoucher?->create_by ?? $ledger?->create_by ?? Auth::id(),
                 'update_by' => Auth::id(),
             ]
         );
@@ -2836,10 +2935,29 @@ class BookingController extends Controller
     private function paymentInstrumentLabel(int $paymentType): ?string
     {
         return match ($paymentType) {
-            2 => 'Transaction No',
-            3 => 'Cheque No',
+            2 => 'Txn',
+            3 => 'Chq',
             default => null,
         };
+    }
+
+    private function paymentMethodCode(int $paymentType): string
+    {
+        return match ($paymentType) {
+            2 => 'Online',
+            3 => 'Cheque',
+            default => 'Cash',
+        };
+    }
+
+    private function appendDetailPart(array &$parts, string $label, $value): void
+    {
+        $normalized = trim((string) $value);
+        if ($normalized === '') {
+            return;
+        }
+
+        $parts[] = $label . ': ' . $normalized;
     }
 
     private function buildPprLedgerDetail(
@@ -2854,40 +2972,47 @@ class BookingController extends Controller
         ?string $instrumentNumber = null,
         ?int $plotType = null
     ): string {
-        $plotLabel = $this->formatPlotLabel($plot, $plotType);
-        $customerName = $this->formatPartyName($customer);
+        $parts = ['PPR'];
+        $this->appendDetailPart($parts, 'Plot', $plot ? $this->formatPlotLabel($plot, $plotType) : null);
+        $this->appendDetailPart($parts, 'Cust', $customer ? $this->formatPartyName($customer) : null);
+        $this->appendDetailPart($parts, 'Method', $this->paymentMethodCode($paymentType));
+
         $bankName = $bankId ? trim((string) getBankNameById($bankId)) : '';
-        $method = $this->paymentMethodLabel($paymentType);
-        $detail = 'Received plot payment for ' . $plotLabel . ' from customer ' . $customerName;
-
-        if ($paymentType === 1) {
-            $detail .= ' by cash.';
-        } else {
-            $detail .= ' via ' . ($bankName !== '' ? $bankName . ' ' : '') . $method . '.';
+        if (in_array($paymentType, [2, 3], true)) {
+            $this->appendDetailPart($parts, 'Bank', $bankName);
+            $this->appendDetailPart($parts, $paymentType === 2 ? 'Txn' : 'Chq', $instrumentNumber);
+            $this->appendDetailPart($parts, 'Pass', $passingDate);
         }
 
-        $instrumentLabel = $this->paymentInstrumentLabel($paymentType);
-        if ($instrumentLabel && trim((string) $instrumentNumber) !== '') {
-            $detail .= ' ' . $instrumentLabel . ': ' . trim((string) $instrumentNumber) . '.';
+        $this->appendDetailPart($parts, 'Ref', $reference);
+        $this->appendDetailPart($parts, 'Date', $receiptDate);
+        $this->appendDetailPart($parts, 'Note', $narration);
+
+        return implode(' | ', $parts);
+    }
+
+    private function approvalStatusLabel(int $status): string
+    {
+        return match ($status) {
+            1 => 'Approved',
+            2 => 'Rejected',
+            default => 'Pending Approval',
+        };
+    }
+
+    private function clearanceStatusLabel(int $paymentType, $passingStatus): string
+    {
+        if (!in_array($paymentType, [2, 3], true)) {
+            return 'Posted';
         }
 
-        if (trim((string) $reference) !== '') {
-            $detail .= ' Receipt Ref: ' . trim((string) $reference) . '.';
-        }
-
-        if (trim((string) $receiptDate) !== '') {
-            $detail .= ' Receipt Date: ' . trim((string) $receiptDate) . '.';
-        }
-
-        if (in_array($paymentType, [2, 3], true) && trim((string) $passingDate) !== '') {
-            $detail .= ' Passing Date: ' . trim((string) $passingDate) . '.';
-        }
-
-        if (trim((string) $narration) !== '') {
-            $detail .= ' Narration: ' . trim((string) $narration) . '.';
-        }
-
-        return $detail;
+        return match (is_null($passingStatus) ? null : (int) $passingStatus) {
+            1 => 'Passed',
+            2 => 'Returned',
+            3 => 'Bounced',
+            0 => 'Pending Clearance',
+            default => 'Posted',
+        };
     }
 
 
