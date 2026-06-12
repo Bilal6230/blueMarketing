@@ -1784,6 +1784,8 @@
                 let id = $(this).attr("data-id");
                 let name = $(this).attr("data-name");
                 $("#did").val(id);
+                cashVoucherIsDeleting = false;
+                setDeleteModalProcessing($('#modal-delete'), false);
                 $('#modal-delete').modal({
                     backdrop: 'static',
                     keyboard: false,
@@ -1791,13 +1793,46 @@
                 });
             });
 
+            let cashVoucherIsDeleting = false;
+
+            function setDeleteModalProcessing($modal, isProcessing, message = null) {
+                const $text = $modal.find('.modal-text');
+                const defaultText = $text.data('default-text') || 'Are you sure you want to delete?';
+                const $submitButton = $modal.find('button[type="submit"]');
+                const $closeButtons = $modal.find('[data-dismiss="modal"], .close, .btn-default');
+
+                if (!$submitButton.data('default-html')) {
+                    $submitButton.data('default-html', $submitButton.html());
+                }
+
+                if (isProcessing) {
+                    $submitButton
+                        .prop('disabled', true)
+                        .html('<span class="spinner-border spinner-border-sm mr-1"></span> Checking ledger...');
+                    $closeButtons.prop('disabled', true);
+                    $text.text(message || 'Checking voucher status in ledger. Please wait...');
+                    return;
+                }
+
+                $submitButton
+                    .prop('disabled', false)
+                    .html($submitButton.data('default-html') || 'Yes');
+                $closeButtons.prop('disabled', false);
+                $text.html(defaultText + ' <b id="delete-data"></b>');
+            }
+
             $('#cashVoucherDeleteForm').on('submit', function(e) {
                 e.preventDefault();
 
-                const $form = $(this);
-                const $submitButton = $form.find('button[type="submit"]');
+                if (cashVoucherIsDeleting) {
+                    return;
+                }
 
-                $submitButton.prop('disabled', true).text('Deleting...');
+                const $form = $(this);
+                const $modal = $('#modal-delete');
+                cashVoucherIsDeleting = true;
+
+                setDeleteModalProcessing($modal, true);
 
                 $.ajax({
                     url: $form.attr('action'),
@@ -1809,7 +1844,6 @@
                     data: $form.serialize(),
                     success: function(response) {
                         $('#modal-delete').modal('hide');
-                        $submitButton.prop('disabled', false).text('Yes');
                         Swal.fire({
                             icon: 'success',
                             title: 'Deleted',
@@ -1823,7 +1857,6 @@
                         }
                     },
                     error: function(xhr) {
-                        $submitButton.prop('disabled', false).text('Yes');
                         const response = xhr?.responseJSON || {};
                         const isPostedBlock = response?.error_key === 'voucher_posted_to_ledger';
 
@@ -1834,6 +1867,10 @@
                                 ? 'Cannot delete this voucher because it has already been posted to the ledger.'
                                 : (response?.message || 'Unable to delete voucher.')
                         });
+                    },
+                    complete: function() {
+                        setDeleteModalProcessing($modal, false);
+                        cashVoucherIsDeleting = false;
                     }
                 });
             });
@@ -3402,7 +3439,7 @@
                         id="cashVoucherDeleteForm">
                         @csrf
                         @method('DELETE')
-                        <p class="modal-text">Are you sure you want to delete? <b id="delete-data"></b></p>
+                        <p class="modal-text" data-default-text="Are you sure you want to delete?">Are you sure you want to delete? <b id="delete-data"></b></p>
                         <textarea name="delete_reason" id="" cols="60"></textarea>
                         <input type="hidden" name="id" id="did">
                 </div>
