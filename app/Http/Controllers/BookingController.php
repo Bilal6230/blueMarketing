@@ -1387,14 +1387,63 @@ class BookingController extends Controller
     {
         $data = [
             'is_active' => "0",
+            'delete_reason' => $request->delete_reason,
         ];
         DB::beginTransaction();
         try {
-            $ledger = CustomerLedger::find($request->id);
+            $selectedProjectId = getSelectedTown();
+            $expectsJson = $request->expectsJson() || $request->ajax();
+
+            $ledger = CustomerLedger::where('id', $request->id)
+                ->where('project_id', $selectedProjectId)
+                ->where('transaction_type', 'PPR')
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $bookingVoucher = BookingVoucher::where('customer_ledger_id', $ledger->id)
+                ->where('project_id', $selectedProjectId)
+                ->lockForUpdate()
+                ->first();
+
+            $postedToLedger = (!is_null(optional($bookingVoucher)->ledger_id))
+                || Ledger::where('customer_ledger_id', $ledger->id)
+                    ->where('type', 'PPR')
+                    ->lockForUpdate()
+                    ->exists();
+
+            if ($postedToLedger) {
+                DB::rollBack();
+
+                if ($expectsJson) {
+                    return response()->json([
+                        'status' => 'error',
+                        'error_key' => 'voucher_posted_to_ledger',
+                        'message' => 'Cannot delete this received-payment voucher because it has already been posted to the ledger.'
+                    ], 422);
+                }
+
+                Alert::warning(
+                    'Cannot Delete',
+                    'Cannot delete this received-payment voucher because it has already been posted to the ledger.'
+                )->toToast()->toHtml();
+
+                return back();
+            }
 
             if (Auth::user()->hasRole('super-admin') || Auth::user()->can('direct-update')) {
-                $ledger->update(['is_active' => 0]);
+                $ledger->forceFill($data)->save();
+                if ($bookingVoucher) {
+                    $bookingVoucher->forceFill($data)->save();
+                }
                 DB::commit();
+
+                if ($expectsJson) {
+                    return response()->json([
+                        'status' => 'success',
+                        'message' => 'Voucher deleted successfully.',
+                        'id' => $ledger->id,
+                    ]);
+                }
 
                 Alert::success('Notification', 'Voucher <b>' . $ledger->detail . '</b> deleted successfully.')
                     ->toToast()->toHtml();
@@ -1410,10 +1459,41 @@ class BookingController extends Controller
                 'submitted_by' => Auth::id(),
             ]);
             DB::commit();
+
+            if ($expectsJson) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Delete request submitted for approval.',
+                    'id' => $ledger->id,
+                ]);
+            }
+
             Alert::info('Notification', 'Delete request for <b>' . $ledger->detail . '</b> is pending admin approval.')
+                ->toToast()->toHtml();
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $th) {
+            DB::rollBack();
+
+            if (($request->expectsJson() || $request->ajax())) {
+                return response()->json([
+                    'status' => 'error',
+                    'error_key' => 'not_found',
+                    'message' => 'Received-payment voucher not found for the selected project.'
+                ], 404);
+            }
+
+            Alert::error('Notification', 'Received-payment voucher not found for the selected project.')
                 ->toToast()->toHtml();
         } catch (\Throwable $th) {
             DB::rollback();
+
+            if (($request->expectsJson() || $request->ajax())) {
+                return response()->json([
+                    'status' => 'error',
+                    'error_key' => 'delete_failed',
+                    'message' => 'Failed to delete voucher: ' . $th->getMessage(),
+                ], 500);
+            }
+
             Alert::error('Notification', 'Data <b>' . $ledger->name . '</b> failed to delete: ' . $th->getMessage())->toToast()->toHtml();
         }
         return back();
@@ -2573,6 +2653,8 @@ class BookingController extends Controller
         $plot = $dataList->plot_list;
         $project = $dataList->project_list;
         $ledger = $dataList->ledger;
+        $approvalStatusLabel = $this->approvalStatusLabel((int) $dataList->is_approve);
+        $clearanceStatusLabel = $this->clearanceStatusLabel((int) $dataList->payment_type, $dataList->passing_status);
 
         return response()->json([
             'status' => Response::HTTP_OK,
@@ -2591,6 +2673,9 @@ class BookingController extends Controller
                 'passing_date' => $dataList->passing_date,
                 'status' => $dataList->is_approve,
                 'status_label' => approveStatus($dataList->is_approve),
+                'approval_status_label' => $approvalStatusLabel,
+                'clearance_status_label' => $clearanceStatusLabel,
+                'combined_status_label' => $approvalStatusLabel . ' / ' . $clearanceStatusLabel,
                 'created_at' => optional($dataList->created_at)->format('Y-m-d H:i:s'),
                 'customer' => [
                     'id' => $customer?->id,
@@ -2904,6 +2989,30 @@ class BookingController extends Controller
         $this->appendDetailPart($parts, 'Note', $narration);
 
         return implode(' | ', $parts);
+    }
+
+    private function approvalStatusLabel(int $status): string
+    {
+        return match ($status) {
+            1 => 'Approved',
+            2 => 'Rejected',
+            default => 'Pending Approval',
+        };
+    }
+
+    private function clearanceStatusLabel(int $paymentType, $passingStatus): string
+    {
+        if (!in_array($paymentType, [2, 3], true)) {
+            return 'Posted';
+        }
+
+        return match (is_null($passingStatus) ? null : (int) $passingStatus) {
+            1 => 'Passed',
+            2 => 'Returned',
+            3 => 'Bounced',
+            0 => 'Pending Clearance',
+            default => 'Posted',
+        };
     }
 
 

@@ -822,7 +822,32 @@ class LedgerController extends Controller
         ];
         DB::beginTransaction();
         try {
-            $ledger = Ledger::findOrFail($request->id);
+            $selectedProjectId = getSelectedTown();
+            $expectsJson = $request->expectsJson() || $request->ajax();
+
+            $ledger = Ledger::where('id', $request->id)
+                ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (in_array((string) $ledger->type, ['CR', 'CP'], true)) {
+                DB::rollBack();
+
+                if ($expectsJson) {
+                    return response()->json([
+                        'status' => 'error',
+                        'error_key' => 'voucher_posted_to_ledger',
+                        'message' => 'Cannot delete this voucher because it has already been posted to the ledger.'
+                    ], 422);
+                }
+
+                Alert::warning(
+                    'Cannot Delete',
+                    'Cannot delete this voucher because it has already been posted to the ledger.'
+                )->toToast()->toHtml();
+
+                return back();
+            }
 
             if (Auth::user()->hasRole('super-admin') || Auth::user()->can('direct-update')) {
                 $customerLedger = $ledger->customerLedger;
@@ -831,6 +856,14 @@ class LedgerController extends Controller
                 }
                 $ledger->update($data);
                 DB::commit();
+
+                if ($expectsJson) {
+                    return response()->json([
+                        'status' => 'success',
+                        'message' => 'Voucher deleted successfully.',
+                        'id' => $ledger->id,
+                    ]);
+                }
 
                 Alert::success('Notification', 'Voucher <b>' . $ledger->detail . '</b> deleted successfully.')
                     ->toToast()->toHtml();
@@ -846,10 +879,40 @@ class LedgerController extends Controller
                 'submitted_by' => Auth::id(),
             ]);
             DB::commit();
+
+            if ($expectsJson) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Delete request submitted for approval.',
+                    'id' => $ledger->id,
+                ]);
+            }
+
             Alert::info('Notification', 'Delete request for <b>' . $ledger->detail . '</b> is pending admin approval.')
                 ->toToast()->toHtml();
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $th) {
+            DB::rollBack();
+
+            if (($request->expectsJson() || $request->ajax())) {
+                return response()->json([
+                    'status' => 'error',
+                    'error_key' => 'not_found',
+                    'message' => 'Voucher not found for the selected project.'
+                ], 404);
+            }
+
+            Alert::error('Notification', 'Voucher not found for the selected project.')->toToast()->toHtml();
         } catch (\Throwable $th) {
             DB::rollBack();
+
+            if (($request->expectsJson() || $request->ajax())) {
+                return response()->json([
+                    'status' => 'error',
+                    'error_key' => 'delete_failed',
+                    'message' => 'Failed to delete voucher: ' . $th->getMessage(),
+                ], 500);
+            }
+
             Alert::error('Notification', 'Failed to delete voucher: ' . $th->getMessage())->toToast()->toHtml();
         }
         return back();

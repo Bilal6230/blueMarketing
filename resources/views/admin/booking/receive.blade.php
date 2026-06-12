@@ -377,7 +377,7 @@
                                                 <th>Detail</th>
                                                 <th>Amount</th>
                                                 <th>Type</th>
-                                                {{-- <th>Approve</th> --}}
+                                                <th>Status</th>
 
 
                                                 @canany(['read slip', 'delete slip', 'can approve'])
@@ -467,17 +467,50 @@
                                                             {{ Setting::roundformatAmount($i->amount ?? $i->amount_out ?? optional($customerLedger)->amount_out ?? 0) }}
                                                         </td>
 
-                                                    <td>
-                                                        <span
-                                                            class="badge {{ getPaymentTypeDetails($i->payment_type)['badge'] }}"
-                                                            style="width: 80%">
-                                                            {{ getPaymentTypeDetails($i->payment_type)['name'] }}
-                                                        </span>
-                                                    </td>
-{{-- 
-                                                    <td>
-                                                        {{ approveStatus($i->is_approve) }}
-                                                    </td> --}}
+                                                        <td>
+                                                            <span
+                                                                class="badge {{ getPaymentTypeDetails($i->payment_type)['badge'] }}"
+                                                                style="width: 80%">
+                                                                {{ getPaymentTypeDetails($i->payment_type)['name'] }}
+                                                            </span>
+                                                        </td>
+                                                        @php
+                                                            $approvalBadgeClass =
+                                                                (int) $i->is_approve === 1
+                                                                    ? 'badge-success'
+                                                                    : ((int) $i->is_approve === 2
+                                                                        ? 'badge-danger'
+                                                                        : 'badge-warning');
+                                                            $approvalLabel =
+                                                                (int) $i->is_approve === 1
+                                                                    ? 'Approved'
+                                                                    : ((int) $i->is_approve === 2
+                                                                        ? 'Rejected'
+                                                                        : 'Pending Approval');
+                                                            $clearanceLabel = !in_array((int) $i->payment_type, [2, 3], true)
+                                                                ? 'Posted'
+                                                                : match (is_null($i->passing_status) ? null : (int) $i->passing_status) {
+                                                                    0 => 'Pending Clearance',
+                                                                    1 => 'Passed',
+                                                                    2 => 'Returned',
+                                                                    3 => 'Bounced',
+                                                                    default => 'Posted',
+                                                                };
+                                                            $clearanceBadgeClass = match ($clearanceLabel) {
+                                                                'Passed', 'Posted' => 'badge-success',
+                                                                'Returned' => 'badge-secondary',
+                                                                'Bounced', 'Rejected' => 'badge-danger',
+                                                                default => 'badge-warning',
+                                                            };
+                                                        @endphp
+                                                        <td>
+                                                            <div class="d-flex flex-column" style="gap: 4px;">
+                                                                <span class="badge {{ $approvalBadgeClass }}">Approval:
+                                                                    {{ $approvalLabel }}</span>
+                                                                <span class="badge {{ $clearanceBadgeClass }}">Clearance:
+                                                                    {{ $clearanceLabel }}</span>
+                                                            </div>
+                                                        </td>
 
 
                                                     @canany(['read slip', 'update voucher', 'delete slip', 'can approve'])
@@ -497,8 +530,7 @@
                                                                         data-bank_id="{{ $i->bank_id }}"
                                                                         data-passing_date="{{ $i->passing_date }}"
                                                                         data-customer="{{ $customerName }}"
-                                                                        data-plot="{{ $plotName }}"
-                                                                        data-project="{{ $project->project ?? '-' }}">
+                                                                        data-plot="{{ $plotName }}">
                                                                         <i class="fas fa-pencil-alt"></i>
                                                                     </button>
                                                                 @endcan
@@ -616,12 +648,6 @@
                         <div class="row">
                             <div class="col-sm-4">
                                 <div class="form-group">
-                                    <label class="fbox">Project</label>
-                                    <input id="edit_project" type="text" class="form-control" readonly>
-                                </div>
-                            </div>
-                            <div class="col-sm-4">
-                                <div class="form-group">
                                     <label class="fbox">Reference</label>
                                     <input id="edit_reference" type="text"
                                         class="form-control @error('reference') is-invalid @enderror"
@@ -714,7 +740,8 @@
                     </button>
                 </div>
                 <div class="modal-body">
-                    <form action="{{ route('booking.customer.destroy') }}" method="POST" enctype="multipart/form-data">
+                    <form action="{{ route('booking.customer.destroy') }}" method="POST" enctype="multipart/form-data"
+                        id="receivedPaymentDeleteForm">
                         @csrf
                         @method('DELETE')
                         <p class="modal-text">Are you sure you want to delete? <b id="delete-data"></b></p>
@@ -808,8 +835,12 @@
                                     <td id="view_passing_date">—</td>
                                 </tr>
                                 <tr>
-                                    <th>Status</th>
+                                    <th>Approval Status</th>
                                     <td id="view_status">—</td>
+                                </tr>
+                                <tr>
+                                    <th>Clearance Status</th>
+                                    <td id="view_clearance_status">—</td>
                                 </tr>
                             </table>
                         </div>
@@ -961,7 +992,6 @@
                     $('#edit_voucher').val($(this).data('voucher') || '—');
                     $('#edit_customer').val($(this).data('customer') || '—');
                     $('#edit_plot').val($(this).data('plot') || '—');
-                    $('#edit_project').val($(this).data('project') || '—');
                     $('#edit_reference').val($(this).data('reference') || '');
                     $('#edit_date').val($(this).data('date') || '');
                     $('#edit_amount').val($(this).data('amount') || '');
@@ -1223,6 +1253,49 @@
                 });
             });
 
+            $('#receivedPaymentDeleteForm').on('submit', function(e) {
+                e.preventDefault();
+
+                const $form = $(this);
+                const $submitButton = $form.find('button[type="submit"]');
+
+                $submitButton.prop('disabled', true).text('Deleting...');
+
+                $.ajax({
+                    url: $form.attr('action'),
+                    type: 'POST',
+                    dataType: 'json',
+                    headers: {
+                        'Accept': 'application/json'
+                    },
+                    data: $form.serialize(),
+                    success: function(response) {
+                        $('#modal-delete').modal('hide');
+                        $submitButton.prop('disabled', false).text('Yes');
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Deleted',
+                            text: response?.message || 'Voucher deleted successfully.'
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    },
+                    error: function(xhr) {
+                        $submitButton.prop('disabled', false).text('Yes');
+                        const response = xhr?.responseJSON || {};
+                        const isPostedBlock = response?.error_key === 'voucher_posted_to_ledger';
+
+                        Swal.fire({
+                            icon: isPostedBlock ? 'warning' : 'error',
+                            title: isPostedBlock ? 'Cannot Delete' : 'Delete Failed',
+                            text: isPostedBlock
+                                ? 'Cannot delete this received-payment voucher because it has already been posted to the ledger.'
+                                : (response?.message || 'Unable to delete voucher.')
+                        });
+                    }
+                });
+            });
+
             $(document).on("click", '.btn-view', function() {
                 let id = $(this).attr("data-id");
                 $('#modal-loading').modal({
@@ -1250,7 +1323,8 @@
                         $('#view_t_number').text(data.t_number || '—');
                         $('#view_bank').text(data.bank_name || data.bank_id || '—');
                         $('#view_passing_date').text(data.passing_date || '—');
-                        $('#view_status').text(data.status_label || '—');
+                        $('#view_status').text(data.approval_status_label || data.status_label || '—');
+                        $('#view_clearance_status').text(data.clearance_status_label || '—');
                         $('#view_customer').text(data.customer?.name || '—');
                         $('#view_phone').text(data.customer?.phone_number || data.customer?.mobile_number || '—');
                         $('#view_cnic').text(data.customer?.nic_number || '—');

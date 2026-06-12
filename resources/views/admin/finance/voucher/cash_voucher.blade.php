@@ -1791,6 +1791,53 @@
                 });
             });
 
+            $('#cashVoucherDeleteForm').on('submit', function(e) {
+                e.preventDefault();
+
+                const $form = $(this);
+                const $submitButton = $form.find('button[type="submit"]');
+
+                $submitButton.prop('disabled', true).text('Deleting...');
+
+                $.ajax({
+                    url: $form.attr('action'),
+                    type: 'POST',
+                    dataType: 'json',
+                    headers: {
+                        'Accept': 'application/json'
+                    },
+                    data: $form.serialize(),
+                    success: function(response) {
+                        $('#modal-delete').modal('hide');
+                        $submitButton.prop('disabled', false).text('Yes');
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Deleted',
+                            text: response?.message || 'Voucher deleted successfully.'
+                        });
+
+                        if ($.fn.DataTable.isDataTable('#table-data')) {
+                            $('#table-data').DataTable().ajax.reload(null, false);
+                        } else {
+                            window.location.reload();
+                        }
+                    },
+                    error: function(xhr) {
+                        $submitButton.prop('disabled', false).text('Yes');
+                        const response = xhr?.responseJSON || {};
+                        const isPostedBlock = response?.error_key === 'voucher_posted_to_ledger';
+
+                        Swal.fire({
+                            icon: isPostedBlock ? 'warning' : 'error',
+                            title: isPostedBlock ? 'Cannot Delete' : 'Delete Failed',
+                            text: isPostedBlock
+                                ? 'Cannot delete this voucher because it has already been posted to the ledger.'
+                                : (response?.message || 'Unable to delete voucher.')
+                        });
+                    }
+                });
+            });
+
             $('#numberInput').on('input change', function() {
                 const value = $(this).val();
                 if (parseAmountForWords(value) === null) {
@@ -3351,7 +3398,8 @@
                     </button>
                 </div>
                 <div class="modal-body">
-                    <form action="{{ route('ledger.destroy') }}" method="POST" enctype="multipart/form-data">
+                    <form action="{{ route('ledger.destroy') }}" method="POST" enctype="multipart/form-data"
+                        id="cashVoucherDeleteForm">
                         @csrf
                         @method('DELETE')
                         <p class="modal-text">Are you sure you want to delete? <b id="delete-data"></b></p>
