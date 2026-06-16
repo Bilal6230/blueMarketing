@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class CustomerLedger extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'customer_ledger';
 
@@ -38,6 +39,7 @@ class CustomerLedger extends Model
 
     protected $casts = [
         'check_history' => 'array', // Automatically cast JSON to array
+        'deleted_at' => 'datetime',
     ];
 
     public function addCheckHistory(array $checkDetails)

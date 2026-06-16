@@ -25,6 +25,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use RealRashid\SweetAlert\Facades\Alert;
 use Spatie\Permission\Models\Role;
@@ -1385,10 +1386,6 @@ class BookingController extends Controller
 
     public function destroy(Request $request)
     {
-        $data = [
-            'is_active' => "0",
-            'delete_reason' => $request->delete_reason,
-        ];
         DB::beginTransaction();
         try {
             $selectedProjectId = getSelectedTown();
@@ -1430,46 +1427,29 @@ class BookingController extends Controller
                 return back();
             }
 
-            if (Auth::user()->hasRole('super-admin') || Auth::user()->can('direct-update')) {
-                $ledger->forceFill($data)->save();
-                if ($bookingVoucher) {
-                    $bookingVoucher->forceFill($data)->save();
-                }
-                DB::commit();
-
-                if ($expectsJson) {
-                    return response()->json([
-                        'status' => 'success',
-                        'message' => 'Voucher deleted successfully.',
-                        'id' => $ledger->id,
-                    ]);
-                }
-
-                Alert::success('Notification', 'Voucher <b>' . $ledger->detail . '</b> deleted successfully.')
-                    ->toToast()->toHtml();
-                return back();
+            if (Schema::hasColumn('customer_ledger', 'delete_reason')) {
+                $ledger->delete_reason = $request->input('delete_reason');
+                $ledger->save();
             }
 
-            PendingUpdate::create([
-                'table_name' => 'customer_ledger',
-                'record_id' => $ledger->id,
-                'old_values' => json_encode($ledger->toArray()),
-                'new_values' => json_encode($data),
-                'status' => 'pending',
-                'submitted_by' => Auth::id(),
-            ]);
+            $ledger->delete();
+            if ($bookingVoucher) {
+                $bookingVoucher->delete();
+            }
+
             DB::commit();
 
             if ($expectsJson) {
                 return response()->json([
                     'status' => 'success',
-                    'message' => 'Delete request submitted for approval.',
+                    'message' => 'Voucher deleted successfully.',
                     'id' => $ledger->id,
                 ]);
             }
 
-            Alert::info('Notification', 'Delete request for <b>' . $ledger->detail . '</b> is pending admin approval.')
+            Alert::success('Notification', 'Voucher deleted successfully.')
                 ->toToast()->toHtml();
+            return back();
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $th) {
             DB::rollBack();
 
@@ -1739,7 +1719,6 @@ class BookingController extends Controller
             'project',
         ])
             ->where('voucher_series', 'PPR')
-            ->where('is_active', '1')
             ->where('project_id', $selectedProjectId);
         $query = clone $baseQuery;
 
@@ -1787,8 +1766,27 @@ class BookingController extends Controller
             $query->whereDate('receipt_date', '<=', $request->input('tdate'));
         }
 
-        if ($request->filled('status') && in_array((string) $request->input('status'), ['0', '1', '2'], true)) {
-            $query->where('is_approve', $request->input('status'));
+        if ($request->filled('status')) {
+            $selectedStatus = trim((string) $request->input('status'));
+
+            if ($selectedStatus === 'posted') {
+                $query->whereHas('customerLedger', function ($customerLedgerQuery) {
+                    $customerLedgerQuery->where('payment_type', 1);
+                });
+            } elseif ($selectedStatus === 'pending') {
+                $query->whereHas('customerLedger', function ($customerLedgerQuery) {
+                    $customerLedgerQuery->whereIn('payment_type', [2, 3])
+                        ->where(function ($statusQuery) {
+                            $statusQuery->where('passing_status', 0)
+                                ->orWhereNull('passing_status');
+                        });
+                });
+            } elseif (in_array($selectedStatus, ['1', '2', '3'], true)) {
+                $query->whereHas('customerLedger', function ($customerLedgerQuery) use ($selectedStatus) {
+                    $customerLedgerQuery->whereIn('payment_type', [2, 3])
+                        ->where('passing_status', (int) $selectedStatus);
+                });
+            }
         }
 
         $data = $query->orderByDesc('id')->get();
@@ -1797,6 +1795,10 @@ class BookingController extends Controller
                 ->where('record_id', $item->customer_ledger_id)
                 ->latest()
                 ->first();
+            $paymentType = (int) ($item->customerLedger->payment_type ?? $item->payment_type);
+            $passingStatus = $item->customerLedger->passing_status ?? $item->passing_status;
+            $item['payment_status_label'] = $this->receivedPaymentStatusLabel($paymentType, $passingStatus);
+            $item['payment_status_badge_class'] = $this->receivedPaymentStatusBadgeClass($item['payment_status_label']);
             $item['submitted_by'] = $pending ? $pending->submittedBy?->name : '';
             $item['new_values'] = $pending ? json_decode($pending->new_values, true) : '';
             $item['old_values'] = $pending ? json_decode($pending->old_values, true) : '';
@@ -2088,16 +2090,18 @@ class BookingController extends Controller
                             throw new \RuntimeException('Selected plot was not found for this project.');
                         }
 
-                        $duplicateLedger = CustomerLedger::where('project_id', $projectId)
+                        $duplicateLedger = CustomerLedger::withTrashed()
+                            ->where('project_id', $projectId)
                             ->where('transaction_type', 'PPR')
                             ->where('reference', $reference)
-                            ->where('customer_id', $customer_id)
-                            ->where('plot_id', $plotId)
                             ->lockForUpdate()
                             ->first();
 
                         if ($duplicateLedger) {
-                            $samePayload = $this->normalizeDecimalString($duplicateLedger->amount_out) === $this->normalizeDecimalString($request->input('amount'))
+                            $samePayload = !$duplicateLedger->trashed()
+                                && (int) $duplicateLedger->customer_id === (int) $customer_id
+                                && (int) $duplicateLedger->plot_id === (int) $plotId
+                                && $this->normalizeDecimalString($duplicateLedger->amount_out) === $this->normalizeDecimalString($request->input('amount'))
                                 && trim((string) $duplicateLedger->date) === trim((string) $request->input('date'))
                                 && (int) $duplicateLedger->payment_type === (int) $request->input('payment_type')
                                 && trim((string) $duplicateLedger->description) === trim((string) $request->input('detail'));
@@ -2110,7 +2114,7 @@ class BookingController extends Controller
                             }
 
                             if (!$samePayload) {
-                                throw new \RuntimeException('A received payment with the same source key already exists.');
+                                throw new \DomainException('duplicate_received_payment_reference');
                             }
                         }
 
@@ -2315,6 +2319,34 @@ class BookingController extends Controller
 
 
                     break;
+            }
+        } catch (\DomainException $e) {
+            if ($e->getMessage() === 'duplicate_received_payment_reference') {
+                $projectId = (int) getSelectedTown();
+                $reference = trim((string) $request->input('reference'));
+                $customerId = (int) $request->input('customer_id');
+                $plotId = (int) $request->input('plot_id');
+
+                $duplicateCustomerLedgerId = CustomerLedger::withTrashed()
+                    ->where('project_id', $projectId)
+                    ->where('transaction_type', 'PPR')
+                    ->where('reference', $reference)
+                    ->value('id');
+
+                Log::warning('received_payment_duplicate_reference', [
+                    'project_id' => $projectId,
+                    'reference' => $reference,
+                    'customer_id' => $customerId,
+                    'plot_id' => $plotId,
+                    'user_id' => Auth::id(),
+                    'duplicate_customer_ledger_id' => $duplicateCustomerLedgerId,
+                ]);
+
+                return back()
+                    ->withErrors([
+                        'reference' => 'Slip number already exists for another received-payment voucher. Please use a different slip number.'
+                    ])
+                    ->withInput();
             }
         } catch (\Throwable $e) {
             Log::error('Receive plot payment save failed', [
@@ -2653,8 +2685,7 @@ class BookingController extends Controller
         $plot = $dataList->plot_list;
         $project = $dataList->project_list;
         $ledger = $dataList->ledger;
-        $approvalStatusLabel = $this->approvalStatusLabel((int) $dataList->is_approve);
-        $clearanceStatusLabel = $this->clearanceStatusLabel((int) $dataList->payment_type, $dataList->passing_status);
+        $paymentStatusLabel = $this->receivedPaymentStatusLabel((int) $dataList->payment_type, $dataList->passing_status);
 
         return response()->json([
             'status' => Response::HTTP_OK,
@@ -2672,10 +2703,7 @@ class BookingController extends Controller
                 'bank_name' => $dataList->bank_id ? getBankNameById($dataList->bank_id) : null,
                 'passing_date' => $dataList->passing_date,
                 'status' => $dataList->is_approve,
-                'status_label' => approveStatus($dataList->is_approve),
-                'approval_status_label' => $approvalStatusLabel,
-                'clearance_status_label' => $clearanceStatusLabel,
-                'combined_status_label' => $approvalStatusLabel . ' / ' . $clearanceStatusLabel,
+                'status_label' => $paymentStatusLabel,
                 'created_at' => optional($dataList->created_at)->format('Y-m-d H:i:s'),
                 'customer' => [
                     'id' => $customer?->id,
@@ -2991,16 +3019,7 @@ class BookingController extends Controller
         return implode(' | ', $parts);
     }
 
-    private function approvalStatusLabel(int $status): string
-    {
-        return match ($status) {
-            1 => 'Approved',
-            2 => 'Rejected',
-            default => 'Pending Approval',
-        };
-    }
-
-    private function clearanceStatusLabel(int $paymentType, $passingStatus): string
+    private function receivedPaymentStatusLabel(int $paymentType, $passingStatus): string
     {
         if (!in_array($paymentType, [2, 3], true)) {
             return 'Posted';
@@ -3010,8 +3029,18 @@ class BookingController extends Controller
             1 => 'Passed',
             2 => 'Returned',
             3 => 'Bounced',
-            0 => 'Pending Clearance',
-            default => 'Posted',
+            0, null => 'Pending',
+            default => 'Pending',
+        };
+    }
+
+    private function receivedPaymentStatusBadgeClass(string $statusLabel): string
+    {
+        return match ($statusLabel) {
+            'Posted', 'Passed' => 'badge-success',
+            'Returned' => 'badge-secondary',
+            'Bounced' => 'badge-danger',
+            default => 'badge-warning',
         };
     }
 

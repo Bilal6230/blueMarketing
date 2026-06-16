@@ -31,6 +31,15 @@
                         <div class="card">
                             @can('add slip')
                                 <div class="card-header">
+                                    @if ($errors->has('reference') || $errors->has('msg'))
+                                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                            <strong>Unable to save received payment.</strong>
+                                            <div>{{ $errors->first('reference') ?: $errors->first('msg') }}</div>
+                                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                        </div>
+                                    @endif
                                     <div>
                                         <form action="{{ route('booking.customer.deposit') }}" method="POST"
                                             enctype="multipart/form-data" id="voucherForm">
@@ -351,9 +360,11 @@
                                                 <label class="fbox">Status</label>
                                                 <select class="form-control" name="status">
                                                     <option value="">All Statuses</option>
-                                                    <option value="0" {{ (string) ($filters['status'] ?? '') === '0' ? 'selected' : '' }}>Pending</option>
-                                                    <option value="1" {{ (string) ($filters['status'] ?? '') === '1' ? 'selected' : '' }}>Approve</option>
-                                                    <option value="2" {{ (string) ($filters['status'] ?? '') === '2' ? 'selected' : '' }}>Reject</option>
+                                                    <option value="posted" {{ (string) ($filters['status'] ?? '') === 'posted' ? 'selected' : '' }}>Posted</option>
+                                                    <option value="pending" {{ (string) ($filters['status'] ?? '') === 'pending' ? 'selected' : '' }}>Pending</option>
+                                                    <option value="1" {{ (string) ($filters['status'] ?? '') === '1' ? 'selected' : '' }}>Passed</option>
+                                                    <option value="2" {{ (string) ($filters['status'] ?? '') === '2' ? 'selected' : '' }}>Returned</option>
+                                                    <option value="3" {{ (string) ($filters['status'] ?? '') === '3' ? 'selected' : '' }}>Bounced</option>
                                                 </select>
                                             </div>
                                         </div>
@@ -474,42 +485,10 @@
                                                                 {{ getPaymentTypeDetails($i->payment_type)['name'] }}
                                                             </span>
                                                         </td>
-                                                        @php
-                                                            $approvalBadgeClass =
-                                                                (int) $i->is_approve === 1
-                                                                    ? 'badge-success'
-                                                                    : ((int) $i->is_approve === 2
-                                                                        ? 'badge-danger'
-                                                                        : 'badge-warning');
-                                                            $approvalLabel =
-                                                                (int) $i->is_approve === 1
-                                                                    ? 'Approved'
-                                                                    : ((int) $i->is_approve === 2
-                                                                        ? 'Rejected'
-                                                                        : 'Pending Approval');
-                                                            $clearanceLabel = !in_array((int) $i->payment_type, [2, 3], true)
-                                                                ? 'Posted'
-                                                                : match (is_null($i->passing_status) ? null : (int) $i->passing_status) {
-                                                                    0 => 'Pending Clearance',
-                                                                    1 => 'Passed',
-                                                                    2 => 'Returned',
-                                                                    3 => 'Bounced',
-                                                                    default => 'Posted',
-                                                                };
-                                                            $clearanceBadgeClass = match ($clearanceLabel) {
-                                                                'Passed', 'Posted' => 'badge-success',
-                                                                'Returned' => 'badge-secondary',
-                                                                'Bounced', 'Rejected' => 'badge-danger',
-                                                                default => 'badge-warning',
-                                                            };
-                                                        @endphp
                                                         <td>
-                                                            <div class="d-flex flex-column" style="gap: 4px;">
-                                                                <span class="badge {{ $approvalBadgeClass }}">Approval:
-                                                                    {{ $approvalLabel }}</span>
-                                                                <span class="badge {{ $clearanceBadgeClass }}">Clearance:
-                                                                    {{ $clearanceLabel }}</span>
-                                                            </div>
+                                                            <span class="badge {{ $i->payment_status_badge_class ?? 'badge-warning' }}">
+                                                                {{ $i->payment_status_label ?? 'Pending' }}
+                                                            </span>
                                                         </td>
 
 
@@ -835,12 +814,8 @@
                                     <td id="view_passing_date">—</td>
                                 </tr>
                                 <tr>
-                                    <th>Approval Status</th>
+                                    <th>Status</th>
                                     <td id="view_status">—</td>
-                                </tr>
-                                <tr>
-                                    <th>Clearance Status</th>
-                                    <td id="view_clearance_status">—</td>
                                 </tr>
                             </table>
                         </div>
@@ -1360,8 +1335,7 @@
                         $('#view_t_number').text(data.t_number || '—');
                         $('#view_bank').text(data.bank_name || data.bank_id || '—');
                         $('#view_passing_date').text(data.passing_date || '—');
-                        $('#view_status').text(data.approval_status_label || data.status_label || '—');
-                        $('#view_clearance_status').text(data.clearance_status_label || '—');
+                        $('#view_status').text(data.status_label || '—');
                         $('#view_customer').text(data.customer?.name || '—');
                         $('#view_phone').text(data.customer?.phone_number || data.customer?.mobile_number || '—');
                         $('#view_cnic').text(data.customer?.nic_number || '—');

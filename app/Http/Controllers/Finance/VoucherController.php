@@ -1000,7 +1000,7 @@ class VoucherController extends Controller
             'projectHeadSubhead.project:id,project'
         ])
             ->where('is_active', 1)
-            ->whereIn('type', ['CR', 'PPR'])
+            ->where('type', 'CR')
             ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId));
 
         // ----------------------------

@@ -24,7 +24,7 @@ class CashInDataTest extends TestCase
         $this->createSchema();
     }
 
-    public function test_cash_in_data_includes_cr_and_ppr_for_selected_project_only(): void
+    public function test_cash_in_data_includes_only_cr_for_selected_project(): void
     {
         $selectedProjectId = DB::table('projects')->insertGetId([
             'project' => 'Selected Project',
@@ -157,13 +157,13 @@ class CashInDataTest extends TestCase
         $types = array_column($payload['data'], 'type');
         $voucherNumbers = array_column($payload['data'], 'voucher_number');
 
-        $this->assertSame(2, $payload['recordsTotal']);
-        $this->assertSame(2, $payload['recordsFiltered']);
+        $this->assertSame(1, $payload['recordsTotal']);
+        $this->assertSame(1, $payload['recordsFiltered']);
         $this->assertContains('CR', $types);
-        $this->assertContains('PPR', $types);
+        $this->assertNotContains('PPR', $types);
         $this->assertNotContains('CP', $types);
         $this->assertContains('CR-1001', $voucherNumbers);
-        $this->assertContains('PPR-1002', $voucherNumbers);
+        $this->assertNotContains('PPR-1002', $voucherNumbers);
         $this->assertNotContains('PPR-1004', $voucherNumbers);
     }
 
@@ -220,6 +220,7 @@ class CashInDataTest extends TestCase
             $table->date('date');
             $table->string('voucher_number')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('pending_updates', function (Blueprint $table) {

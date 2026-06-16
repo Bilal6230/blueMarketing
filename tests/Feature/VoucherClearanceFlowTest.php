@@ -421,8 +421,12 @@ class VoucherClearanceFlowTest extends TestCase
         ]));
 
         $secondResponse->assertStatus(302);
-        $secondResponse->assertSessionHasErrors('msg');
+        $secondResponse->assertSessionHasErrors([
+            'reference' => 'Slip number already exists for another received-payment voucher. Please use a different slip number.'
+        ]);
         $this->assertSame(1, CustomerLedger::where('transaction_type', 'PPR')->count());
+        $this->assertSame(1, Ledger::where('type', 'PPR')->count());
+        $this->assertSame(1, BookingVoucher::where('voucher_series', 'PPR')->count());
     }
 
     public function test_ppr_update_preserves_voucher_number_and_updates_compact_detail(): void
@@ -757,6 +761,7 @@ class VoucherClearanceFlowTest extends TestCase
             $table->date('bank_post_at')->nullable();
             $table->string('delete_reason')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('ledgers', function (Blueprint $table) {
@@ -777,6 +782,7 @@ class VoucherClearanceFlowTest extends TestCase
             $table->unsignedInteger('voucher_number')->nullable();
             $table->string('delete_reason')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('booking_vouchers', function (Blueprint $table) {
@@ -802,6 +808,7 @@ class VoucherClearanceFlowTest extends TestCase
             $table->unsignedBigInteger('create_by')->nullable();
             $table->unsignedBigInteger('update_by')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('draft_ledgers', function (Blueprint $table) {
