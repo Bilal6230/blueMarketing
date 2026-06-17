@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\V1\Mobile\MobileAttendanceController;
+use App\Http\Controllers\Api\V1\Mobile\MobileApprovalController;
 use App\Http\Controllers\Api\V1\Mobile\MobileAuthController;
 use App\Http\Controllers\Api\V1\Mobile\MobileCrmController;
 use App\Http\Controllers\Api\V1\Mobile\MobileDashboardController;
@@ -100,6 +101,19 @@ Route::prefix('v1/mobile')->group(function () {
                 ->whereNumber('project');
             Route::get('projects/{project}/customers', [MobileReportsController::class, 'projectCustomers'])
                 ->whereNumber('project');
+        });
+
+        Route::prefix('approvals')->group(function () {
+            Route::get('summary', [MobileApprovalController::class, 'summary']);
+            Route::get('/', [MobileApprovalController::class, 'index']);
+            Route::get('{approval}/preview', [MobileApprovalController::class, 'preview'])
+                ->whereNumber('approval');
+            Route::post('{approval}/approve', [MobileApprovalController::class, 'approve'])
+                ->whereNumber('approval');
+            Route::post('{approval}/reject', [MobileApprovalController::class, 'reject'])
+                ->whereNumber('approval');
+            Route::get('{approval}', [MobileApprovalController::class, 'show'])
+                ->whereNumber('approval');
         });
     });
 });
