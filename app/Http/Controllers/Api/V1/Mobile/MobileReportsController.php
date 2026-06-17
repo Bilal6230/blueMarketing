@@ -512,6 +512,7 @@ class MobileReportsController extends BaseMobileController
         $receivedAmount = (float) CustomerLedger::query()
             ->where('project_id', $projectId)
             ->where('is_active', 1)
+            ->whereNotNull('plot_id')
             ->sum('amount_out');
 
         $dueAmount = max(0, $totalSale - $receivedAmount);
@@ -555,7 +556,9 @@ class MobileReportsController extends BaseMobileController
             'unit' => $this->plotUnitLabel($plot->unit),
             'amount' => $this->money($plot->amount ?? 0),
             'sold' => (bool) ((int) ($plot->sold ?? 0)),
-            'hold' => $plot->holdPlots !== null,
+            'hold' => $plot->relationLoaded('holdPlots')
+                ? collect($plot->holdPlots ? [$plot->holdPlots] : [])->isNotEmpty()
+                : $plot->holdPlots()->exists(),
         ];
     }
 
