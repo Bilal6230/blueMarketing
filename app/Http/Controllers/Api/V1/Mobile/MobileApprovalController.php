@@ -444,7 +444,10 @@ class MobileApprovalController extends BaseMobileController
             if ($table === 'ledgers') {
                 $ledger = Ledger::query()->find($locked->record_id);
                 if ($ledger && $ledger->customerLedger) {
-                    $ledger->customerLedger->update($safeValues);
+                    $customerLedgerValues = $this->getCustomerLedgerSyncValues($safeValues);
+                    if (!empty($customerLedgerValues)) {
+                        $ledger->customerLedger->update($customerLedgerValues);
+                    }
                 }
             }
         }
@@ -468,6 +471,28 @@ class MobileApprovalController extends BaseMobileController
         }
 
         return [];
+    }
+
+    protected function getCustomerLedgerSyncValues(array $ledgerValues): array
+    {
+        $allowed = [
+            'amount_in',
+            'amount_out',
+            'date',
+            'reference',
+            'delete_reason',
+            'is_active',
+        ];
+
+        $syncValues = collect($ledgerValues)
+            ->only($allowed)
+            ->all();
+
+        if (array_key_exists('detail', $ledgerValues)) {
+            $syncValues['description'] = $ledgerValues['detail'];
+        }
+
+        return $syncValues;
     }
 
     protected function getSafeUpdateValues(string $table, array $newValues): array
@@ -602,8 +627,18 @@ class MobileApprovalController extends BaseMobileController
     protected function approvalChangedFields(PendingUpdate $approval): array
     {
         $newValues = $this->decodeApprovalValues($approval->new_values);
+        $blocked = ['id', 'created_at', 'updated_at', 'deleted_at'];
 
-        return array_values(array_keys($newValues));
+        return collect(array_keys($newValues))
+            ->reject(function (string $field) use ($blocked) {
+                if (in_array($field, $blocked, true)) {
+                    return true;
+                }
+
+                return $this->isSensitiveApprovalField($field);
+            })
+            ->values()
+            ->all();
     }
 
     protected function approvalSummaryText(PendingUpdate $approval): string
