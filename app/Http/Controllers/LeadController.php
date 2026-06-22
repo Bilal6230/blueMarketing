@@ -15,8 +15,8 @@ use Spatie\Permission\Models\Role;
 use RealRashid\SweetAlert\Facades\Alert;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use App\Repository\Lead\LeadRepository as lead_repo;
-use App\Models\Project;
 
 class LeadController extends Controller
 {
@@ -35,8 +35,6 @@ class LeadController extends Controller
         $x['role'] = Role::get();
         $x['users'] = User::get();
         $x['power'] = $power;
-        $projects = Project::get();
-        $x['projects'] = $projects;
         return view('admin.crm.lead', $x);
     }
     public function requestEditBtn(Request $request)
@@ -85,15 +83,15 @@ class LeadController extends Controller
             'gender' => ['required'],
             //'nic_number'     => [ 'numeric'],
             'phone_number' => ['required', 'numeric', 'unique:leads'],
-            'mobile_number' => 'nullable|unique:leads|digits:11',
+            'mobile_number' => ['nullable', 'digits:11', 'unique:leads,mobile_number'],
             'area_id' => ['required', 'numeric'],
             'type' => ['required', 'numeric'],
             'office_address' => ['required'],
             'assign_id' => ['required'],
             'follow_id' => ['required'],
-            'projects_id' => ['required', 'numeric'],
-
-
+        ], [
+            'phone_number.unique' => 'This phone number is already registered with another lead.',
+            'mobile_number.unique' => 'This second phone number is already registered with another lead.',
         ]);
         if ($validator->fails()) {
             return back()->withErrors($validator)
@@ -122,7 +120,7 @@ class LeadController extends Controller
                 'follow_id' => $request->follow_id,
                 'is_active' => $request->is_active,
 
-                'project_id' => $request->projects_id,
+                'project_id' => getSelectedTown(),
 
                 'create_by' => Auth::user()->id
 
@@ -159,25 +157,32 @@ class LeadController extends Controller
     public function update(Request $request)
     {
         $rules = [
+            'id' => ['required', 'integer', 'exists:leads,id'],
             'first_name' => ['required', 'string', 'max:25'],
             'last_name' => ['required', 'string', 'max:25'],
             'gender' => ['required'],
             //'nic_number'     => [ 'numeric'],
-            'phone_number' => ['required', 'numeric', 'unique:leads'],
+            'phone_number' => [
+                'required',
+                'numeric',
+                Rule::unique('leads', 'phone_number')->ignore($request->id),
+            ],
+            'mobile_number' => [
+                'nullable',
+                'digits:11',
+                Rule::unique('leads', 'mobile_number')->ignore($request->id),
+            ],
             'area_id' => ['required', 'numeric'],
             'type' => ['required', 'numeric'],
             'office_address' => ['required'],
             'assign_id' => ['required'],
-            'follow_id' => ['required']
+            'follow_id' => ['required'],
         ];
 
-        if ($request->phone_number != $request->old_phone) {
-            $rules['phone_number'] = ['required', 'numeric', 'unique:leads'];
-            $validator = Validator::make($request->all(), $rules);
-        } else {
-            $rules['phone_number'] = ['required', 'numeric'];
-            $validator = Validator::make($request->all(), $rules);
-        }
+        $validator = Validator::make($request->all(), $rules, [
+            'phone_number.unique' => 'This phone number is already registered with another lead.',
+            'mobile_number.unique' => 'This second phone number is already registered with another lead.',
+        ]);
 
         if ($validator->fails()) {
             return back()->withErrors($validator)

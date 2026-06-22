@@ -178,14 +178,10 @@
                 setVal('type');
                 setVal('zone_id');
                 setVal('area_id');
-                setVal('projects_id');
                 setVal('is_active');
 
                 if (oldValues['id']) {
                     $form.find('[name="id"]').val(oldValues['id']);
-                }
-                if (oldValues['old_phone']) {
-                    $form.find('[name="old_phone"]').val(oldValues['old_phone']);
                 }
             };
 
@@ -257,11 +253,9 @@
                         editForm.find('[name="designation"]').val(payload.designation || '');
                         editForm.find('[name="home_address"]').val(payload.home_address || '');
                         editForm.find('[name="office_address"]').val(payload.office_address || '');
-                        editForm.find('[name="projects_id"]').val(payload.project_id != null ? String(payload.project_id) : '').trigger('change');
                         editForm.find('[name="follow_id"]').val(payload.follow_id != null ? String(payload.follow_id) : '').trigger('change');
                         editForm.find('[name="is_active"]').val(payload.is_active != null ? String(payload.is_active) : '').trigger('change');
                         editForm.find('[name="id"]').val(payload.id || '');
-                        editForm.find('[name="old_phone"]').val(payload.phone_number || '');
 
                         $('#modal-loading').modal('hide');
                         $('#modal-edit').modal({
@@ -644,10 +638,7 @@
                         </div>
 
                         <div class="row">
-
-
                             <div class="col-sm-6">
-
                                 <div class="input-group">
                                     <label>Status</label>
                                     <div class="input-group">
@@ -661,47 +652,6 @@
                                     </div>
                                 </div>
                             </div>
-
-                            <div class="col-sm-6">
-
-                                <div class="input-group">
-                                    <label>Project</label>
-                                    <div class="input-group">
-                                        <select class="form-control select2 @error('projects_id') is-invalid @enderror"
-                                            name="projects_id">
-                                            <option value="">Select an option</option>
-
-                                            @foreach ($projects as $v)
-                                                <option value="{{ $v->id }}">{{ $v->project }}</option>
-                                            @endforeach
-                                        </select>
-                                        @error('projects_id')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-sm-6">
-
-                                <div class="input-group">
-                                    <label>Project</label>
-                                    <div class="input-group">
-                                        <select class="form-control select2 @error('projects_id') is-invalid @enderror"
-                                            name="projects_id">
-                                            <option value="">Select an option</option>
-
-                                            @foreach ($projects as $v)
-                                                <option value="{{ $v->id }}">{{ $v->project }}</option>
-                                            @endforeach
-                                        </select>
-                                        @error('projects_id')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                </div>
-                            </div>
-
-
                         </div>
 
 
@@ -1072,10 +1022,7 @@
                         </div>
 
                         <div class="row">
-
-
                             <div class="col-sm-6">
-
                                 <div class="input-group">
                                     <label>Status</label>
                                     <div class="input-group">
@@ -1089,33 +1036,12 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-sm-6">
-
-                                <div class="input-group">
-                                    <label>Project</label>
-                                    <div class="input-group">
-                                        <select class="form-control select2 @error('projects_id') is-invalid @enderror"
-                                            name="projects_id">
-                                            <option value="">Select an option</option>
-
-                                            @foreach ($projects as $v)
-                                                <option value="{{ $v->id }}">{{ $v->project }}</option>
-                                            @endforeach
-                                        </select>
-                                        @error('projects_id')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                </div>
-                            </div>
-
                         </div>
 
 
                 </div>
                 <div class="modal-footer justify-content-between">
                     <input type="hidden" name="id" id="id">
-                    <input type="hidden" name="old_phone" id="old_phone">
                     <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
                     <button type="submit" class="btn btn-primary">Save</button>
                 </div>
