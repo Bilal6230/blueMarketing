@@ -8,6 +8,7 @@ use App\Models\Lead;
 use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Middlewares\PermissionMiddleware;
@@ -302,6 +303,61 @@ class LeadTest extends TestCase
         $this->assertStringNotContainsString('name="projects_id"', $html);
         $this->assertStringNotContainsString("setVal('projects_id')", $html);
         $this->assertStringNotContainsString('find(\'[name="projects_id"]\')', $html);
+    }
+
+    public function test_delete_modal_posts_to_lead_destroy_route(): void
+    {
+        $html = file_get_contents(resource_path('views/admin/crm/lead.blade.php'));
+        $deleteStart = strpos($html, '<div class="modal fade" id="modal-delete">');
+        $deleteModal = substr($html, $deleteStart);
+
+        $this->assertStringContainsString("route('crm.lead.destroy')", $deleteModal);
+        $this->assertStringNotContainsString("route('user.destroy')", $deleteModal);
+        $this->assertStringContainsString('Delete Lead', $deleteModal);
+    }
+
+    public function test_deleting_existing_lead_marks_it_inactive_and_keeps_users(): void
+    {
+        $otherUser = User::factory()->create();
+        $lead = $this->createLead();
+        $lead->users()->sync([$this->user->id, $otherUser->id]);
+
+        $response = $this->callLeadController('destroy', 'DELETE', ['id' => $lead->id]);
+
+        $this->assertSame(302, $response->getStatusCode());
+        $this->assertFalse($response->getSession()->has('errors'));
+        $this->assertDatabaseHas('leads', [
+            'id' => $lead->id,
+            'is_active' => 0,
+        ]);
+        $this->assertDatabaseHas('users', ['id' => $this->user->id]);
+        $this->assertDatabaseHas('users', ['id' => $otherUser->id]);
+    }
+
+    public function test_deleting_with_invalid_id_fails_validation_gracefully(): void
+    {
+        try {
+            $this->callLeadController('destroy', 'DELETE', ['id' => 999999]);
+            $this->fail('Expected validation exception was not thrown.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('id', $exception->errors());
+        }
+    }
+
+    public function test_delete_regression_assigned_user_still_exists_after_lead_delete(): void
+    {
+        $assignedUser = User::factory()->create();
+        $lead = $this->createLead();
+        $lead->users()->sync([$assignedUser->id]);
+
+        $response = $this->callLeadController('destroy', 'DELETE', ['id' => $lead->id]);
+
+        $this->assertSame(302, $response->getStatusCode());
+        $this->assertDatabaseHas('users', ['id' => $assignedUser->id]);
+        $this->assertDatabaseHas('leads', [
+            'id' => $lead->id,
+            'is_active' => 0,
+        ]);
     }
 
     protected function leadPayload(array $overrides = []): array

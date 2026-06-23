@@ -265,9 +265,32 @@ class LeadController extends Controller
     }
 
 
-    public function destroy(Lead $lead)
+    public function destroy(Request $request)
     {
-        //
+        $request->validate([
+            'id' => ['required', 'integer', 'exists:leads,id'],
+        ]);
+
+        try {
+            $lead = Lead::find($request->id);
+
+            if (!$lead) {
+                Alert::error('Notification', 'Lead not found.')->toToast()->toHtml();
+                return back();
+            }
+
+            $name = trim(($lead->first_name ?? '') . ' ' . ($lead->last_name ?? ''));
+
+            $lead->is_active = 0;
+            $lead->save();
+
+            Alert::success('Notification', 'Lead deleted successfully.')->toToast()->toHtml();
+        } catch (\Throwable $th) {
+            Alert::error('Notification', 'Failed to delete lead' . ($name ? ' <b>' . $name . '</b>' : '') . ': ' . $th->getMessage())
+                ->toToast()
+                ->toHtml();
+        }
+        return back();
     }
 
     public function assign(Request $request)
