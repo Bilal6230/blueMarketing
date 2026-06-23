@@ -126,10 +126,12 @@
         $(document).ready(function() {
             const createForm = $('#lead-create-form');
             const editForm = $('#lead-edit-form');
+            const deleteForm = $('#lead-delete-form');
             const oldInput = @json(old());
             const hasErrors = @json($errors->any());
             const modalAdd = $('#modal-tambah');
             const modalEdit = $('#modal-edit');
+            let activeEditButton = null;
 
             $('.lead-form .invalid-feedback').addClass('server-error');
 
@@ -157,6 +159,29 @@
                 $form.find('.server-error').addClass('d-none');
             };
 
+            const setButtonLoading = ($button, text) => {
+                if (!$button || !$button.length) {
+                    return;
+                }
+                if ($button.data('original-html') === undefined) {
+                    $button.data('original-html', $button.html());
+                }
+                $button.prop('disabled', true).html(
+                    `<span class="spinner-border spinner-border-sm mr-1" role="status" aria-hidden="true"></span>${text}`
+                );
+            };
+
+            const resetButtonLoading = ($button) => {
+                if (!$button || !$button.length) {
+                    return;
+                }
+                const originalHtml = $button.data('original-html');
+                if (originalHtml !== undefined) {
+                    $button.html(originalHtml);
+                }
+                $button.prop('disabled', false);
+            };
+
             const applyOldValues = ($form, oldValues) => {
                 if (!$form.length || !oldValues) {
                     return;
@@ -169,7 +194,7 @@
                 };
 
                 if (oldValues['assign_id']) {
-                    $form.find('[name="assign_id[]"]').val(oldValues['assign_id']).trigger('change');
+                    $form.find('[name="assign_id[]"]').val(oldValues['assign_id']).trigger('change.select2').trigger('change');
                 }
 
                 setVal('relate');
@@ -178,19 +203,15 @@
                 setVal('type');
                 setVal('zone_id');
                 setVal('area_id');
-                setVal('projects_id');
                 setVal('is_active');
 
                 if (oldValues['id']) {
                     $form.find('[name="id"]').val(oldValues['id']);
                 }
-                if (oldValues['old_phone']) {
-                    $form.find('[name="old_phone"]').val(oldValues['old_phone']);
-                }
             };
 
             if (hasErrors) {
-                const isEditContext = !!oldInput.id;
+                const isEditContext = oldInput.form_context === 'edit' || !!oldInput.id;
                 const $targetForm = isEditContext ? editForm : createForm;
                 applyOldValues($targetForm, oldInput);
                 setTimeout(() => {
@@ -210,6 +231,33 @@
                 clearLeadErrors(editForm);
             });
 
+            createForm.on('submit', function(e) {
+                const $submitButton = createForm.find('button[type="submit"]').last();
+                if ($submitButton.prop('disabled')) {
+                    e.preventDefault();
+                    return false;
+                }
+                setButtonLoading($submitButton, 'Saving...');
+            });
+
+            editForm.on('submit', function(e) {
+                const $submitButton = editForm.find('button[type="submit"]').last();
+                if ($submitButton.prop('disabled')) {
+                    e.preventDefault();
+                    return false;
+                }
+                setButtonLoading($submitButton, 'Updating...');
+            });
+
+            deleteForm.on('submit', function(e) {
+                const $submitButton = deleteForm.find('button[type="submit"]').last();
+                if ($submitButton.prop('disabled')) {
+                    e.preventDefault();
+                    return false;
+                }
+                setButtonLoading($submitButton, 'Deleting...');
+            });
+
             $("#filter").change(function() {
                 var filter = $("#filter").val();
                 var origin = window.location.origin + "/admin/crm/lead?filter=" + filter
@@ -219,6 +267,8 @@
 
             $(document).on("click", '.btn-edit', function() {
                 let id = $(this).attr("data-id");
+                activeEditButton = $(this);
+                setButtonLoading(activeEditButton, 'Loading...');
                 clearLeadErrors(editForm);
                 if (editForm.length) {
                     editForm[0].reset();
@@ -239,9 +289,11 @@
                     },
                     success: function(data) {
                         var payload = data.data || {};
-
-                        const assignedUsers = payload.users && payload.users.length > 0 ? payload.users.map(u => u.id) : [];
-                        editForm.find('[name="assign_id[]"]').val(assignedUsers.map(String)).trigger('change');
+                        const assignField = editForm.find('[name="assign_id[]"]');
+                        const assignedUsers = data.assigned_user_ids || ((payload.users || []).map(u => String(u.id)));
+                        if (assignField.find('option').length) {
+                            assignField.val(assignedUsers).trigger('change.select2').trigger('change');
+                        }
                         editForm.find('[name="first_name"]').val(payload.first_name || '');
                         editForm.find('[name="last_name"]').val(payload.last_name || '');
                         editForm.find('[name="gender"]').val(payload.gender != null ? String(payload.gender) : '').trigger('change');
@@ -257,11 +309,9 @@
                         editForm.find('[name="designation"]').val(payload.designation || '');
                         editForm.find('[name="home_address"]').val(payload.home_address || '');
                         editForm.find('[name="office_address"]').val(payload.office_address || '');
-                        editForm.find('[name="projects_id"]').val(payload.project_id != null ? String(payload.project_id) : '').trigger('change');
                         editForm.find('[name="follow_id"]').val(payload.follow_id != null ? String(payload.follow_id) : '').trigger('change');
                         editForm.find('[name="is_active"]').val(payload.is_active != null ? String(payload.is_active) : '').trigger('change');
                         editForm.find('[name="id"]').val(payload.id || '');
-                        editForm.find('[name="old_phone"]').val(payload.phone_number || '');
 
                         $('#modal-loading').modal('hide');
                         $('#modal-edit').modal({
@@ -272,6 +322,10 @@
                     },
                     error: function() {
                         $('#modal-loading').modal('hide');
+                    },
+                    complete: function() {
+                        resetButtonLoading(activeEditButton);
+                        activeEditButton = null;
                     }
                 });
             });
@@ -296,16 +350,17 @@
     <div class="modal fade" id="modal-tambah">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title">Add Customer Lead</h4>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <form id="lead-create-form" class="lead-form" action="{{ route('crm.lead.store') }}"
-                        method="POST" enctype="multipart/form-data">
-                        @csrf
+                <form id="lead-create-form" class="lead-form" action="{{ route('crm.lead.store') }}"
+                    method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <input type="hidden" name="form_context" value="create">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Add Customer Lead</h4>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
                         @if ($power == 'superadmin')
                             <div class="row">
 
@@ -359,10 +414,10 @@
                             </div>
                             <hr>
                         @else
-                            <input type="text" id="assign_id"
+                            <input type="text" id="create_assign_id"
                                 class="form-control @error('assign_id') is-invalid @enderror" name="assign_id[]"
                                 value="{{ Auth::user()->id }}" hidden="true">
-                            <input type="text" id="follow_id"
+                            <input type="text" id="create_follow_id"
                                 class="form-control @error('follow_id') is-invalid @enderror" name="follow_id"
                                 value="1" hidden="true">
                         @endif
@@ -644,10 +699,7 @@
                         </div>
 
                         <div class="row">
-
-
                             <div class="col-sm-6">
-
                                 <div class="input-group">
                                     <label>Status</label>
                                     <div class="input-group">
@@ -661,56 +713,15 @@
                                     </div>
                                 </div>
                             </div>
-
-                            <div class="col-sm-6">
-
-                                <div class="input-group">
-                                    <label>Project</label>
-                                    <div class="input-group">
-                                        <select class="form-control select2 @error('projects_id') is-invalid @enderror"
-                                            name="projects_id">
-                                            <option value="">Select an option</option>
-
-                                            @foreach ($projects as $v)
-                                                <option value="{{ $v->id }}">{{ $v->project }}</option>
-                                            @endforeach
-                                        </select>
-                                        @error('projects_id')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-sm-6">
-
-                                <div class="input-group">
-                                    <label>Project</label>
-                                    <div class="input-group">
-                                        <select class="form-control select2 @error('projects_id') is-invalid @enderror"
-                                            name="projects_id">
-                                            <option value="">Select an option</option>
-
-                                            @foreach ($projects as $v)
-                                                <option value="{{ $v->id }}">{{ $v->project }}</option>
-                                            @endforeach
-                                        </select>
-                                        @error('projects_id')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                </div>
-                            </div>
-
-
                         </div>
 
 
 
-                </div>
-                <div class="modal-footer justify-content-between">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Save</button>
-                </div>
+                    </div>
+                    <div class="modal-footer justify-content-between">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Create Lead</button>
+                    </div>
                 </form>
             </div>
             <!-- /.modal-content -->
@@ -721,17 +732,19 @@
     <div class="modal fade" id="modal-edit">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title">Edit Customer Lead</h4>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <form id="lead-edit-form" class="lead-form" action="{{ route('crm.lead.update') }}"
-                        method="POST" enctype="multipart/form-data">
-                        @csrf
-                        @method('PUT')
+                <form id="lead-edit-form" class="lead-form" action="{{ route('crm.lead.update') }}"
+                    method="POST" enctype="multipart/form-data">
+                    @csrf
+                    @method('PUT')
+                    <input type="hidden" name="form_context" value="edit">
+                    <input type="hidden" name="id" id="edit_lead_id">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Edit Customer Lead</h4>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
                         @if ($power == 'superadmin')
                             <div class="row">
 
@@ -741,7 +754,7 @@
                                     <div class="form-group">
                                         <label>Assign To</label>
                                         <div class="select2-purple">
-                                            <select id="assign_id"
+                                            <select id="edit_assign_id"
                                                 class="select2 select2-hidden-accessible form-control @error('assign_id') is-invalid @enderror"
                                                 name="assign_id[]" multiple="" data-placeholder="Select a State"
                                                 data-dropdown-css-class="select2-purple" style="width: 100%;"
@@ -764,7 +777,7 @@
                                     <div class="input-group">
                                         <label>Monitoring By</label>
                                         <div class="input-group">
-                                            <select class="form-control" name="follow_id" id="follow_id">
+                                            <select class="form-control" name="follow_id" id="edit_follow_id">
                                                 @foreach ($users as $u)
                                                     <option value="{{ $u->id }}">{{ $u->name }}</option>
                                                 @endforeach
@@ -785,10 +798,10 @@
                             </div>
                             <hr>
                         @else
-                            <input type="text" id="assign_id"
+                            <input type="text" id="edit_assign_id_hidden"
                                 class="form-control @error('assign_id') is-invalid @enderror" name="assign_id[]"
                                 value="{{ Auth::user()->id }}" hidden="true">
-                            <input type="text" id="follow_id"
+                            <input type="text" id="edit_follow_id_hidden"
                                 class="form-control @error('follow_id') is-invalid @enderror" name="follow_id"
                                 value="1" hidden="true">
                         @endif
@@ -1072,10 +1085,7 @@
                         </div>
 
                         <div class="row">
-
-
                             <div class="col-sm-6">
-
                                 <div class="input-group">
                                     <label>Status</label>
                                     <div class="input-group">
@@ -1089,36 +1099,14 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-sm-6">
-
-                                <div class="input-group">
-                                    <label>Project</label>
-                                    <div class="input-group">
-                                        <select class="form-control select2 @error('projects_id') is-invalid @enderror"
-                                            name="projects_id">
-                                            <option value="">Select an option</option>
-
-                                            @foreach ($projects as $v)
-                                                <option value="{{ $v->id }}">{{ $v->project }}</option>
-                                            @endforeach
-                                        </select>
-                                        @error('projects_id')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                </div>
-                            </div>
-
                         </div>
 
 
-                </div>
-                <div class="modal-footer justify-content-between">
-                    <input type="hidden" name="id" id="id">
-                    <input type="hidden" name="old_phone" id="old_phone">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Save</button>
-                </div>
+                    </div>
+                    <div class="modal-footer justify-content-between">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Update Lead</button>
+                    </div>
                 </form>
             </div>
             <!-- /.modal-content -->
@@ -1129,23 +1117,24 @@
     <div class="modal fade" id="modal-delete">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title">Clear Data</h4>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <form action="{{ route('user.destroy') }}" method="POST" enctype="multipart/form-data">
-                        @csrf
-                        @method('DELETE')
-                        <p class="modal-text">Are you sure you want to delete? <b id="delete-data"></b></p>
+                <form id="lead-delete-form" action="{{ route('crm.lead.destroy') }}" method="POST"
+                    enctype="multipart/form-data">
+                    @csrf
+                    @method('DELETE')
+                    <div class="modal-header">
+                        <h4 class="modal-title">Delete Lead</h4>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="modal-text">Are you sure you want to delete this lead? <b id="delete-data"></b></p>
                         <input type="hidden" name="id" id="did">
-                </div>
-                <div class="modal-footer justify-content-between">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-danger">Save</button>
-                </div>
+                    </div>
+                    <div class="modal-footer justify-content-between">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-danger">Delete Lead</button>
+                    </div>
                 </form>
             </div>
             <!-- /.modal-content -->

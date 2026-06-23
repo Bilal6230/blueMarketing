@@ -15,8 +15,8 @@ use Spatie\Permission\Models\Role;
 use RealRashid\SweetAlert\Facades\Alert;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use App\Repository\Lead\LeadRepository as lead_repo;
-use App\Models\Project;
 
 class LeadController extends Controller
 {
@@ -35,8 +35,6 @@ class LeadController extends Controller
         $x['role'] = Role::get();
         $x['users'] = User::get();
         $x['power'] = $power;
-        $projects = Project::get();
-        $x['projects'] = $projects;
         return view('admin.crm.lead', $x);
     }
     public function requestEditBtn(Request $request)
@@ -85,15 +83,15 @@ class LeadController extends Controller
             'gender' => ['required'],
             //'nic_number'     => [ 'numeric'],
             'phone_number' => ['required', 'numeric', 'unique:leads'],
-            'mobile_number' => 'nullable|unique:leads|digits:11',
+            'mobile_number' => ['nullable', 'digits:11', 'unique:leads,mobile_number'],
             'area_id' => ['required', 'numeric'],
             'type' => ['required', 'numeric'],
             'office_address' => ['required'],
             'assign_id' => ['required'],
             'follow_id' => ['required'],
-            'projects_id' => ['required', 'numeric'],
-
-
+        ], [
+            'phone_number.unique' => 'This phone number is already registered with another lead.',
+            'mobile_number.unique' => 'This second phone number is already registered with another lead.',
         ]);
         if ($validator->fails()) {
             return back()->withErrors($validator)
@@ -117,12 +115,13 @@ class LeadController extends Controller
                 'business' => $request->business,
                 'zone_id' => $request->zone_id,
                 'home_address' => $request->home_address,
+                'office_address' => $request->office_address,
                 'designation' => $request->designation,
                 'is_active' => $request->is_active,
                 'follow_id' => $request->follow_id,
                 'is_active' => $request->is_active,
 
-                'project_id' => $request->projects_id,
+                'project_id' => getSelectedTown(),
 
                 'create_by' => Auth::user()->id
 
@@ -143,13 +142,17 @@ class LeadController extends Controller
 
     public function show(Request $request)
     {
-        $data_list = Lead::where(['id' => $request->id])->with('users')->first();
+        $data_list = Lead::where('id', $request->id)->with('users:id')->firstOrFail();
 
 
         return response()->json([
             'status' => Response::HTTP_OK,
-            'message' => 'Data Project by id',
-            'data' => $data_list
+            'message' => 'Data Lead by id',
+            'data' => $data_list,
+            'assigned_user_ids' => $data_list->users
+                ->pluck('id')
+                ->map(fn($id) => (string) $id)
+                ->values(),
         ], Response::HTTP_OK);
     }
 
@@ -159,25 +162,32 @@ class LeadController extends Controller
     public function update(Request $request)
     {
         $rules = [
+            'id' => ['required', 'integer', 'exists:leads,id'],
             'first_name' => ['required', 'string', 'max:25'],
             'last_name' => ['required', 'string', 'max:25'],
             'gender' => ['required'],
             //'nic_number'     => [ 'numeric'],
-            'phone_number' => ['required', 'numeric', 'unique:leads'],
+            'phone_number' => [
+                'required',
+                'numeric',
+                Rule::unique('leads', 'phone_number')->ignore($request->id),
+            ],
+            'mobile_number' => [
+                'nullable',
+                'digits:11',
+                Rule::unique('leads', 'mobile_number')->ignore($request->id),
+            ],
             'area_id' => ['required', 'numeric'],
             'type' => ['required', 'numeric'],
             'office_address' => ['required'],
             'assign_id' => ['required'],
-            'follow_id' => ['required']
+            'follow_id' => ['required'],
         ];
 
-        if ($request->phone_number != $request->old_phone) {
-            $rules['phone_number'] = ['required', 'numeric', 'unique:leads'];
-            $validator = Validator::make($request->all(), $rules);
-        } else {
-            $rules['phone_number'] = ['required', 'numeric'];
-            $validator = Validator::make($request->all(), $rules);
-        }
+        $validator = Validator::make($request->all(), $rules, [
+            'phone_number.unique' => 'This phone number is already registered with another lead.',
+            'mobile_number.unique' => 'This second phone number is already registered with another lead.',
+        ]);
 
         if ($validator->fails()) {
             return back()->withErrors($validator)
@@ -255,9 +265,32 @@ class LeadController extends Controller
     }
 
 
-    public function destroy(Lead $lead)
+    public function destroy(Request $request)
     {
-        //
+        $request->validate([
+            'id' => ['required', 'integer', 'exists:leads,id'],
+        ]);
+
+        try {
+            $lead = Lead::find($request->id);
+
+            if (!$lead) {
+                Alert::error('Notification', 'Lead not found.')->toToast()->toHtml();
+                return back();
+            }
+
+            $name = trim(($lead->first_name ?? '') . ' ' . ($lead->last_name ?? ''));
+
+            $lead->is_active = 0;
+            $lead->save();
+
+            Alert::success('Notification', 'Lead deleted successfully.')->toToast()->toHtml();
+        } catch (\Throwable $th) {
+            Alert::error('Notification', 'Failed to delete lead' . ($name ? ' <b>' . $name . '</b>' : '') . ': ' . $th->getMessage())
+                ->toToast()
+                ->toHtml();
+        }
+        return back();
     }
 
     public function assign(Request $request)
