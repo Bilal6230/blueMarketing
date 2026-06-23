@@ -142,14 +142,14 @@ class LeadController extends Controller
 
     public function show(Request $request)
     {
-        $data_list = Lead::where('id', $request->id)->with('users:id')->first();
+        $data_list = Lead::where('id', $request->id)->with('users:id')->firstOrFail();
 
 
         return response()->json([
             'status' => Response::HTTP_OK,
-            'message' => 'Data Project by id',
+            'message' => 'Data Lead by id',
             'data' => $data_list,
-            'assigned_user_ids' => $data_list?->users
+            'assigned_user_ids' => $data_list->users
                 ->pluck('id')
                 ->map(fn($id) => (string) $id)
                 ->values(),

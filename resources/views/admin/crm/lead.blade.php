@@ -126,10 +126,12 @@
         $(document).ready(function() {
             const createForm = $('#lead-create-form');
             const editForm = $('#lead-edit-form');
+            const deleteForm = $('#lead-delete-form');
             const oldInput = @json(old());
             const hasErrors = @json($errors->any());
             const modalAdd = $('#modal-tambah');
             const modalEdit = $('#modal-edit');
+            let activeEditButton = null;
 
             $('.lead-form .invalid-feedback').addClass('server-error');
 
@@ -155,6 +157,29 @@
                 $form.find('.is-invalid').removeClass('is-invalid');
                 $form.find('.client-error').remove();
                 $form.find('.server-error').addClass('d-none');
+            };
+
+            const setButtonLoading = ($button, text) => {
+                if (!$button || !$button.length) {
+                    return;
+                }
+                if ($button.data('original-html') === undefined) {
+                    $button.data('original-html', $button.html());
+                }
+                $button.prop('disabled', true).html(
+                    `<span class="spinner-border spinner-border-sm mr-1" role="status" aria-hidden="true"></span>${text}`
+                );
+            };
+
+            const resetButtonLoading = ($button) => {
+                if (!$button || !$button.length) {
+                    return;
+                }
+                const originalHtml = $button.data('original-html');
+                if (originalHtml !== undefined) {
+                    $button.html(originalHtml);
+                }
+                $button.prop('disabled', false);
             };
 
             const applyOldValues = ($form, oldValues) => {
@@ -186,7 +211,7 @@
             };
 
             if (hasErrors) {
-                const isEditContext = !!oldInput.id;
+                const isEditContext = oldInput.form_context === 'edit' || !!oldInput.id;
                 const $targetForm = isEditContext ? editForm : createForm;
                 applyOldValues($targetForm, oldInput);
                 setTimeout(() => {
@@ -206,6 +231,33 @@
                 clearLeadErrors(editForm);
             });
 
+            createForm.on('submit', function(e) {
+                const $submitButton = createForm.find('button[type="submit"]').last();
+                if ($submitButton.prop('disabled')) {
+                    e.preventDefault();
+                    return false;
+                }
+                setButtonLoading($submitButton, 'Saving...');
+            });
+
+            editForm.on('submit', function(e) {
+                const $submitButton = editForm.find('button[type="submit"]').last();
+                if ($submitButton.prop('disabled')) {
+                    e.preventDefault();
+                    return false;
+                }
+                setButtonLoading($submitButton, 'Updating...');
+            });
+
+            deleteForm.on('submit', function(e) {
+                const $submitButton = deleteForm.find('button[type="submit"]').last();
+                if ($submitButton.prop('disabled')) {
+                    e.preventDefault();
+                    return false;
+                }
+                setButtonLoading($submitButton, 'Deleting...');
+            });
+
             $("#filter").change(function() {
                 var filter = $("#filter").val();
                 var origin = window.location.origin + "/admin/crm/lead?filter=" + filter
@@ -215,6 +267,8 @@
 
             $(document).on("click", '.btn-edit', function() {
                 let id = $(this).attr("data-id");
+                activeEditButton = $(this);
+                setButtonLoading(activeEditButton, 'Loading...');
                 clearLeadErrors(editForm);
                 if (editForm.length) {
                     editForm[0].reset();
@@ -237,7 +291,9 @@
                         var payload = data.data || {};
                         const assignField = editForm.find('[name="assign_id[]"]');
                         const assignedUsers = data.assigned_user_ids || ((payload.users || []).map(u => String(u.id)));
-                        assignField.find('option').length && assignField.val(assignedUsers).trigger('change.select2').trigger('change');
+                        if (assignField.find('option').length) {
+                            assignField.val(assignedUsers).trigger('change.select2').trigger('change');
+                        }
                         editForm.find('[name="first_name"]').val(payload.first_name || '');
                         editForm.find('[name="last_name"]').val(payload.last_name || '');
                         editForm.find('[name="gender"]').val(payload.gender != null ? String(payload.gender) : '').trigger('change');
@@ -266,6 +322,10 @@
                     },
                     error: function() {
                         $('#modal-loading').modal('hide');
+                    },
+                    complete: function() {
+                        resetButtonLoading(activeEditButton);
+                        activeEditButton = null;
                     }
                 });
             });
@@ -290,16 +350,17 @@
     <div class="modal fade" id="modal-tambah">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title">Add Customer Lead</h4>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <form id="lead-create-form" class="lead-form" action="{{ route('crm.lead.store') }}"
-                        method="POST" enctype="multipart/form-data">
-                        @csrf
+                <form id="lead-create-form" class="lead-form" action="{{ route('crm.lead.store') }}"
+                    method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <input type="hidden" name="form_context" value="create">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Add Customer Lead</h4>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
                         @if ($power == 'superadmin')
                             <div class="row">
 
@@ -656,11 +717,11 @@
 
 
 
-                </div>
-                <div class="modal-footer justify-content-between">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Save</button>
-                </div>
+                    </div>
+                    <div class="modal-footer justify-content-between">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Create Lead</button>
+                    </div>
                 </form>
             </div>
             <!-- /.modal-content -->
@@ -671,17 +732,19 @@
     <div class="modal fade" id="modal-edit">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title">Edit Customer Lead</h4>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <form id="lead-edit-form" class="lead-form" action="{{ route('crm.lead.update') }}"
-                        method="POST" enctype="multipart/form-data">
-                        @csrf
-                        @method('PUT')
+                <form id="lead-edit-form" class="lead-form" action="{{ route('crm.lead.update') }}"
+                    method="POST" enctype="multipart/form-data">
+                    @csrf
+                    @method('PUT')
+                    <input type="hidden" name="form_context" value="edit">
+                    <input type="hidden" name="id" id="edit_lead_id">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Edit Customer Lead</h4>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
                         @if ($power == 'superadmin')
                             <div class="row">
 
@@ -1039,12 +1102,11 @@
                         </div>
 
 
-                </div>
-                <div class="modal-footer justify-content-between">
-                    <input type="hidden" name="id" id="id">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Save</button>
-                </div>
+                    </div>
+                    <div class="modal-footer justify-content-between">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Update Lead</button>
+                    </div>
                 </form>
             </div>
             <!-- /.modal-content -->

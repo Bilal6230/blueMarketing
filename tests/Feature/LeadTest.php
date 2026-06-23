@@ -160,6 +160,39 @@ class LeadTest extends TestCase
         ]);
     }
 
+    public function test_update_same_lead_without_changing_mobile_number_passes(): void
+    {
+        $lead = $this->createLead([
+            'phone_number' => '3000000010',
+            'mobile_number' => '03123456791',
+        ]);
+
+        $response = $this->callLeadController('update', 'PUT', $this->leadPayload([
+            'id' => $lead->id,
+            'phone_number' => '3000000010',
+            'mobile_number' => '03123456791',
+            'office_address' => 'Updated Office Address',
+        ]));
+
+        $this->assertSame(302, $response->getStatusCode());
+        $this->assertFalse($response->getSession()->has('errors'));
+        $this->assertDatabaseHas('leads', [
+            'id' => $lead->id,
+            'office_address' => 'Updated Office Address',
+        ]);
+    }
+
+    public function test_update_request_without_id_fails_validation(): void
+    {
+        $response = $this->callLeadController('update', 'PUT', $this->leadPayload([
+            'phone_number' => '3000000011',
+            'mobile_number' => '03123456792',
+        ]));
+
+        $this->assertSame(302, $response->getStatusCode());
+        $this->assertTrue($response->getSession()->get('errors')->has('id'));
+    }
+
     public function test_update_to_another_leads_phone_number_fails(): void
     {
         $takenLead = $this->createLead([
@@ -218,6 +251,9 @@ class LeadTest extends TestCase
             [(string) $this->user->id, (string) $otherUser->id],
             $payload['assigned_user_ids']
         );
+        $this->assertSame('Existing Home', $payload['data']['home_address']);
+        $this->assertSame('Existing Office', $payload['data']['office_address']);
+        $this->assertCount(2, $payload['data']['users']);
     }
 
     public function test_lead_page_js_prefers_assigned_user_ids_for_edit_modal(): void
@@ -235,7 +271,11 @@ class LeadTest extends TestCase
         $editStart = strpos($html, '<div class="modal fade" id="modal-edit">');
         $createModal = substr($html, $createStart, $editStart - $createStart);
 
+        $this->assertStringContainsString('Add Customer Lead', $createModal);
+        $this->assertStringContainsString('Create Lead', $createModal);
+        $this->assertStringContainsString('name="form_context" value="create"', $createModal);
         $this->assertStringNotContainsString('name="projects_id"', $createModal);
+        $this->assertStringNotContainsString('Project</label>', $createModal);
         $this->assertStringNotContainsString("@error('projects_id')", $createModal);
     }
 
@@ -246,7 +286,12 @@ class LeadTest extends TestCase
         $deleteStart = strpos($html, '<div class="modal fade" id="modal-delete">');
         $editModal = substr($html, $editStart, $deleteStart - $editStart);
 
+        $this->assertStringContainsString('Edit Customer Lead', $editModal);
+        $this->assertStringContainsString('Update Lead', $editModal);
+        $this->assertStringContainsString('name="form_context" value="edit"', $editModal);
+        $this->assertStringContainsString('name="id"', $editModal);
         $this->assertStringNotContainsString('name="projects_id"', $editModal);
+        $this->assertStringNotContainsString('Project</label>', $editModal);
         $this->assertStringNotContainsString("@error('projects_id')", $editModal);
     }
 
