@@ -115,6 +115,7 @@ class LeadController extends Controller
                 'business' => $request->business,
                 'zone_id' => $request->zone_id,
                 'home_address' => $request->home_address,
+                'office_address' => $request->office_address,
                 'designation' => $request->designation,
                 'is_active' => $request->is_active,
                 'follow_id' => $request->follow_id,
@@ -141,13 +142,17 @@ class LeadController extends Controller
 
     public function show(Request $request)
     {
-        $data_list = Lead::where(['id' => $request->id])->with('users')->first();
+        $data_list = Lead::where('id', $request->id)->with('users:id')->first();
 
 
         return response()->json([
             'status' => Response::HTTP_OK,
             'message' => 'Data Project by id',
-            'data' => $data_list
+            'data' => $data_list,
+            'assigned_user_ids' => $data_list?->users
+                ->pluck('id')
+                ->map(fn($id) => (string) $id)
+                ->values(),
         ], Response::HTTP_OK);
     }
 

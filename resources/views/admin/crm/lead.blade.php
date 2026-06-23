@@ -169,7 +169,7 @@
                 };
 
                 if (oldValues['assign_id']) {
-                    $form.find('[name="assign_id[]"]').val(oldValues['assign_id']).trigger('change');
+                    $form.find('[name="assign_id[]"]').val(oldValues['assign_id']).trigger('change.select2').trigger('change');
                 }
 
                 setVal('relate');
@@ -235,9 +235,9 @@
                     },
                     success: function(data) {
                         var payload = data.data || {};
-
-                        const assignedUsers = payload.users && payload.users.length > 0 ? payload.users.map(u => u.id) : [];
-                        editForm.find('[name="assign_id[]"]').val(assignedUsers.map(String)).trigger('change');
+                        const assignField = editForm.find('[name="assign_id[]"]');
+                        const assignedUsers = data.assigned_user_ids || ((payload.users || []).map(u => String(u.id)));
+                        assignField.find('option').length && assignField.val(assignedUsers).trigger('change.select2').trigger('change');
                         editForm.find('[name="first_name"]').val(payload.first_name || '');
                         editForm.find('[name="last_name"]').val(payload.last_name || '');
                         editForm.find('[name="gender"]').val(payload.gender != null ? String(payload.gender) : '').trigger('change');
@@ -353,10 +353,10 @@
                             </div>
                             <hr>
                         @else
-                            <input type="text" id="assign_id"
+                            <input type="text" id="create_assign_id"
                                 class="form-control @error('assign_id') is-invalid @enderror" name="assign_id[]"
                                 value="{{ Auth::user()->id }}" hidden="true">
-                            <input type="text" id="follow_id"
+                            <input type="text" id="create_follow_id"
                                 class="form-control @error('follow_id') is-invalid @enderror" name="follow_id"
                                 value="1" hidden="true">
                         @endif
@@ -691,7 +691,7 @@
                                     <div class="form-group">
                                         <label>Assign To</label>
                                         <div class="select2-purple">
-                                            <select id="assign_id"
+                                            <select id="edit_assign_id"
                                                 class="select2 select2-hidden-accessible form-control @error('assign_id') is-invalid @enderror"
                                                 name="assign_id[]" multiple="" data-placeholder="Select a State"
                                                 data-dropdown-css-class="select2-purple" style="width: 100%;"
@@ -714,7 +714,7 @@
                                     <div class="input-group">
                                         <label>Monitoring By</label>
                                         <div class="input-group">
-                                            <select class="form-control" name="follow_id" id="follow_id">
+                                            <select class="form-control" name="follow_id" id="edit_follow_id">
                                                 @foreach ($users as $u)
                                                     <option value="{{ $u->id }}">{{ $u->name }}</option>
                                                 @endforeach
@@ -735,10 +735,10 @@
                             </div>
                             <hr>
                         @else
-                            <input type="text" id="assign_id"
+                            <input type="text" id="edit_assign_id_hidden"
                                 class="form-control @error('assign_id') is-invalid @enderror" name="assign_id[]"
                                 value="{{ Auth::user()->id }}" hidden="true">
-                            <input type="text" id="follow_id"
+                            <input type="text" id="edit_follow_id_hidden"
                                 class="form-control @error('follow_id') is-invalid @enderror" name="follow_id"
                                 value="1" hidden="true">
                         @endif

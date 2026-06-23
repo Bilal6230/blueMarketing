@@ -89,6 +89,29 @@ class LeadTest extends TestCase
         ]);
     }
 
+    public function test_create_lead_saves_office_address_and_syncs_assigned_users(): void
+    {
+        $otherUser = User::factory()->create();
+
+        $response = $this->callLeadController('store', 'POST', $this->leadPayload([
+            'phone_number' => '3000000008',
+            'mobile_number' => '03123456790',
+            'office_address' => 'Saved Office Address',
+            'assign_id' => [$this->user->id, $otherUser->id],
+        ]), $this->projectId);
+
+        $this->assertSame(302, $response->getStatusCode());
+        $this->assertFalse($response->getSession()->has('errors'));
+
+        $lead = Lead::where('phone_number', '3000000008')->firstOrFail();
+
+        $this->assertSame('Saved Office Address', $lead->office_address);
+        $this->assertEqualsCanonicalizing(
+            [$this->user->id, $otherUser->id],
+            $lead->users()->pluck('users.id')->all()
+        );
+    }
+
     public function test_update_same_lead_without_changing_phone_number_passes(): void
     {
         $lead = $this->createLead([
@@ -181,7 +204,53 @@ class LeadTest extends TestCase
         $this->assertTrue($response->getSession()->get('errors')->has('mobile_number'));
     }
 
-    public function test_lead_page_does_not_render_project_fields_in_modals(): void
+    public function test_show_lead_returns_assigned_user_ids(): void
+    {
+        $otherUser = User::factory()->create();
+        $lead = $this->createLead();
+        $lead->users()->sync([$this->user->id, $otherUser->id]);
+
+        $response = $this->callLeadController('show', 'POST', ['id' => $lead->id]);
+        $payload = $response->getData(true);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertEqualsCanonicalizing(
+            [(string) $this->user->id, (string) $otherUser->id],
+            $payload['assigned_user_ids']
+        );
+    }
+
+    public function test_lead_page_js_prefers_assigned_user_ids_for_edit_modal(): void
+    {
+        $html = file_get_contents(resource_path('views/admin/crm/lead.blade.php'));
+
+        $this->assertStringContainsString('data.assigned_user_ids', $html);
+        $this->assertStringContainsString('trigger(\'change.select2\')', $html);
+    }
+
+    public function test_create_modal_does_not_render_project_field(): void
+    {
+        $html = file_get_contents(resource_path('views/admin/crm/lead.blade.php'));
+        $createStart = strpos($html, '<div class="modal fade" id="modal-tambah">');
+        $editStart = strpos($html, '<div class="modal fade" id="modal-edit">');
+        $createModal = substr($html, $createStart, $editStart - $createStart);
+
+        $this->assertStringNotContainsString('name="projects_id"', $createModal);
+        $this->assertStringNotContainsString("@error('projects_id')", $createModal);
+    }
+
+    public function test_update_modal_does_not_render_project_field(): void
+    {
+        $html = file_get_contents(resource_path('views/admin/crm/lead.blade.php'));
+        $editStart = strpos($html, '<div class="modal fade" id="modal-edit">');
+        $deleteStart = strpos($html, '<div class="modal fade" id="modal-delete">');
+        $editModal = substr($html, $editStart, $deleteStart - $editStart);
+
+        $this->assertStringNotContainsString('name="projects_id"', $editModal);
+        $this->assertStringNotContainsString("@error('projects_id')", $editModal);
+    }
+
+    public function test_lead_page_does_not_render_project_fields_or_project_js_in_modals(): void
     {
         $html = file_get_contents(resource_path('views/admin/crm/lead.blade.php'));
 
