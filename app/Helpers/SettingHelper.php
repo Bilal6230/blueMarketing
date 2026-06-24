@@ -268,7 +268,7 @@ class SettingHelper
         return $companies;
     }
 
-    public static function getProjectColorClass($project_id=null){
+    public static function getProjectColorClass($project_id=null): string {
 
         /**
         1- Invalide Number
@@ -282,11 +282,17 @@ class SettingHelper
         **/
         $companies = ["","badge-parpal","btn-success","btn-danger", "badge-dark", "btn-success", "btn-info", "badge-info" ];
 
-        if($project_id){
-            return $companies[$project_id];
+        if (!is_scalar($project_id) || $project_id === null || $project_id === '') {
+            return 'btn-secondary';
         }
 
-        return $companies;
+        $class = $companies[(int) $project_id] ?? 'btn-secondary';
+
+        if (is_array($class)) {
+            return implode(' ', array_filter($class));
+        }
+
+        return (string) ($class ?: 'btn-secondary');
     }
 
     public static function getLogtype($type=null){

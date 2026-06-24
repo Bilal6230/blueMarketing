@@ -5,6 +5,7 @@ use App\Models\Lead;
 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Exception;
 use Illuminate\Support\Str;
@@ -17,20 +18,23 @@ class LeadRepository {
 
     public static function getLeadsList($user_id = null, $filter = null, $status = null){
 
-        //Lead::where('user_id', $user_id);
-         $leads =  Lead::where('is_active', 1);
+        $selectedProjectId = getSelectedTown();
+
+        $leads = Lead::where('is_active', 1)
+            ->where('project_id', $selectedProjectId);
+
          if(!is_null($user_id)){
-            $profile =  $leads->whereRelation('users', 'user_id', $user_id )->whereIn('follow_status',[2,6,3,7,5,8]);
+            $leads->whereRelation('users', 'user_id', $user_id)->whereIn('follow_status',[2,6,3,7,5,8]);
         }
 
         if(!is_null($filter)){
             if($filter == "schedule")
             {
-                $profile =  $leads->where('follow_up', '<', now()->toDateTimeString());
+                $leads->where('follow_up', '<', now()->toDateTimeString());
             }
             elseif($filter == "today")
             {
-                $profile =  $leads->whereDate('created_at', Carbon::today());
+                $leads->whereDate('created_at', Carbon::today());
             }
         }
 
@@ -39,9 +43,23 @@ class LeadRepository {
             ->get();
 
         // Modify the collection to include project name
-        $leads->map(function ($lead) {
-            $lead->project_name = $lead->project ? $lead->project->project : null; // Add project name to each lead
-            return $lead;
+        $leads->each(function ($lead) {
+            if (is_array($lead->project_id)) {
+                $lead->project_id = null;
+            }
+
+            $projectName = $lead->project?->project ?? 'No Project';
+            $lead->project_name = is_array($projectName)
+                ? implode(', ', array_filter($projectName))
+                : (string) $projectName;
+
+            if (is_array($lead->project_id) || is_array($lead->project_name)) {
+                Log::warning('lead_project_bad_value', [
+                    'lead_id' => $lead->id,
+                    'project_id' => $lead->project_id,
+                    'project_name' => $lead->project_name,
+                ]);
+            }
         });
 
         return $leads;

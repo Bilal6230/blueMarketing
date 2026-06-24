@@ -2,13 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Helpers\SettingHelper;
 use App\Http\Middleware\CheckUserStatus;
 use App\Http\Controllers\LeadController;
 use App\Models\Lead;
 use App\Models\User;
+use App\Repository\Lead\LeadRepository;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Middlewares\PermissionMiddleware;
@@ -360,6 +363,57 @@ class LeadTest extends TestCase
         ]);
     }
 
+    public function test_lead_list_is_filtered_by_selected_town(): void
+    {
+        $visibleLead = $this->createLead([
+            'project_id' => $this->projectId,
+            'phone_number' => '3000000020',
+            'mobile_number' => '03123456800',
+        ]);
+        $hiddenLead = $this->createLead([
+            'project_id' => $this->otherProjectId,
+            'phone_number' => '3000000021',
+            'mobile_number' => '03123456801',
+        ]);
+
+        $leads = $this->getLeadListForProject($this->projectId);
+
+        $this->assertTrue($leads->contains('id', $visibleLead->id));
+        $this->assertFalse($leads->contains('id', $hiddenLead->id));
+    }
+
+    public function test_lead_list_renders_project_badge_without_crashing_when_project_is_valid(): void
+    {
+        $lead = $this->createLead([
+            'project_id' => $this->projectId,
+        ]);
+        $lead->project_name = 'Alpha Town';
+
+        $html = $this->renderProjectBadge($lead);
+
+        $this->assertStringContainsString('Alpha Town', $html);
+        $this->assertStringContainsString('btn', $html);
+    }
+
+    public function test_project_badge_renders_no_project_when_relation_is_missing(): void
+    {
+        $lead = $this->createLead([
+            'project_id' => null,
+        ]);
+        $lead->unsetRelation('project');
+        $lead->project_name = null;
+
+        $html = $this->renderProjectBadge($lead);
+
+        $this->assertStringContainsString('No Project', $html);
+    }
+
+    public function test_project_color_helper_always_returns_string(): void
+    {
+        $this->assertIsString(SettingHelper::getProjectColorClass($this->projectId));
+        $this->assertIsString(SettingHelper::getProjectColorClass(['bad']));
+    }
+
     protected function leadPayload(array $overrides = []): array
     {
         return array_merge([
@@ -520,5 +574,31 @@ class LeadTest extends TestCase
         auth()->setUser($this->user);
 
         return app(LeadController::class)->{$action}($request);
+    }
+
+    protected function getLeadListForProject(int $projectId)
+    {
+        $request = Request::create('/admin/crm/lead', 'GET');
+        $request->cookies->set('selected_action', (string) $projectId);
+        $this->app->instance('request', $request);
+        auth()->setUser($this->user);
+
+        return LeadRepository::getLeadsList($this->user->id);
+    }
+
+    protected function renderProjectBadge($lead): string
+    {
+        return Blade::render(<<<'BLADE'
+@php
+    $projectId = is_array($lead->project_id) ? null : $lead->project_id;
+    $projectClass = \App\Helpers\SettingHelper::getProjectColorClass($projectId);
+    $projectClass = is_array($projectClass) ? implode(' ', array_filter($projectClass)) : (string) $projectClass;
+    $projectName = $lead->project_name ?? optional($lead->project)->project ?? 'No Project';
+    $projectName = is_array($projectName) ? implode(', ', array_filter($projectName)) : (string) $projectName;
+@endphp
+<span class="btn btn-sm {{ $projectClass }}">
+    {{ $projectName !== '' ? $projectName : 'No Project' }}
+</span>
+BLADE, ['lead' => $lead]);
     }
 }

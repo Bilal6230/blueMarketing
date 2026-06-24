@@ -73,8 +73,17 @@
                                                 <td><span
                                                         class="badge {{ Setting::getColorClass($i->follow_status) }}">{{ Setting::getCallStatus($i->follow_status) }}</span>
                                                 </td>
-                                                <td><span
-                                                        class="btn btn-sm  {{ Setting::getProjectColorClass($i->project_id) }}">{{ $i->project_name }}</span>
+                                                <td>
+                                                    @php
+                                                        $projectId = is_array($i->project_id) ? null : $i->project_id;
+                                                        $projectClass = Setting::getProjectColorClass($projectId);
+                                                        $projectClass = is_array($projectClass) ? implode(' ', array_filter($projectClass)) : (string) $projectClass;
+                                                        $projectName = $i->project_name ?? optional($i->project)->project ?? 'No Project';
+                                                        $projectName = is_array($projectName) ? implode(', ', array_filter($projectName)) : (string) $projectName;
+                                                    @endphp
+                                                    <span class="btn btn-sm {{ $projectClass }}">
+                                                        {{ $projectName !== '' ? $projectName : 'No Project' }}
+                                                    </span>
                                                 </td>
                                                 <td>
                                                     @foreach ($i->users as $u)
