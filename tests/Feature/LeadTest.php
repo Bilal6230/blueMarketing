@@ -458,6 +458,7 @@ class LeadTest extends TestCase
 
         $this->assertSame(404, $response->getStatusCode());
         $this->assertSame('No Record Found in selected project.', $response->getData(true)['error']);
+        $this->assertSame((string) $this->projectId, (string) $response->getData(true)['selected_project_id']);
     }
 
     public function test_dashboard_search_does_not_return_inactive_matching_number(): void
@@ -488,6 +489,36 @@ class LeadTest extends TestCase
         ]);
 
         $response = $this->callLeadController('search', 'POST', ['number' => '0306-216 7362'], $this->projectId);
+        $payload = $response->getData(true);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame($lead->id, $payload['data']['id']);
+    }
+
+    public function test_dashboard_search_without_leading_zero_finds_stored_zero_prefixed_number(): void
+    {
+        $lead = $this->createLead([
+            'project_id' => $this->projectId,
+            'phone_number' => '03062167363',
+            'mobile_number' => '03123456816',
+        ]);
+
+        $response = $this->callLeadController('search', 'POST', ['number' => '3062167363'], $this->projectId);
+        $payload = $response->getData(true);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame($lead->id, $payload['data']['id']);
+    }
+
+    public function test_dashboard_search_plus92_format_finds_stored_03_number(): void
+    {
+        $lead = $this->createLead([
+            'project_id' => $this->projectId,
+            'phone_number' => '03062167364',
+            'mobile_number' => '03123456817',
+        ]);
+
+        $response = $this->callLeadController('search', 'POST', ['number' => '+92 306 2167364'], $this->projectId);
         $payload = $response->getData(true);
 
         $this->assertSame(200, $response->getStatusCode());

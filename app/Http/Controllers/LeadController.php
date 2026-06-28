@@ -15,6 +15,7 @@ use Spatie\Permission\Models\Role;
 use RealRashid\SweetAlert\Facades\Alert;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use App\Repository\Lead\LeadRepository as lead_repo;
 
@@ -418,8 +419,17 @@ class LeadController extends Controller
                 ], Response::HTTP_OK);
 
             } else {
+                Log::info('dashboard_lead_search_not_found', [
+                    'number' => $number,
+                    'selected_project_id' => $selectedProjectId,
+                    'user_id' => Auth::id(),
+                ]);
 
-                return response()->json(['error' => 'No Record Found in selected project.'], 404);
+                return response()->json([
+                    'error' => 'No Record Found in selected project.',
+                    'searched_number' => $number,
+                    'selected_project_id' => $selectedProjectId,
+                ], 404);
             }
 
 

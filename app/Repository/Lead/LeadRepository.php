@@ -277,17 +277,47 @@ class LeadRepository {
             $profile->where('follow_up', '<', now()->toDateTimeString());
         }
 
-        $normalizedNumber = preg_replace('/\D+/', '', (string) $number);
-        $trimmedNumber = trim((string) $number);
-        $variants = array_values(array_unique(array_filter([
-            $trimmedNumber,
-            $normalizedNumber,
-        ], fn($value) => $value !== '')));
+        $rawNumber = trim((string) $number);
+        $digits = preg_replace('/\D+/', '', $rawNumber);
+
+        $variants = collect([
+            $rawNumber,
+            $digits,
+            ltrim($digits, '0'),
+        ]);
+
+        if (str_starts_with($digits, '92') && strlen($digits) === 12) {
+            $variants->push('0' . substr($digits, 2));
+        }
+
+        if (str_starts_with($digits, '0') && strlen($digits) === 11) {
+            $variants->push('92' . substr($digits, 1));
+        }
+
+        if (!str_starts_with($digits, '0') && strlen($digits) === 10) {
+            $variants->push('0' . $digits);
+        }
+
+        $variants = $variants
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
 
         if (!empty($variants)) {
-            $profile->where(function ($query) use ($variants) {
+            $profile->where(function ($query) use ($variants, $digits) {
                 $query->whereIn('phone_number', $variants)
                     ->orWhereIn('mobile_number', $variants);
+
+                if ($digits !== '') {
+                    $query->orWhereRaw(
+                        "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone_number, ' ', ''), '-', ''), '+', ''), '(', ''), ')', '') LIKE ?",
+                        ["%{$digits}%"]
+                    )->orWhereRaw(
+                        "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(mobile_number, ' ', ''), '-', ''), '+', ''), '(', ''), ')', '') LIKE ?",
+                        ["%{$digits}%"]
+                    );
+                }
             });
         }
 

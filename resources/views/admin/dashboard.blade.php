@@ -463,11 +463,18 @@
 
                 const button = $(this);
                 const originalHtml = button.html();
-                const number = $("#number").val();
+                const rawNumber = $("#number").val();
+                const number = String(rawNumber || '').replace(/\D+/g, '');
                 const messageBox = $("#msg").first();
 
-                button.prop("disabled", true).html(`<span class="spinner-border spinner-border-sm"></span> Searching...`);
                 messageBox.removeClass("text-danger text-success").html("");
+
+                if (!number || number.length < 10) {
+                    messageBox.addClass("text-danger").html("Please enter a valid phone number.");
+                    return;
+                }
+
+                button.prop("disabled", true).html(`<span class="spinner-border spinner-border-sm"></span> Searching...`);
 
                 $.ajax({
                     type: "POST",
