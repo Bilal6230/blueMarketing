@@ -414,6 +414,86 @@ class LeadTest extends TestCase
         $this->assertIsString(SettingHelper::getProjectColorClass(['bad']));
     }
 
+    public function test_dashboard_search_finds_lead_by_first_phone_in_selected_project(): void
+    {
+        $lead = $this->createLead([
+            'project_id' => $this->projectId,
+            'phone_number' => '03062167357',
+            'mobile_number' => '03123456810',
+        ]);
+
+        $response = $this->callLeadController('search', 'POST', ['number' => '03062167357'], $this->projectId);
+        $payload = $response->getData(true);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame($lead->id, $payload['data']['id']);
+        $this->assertSame('03062167357', $payload['data']['phone_number']);
+    }
+
+    public function test_dashboard_search_finds_lead_by_second_phone_in_selected_project(): void
+    {
+        $lead = $this->createLead([
+            'project_id' => $this->projectId,
+            'phone_number' => '03062167358',
+            'mobile_number' => '03123456811',
+        ]);
+
+        $response = $this->callLeadController('search', 'POST', ['number' => '03123456811'], $this->projectId);
+        $payload = $response->getData(true);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame($lead->id, $payload['data']['id']);
+        $this->assertSame('03123456811', $payload['data']['mobile_number']);
+    }
+
+    public function test_dashboard_search_does_not_return_lead_from_another_project(): void
+    {
+        $this->createLead([
+            'project_id' => $this->otherProjectId,
+            'phone_number' => '03062167359',
+            'mobile_number' => '03123456812',
+        ]);
+
+        $response = $this->callLeadController('search', 'POST', ['number' => '03062167359'], $this->projectId);
+
+        $this->assertSame(404, $response->getStatusCode());
+        $this->assertSame('No Record Found in selected project.', $response->getData(true)['error']);
+    }
+
+    public function test_dashboard_search_does_not_return_inactive_matching_number(): void
+    {
+        $this->createLead([
+            'project_id' => $this->projectId,
+            'phone_number' => '03062167360',
+            'mobile_number' => '03123456813',
+            'is_active' => 0,
+        ]);
+        $this->createLead([
+            'project_id' => $this->projectId,
+            'phone_number' => '03062167361',
+            'mobile_number' => '03123456814',
+        ]);
+
+        $response = $this->callLeadController('search', 'POST', ['number' => '03123456813'], $this->projectId);
+
+        $this->assertSame(404, $response->getStatusCode());
+    }
+
+    public function test_dashboard_search_normalizes_number_input(): void
+    {
+        $lead = $this->createLead([
+            'project_id' => $this->projectId,
+            'phone_number' => '03062167362',
+            'mobile_number' => '03123456815',
+        ]);
+
+        $response = $this->callLeadController('search', 'POST', ['number' => '0306-216 7362'], $this->projectId);
+        $payload = $response->getData(true);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame($lead->id, $payload['data']['id']);
+    }
+
     protected function leadPayload(array $overrides = []): array
     {
         return array_merge([

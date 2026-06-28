@@ -458,6 +458,47 @@
                 }
             });
 
+            $("#search_number").on("click", function (e) {
+                e.preventDefault();
+
+                const button = $(this);
+                const originalHtml = button.html();
+                const number = $("#number").val();
+                const messageBox = $("#msg").first();
+
+                button.prop("disabled", true).html(`<span class="spinner-border spinner-border-sm"></span> Searching...`);
+                messageBox.removeClass("text-danger text-success").html("");
+
+                $.ajax({
+                    type: "POST",
+                    url: "{{ route('lead.search') }}",
+                    data: {
+                        number: number,
+                        _token: "{{ csrf_token() }}"
+                    },
+                    success: function (res) {
+                        const lead = res.data || {};
+                        const assignedUsers = Array.isArray(lead.assignTo) && lead.assignTo.length
+                            ? lead.assignTo.map(user => user.name).join(", ")
+                            : "Unassigned";
+
+                        messageBox.addClass("text-success").html(`
+                            <div><strong>${lead.name ?? ""}</strong></div>
+                            <div>Project: ${lead.project ?? "No Project"}</div>
+                            <div>Assigned To: ${assignedUsers}</div>
+                            <div>Status: ${lead.follow_status ?? ""}</div>
+                        `);
+                    },
+                    error: function (xhr) {
+                        const errorMessage = xhr.responseJSON?.error || "No Record Found in selected project.";
+                        messageBox.addClass("text-danger").html(errorMessage);
+                    },
+                    complete: function () {
+                        button.prop("disabled", false).html(originalHtml);
+                    }
+                });
+            });
+
             // ===================================================================
             // 1️⃣ ADD DASTICASH (AJAX)
             // ===================================================================

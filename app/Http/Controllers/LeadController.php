@@ -393,7 +393,9 @@ class LeadController extends Controller
     public function search(Request $request)
     {
         if (isset($request->number)) {
-            $data = lead_repo::getLeadByNumber($request->number);
+            $number = trim((string) $request->number);
+            $selectedProjectId = getSelectedTown();
+            $data = lead_repo::getLeadByNumber($number, null, $selectedProjectId);
             if (!empty($data)) {
                 $projectDetails = getProjectDetails($data->project_id);
 
@@ -403,19 +405,21 @@ class LeadController extends Controller
                 $result['created_at'] = $data->created_at;
                 $result['updated_at'] = $data->updated_at;
                 $result['assignTo'] = $data->users;
-                $result['project'] = $projectDetails['project'];
+                $result['project'] = $projectDetails['project'] ?? ($data->project->project ?? 'No Project');
                 $result['status'] = 'success';
                 $result['follow_status'] = $data->follow_status;
+                $result['phone_number'] = $data->phone_number;
+                $result['mobile_number'] = $data->mobile_number;
 
                 return response()->json([
                     'status' => Response::HTTP_OK,
-                    'message' => 'Data Project by id',
+                    'message' => 'Data Lead by id',
                     'data' => $result
                 ], Response::HTTP_OK);
 
             } else {
 
-                return response()->json(['error' => 'No Record Found'], 404);
+                return response()->json(['error' => 'No Record Found in selected project.'], 404);
             }
 
 

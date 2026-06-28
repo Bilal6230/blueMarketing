@@ -265,22 +265,33 @@ class LeadRepository {
         return $profile;
     }
 
-    public static function getLeadByNumber($number = null,$status = null)
+    public static function getLeadByNumber($number = null, $status = null, $projectId = null)
     {
+        $profile = Lead::with(['users:id,name', 'project:id,project'])->where('is_active', 1);
 
-        $profile =  Lead::where('is_active', 1);
+        if (!is_null($projectId)) {
+            $profile->where('project_id', $projectId);
+        }
 
         if(!is_null($status)){
-        $profile =  $profile->where('follow_up', '<', now()->toDateTimeString());
-
-        }
-        if(!is_null($number)){
-            $profile =  $profile->where('phone_number', $number)->orWhere('mobile_number', $number);
-
+            $profile->where('follow_up', '<', now()->toDateTimeString());
         }
 
-        $profile = $profile->first();
-        return $profile;
+        $normalizedNumber = preg_replace('/\D+/', '', (string) $number);
+        $trimmedNumber = trim((string) $number);
+        $variants = array_values(array_unique(array_filter([
+            $trimmedNumber,
+            $normalizedNumber,
+        ], fn($value) => $value !== '')));
+
+        if (!empty($variants)) {
+            $profile->where(function ($query) use ($variants) {
+                $query->whereIn('phone_number', $variants)
+                    ->orWhereIn('mobile_number', $variants);
+            });
+        }
+
+        return $profile->first();
     }
 
 
