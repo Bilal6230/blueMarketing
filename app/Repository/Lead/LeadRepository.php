@@ -17,11 +17,7 @@ use Carbon\Carbon;
 class LeadRepository {
 
     public static function getLeadsList($user_id = null, $filter = null, $status = null){
-
-        $selectedProjectId = getSelectedTown();
-
-        $leads = Lead::where('is_active', 1)
-            ->where('project_id', $selectedProjectId);
+        $leads = Lead::where('is_active', 1);
 
          if(!is_null($user_id)){
             $leads->whereRelation('users', 'user_id', $user_id)->whereIn('follow_status',[2,6,3,7,5,8]);

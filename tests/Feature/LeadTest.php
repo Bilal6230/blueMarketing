@@ -363,14 +363,14 @@ class LeadTest extends TestCase
         ]);
     }
 
-    public function test_lead_list_is_filtered_by_selected_town(): void
+    public function test_get_leads_list_returns_active_leads_from_multiple_projects(): void
     {
-        $visibleLead = $this->createLead([
+        $projectALead = $this->createLead([
             'project_id' => $this->projectId,
             'phone_number' => '3000000020',
             'mobile_number' => '03123456800',
         ]);
-        $hiddenLead = $this->createLead([
+        $projectBLead = $this->createLead([
             'project_id' => $this->otherProjectId,
             'phone_number' => '3000000021',
             'mobile_number' => '03123456801',
@@ -378,8 +378,29 @@ class LeadTest extends TestCase
 
         $leads = $this->getLeadListForProject($this->projectId);
 
-        $this->assertTrue($leads->contains('id', $visibleLead->id));
-        $this->assertFalse($leads->contains('id', $hiddenLead->id));
+        $this->assertTrue($leads->contains('id', $projectALead->id));
+        $this->assertTrue($leads->contains('id', $projectBLead->id));
+    }
+
+    public function test_get_leads_list_excludes_inactive_leads(): void
+    {
+        $activeLead = $this->createLead([
+            'project_id' => $this->projectId,
+            'phone_number' => '3000000022',
+            'mobile_number' => '03123456802',
+            'is_active' => 1,
+        ]);
+        $inactiveLead = $this->createLead([
+            'project_id' => $this->otherProjectId,
+            'phone_number' => '3000000023',
+            'mobile_number' => '03123456803',
+            'is_active' => 0,
+        ]);
+
+        $leads = $this->getLeadListForProject($this->projectId);
+
+        $this->assertTrue($leads->contains('id', $activeLead->id));
+        $this->assertFalse($leads->contains('id', $inactiveLead->id));
     }
 
     public function test_lead_list_renders_project_badge_without_crashing_when_project_is_valid(): void
