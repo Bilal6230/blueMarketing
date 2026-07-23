@@ -251,7 +251,16 @@ class LabourController extends Controller
             $days[] = $startOfWeek->copy()->addDays($i)->format('Y-m-d');
         }
 
-        $x['personWiseReports'] = $personWiseReports = Labour::select('labours.id', 'labours.name', 'labours.father_name', 'labours.cnic', 'labours.advance', 'labours.phone as mobile', 'labours.role as designation');
+        $x['personWiseReports'] = $personWiseReports = Labour::select(
+            'labours.id',
+            'labours.name',
+            'labours.father_name',
+            'labours.cnic',
+            'labours.advance',
+            'labours.daily_wage',
+            'labours.phone as mobile',
+            'labours.role as designation'
+        );
 
         if ($request->search) {
             $search = $request->search;
@@ -274,7 +283,9 @@ class LabourController extends Controller
                     $query->whereIn('date', $days)
                         ->where('status', 'present')
                         ->where('project_id', getSelectedTown());
-                }
+                },
+                'tAttendances',
+                'labourLedgers',
             ])
             ->whereHas('attendances', function ($query) use ($request, $days) {
                 $query->whereIn('date', $days)
@@ -283,21 +294,21 @@ class LabourController extends Controller
             })
             ->get()
             ->map(function ($labour) {
-
                 $attendanceIds = $labour->attendances->pluck('id')->toArray();
                 $attendanceDates = $labour->attendances->pluck('date')->toArray();
                 $totalHours = $labour->attendances->sum('hours');
                 $totalOT = $labour->attendances->sum('ot_hours');
-                $ratings = $labour->attendances->sum('ratings') / $labour->attendances->count();
+                $attendanceCount = $labour->attendances->count();
+                $ratings = $attendanceCount > 0
+                    ? $labour->attendances->sum('ratings') / $attendanceCount
+                    : 0;
 
-                $rate = optional($labour->attendances->first())->rate
-                    ?? $labour->daily_wage
-                    ?? 0;
-
+                $currentRate = $labour->daily_wage ?? 0;
                 $days = $totalHours / 8;
-                $amount = ($days * $rate) + ($totalOT * ($rate / 8));
+                $amount = $labour->attendances->sum('amount');
                 $totalAmount = $labour->tAttendances->sum('amount');
-                $remaningAmount = $totalAmount - $labour->labourLedgers->sum('amount');
+                $paidAmount = $labour->labourLedgers->sum('amount');
+                $remaningAmount = $totalAmount - $paidAmount;
 
                 return [
                     'id' => $labour->id,
@@ -306,7 +317,7 @@ class LabourController extends Controller
                     'cnic' => $labour->cnic,
                     'mobile' => $labour->mobile,
                     'designation' => $labour->designation,
-                    'rate' => number_format($rate, 0),
+                    'rate' => number_format($currentRate, 0),
                     'days' => number_format($days, 0),
                     'overtime' => number_format($totalOT, 0),
                     'amount' => number_format($amount, 0),

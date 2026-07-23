@@ -1025,7 +1025,7 @@
                     </form>
                     <div class="site-report-actions">
                         <button class="btn" id="btnPersonRun">Run</button>
-                        <button class="btn btn-sm btn-outline-primary" id="btnPersonExport">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnPersonExport">
                             Print Report
                         </button>
                     </div>
@@ -2768,7 +2768,9 @@
 
             $('#attnWeek, #attnSiteFilter').on('change', loadWeekData);
             $('#attnSearch').on('input', loadWeekData);
-            $(document).on('click', '#createLabourVoucher', function() {
+            $(document).on('click', '#createLabourVoucher', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
 
                 // Array to store all labour data
                 let allLabours = [];
@@ -2886,44 +2888,23 @@
                     }
                 });
             });
-            $(document).on('click', '#btnPersonExport', function() {
+            $(document).on('click', '#btnPersonExport', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
 
-                // Array to store all labour data
-                let allLabours = [];
-                // Loop through each table row
                 $('#laboursData').html('');
                 $('.labour-row').each(function() {
-
                     let row = $(this);
                     let labourId = row.data('id');
-
                     let labourAmount = row.find('.labour_amount').val();
                     labourAmount = labourAmount ? parseFloat(labourAmount) : 0;
 
-                    // Skip empty or zero amounts
                     if (labourAmount <= 0) return;
+
                     $('#laboursData').append(`<input type="hidden" name="labour_` + labourId +
                         `" value='` + labourAmount + `'>`);
-                    allLabours.push({
-                        id: labourId,
-                        amount: labourAmount
-                    });
                 });
-
-                // =============================
-                // VALIDATION BEFORE CONFIRMATION
-                // =============================
-                if (allLabours.length === 0) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'No Amount Entered',
-                        text: 'Please enter amount for at least one labour.',
-                        timer: 2000
-                    });
-                    return;
-                }
                 $('#personWiseForm').submit();
-
             });
         });
 

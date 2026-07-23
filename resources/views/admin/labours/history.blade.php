@@ -3,10 +3,17 @@
 @section('content')
     {{-- PAGE STYLES --}}
     <style>
-        .wrap {
-            max-width: 1400px;
-            margin: auto;
-            padding: 20px;
+        .labour-history-content-wrapper {
+            min-height: auto;
+            background: transparent;
+        }
+
+        .labour-history-wrap {
+            width: 100%;
+            max-width: none;
+            margin: 0;
+            padding: 16px 12px 20px;
+            box-sizing: border-box;
         }
 
         .page-head h2 {
@@ -19,7 +26,7 @@
 
         .grid-4 {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 15px;
             margin-bottom: 20px;
         }
@@ -61,11 +68,13 @@
         }
 
         .table-wrap {
+            width: 100%;
             overflow-x: auto;
         }
 
         .table {
             width: 100%;
+            min-width: 900px;
             border-collapse: collapse;
         }
 
@@ -128,91 +137,108 @@
             padding: 6px;
             border-radius: 6px;
         }
+
+        @media (max-width: 991.98px) {
+            .grid-4 {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 575.98px) {
+            .grid-4 {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
-    <div class="wrap">
 
-        {{-- PAGE HEADER --}}
-        <div class="page-head">
-            <h2>{{ $labour->name }} Attendance History</h2>
-            <p class="muted">Attendance & Payment Records</p>
-        </div>
+    <div class="content-wrapper labour-history-content-wrapper">
+        <section class="content pt-2 labour-history-page">
+            <div class="container-fluid px-2 px-md-3">
+                <div class="labour-history-wrap">
+                    {{-- PAGE HEADER --}}
+                    <div class="page-head">
+                        <h2>{{ $labour->name }} Attendance History</h2>
+                        <p class="muted">Attendance & Payment Records</p>
+                    </div>
 
-        {{-- SUMMARY CARDS --}}
-        <div class="grid-4">
-            <div class="card stat">
-                <span>Total Days</span>
-                <b>{{ $summary['total_days'] ?? 0 }}</b>
+                    {{-- SUMMARY CARDS --}}
+                    <div class="grid-4">
+                        <div class="card stat">
+                            <span>Total Days</span>
+                            <b>{{ $summary['total_days'] ?? 0 }}</b>
+                        </div>
+
+                        <div class="card stat">
+                            <span>Total Hours</span>
+                            <b>{{ $summary['total_hours'] ?? 0 }}</b>
+                        </div>
+
+                        <div class="card stat">
+                            <span>Total Earned</span>
+                            <b>Rs {{ number_format($summary['total_amount'] ?? 0, 2) }}</b>
+                        </div>
+
+                        <div class="card stat danger">
+                            <span>Unpaid Balance</span>
+                            <b>Rs {{ number_format($summary['unpaid'] ?? 0, 2) }}</b>
+                        </div>
+                    </div>
+
+                    {{-- ATTENDANCE HISTORY --}}
+                    <div class="card">
+                        <h3>Attendance History</h3>
+
+                        <div class="table-wrap">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Site</th>
+                                        <th>Status</th>
+                                        <th>Hours</th>
+                                        <th>OT</th>
+                                        <th>Rate</th>
+                                        <th>Amount</th>
+                                        <th>Payment</th>
+                                        <th>Running Balance</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @php $runningBalance = 0; @endphp
+
+                                    @forelse($labour->attendances as $att)
+                                        @php
+                                            $payment = $paymentsByDate[$att->date] ?? 0;
+                                            $runningBalance += $att->amount - $payment;
+                                        @endphp
+
+                                        <tr>
+                                            <td>{{ $att->date }}</td>
+                                            <td>{{ $att->site->site_name ?? '-' }}</td>
+                                            <td>
+                                                <span class="badge {{ $att->status }}">
+                                                    {{ ucfirst($att->status) }}
+                                                </span>
+                                            </td>
+                                            <td>{{ $att->hours }}</td>
+                                            <td>{{ $att->ot_hours }}</td>
+                                            <td>{{ number_format($att->rate ?? 0, 2) }}</td>
+                                            <td>Rs {{ number_format($att->amount, 2) }}</td>
+                                            <td>Rs {{ number_format($payment, 2) }}</td>
+                                            <td>Rs {{ number_format($runningBalance, 2) }}</td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="9" class="empty">No attendance records found</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
-
-            <div class="card stat">
-                <span>Total Hours</span>
-                <b>{{ $summary['total_hours'] ?? 0 }}</b>
-            </div>
-
-            <div class="card stat">
-                <span>Total Earned</span>
-                <b>Rs {{ number_format($summary['total_amount'] ?? 0, 2) }}</b>
-            </div>
-
-            <div class="card stat danger">
-                <span>Unpaid Balance</span>
-                <b>Rs {{ number_format($summary['unpaid'] ?? 0, 2) }}</b>
-            </div>
-        </div>
-
-        {{-- ATTENDANCE HISTORY --}}
-        <div class="card">
-            <h3>Attendance History</h3>
-
-            <div class="table-wrap">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Site</th>
-                            <th>Status</th>
-                            <th>Hours</th>
-                            <th>OT</th>
-                            <th>Rate</th>
-                            <th>Amount</th>
-                            <th>Payment</th>
-                            <th>Running Balance</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @php $runningBalance = 0; @endphp
-
-                        @forelse($labour->attendances as $att)
-                            @php
-                                $payment = $paymentsByDate[$att->date] ?? 0;
-                                $runningBalance += $att->amount - $payment;
-                            @endphp
-
-                            <tr>
-                                <td>{{ $att->date }}</td>
-                                <td>{{ $att->site->site_name ?? '-' }}</td>
-                                <td>
-                                    <span class="badge {{ $att->status }}">
-                                        {{ ucfirst($att->status) }}
-                                    </span>
-                                </td>
-                                <td>{{ $att->hours }}</td>
-                                <td>{{ $att->ot_hours }}</td>
-                                <td>{{ number_format($att->rate ?? 0, 2) }}</td>
-                                <td>Rs {{ number_format($att->amount, 2) }}</td>
-                                <td>Rs {{ number_format($payment, 2) }}</td>
-                                <td>Rs {{ number_format($runningBalance, 2) }}</td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="9" class="empty">No attendance records found</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
+        </section>
     </div>
 @endsection
 
