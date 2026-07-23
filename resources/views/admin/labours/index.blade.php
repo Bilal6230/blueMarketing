@@ -23,10 +23,17 @@
             color: inherit
         }
 
-        .wrap {
-            max-width: 1395px;
-            margin: 2px auto;
-            padding: 0 16px
+        .labour-content-wrapper {
+            min-height: auto;
+            background: transparent;
+        }
+
+        .labour-wrap {
+            width: 100%;
+            max-width: none;
+            margin: 0;
+            padding: 0 12px 16px;
+            box-sizing: border-box
         }
 
         .topbar {
@@ -75,12 +82,13 @@
             }
         }
 
-        .card {
+        .labour-page .card {
             background: var(--card);
             border: 1px solid var(--line);
             border-radius: 14px;
             box-shadow: var(--shadow);
-            height: 565px;
+            min-height: 565px;
+            height: auto;
             overflow: hidden;
         }
 
@@ -270,6 +278,12 @@
         }
 
         /* Attendance board */
+        #attnBoardWrapper {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
         .attn {
             display: grid;
             grid-template-columns: 260px 1fr;
@@ -277,7 +291,8 @@
             border-radius: 14px;
             overflow: hidden;
             background: #fff;
-            box-shadow: var(--shadow)
+            box-shadow: var(--shadow);
+            min-width: max-content;
         }
 
         .attn .left {
@@ -694,19 +709,38 @@
             margin-bottom: 6px;
             cursor: pointer;
         }
+
+        @media (max-width: 767.98px) {
+            .labour-wrap {
+                padding: 0 8px 16px;
+            }
+
+            .topbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .tabs {
+                overflow-x: auto;
+                flex-wrap: nowrap;
+            }
+        }
     </style>
 
-    <div class="wrap">
-        <div class="topbar">
-            <div class="title">Labour Management Module</div>
-            <div class="tabs" role="tablist" aria-label="Pages">
-                <button class="tab" data-tab="attendance" aria-selected="true">Attendance</button>
-                <button class="tab" data-tab="addLabour">Add Labour</button>
-                <button class="tab" data-tab="sites">Site List</button>
-                <button class="tab" data-tab="siteReport">Site Voucher</button>
-                <button class="tab" data-tab="personReport">Labour Payment</button>
-            </div>
-        </div>
+    <div class="content-wrapper labour-content-wrapper">
+        <section class="content pt-2 labour-page">
+            <div class="container-fluid px-2 px-md-3">
+                <div class="wrap labour-wrap">
+                    <div class="topbar">
+                        <div class="title">Labour Management Module</div>
+                        <div class="tabs" role="tablist" aria-label="Pages">
+                            <button class="tab" data-tab="attendance" aria-selected="true">Attendance</button>
+                            <button class="tab" data-tab="addLabour">Add Labour</button>
+                            <button class="tab" data-tab="sites">Site List</button>
+                            <button class="tab" data-tab="siteReport">Site Voucher</button>
+                            <button class="tab" data-tab="personReport">Labour Payment</button>
+                        </div>
+                    </div>
         @php
             use Carbon\Carbon;
             [$start, $end, $weekDays] = loadAttendanceWeek($week ?? now()->format('Y-m-d'));
@@ -1085,6 +1119,9 @@
                     {{-- <div class="help" style="margin-top:10px">Legend: <span class="ico tick">✓</span> Present · <span
                             class="ico cross">✕</span> Absent · <span class="ico leave">L</span> Leave · <span
                             class="ico none">-</span> Not marked — <b>click any square</b> to mark or edit.</div> --}}
+                </div>
+            </div>
+        </section>
                 </div>
             </div>
         </section>
