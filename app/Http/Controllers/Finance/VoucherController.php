@@ -13,6 +13,7 @@ use App\Models\Project;
 use App\Models\DraftLedger;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use App\Models\HeadAccounting;
 use App\Models\AccountingExpense;
 use App\Models\SubheadAccounting;
@@ -76,57 +77,36 @@ class VoucherController extends Controller
             ->get();
 
         $leadCommentsByRecord = collect();
+        $leadOwnerNamesByRecord = collect();
+        $leadsById = collect();
         $leadIds = $pendingUpdates->where('table_name', 'leads')
             ->pluck('record_id')
             ->unique()
             ->values();
 
-        $leadOwnerNamesByRecord = collect();
-
         if ($leadIds->isNotEmpty()) {
-            $leadCommentsByRecord = Lead::with(['comments' => function ($query) {
-                $query->select('id', 'lead_id', 'comment', 'created_at')
-                    ->orderBy('id', 'desc');
-            }])
+            $leadOwnerNamesByRecord = $this->getLeadOwnerNamesByRecord($leadIds);
+            $leadsById = Lead::query()
+                ->with(['comments' => function ($query) {
+                    $query->select('id', 'lead_id', 'comment', 'created_at', 'user_id')
+                        ->with('user:id,name')
+                        ->orderBy('id', 'desc');
+                }])
+                ->select('id', 'first_name', 'last_name', 'is_active')
                 ->whereIn('id', $leadIds)
                 ->get()
-                ->mapWithKeys(function ($lead) {
-                    $comments = $lead->comments->map(function ($comment) {
-                        return [
-                            'comment' => $comment->comment,
-                            'created_at' => optional($comment->created_at)->format('Y-m-d H:i'),
-                        ];
-                    })->values();
+                ->keyBy('id');
 
-                    return [$lead->id => $comments];
-                });
+            $leadCommentsByRecord = $leadsById->mapWithKeys(function ($lead) {
+                $comments = $lead->comments->map(function ($comment) {
+                    return [
+                        'comment' => $comment->comment,
+                        'created_at' => optional($comment->created_at)->format('Y-m-d H:i'),
+                        'user_name' => $comment->user->name ?? 'Unknown User',
+                    ];
+                })->values();
 
-            $existingLeadIds = Lead::whereIn('id', $leadIds)->pluck('id');
-
-            $latestLeadOwners = DB::table('lead_user as lu')
-                ->joinSub(
-                    DB::table('lead_user')
-                        ->selectRaw('lead_id, MAX(id) as latest_id')
-                        ->whereIn('lead_id', $leadIds)
-                        ->groupBy('lead_id'),
-                    'latest',
-                    function ($join) {
-                        $join->on('latest.latest_id', '=', 'lu.id');
-                    }
-                )
-                ->leftJoin('users', 'users.id', '=', 'lu.user_id')
-                ->select('lu.lead_id', 'users.name')
-                ->get()
-                ->mapWithKeys(function ($row) {
-                    return [$row->lead_id => $row->name ?: 'Unassigned'];
-                });
-
-            $leadOwnerNamesByRecord = $leadIds->mapWithKeys(function ($leadId) use ($existingLeadIds, $latestLeadOwners) {
-                if (!$existingLeadIds->contains($leadId)) {
-                    return [$leadId => 'Deleted Lead'];
-                }
-
-                return [$leadId => $latestLeadOwners->get($leadId, 'Unassigned')];
+                return [$lead->id => $comments];
             });
         }
 
@@ -138,12 +118,137 @@ class VoucherController extends Controller
             return $update;
         });
 
+        $pendingUpdates->transform(function ($update) use ($leadOwnerNamesByRecord, $leadsById) {
+            if ($update->table_name !== 'leads') {
+                $update->current_owner_name = '-';
+                $update->requested_owner_name = null;
+                $update->lead_name = null;
+                $update->request_type = null;
+
+                return $update;
+            }
+
+            $lead = $leadsById->get($update->record_id);
+            $leadName = trim(collect([$lead?->first_name, $lead?->last_name])->filter()->implode(' '));
+
+            $update->current_owner_name = $leadOwnerNamesByRecord->get($update->record_id, 'Deleted Lead');
+            $update->requested_owner_name = $update->submittedBy->name ?? 'Unknown User';
+            $update->lead_name = $lead ? ($leadName !== '' ? $leadName : 'Unnamed Lead') : 'Deleted Lead';
+            $update->request_type = 'Lead Assignment / Ownership Request';
+
+            return $update;
+        });
+
         $x['pendingUpdates'] = $pendingUpdates;
         $x['leadCommentsByRecord'] = $leadCommentsByRecord;
 
         return view('admin.pending-approve.pending_updates_index', $x);
     }
 
+
+    protected function getLeadOwnerNamesByRecord(Collection $leadIds): Collection
+    {
+        $existingLeadIds = Lead::whereIn('id', $leadIds)->pluck('id');
+
+        $latestLeadOwners = DB::table('lead_user as lu')
+            ->joinSub(
+                DB::table('lead_user')
+                    ->selectRaw('lead_id, MAX(id) as latest_id')
+                    ->whereIn('lead_id', $leadIds)
+                    ->groupBy('lead_id'),
+                'latest',
+                function ($join) {
+                    $join->on('latest.latest_id', '=', 'lu.id');
+                }
+            )
+            ->leftJoin('users', 'users.id', '=', 'lu.user_id')
+            ->select('lu.lead_id', 'users.name')
+            ->get()
+            ->mapWithKeys(function ($row) {
+                return [$row->lead_id => $row->name ?: 'Unassigned'];
+            });
+
+        return $leadIds->mapWithKeys(function ($leadId) use ($existingLeadIds, $latestLeadOwners) {
+            if (!$existingLeadIds->contains($leadId)) {
+                return [$leadId => 'Deleted Lead'];
+            }
+
+            return [$leadId => $latestLeadOwners->get($leadId, 'Unassigned')];
+        });
+    }
+
+    protected function resolvePendingUpdateForAdminAction(int $id, ?string $requestedTable = null): PendingUpdate
+    {
+        $pending = PendingUpdate::with('submittedBy')->findOrFail($id);
+
+        if ($requestedTable !== null && $requestedTable !== '' && $requestedTable !== $pending->table_name) {
+            abort(422, 'Approval target mismatch.');
+        }
+
+        if (!in_array($pending->table_name, $this->allowedPendingUpdateTables, true)) {
+            abort(400, 'Invalid table name.');
+        }
+
+        return $pending;
+    }
+
+    protected function approveLeadPendingUpdate(PendingUpdate $pending): void
+    {
+        DB::transaction(function () use ($pending) {
+            $lockedPending = PendingUpdate::query()
+                ->whereKey($pending->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($lockedPending->status === 'approved') {
+                return;
+            }
+
+            if ($lockedPending->status !== 'pending') {
+                abort(409, 'This request has already been processed.');
+            }
+
+            $lead = Lead::query()
+                ->whereKey($lockedPending->record_id)
+                ->where('is_active', 1)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$lead) {
+                abort(404, 'Lead not found.');
+            }
+
+            $requestedOwnerId = (int) $lockedPending->submitted_by;
+            $requestedOwner = User::query()->whereKey($requestedOwnerId)->first();
+
+            if (!$requestedOwner) {
+                abort(422, 'Requested owner not found.');
+            }
+
+            $leadAssignments = DB::table('lead_user')
+                ->where('lead_id', $lockedPending->record_id)
+                ->lockForUpdate()
+                ->get();
+
+            $alreadyAssigned = $leadAssignments->contains(function ($assignment) use ($requestedOwnerId) {
+                return (int) $assignment->user_id === $requestedOwnerId;
+            });
+
+            if (!$alreadyAssigned) {
+                DB::table('lead_user')->insert([
+                    'lead_id' => $lockedPending->record_id,
+                    'user_id' => $requestedOwnerId,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            $lockedPending->update([
+                'status' => 'approved',
+                'approved_by' => Auth::id(),
+            ]);
+        });
+    }
 
     public function cash_in()
     {
@@ -343,34 +448,32 @@ class VoucherController extends Controller
     }
     public function approveAdmin($id, Request $request)
     {
-        if (!in_array($request->table, $this->allowedPendingUpdateTables, true)) {
-            abort(400, 'Invalid table name.');
-        }
-
-        // Fetch pending update record
-        $pending = PendingUpdate::where('id', $id)
-            ->where('status', 'pending')
-            ->firstOrFail();
+        $pending = $this->resolvePendingUpdateForAdminAction((int) $id, $request->input('table'));
 
         // Authorization check
         if (!Auth::user()->hasRole('super-admin') && !Auth::user()->can('direct-update')) {
             abort(403, 'Unauthorized action.');
         }
-        if ($request->table == 'leads') {
-            DB::table('lead_user')->where('lead_id', $pending->record_id)->update(['user_id' => $pending->submitted_by, 'created_at' => now(), 'updated_at' => now()]);
-            $pending->update([
-                'status' => 'approved',
-                'approved_by' => Auth::id(),
-            ]);
+
+        if ($pending->status === 'approved') {
             return back()->with('success', 'Record approved successfully.');
         }
 
+        if ($pending->status !== 'pending') {
+            abort(409, 'This request has already been processed.');
+        }
+
+        if ($pending->table_name === 'leads') {
+            $this->approveLeadPendingUpdate($pending);
+
+            return back()->with('success', 'Record approved successfully.');
+        }
 
         $pendingNewChanges = json_decode($pending->new_values, true);
         if (isset($pendingNewChanges['is_active']) && $pending->new_values == $pendingNewChanges['is_active']) {
-            DB::transaction(function () use ($pending, $pendingNewChanges, $request) {
-                $result = DB::table($request->table)::findOrFail($pending->record_id);
-                if ($request->table == 'ledgers') {
+            DB::transaction(function () use ($pending, $pendingNewChanges) {
+                $result = DB::table($pending->table_name)::findOrFail($pending->record_id);
+                if ($pending->table_name == 'ledgers') {
                     $customerLedger = $result->customerLedger;
                     if ($customerLedger) {
                         $customerLedger->update($pendingNewChanges);
@@ -380,9 +483,9 @@ class VoucherController extends Controller
             });
         }
 
-        DB::transaction(function () use ($pending, $pendingNewChanges, $request) {
+        DB::transaction(function () use ($pending, $pendingNewChanges) {
             // Check if record exists
-            $record = DB::table($request->table)
+            $record = DB::table($pending->table_name)
                 ->where('id', $pending->record_id)
                 ->first();
 
@@ -391,7 +494,7 @@ class VoucherController extends Controller
             }
 
             // Update record dynamically
-            DB::table($request->table)
+            DB::table($pending->table_name)
                 ->where('id', $pending->record_id)
                 ->update($pendingNewChanges);
 
@@ -408,16 +511,18 @@ class VoucherController extends Controller
 
     public function rejectAdmin($id, Request $request)
     {
-        if (!in_array($request->table, $this->allowedPendingUpdateTables, true)) {
-            abort(400, 'Invalid table name.');
-        }
-
-        $pending = PendingUpdate::where('id', $id)
-            ->where('status', 'pending')
-            ->firstOrFail();
+        $pending = $this->resolvePendingUpdateForAdminAction((int) $id, $request->input('table'));
 
         if (!Auth::user()->hasRole('super-admin') && !Auth::user()->can('direct-update')) {
             abort(403, 'Unauthorized action.');
+        }
+
+        if ($pending->status === 'rejected') {
+            return back()->with('success', 'Voucher rejected.');
+        }
+
+        if ($pending->status !== 'pending') {
+            abort(409, 'This request has already been processed.');
         }
 
         $pending->update([
