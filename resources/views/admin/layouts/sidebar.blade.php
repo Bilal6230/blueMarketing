@@ -224,13 +224,6 @@
                                         <p>Draft Voucher</p>
                                     </a>
                                 </li>
-                                <li class="nav-item">
-                                    <a href="{{ route('finance.voucher.pending_updates_index') }}"
-                                        class="nav-link {{ request()->routeIs('finance.voucher.pending_updates_index') ? 'active' : '' }}">
-                                        <i class="far fa-circle nav-icon"></i>
-                                        <p>Admin Approvals Voucher</p>
-                                    </a>
-                                </li>
 
 
 
@@ -357,6 +350,44 @@
                         </ul>
                     </li>
                 @endcanany
+
+                @php
+                    $leadApprovalPermissionExists = \Spatie\Permission\Models\Permission::where('name', 'assign lead')->exists();
+                    $canLeadApprovals = $leadApprovalPermissionExists
+                        ? auth()->user()->can('assign lead')
+                        : (auth()->user()->can('update lead') &&
+                            auth()->user()->hasAnyRole(['admin', 'superadmin', 'super-admin']));
+                    $canFinanceApprovals = auth()->user()->can('read voucher');
+                @endphp
+                @if ($canLeadApprovals || $canFinanceApprovals)
+                    <li class="nav-item">
+                        <a href="#" class="nav-link {{ request()->routeIs('approvals.*') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-check-double"></i>
+                            <p>Approvals<i class="right fas fa-angle-left"></i></p>
+                        </a>
+                        <ul class="nav nav-treeview"
+                            style="display: {{ request()->routeIs('approvals.*') ? 'block' : 'none' }};">
+                            @if ($canLeadApprovals)
+                                <li class="nav-item">
+                                    <a href="{{ route('approvals.leads.index') }}"
+                                        class="nav-link {{ request()->routeIs('approvals.leads.*') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Lead Assignment Requests</p>
+                                    </a>
+                                </li>
+                            @endif
+                            @if ($canFinanceApprovals)
+                                <li class="nav-item">
+                                    <a href="{{ route('approvals.finance.index') }}"
+                                        class="nav-link {{ request()->routeIs('approvals.finance.*') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Finance Change Approvals</p>
+                                    </a>
+                                </li>
+                            @endif
+                        </ul>
+                    </li>
+                @endif
 
                 @canany(['read lead'])
                     <li class="nav-item">

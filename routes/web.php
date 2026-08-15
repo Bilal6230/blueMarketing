@@ -153,6 +153,12 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::post('crm/lead/search/', 'search')->name('lead.search');
     });
 
+    Route::controller(App\Http\Controllers\LeadController::class)->group(function () {
+        Route::get('approvals/leads', 'approvalIndex')->name('approvals.leads.index');
+        Route::post('approvals/leads/{pending}/approve', 'approvePendingAssignment')->name('approvals.leads.approve');
+        Route::post('approvals/leads/{pending}/reject', 'rejectPendingAssignment')->name('approvals.leads.reject');
+    });
+
     Route::controller(App\Http\Controllers\ReportController::class)->group(function () {
         Route::get('report/leads', 'index')->middleware(['permission:lead report'])->name('report.lead.index');
         Route::get('report/users', 'users_report')->middleware(['permission:lead report'])->name('report.users');
@@ -220,6 +226,9 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::post('finance/check_new_voucher_number', 'checkNewVoucherNumber')->middleware(['permission:read voucher'])->name('check_new_voucher_number');
         Route::get('finance/voucher', 'index')->middleware(['permission:read voucher'])->name('finance.voucher.index');
         Route::get('finance/voucher/pending_updates', 'pendingIndex')->middleware(['permission:read voucher'])->name('finance.voucher.pending_updates_index');
+        Route::get('approvals/finance', 'financeApprovalIndex')->middleware(['permission:read voucher'])->name('approvals.finance.index');
+        Route::post('approvals/finance/{pending}/approve', 'approveFinancePending')->middleware(['permission:read voucher'])->name('approvals.finance.approve');
+        Route::post('approvals/finance/{pending}/reject', 'rejectFinancePending')->middleware(['permission:read voucher'])->name('approvals.finance.reject');
         Route::get('finance/voucher/in', 'cash_in')->middleware(['permission:read voucher'])->name('finance.voucher.in');
         Route::get('finance/voucher/out', 'cash_out')->middleware(['permission:read voucher'])->name('finance.voucher.out');
         Route::get('finance/voucher/pending-bank-payments', 'pendingBankPayments')->middleware(['permission:read voucher'])->name('finance.voucher.pending_bank_payments');

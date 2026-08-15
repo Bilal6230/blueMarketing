@@ -7,11 +7,11 @@ use App\Models\User;
 use App\Models\Work;
 use Illuminate\Http\Request;
 use App\Models\PendingUpdate;
-
-
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
 use RealRashid\SweetAlert\Facades\Alert;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
@@ -40,12 +40,16 @@ class LeadController extends Controller
     public function requestEditBtn(Request $request)
     {
         $request->validate([
-            'table_name' => 'required|string',
             'record_id' => 'required|integer',
         ]);
 
-        
-        $existing = PendingUpdate::where('table_name', $request->table_name)
+        $tableName = 'leads';
+        $lead = Lead::query()
+            ->whereKey($request->record_id)
+            ->where('is_active', 1)
+            ->firstOrFail();
+
+        $existing = PendingUpdate::where('table_name', $tableName)
             ->where('record_id', $request->record_id)
             ->where('status','=', 'pending')
             ->latest()
@@ -58,8 +62,8 @@ class LeadController extends Controller
         }
 
         $pending = new PendingUpdate();
-        $pending->table_name = $request->table_name;
-        $pending->record_id = $request->record_id;
+        $pending->table_name = $tableName;
+        $pending->record_id = $lead->id;
         $pending->submitted_by = auth()->id(); // optional: track who requested
         $pending->status = 'pending';
         $pending->old_values = json_encode([]); // ✅ Fix the SQL error
@@ -71,6 +75,159 @@ class LeadController extends Controller
             'message' => 'Edit request submitted successfully!',
             'data' => $pending,
         ]);
+    }
+
+    public function approvalIndex()
+    {
+        $user = Auth::user();
+        $this->authorizeLeadApprovalAccess($user);
+
+        $pendingUpdates = PendingUpdate::with('submittedBy')
+            ->where('table_name', 'leads')
+            ->where('status', 'pending')
+            ->orderByDesc('created_at')
+            ->get();
+
+        $leadIds = $pendingUpdates->pluck('record_id')->unique()->values();
+        $leadsById = Lead::query()
+            ->with([
+                'users:id,name',
+                'comments' => function ($query) {
+                    $query->select('id', 'lead_id', 'comment', 'created_at', 'user_id')
+                        ->with('user:id,name')
+                        ->orderByDesc('id');
+                },
+            ])
+            ->select('id', 'first_name', 'last_name', 'is_active')
+            ->whereIn('id', $leadIds)
+            ->get()
+            ->keyBy('id');
+
+        $pendingUpdates->transform(function ($pending) use ($leadsById) {
+            $lead = $leadsById->get($pending->record_id);
+            $assignedUsers = $lead?->users
+                ? $lead->users->pluck('name')->filter()->values()
+                : collect();
+
+            $pending->lead_name = $lead ? $this->formatLeadName($lead) : 'Deleted Lead';
+            $pending->current_assigned_users = $assignedUsers->isNotEmpty() ? $assignedUsers->all() : ['Unassigned'];
+            $pending->current_assigned_users_label = $assignedUsers->isNotEmpty()
+                ? $assignedUsers->implode(', ')
+                : 'Unassigned';
+            $pending->requested_user_name = $pending->submittedBy->name ?? 'Unknown User';
+            $pending->request_type = 'Lead Assignment / Ownership Request';
+            $pending->comments_for_modal = $lead
+                ? $lead->comments->map(function ($comment) {
+                    return [
+                        'comment' => $comment->comment,
+                        'created_at' => optional($comment->created_at)->format('d M Y H:i'),
+                        'user_name' => $comment->user->name ?? 'Unknown User',
+                    ];
+                })->values()->all()
+                : [];
+
+            return $pending;
+        });
+
+        return view('admin.pending-approve.lead_approvals_index', [
+            'title' => 'Lead Assignment Requests',
+            'pendingUpdates' => $pendingUpdates,
+        ]);
+    }
+
+    public function approvePendingAssignment($pendingId, Request $request)
+    {
+        $user = Auth::user();
+        $this->authorizeLeadApprovalAccess($user);
+
+        $pending = $this->resolveLeadPendingUpdate((int) $pendingId);
+
+        DB::transaction(function () use ($pending, $user) {
+            $lockedPending = PendingUpdate::query()
+                ->whereKey($pending->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($lockedPending->status === 'approved') {
+                return;
+            }
+
+            if ($lockedPending->status !== 'pending') {
+                abort(409, 'This request has already been processed.');
+            }
+
+            $lead = Lead::query()
+                ->whereKey($lockedPending->record_id)
+                ->where('is_active', 1)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$lead) {
+                abort(404);
+            }
+
+            $requestedUserId = (int) $lockedPending->submitted_by;
+            $requestedUser = User::query()->whereKey($requestedUserId)->first();
+
+            if (!$requestedUser) {
+                abort(404);
+            }
+
+            $leadAssignments = DB::table('lead_user')
+                ->where('lead_id', $lead->id)
+                ->lockForUpdate()
+                ->get();
+
+            $alreadyAssigned = $leadAssignments->contains(function ($assignment) use ($requestedUserId) {
+                return (int) $assignment->user_id === $requestedUserId;
+            });
+
+            if (!$alreadyAssigned) {
+                DB::table('lead_user')->insert([
+                    'lead_id' => $lead->id,
+                    'user_id' => $requestedUserId,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            $lockedPending->update([
+                'status' => 'approved',
+                'approved_by' => $user->id,
+            ]);
+        });
+
+        return back()->with('success', 'Lead assignment request approved successfully.');
+    }
+
+    public function rejectPendingAssignment($pendingId, Request $request)
+    {
+        $user = Auth::user();
+        $this->authorizeLeadApprovalAccess($user);
+
+        $pending = $this->resolveLeadPendingUpdate((int) $pendingId);
+
+        DB::transaction(function () use ($pending, $user) {
+            $lockedPending = PendingUpdate::query()
+                ->whereKey($pending->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($lockedPending->status === 'rejected') {
+                return;
+            }
+
+            if ($lockedPending->status !== 'pending') {
+                abort(409, 'This request has already been processed.');
+            }
+
+            $lockedPending->update([
+                'status' => 'rejected',
+                'approved_by' => $user->id,
+            ]);
+        });
+
+        return back()->with('success', 'Lead assignment request rejected.');
     }
 
 
@@ -423,6 +580,36 @@ class LeadController extends Controller
         }
 
         # code...
+    }
+
+    protected function resolveLeadPendingUpdate(int $pendingId): PendingUpdate
+    {
+        $pending = PendingUpdate::with('submittedBy')->findOrFail($pendingId);
+
+        if ($pending->table_name !== 'leads') {
+            abort(404);
+        }
+
+        return $pending;
+    }
+
+    protected function authorizeLeadApprovalAccess(User $user): void
+    {
+        if (Permission::where('name', 'assign lead')->exists()) {
+            abort_unless($user->can('assign lead'), 403);
+
+            return;
+        }
+
+        $isPrivilegedRole = $user->hasAnyRole(['admin', 'superadmin', 'super-admin']);
+        abort_unless($user->can('update lead') && $isPrivilegedRole, 403);
+    }
+
+    protected function formatLeadName(Lead $lead): string
+    {
+        $leadName = trim(collect([$lead->first_name, $lead->last_name])->filter()->implode(' '));
+
+        return $leadName !== '' ? $leadName : 'Unnamed Lead';
     }
 
 }
