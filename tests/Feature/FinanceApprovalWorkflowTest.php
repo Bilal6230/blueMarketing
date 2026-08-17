@@ -125,6 +125,28 @@ class FinanceApprovalWorkflowTest extends TestCase
         $this->assertSame('pending', $pending->fresh()->status);
     }
 
+    public function test_user_with_only_read_voucher_cannot_access_finance_change_approvals(): void
+    {
+        $exception = $this->callFinanceApprovalIndex(true, false, false);
+
+        $this->assertInstanceOf(HttpExceptionInterface::class, $exception);
+        $this->assertSame(403, $exception->getStatusCode());
+    }
+
+    public function test_direct_update_user_can_access_finance_change_approvals(): void
+    {
+        $view = $this->callFinanceApprovalIndex(true, true, false);
+
+        $this->assertInstanceOf(\Illuminate\View\View::class, $view);
+    }
+
+    public function test_super_admin_user_can_access_finance_change_approvals(): void
+    {
+        $view = $this->callFinanceApprovalIndex(true, false, true);
+
+        $this->assertInstanceOf(\Illuminate\View\View::class, $view);
+    }
+
     public function test_old_pending_updates_route_redirects_to_finance_approvals(): void
     {
         $response = app(VoucherController::class)->pendingIndex();
@@ -139,17 +161,116 @@ class FinanceApprovalWorkflowTest extends TestCase
             'table_name' => 'ledgers',
             'record_id' => 1,
             'old_values' => ['detail' => '<script>alert(1)</script>'],
-            'new_values' => ['detail' => '<img src=x onerror=alert(1)>'],
+            'new_values' => ['detail' => '\' onmouseover=\'alert(1)', 'note' => '" autofocus onfocus="alert(1)'],
             'status' => 'pending',
             'submitted_by' => $this->admin->id,
         ]);
 
-        $view = $this->callFinanceApprovalIndex(true, true);
+        $view = $this->callFinanceApprovalIndex(true, true, false);
         app('view')->share('errors', new ViewErrorBag());
         $html = $view->render();
 
         $this->assertStringNotContainsString('<script>alert(1)</script>', $html);
-        $this->assertStringNotContainsString('<img src=x onerror=alert(1)>', $html);
+        $this->assertStringNotContainsString('data-old=', $html);
+        $this->assertStringNotContainsString('data-new=', $html);
+        $this->assertStringNotContainsString('\' onmouseover=\'alert(1)', $html);
+        $this->assertStringNotContainsString('" autofocus onfocus="alert(1)', $html);
+        $this->assertStringContainsString('finance-approval-payload-', $html);
+    }
+
+    public function test_finance_approve_is_idempotent(): void
+    {
+        $pending = PendingUpdate::create([
+            'table_name' => 'ledgers',
+            'record_id' => 1,
+            'old_values' => ['detail' => 'Ledger 1'],
+            'new_values' => ['detail' => 'Approved detail'],
+            'status' => 'pending',
+            'submitted_by' => $this->admin->id,
+        ]);
+
+        $first = $this->callFinanceApprove($pending->id, true, true, false);
+        $second = $this->callFinanceApprove($pending->id, true, true, false);
+
+        $this->assertSame(302, $first->getStatusCode());
+        $this->assertSame(302, $second->getStatusCode());
+        $this->assertSame('approved', $pending->fresh()->status);
+        $this->assertSame('Approved detail', DB::table('ledgers')->where('id', 1)->value('detail'));
+    }
+
+    public function test_finance_approved_request_cannot_later_be_rejected(): void
+    {
+        $pending = PendingUpdate::create([
+            'table_name' => 'ledgers',
+            'record_id' => 1,
+            'old_values' => ['detail' => 'Ledger 1'],
+            'new_values' => ['detail' => 'Approved detail'],
+            'status' => 'pending',
+            'submitted_by' => $this->admin->id,
+        ]);
+
+        $this->callFinanceApprove($pending->id, true, true, false);
+        $exception = $this->callFinanceReject($pending->id, true, true, false);
+
+        $this->assertInstanceOf(HttpExceptionInterface::class, $exception);
+        $this->assertSame(409, $exception->getStatusCode());
+        $this->assertSame('approved', $pending->fresh()->status);
+        $this->assertSame('Approved detail', DB::table('ledgers')->where('id', 1)->value('detail'));
+    }
+
+    public function test_finance_rejected_request_cannot_later_be_approved(): void
+    {
+        $pending = PendingUpdate::create([
+            'table_name' => 'ledgers',
+            'record_id' => 1,
+            'old_values' => ['detail' => 'Ledger 1'],
+            'new_values' => ['detail' => 'Approved detail'],
+            'status' => 'pending',
+            'submitted_by' => $this->admin->id,
+        ]);
+
+        $this->callFinanceReject($pending->id, true, true, false);
+        $exception = $this->callFinanceApprove($pending->id, true, true, false);
+
+        $this->assertInstanceOf(HttpExceptionInterface::class, $exception);
+        $this->assertSame(409, $exception->getStatusCode());
+        $this->assertSame('rejected', $pending->fresh()->status);
+        $this->assertSame('Ledger 1', DB::table('ledgers')->where('id', 1)->value('detail'));
+    }
+
+    public function test_finance_reject_is_idempotent(): void
+    {
+        $pending = PendingUpdate::create([
+            'table_name' => 'draft_ledgers',
+            'record_id' => 2,
+            'old_values' => ['detail' => 'Draft 2'],
+            'new_values' => ['detail' => 'Rejected detail'],
+            'status' => 'pending',
+            'submitted_by' => $this->admin->id,
+        ]);
+
+        $first = $this->callFinanceReject($pending->id, true, true, false);
+        $second = $this->callFinanceReject($pending->id, true, true, false);
+
+        $this->assertSame(302, $first->getStatusCode());
+        $this->assertSame(302, $second->getStatusCode());
+        $this->assertSame('rejected', $pending->fresh()->status);
+        $this->assertSame('Draft 2', DB::table('draft_ledgers')->where('id', 2)->value('detail'));
+    }
+
+    public function test_sidebar_visibility_follows_centralized_finance_authorization_rule(): void
+    {
+        $this->assertFalse(VoucherController::canAccessFinanceApprovalsForUser($this->makeFinanceUser(true, false, false)));
+        $this->assertTrue(VoucherController::canAccessFinanceApprovalsForUser($this->makeFinanceUser(true, true, false)));
+        $this->assertTrue(VoucherController::canAccessFinanceApprovalsForUser($this->makeFinanceUser(true, false, true)));
+
+        Auth::setUser($this->makeFinanceUser(true, false, false));
+        $html = view('admin.layouts.sidebar', ['modulemenus' => []])->render();
+        $this->assertStringNotContainsString('Finance Change Approvals', $html);
+
+        Auth::setUser($this->makeFinanceUser(true, true, false));
+        $html = view('admin.layouts.sidebar', ['modulemenus' => []])->render();
+        $this->assertStringContainsString('Finance Change Approvals', $html);
     }
 
     protected function createSchema(): void
@@ -301,9 +422,9 @@ class FinanceApprovalWorkflowTest extends TestCase
         ]);
     }
 
-    protected function callFinanceApprovalIndex(bool $canReadVoucher, bool $canDirectUpdate)
+    protected function callFinanceApprovalIndex(bool $canReadVoucher, bool $canDirectUpdate, bool $isSuperAdmin = false)
     {
-        Auth::setUser($this->makeFinanceUser($canReadVoucher, $canDirectUpdate));
+        Auth::setUser($this->makeFinanceUser($canReadVoucher, $canDirectUpdate, $isSuperAdmin));
 
         try {
             return app(VoucherController::class)->financeApprovalIndex();
@@ -312,7 +433,7 @@ class FinanceApprovalWorkflowTest extends TestCase
         }
     }
 
-    protected function callFinanceApprove(int $pendingId, bool $canReadVoucher, bool $canDirectUpdate)
+    protected function callFinanceApprove(int $pendingId, bool $canReadVoucher, bool $canDirectUpdate, bool $isSuperAdmin = false)
     {
         $request = Request::create("/admin/approvals/finance/{$pendingId}/approve", 'POST');
 
@@ -322,10 +443,29 @@ class FinanceApprovalWorkflowTest extends TestCase
         $request->setLaravelSession($session);
 
         $this->app->instance('request', $request);
-        Auth::setUser($this->makeFinanceUser($canReadVoucher, $canDirectUpdate));
+        Auth::setUser($this->makeFinanceUser($canReadVoucher, $canDirectUpdate, $isSuperAdmin));
 
         try {
             return app(VoucherController::class)->approveFinancePending($pendingId, $request);
+        } catch (\Throwable $exception) {
+            return $exception;
+        }
+    }
+
+    protected function callFinanceReject(int $pendingId, bool $canReadVoucher, bool $canDirectUpdate, bool $isSuperAdmin = false)
+    {
+        $request = Request::create("/admin/approvals/finance/{$pendingId}/reject", 'POST');
+
+        $session = app('session.store');
+        $session->start();
+        $session->setPreviousUrl('/admin/approvals/finance');
+        $request->setLaravelSession($session);
+
+        $this->app->instance('request', $request);
+        Auth::setUser($this->makeFinanceUser($canReadVoucher, $canDirectUpdate, $isSuperAdmin));
+
+        try {
+            return app(VoucherController::class)->rejectFinancePending($pendingId, $request);
         } catch (\Throwable $exception) {
             return $exception;
         }
@@ -356,14 +496,14 @@ class FinanceApprovalWorkflowTest extends TestCase
         }
     }
 
-    protected function makeFinanceUser(bool $canReadVoucher, bool $canDirectUpdate)
+    protected function makeFinanceUser(bool $canReadVoucher, bool $canDirectUpdate, bool $isSuperAdmin = false)
     {
         $mockUser = Mockery::mock($this->admin)->makePartial();
         $mockUser->shouldIgnoreMissing();
         $mockUser->setRelation('roles', new Collection([(object) ['name' => 'Admin']]));
         $mockUser->shouldReceive('can')->with('read voucher')->andReturn($canReadVoucher);
         $mockUser->shouldReceive('can')->with('direct-update')->andReturn($canDirectUpdate);
-        $mockUser->shouldReceive('hasRole')->with('super-admin')->andReturnFalse();
+        $mockUser->shouldReceive('hasRole')->with('super-admin')->andReturn($isSuperAdmin);
 
         return $mockUser;
     }

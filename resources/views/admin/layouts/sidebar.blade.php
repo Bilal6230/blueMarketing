@@ -357,7 +357,7 @@
                         ? auth()->user()->can('assign lead')
                         : (auth()->user()->can('update lead') &&
                             auth()->user()->hasAnyRole(['admin', 'superadmin', 'super-admin']));
-                    $canFinanceApprovals = auth()->user()->can('read voucher');
+                    $canFinanceApprovals = \App\Http\Controllers\Finance\VoucherController::canAccessFinanceApprovalsForUser(auth()->user());
                 @endphp
                 @if ($canLeadApprovals || $canFinanceApprovals)
                     <li class="nav-item">

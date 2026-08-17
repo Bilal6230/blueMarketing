@@ -42,16 +42,21 @@
                                                 Reject
                                             </button>
                                             <button class="btn btn-sm btn-outline-info btn-view-details"
-                                                data-lead='{{ json_encode([
-                                                    "lead_id" => $update->record_id,
-                                                    "lead_name" => $update->lead_name,
-                                                    "current_assigned_users" => $update->current_assigned_users,
-                                                    "requested_user_name" => $update->requested_user_name,
-                                                    "request_type" => $update->request_type,
-                                                ]) }}'
-                                                data-comments='@json($update->comments_for_modal)'>
+                                                data-payload-id="lead-approval-payload-{{ $update->id }}">
                                                 <i class="fas fa-eye"></i> View Details
                                             </button>
+                                            <script type="application/json" id="lead-approval-payload-{{ $update->id }}">
+                                                {{ json_encode([
+                                                    'lead' => [
+                                                        'lead_id' => $update->record_id,
+                                                        'lead_name' => $update->lead_name,
+                                                        'current_assigned_users' => $update->current_assigned_users,
+                                                        'requested_user_name' => $update->requested_user_name,
+                                                        'request_type' => $update->request_type,
+                                                    ],
+                                                    'comments' => $update->comments_for_modal,
+                                                ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}
+                                            </script>
                                         </td>
                                     </tr>
                                 @empty
@@ -93,12 +98,14 @@
 
             const csrfToken = '{{ csrf_token() }}';
 
-            function parseJsonAttribute(rawValue, fallbackValue) {
-                const decoded = $('<textarea/>').html(rawValue || '').text();
+            function parsePayloadScript(scriptId, fallbackValue) {
+                const script = document.getElementById(scriptId);
+                if (!script) {
+                    return fallbackValue;
+                }
 
                 try {
-                    const parsed = JSON.parse(decoded);
-                    return typeof parsed === 'string' ? JSON.parse(parsed) : parsed;
+                    return JSON.parse(script.textContent || '');
                 } catch (error) {
                     console.error('Invalid JSON payload:', error);
                     return fallbackValue;
@@ -175,8 +182,9 @@
             });
 
             $(document).on('click', '.btn-view-details', function() {
-                const leadDetails = parseJsonAttribute($(this).attr('data-lead'), {});
-                const comments = parseJsonAttribute($(this).attr('data-comments'), []);
+                const payload = parsePayloadScript($(this).data('payload-id'), {});
+                const leadDetails = payload.lead || {};
+                const comments = payload.comments || [];
                 const $body = $('#leadApprovalModalBody');
                 const $summary = $('<div class="border rounded p-3 bg-light mb-3"></div>');
                 const $commentsSection = $('<div></div>');

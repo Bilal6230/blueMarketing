@@ -259,13 +259,21 @@ class LeadPendingApprovalTest extends TestCase
 
     public function test_stored_xss_values_are_escaped_in_lead_approval_page_markup(): void
     {
-        $lead = $this->createLead('<img src=x onerror=alert(1)>');
+        $lead = $this->createLead('\' onmouseover=\'alert(1)');
         Work::create([
             'lead_id' => $lead->id,
             'comment' => '<script>alert(1)</script>',
             'user_id' => $this->ownerA->id,
             'created_at' => '2026-08-10 10:30:00',
             'updated_at' => '2026-08-10 10:30:00',
+        ]);
+
+        Work::create([
+            'lead_id' => $lead->id,
+            'comment' => '" autofocus onfocus="alert(1)',
+            'user_id' => $this->ownerB->id,
+            'created_at' => '2026-08-11 10:30:00',
+            'updated_at' => '2026-08-11 10:30:00',
         ]);
 
         PendingUpdate::create([
@@ -281,9 +289,12 @@ class LeadPendingApprovalTest extends TestCase
         app('view')->share('errors', new ViewErrorBag());
         $html = $view->render();
 
-        $this->assertStringNotContainsString('<img src=x onerror=alert(1)>', $html);
         $this->assertStringNotContainsString('<script>alert(1)</script>', $html);
-        $this->assertStringContainsString('&lt;img src=x onerror=alert(1)&gt;', $html);
+        $this->assertStringNotContainsString('data-lead=', $html);
+        $this->assertStringNotContainsString('data-comments=', $html);
+        $this->assertStringNotContainsString('\' onmouseover=\'alert(1)', $html);
+        $this->assertStringNotContainsString('" autofocus onfocus="alert(1)', $html);
+        $this->assertStringContainsString('lead-approval-payload-', $html);
     }
 
     protected function createSchema(): void

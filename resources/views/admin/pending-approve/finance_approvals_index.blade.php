@@ -42,11 +42,16 @@
                                                 Reject
                                             </button>
                                             <button class="btn btn-sm btn-outline-info btn-view-details"
-                                                data-old='@json($update->old_values)'
-                                                data-new='@json($update->new_values)'
-                                                data-submitted-name="{{ $update->submittedBy->name ?? 'Unknown User' }}">
+                                                data-payload-id="finance-approval-payload-{{ $update->id }}">
                                                 <i class="fas fa-eye"></i> View Details
                                             </button>
+                                            <script type="application/json" id="finance-approval-payload-{{ $update->id }}">
+                                                {{ json_encode([
+                                                    'old' => $update->old_values,
+                                                    'new' => $update->new_values,
+                                                    'submitted_name' => $update->submittedBy->name ?? 'Unknown User',
+                                                ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}
+                                            </script>
                                         </td>
                                     </tr>
                                 @empty
@@ -100,12 +105,14 @@
 
             const csrfToken = '{{ csrf_token() }}';
 
-            function parseJsonAttribute(rawValue, fallbackValue) {
-                const decoded = $('<textarea/>').html(rawValue || '').text();
+            function parsePayloadScript(scriptId, fallbackValue) {
+                const script = document.getElementById(scriptId);
+                if (!script) {
+                    return fallbackValue;
+                }
 
                 try {
-                    const parsed = JSON.parse(decoded);
-                    return typeof parsed === 'string' ? JSON.parse(parsed) : parsed;
+                    return JSON.parse(script.textContent || '');
                 } catch (error) {
                     console.error('Invalid JSON payload:', error);
                     return fallbackValue;
@@ -175,9 +182,10 @@
             });
 
             $(document).on('click', '.btn-view-details', function() {
-                const newValues = parseJsonAttribute($(this).attr('data-new'), {});
-                const oldValues = parseJsonAttribute($(this).attr('data-old'), {});
-                const submittedName = $(this).attr('data-submitted-name') || 'Unknown User';
+                const payload = parsePayloadScript($(this).data('payload-id'), {});
+                const newValues = payload.new || {};
+                const oldValues = payload.old || {};
+                const submittedName = payload.submitted_name || 'Unknown User';
                 const $tbody = $('#financeChangesTableBody');
 
                 $tbody.empty();
