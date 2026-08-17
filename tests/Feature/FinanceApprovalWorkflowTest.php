@@ -160,8 +160,8 @@ class FinanceApprovalWorkflowTest extends TestCase
         PendingUpdate::create([
             'table_name' => 'ledgers',
             'record_id' => 1,
-            'old_values' => ['detail' => '<script>alert(1)</script>'],
-            'new_values' => ['detail' => '\' onmouseover=\'alert(1)', 'note' => '" autofocus onfocus="alert(1)'],
+            'old_values' => ['detail' => '<script>alert(1)</script>', 'name' => 'O\'Connor', 'quoted' => '"Ali"', 'symbols' => '& < >'],
+            'new_values' => ['detail' => '\' onmouseover=\'alert(1)', 'note' => '" autofocus onfocus="alert(1)', 'name' => 'O\'Connor', 'quoted' => '"Ali"', 'symbols' => '& < >'],
             'status' => 'pending',
             'submitted_by' => $this->admin->id,
         ]);
@@ -176,6 +176,16 @@ class FinanceApprovalWorkflowTest extends TestCase
         $this->assertStringNotContainsString('\' onmouseover=\'alert(1)', $html);
         $this->assertStringNotContainsString('" autofocus onfocus="alert(1)', $html);
         $this->assertStringContainsString('finance-approval-payload-', $html);
+
+        $payload = $this->extractJsonScriptPayload($html, 'finance-approval-payload-1');
+
+        $this->assertIsArray($payload);
+        $this->assertSame('<script>alert(1)</script>', $payload['old']['detail']);
+        $this->assertSame('\' onmouseover=\'alert(1)', $payload['new']['detail']);
+        $this->assertSame('" autofocus onfocus="alert(1)', $payload['new']['note']);
+        $this->assertSame('O\'Connor', $payload['new']['name']);
+        $this->assertSame('"Ali"', $payload['new']['quoted']);
+        $this->assertSame('& < >', $payload['new']['symbols']);
     }
 
     public function test_finance_approve_is_idempotent(): void
@@ -506,5 +516,17 @@ class FinanceApprovalWorkflowTest extends TestCase
         $mockUser->shouldReceive('hasRole')->with('super-admin')->andReturn($isSuperAdmin);
 
         return $mockUser;
+    }
+
+    protected function extractJsonScriptPayload(string $html, string $scriptId): array
+    {
+        $pattern = '/<script type="application\/json" id="' . preg_quote($scriptId, '/') . '">\s*(.*?)\s*<\/script>/s';
+        $this->assertSame(1, preg_match($pattern, $html, $matches), 'JSON payload script tag not found.');
+        $this->assertStringNotContainsString('&quot;', $matches[1]);
+
+        $payload = json_decode(trim($matches[1]), true);
+        $this->assertIsArray($payload, 'Rendered script content must be valid JSON.');
+
+        return $payload;
     }
 }

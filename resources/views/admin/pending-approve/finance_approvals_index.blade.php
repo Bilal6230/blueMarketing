@@ -46,11 +46,11 @@
                                                 <i class="fas fa-eye"></i> View Details
                                             </button>
                                             <script type="application/json" id="finance-approval-payload-{{ $update->id }}">
-                                                {{ json_encode([
+                                                {!! json_encode([
                                                     'old' => $update->old_values,
                                                     'new' => $update->new_values,
                                                     'submitted_name' => $update->submittedBy->name ?? 'Unknown User',
-                                                ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}
+                                                ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}
                                             </script>
                                         </td>
                                     </tr>

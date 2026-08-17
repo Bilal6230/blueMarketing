@@ -276,6 +276,14 @@ class LeadPendingApprovalTest extends TestCase
             'updated_at' => '2026-08-11 10:30:00',
         ]);
 
+        Work::create([
+            'lead_id' => $lead->id,
+            'comment' => 'O\'Connor "Ali" & < >',
+            'user_id' => $this->ownerA->id,
+            'created_at' => '2026-08-12 10:30:00',
+            'updated_at' => '2026-08-12 10:30:00',
+        ]);
+
         PendingUpdate::create([
             'table_name' => 'leads',
             'record_id' => $lead->id,
@@ -295,6 +303,16 @@ class LeadPendingApprovalTest extends TestCase
         $this->assertStringNotContainsString('\' onmouseover=\'alert(1)', $html);
         $this->assertStringNotContainsString('" autofocus onfocus="alert(1)', $html);
         $this->assertStringContainsString('lead-approval-payload-', $html);
+
+        $payload = $this->extractJsonScriptPayload($html, 'lead-approval-payload-1');
+
+        $this->assertIsArray($payload);
+        $this->assertSame('\' onmouseover=\'alert(1)', $payload['lead']['lead_name']);
+        $this->assertSame('Owner B', $payload['lead']['requested_user_name']);
+        $this->assertCount(3, $payload['comments']);
+        $this->assertSame('O\'Connor "Ali" & < >', $payload['comments'][0]['comment']);
+        $this->assertSame('" autofocus onfocus="alert(1)', $payload['comments'][1]['comment']);
+        $this->assertSame('<script>alert(1)</script>', $payload['comments'][2]['comment']);
     }
 
     protected function createSchema(): void
@@ -582,5 +600,17 @@ class LeadPendingApprovalTest extends TestCase
         $mockUser->shouldReceive('hasRole')->with('super-admin')->andReturnFalse();
 
         return $mockUser;
+    }
+
+    protected function extractJsonScriptPayload(string $html, string $scriptId): array
+    {
+        $pattern = '/<script type="application\/json" id="' . preg_quote($scriptId, '/') . '">\s*(.*?)\s*<\/script>/s';
+        $this->assertSame(1, preg_match($pattern, $html, $matches), 'JSON payload script tag not found.');
+        $this->assertStringNotContainsString('&quot;', $matches[1]);
+
+        $payload = json_decode(trim($matches[1]), true);
+        $this->assertIsArray($payload, 'Rendered script content must be valid JSON.');
+
+        return $payload;
     }
 }

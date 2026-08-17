@@ -46,7 +46,7 @@
                                                 <i class="fas fa-eye"></i> View Details
                                             </button>
                                             <script type="application/json" id="lead-approval-payload-{{ $update->id }}">
-                                                {{ json_encode([
+                                                {!! json_encode([
                                                     'lead' => [
                                                         'lead_id' => $update->record_id,
                                                         'lead_name' => $update->lead_name,
@@ -55,7 +55,7 @@
                                                         'request_type' => $update->request_type,
                                                     ],
                                                     'comments' => $update->comments_for_modal,
-                                                ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}
+                                                ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}
                                             </script>
                                         </td>
                                     </tr>
