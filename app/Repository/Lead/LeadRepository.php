@@ -40,7 +40,12 @@ class LeadRepository {
 
         // Modify the collection to include project name
         $leads->map(function ($lead) {
-            $lead->project_name = $lead->project ? $lead->project->project : null; // Add project name to each lead
+            $projectName = $lead->project->project ?? 'No Project';
+            $projectName = is_array($projectName)
+                ? implode(', ', array_filter($projectName))
+                : (string) ($projectName ?? 'No Project');
+
+            $lead->project_name = trim($projectName) !== '' ? $projectName : 'No Project';
             return $lead;
         });
 
