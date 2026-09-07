@@ -20,6 +20,7 @@ use App\Models\Project;
 use App\Models\ProjectHeadSubhead;
 use App\Models\SubheadAccounting;
 use App\Models\User;
+use App\Services\BookingSalesVoucherSyncService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -32,6 +33,13 @@ use Symfony\Component\HttpFoundation\Response;
 
 class BookingController extends Controller
 {
+    private BookingSalesVoucherSyncService $bookingSalesVoucherSync;
+
+    public function __construct(BookingSalesVoucherSyncService $bookingSalesVoucherSync)
+    {
+        $this->bookingSalesVoucherSync = $bookingSalesVoucherSync;
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -282,6 +290,7 @@ class BookingController extends Controller
                 'status' => 0,
             ]);
             $this->postResaleProfitSplit($booking, $creditAccountId, $plotType, $plotName, $salesVoucher);
+            $this->bookingSalesVoucherSync->sync($booking);
 
             DB::commit();
 
@@ -575,6 +584,8 @@ class BookingController extends Controller
                         $salesVoucher
                     );
                 }
+
+                $this->bookingSalesVoucherSync->sync($booking);
             });
             session(['last_submit_date' => $request->booking_date]);
             $this->attechCustomerToOldProjectSale($request->project_id, $existingBooking->customer_id, $existingBooking->plot_id);
@@ -618,6 +629,13 @@ class BookingController extends Controller
         $sourceId = (string) ($payload['source_id'] ?? '');
         $reference = trim((string) ($payload['reference'] ?? ($sourceType . '-' . $sourceId)));
 
+        if ($sourceType === 'BOOKING') {
+            $sourceBooking = Booking::query()->whereKey($sourceId)->lockForUpdate()->firstOrFail();
+            $projectId = (int) $sourceBooking->project_id;
+            $reference = 'BOOKING-' . $sourceBooking->id;
+            $payload['total_amount'] = $sourceBooking->total_price;
+        }
+
         if ($projectId <= 0 || $reference === '') {
             throw new \InvalidArgumentException('Project ID and reference are required for sales voucher creation.');
         }
@@ -625,6 +643,7 @@ class BookingController extends Controller
         $existingVoucher = JournalVoucher::where('project_id', $projectId)
             ->where('type', 'SV')
             ->where('reference', $reference)
+            ->lockForUpdate()
             ->first();
 
         if ($existingVoucher) {
@@ -3028,16 +3047,16 @@ class BookingController extends Controller
         ]);
 
         try {
-            // Find the booking by ID
-            $booking = Booking::findOrFail($validatedData['booking_id']);
+            $booking = DB::transaction(function () use ($validatedData) {
+                $booking = Booking::whereKey($validatedData['booking_id'])->lockForUpdate()->firstOrFail();
+                $booking->plot_rate = $validatedData['new_rate'];
+                $booking->dicount_value = $validatedData['discount_price'];
+                $booking->total_price = $validatedData['total_new_value'];
+                $booking->save();
+                $this->bookingSalesVoucherSync->sync($booking);
 
-            // Update the booking details
-            $booking->plot_rate = $validatedData['new_rate'];
-            $booking->dicount_value = $validatedData['discount_price'];
-            $booking->total_price = $validatedData['total_new_value'];
-
-            // Save the updated booking
-            $booking->save();
+                return $booking->fresh();
+            });
 
             // Return a success response in JSON format
             return response()->json([
