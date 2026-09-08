@@ -184,6 +184,68 @@ class BookingEditPageTest extends TestCase
         $this->assertSame(1, DB::table('booking_details')->count());
     }
 
+    public function test_legacy_null_updated_at_booking_loads_and_updates_without_accounting_mutation(): void
+    {
+        $booking = $this->createBooking();
+        $newBroker = $this->createBroker('Legacy Booking Broker', $this->projectId);
+        DB::table('bookings')->where('id', $booking->id)->update(['updated_at' => null]);
+        $booking = $booking->fresh();
+        $this->assertNull($booking->updated_at);
+        $view = $this->callEditController($booking->id, $this->projectId);
+        $this->assertNull($view->getData()['booking']->updated_at);
+        $this->authorizeUpdate();
+        $tables = $this->protectedTables();
+        $before = $this->snapshot($tables);
+
+        $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
+            ->put(route('booking.update', ['id' => $booking->id], false), $this->updatePayload($booking, ['broker_id' => $newBroker]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame($newBroker, (int) $booking->fresh()->broker_id);
+        $this->assertSame($before, $this->snapshot($tables));
+    }
+
+    public function test_null_expected_timestamp_rejects_when_database_timestamp_becomes_non_null(): void
+    {
+        $booking = $this->createBooking();
+        $newBroker = $this->createBroker('Null Race Broker', $this->projectId);
+        DB::table('bookings')->where('id', $booking->id)->update(['updated_at' => null]);
+        $booking = $booking->fresh();
+        $payload = $this->updatePayload($booking, ['broker_id' => $newBroker]);
+        DB::table('bookings')->where('id', $booking->id)->update(['updated_at' => '2026-09-10 00:00:00']);
+        $this->authorizeUpdate();
+        $before = $this->snapshot($this->protectedTables());
+
+        $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
+            ->put(route('booking.update', ['id' => $booking->id], false), $payload)
+            ->assertSessionHasErrors('expected_updated_at');
+
+        $this->assertNotSame($newBroker, (int) $booking->fresh()->broker_id);
+        $this->assertSame($before, $this->snapshot($this->protectedTables()));
+    }
+
+    public function test_expected_broker_snapshot_blocks_same_timestamp_race(): void
+    {
+        $booking = $this->createBooking();
+        $brokerTwo = $this->createBroker('Concurrent Broker', $this->projectId);
+        $brokerThree = $this->createBroker('Requested Broker', $this->projectId);
+        $payload = $this->updatePayload($booking, ['broker_id' => $brokerThree]);
+        $sameTimestamp = $booking->updated_at->format('Y-m-d H:i:s');
+        DB::table('bookings')->where('id', $booking->id)->update([
+            'broker_id' => $brokerTwo,
+            'updated_at' => $sameTimestamp,
+        ]);
+        $this->authorizeUpdate();
+        $before = $this->snapshot($this->protectedTables());
+
+        $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
+            ->put(route('booking.update', ['id' => $booking->id], false), $payload)
+            ->assertSessionHasErrors('expected_updated_at');
+
+        $this->assertSame($brokerTwo, (int) $booking->fresh()->broker_id);
+        $this->assertSame($before, $this->snapshot($this->protectedTables()));
+    }
+
     public function test_cross_project_random_and_unmapped_brokers_are_rejected(): void
     {
         $booking = $this->createBooking();
@@ -338,9 +400,15 @@ class BookingEditPageTest extends TestCase
             ->mapWithKeys(fn ($field) => [$field => (string) $booking->{$field}])
             ->all();
         $payload['booking_date'] = \Carbon\Carbon::parse($booking->booking_date)->format('Y-m-d H:i:s');
-        $payload['expected_updated_at'] = $booking->updated_at->format('Y-m-d H:i:s.u');
+        $payload['expected_updated_at'] = $booking->updated_at?->format('Y-m-d H:i:s.u');
+        $payload['expected_broker_id'] = $booking->broker_id;
         $payload['broker_id'] = $booking->broker_id;
         return array_merge($payload, $overrides);
+    }
+
+    private function protectedTables(): array
+    {
+        return ['customer_ledger', 'journal_vouchers', 'journal_voucher_details', 'ledgers', 'project_head_subheads', 'booking_details', 'booking_vouchers'];
     }
 
     private function snapshot(array $tables): array

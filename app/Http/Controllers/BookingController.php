@@ -145,7 +145,8 @@ class BookingController extends Controller
             ->findOrFail($id);
 
         $request->validate([
-            'expected_updated_at' => ['required', 'string'],
+            'expected_updated_at' => ['present', 'nullable', 'string'],
+            'expected_broker_id' => ['present', 'nullable', 'integer'],
             'broker_id' => ['nullable', 'integer'],
         ]);
 
@@ -157,8 +158,18 @@ class BookingController extends Controller
                     ->lockForUpdate()
                     ->findOrFail($id);
 
-                $actualVersion = $booking->updated_at?->format('Y-m-d H:i:s.u') ?? '';
-                if (!hash_equals($actualVersion, (string) $request->input('expected_updated_at'))) {
+                $actualVersion = $booking->updated_at?->format('Y-m-d H:i:s.u');
+                $expectedVersion = $request->input('expected_updated_at');
+                $expectedVersion = $expectedVersion === null || $expectedVersion === '' ? null : (string) $expectedVersion;
+                $timestampsMatch = $actualVersion === null
+                    ? $expectedVersion === null
+                    : $expectedVersion !== null && hash_equals($actualVersion, $expectedVersion);
+                $actualBrokerId = $booking->broker_id === null ? null : (int) $booking->broker_id;
+                $expectedBrokerId = $request->filled('expected_broker_id')
+                    ? (int) $request->input('expected_broker_id')
+                    : null;
+
+                if (!$timestampsMatch || $expectedBrokerId !== $actualBrokerId) {
                     throw ValidationException::withMessages([
                         'expected_updated_at' => 'This booking was changed after you opened the page. Refresh and review the latest information before saving.',
                     ]);

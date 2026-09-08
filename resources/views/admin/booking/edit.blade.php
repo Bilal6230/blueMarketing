@@ -81,6 +81,7 @@
                     @csrf
                     @method('PUT')
                     <input type="hidden" name="expected_updated_at" value="{{ $booking->updated_at?->format('Y-m-d H:i:s.u') }}">
+                    <input type="hidden" name="expected_broker_id" value="{{ $booking->broker_id }}">
                     @foreach (['project_id', 'customer_id', 'plot_id', 'plot_type', 'plot_size', 'status', 'plot_rate', 'is_park', 'park_facing', 'is_corner', 'carner_price', 'dicount_value', 'total_price'] as $lockedField)
                         <input type="hidden" name="{{ $lockedField }}" value="{{ $booking->{$lockedField} }}">
                     @endforeach
