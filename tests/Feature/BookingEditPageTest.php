@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 use Spatie\Permission\Exceptions\UnauthorizedException;
 use Spatie\Permission\Middlewares\PermissionMiddleware;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class BookingEditPageTest extends TestCase
@@ -29,6 +30,8 @@ class BookingEditPageTest extends TestCase
         config()->set('database.connections.sqlite.database', ':memory:');
         DB::purge('sqlite');
         DB::setDefaultConnection('sqlite');
+        config()->set('app.url', 'http://localhost');
+        app('url')->forceRootUrl('http://localhost');
 
         $this->createSchema();
         $this->user = User::factory()->create(['status_id' => 1]);
@@ -36,7 +39,7 @@ class BookingEditPageTest extends TestCase
         $this->otherProjectId = DB::table('projects')->insertGetId(['project' => 'Other Project']);
     }
 
-    public function test_authorized_controller_loads_read_only_edit_page_with_booking_values(): void
+    public function test_authorized_controller_loads_broker_only_edit_page_with_project_brokers(): void
     {
         $booking = $this->createBooking();
 
@@ -49,14 +52,16 @@ class BookingEditPageTest extends TestCase
         $this->assertTrue($hydrated->relationLoaded('customer'));
         $this->assertTrue($hydrated->relationLoaded('plot'));
         $this->assertTrue($hydrated->relationLoaded('broker'));
+        $this->assertCount(1, $view->getData()['brokers']);
         $this->assertEquals(25000, $hydrated->dicount_value);
 
         $html = file_get_contents(resource_path('views/admin/booking/edit.blade.php'));
         $this->assertStringContainsString('$booking->dicount_value', $html);
         $this->assertStringNotContainsString('$booking->discount_value', $html);
         $this->assertStringContainsString('Customer changes are handled through File Transfer.', $html);
-        $this->assertStringNotContainsString('<form', $html);
-        $this->assertStringNotContainsString('type="submit"', $html);
+        $this->assertStringContainsString('<form', $html);
+        $this->assertStringContainsString('Save Broker Change', $html);
+        $this->assertStringContainsString("name=\"broker_id\"", $html);
     }
 
     public function test_other_project_booking_cannot_be_opened(): void
@@ -92,6 +97,161 @@ class BookingEditPageTest extends TestCase
         $this->assertNotNull($route);
         $this->assertSame(['GET', 'HEAD'], $route->methods());
         $this->assertContains('permission:update plot', $route->gatherMiddleware());
+    }
+
+    public function test_update_route_is_put_only_and_requires_update_plot_permission(): void
+    {
+        $route = app('router')->getRoutes()->getByName('booking.update');
+
+        $this->assertNotNull($route);
+        $this->assertSame(['PUT'], $route->methods());
+        $this->assertContains('permission:update plot', $route->gatherMiddleware());
+    }
+
+    public function test_unauthenticated_update_is_blocked(): void
+    {
+        $booking = $this->createBooking();
+
+        $this->withCookie('selected_action', (string) $this->projectId)
+            ->put('/admin/booking/' . $booking->id, $this->updatePayload($booking))
+            ->assertRedirect();
+    }
+
+    public function test_unauthorized_update_returns_forbidden(): void
+    {
+        $booking = $this->createBooking();
+
+        $this->actingAs($this->user)
+            ->withCookie('selected_action', (string) $this->projectId)
+            ->put(route('booking.update', ['id' => $booking->id], false), $this->updatePayload($booking))
+            ->assertForbidden();
+    }
+
+    public function test_valid_project_broker_is_the_only_changed_value_and_accounting_is_untouched(): void
+    {
+        $booking = $this->createBooking();
+        $newBroker = $this->createBroker('New Broker', $this->projectId);
+        $this->authorizeUpdate();
+        $tables = ['customer_ledger', 'journal_vouchers', 'journal_voucher_details', 'ledgers', 'project_head_subheads', 'booking_details', 'booking_vouchers'];
+        $before = $this->snapshot($tables);
+        $bookingBefore = $booking->fresh()->getAttributes();
+
+        $this->actingAs($this->user)
+            ->withCookie('selected_action', (string) $this->projectId)
+            ->put(route('booking.update', ['id' => $booking->id], false), $this->updatePayload($booking, ['broker_id' => $newBroker]))
+            ->assertRedirect(route('booking.edit', ['id' => $booking->id], false))
+            ->assertSessionHas('success', 'Booking updated successfully.');
+
+        $after = $booking->fresh()->getAttributes();
+        $this->assertSame($newBroker, (int) $after['broker_id']);
+        foreach ($bookingBefore as $key => $value) {
+            if (!in_array($key, ['broker_id', 'updated_at'], true)) {
+                $this->assertSame($value, $after[$key], $key . ' changed');
+            }
+        }
+        $this->assertSame($before, $this->snapshot($tables));
+    }
+
+    public function test_same_broker_is_a_true_no_op_and_nullable_broker_is_allowed(): void
+    {
+        $booking = $this->createBooking();
+        $this->authorizeUpdate();
+        $originalUpdatedAt = $booking->updated_at->format('Y-m-d H:i:s.u');
+
+        $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
+            ->put(route('booking.update', ['id' => $booking->id], false), $this->updatePayload($booking))
+            ->assertSessionHasNoErrors();
+        $this->assertSame($originalUpdatedAt, $booking->fresh()->updated_at->format('Y-m-d H:i:s.u'));
+
+        $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
+            ->put(route('booking.update', ['id' => $booking->id], false), $this->updatePayload($booking->fresh(), ['broker_id' => null]))
+            ->assertSessionHasNoErrors();
+        $this->assertNull($booking->fresh()->broker_id);
+    }
+
+    public function test_existing_schedule_does_not_block_broker_metadata_update(): void
+    {
+        $booking = $this->createBooking();
+        $newBroker = $this->createBroker('Schedule Safe Broker', $this->projectId);
+        DB::table('booking_details')->insert(['id' => 1]);
+        $this->authorizeUpdate();
+
+        $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
+            ->put(route('booking.update', ['id' => $booking->id], false), $this->updatePayload($booking, ['broker_id' => $newBroker]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame($newBroker, (int) $booking->fresh()->broker_id);
+        $this->assertSame(1, DB::table('booking_details')->count());
+    }
+
+    public function test_cross_project_random_and_unmapped_brokers_are_rejected(): void
+    {
+        $booking = $this->createBooking();
+        $crossProjectBroker = $this->createBroker('Other Broker', $this->otherProjectId);
+        $unmappedBroker = DB::table('subhead_accountings')->insertGetId(['name' => 'Unmapped Broker']);
+        $this->authorizeUpdate();
+
+        foreach ([$crossProjectBroker, $unmappedBroker, 999999] as $brokerId) {
+            $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
+                ->from(route('booking.edit', ['id' => $booking->id], false))
+                ->put(route('booking.update', ['id' => $booking->id], false), $this->updatePayload($booking, ['broker_id' => $brokerId]))
+                ->assertSessionHasErrors('broker_id');
+            $this->assertSame((int) $booking->broker_id, (int) $booking->fresh()->broker_id);
+        }
+    }
+
+    /** @dataProvider immutableTamperingProvider */
+    public function test_immutable_and_financial_tampering_is_rejected(string $field, $value): void
+    {
+        $booking = $this->createBooking();
+        $this->authorizeUpdate();
+        $before = $booking->fresh()->getAttributes();
+
+        $response = $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
+            ->from(route('booking.edit', ['id' => $booking->id], false))
+            ->put(route('booking.update', ['id' => $booking->id], false), $this->updatePayload($booking, [$field => $value]));
+
+        $response->assertSessionHasErrors($field);
+        $this->assertSame($before, $booking->fresh()->getAttributes());
+        if ($field === 'customer_id') {
+            $this->assertStringContainsString('File Transfer', session('errors')->first('customer_id'));
+        }
+    }
+
+    public function immutableTamperingProvider(): array
+    {
+        return collect(['project_id', 'customer_id', 'plot_id', 'plot_type', 'plot_size', 'booking_date', 'status', 'plot_rate', 'is_park', 'park_facing', 'is_corner', 'carner_price', 'dicount_value', 'total_price'])
+            ->mapWithKeys(fn ($field) => [$field => [$field, $field === 'booking_date' ? '2020-01-01 00:00:00' : '999']])
+            ->all();
+    }
+
+    public function test_stale_update_cross_project_cancelled_and_deleted_bookings_are_not_changed(): void
+    {
+        $booking = $this->createBooking();
+        $newBroker = $this->createBroker('New Broker', $this->projectId);
+        $this->authorizeUpdate();
+        $payload = $this->updatePayload($booking, ['broker_id' => $newBroker]);
+        DB::table('bookings')->where('id', $booking->id)->update(['updated_at' => '2026-09-09 00:00:00']);
+
+        $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
+            ->put(route('booking.update', ['id' => $booking->id], false), $payload)
+            ->assertSessionHasErrors('expected_updated_at');
+        $this->assertNotSame($newBroker, (int) $booking->fresh()->broker_id);
+
+        foreach ([
+            $this->createBooking(['project_id' => $this->otherProjectId]),
+            $this->createBooking(['cancel_status' => '1']),
+        ] as $blocked) {
+            $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
+                ->put(route('booking.update', ['id' => $blocked->id], false), $this->updatePayload($blocked))
+                ->assertNotFound();
+        }
+
+        $deleted = $this->createBooking();
+        $deleted->delete();
+        $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
+            ->put(route('booking.update', ['id' => $deleted->id], false), $this->updatePayload($deleted))
+            ->assertNotFound();
     }
 
     public function test_loading_page_performs_no_accounting_mutations(): void
@@ -132,7 +292,7 @@ class BookingEditPageTest extends TestCase
             'name' => 'R-1001',
             'unit' => 'Marla',
         ]);
-        $brokerId = DB::table('subhead_accountings')->insertGetId(['name' => 'Example Broker']);
+        $brokerId = $this->createBroker('Example Broker', (int) ($overrides['project_id'] ?? $this->projectId));
 
         return Booking::create(array_merge([
             'project_id' => $this->projectId,
@@ -153,6 +313,39 @@ class BookingEditPageTest extends TestCase
             'user_id' => $this->user->id,
             'cancel_status' => '0',
         ], $overrides));
+    }
+
+    private function createBroker(string $name, int $projectId): int
+    {
+        $brokerId = DB::table('subhead_accountings')->insertGetId(['name' => $name]);
+        DB::table('project_head_subheads')->insert([
+            'project_id' => $projectId,
+            'head_accounting_id' => 6,
+            'subhead_accounting_id' => $brokerId,
+        ]);
+        return $brokerId;
+    }
+
+    private function authorizeUpdate(): void
+    {
+        $permission = Permission::create(['name' => 'update plot', 'guard_name' => 'web']);
+        $this->user->givePermissionTo($permission);
+    }
+
+    private function updatePayload(Booking $booking, array $overrides = []): array
+    {
+        $payload = collect(['project_id', 'customer_id', 'plot_id', 'plot_type', 'plot_size', 'status', 'plot_rate', 'is_park', 'park_facing', 'is_corner', 'carner_price', 'dicount_value', 'total_price'])
+            ->mapWithKeys(fn ($field) => [$field => (string) $booking->{$field}])
+            ->all();
+        $payload['booking_date'] = \Carbon\Carbon::parse($booking->booking_date)->format('Y-m-d H:i:s');
+        $payload['expected_updated_at'] = $booking->updated_at->format('Y-m-d H:i:s.u');
+        $payload['broker_id'] = $booking->broker_id;
+        return array_merge($payload, $overrides);
+    }
+
+    private function snapshot(array $tables): array
+    {
+        return collect($tables)->mapWithKeys(fn ($table) => [$table => DB::table($table)->orderBy('id')->get()->map(fn ($row) => (array) $row)->all()])->all();
     }
 
     private function createSchema(): void
@@ -185,6 +378,14 @@ class BookingEditPageTest extends TestCase
         Schema::create('subhead_accountings', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+        });
+        Schema::create('project_head_subheads', function (Blueprint $table) {
+            $table->id();
+            $table->integer('project_id');
+            $table->integer('head_accounting_id');
+            $table->integer('subhead_accounting_id');
+            $table->integer('plot_id')->nullable();
+            $table->integer('customer_id')->nullable();
         });
         Schema::create('bookings', function (Blueprint $table) {
             $table->id();
@@ -236,7 +437,7 @@ class BookingEditPageTest extends TestCase
             $table->unsignedBigInteger('role_id');
         });
 
-        foreach (['customer_ledger', 'journal_vouchers', 'journal_voucher_details', 'ledgers', 'booking_details'] as $tableName) {
+        foreach (['customer_ledger', 'journal_vouchers', 'journal_voucher_details', 'ledgers', 'booking_details', 'booking_vouchers'] as $tableName) {
             Schema::create($tableName, function (Blueprint $table) {
                 $table->id();
             });

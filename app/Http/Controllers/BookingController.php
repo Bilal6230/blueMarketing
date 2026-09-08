@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use RealRashid\SweetAlert\Facades\Alert;
 use Spatie\Permission\Models\Role;
 use Symfony\Component\HttpFoundation\Response;
@@ -116,10 +117,119 @@ class BookingController extends Controller
             ->where('cancel_status', '0')
             ->findOrFail($id);
 
+        $brokers = ProjectHeadSubhead::query()
+            ->with('subheadAccounting')
+            ->where('project_id', $booking->project_id)
+            ->where('head_accounting_id', 6)
+            ->get()
+            ->pluck('subheadAccounting')
+            ->filter()
+            ->unique('id')
+            ->sortBy('name')
+            ->values();
+
         return view('admin.booking.edit', [
             'title' => 'Edit Booking #' . $booking->id,
             'booking' => $booking,
+            'brokers' => $brokers,
         ]);
+    }
+
+    public function updateBooking(Request $request, $id)
+    {
+        $projectId = (int) getSelectedTown();
+
+        Booking::query()
+            ->where('project_id', $projectId)
+            ->where('cancel_status', '0')
+            ->findOrFail($id);
+
+        $request->validate([
+            'expected_updated_at' => ['required', 'string'],
+            'broker_id' => ['nullable', 'integer'],
+        ]);
+
+        try {
+            $changed = DB::transaction(function () use ($request, $id, $projectId) {
+                $booking = Booking::query()
+                    ->where('project_id', $projectId)
+                    ->where('cancel_status', '0')
+                    ->lockForUpdate()
+                    ->findOrFail($id);
+
+                $actualVersion = $booking->updated_at?->format('Y-m-d H:i:s.u') ?? '';
+                if (!hash_equals($actualVersion, (string) $request->input('expected_updated_at'))) {
+                    throw ValidationException::withMessages([
+                        'expected_updated_at' => 'This booking was changed after you opened the page. Refresh and review the latest information before saving.',
+                    ]);
+                }
+
+                $this->validateImmutableBookingFields($request, $booking);
+
+                $brokerId = $request->filled('broker_id') ? (int) $request->input('broker_id') : null;
+                if ($brokerId !== null && !ProjectHeadSubhead::query()
+                    ->where('project_id', $booking->project_id)
+                    ->where('head_accounting_id', 6)
+                    ->where('subhead_accounting_id', $brokerId)
+                    ->exists()) {
+                    throw ValidationException::withMessages([
+                        'broker_id' => 'The selected broker is not available for this project.',
+                    ]);
+                }
+
+                if ((int) ($booking->broker_id ?? 0) === (int) ($brokerId ?? 0)) {
+                    return false;
+                }
+
+                $booking->broker_id = $brokerId;
+                $booking->save();
+
+                return true;
+            });
+        } catch (ValidationException $exception) {
+            throw $exception;
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
+            throw $exception;
+        } catch (\Throwable $exception) {
+            Log::error('Booking broker update failed.', [
+                'booking_id' => $id,
+                'project_id' => $projectId,
+                'user_id' => Auth::id(),
+                'exception' => get_class($exception),
+            ]);
+
+            return back()->withErrors(['booking' => 'The booking could not be updated. Please try again.'])->withInput();
+        }
+
+        return redirect()->route('booking.edit', ['id' => $id])
+            ->with('success', $changed ? 'Booking updated successfully.' : 'No booking changes were needed.');
+    }
+
+    private function validateImmutableBookingFields(Request $request, Booking $booking): void
+    {
+        $fields = [
+            'project_id', 'customer_id', 'plot_id', 'plot_type', 'plot_size',
+            'booking_date', 'status', 'plot_rate', 'is_park', 'park_facing',
+            'is_corner', 'carner_price', 'dicount_value', 'total_price',
+        ];
+
+        foreach ($fields as $field) {
+            if (!$request->exists($field)) {
+                continue;
+            }
+
+            $submitted = trim((string) $request->input($field));
+            $persisted = $field === 'booking_date'
+                ? Carbon::parse($booking->{$field})->format('Y-m-d H:i:s')
+                : trim((string) $booking->{$field});
+
+            if ($submitted !== $persisted) {
+                $message = $field === 'customer_id'
+                    ? 'Customer changes must be completed through File Transfer.'
+                    : 'The ' . str_replace('_', ' ', $field) . ' field is locked and cannot be changed here.';
+                throw ValidationException::withMessages([$field => $message]);
+            }
+        }
     }
 
     public function fileTransfer($id)

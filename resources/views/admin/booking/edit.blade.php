@@ -50,7 +50,7 @@
                 <div class="row mb-2 align-items-center">
                     <div class="col-sm-7">
                         <h1 class="m-0">Edit Booking #{{ $booking->id }}</h1>
-                        <p class="text-muted mb-0">Review the complete recorded booking. Saving is disabled in this phase.</p>
+                        <p class="text-muted mb-0">Review the recorded booking and update its broker assignment.</p>
                     </div>
                     <div class="col-sm-5 mt-2 mt-sm-0">
                         <ol class="breadcrumb float-sm-right mb-0">
@@ -67,8 +67,24 @@
             <div class="container-fluid">
                 <div class="alert alert-info d-flex align-items-start" role="status">
                     <i class="fas fa-info-circle mt-1 mr-2"></i>
-                    <div><strong>Review mode.</strong> No changes made on this page are saved.</div>
+                    <div><strong>Broker-only editing.</strong> Customer, property, pricing, and status details remain locked.</div>
                 </div>
+
+                @if (session('success'))
+                    <div class="alert alert-success" role="alert">{{ session('success') }}</div>
+                @endif
+                @if ($errors->any())
+                    <div class="alert alert-danger" role="alert"><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
+                @endif
+
+                <form method="POST" action="{{ route('booking.update', ['id' => $booking->id]) }}">
+                    @csrf
+                    @method('PUT')
+                    <input type="hidden" name="expected_updated_at" value="{{ $booking->updated_at?->format('Y-m-d H:i:s.u') }}">
+                    @foreach (['project_id', 'customer_id', 'plot_id', 'plot_type', 'plot_size', 'status', 'plot_rate', 'is_park', 'park_facing', 'is_corner', 'carner_price', 'dicount_value', 'total_price'] as $lockedField)
+                        <input type="hidden" name="{{ $lockedField }}" value="{{ $booking->{$lockedField} }}">
+                    @endforeach
+                    <input type="hidden" name="booking_date" value="{{ \Carbon\Carbon::parse($booking->booking_date)->format('Y-m-d H:i:s') }}">
 
                 <div class="row">
                     <div class="col-lg-8">
@@ -92,9 +108,13 @@
                                 </div>
                                 <div class="form-group col-md-6 mb-md-0">
                                     <label>Broker</label>
-                                    <select class="form-control" disabled>
-                                        <option selected>{{ $booking->broker->name ?? 'No broker assigned' }}</option>
+                                    <select class="form-control @error('broker_id') is-invalid @enderror" name="broker_id">
+                                        <option value="">No Broker</option>
+                                        @foreach ($brokers as $broker)
+                                            <option value="{{ $broker->id }}" @selected((string) old('broker_id', $booking->broker_id) === (string) $broker->id)>{{ $broker->name }}</option>
+                                        @endforeach
                                     </select>
+                                    <div class="field-note">This is the only editable Booking field in this phase.</div>
                                 </div>
                             </div></div>
                         </div>
@@ -196,8 +216,9 @@
 
                 <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mt-4">
                     <a href="{{ route('booking.plot.index') }}" class="btn btn-secondary"><i class="fas fa-arrow-left mr-1"></i> Back to Bookings</a>
-                    <span class="text-muted small mt-2 mt-sm-0"><i class="fas fa-lock mr-1"></i>Read-only review</span>
+                    <button type="submit" class="btn btn-primary mt-2 mt-sm-0"><i class="fas fa-save mr-1"></i> Save Broker Change</button>
                 </div>
+                </form>
             </div>
         </section>
     </div>
