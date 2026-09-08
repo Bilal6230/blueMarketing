@@ -3,11 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\Booking;
+use App\Models\User;
 use App\Services\Booking\BookingPricingUpdateService;
 use DomainException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class BookingPricingUpdateServiceTest extends TestCase
@@ -29,6 +31,8 @@ class BookingPricingUpdateServiceTest extends TestCase
         config()->set('database.connections.sqlite.database', ':memory:');
         DB::purge('sqlite');
         DB::setDefaultConnection('sqlite');
+        config()->set('app.url', 'http://localhost');
+        app('url')->forceRootUrl('http://localhost');
         $this->createSchema();
         $this->seedPristine();
     }
@@ -202,6 +206,111 @@ class BookingPricingUpdateServiceTest extends TestCase
         $this->assertSame($before, $this->allRows());
     }
 
+    public function test_http_original_bug_repairs_accounting_and_audits_reason_and_user(): void
+    {
+        $user = $this->authorizedPricingUser();
+        $this->setBookingPricing('1092750', '10927500');
+        $this->setAccountingPrincipal('11625000');
+        $beforeIds = $this->ids();
+
+        $this->actingAs($user)->withCookie('selected_action', '10')
+            ->put(route('booking.pricing.update', ['id' => $this->booking->id], false), $this->httpPayload($this->defaultPricing(), [
+                'plot_rate' => '1092750',
+                'reason' => 'Original booking amount correction',
+            ]))
+            ->assertRedirect(route('booking.edit', ['id' => $this->booking->id], false) . '#pricing')
+            ->assertSessionHas('success', 'Booking sales accounting synchronized successfully.');
+
+        $this->assertPrincipal('10927500.00');
+        $this->assertSame($beforeIds, $this->ids());
+        $audit = DB::table('booking_edit_audits')->sole();
+        $this->assertSame('pricing_accounting_repair', $audit->operation);
+        $this->assertSame('Original booking amount correction', $audit->reason);
+        $this->assertSame($user->id, (int) $audit->user_id);
+    }
+
+    public function test_http_genuine_price_change_preserves_booking_identity_and_broker(): void
+    {
+        $user = $this->authorizedPricingUser();
+        DB::table('bookings')->where('id', $this->booking->id)->update(['broker_id' => 777]);
+        $identity = collect($this->booking->fresh()->getAttributes())->only(['project_id','customer_id','plot_id','plot_type','plot_size','booking_date','status','broker_id'])->all();
+
+        $this->actingAs($user)->withCookie('selected_action', '10')
+            ->put(route('booking.pricing.update', ['id' => $this->booking->id], false), $this->httpPayload($this->defaultPricing(), [
+                'plot_rate' => '480000', 'reason' => 'Client-approved rate correction',
+            ]))->assertSessionHas('success', 'Booking pricing and original sales accounting updated successfully.');
+
+        $this->assertPrincipal('4800000.00');
+        $this->assertSame($identity, collect($this->booking->fresh()->getAttributes())->only(array_keys($identity))->all());
+        $audit = DB::table('booking_edit_audits')->sole();
+        $this->assertSame('pricing_update', $audit->operation);
+        $this->assertSame(0, bccomp((string) $audit->delta, '-200000.00', 2));
+        $this->assertSame('Client-approved rate correction', $audit->reason);
+    }
+
+    public function test_http_stale_snapshot_is_rejected_without_mutation_or_audit(): void
+    {
+        $user = $this->authorizedPricingUser();
+        $payload = $this->httpPayload($this->defaultPricing(), ['plot_rate' => '480000']);
+        $this->setBookingPricing('490000', '4900000');
+        $this->setAccountingPrincipal('4900000');
+        $before = $this->allRows();
+
+        $this->actingAs($user)->withCookie('selected_action', '10')
+            ->from(route('booking.edit', ['id' => $this->booking->id], false))
+            ->put(route('booking.pricing.update', ['id' => $this->booking->id], false), $payload)
+            ->assertSessionHasErrors('pricing');
+        $this->assertSame($before, $this->allRows());
+    }
+
+    /** @dataProvider httpLifecycleBlocks */
+    public function test_http_lifecycle_and_accounting_blocks_are_safe_and_non_mutating(string $case, bool $notFound = false): void
+    {
+        $user = $this->authorizedPricingUser();
+        str_starts_with($case, 'shape:') ? $this->applyShapeFailure(substr($case, 6)) : $this->applyBlock($case);
+        $before = $this->allRows();
+        $response = $this->actingAs($user)->withCookie('selected_action', '10')
+            ->from(route('booking.edit', ['id' => $this->booking->id], false))
+            ->put(route('booking.pricing.update', ['id' => $this->booking->id], false), $this->httpPayload(array_merge($this->defaultPricing(), ['plot_rate' => '480000'])));
+        $notFound ? $response->assertNotFound() : $response->assertSessionHasErrors('pricing');
+        $this->assertSame($before, $this->allRows());
+    }
+
+    public function httpLifecycleBlocks(): array
+    {
+        return [
+            'schedule' => ['schedule'], 'payment' => ['primary_payment'], 'transfer' => ['transfer'],
+            'resale' => ['resale'], 'approved' => ['approved'], 'rejected' => ['rejected'],
+            'duplicate accounting' => ['shape:duplicate_voucher'], 'internal mismatch' => ['shape:header_mismatch'],
+            'cancelled' => ['cancelled', true], 'deleted' => ['deleted', true],
+        ];
+    }
+
+    public function test_http_permission_scope_total_and_reason_guards(): void
+    {
+        $user = User::factory()->create(['status_id' => 1]);
+        $url = route('booking.pricing.update', ['id' => $this->booking->id], false);
+        $this->actingAs($user)->withCookie('selected_action', '10')->put($url, $this->httpPayload())->assertForbidden();
+        $user->givePermissionTo(Permission::create(['name' => 'update booking price', 'guard_name' => 'web']));
+
+        foreach ([['reason' => ''], ['total_price' => '1.00']] as $invalid) {
+            $before = $this->allRows();
+            $this->actingAs($user)->withCookie('selected_action', '10')->from('/admin/booking')->put($url, $this->httpPayload([], $invalid))->assertSessionHasErrors(array_key_first($invalid));
+            $this->assertSame($before, $this->allRows());
+        }
+        $this->actingAs($user)->withCookie('selected_action', '11')->put($url, $this->httpPayload())->assertNotFound();
+    }
+
+    public function test_http_true_no_op_writes_nothing(): void
+    {
+        $user = $this->authorizedPricingUser();
+        $before = $this->allRows();
+        $this->actingAs($user)->withCookie('selected_action', '10')
+            ->put(route('booking.pricing.update', ['id' => $this->booking->id], false), $this->httpPayload())
+            ->assertSessionHas('success', 'No pricing changes were needed.');
+        $this->assertSame($before, $this->allRows());
+    }
+
     private function expectBlocked(string $code): void
     {
         try {
@@ -257,6 +366,8 @@ class BookingPricingUpdateServiceTest extends TestCase
     }
 
     private function service(): BookingPricingUpdateService { return app(BookingPricingUpdateService::class); }
+    private function authorizedPricingUser(): User { $user = User::factory()->create(['status_id'=>1]); $user->givePermissionTo(Permission::create(['name'=>'update booking price','guard_name'=>'web'])); return $user; }
+    private function httpPayload(array $pricing = [], array $overrides = []): array { return array_merge($this->snapshot(), $this->defaultPricing(), $pricing, ['reason'=>'Approved pricing correction'], $overrides); }
     private function defaultPricing(): array { return ['plot_rate' => '500000', 'is_park' => 0, 'park_facing' => '0', 'is_corner' => 0, 'carner_price' => '0', 'dicount_value' => '0']; }
     private function snapshot(): array { $b = Booking::withTrashed()->findOrFail($this->booking->id); return ['expected_plot_rate' => (string) $b->plot_rate, 'expected_is_park' => (int) $b->is_park, 'expected_park_facing' => (string) $b->park_facing, 'expected_is_corner' => (int) $b->is_corner, 'expected_carner_price' => (string) $b->carner_price, 'expected_dicount_value' => (string) $b->dicount_value, 'expected_total_price' => (string) $b->total_price]; }
     private function protectedTables(): array { return ['bookings', 'customer_ledger', 'journal_vouchers', 'journal_voucher_details', 'ledgers', 'project_head_subheads', 'booking_details', 'booking_vouchers', 'booking_edit_audits']; }
@@ -313,6 +424,12 @@ class BookingPricingUpdateServiceTest extends TestCase
 
     private function createSchema(): void
     {
+        Schema::create('users', function(Blueprint $t){$t->id();$t->string('name');$t->string('email')->unique();$t->timestamp('email_verified_at')->nullable();$t->string('password');$t->integer('status_id')->nullable();$t->string('avatar')->nullable();$t->rememberToken();$t->timestamps();});
+        Schema::create('permissions', function(Blueprint $t){$t->id();$t->string('name');$t->string('guard_name');$t->timestamps();$t->unique(['name','guard_name']);});
+        Schema::create('roles', function(Blueprint $t){$t->id();$t->string('name');$t->string('guard_name');$t->timestamps();});
+        Schema::create('model_has_permissions', function(Blueprint $t){$t->unsignedBigInteger('permission_id');$t->string('model_type');$t->unsignedBigInteger('model_id');$t->index(['model_id','model_type']);});
+        Schema::create('model_has_roles', function(Blueprint $t){$t->unsignedBigInteger('role_id');$t->string('model_type');$t->unsignedBigInteger('model_id');});
+        Schema::create('role_has_permissions', function(Blueprint $t){$t->unsignedBigInteger('permission_id');$t->unsignedBigInteger('role_id');});
         Schema::create('bookings', fn(Blueprint $t) => $this->bookingSchema($t));
         Schema::create('project_head_subheads', function(Blueprint $t){$t->id();$t->integer('project_id');$t->integer('head_accounting_id');$t->integer('subhead_accounting_id');$t->integer('plot_id')->nullable();$t->integer('customer_id')->nullable();});
         Schema::create('journal_vouchers', function(Blueprint $t){$t->id();$t->string('voucher_number');$t->string('type');$t->string('reference')->nullable();$t->integer('project_id');$t->decimal('total_debit',15,2);$t->decimal('total_credit',15,2);$t->string('status');$t->timestamps();$t->softDeletes();});

@@ -21,7 +21,10 @@ use App\Models\Project;
 use App\Models\ProjectHeadSubhead;
 use App\Models\SubheadAccounting;
 use App\Models\User;
+use App\Services\Booking\BookingEditLifecycleInspector;
+use App\Services\Booking\BookingPricingUpdateService;
 use Carbon\Carbon;
+use DomainException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -111,8 +114,9 @@ class BookingController extends Controller
         return view('admin.booking.sale', $x);
     }
 
-    public function editBooking($id)
+    public function editBooking($id, ?BookingEditLifecycleInspector $inspector = null)
     {
+        $inspector ??= app(BookingEditLifecycleInspector::class);
         $booking = Booking::with(['project', 'customer', 'plot', 'broker'])
             ->where('project_id', getSelectedTown())
             ->where('cancel_status', '0')
@@ -133,7 +137,115 @@ class BookingController extends Controller
             'title' => 'Edit Booking #' . $booking->id,
             'booking' => $booking,
             'brokers' => $brokers,
+            'pricingLifecycle' => $inspector->inspect($booking)->toArray(),
         ]);
+    }
+
+    public function updateBookingPricing(Request $request, $id, BookingPricingUpdateService $service)
+    {
+        $projectId = (int) getSelectedTown();
+        Booking::query()
+            ->where('project_id', $projectId)
+            ->where('cancel_status', '0')
+            ->findOrFail($id);
+
+        $validated = $request->validate([
+            'expected_plot_rate' => ['required'],
+            'expected_is_park' => ['required', 'integer', 'in:0,1'],
+            'expected_park_facing' => ['required'],
+            'expected_is_corner' => ['required', 'integer', 'in:0,1'],
+            'expected_carner_price' => ['required'],
+            'expected_dicount_value' => ['required'],
+            'expected_total_price' => ['required'],
+            'plot_rate' => ['required'],
+            'is_park' => ['required', 'integer', 'in:0,1'],
+            'park_facing' => ['required'],
+            'is_corner' => ['required', 'integer', 'in:0,1'],
+            'carner_price' => ['required'],
+            'dicount_value' => ['required'],
+            'reason' => ['required', 'string', 'max:500'],
+            'total_price' => ['prohibited'],
+        ], [
+            'total_price.prohibited' => 'Total price is calculated by the server and cannot be submitted manually.',
+        ]);
+
+        $expectedSnapshot = collect($validated)->only([
+            'expected_plot_rate', 'expected_is_park', 'expected_park_facing',
+            'expected_is_corner', 'expected_carner_price',
+            'expected_dicount_value', 'expected_total_price',
+        ])->all();
+        $requestedPricing = collect($validated)->only([
+            'plot_rate', 'is_park', 'park_facing', 'is_corner',
+            'carner_price', 'dicount_value',
+        ])->all();
+
+        try {
+            $result = $service->updatePristineBooking(
+                (int) $id,
+                $projectId,
+                $expectedSnapshot,
+                $requestedPricing,
+                Auth::id(),
+                trim($validated['reason'])
+            );
+        } catch (DomainException $exception) {
+            Log::warning('Booking pricing update blocked.', [
+                'booking_id' => (int) $id,
+                'project_id' => $projectId,
+                'user_id' => Auth::id(),
+                'code' => $exception->getMessage(),
+            ]);
+
+            return back()->withErrors([
+                'pricing' => $this->bookingPricingErrorMessage($exception->getMessage()),
+            ])->withInput();
+        } catch (\Throwable $exception) {
+            Log::error('Booking pricing update failed.', [
+                'booking_id' => (int) $id,
+                'project_id' => $projectId,
+                'user_id' => Auth::id(),
+                'exception' => get_class($exception),
+            ]);
+
+            return back()->withErrors([
+                'pricing' => 'Booking pricing could not be updated. Please try again.',
+            ])->withInput();
+        }
+
+        if (!$result->changed) {
+            $message = 'No pricing changes were needed.';
+        } elseif (bccomp($result->deltaFromBooking, '0.00', 2) === 0) {
+            $message = 'Booking sales accounting synchronized successfully.';
+        } else {
+            $message = 'Booking pricing and original sales accounting updated successfully.';
+        }
+
+        return redirect(route('booking.edit', ['id' => $id]) . '#pricing')->with('success', $message);
+    }
+
+    public function legacyPriceRedirect($id)
+    {
+        $booking = Booking::query()
+            ->where('project_id', (int) getSelectedTown())
+            ->where('cancel_status', '0')
+            ->findOrFail($id);
+
+        return redirect(route('booking.edit', ['id' => $booking->id]) . '#pricing');
+    }
+
+    private function bookingPricingErrorMessage(string $code): string
+    {
+        return match ($code) {
+            'STALE_BOOKING_PRICING', 'EXPECTED_PRICING_SNAPSHOT_INCOMPLETE' =>
+                'This booking pricing changed after you opened the page. Refresh and review the latest pricing before saving.',
+            'BOOKING_NOT_ACTIVE' => 'Pricing cannot be changed because this booking is not active.',
+            'SCHEDULE_EXISTS' => 'Pricing cannot be changed because a payment schedule already exists.',
+            'PAYMENT_ACTIVITY_EXISTS' => 'Pricing cannot be changed because payment or recovery activity exists.',
+            'TRANSFER_HISTORY_EXISTS' => 'Pricing cannot be changed after File Transfer.',
+            'RESALE_HISTORY_EXISTS' => 'Pricing cannot be changed because resale history exists.',
+            'VOUCHER_NOT_PENDING' => 'Pricing cannot be changed because the original Sales Voucher is no longer pending.',
+            default => 'Pricing cannot be updated because the original booking accounting structure requires review.',
+        };
     }
 
     public function updateBooking(Request $request, $id)
@@ -1849,17 +1961,6 @@ class BookingController extends Controller
         return view('admin.booking.schedule_form', $x);
     }
 
-    public function PriceForm(Request $request, $id)
-    {
-        $booking_id = $id;
-        $x['title'] = 'Plots Price Update';
-        $x['data'] = Booking::with('customer', 'plot', 'project')->where('cancel_status', '0')->findOrFail($booking_id);
-        $x['role'] = Role::get();
-
-        return view('admin.booking.price_form', $x);
-    }
-
-
     public function storePaymentSchedule(Request $request)
     {
         // Validate the incoming request data
@@ -3271,45 +3372,6 @@ class BookingController extends Controller
         };
     }
 
-
-    public function booking_price_update(Request $request)
-    {
-        // Validate the incoming request data
-        $validatedData = $request->validate([
-            'booking_id' => 'required|exists:bookings,id',
-            'plot_size' => 'required|numeric',
-            'new_rate' => 'required|numeric',
-            'discount_price' => 'required|numeric',
-            'total_new_value' => 'required|numeric',
-        ]);
-
-        try {
-            // Find the booking by ID
-            $booking = Booking::findOrFail($validatedData['booking_id']);
-
-            // Update the booking details
-            $booking->plot_rate = $validatedData['new_rate'];
-            $booking->dicount_value = $validatedData['discount_price'];
-            $booking->total_price = $validatedData['total_new_value'];
-
-            // Save the updated booking
-            $booking->save();
-
-            // Return a success response in JSON format
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Booking price updated successfully!',
-                'data' => $booking,
-            ], 200);
-        } catch (\Exception $e) {
-            // Return an error response in JSON format
-            return response()->json([
-                'status' => 'error',
-                'message' => 'An error occurred while updating the booking price. Please try again.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
 
     public function destroy_booking(Request $request)
     {

@@ -26,9 +26,10 @@ final class BookingPricingUpdateService
         int $projectId,
         array $expectedSnapshot,
         array $requestedPricing,
-        ?int $userId = null
+        ?int $userId = null,
+        ?string $reason = null
     ): BookingPricingUpdateResult {
-        return DB::transaction(function () use ($bookingId, $projectId, $expectedSnapshot, $requestedPricing, $userId) {
+        return DB::transaction(function () use ($bookingId, $projectId, $expectedSnapshot, $requestedPricing, $userId, $reason) {
             $booking = Booking::query()
                 ->where('project_id', $projectId)
                 ->where('cancel_status', '0')
@@ -89,7 +90,7 @@ final class BookingPricingUpdateService
                     'project_id' => $booking->project_id,
                     'user_id' => $userId,
                     'operation' => $bookingPricingMatches ? 'pricing_accounting_repair' : 'pricing_update',
-                    'reason' => null,
+                    'reason' => $reason,
                     'old_values' => $this->pricingValues($expectedSnapshot, true),
                     'new_values' => [
                         'plot_rate' => $calculation->plotRate,

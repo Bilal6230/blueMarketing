@@ -96,7 +96,7 @@ class BookingEditPageTest extends TestCase
 
         $this->assertNotNull($route);
         $this->assertSame(['GET', 'HEAD'], $route->methods());
-        $this->assertContains('permission:update plot', $route->gatherMiddleware());
+        $this->assertContains('permission:update plot|update booking price', $route->gatherMiddleware());
     }
 
     public function test_update_route_is_put_only_and_requires_update_plot_permission(): void
@@ -106,6 +106,33 @@ class BookingEditPageTest extends TestCase
         $this->assertNotNull($route);
         $this->assertSame(['PUT'], $route->methods());
         $this->assertContains('permission:update plot', $route->gatherMiddleware());
+    }
+
+    public function test_pricing_route_is_put_only_and_requires_financial_permission(): void
+    {
+        $route = app('router')->getRoutes()->getByName('booking.pricing.update');
+        $this->assertNotNull($route);
+        $this->assertSame(['PUT'], $route->methods());
+        $this->assertContains('permission:update booking price', $route->gatherMiddleware());
+    }
+
+    public function test_unauthenticated_pricing_update_uses_normal_auth_redirect(): void
+    {
+        $booking = $this->createBooking();
+        $this->withCookie('selected_action', (string) $this->projectId)
+            ->put(route('booking.pricing.update', ['id' => $booking->id], false), [])
+            ->assertRedirect(route('login'));
+    }
+
+    public function test_legacy_price_get_redirects_authorized_user_to_safe_edit_section(): void
+    {
+        $booking = $this->createBooking();
+        $permission = Permission::create(['name' => 'update booking price', 'guard_name' => 'web']);
+        $this->user->givePermissionTo($permission);
+
+        $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
+            ->get(route('booking.price.update', ['id' => $booking->id], false))
+            ->assertRedirect(route('booking.edit', ['id' => $booking->id], false) . '#pricing');
     }
 
     public function test_unauthenticated_update_is_blocked(): void
@@ -531,10 +558,11 @@ class BookingEditPageTest extends TestCase
             $table->unsignedBigInteger('role_id');
         });
 
-        foreach (['customer_ledger', 'journal_vouchers', 'journal_voucher_details', 'ledgers', 'booking_details', 'booking_vouchers'] as $tableName) {
-            Schema::create($tableName, function (Blueprint $table) {
-                $table->id();
-            });
-        }
+        Schema::create('journal_vouchers', function(Blueprint $t){$t->id();$t->string('voucher_number')->nullable();$t->string('type')->nullable();$t->string('reference')->nullable();$t->integer('project_id')->nullable();$t->decimal('total_debit',15,2)->default(0);$t->decimal('total_credit',15,2)->default(0);$t->string('status')->nullable();$t->timestamps();$t->softDeletes();});
+        Schema::create('journal_voucher_details', function(Blueprint $t){$t->id();$t->integer('journal_voucher_id')->nullable();$t->integer('account_id')->nullable();$t->decimal('debit',15,2)->default(0);$t->decimal('credit',15,2)->default(0);$t->string('description')->nullable();$t->timestamps();$t->softDeletes();});
+        Schema::create('customer_ledger', function(Blueprint $t){$t->id();$t->integer('customer_id')->nullable();$t->integer('project_id')->nullable();$t->integer('plot_id')->nullable();$t->string('transaction_type')->nullable();$t->decimal('amount_in',15,2)->default(0);$t->decimal('amount_out',15,2)->default(0);});
+        Schema::create('ledgers', function(Blueprint $t){$t->id();$t->string('type')->nullable();$t->integer('type_id')->nullable();$t->integer('project_head_subheads_id')->nullable();$t->integer('customer_ledger_id')->nullable();$t->string('reference')->nullable();$t->decimal('amount_in',15,2)->default(0);$t->decimal('amount_out',15,2)->default(0);$t->string('detail')->nullable();});
+        Schema::create('booking_details', function(Blueprint $t){$t->id();$t->integer('booking_id')->nullable();});
+        Schema::create('booking_vouchers', function(Blueprint $t){$t->id();$t->integer('booking_id')->nullable();$t->string('voucher_series')->nullable();});
     }
 }

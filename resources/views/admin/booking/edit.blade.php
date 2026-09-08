@@ -42,6 +42,18 @@
         $recordedTotal = (float) $booking->total_price;
         $totalDiffers = $calculatedTotal !== null && abs($calculatedTotal - $recordedTotal) >= 0.01;
         $customerName = trim(($booking->customer->first_name ?? '') . ' ' . ($booking->customer->last_name ?? ''));
+        $pricingAllowed = (bool) ($pricingLifecycle['pricing_edit_allowed'] ?? false);
+        $canUpdateBroker = auth()->user()?->can('update plot') ?? false;
+        $canUpdatePricing = auth()->user()?->can('update booking price') ?? false;
+        $pricingEnabled = $canUpdatePricing && $pricingAllowed;
+        $blockMessages = [
+            'SCHEDULE_EXISTS' => 'Pricing cannot be changed because a payment schedule already exists.',
+            'PAYMENT_ACTIVITY_EXISTS' => 'Pricing cannot be changed because payment or recovery activity exists.',
+            'TRANSFER_HISTORY_EXISTS' => 'Pricing cannot be changed after File Transfer.',
+            'RESALE_HISTORY_EXISTS' => 'Pricing cannot be changed because resale history exists.',
+            'VOUCHER_NOT_PENDING' => 'Pricing cannot be changed because the original Sales Voucher is no longer pending.',
+            'BOOKING_NOT_ACTIVE' => 'Pricing cannot be changed because this booking is not active.',
+        ];
     @endphp
 
     <div class="content-wrapper booking-edit-page">
@@ -50,7 +62,7 @@
                 <div class="row mb-2 align-items-center">
                     <div class="col-sm-7">
                         <h1 class="m-0">Edit Booking #{{ $booking->id }}</h1>
-                        <p class="text-muted mb-0">Review the recorded booking and update its broker assignment.</p>
+                        <p class="text-muted mb-0">Review the recorded booking, broker assignment, and pricing eligibility.</p>
                     </div>
                     <div class="col-sm-5 mt-2 mt-sm-0">
                         <ol class="breadcrumb float-sm-right mb-0">
@@ -67,7 +79,7 @@
             <div class="container-fluid">
                 <div class="alert alert-info d-flex align-items-start" role="status">
                     <i class="fas fa-info-circle mt-1 mr-2"></i>
-                    <div><strong>Broker-only editing.</strong> Customer, property, pricing, and status details remain locked.</div>
+                    <div>Customer, property, booking date, and status remain locked. Broker and eligible pricing changes use separate actions.</div>
                 </div>
 
                 @if (session('success'))
@@ -109,17 +121,17 @@
                                 </div>
                                 <div class="form-group col-md-6 mb-md-0">
                                     <label>Broker</label>
-                                    <select class="form-control @error('broker_id') is-invalid @enderror" name="broker_id">
+                                    <select class="form-control @error('broker_id') is-invalid @enderror" name="broker_id" @disabled(!$canUpdateBroker)>
                                         <option value="">No Broker</option>
                                         @foreach ($brokers as $broker)
                                             <option value="{{ $broker->id }}" @selected((string) old('broker_id', $booking->broker_id) === (string) $broker->id)>{{ $broker->name }}</option>
                                         @endforeach
                                     </select>
-                                    <div class="field-note">This is the only editable Booking field in this phase.</div>
+                                    <div class="field-note">Broker changes are saved independently from pricing.</div>
                                 </div>
+                                @if ($canUpdateBroker)<div class="col-12 mt-3"><button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i> Save Broker Change</button></div>@endif
                             </div></div>
                         </div>
-
                         <div class="card section-card">
                             <div class="card-header"><h3 class="card-title">Customer &amp; Ownership</h3></div>
                             <div class="card-body"><div class="row">
@@ -217,9 +229,64 @@
 
                 <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mt-4">
                     <a href="{{ route('booking.plot.index') }}" class="btn btn-secondary"><i class="fas fa-arrow-left mr-1"></i> Back to Bookings</a>
-                    <button type="submit" class="btn btn-primary mt-2 mt-sm-0"><i class="fas fa-save mr-1"></i> Save Broker Change</button>
                 </div>
                 </form>
+
+                <div id="pricing" class="card section-card mt-4">
+                    <div class="card-header"><h3 class="card-title">Pricing &amp; Charges</h3></div>
+                    <div class="card-body">
+                        @if (!$canUpdatePricing)
+                            <div class="alert alert-secondary">You do not have permission to update booking pricing.</div>
+                        @elseif (!$pricingAllowed)
+                            <div class="alert alert-warning">
+                                @foreach (($pricingLifecycle['pricing_block_reasons'] ?? []) as $reason)
+                                    <div>{{ $blockMessages[$reason] ?? 'Pricing cannot be changed because the original booking accounting structure requires review.' }}</div>
+                                @endforeach
+                            </div>
+                        @elseif (!($pricingLifecycle['amounts_consistent'] ?? true))
+                            <div class="alert alert-warning">The saved booking amount and original sales accounting are currently different. Saving this pricing record will synchronize the original pending sales accounting to the authoritative booking amount.</div>
+                        @endif
+
+                        <form method="POST" action="{{ route('booking.pricing.update', ['id' => $booking->id]) }}">
+                            @csrf
+                            @method('PUT')
+                            @foreach (['plot_rate', 'is_park', 'park_facing', 'is_corner', 'carner_price', 'dicount_value', 'total_price'] as $field)
+                                <input type="hidden" name="expected_{{ $field }}" value="{{ $booking->{$field} }}">
+                            @endforeach
+                            <div class="row">
+                                <div class="form-group col-md-4"><label>Plot Rate</label><input name="plot_rate" class="form-control" value="{{ old('plot_rate', $booking->plot_rate) }}" @disabled(!$pricingEnabled)></div>
+                                <div class="form-group col-md-4"><label>Park Facing</label><select id="pricing_is_park" name="is_park" class="form-control" @disabled(!$pricingEnabled)><option value="0" @selected((int) old('is_park', $booking->is_park) === 0)>No</option><option value="1" @selected((int) old('is_park', $booking->is_park) === 1)>Yes</option></select></div>
+                                <div class="form-group col-md-4"><label>Park Charge</label><input id="pricing_park_charge" name="park_facing" class="form-control" value="{{ old('park_facing', $booking->park_facing) }}" @disabled(!$pricingEnabled)></div>
+                                <div class="form-group col-md-4"><label>Corner Plot</label><select id="pricing_is_corner" name="is_corner" class="form-control" @disabled(!$pricingEnabled)><option value="0" @selected((int) old('is_corner', $booking->is_corner) === 0)>No</option><option value="1" @selected((int) old('is_corner', $booking->is_corner) === 1)>Yes</option></select></div>
+                                <div class="form-group col-md-4"><label>Corner Charge</label><input id="pricing_corner_charge" name="carner_price" class="form-control" value="{{ old('carner_price', $booking->carner_price) }}" @disabled(!$pricingEnabled)></div>
+                                <div class="form-group col-md-4"><label>Discount</label><input name="dicount_value" class="form-control" value="{{ old('dicount_value', $booking->dicount_value) }}" @disabled(!$pricingEnabled)></div>
+                                <div class="form-group col-md-8"><label>Reason for pricing change</label><textarea name="reason" maxlength="500" class="form-control" placeholder="Client-approved discount correction, rate correction, or park/corner charge correction" @disabled(!$pricingEnabled)>{{ old('reason') }}</textarea></div>
+                                <div class="form-group col-md-4"><label>Server-calculated total</label><input class="form-control" value="Rs. {{ $money($booking->total_price) }}" disabled><div class="field-note">The server calculator is authoritative.</div></div>
+                            </div>
+                            @if ($pricingEnabled)<button type="submit" class="btn btn-danger"><i class="fas fa-calculator mr-1"></i> Save Pricing Change</button>@endif
+                        </form>
+                    </div>
+                </div>
+                @if ($pricingEnabled)
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function () {
+                            function bindCharge(toggleId, chargeId) {
+                                const toggle = document.getElementById(toggleId);
+                                const charge = document.getElementById(chargeId);
+                                const sync = function () {
+                                    const enabled = toggle.value === '1';
+                                    charge.readOnly = !enabled;
+                                    charge.classList.toggle('bg-light', !enabled);
+                                    if (!enabled) charge.value = '0';
+                                };
+                                toggle.addEventListener('change', sync);
+                                sync();
+                            }
+                            bindCharge('pricing_is_park', 'pricing_park_charge');
+                            bindCharge('pricing_is_corner', 'pricing_corner_charge');
+                        });
+                    </script>
+                @endif
             </div>
         </section>
     </div>

@@ -93,14 +93,14 @@
                                                 </td>
                                                 <td>{{ $i->customer->phone_number }}</td>
                                                 <td>
-                                                    @canany(['update plot number', 'update booking price'])
-                                                        <a href="{{ route('booking.price.update', ['id' => $i->id]) }}"
+                                                    @can('update booking price')
+                                                        <a href="{{ route('booking.edit', ['id' => $i->id]) }}#pricing"
                                                             class="btn btn-link">
                                                             {{ Setting::formatAmount($i->total_price) }}
                                                         </a>
                                                     @else
                                                         {{ Setting::formatAmount($i->total_price) }}
-                                                    @endcanany
+                                                    @endcan
                                                 </td>
                                                 @canany(['update plot', 'delete plot', 'delete booking'])
                                                     <td>
