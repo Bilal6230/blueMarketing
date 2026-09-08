@@ -214,7 +214,7 @@ class BookingController extends Controller
 
         if (!$result->changed) {
             $message = 'No pricing changes were needed.';
-        } elseif (bccomp($result->deltaFromBooking, '0.00', 2) === 0) {
+        } elseif ($result->operation === 'pricing_accounting_repair') {
             $message = 'Booking sales accounting synchronized successfully.';
         } else {
             $message = 'Booking pricing and original sales accounting updated successfully.';

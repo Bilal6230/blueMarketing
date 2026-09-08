@@ -113,6 +113,18 @@ class BookingDomainFoundationTest extends TestCase
         $this->assertContains('BOOKING_DELETED', $result['pricing_block_reasons']);
     }
 
+    public function test_inactive_booking_blocks_pricing_but_not_metadata(): void
+    {
+        $this->booking->update(['status' => 'inactive']);
+
+        $result = $this->inspect($this->booking->fresh());
+
+        $this->assertFalse($result['is_active']);
+        $this->assertFalse($result['pricing_edit_allowed']);
+        $this->assertContains('BOOKING_NOT_ACTIVE', $result['pricing_block_reasons']);
+        $this->assertTrue($result['metadata_edit_allowed']);
+    }
+
     public function test_non_pending_voucher_statuses_block_pricing(): void
     {
         foreach (['approved', 'rejected'] as $status) {

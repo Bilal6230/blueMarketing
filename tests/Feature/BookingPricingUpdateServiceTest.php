@@ -248,6 +248,39 @@ class BookingPricingUpdateServiceTest extends TestCase
         $this->assertSame('Client-approved rate correction', $audit->reason);
     }
 
+    public function test_http_component_change_with_same_total_is_classified_as_pricing_update(): void
+    {
+        $user = $this->authorizedPricingUser();
+
+        $this->actingAs($user)->withCookie('selected_action', '10')
+            ->put(route('booking.pricing.update', ['id' => $this->booking->id], false), $this->httpPayload([
+                'plot_rate' => '510000', 'dicount_value' => '100000',
+            ], ['reason' => 'Offsetting rate and discount correction']))
+            ->assertSessionHas('success', 'Booking pricing and original sales accounting updated successfully.');
+
+        $audit = DB::table('booking_edit_audits')->sole();
+        $this->assertSame('pricing_update', $audit->operation);
+        $this->assertSame(0, bccomp((string) $audit->delta, '0.00', 2));
+    }
+
+    public function test_http_client_like_discount_change_synchronizes_without_duplicate_records(): void
+    {
+        $user = $this->authorizedPricingUser();
+        $this->setBookingPricing('1162500', '11625000');
+        $this->setAccountingPrincipal('11625000');
+        $beforeIds = $this->ids();
+
+        $this->actingAs($user)->withCookie('selected_action', '10')
+            ->put(route('booking.pricing.update', ['id' => $this->booking->id], false), $this->httpPayload([
+                'plot_rate' => '1162500', 'dicount_value' => '697500',
+            ], ['reason' => 'Client-approved discount correction']))
+            ->assertSessionHas('success', 'Booking pricing and original sales accounting updated successfully.');
+
+        $this->assertPrincipal('10927500.00');
+        $this->assertSame($beforeIds, $this->ids());
+        $this->assertSame('pricing_update', DB::table('booking_edit_audits')->sole()->operation);
+    }
+
     public function test_http_stale_snapshot_is_rejected_without_mutation_or_audit(): void
     {
         $user = $this->authorizedPricingUser();
@@ -281,6 +314,7 @@ class BookingPricingUpdateServiceTest extends TestCase
         return [
             'schedule' => ['schedule'], 'payment' => ['primary_payment'], 'transfer' => ['transfer'],
             'resale' => ['resale'], 'approved' => ['approved'], 'rejected' => ['rejected'],
+            'inactive' => ['inactive'],
             'duplicate accounting' => ['shape:duplicate_voucher'], 'internal mismatch' => ['shape:header_mismatch'],
             'cancelled' => ['cancelled', true], 'deleted' => ['deleted', true],
         ];
@@ -335,6 +369,7 @@ class BookingPricingUpdateServiceTest extends TestCase
             'resale' => DB::table('ledgers')->insert(array_merge($this->ledgerRow(999, 999, 999, 1, 0), ['detail' => 'RESALE_PROFIT#' . $this->booking->id])),
             'approved', 'rejected' => DB::table('journal_vouchers')->where('id', $this->voucherId)->update(['status' => $case]),
             'cancelled' => DB::table('bookings')->where('id', $this->booking->id)->update(['cancel_status' => '1']),
+            'inactive' => DB::table('bookings')->where('id', $this->booking->id)->update(['status' => 'inactive']),
             'deleted' => $this->booking->delete(),
             'unexpected_detail' => DB::table('journal_voucher_details')->insert($this->detailRow($this->voucherId, 999, 1, 1)),
         };

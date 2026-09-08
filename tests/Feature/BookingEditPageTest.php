@@ -80,6 +80,19 @@ class BookingEditPageTest extends TestCase
         $this->callEditController($booking->id, $this->projectId);
     }
 
+    public function test_inactive_booking_edit_reports_disabled_pricing_with_safe_message(): void
+    {
+        $booking = $this->createBooking(['status' => 'inactive']);
+        $view = $this->callEditController($booking->id, $this->projectId);
+        $lifecycle = $view->getData()['pricingLifecycle'];
+        $blade = file_get_contents(resource_path('views/admin/booking/edit.blade.php'));
+
+        $this->assertFalse($lifecycle['pricing_edit_allowed']);
+        $this->assertContains('BOOKING_NOT_ACTIVE', $lifecycle['pricing_block_reasons']);
+        $this->assertStringContainsString('Pricing cannot be changed because this booking is not active.', $blade);
+        $this->assertStringContainsString('@disabled(!$pricingEnabled)', $blade);
+    }
+
     public function test_unauthorized_user_cannot_open_route(): void
     {
         $booking = $this->createBooking();
@@ -133,6 +146,31 @@ class BookingEditPageTest extends TestCase
         $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
             ->get(route('booking.price.update', ['id' => $booking->id], false))
             ->assertRedirect(route('booking.edit', ['id' => $booking->id], false) . '#pricing');
+    }
+
+    public function test_edit_permission_matrix_keeps_broker_and_pricing_actions_independent(): void
+    {
+        $booking = $this->createBooking();
+        $pricing = Permission::create(['name' => 'update booking price', 'guard_name' => 'web']);
+        $broker = Permission::create(['name' => 'update plot', 'guard_name' => 'web']);
+
+        $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
+            ->get(route('booking.edit', ['id' => $booking->id], false))->assertForbidden();
+
+        $this->user->givePermissionTo($broker);
+        $request = Request::create(route('booking.edit', ['id' => $booking->id], false), 'GET');
+        $this->assertSame('opened', app(PermissionMiddleware::class)->handle($request, fn () => 'opened', 'update plot|update booking price'));
+        $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
+            ->put(route('booking.pricing.update', ['id' => $booking->id], false), [])->assertForbidden();
+
+        $this->user->revokePermissionTo($broker);
+        $this->user->givePermissionTo($pricing);
+        $this->assertSame('opened', app(PermissionMiddleware::class)->handle($request, fn () => 'opened', 'update plot|update booking price'));
+        $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
+            ->put(route('booking.update', ['id' => $booking->id], false), $this->updatePayload($booking))->assertForbidden();
+
+        $this->user->givePermissionTo($broker);
+        $this->assertSame('opened', app(PermissionMiddleware::class)->handle($request, fn () => 'opened', 'update plot|update booking price'));
     }
 
     public function test_unauthenticated_update_is_blocked(): void

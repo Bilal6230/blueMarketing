@@ -55,6 +55,9 @@ final class BookingPricingUpdateService
             $newTotal = $calculation->totalPrice;
             $bookingPricingMatches = $this->bookingPricingMatches($booking, $requestedPricing, $newTotal);
             $accountingMatches = bccomp($oldPrincipal, $newTotal, 2) === 0;
+            $operation = !$bookingPricingMatches
+                ? 'pricing_update'
+                : (!$accountingMatches ? 'pricing_accounting_repair' : null);
 
             if (!$bookingPricingMatches || !$accountingMatches) {
                 $booking->plot_rate = $calculation->plotRate;
@@ -89,7 +92,7 @@ final class BookingPricingUpdateService
                     'booking_id' => $booking->id,
                     'project_id' => $booking->project_id,
                     'user_id' => $userId,
-                    'operation' => $bookingPricingMatches ? 'pricing_accounting_repair' : 'pricing_update',
+                    'operation' => $operation,
                     'reason' => $reason,
                     'old_values' => $this->pricingValues($expectedSnapshot, true),
                     'new_values' => [
@@ -119,7 +122,8 @@ final class BookingPricingUpdateService
                 $oldPrincipal,
                 $newTotal,
                 bcsub($newTotal, $oldBookingTotal, 2),
-                bcsub($newTotal, $oldPrincipal, 2)
+                bcsub($newTotal, $oldPrincipal, 2),
+                $operation
             );
         });
     }

@@ -10,7 +10,8 @@ final class BookingPricingUpdateResult
         public string $oldAccountingPrincipal,
         public string $newTotal,
         public string $deltaFromBooking,
-        public string $deltaFromAccounting
+        public string $deltaFromAccounting,
+        public ?string $operation
     ) {
     }
 
@@ -23,6 +24,7 @@ final class BookingPricingUpdateResult
             'new_total' => $this->newTotal,
             'delta_from_booking' => $this->deltaFromBooking,
             'delta_from_accounting' => $this->deltaFromAccounting,
+            'operation' => $this->operation,
         ];
     }
 }

@@ -37,11 +37,15 @@ final class BookingEditLifecycleInspector
             ->where('reference', $booking->id)
             ->where('detail', 'like', 'RESALE_PROFIT#' . $booking->id . '%')
             ->exists();
+        $isActive = (string) $booking->status === 'active';
         $isCancelled = (string) $booking->cancel_status === '1';
         $isDeleted = $booking->trashed();
         $accounting = $this->accountingResolver->resolve($booking);
 
         $reasons = $accounting->blockReasons;
+        if (!$isActive) {
+            $reasons[] = 'BOOKING_NOT_ACTIVE';
+        }
         if ($isCancelled) {
             $reasons[] = 'BOOKING_CANCELLED';
         }
@@ -63,6 +67,7 @@ final class BookingEditLifecycleInspector
         $reasons = array_values(array_unique($reasons));
 
         return new BookingEditLifecycleResult([
+            'is_active' => $isActive,
             'is_cancelled' => $isCancelled,
             'is_deleted' => $isDeleted,
             'has_schedule' => $scheduleCount > 0,
