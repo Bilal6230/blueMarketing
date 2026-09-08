@@ -35,7 +35,7 @@ class BookingPriceCalculatorTest extends TestCase
             ],
             'park and corner combined' => [
                 ['5.50', '1,000,000.25', 1, '100,000.10', 1, '75,000.20', '50,000.05'],
-                ['plot_size' => '5.50', 'plot_rate' => '1000000.25', 'base_amount' => '5500001.37', 'park_charge' => '100000.10', 'corner_charge' => '75000.20', 'discount' => '50000.05', 'gross_amount' => '5675001.67', 'total_price' => '5625001.62'],
+                ['plot_size' => '5.50', 'plot_rate' => '1000000.25', 'base_amount' => '5500001.38', 'park_charge' => '100000.10', 'corner_charge' => '75000.20', 'discount' => '50000.05', 'gross_amount' => '5675001.68', 'total_price' => '5625001.63'],
             ],
         ];
     }
@@ -64,6 +64,7 @@ class BookingPriceCalculatorTest extends TestCase
             'invalid commas' => [[...$base, 1 => '10,00'], 'PLOT_RATE_INVALID'],
             'zero rate' => [[...$base, 1 => '0'], 'PLOT_RATE_MUST_BE_POSITIVE'],
             'discount above gross' => [[...$base, 6 => '5000001'], 'DISCOUNT_EXCEEDS_GROSS'],
+            'total is zero' => [[...$base, 6 => '5000000'], 'TOTAL_MUST_BE_POSITIVE'],
             'database overflow' => [['10', '99999999.99', 0, '0', 0, '0', '0'], 'BASE_AMOUNT_DB_OVERFLOW'],
             'nonnumeric plot size' => [['10 Marla', '500000', 0, '0', 0, '0', '0'], 'PLOT_SIZE_INVALID'],
         ];
@@ -78,11 +79,19 @@ class BookingPriceCalculatorTest extends TestCase
         $this->assertNotContains('total_price', $names);
     }
 
-    public function test_current_unconfirmed_money_policy_truncates_beyond_two_decimals(): void
+    /** @dataProvider halfUpCases */
+    public function test_money_is_rounded_half_up(string $value, string $expected): void
     {
-        $result = $this->calculator->calculate('5.50', '1,000,000.25', 0, '0', 0, '0', '0');
+        $this->assertSame($expected, $this->calculator->roundMoneyHalfUp($value));
+    }
 
-        $this->assertSame('5500001.37', $result->baseAmount);
-        $this->assertNotSame('5500001.38', $result->baseAmount);
+    public function halfUpCases(): array
+    {
+        return [
+            'below half' => ['1.004', '1.00'],
+            'at half' => ['1.005', '1.01'],
+            'above half' => ['1.006', '1.01'],
+            'carry' => ['99.995', '100.00'],
+        ];
     }
 }

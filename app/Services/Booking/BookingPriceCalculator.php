@@ -35,7 +35,7 @@ final class BookingPriceCalculator
 
         $park = $parkEnabled ? $parkInput : '0.00';
         $corner = $cornerEnabled ? $cornerInput : '0.00';
-        $base = $this->applyUnconfirmedMoneyScalePolicy(bcmul($size, $rate, 4));
+        $base = $this->roundMoneyHalfUp(bcmul($size, $rate, 4));
         $gross = bcadd(bcadd($base, $park, 2), $corner, 2);
 
         $this->assertDatabaseRange($base, 'base_amount');
@@ -96,15 +96,12 @@ final class BookingPriceCalculator
         }
     }
 
-    /**
-     * Temporary Phase 4A behavior: truncate to two decimal places.
-     *
-     * The business rounding policy is not yet confirmed. Keeping this operation
-     * isolated prevents future write behavior from depending on an implicit
-     * BCMath scale choice and allows replacement with the approved rule.
-     */
-    private function applyUnconfirmedMoneyScalePolicy(string $value): string
+    public function roundMoneyHalfUp(string $value): string
     {
-        return bcadd($value, '0', 2);
+        if (!preg_match('/^(?:0|[1-9]\d*)(?:\.\d+)?$/', $value)) {
+            throw new InvalidArgumentException('MONEY_ROUNDING_INPUT_INVALID');
+        }
+
+        return bcadd(bcadd($value, '0.005', 3), '0', 2);
     }
 }
