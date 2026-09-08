@@ -188,12 +188,12 @@
                                             <div class="form-group">
                                                 {{-- <label for="status">Status</label> --}}
                                                 <input type="hidden" name="status"
-                                                    value="{{ $booking->status == 'active' ? '1' : '0' }}">
+                                                    value="{{ $booking->status }}">
                                                 <select class="form-control" id="status" name="status" required
                                                     placeholder="Status" disabled>
-                                                    <option value="1" {{ $booking->status == '1' ? 'selected' : '' }}>Active
+                                                    <option value="active" {{ $booking->status == 'active' ? 'selected' : '' }}>Active
                                                     </option>
-                                                    <option value="0" {{ $booking->status == '0' ? 'selected' : '' }}>Inactive
+                                                    <option value="inactive" {{ $booking->status == 'inactive' ? 'selected' : '' }}>Inactive
                                                     </option>
                                                 </select>
                                             </div>

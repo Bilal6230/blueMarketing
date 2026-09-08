@@ -611,7 +611,7 @@ class BookingController extends Controller
             'plot_rate' => 'required',
             'total_price' => 'required',
             'booking_date' => 'required|date',
-            'status' => 'required|numeric',
+            'status' => 'required|string',
             'expected_updated_at' => 'present|nullable|string',
             'expected_project_id' => 'required|integer',
             'expected_customer_id' => 'required|integer',
@@ -635,13 +635,11 @@ class BookingController extends Controller
         }
 
         $userId = Auth::id();
-        $plotType = $this->plotTypePrefix((int) $request->plot_type);
-
         // Money (sanitize)
         $newTotalPrice = $this->sanitizeMoney($request->input('total_price'));
         $newPlotRate = $this->sanitizeMoney($request->input('plot_rate'));
         try {
-            DB::transaction(function () use ($request, $userId, $plotType, $newTotalPrice, $newPlotRate) {
+            DB::transaction(function () use ($request, $userId, $newTotalPrice, $newPlotRate) {
                 if (empty($request->id)) {
                     throw new \RuntimeException('Transfer update requires an existing booking record.');
                 }
@@ -653,21 +651,24 @@ class BookingController extends Controller
                     ->firstOrFail();
 
                 $this->validateFileTransferSnapshot($request, $existingBooking);
+                $this->validateFileTransferImmutableFields($request, $existingBooking);
                 $oldProjectId = (int) $existingBooking->project_id;
                 $oldCustomerId = (int) $existingBooking->customer_id;
                 $oldPlotId = (int) $existingBooking->plot_id;
                 $newCustomerId = (int) $request->input('customer_id');
                 $isTransfer = $oldCustomerId !== $newCustomerId;
+                $plotType = $this->plotTypePrefix((int) $existingBooking->plot_type);
+                $transferDate = Carbon::parse($request->input('booking_date'))->format('Y-m-d');
 
                 // 1) Upsert booking
                 $booking = Booking::updateOrCreate(
                     ['id' => $request->id],
                     [
-                        'project_id' => $request->input('project_id'),
+                        'project_id' => $existingBooking->project_id,
                         'customer_id' => $request->input('customer_id'),
-                        'plot_id' => $request->input('plot_id'),
-                        'plot_type' => $request->input('plot_type'),
-                        'plot_size' => $request->input('plot_size'),
+                        'plot_id' => $existingBooking->plot_id,
+                        'plot_type' => $existingBooking->plot_type,
+                        'plot_size' => $existingBooking->plot_size,
                         'plot_rate' => $newPlotRate,
                         'is_corner' => $request->input('is_corner') ?? 0,
                         'is_park' => $request->input('is_park') ?? 0,
@@ -675,9 +676,9 @@ class BookingController extends Controller
                         'carner_price' => $request->input('carner_price') ?? 0,
                         'dicount_value' => $request->input('discount_value') ?? 0,
                         'total_price' => $newTotalPrice,
-                        'broker_id' => $request->input('broker_id'),
-                        'booking_date' => $request->input('booking_date'),
-                        'status' => $request->input('status'),
+                        'broker_id' => $existingBooking->broker_id,
+                        'booking_date' => $existingBooking->booking_date,
+                        'status' => $existingBooking->status,
                         'user_id' => $userId,
                     ]
                 );
@@ -723,7 +724,7 @@ class BookingController extends Controller
                     $salesVoucher = $this->createSalesVoucher([
                         'project_id' => (int) $booking->project_id,
                         'reference' => 'TRANSFER-' . $booking->id,
-                        'date' => $booking->booking_date,
+                        'date' => $transferDate,
                         'description' => 'File Transfer: Plot ' . $plotType . $plotName . ' transferred from ' . ($oldCustomerName ?: 'Old Customer') . ' to ' . ($newCustomerName ?: 'New Customer'),
                         'total_amount' => $newAmount,
                         'source_type' => 'TRANSFER',
@@ -739,7 +740,8 @@ class BookingController extends Controller
                         $plotName,
                         $request,
                         $userId,
-                        $salesVoucher
+                        $salesVoucher,
+                        $transferDate
                     );
                 }
 
@@ -796,6 +798,34 @@ class BookingController extends Controller
             throw ValidationException::withMessages([
                 'booking' => 'This booking was changed after you opened the File Transfer page. Refresh and review the latest booking before continuing.',
             ]);
+        }
+    }
+
+    private function validateFileTransferImmutableFields(Request $request, Booking $booking): void
+    {
+        $submitted = [
+            'project_id' => (int) $request->input('project_id'),
+            'plot_id' => (int) $request->input('plot_id'),
+            'plot_type' => (int) $request->input('plot_type'),
+            'plot_size' => trim((string) $request->input('plot_size')),
+            'broker_id' => $request->filled('broker_id') ? (int) $request->input('broker_id') : null,
+            'status' => trim((string) $request->input('status')),
+        ];
+        $persisted = [
+            'project_id' => (int) $booking->project_id,
+            'plot_id' => (int) $booking->plot_id,
+            'plot_type' => (int) $booking->plot_type,
+            'plot_size' => trim((string) $booking->plot_size),
+            'broker_id' => $booking->broker_id === null ? null : (int) $booking->broker_id,
+            'status' => trim((string) $booking->status),
+        ];
+
+        foreach ($persisted as $field => $value) {
+            if ($submitted[$field] !== $value) {
+                throw ValidationException::withMessages([
+                    $field => 'This booking field cannot be changed during File Transfer.',
+                ]);
+            }
         }
     }
 
@@ -1052,7 +1082,8 @@ class BookingController extends Controller
         string $plotName,
         Request $request,
         int $userId,
-        JournalVoucher $salesVoucher
+        JournalVoucher $salesVoucher,
+        string $transferDate
     ): void {
         // Profit = new - old (only if positive)
         $profit = bcsub($newAmount, $oldAmount, 2);
@@ -1106,7 +1137,7 @@ class BookingController extends Controller
             'reference' => $booking->id,
             'amount_in' => 0,
             'amount_out' => $oldAmount,
-            'date' => $booking->booking_date,
+            'date' => $transferDate,
             'description' => "Total Sale Settlement OUT (Old Party) - {$plotType}{$plotName}",
             'update_by' => $userId,
             'create_by' => $userId,
@@ -1119,7 +1150,7 @@ class BookingController extends Controller
                 'reference' => $booking->id,
                 'amount_in' => 0,
                 'amount_out' => $profit,
-                'date' => $booking->booking_date,
+                'date' => $transferDate,
                 'description' => "Party Profit Settlement OUT (Old Party) - {$plotType}{$plotName}",
                 'update_by' => $userId,
                 'create_by' => $userId,
@@ -1145,7 +1176,7 @@ class BookingController extends Controller
             'amount_in' => $oldAmount,
             'amount_out' => 0,
             'description' => "Plot Transfer Principal Credit ({$plotType}{$plotName})",
-            'date' => $booking->booking_date,
+            'date' => $transferDate,
             'is_approve' => 1,
             'is_active' => 1,
         ]);
@@ -1155,7 +1186,7 @@ class BookingController extends Controller
             'customer_ledger_id' => $oldPrincipalCL->id,
             'amount_in' => $oldAmount,
             'amount_out' => 0,
-            'date' => $booking->booking_date,
+            'date' => $transferDate,
             'description' => "Old Party Credit  - {$plotType}{$plotName}",
             'update_by' => $userId,
             'create_by' => $userId,
@@ -1173,7 +1204,7 @@ class BookingController extends Controller
                 'amount_in' => $profit,
                 'amount_out' => 0,
                 'description' => "Plot Transfer Profit Credit ({$plotType}{$plotName})",
-                'date' => $booking->booking_date,
+                'date' => $transferDate,
                 'is_approve' => 1,
                 'is_active' => 1,
             ]);
@@ -1183,7 +1214,7 @@ class BookingController extends Controller
                 'customer_ledger_id' => $oldProfitCL->id,
                 'amount_in' => $profit,
                 'amount_out' => 0,
-                'date' => $booking->booking_date,
+                'date' => $transferDate,
                 'description' => "Old Party Credit (Profit) - {$plotType}{$plotName}",
                 'update_by' => $userId,
                 'create_by' => $userId,
@@ -1206,7 +1237,7 @@ class BookingController extends Controller
             'amount_in' => 0,
             'amount_out' => $newAmount,
             'description' => "Plot Transfer Payment ({$plotType}{$plotName})",
-            'date' => $booking->booking_date,
+            'date' => $transferDate,
             'is_approve' => 1,
             'is_active' => 1,
         ]);
@@ -1216,7 +1247,7 @@ class BookingController extends Controller
             'customer_ledger_id' => $newCL->id,
             'amount_in' => 0,
             'amount_out' => $newAmount,
-            'date' => $booking->booking_date,
+            'date' => $transferDate,
             'description' => "New Party Payment OUT - {$plotType}{$plotName}",
             'update_by' => $userId,
             'create_by' => $userId,
@@ -1235,7 +1266,7 @@ class BookingController extends Controller
             'reference' => $booking->id,
             'amount_in' => $oldAmount,
             'amount_out' => 0,
-            'date' => $booking->booking_date,
+            'date' => $transferDate,
             'description' => "Total Sale Settlement IN (New Party) - {$plotType}{$plotName}",
             'update_by' => $userId,
             'create_by' => $userId,
@@ -1248,7 +1279,7 @@ class BookingController extends Controller
                 'reference' => $booking->id,
                 'amount_in' => $profit,
                 'amount_out' => 0,
-                'date' => $booking->booking_date,
+                'date' => $transferDate,
                 'description' => "Party Profit Settlement IN (New Party) - {$plotType}{$plotName}",
                 'update_by' => $userId,
                 'create_by' => $userId,
@@ -1282,7 +1313,7 @@ class BookingController extends Controller
                 'amount_in' => 0,
                 'amount_out' => $partyFee,
                 'description' => $request->input('details') ?: "File Transfer Fee ({$plotType}{$plotName})",
-                'date' => $booking->booking_date,
+                'date' => $transferDate,
                 'payment_type' => $request->input('payment_type') ?? '1',
                 't_number' => null,
                 'bank_id' => null,
@@ -1297,7 +1328,7 @@ class BookingController extends Controller
                 'customer_ledger_id' => $feeCL->id,
                 'amount_in' => 0,
                 'amount_out' => $partyFee,
-                'date' => $booking->booking_date,
+                'date' => $transferDate,
                 'description' => "File Transfer Fee OUT - {$plotType}{$plotName}",
                 'update_by' => $userId,
                 'create_by' => $userId,
@@ -1311,7 +1342,7 @@ class BookingController extends Controller
                 'reference' => $booking->id,
                 'amount_in' => $partyFee,
                 'amount_out' => 0,
-                'date' => $booking->booking_date,
+                'date' => $transferDate,
                 'description' => "File Transfer Fee IN - {$plotType}{$plotName}",
                 'update_by' => $userId,
                 'create_by' => $userId,

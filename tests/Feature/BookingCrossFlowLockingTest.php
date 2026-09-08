@@ -18,7 +18,7 @@ class BookingCrossFlowLockingTest extends TestCase
             'DB::transaction(', '$bookings = Booking::where(', '->lockForUpdate()', 'CustomerLedger::create(',
         ]);
         $this->assertOrdered($this->method($controller, 'update'), [
-            'DB::transaction(', '$existingBooking = Booking::query()', '->lockForUpdate()', '$this->validateFileTransferSnapshot(', 'Booking::updateOrCreate(', '$this->postFileTransferEntries(', '$this->attechCustomerToOldProjectSale(',
+            'DB::transaction(', '$existingBooking = Booking::query()', '->lockForUpdate()', '$this->validateFileTransferSnapshot(', '$this->validateFileTransferImmutableFields(', 'Booking::updateOrCreate(', '$this->postFileTransferEntries(', '$this->attechCustomerToOldProjectSale(',
         ]);
         $this->assertOrdered($this->method($controller, 'cancel'), [
             'DB::transaction(', '$booking = Booking::where(', '->lockForUpdate()', '$plot = Plot::where(',
