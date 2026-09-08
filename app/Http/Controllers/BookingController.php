@@ -108,6 +108,20 @@ class BookingController extends Controller
 
         return view('admin.booking.sale', $x);
     }
+
+    public function editBooking($id)
+    {
+        $booking = Booking::with(['project', 'customer', 'plot', 'broker'])
+            ->where('project_id', getSelectedTown())
+            ->where('cancel_status', '0')
+            ->findOrFail($id);
+
+        return view('admin.booking.edit', [
+            'title' => 'Edit Booking #' . $booking->id,
+            'booking' => $booking,
+        ]);
+    }
+
     public function fileTransfer($id)
     {
         $x['title'] = 'File Transfer';

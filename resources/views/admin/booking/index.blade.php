@@ -106,6 +106,11 @@
                                                     <td>
                                                         <div class="btn-group">
                                                             @can('update plot')
+                                                                <a href="{{ route('booking.edit', ['id' => $i->id]) }}"
+                                                                    class="btn btn-xs ml-1 btn-outline-primary"
+                                                                    title="Edit Booking" aria-label="Edit Booking">
+                                                                    <i class="fas fa-pen fa-xs"></i>
+                                                                </a>
                                                                 @if (Setting::is_schedule($i->id) < 2)
                                                                     <a href="{{ route('booking.schedule.form', ['id' => $i->id]) }}"
                                                                         class="btn btn-xs ml-1 btn-primary btn-schedule"
