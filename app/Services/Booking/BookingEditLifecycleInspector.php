@@ -57,7 +57,7 @@ final class BookingEditLifecycleInspector
         if ($hasTransfer) {
             $reasons[] = 'TRANSFER_HISTORY_EXISTS';
         }
-        if ($hasResale || ($accounting->data['unexpected_voucher_line_count'] ?? 0) > 0) {
+        if ($hasResale) {
             $reasons[] = 'RESALE_HISTORY_EXISTS';
         }
         $reasons = array_values(array_unique($reasons));
@@ -69,7 +69,7 @@ final class BookingEditLifecycleInspector
             'schedule_row_count' => $scheduleCount,
             'has_payment_activity' => $hasPrimaryPayment || $hasLegacyPayment,
             'has_transfer_history' => $hasTransfer,
-            'has_resale_history' => $hasResale || ($accounting->data['unexpected_voucher_line_count'] ?? 0) > 0,
+            'has_resale_history' => $hasResale,
             'original_voucher_count' => $accounting->data['voucher_count'],
             'original_voucher_status' => $accounting->data['voucher_status'],
             'has_accounting_ambiguity' => $accounting->hasStructuralAmbiguity,

@@ -68,7 +68,7 @@ class BookingDomainFoundationTest extends TestCase
         $this->assertTrue($this->inspect()['has_payment_activity']);
     }
 
-    public function test_transfer_and_resale_history_are_detected(): void
+    public function test_transfer_and_real_resale_marker_are_detected(): void
     {
         DB::table('journal_vouchers')->insert($this->voucherRow('SV-2', 'TRANSFER-' . $this->booking->id));
         DB::table('ledgers')->insert([
@@ -82,6 +82,21 @@ class BookingDomainFoundationTest extends TestCase
         $this->assertTrue($result['has_resale_history']);
         $this->assertContains('TRANSFER_HISTORY_EXISTS', $result['pricing_block_reasons']);
         $this->assertContains('RESALE_HISTORY_EXISTS', $result['pricing_block_reasons']);
+    }
+
+    public function test_unexpected_non_resale_voucher_line_blocks_without_resale_history(): void
+    {
+        DB::table('journal_voucher_details')->insert([
+            'journal_voucher_id' => $this->voucherId, 'account_id' => 999,
+            'debit' => 1, 'credit' => 0, 'description' => 'unexpected non-resale line',
+        ]);
+
+        $result = $this->inspect();
+
+        $this->assertFalse($result['pricing_edit_allowed']);
+        $this->assertFalse($result['has_resale_history']);
+        $this->assertContains('UNEXPECTED_VOUCHER_LINES', $result['pricing_block_reasons']);
+        $this->assertNotContains('RESALE_HISTORY_EXISTS', $result['pricing_block_reasons']);
     }
 
     public function test_cancelled_and_deleted_bookings_are_blocked_but_metadata_is_separate(): void

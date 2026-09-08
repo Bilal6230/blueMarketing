@@ -35,7 +35,7 @@ final class BookingPriceCalculator
 
         $park = $parkEnabled ? $parkInput : '0.00';
         $corner = $cornerEnabled ? $cornerInput : '0.00';
-        $base = bcmul($size, $rate, 2);
+        $base = $this->applyUnconfirmedMoneyScalePolicy(bcmul($size, $rate, 4));
         $gross = bcadd(bcadd($base, $park, 2), $corner, 2);
 
         $this->assertDatabaseRange($base, 'base_amount');
@@ -94,5 +94,17 @@ final class BookingPriceCalculator
         if (bccomp($value, self::MAX_DECIMAL_10_2, 2) === 1) {
             throw new InvalidArgumentException(strtoupper($field) . '_DB_OVERFLOW');
         }
+    }
+
+    /**
+     * Temporary Phase 4A behavior: truncate to two decimal places.
+     *
+     * The business rounding policy is not yet confirmed. Keeping this operation
+     * isolated prevents future write behavior from depending on an implicit
+     * BCMath scale choice and allows replacement with the approved rule.
+     */
+    private function applyUnconfirmedMoneyScalePolicy(string $value): string
+    {
+        return bcadd($value, '0', 2);
     }
 }

@@ -77,4 +77,12 @@ class BookingPriceCalculatorTest extends TestCase
         $this->assertNotContains('totalPrice', $names);
         $this->assertNotContains('total_price', $names);
     }
+
+    public function test_current_unconfirmed_money_policy_truncates_beyond_two_decimals(): void
+    {
+        $result = $this->calculator->calculate('5.50', '1,000,000.25', 0, '0', 0, '0', '0');
+
+        $this->assertSame('5500001.37', $result->baseAmount);
+        $this->assertNotSame('5500001.38', $result->baseAmount);
+    }
 }
