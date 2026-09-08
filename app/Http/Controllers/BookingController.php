@@ -612,6 +612,22 @@ class BookingController extends Controller
             'total_price' => 'required',
             'booking_date' => 'required|date',
             'status' => 'required|numeric',
+            'expected_updated_at' => 'present|nullable|string',
+            'expected_project_id' => 'required|integer',
+            'expected_customer_id' => 'required|integer',
+            'expected_plot_id' => 'required|integer',
+            'expected_plot_type' => 'required|integer',
+            'expected_plot_size' => 'required|string',
+            'expected_plot_rate' => 'required',
+            'expected_is_park' => 'required|integer',
+            'expected_park_facing' => 'required',
+            'expected_is_corner' => 'required|integer',
+            'expected_carner_price' => 'required',
+            'expected_dicount_value' => 'required',
+            'expected_total_price' => 'required',
+            'expected_booking_date' => 'required|date',
+            'expected_status' => 'required|string',
+            'expected_broker_id' => 'present|nullable|integer',
         ]);
 
         if ($validator->fails()) {
@@ -621,16 +637,11 @@ class BookingController extends Controller
         $userId = Auth::id();
         $plotType = $this->plotTypePrefix((int) $request->plot_type);
 
-        // Determine transfer
-        $oldCustomerId = (int) $request->input('old_customer_id');
-        $newCustomerId = (int) $request->input('customer_id');
-        $isTransfer = ($oldCustomerId > 0 && $oldCustomerId !== $newCustomerId);
-
         // Money (sanitize)
         $newTotalPrice = $this->sanitizeMoney($request->input('total_price'));
         $newPlotRate = $this->sanitizeMoney($request->input('plot_rate'));
         try {
-            DB::transaction(function () use ($request, $userId, $plotType, $isTransfer, $oldCustomerId, $newTotalPrice, $newPlotRate) {
+            DB::transaction(function () use ($request, $userId, $plotType, $newTotalPrice, $newPlotRate) {
                 if (empty($request->id)) {
                     throw new \RuntimeException('Transfer update requires an existing booking record.');
                 }
@@ -640,6 +651,13 @@ class BookingController extends Controller
                     ->where('cancel_status', '0')
                     ->lockForUpdate()
                     ->firstOrFail();
+
+                $this->validateFileTransferSnapshot($request, $existingBooking);
+                $oldProjectId = (int) $existingBooking->project_id;
+                $oldCustomerId = (int) $existingBooking->customer_id;
+                $oldPlotId = (int) $existingBooking->plot_id;
+                $newCustomerId = (int) $request->input('customer_id');
+                $isTransfer = $oldCustomerId !== $newCustomerId;
 
                 // 1) Upsert booking
                 $booking = Booking::updateOrCreate(
@@ -724,10 +742,13 @@ class BookingController extends Controller
                         $salesVoucher
                     );
                 }
+
+                $this->attechCustomerToOldProjectSale($oldProjectId, $oldCustomerId, $oldPlotId);
             });
             session(['last_submit_date' => $request->booking_date]);
-            $this->attechCustomerToOldProjectSale($request->project_id, $existingBooking->customer_id, $existingBooking->plot_id);
             Alert::success('Notification', 'Data updated successfully')->toToast()->toHtml();
+        } catch (ValidationException $exception) {
+            throw $exception;
         } catch (\Throwable $th) {
             Log::error('Booking update failed', [
                 'booking_id' => $request->id ?? null,
@@ -736,11 +757,46 @@ class BookingController extends Controller
                 'customer_id' => $request->customer_id ?? null,
                 'error' => $th->getMessage(),
             ]);
-            dd($th->getMessage());
             Alert::error('Notification', 'Something went wrong. Please try again.')->toToast()->toHtml();
         }
 
         return back();
+    }
+
+    private function validateFileTransferSnapshot(Request $request, Booking $booking): void
+    {
+        $expectedVersion = $request->input('expected_updated_at');
+        $expectedVersion = $expectedVersion === null || $expectedVersion === '' ? null : (string) $expectedVersion;
+        $actualVersion = $booking->updated_at?->format('Y-m-d H:i:s.u');
+        $matches = $actualVersion === null
+            ? $expectedVersion === null
+            : $expectedVersion !== null && hash_equals($actualVersion, $expectedVersion);
+
+        foreach (['project_id', 'customer_id', 'plot_id', 'plot_type', 'is_park', 'is_corner'] as $field) {
+            $matches = $matches && (int) $request->input('expected_' . $field) === (int) $booking->{$field};
+        }
+
+        foreach (['plot_rate', 'park_facing', 'carner_price', 'dicount_value', 'total_price'] as $field) {
+            $matches = $matches && bccomp(
+                $this->sanitizeMoney($request->input('expected_' . $field)),
+                $this->sanitizeMoney($booking->{$field}),
+                2
+            ) === 0;
+        }
+
+        $expectedBrokerId = $request->filled('expected_broker_id') ? (int) $request->input('expected_broker_id') : null;
+        $actualBrokerId = $booking->broker_id === null ? null : (int) $booking->broker_id;
+        $matches = $matches
+            && trim((string) $request->input('expected_plot_size')) === trim((string) $booking->plot_size)
+            && Carbon::parse($request->input('expected_booking_date'))->format('Y-m-d H:i:s') === Carbon::parse($booking->booking_date)->format('Y-m-d H:i:s')
+            && trim((string) $request->input('expected_status')) === trim((string) $booking->status)
+            && $expectedBrokerId === $actualBrokerId;
+
+        if (!$matches) {
+            throw ValidationException::withMessages([
+                'booking' => 'This booking was changed after you opened the File Transfer page. Refresh and review the latest booking before continuing.',
+            ]);
+        }
     }
 
     private function sanitizeMoney($value): string
@@ -1788,20 +1844,28 @@ class BookingController extends Controller
         ]);
 
         DB::transaction(function () use ($request) {
-        $booking = Booking::query()
-            ->where('id', $request->input('booking_id'))
-            ->where('project_id', getSelectedTown())
-            ->where('status', 'active')
-            ->where('cancel_status', '0')
-            ->lockForUpdate()
-            ->firstOrFail();
+            $booking = Booking::query()
+                ->where('id', $request->input('booking_id'))
+                ->where('project_id', getSelectedTown())
+                ->where('status', 'active')
+                ->where('cancel_status', '0')
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $submittedTotal = $this->sanitizeMoney($request->input('total_price'));
+            $lockedTotal = $this->sanitizeMoney($booking->total_price);
+            if (bccomp($submittedTotal, $lockedTotal, 2) !== 0) {
+                throw ValidationException::withMessages([
+                    'total_price' => 'The booking amount changed after this payment schedule was opened. Refresh the booking and recreate the schedule using the latest sale amount.',
+                ]);
+            }
 
         // Delete existing booking details only after serializing on Booking.
         BookingDetail::where('booking_id', $booking->id)->delete();
 
         // Store booking details data
         $bookingId = $booking->id;
-        $totalPrice = $request->input('total_price');
+        $totalPrice = $lockedTotal;
         $instalment = $request->input('instalment');
         $paymentPlan = $request->input('payment_plan');
         $startDate = $request->input('start_date');

@@ -12,13 +12,13 @@ class BookingCrossFlowLockingTest extends TestCase
         $pricing = file_get_contents(__DIR__ . '/../../app/Services/Booking/BookingPricingUpdateService.php');
 
         $this->assertOrdered($this->method($controller, 'storePaymentSchedule'), [
-            'DB::transaction(', 'Booking::query()', '->lockForUpdate()', "BookingDetail::where('booking_id'", 'BookingDetail::create(',
+            'DB::transaction(', 'Booking::query()', '->lockForUpdate()', 'bccomp($submittedTotal, $lockedTotal, 2)', "BookingDetail::where('booking_id'", 'BookingDetail::create(',
         ]);
         $this->assertOrdered($this->method($controller, 'deposit'), [
             'DB::transaction(', '$bookings = Booking::where(', '->lockForUpdate()', 'CustomerLedger::create(',
         ]);
         $this->assertOrdered($this->method($controller, 'update'), [
-            'DB::transaction(', '$existingBooking = Booking::query()', '->lockForUpdate()', 'Booking::updateOrCreate(',
+            'DB::transaction(', '$existingBooking = Booking::query()', '->lockForUpdate()', '$this->validateFileTransferSnapshot(', 'Booking::updateOrCreate(', '$this->postFileTransferEntries(', '$this->attechCustomerToOldProjectSale(',
         ]);
         $this->assertOrdered($this->method($controller, 'cancel'), [
             'DB::transaction(', '$booking = Booking::where(', '->lockForUpdate()', '$plot = Plot::where(',
@@ -26,6 +26,18 @@ class BookingCrossFlowLockingTest extends TestCase
         $this->assertOrdered($this->method($pricing, 'updatePristineBooking'), [
             'DB::transaction(', '$booking = Booking::query()', '->lockForUpdate()', '$this->assertLifecycleIsPristine($booking)',
         ]);
+    }
+
+    public function test_file_transfer_form_submits_the_complete_old_booking_snapshot(): void
+    {
+        $view = file_get_contents(__DIR__ . '/../../resources/views/admin/booking/file_transfer.blade.php');
+        foreach ([
+            'updated_at', 'project_id', 'customer_id', 'plot_id', 'plot_type', 'plot_size',
+            'plot_rate', 'is_park', 'park_facing', 'is_corner', 'carner_price',
+            'dicount_value', 'total_price', 'booking_date', 'status', 'broker_id',
+        ] as $field) {
+            $this->assertStringContainsString('name="expected_' . $field . '"', $view);
+        }
     }
 
     private function method(string $source, string $name): string
