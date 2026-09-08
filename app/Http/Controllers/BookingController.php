@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\BookingDetail;
+use App\Models\BookingEditAudit;
 use App\Models\BookingVoucher;
 use App\Models\ChargeType;
 use App\Models\CustomerLedger;
@@ -192,8 +193,17 @@ class BookingController extends Controller
                     return false;
                 }
 
+                $oldBrokerId = $booking->broker_id === null ? null : (int) $booking->broker_id;
                 $booking->broker_id = $brokerId;
                 $booking->save();
+                BookingEditAudit::create([
+                    'booking_id' => $booking->id,
+                    'project_id' => $booking->project_id,
+                    'user_id' => Auth::id(),
+                    'operation' => 'broker_update',
+                    'old_values' => ['broker_id' => $oldBrokerId],
+                    'new_values' => ['broker_id' => $brokerId],
+                ]);
 
                 return true;
             });
@@ -611,12 +621,6 @@ class BookingController extends Controller
         $userId = Auth::id();
         $plotType = $this->plotTypePrefix((int) $request->plot_type);
 
-        // Load existing booking BEFORE update (used for old amount / transfer profit)
-        $existingBooking = null;
-        if (!empty($request->id)) {
-            $existingBooking = Booking::find($request->id);
-        }
-
         // Determine transfer
         $oldCustomerId = (int) $request->input('old_customer_id');
         $newCustomerId = (int) $request->input('customer_id');
@@ -626,7 +630,17 @@ class BookingController extends Controller
         $newTotalPrice = $this->sanitizeMoney($request->input('total_price'));
         $newPlotRate = $this->sanitizeMoney($request->input('plot_rate'));
         try {
-            DB::transaction(function () use ($request, $userId, $plotType, $existingBooking, $isTransfer, $oldCustomerId, $newTotalPrice, $newPlotRate) {
+            DB::transaction(function () use ($request, $userId, $plotType, $isTransfer, $oldCustomerId, $newTotalPrice, $newPlotRate) {
+                if (empty($request->id)) {
+                    throw new \RuntimeException('Transfer update requires an existing booking record.');
+                }
+                $existingBooking = Booking::query()
+                    ->where('id', $request->id)
+                    ->where('project_id', getSelectedTown())
+                    ->where('cancel_status', '0')
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
                 // 1) Upsert booking
                 $booking = Booking::updateOrCreate(
                     ['id' => $request->id],
@@ -1773,11 +1787,20 @@ class BookingController extends Controller
             'due_date.*' => 'required|date',
         ]);
 
-        // Delete existing booking details with the provided booking_id
-        BookingDetail::where('booking_id', $request->input('booking_id'))->delete();
+        DB::transaction(function () use ($request) {
+        $booking = Booking::query()
+            ->where('id', $request->input('booking_id'))
+            ->where('project_id', getSelectedTown())
+            ->where('status', 'active')
+            ->where('cancel_status', '0')
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        // Delete existing booking details only after serializing on Booking.
+        BookingDetail::where('booking_id', $booking->id)->delete();
 
         // Store booking details data
-        $bookingId = $request->input('booking_id');
+        $bookingId = $booking->id;
         $totalPrice = $request->input('total_price');
         $instalment = $request->input('instalment');
         $paymentPlan = $request->input('payment_plan');
@@ -1840,6 +1863,7 @@ class BookingController extends Controller
                 'due_date' => $dueDate,
             ]);
         }
+        });
 
         // Redirect back with success message
         return redirect()->route('booking.plot.index')->with('success', 'Booking details created successfully.');
@@ -2204,16 +2228,18 @@ class BookingController extends Controller
                             $bank_id = $request->input('bank_id');
                         }
 
-                        $bookingId = Booking::where('project_id', $projectId)
+                        $bookings = Booking::where('project_id', $projectId)
                             ->where('customer_id', $customer_id)
                             ->where('plot_id', $plotId)
+                            ->where('status', 'active')
                             ->where('cancel_status', '0')
-                            ->latest('id')
-                            ->value('id');
+                            ->lockForUpdate()
+                            ->get();
 
-                        if (!$bookingId) {
+                        if ($bookings->count() !== 1) {
                             throw new \RuntimeException('Selected booking was not found for this project.');
                         }
+                        $bookingId = $bookings->first()->id;
 
                         $plotExistsInProject = Plot::where('id', $plotId)
                             ->where('project_id', $projectId)

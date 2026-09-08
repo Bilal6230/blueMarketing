@@ -150,6 +150,11 @@ class BookingEditPageTest extends TestCase
             }
         }
         $this->assertSame($before, $this->snapshot($tables));
+        $audit = DB::table('booking_edit_audits')->sole();
+        $this->assertSame('broker_update', $audit->operation);
+        $this->assertSame($this->user->id, (int) $audit->user_id);
+        $this->assertSame(['broker_id' => $bookingBefore['broker_id']], json_decode($audit->old_values, true));
+        $this->assertSame(['broker_id' => $newBroker], json_decode($audit->new_values, true));
     }
 
     public function test_same_broker_is_a_true_no_op_and_nullable_broker_is_allowed(): void
@@ -162,6 +167,7 @@ class BookingEditPageTest extends TestCase
             ->put(route('booking.update', ['id' => $booking->id], false), $this->updatePayload($booking))
             ->assertSessionHasNoErrors();
         $this->assertSame($originalUpdatedAt, $booking->fresh()->updated_at->format('Y-m-d H:i:s.u'));
+        $this->assertSame(0, DB::table('booking_edit_audits')->count());
 
         $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
             ->put(route('booking.update', ['id' => $booking->id], false), $this->updatePayload($booking->fresh(), ['broker_id' => null]))
@@ -260,6 +266,7 @@ class BookingEditPageTest extends TestCase
                 ->assertSessionHasErrors('broker_id');
             $this->assertSame((int) $booking->broker_id, (int) $booking->fresh()->broker_id);
         }
+        $this->assertSame(0, DB::table('booking_edit_audits')->count());
     }
 
     /** @dataProvider immutableTamperingProvider */
@@ -314,6 +321,7 @@ class BookingEditPageTest extends TestCase
         $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
             ->put(route('booking.update', ['id' => $deleted->id], false), $this->updatePayload($deleted))
             ->assertNotFound();
+        $this->assertSame(0, DB::table('booking_edit_audits')->count());
     }
 
     public function test_loading_page_performs_no_accounting_mutations(): void
@@ -454,6 +462,24 @@ class BookingEditPageTest extends TestCase
             $table->integer('subhead_accounting_id');
             $table->integer('plot_id')->nullable();
             $table->integer('customer_id')->nullable();
+        });
+        Schema::create('booking_edit_audits', function (Blueprint $table) {
+            $table->id();
+            $table->integer('booking_id');
+            $table->integer('project_id');
+            $table->integer('user_id')->nullable();
+            $table->string('operation');
+            $table->text('reason')->nullable();
+            $table->json('old_values');
+            $table->json('new_values');
+            $table->decimal('old_total', 10, 2)->nullable();
+            $table->decimal('new_total', 10, 2)->nullable();
+            $table->decimal('delta', 10, 2)->nullable();
+            $table->decimal('old_accounting_principal', 10, 2)->nullable();
+            $table->decimal('delta_from_accounting', 10, 2)->nullable();
+            $table->integer('journal_voucher_id')->nullable();
+            $table->string('request_key')->nullable();
+            $table->timestamps();
         });
         Schema::create('bookings', function (Blueprint $table) {
             $table->id();

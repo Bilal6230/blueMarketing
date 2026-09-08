@@ -47,6 +47,16 @@ class BookingPricingUpdateServiceTest extends TestCase
         $this->assertSame($voucherNumber, DB::table('journal_vouchers')->where('id', $this->voucherId)->value('voucher_number'));
         $this->assertSame($this->voucherId, (int) DB::table('journal_vouchers')->value('id'));
         $this->assertIdentityUnchanged();
+        $audit = DB::table('booking_edit_audits')->sole();
+        $this->assertSame('pricing_update', $audit->operation);
+        $this->assertSame(99, (int) $audit->user_id);
+        $this->assertSame($this->voucherId, (int) $audit->journal_voucher_id);
+        $this->assertSame(0, bccomp((string) $audit->old_total, '5000000.00', 2));
+        $this->assertSame(0, bccomp((string) $audit->new_total, $expected, 2));
+        $this->assertSame(0, bccomp((string) $audit->delta, bcsub($expected, '5000000.00', 2), 2));
+        $this->assertSame(0, bccomp((string) $audit->old_accounting_principal, '5000000.00', 2));
+        $this->assertSame('5000000.00', json_decode($audit->old_values, true)['total_price']);
+        $this->assertSame($expected, json_decode($audit->new_values, true)['total_price']);
     }
 
     public function pricingChanges(): array
@@ -77,6 +87,10 @@ class BookingPricingUpdateServiceTest extends TestCase
         $this->assertSame('11625000.00', $result->oldAccountingPrincipal);
         $this->assertPrincipal('10927500.00');
         $this->assertSame($beforeIds, $this->ids());
+        $audit = DB::table('booking_edit_audits')->sole();
+        $this->assertSame('pricing_accounting_repair', $audit->operation);
+        $this->assertSame(0, bccomp((string) $audit->old_total, '10927500.00', 2));
+        $this->assertSame(0, bccomp((string) $audit->old_accounting_principal, '11625000.00', 2));
     }
 
     public function test_internally_inconsistent_accounting_blocks_without_mutation(): void
@@ -99,6 +113,7 @@ class BookingPricingUpdateServiceTest extends TestCase
         $this->assertFalse($result->changed);
         $this->assertSame($before, $this->allRows());
         $this->assertEquals($updatedAt, $this->booking->fresh()->updated_at);
+        $this->assertSame(0, DB::table('booking_edit_audits')->count());
     }
 
     /** @dataProvider lifecycleBlocks */
@@ -174,15 +189,15 @@ class BookingPricingUpdateServiceTest extends TestCase
         $this->assertSame($before, $this->allRows());
     }
 
-    public function test_database_failure_after_booking_update_rolls_back_everything(): void
+    public function test_post_update_invariant_failure_rolls_back_financial_rows_and_audit(): void
     {
-        DB::statement("CREATE TRIGGER fail_customer_ledger_update BEFORE UPDATE ON customer_ledger BEGIN SELECT RAISE(FAIL, 'forced failure'); END");
+        DB::statement('CREATE TRIGGER corrupt_updated_voucher AFTER UPDATE ON journal_vouchers BEGIN UPDATE journal_vouchers SET total_debit = 0 WHERE id = NEW.id; END');
         $before = $this->allRows();
         try {
             $this->service()->updatePristineBooking($this->booking->id, 10, $this->snapshot(), array_merge($this->defaultPricing(), ['plot_rate' => '510000']));
-            $this->fail('Expected forced database failure.');
+            $this->fail('Expected post-update invariant failure.');
         } catch (\Throwable $exception) {
-            $this->assertStringContainsString('forced failure', $exception->getMessage());
+            $this->assertStringContainsString('POST_UPDATE_VOUCHER_UNBALANCED', $exception->getMessage());
         }
         $this->assertSame($before, $this->allRows());
     }
@@ -244,9 +259,9 @@ class BookingPricingUpdateServiceTest extends TestCase
     private function service(): BookingPricingUpdateService { return app(BookingPricingUpdateService::class); }
     private function defaultPricing(): array { return ['plot_rate' => '500000', 'is_park' => 0, 'park_facing' => '0', 'is_corner' => 0, 'carner_price' => '0', 'dicount_value' => '0']; }
     private function snapshot(): array { $b = Booking::withTrashed()->findOrFail($this->booking->id); return ['expected_plot_rate' => (string) $b->plot_rate, 'expected_is_park' => (int) $b->is_park, 'expected_park_facing' => (string) $b->park_facing, 'expected_is_corner' => (int) $b->is_corner, 'expected_carner_price' => (string) $b->carner_price, 'expected_dicount_value' => (string) $b->dicount_value, 'expected_total_price' => (string) $b->total_price]; }
-    private function protectedTables(): array { return ['bookings', 'customer_ledger', 'journal_vouchers', 'journal_voucher_details', 'ledgers', 'project_head_subheads', 'booking_details', 'booking_vouchers']; }
+    private function protectedTables(): array { return ['bookings', 'customer_ledger', 'journal_vouchers', 'journal_voucher_details', 'ledgers', 'project_head_subheads', 'booking_details', 'booking_vouchers', 'booking_edit_audits']; }
     private function allRows(): array { return collect($this->protectedTables())->mapWithKeys(fn ($t) => [$t => DB::table($t)->orderBy('id')->get()->map(fn ($r) => (array) $r)->all()])->all(); }
-    private function ids(): array { return collect($this->protectedTables())->mapWithKeys(fn ($t) => [$t => DB::table($t)->orderBy('id')->pluck('id')->all()])->all(); }
+    private function ids(): array { return collect(array_diff($this->protectedTables(), ['booking_edit_audits']))->mapWithKeys(fn ($t) => [$t => DB::table($t)->orderBy('id')->pluck('id')->all()])->all(); }
 
     private function assertPrincipal(string $total): void
     {
@@ -306,6 +321,7 @@ class BookingPricingUpdateServiceTest extends TestCase
         Schema::create('ledgers', function(Blueprint $t){$t->id();$t->string('type');$t->integer('type_id');$t->string('voucher_number')->nullable();$t->integer('project_head_subheads_id');$t->integer('customer_ledger_id')->nullable();$t->string('reference')->nullable();$t->decimal('amount_in',10,2);$t->decimal('amount_out',10,2);$t->string('detail')->nullable();$t->timestamps();});
         Schema::create('booking_details', function(Blueprint $t){$t->id();$t->integer('booking_id');$t->decimal('amount',10,2);$t->date('due_date');});
         Schema::create('booking_vouchers', function(Blueprint $t){$t->id();$t->integer('booking_id');$t->string('voucher_series');$t->decimal('amount',12,2)->default(0);});
+        Schema::create('booking_edit_audits', function(Blueprint $t){$t->id();$t->integer('booking_id');$t->integer('project_id');$t->integer('user_id')->nullable();$t->string('operation');$t->text('reason')->nullable();$t->json('old_values');$t->json('new_values');$t->decimal('old_total',10,2)->nullable();$t->decimal('new_total',10,2)->nullable();$t->decimal('delta',10,2)->nullable();$t->decimal('old_accounting_principal',10,2)->nullable();$t->decimal('delta_from_accounting',10,2)->nullable();$t->integer('journal_voucher_id')->nullable();$t->string('request_key')->nullable();$t->timestamps();});
     }
     private function bookingSchema(Blueprint $t): void {$t->id();$t->integer('project_id');$t->integer('customer_id');$t->integer('plot_id');$t->integer('plot_type');$t->string('plot_size');$t->decimal('plot_rate',10,2);$t->integer('is_corner');$t->integer('is_park');$t->decimal('park_facing',10,2);$t->decimal('carner_price',10,2);$t->decimal('dicount_value',10,2);$t->decimal('total_price',10,2);$t->integer('broker_id')->nullable();$t->timestamp('booking_date');$t->string('status');$t->integer('user_id');$t->string('cancel_status');$t->timestamps();$t->softDeletes();}
 }

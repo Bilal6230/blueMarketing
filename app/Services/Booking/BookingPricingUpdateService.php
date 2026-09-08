@@ -4,6 +4,7 @@ namespace App\Services\Booking;
 
 use App\Models\Booking;
 use App\Models\BookingDetail;
+use App\Models\BookingEditAudit;
 use App\Models\BookingVoucher;
 use App\Models\CustomerLedger;
 use App\Models\JournalVoucher;
@@ -27,7 +28,7 @@ final class BookingPricingUpdateService
         array $requestedPricing,
         ?int $userId = null
     ): BookingPricingUpdateResult {
-        return DB::transaction(function () use ($bookingId, $projectId, $expectedSnapshot, $requestedPricing) {
+        return DB::transaction(function () use ($bookingId, $projectId, $expectedSnapshot, $requestedPricing, $userId) {
             $booking = Booking::query()
                 ->where('project_id', $projectId)
                 ->where('cancel_status', '0')
@@ -82,6 +83,31 @@ final class BookingPricingUpdateService
                 $records['voucher']->total_debit = $detailSums['debit'];
                 $records['voucher']->total_credit = $detailSums['credit'];
                 $records['voucher']->save();
+
+                BookingEditAudit::create([
+                    'booking_id' => $booking->id,
+                    'project_id' => $booking->project_id,
+                    'user_id' => $userId,
+                    'operation' => $bookingPricingMatches ? 'pricing_accounting_repair' : 'pricing_update',
+                    'reason' => null,
+                    'old_values' => $this->pricingValues($expectedSnapshot, true),
+                    'new_values' => [
+                        'plot_rate' => $calculation->plotRate,
+                        'is_park' => (int) ($requestedPricing['is_park'] ?? 0),
+                        'park_facing' => $calculation->parkCharge,
+                        'is_corner' => (int) ($requestedPricing['is_corner'] ?? 0),
+                        'carner_price' => $calculation->cornerCharge,
+                        'dicount_value' => $calculation->discount,
+                        'total_price' => $newTotal,
+                    ],
+                    'old_total' => $oldBookingTotal,
+                    'new_total' => $newTotal,
+                    'delta' => bcsub($newTotal, $oldBookingTotal, 2),
+                    'old_accounting_principal' => $oldPrincipal,
+                    'delta_from_accounting' => bcsub($newTotal, $oldPrincipal, 2),
+                    'journal_voucher_id' => $records['voucher']->id,
+                    'request_key' => null,
+                ]);
 
                 $this->assertPostUpdate($booking, $records, $newTotal);
             }
@@ -258,6 +284,20 @@ final class BookingPricingUpdateService
         return (int) $booking->is_park === (int) $requested['is_park']
             && (int) $booking->is_corner === (int) $requested['is_corner']
             && bccomp($this->decimal($booking->total_price), $total, 2) === 0;
+    }
+
+    private function pricingValues(array $snapshot, bool $expected): array
+    {
+        $prefix = $expected ? 'expected_' : '';
+        return [
+            'plot_rate' => $this->decimal($snapshot[$prefix . 'plot_rate']),
+            'is_park' => (int) $snapshot[$prefix . 'is_park'],
+            'park_facing' => $this->decimal($snapshot[$prefix . 'park_facing']),
+            'is_corner' => (int) $snapshot[$prefix . 'is_corner'],
+            'carner_price' => $this->decimal($snapshot[$prefix . 'carner_price']),
+            'dicount_value' => $this->decimal($snapshot[$prefix . 'dicount_value']),
+            'total_price' => $this->decimal($snapshot[$prefix . 'total_price']),
+        ];
     }
 
     private function expectOne(Collection $rows, string $name): void
