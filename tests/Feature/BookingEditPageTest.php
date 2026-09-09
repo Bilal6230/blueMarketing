@@ -58,10 +58,17 @@ class BookingEditPageTest extends TestCase
         $html = file_get_contents(resource_path('views/admin/booking/edit.blade.php'));
         $this->assertStringContainsString('$booking->dicount_value', $html);
         $this->assertStringNotContainsString('$booking->discount_value', $html);
-        $this->assertStringContainsString('Customer changes are handled through File Transfer.', $html);
+        $this->assertStringContainsString('Customer changes must be completed through File Transfer.', $html);
         $this->assertStringContainsString('<form', $html);
         $this->assertStringContainsString('Save Broker Change', $html);
+        $this->assertStringContainsString('Save Pricing Change', $html);
+        $this->assertStringContainsString('class="col-md-7"', $html);
+        $this->assertStringContainsString('class="col-md-5" id="pricing"', $html);
         $this->assertStringContainsString("name=\"broker_id\"", $html);
+        $this->assertStringContainsString('name="expected_{{ $field }}"', $html);
+        $this->assertStringContainsString("'dicount_value', 'total_price'", $html);
+        $this->assertStringNotContainsString("name=\"total_price\"", $html);
+        $this->assertSame(1, substr_count($html, 'name="plot_rate"'));
     }
 
     public function test_other_project_booking_cannot_be_opened(): void
@@ -89,7 +96,7 @@ class BookingEditPageTest extends TestCase
 
         $this->assertFalse($lifecycle['pricing_edit_allowed']);
         $this->assertContains('BOOKING_NOT_ACTIVE', $lifecycle['pricing_block_reasons']);
-        $this->assertStringContainsString('Pricing cannot be changed because this booking is not active.', $blade);
+        $this->assertStringContainsString("'BOOKING_NOT_ACTIVE' => 'Booking is inactive.'", $blade);
         $this->assertStringContainsString('@disabled(!$pricingEnabled)', $blade);
     }
 
