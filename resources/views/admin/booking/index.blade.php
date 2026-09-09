@@ -93,19 +93,24 @@
                                                 </td>
                                                 <td>{{ $i->customer->phone_number }}</td>
                                                 <td>
-                                                    @canany(['update plot number', 'update booking price'])
-                                                        <a href="{{ route('booking.price.update', ['id' => $i->id]) }}"
+                                                    @can('update booking price')
+                                                        <a href="{{ route('booking.edit', ['id' => $i->id]) }}#pricing"
                                                             class="btn btn-link">
                                                             {{ Setting::formatAmount($i->total_price) }}
                                                         </a>
                                                     @else
                                                         {{ Setting::formatAmount($i->total_price) }}
-                                                    @endcanany
+                                                    @endcan
                                                 </td>
                                                 @canany(['update plot', 'delete plot', 'delete booking'])
                                                     <td>
                                                         <div class="btn-group">
                                                             @can('update plot')
+                                                                <a href="{{ route('booking.edit', ['id' => $i->id]) }}"
+                                                                    class="btn btn-xs ml-1 btn-outline-primary"
+                                                                    title="Edit Booking" aria-label="Edit Booking">
+                                                                    <i class="fas fa-pen fa-xs"></i>
+                                                                </a>
                                                                 @if (Setting::is_schedule($i->id) < 2)
                                                                     <a href="{{ route('booking.schedule.form', ['id' => $i->id]) }}"
                                                                         class="btn btn-xs ml-1 btn-primary btn-schedule"
