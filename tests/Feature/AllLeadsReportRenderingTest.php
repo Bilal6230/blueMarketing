@@ -74,6 +74,46 @@ class AllLeadsReportRenderingTest extends TestCase
         $this->assertStringNotContainsString('window.location.origin+"/admin/report/leads?"', $blade);
     }
 
+    /** @dataProvider selectedFilterProvider */
+    public function test_server_rendered_page_preserves_selected_filter(?string $filter, string $selectedValue): void
+    {
+        $user = new User();
+        $user->id = 9;
+        $user->name = 'Selected User';
+        $this->actingAs($user);
+        Gate::before(static fn () => true);
+
+        $response = new TestResponse(response()->view('admin.reports.admin_lead', [
+            'title' => 'Lead SetUp',
+            'data' => collect(),
+            'role' => collect(),
+            'users' => collect([$user]),
+            'power' => 'user',
+            'filter' => ['type' => $filter, 'user' => 9],
+            'projects' => collect(),
+            'errors' => new ViewErrorBag(),
+        ]));
+
+        $response->assertOk();
+        $html = $response->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/<option value="' . preg_quote($selectedValue, '/') . '"\s+selected>/',
+            $html
+        );
+        $this->assertMatchesRegularExpression('/<option value="9" selected>Selected User<\/option>/', $html);
+    }
+
+    public function selectedFilterProvider(): array
+    {
+        return [
+            'no filter' => [null, ''],
+            'all leads' => ['all', 'all'],
+            'scheduled leads' => ['schedule', 'schedule'],
+            'today leads' => ['today', 'today'],
+        ];
+    }
+
     /** @dataProvider malformedFilterProvider */
     public function test_array_filter_inputs_are_rejected(string $field, array $value): void
     {

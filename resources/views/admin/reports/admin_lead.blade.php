@@ -43,10 +43,10 @@
                                             <label class="fbox">Filter</label>
                                             <div class="input-group">
                                                 <select class="form-control" id="filter">
-                                                    <option value="" >Select Filter</option>
-                                                    <option value="all" >All Leads</option>
-                                                    <option value="schedule">Schedule Now</option>
-                                                    <option value="today">Add Today</option>
+                                                    <option value="" @selected(empty($filter['type']))>Select Filter</option>
+                                                    <option value="all" @selected(($filter['type'] ?? null) === 'all')>All Leads</option>
+                                                    <option value="schedule" @selected(($filter['type'] ?? null) === 'schedule')>Schedule Now</option>
+                                                    <option value="today" @selected(($filter['type'] ?? null) === 'today')>Add Today</option>
                                                 </select>
 
                                             </div>
