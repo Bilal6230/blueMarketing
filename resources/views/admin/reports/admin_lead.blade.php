@@ -147,7 +147,7 @@
                                                 <td><i class="fa fa-phone"></i><a href="tel:{{ $i->phone_number }}"> {{ $i->phone_number }}</a> </td>
                                                 <td><span class="badge {{ Setting::getColorClass($i->follow_status) }}">{{ Setting::getCallStatus($i->follow_status) }}</span> </td>
                                                 <td>{{ $i->business }}</td>
-                                                <td><span class="btn btn-sm  {{ Setting::getProjectColorClass($i->project_id) }}">{{ $i->project_name }}</span> </td>
+                                                <td><span class="btn btn-sm  {{ Setting::getProjectColorClass($i->project_id) }}">{{ $i->project_name ?? 'No Project' }}</span> </td>
                                                 <td>
                                                     @foreach ($i->users as $u )
                                                     <button class="btn btn-sm btn-primary " >{{ $u->name }}</button>
@@ -189,51 +189,20 @@
 @section('js')
     <script>
         $(document).ready(function() {
-            var origin   = window.location.origin+"/admin/report/leads?";
-            var filter;
-            var user;
-            $("#filter").change(function () {
-                filter = $("#filter").val();
-                filter = "filter="+filter;
-            });
-
-            $("#user").change(function () {
-                user = $("#user").val();
-                user = "user="+user;
-                //window.location.replace(origin);
-
-            });
-
-            $("#fdate").change(function () {
-                fdate = $("#fdate").val();
-                fdate = "fdate="+fdate;
-            });
-
-            $("#tdate").change(function () {
-                tdate = $("#tdate").val();
-                tdate = "tdate="+tdate;
-            });
-
             $("#searchfilter").click(function () {
-                if (filter !== "") {
-                    origin = origin+filter;
-                }
-                if (user !== "" && filter !== "") {
-                    origin = origin+"&"+user;
-                }
-                if (user !== "" && filter === "") {
-                    origin = origin+user;
-                }
+                const params = new URLSearchParams();
+                const filter = $("#filter").val();
+                const user = $("#user").val();
+                const fdate = $("#fdate").val();
+                const tdate = $("#tdate").val();
 
-                if (fdate !== "") {
-                    origin = origin+"&"+fdate;
-                }
+                if (filter) params.set('filter', filter);
+                if (user) params.set('user', user);
+                if (fdate) params.set('fdate', fdate);
+                if (tdate) params.set('tdate', tdate);
 
-                if (tdate !== "") {
-                    origin = origin+"&"+tdate;
-                }
-
-                window.location.replace(origin);
+                const reportUrl = @json(route('report.lead.index'));
+                window.location.href = reportUrl + (params.toString() ? '?' + params.toString() : '');
 
             });
 

@@ -199,11 +199,11 @@ class SettingHelper
         **/
         $companies = ["","Invalide Number","Interested","Schedule Later", "Not Interested", "Sale Done", "New Lead" , 'Town Visit', 'Outside Metting' ];
 
-        if($gender){
-            return $companies[$gender];
+        if ((is_int($gender) || is_string($gender)) && ctype_digit((string) $gender) && (int) $gender > 0) {
+            return $companies[(int) $gender] ?? 'Unknown';
         }
 
-        return $companies;
+        return 'Unknown';
     }
 
     public static function getCustomerType($gender=null){
@@ -239,11 +239,11 @@ class SettingHelper
         **/
         $companies = ["","badge-danger","badge-parpal","badge-warning", "badge-dark", "badge-success", "badge-info", "badge-info", "badge-danger" ];
 
-        if($gender){
-            return $companies[$gender];
+        if ((is_int($gender) || is_string($gender)) && ctype_digit((string) $gender) && (int) $gender > 0) {
+            return $companies[(int) $gender] ?? 'badge-secondary';
         }
 
-        return $companies;
+        return 'badge-secondary';
     }
 
     public static function getColorCard($gender=null){
@@ -282,11 +282,11 @@ class SettingHelper
         **/
         $companies = ["","badge-parpal","btn-success","btn-danger", "badge-dark", "btn-success", "btn-info", "badge-info" ];
 
-        if($project_id){
-            return $companies[$project_id];
+        if ((is_int($project_id) || is_string($project_id)) && ctype_digit((string) $project_id) && (int) $project_id > 0) {
+            return $companies[(int) $project_id] ?? 'btn-secondary';
         }
 
-        return $companies;
+        return 'btn-secondary';
     }
 
     public static function getLogtype($type=null){

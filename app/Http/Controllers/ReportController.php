@@ -20,25 +20,30 @@ use App\Models\ProjectHeadSubhead;
 use App\Models\SubheadAccounting;
 
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ReportController extends Controller
 {
     public function index(Request $request)
     {
+        $validated = $request->validate([
+            'filter' => ['nullable', 'string', Rule::in(['all', 'schedule', 'today'])],
+            'user' => ['nullable', 'integer', 'exists:users,id'],
+        ]);
 
         $power = Auth::user()->roles[0]->name;
         $userID = null;
         $status = true;
         $filter = null;
-        if (isset($request->user)) {
-            $userID = $request->user;
-        } elseif (isset($request->filter) && $request->filter != "all") {
+        if (isset($validated['user'])) {
+            $userID = $validated['user'];
+        } elseif (isset($validated['filter']) && $validated['filter'] != "all") {
             $userID = null;
         } else {
             $userID = Auth::user()->id;
         }
-        if (isset($request->filter)) {
-            $filter = $request->filter;
+        if (isset($validated['filter'])) {
+            $filter = $validated['filter'];
         }
 
 
