@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Testing\TestResponse;
@@ -72,6 +73,64 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertNotNull($bookingVoucher);
         $this->assertSame($ledger->id, $bookingVoucher->ledger_id);
         $this->assertNull($customerLedger->passing_status);
+    }
+
+    public function test_failed_booking_create_rolls_back_all_partial_writes_and_hides_exception(): void
+    {
+        $loggedError = null;
+        Log::shouldReceive('error')->once()->andReturnUsing(function (string $message, array $context) use (&$loggedError): void {
+            $loggedError = compact('message', 'context');
+        });
+        $before = [
+            'bookings' => DB::table('bookings')->count(),
+            'customer_ledger' => DB::table('customer_ledger')->count(),
+            'subhead_accountings' => DB::table('subhead_accountings')->count(),
+            'project_head_subheads' => DB::table('project_head_subheads')->count(),
+            'journal_vouchers' => DB::table('journal_vouchers')->count(),
+            'journal_voucher_details' => DB::table('journal_voucher_details')->count(),
+            'ledgers' => DB::table('ledgers')->count(),
+        ];
+
+        $request = Request::create('/admin/booking', 'POST', [
+            'project_id' => $this->project->id,
+            'customer_id' => $this->customer->id,
+            'plot_id' => (string) $this->plot->id,
+            'plot_type' => 1,
+            'plot_size' => '5',
+            'plot_rate' => '100,000',
+            'total_price' => '500,000',
+            'booking_date' => '2026-05-17',
+            'status' => 1,
+            'broker_id' => 1,
+        ]);
+        $session = app('session.store');
+        $session->start();
+        $session->setPreviousUrl('/admin/booking/sale');
+        $request->setLaravelSession($session);
+        $this->app->instance('request', $request);
+
+        $response = app(BookingController::class)->store($request);
+
+        $this->assertSame(302, $response->getStatusCode());
+        $this->assertFalse($session->has('errors'), $session->has('errors') ? $session->get('errors')->first() : '');
+        $this->assertSame('/admin/booking/sale', $response->getTargetUrl());
+        $this->assertStringNotContainsString('Credit account ID not found.', $response->getContent());
+        $sessionState = json_encode($session->all(), JSON_THROW_ON_ERROR);
+        $this->assertStringContainsString('Unable to save the booking. Please try again or contact support.', $sessionState);
+        $this->assertStringNotContainsString('Credit account ID not found.', $sessionState);
+        foreach ($before as $table => $count) {
+            $this->assertSame($count, DB::table($table)->count(), "Unexpected partial write in {$table}.");
+        }
+        $this->assertSame(0, (int) $this->plot->fresh()->sold);
+        $this->assertSame(0, DB::transactionLevel());
+
+        $this->assertSame('Error storing booking', $loggedError['message']);
+        $this->assertInstanceOf(\Throwable::class, $loggedError['context']['exception']);
+        $this->assertSame('Credit account ID not found.', $loggedError['context']['exception']->getMessage());
+        $this->assertSame($this->user->id, $loggedError['context']['user_id']);
+        $this->assertSame($this->project->id, $loggedError['context']['project_id']);
+        $this->assertSame($this->customer->id, $loggedError['context']['customer_id']);
+        $this->assertSame((string) $this->plot->id, $loggedError['context']['plot_id']);
     }
 
     /**
@@ -677,6 +736,7 @@ class VoucherClearanceFlowTest extends TestCase
             $table->integer('is_active')->default(1);
             $table->integer('create_by')->nullable();
             $table->decimal('amount', 12, 2)->default(0);
+            $table->boolean('sold')->default(false);
             $table->timestamps();
         });
 
@@ -722,6 +782,7 @@ class VoucherClearanceFlowTest extends TestCase
             $table->integer('is_park')->default(0);
             $table->decimal('park_facing', 10, 2)->default(0);
             $table->decimal('carner_price', 10, 2)->default(0);
+            $table->decimal('dicount_value', 10, 2)->default(0);
             $table->decimal('total_price', 10, 2)->default(0);
             $table->integer('broker_id')->default(1);
             $table->timestamp('booking_date')->nullable();
@@ -756,6 +817,34 @@ class VoucherClearanceFlowTest extends TestCase
             $table->text('note')->nullable();
             $table->date('bank_post_at')->nullable();
             $table->string('delete_reason')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('journal_vouchers', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedInteger('voucher_number');
+            $table->string('type');
+            $table->string('reference')->nullable();
+            $table->text('description')->nullable();
+            $table->date('date');
+            $table->decimal('total_debit', 12, 2)->default(0);
+            $table->decimal('total_credit', 12, 2)->default(0);
+            $table->unsignedBigInteger('project_id');
+            $table->unsignedBigInteger('created_by')->nullable();
+            $table->unsignedBigInteger('updated_by')->nullable();
+            $table->string('status')->nullable();
+            $table->softDeletes();
+            $table->timestamps();
+        });
+
+        Schema::create('journal_voucher_details', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('journal_voucher_id');
+            $table->unsignedBigInteger('account_id');
+            $table->decimal('debit', 12, 2)->default(0);
+            $table->decimal('credit', 12, 2)->default(0);
+            $table->text('description')->nullable();
+            $table->softDeletes();
             $table->timestamps();
         });
 

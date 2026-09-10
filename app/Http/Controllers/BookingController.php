@@ -287,10 +287,22 @@ class BookingController extends Controller
 
             Alert::success('Notification', 'Data saved successfully')->toToast()->toHtml();
         } catch (\Throwable $th) {
-            dd($th->getMessage());
-            DB::rollback();
-            Log::error('Error storing booking: ' . $th->getMessage());
-            Alert::error('Notification', 'An error occurred: ' . $th->getMessage())->toToast()->toHtml();
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+
+            Log::error('Error storing booking', [
+                'exception' => $th,
+                'user_id' => Auth::id(),
+                'project_id' => $request->input('project_id'),
+                'customer_id' => $request->input('customer_id'),
+                'plot_id' => $request->input('plot_id'),
+            ]);
+
+            Alert::error(
+                'Notification',
+                'Unable to save the booking. Please try again or contact support.'
+            )->toToast()->toHtml();
         }
 
         return back();
