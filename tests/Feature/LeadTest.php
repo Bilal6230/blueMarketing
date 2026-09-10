@@ -257,6 +257,87 @@ class LeadTest extends TestCase
         $this->assertCount(2, $payload['data']['users']);
     }
 
+    public function test_dashboard_search_returns_active_lead_with_valid_project(): void
+    {
+        $lead = $this->createLead(['phone_number' => '03048471583']);
+
+        $response = $this->callLeadController('search', 'POST', ['number' => '03048471583']);
+        $payload = $response->getData(true);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame($lead->id, $payload['data']['id']);
+        $this->assertSame('Alpha Town', $payload['data']['project']);
+        $this->assertSame('Already Register', $payload['data']['active']);
+    }
+
+    public function test_dashboard_search_returns_active_lead_with_null_project(): void
+    {
+        $lead = $this->createLead([
+            'phone_number' => '03006792223',
+            'project_id' => null,
+        ]);
+
+        $response = $this->callLeadController('search', 'POST', ['number' => '03006792223']);
+        $payload = $response->getData(true);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame($lead->id, $payload['data']['id']);
+        $this->assertSame('No Project', $payload['data']['project']);
+    }
+
+    public function test_dashboard_search_returns_active_lead_with_missing_project(): void
+    {
+        $lead = $this->createLead([
+            'phone_number' => '03006792224',
+            'project_id' => 999999,
+        ]);
+
+        $response = $this->callLeadController('search', 'POST', ['number' => '03006792224']);
+        $payload = $response->getData(true);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame($lead->id, $payload['data']['id']);
+        $this->assertSame('No Project', $payload['data']['project']);
+    }
+
+    public function test_dashboard_search_matches_active_secondary_mobile_number(): void
+    {
+        $lead = $this->createLead(['mobile_number' => '03001234567']);
+
+        $response = $this->callLeadController('search', 'POST', ['number' => '03001234567']);
+        $payload = $response->getData(true);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame($lead->id, $payload['data']['id']);
+    }
+
+    /** @dataProvider inactiveSearchNumberProvider */
+    public function test_dashboard_search_does_not_return_inactive_lead(string $field, string $number): void
+    {
+        $this->createLead([$field => $number, 'is_active' => 0]);
+
+        $response = $this->callLeadController('search', 'POST', ['number' => $number]);
+
+        $this->assertSame(404, $response->getStatusCode());
+        $this->assertSame(['error' => 'No Record Found'], $response->getData(true));
+    }
+
+    public function test_dashboard_search_preserves_unknown_number_response(): void
+    {
+        $response = $this->callLeadController('search', 'POST', ['number' => '03999999999']);
+
+        $this->assertSame(404, $response->getStatusCode());
+        $this->assertSame(['error' => 'No Record Found'], $response->getData(true));
+    }
+
+    public function inactiveSearchNumberProvider(): array
+    {
+        return [
+            'primary phone' => ['phone_number', '03001111111'],
+            'secondary mobile' => ['mobile_number', '03002222222'],
+        ];
+    }
+
     public function test_lead_page_js_prefers_assigned_user_ids_for_edit_modal(): void
     {
         $html = file_get_contents(resource_path('views/admin/crm/lead.blade.php'));

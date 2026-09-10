@@ -257,7 +257,10 @@ class LeadRepository {
 
         }
         if(!is_null($number)){
-            $profile =  $profile->where('phone_number', $number)->orWhere('mobile_number', $number);
+            $profile = $profile->where(function ($query) use ($number) {
+                $query->where('phone_number', $number)
+                    ->orWhere('mobile_number', $number);
+            });
 
         }
 
