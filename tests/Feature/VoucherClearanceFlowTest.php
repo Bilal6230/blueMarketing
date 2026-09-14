@@ -133,6 +133,37 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame((string) $this->plot->id, $loggedError['context']['plot_id']);
     }
 
+    public function test_successful_booking_create_redirects_to_booking_list(): void
+    {
+        ProjectHeadSubhead::create([
+            'project_id' => $this->project->id,
+            'head_accounting_id' => 16,
+            'subhead_accounting_id' => 123,
+        ]);
+        $request = Request::create('/admin/booking', 'POST', [
+            'project_id' => $this->project->id,
+            'customer_id' => $this->customer->id,
+            'plot_id' => (string) $this->plot->id,
+            'plot_type' => 1,
+            'plot_size' => '5',
+            'plot_rate' => '100,000',
+            'total_price' => '500,000',
+            'booking_date' => '2026-05-17',
+            'status' => 1,
+            'broker_id' => 1,
+        ]);
+        $session = app('session.store');
+        $session->start();
+        $request->setLaravelSession($session);
+        $this->app->instance('request', $request);
+
+        $response = app(BookingController::class)->store($request);
+
+        $this->assertSame(route('booking.plot.index'), $response->getTargetUrl());
+        $this->assertSame(2, DB::table('bookings')->count());
+        $this->assertSame(0, DB::transactionLevel());
+    }
+
     /**
      * @dataProvider pendingReceiptPaymentTypesProvider
      */

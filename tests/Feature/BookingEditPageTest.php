@@ -560,6 +560,38 @@ class BookingEditPageTest extends TestCase
         $this->assertSame(0, DB::table('booking_edit_audits')->count());
     }
 
+    public function test_forced_audit_failure_rolls_back_broker_price_and_schedule_with_safe_error(): void
+    {
+        $booking = $this->createBooking();
+        $newBroker = $this->createBroker('Rollback Broker', $this->projectId);
+        DB::table('booking_details')->insert(['booking_id' => $booking->id, 'installment_details' => 'Due', 'amount' => 100000, 'due_date' => '2026-10-01']);
+        $beforeBooking = $booking->fresh()->getAttributes();
+        $beforeSchedule = $this->snapshot(['booking_details']);
+        $beforeAccounting = $this->snapshot(array_diff($this->protectedTables(), ['booking_details']));
+        $this->authorizeUpdate();
+        $this->user->givePermissionTo(Permission::create(['name' => 'update booking price', 'guard_name' => 'web']));
+        DB::listen(function ($query) {
+            if (stripos($query->sql, 'insert into "booking_edit_audits"') !== false) {
+                throw new \RuntimeException('Deterministic audit-stage failure');
+            }
+        });
+
+        $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
+            ->from(route('booking.edit', ['id' => $booking->id], false))
+            ->put(route('booking.update', ['id' => $booking->id], false), $this->updatePayload($booking, [
+                'broker_id' => $newBroker, 'plot_rate' => '600000', 'reason' => 'Approved combined change',
+                'expected_paid_to_date' => '0.00',
+            ]))->assertRedirect(route('booking.edit', ['id' => $booking->id], false))
+            ->assertSessionHasErrors('booking');
+
+        $this->assertSame($beforeBooking, $booking->fresh()->getAttributes());
+        $this->assertSame($beforeSchedule, $this->snapshot(['booking_details']));
+        $this->assertSame($beforeAccounting, $this->snapshot(array_diff($this->protectedTables(), ['booking_details'])));
+        $this->assertSame(0, DB::table('booking_edit_audits')->count());
+        $this->assertSame(0, DB::transactionLevel());
+        $this->assertStringNotContainsString('Deterministic audit-stage failure', session('errors')->first('booking'));
+    }
+
     private function receipt(Booking $booking, string $amount, int $paymentType, $status): int
     {
         $id = DB::table('customer_ledger')->insertGetId([
