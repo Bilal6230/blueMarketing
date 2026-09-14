@@ -347,8 +347,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::get('booking/plot', 'index')->middleware(['permission:read plot'])->name('booking.plot.index');
         Route::get('booking/plot/sale', 'sale')->middleware(['permission:read plot'])->name('booking.plot.sale');
         Route::get('booking/{id}/edit', 'editBooking')->middleware(['permission:update plot|update booking price'])->name('booking.edit');
-        Route::put('booking/{id}', 'updateBooking')->middleware(['permission:update plot'])->name('booking.update');
-        Route::put('booking/{id}/pricing', 'updateBookingPricing')->middleware(['permission:update booking price'])->name('booking.pricing.update');
+        Route::put('booking/{id}', 'updateBooking')->middleware(['permission:update plot|update booking price'])->name('booking.update');
         Route::get('booking/plot/file-transfer/{id}', 'fileTransfer')->middleware(['permission:read plot'])->name('booking.plot.file-transfer');
         Route::post('booking/plot/sale', 'store')->middleware(['permission:create plot'])->name('bookings.store');
         Route::post('booking/plot/transfer', 'update')->middleware(['permission:create plot'])->name('bookings.transfer');

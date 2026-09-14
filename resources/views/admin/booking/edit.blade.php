@@ -5,7 +5,7 @@
         $customerName = trim(($booking->customer->first_name ?? '') . ' ' . ($booking->customer->last_name ?? ''));
         $canUpdateBroker = auth()->user()?->can('update plot') ?? false;
         $canUpdatePricing = auth()->user()?->can('update booking price') ?? false;
-        $pricingAllowed = (bool) ($pricingLifecycle['pricing_edit_allowed'] ?? false);
+        $pricingAllowed = (bool) ($pricingLifecycle['pricing_edit_allowed'] ?? false) && !$paymentAttributionRequired;
         $pricingEnabled = $canUpdatePricing && $pricingAllowed;
         try {
             $currentPricing = app(\App\Services\Booking\BookingPriceCalculator::class)->calculate(
@@ -49,17 +49,21 @@
                 <div class="alert alert-danger"><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
             @endif
 
+            <form id="booking-edit-form" method="POST" action="{{ route('booking.update', ['id' => $booking->id]) }}">
+                @csrf
+                @method('PUT')
+                <input type="hidden" name="expected_updated_at" value="{{ $booking->updated_at?->format('Y-m-d H:i:s.u') }}">
+                <input type="hidden" name="expected_broker_id" value="{{ $booking->broker_id }}">
+                @if ($paymentSummary)<input type="hidden" name="expected_paid_to_date" value="{{ $paymentSummary['paid_to_date'] }}">@endif
+                @foreach (['project_id', 'customer_id', 'plot_id', 'plot_type', 'plot_size', 'status'] as $lockedField)
+                    <input type="hidden" name="{{ $lockedField }}" value="{{ $booking->{$lockedField} }}">
+                @endforeach
+                <input type="hidden" name="booking_date" value="{{ \Carbon\Carbon::parse($booking->booking_date)->format('Y-m-d H:i:s') }}">
+                @foreach (['plot_rate', 'is_park', 'park_facing', 'is_corner', 'carner_price', 'dicount_value', 'total_price'] as $field)
+                    <input type="hidden" name="expected_{{ $field }}" value="{{ $booking->{$field} }}">
+                @endforeach
             <div class="row">
                 <div class="col-md-7">
-                    <form method="POST" action="{{ route('booking.update', ['id' => $booking->id]) }}">
-                        @csrf
-                        @method('PUT')
-                        <input type="hidden" name="expected_updated_at" value="{{ $booking->updated_at?->format('Y-m-d H:i:s.u') }}">
-                        <input type="hidden" name="expected_broker_id" value="{{ $booking->broker_id }}">
-                        @foreach (['project_id', 'customer_id', 'plot_id', 'plot_type', 'plot_size', 'status', 'plot_rate', 'is_park', 'park_facing', 'is_corner', 'carner_price', 'dicount_value', 'total_price'] as $lockedField)
-                            <input type="hidden" name="{{ $lockedField }}" value="{{ $booking->{$lockedField} }}">
-                        @endforeach
-                        <input type="hidden" name="booking_date" value="{{ \Carbon\Carbon::parse($booking->booking_date)->format('Y-m-d H:i:s') }}">
 
                         <div class="card">
                             <div class="card-header"><h3 class="card-title">Booking Form</h3></div>
@@ -84,28 +88,20 @@
                                         </select>
                                     </div></div>
                                 </div>
-                                @if ($canUpdateBroker)<button type="submit" class="btn btn-primary">Save Broker Change</button>@endif
                             </div>
                         </div>
-                    </form>
                 </div>
 
                 <div class="col-md-5" id="pricing">
-                    <form method="POST" action="{{ route('booking.pricing.update', ['id' => $booking->id]) }}">
-                        @csrf
-                        @method('PUT')
-                        @foreach (['plot_rate', 'is_park', 'park_facing', 'is_corner', 'carner_price', 'dicount_value', 'total_price'] as $field)
-                            <input type="hidden" name="expected_{{ $field }}" value="{{ $booking->{$field} }}">
-                        @endforeach
                         <div class="card">
                             <div class="card-header"><h3 class="card-title">Pricing Form</h3></div>
                             <div class="card-body">
                                 @if (!$canUpdatePricing)
                                     <div class="alert alert-secondary">You do not have permission to update booking pricing.</div>
+                                @elseif ($paymentAttributionRequired)
+                                    <div class="alert alert-warning">Some historical payments cannot be linked safely to this booking. Please review payment attribution before changing the sale price.</div>
                                 @elseif (!$pricingAllowed)
                                     <div class="alert alert-warning">@foreach (($pricingLifecycle['pricing_block_reasons'] ?? []) as $reason)<div>{{ $blockMessages[$reason] ?? 'Accounting structure requires review.' }}</div>@endforeach</div>
-                                @elseif (!($pricingLifecycle['amounts_consistent'] ?? true))
-                                    <div class="alert alert-warning">The saved booking amount and original sales accounting are different. Saving this pricing change will synchronize the original pending sales accounting.</div>
                                 @endif
 
                                 <div class="row">
@@ -130,13 +126,18 @@
                                     <div class="col-md-9"><div class="form-group"><input class="form-control" id="grand_total" value="{{ $booking->total_price }}" readonly><small class="form-text text-muted">Preview only. The server calculator is authoritative.</small></div></div>
                                 </div>
                                 <div class="form-group"><label for="pricing_reason">Reason for pricing change</label><textarea id="pricing_reason" name="reason" maxlength="500" class="form-control" rows="3" placeholder="Client-approved discount correction" @disabled(!$pricingEnabled)>{{ old('reason') }}</textarea></div>
-                                @if ($pricingEnabled)<button type="submit" class="btn btn-primary">Save Pricing Change</button>@endif
+                                <div class="form-group"><label>Current Sale Price</label><input class="form-control" value="{{ $booking->total_price }}" readonly></div>
+                                <div class="form-group"><label>Paid To Date</label><input class="form-control" id="paid_to_date" value="{{ $paymentSummary['paid_to_date'] ?? 'Attribution review required' }}" readonly></div>
+                                <div class="form-group"><label>Current Outstanding</label><input class="form-control" value="{{ $paymentSummary ? (bccomp((string) $booking->total_price, $paymentSummary['paid_to_date'], 2) === 1 ? bcsub((string) $booking->total_price, $paymentSummary['paid_to_date'], 2) : '0.00') : 'Attribution review required' }}" readonly></div>
+                                <div class="form-group"><label>Estimated New Outstanding</label><input class="form-control" id="estimated_outstanding" readonly></div>
+                                <div class="form-group"><label>Estimated Refund Due</label><input class="form-control" id="estimated_refund" readonly></div>
+                                <small class="form-text text-muted">Existing accounting vouchers will remain unchanged. Previews are informational; the server recalculates on save.</small>
                             </div>
                         </div>
-                    </form>
                 </div>
             </div>
-            <a href="{{ route('booking.plot.index') }}" class="btn btn-secondary mb-3">Back to Bookings</a>
+            @if ($canUpdateBroker || $canUpdatePricing)<button type="submit" class="btn btn-primary mb-3">Save Changes</button>@endif
+            </form>
         </div></section>
     </div>
 @endsection
@@ -154,6 +155,8 @@
                 const discount = document.getElementById('dicount_value');
                 const subTotal = document.getElementById('sub_total_price');
                 const grandTotal = document.getElementById('grand_total');
+                const paid = moneyToCents(@json($paymentSummary['paid_to_date'] ?? '0.00'));
+                const originalTotal = moneyToCents(@json((string) $booking->total_price));
 
                 function decimal(value) {
                     const clean = String(value ?? '').replace(/,/g, '').trim();
@@ -192,11 +195,75 @@
                     const park = moneyToCents(parkCharge.value), corner = moneyToCents(cornerCharge.value), less = moneyToCents(discount.value);
                     subTotal.value = format(base);
                     grandTotal.value = base === null || park === null || corner === null || less === null ? '' : format(base + park + corner - less);
+                    const revised = base === null || park === null || corner === null || less === null ? null : base + park + corner - less;
+                    document.getElementById('estimated_outstanding').value = revised === null || paid === null ? '' : format(revised > paid ? revised - paid : 0n);
+                    document.getElementById('estimated_refund').value = revised === null || paid === null ? '' : format(paid > revised ? paid - revised : 0n);
                 }
                 [rate, parkToggle, parkCharge, cornerToggle, cornerCharge, discount].forEach(function (field) {
                     field.addEventListener(field.tagName === 'SELECT' ? 'change' : 'input', updatePreview);
                 });
                 updatePreview();
+                const form = document.getElementById('booking-edit-form');
+                const original = {
+                    broker_id: @json((string) ($booking->broker_id ?? '')),
+                    plot_rate: @json((string) $booking->plot_rate),
+                    is_park: @json((string) $booking->is_park),
+                    park_facing: @json((string) $booking->park_facing),
+                    is_corner: @json((string) $booking->is_corner),
+                    carner_price: @json((string) $booking->carner_price),
+                    dicount_value: @json((string) $booking->dicount_value)
+                };
+                const labels = { broker_id: 'Broker', plot_rate: 'Plot Rate', is_park: 'Park Facing', park_facing: 'Park Charges', is_corner: 'Corner Plot', carner_price: 'Corner Charges', dicount_value: 'Discount' };
+                const escape = (value) => String(value).replace(/[&<>"']/g, (character) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[character]));
+                let confirmed = false;
+                form.addEventListener('submit', function (event) {
+                    if (confirmed) return;
+                    event.preventDefault();
+                    const changes = [];
+                    Object.keys(original).forEach(function (key) {
+                        const field = document.getElementById(key);
+                        if (!field || field.disabled) return;
+                        const oldValue = original[key], newValue = field.value;
+                        const same = ['plot_rate', 'park_facing', 'carner_price', 'dicount_value'].includes(key)
+                            ? moneyToCents(oldValue) === moneyToCents(newValue) : oldValue === newValue;
+                        if (!same) {
+                            const display = key === 'broker_id' ? (value) => field.querySelector('option[value="' + CSS.escape(value) + '"]')?.textContent || 'None'
+                                : (['is_park', 'is_corner'].includes(key) ? (value) => value === '1' ? 'Yes' : 'No' : (value) => value);
+                            changes.push(escape(labels[key]) + ': ' + escape(display(oldValue)) + ' → ' + escape(display(newValue)));
+                        }
+                    });
+                    if (!changes.length) { Swal.fire('No changes to save.'); return; }
+                    const revised = moneyToCents(grandTotal.value);
+                    if (changes.some((line) => !line.startsWith('Broker:'))) {
+                        changes.push('Sale Price: ' + escape(format(originalTotal)) + ' → ' + escape(grandTotal.value));
+                        changes.push('Already Paid: ' + escape(format(paid)));
+                        changes.push(revised !== null && paid > revised ? 'Estimated Refund Due: ' + escape(format(paid - revised)) : 'Estimated Outstanding: ' + escape(document.getElementById('estimated_outstanding').value));
+                        changes.push('Payment Schedule: ' + (revised !== originalTotal ? 'Will be reset' : 'Will remain unchanged'));
+                        changes.push('Existing Vouchers: Will remain unchanged');
+                        if (revised !== null && paid > revised) changes.push('Accountant action will be required for the refund.');
+                    }
+                    Swal.fire({title: 'Confirm Booking Update', html: changes.join('<br>'), icon: 'warning', showCancelButton: true,
+                        confirmButtonText: 'Confirm Update'}).then(function (result) {
+                        if (result.isConfirmed) { confirmed = true; form.submit(); }
+                    });
+                });
+            });
+        </script>
+    @elseif ($canUpdateBroker)
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const form = document.getElementById('booking-edit-form');
+                const broker = document.getElementById('broker_id');
+                const oldBroker = @json((string) ($booking->broker_id ?? ''));
+                form.addEventListener('submit', function (event) {
+                    event.preventDefault();
+                    if (broker.value === oldBroker) { Swal.fire('No changes to save.'); return; }
+                    const before = broker.querySelector('option[value="' + CSS.escape(oldBroker) + '"]')?.textContent || 'None';
+                    const after = broker.selectedOptions[0]?.textContent || 'None';
+                    Swal.fire({title: 'Confirm Booking Update', text: 'Broker: ' + before + ' → ' + after,
+                        icon: 'warning', showCancelButton: true, confirmButtonText: 'Confirm Update'})
+                        .then(function (result) { if (result.isConfirmed) form.submit(); });
+                });
             });
         </script>
     @endif

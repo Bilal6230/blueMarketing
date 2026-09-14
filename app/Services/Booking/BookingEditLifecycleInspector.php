@@ -42,7 +42,8 @@ final class BookingEditLifecycleInspector
         $isDeleted = $booking->trashed();
         $accounting = $this->accountingResolver->resolve($booking);
 
-        $reasons = $accounting->blockReasons;
+        $warnings = $accounting->blockReasons;
+        $reasons = [];
         if (!$isActive) {
             $reasons[] = 'BOOKING_NOT_ACTIVE';
         }
@@ -53,16 +54,16 @@ final class BookingEditLifecycleInspector
             $reasons[] = 'BOOKING_DELETED';
         }
         if ($scheduleCount > 0) {
-            $reasons[] = 'SCHEDULE_EXISTS';
+            $warnings[] = 'SCHEDULE_EXISTS';
         }
         if ($hasPrimaryPayment || $hasLegacyPayment) {
-            $reasons[] = 'PAYMENT_ACTIVITY_EXISTS';
+            $warnings[] = 'PAYMENT_ACTIVITY_EXISTS';
         }
         if ($hasTransfer) {
-            $reasons[] = 'TRANSFER_HISTORY_EXISTS';
+            $warnings[] = 'TRANSFER_HISTORY_EXISTS';
         }
         if ($hasResale) {
-            $reasons[] = 'RESALE_HISTORY_EXISTS';
+            $warnings[] = 'RESALE_HISTORY_EXISTS';
         }
         $reasons = array_values(array_unique($reasons));
 
@@ -82,6 +83,7 @@ final class BookingEditLifecycleInspector
             'accounting' => $accounting->toArray(),
             'pricing_edit_allowed' => count($reasons) === 0,
             'pricing_block_reasons' => $reasons,
+            'pricing_warnings' => array_values(array_unique($warnings)),
             'metadata_edit_allowed' => !$isCancelled && !$isDeleted,
         ]);
     }

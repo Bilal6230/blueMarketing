@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Services\Booking\BookingAmendmentService;
+use App\Services\Booking\BookingPaidAmountResolver;
 use App\Models\BookingDetail;
 use App\Models\BookingEditAudit;
 use App\Models\BookingVoucher;
@@ -133,11 +135,21 @@ class BookingController extends Controller
             ->sortBy('name')
             ->values();
 
+        try {
+            $paymentSummary = app(BookingPaidAmountResolver::class)->resolve($booking);
+            $paymentAttributionRequired = false;
+        } catch (DomainException $exception) {
+            $paymentSummary = null;
+            $paymentAttributionRequired = $exception->getMessage() === 'PAYMENT_ATTRIBUTION_REQUIRED';
+        }
+
         return view('admin.booking.edit', [
             'title' => 'Edit Booking #' . $booking->id,
             'booking' => $booking,
             'brokers' => $brokers,
             'pricingLifecycle' => $inspector->inspect($booking)->toArray(),
+            'paymentSummary' => $paymentSummary,
+            'paymentAttributionRequired' => $paymentAttributionRequired,
         ]);
     }
 
@@ -248,10 +260,9 @@ class BookingController extends Controller
         };
     }
 
-    public function updateBooking(Request $request, $id)
+    public function updateBooking(Request $request, $id, BookingAmendmentService $service)
     {
         $projectId = (int) getSelectedTown();
-
         Booking::query()
             ->where('project_id', $projectId)
             ->where('cancel_status', '0')
@@ -261,89 +272,70 @@ class BookingController extends Controller
             'expected_updated_at' => ['present', 'nullable', 'string'],
             'expected_broker_id' => ['present', 'nullable', 'integer'],
             'broker_id' => ['nullable', 'integer'],
+            'expected_plot_rate' => ['required'],
+            'expected_is_park' => ['required', 'integer', 'in:0,1'],
+            'expected_park_facing' => ['required'],
+            'expected_is_corner' => ['required', 'integer', 'in:0,1'],
+            'expected_carner_price' => ['required'],
+            'expected_dicount_value' => ['required'],
+            'expected_total_price' => ['required'],
+            'plot_rate' => ['nullable'],
+            'is_park' => ['nullable', 'integer', 'in:0,1'],
+            'park_facing' => ['nullable'],
+            'is_corner' => ['nullable', 'integer', 'in:0,1'],
+            'carner_price' => ['nullable'],
+            'dicount_value' => ['nullable'],
+            'reason' => ['nullable', 'string', 'max:500'],
+            'total_price' => ['prohibited'],
         ]);
 
         try {
-            $changed = DB::transaction(function () use ($request, $id, $projectId) {
-                $booking = Booking::query()
-                    ->where('project_id', $projectId)
-                    ->where('cancel_status', '0')
-                    ->lockForUpdate()
-                    ->findOrFail($id);
-
-                $actualVersion = $booking->updated_at?->format('Y-m-d H:i:s.u');
-                $expectedVersion = $request->input('expected_updated_at');
-                $expectedVersion = $expectedVersion === null || $expectedVersion === '' ? null : (string) $expectedVersion;
-                $timestampsMatch = $actualVersion === null
-                    ? $expectedVersion === null
-                    : $expectedVersion !== null && hash_equals($actualVersion, $expectedVersion);
-                $actualBrokerId = $booking->broker_id === null ? null : (int) $booking->broker_id;
-                $expectedBrokerId = $request->filled('expected_broker_id')
-                    ? (int) $request->input('expected_broker_id')
-                    : null;
-
-                if (!$timestampsMatch || $expectedBrokerId !== $actualBrokerId) {
-                    throw ValidationException::withMessages([
-                        'expected_updated_at' => 'This booking was changed after you opened the page. Refresh and review the latest information before saving.',
-                    ]);
-                }
-
-                $this->validateImmutableBookingFields($request, $booking);
-
-                $brokerId = $request->filled('broker_id') ? (int) $request->input('broker_id') : null;
-                if ($brokerId !== null && !ProjectHeadSubhead::query()
-                    ->where('project_id', $booking->project_id)
-                    ->where('head_accounting_id', 6)
-                    ->where('subhead_accounting_id', $brokerId)
-                    ->exists()) {
-                    throw ValidationException::withMessages([
-                        'broker_id' => 'The selected broker is not available for this project.',
-                    ]);
-                }
-
-                if ((int) ($booking->broker_id ?? 0) === (int) ($brokerId ?? 0)) {
-                    return false;
-                }
-
-                $oldBrokerId = $booking->broker_id === null ? null : (int) $booking->broker_id;
-                $booking->broker_id = $brokerId;
-                $booking->save();
-                BookingEditAudit::create([
-                    'booking_id' => $booking->id,
-                    'project_id' => $booking->project_id,
-                    'user_id' => Auth::id(),
-                    'operation' => 'broker_update',
-                    'old_values' => ['broker_id' => $oldBrokerId],
-                    'new_values' => ['broker_id' => $brokerId],
-                ]);
-
-                return true;
-            });
+            $booking = Booking::where('project_id', $projectId)->findOrFail($id);
+            $this->validateImmutableBookingFields($request, $booking);
+            $result = $service->update(
+                (int) $id, $projectId, $request->all(),
+                Auth::user()->can('update plot'), Auth::user()->can('update booking price'), Auth::id()
+            );
+        } catch (DomainException $exception) {
+            return back()->withErrors(['booking' => match ($exception->getMessage()) {
+                'PAYMENT_ATTRIBUTION_REQUIRED' => 'Some historical payments cannot be linked safely to this booking. Please review payment attribution before changing the sale price.',
+                'STALE_BOOKING' => 'This booking was changed after you opened the page. Refresh and review the latest information before saving.',
+                'BROKER_NOT_IN_PROJECT' => 'The selected broker is not available for this project.',
+                'AMENDMENT_REASON_REQUIRED' => 'A reason is required for a pricing amendment.',
+                'BROKER_PERMISSION_REQUIRED', 'PRICING_PERMISSION_REQUIRED' => 'You do not have permission to make one or more of these changes.',
+                default => 'This booking cannot be amended right now.',
+            }])->withInput();
         } catch (ValidationException $exception) {
             throw $exception;
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
             throw $exception;
         } catch (\Throwable $exception) {
-            Log::error('Booking broker update failed.', [
+            Log::error('Booking amendment failed.', [
                 'booking_id' => $id,
                 'project_id' => $projectId,
                 'user_id' => Auth::id(),
-                'exception' => get_class($exception),
+                'exception' => $exception,
             ]);
 
             return back()->withErrors(['booking' => 'The booking could not be updated. Please try again.'])->withInput();
         }
 
-        return redirect()->route('booking.edit', ['id' => $id])
-            ->with('success', $changed ? 'Booking updated successfully.' : 'No booking changes were needed.');
+        $message = !$result['changed'] ? 'No booking changes were needed.'
+            : ($result['price_changed']
+                ? 'Booking updated successfully. Existing vouchers were unchanged.' . ($result['schedule_reset'] ? ' Payment schedule was reset.' : '')
+                : 'Booking updated successfully.');
+        $redirect = redirect()->route('booking.plot.index')->with('success', $message);
+        if (bccomp($result['refund_due'], '0.00', 2) === 1) {
+            $redirect->with('warning', 'Refund due: Rs ' . $result['refund_due'] . '. Accountant action is required.');
+        }
+        return $redirect;
     }
 
     private function validateImmutableBookingFields(Request $request, Booking $booking): void
     {
         $fields = [
             'project_id', 'customer_id', 'plot_id', 'plot_type', 'plot_size',
-            'booking_date', 'status', 'plot_rate', 'is_park', 'park_facing',
-            'is_corner', 'carner_price', 'dicount_value', 'total_price',
+            'booking_date', 'status',
         ];
 
         foreach ($fields as $field) {
@@ -543,6 +535,7 @@ class BookingController extends Controller
             DB::commit();
 
             Alert::success('Notification', 'Data saved successfully')->toToast()->toHtml();
+            return redirect()->route('booking.plot.index');
         } catch (\Throwable $th) {
             if (DB::transactionLevel() > 0) {
                 DB::rollBack();
