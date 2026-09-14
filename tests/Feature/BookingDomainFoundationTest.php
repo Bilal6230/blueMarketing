@@ -41,20 +41,21 @@ class BookingDomainFoundationTest extends TestCase
         $this->assertSame([], $result['pricing_block_reasons']);
     }
 
-    public function test_schedule_blocks_pricing_and_reports_count(): void
+    public function test_schedule_warns_and_reports_count(): void
     {
         DB::table('booking_details')->insert(['booking_id' => $this->booking->id, 'amount' => 100, 'due_date' => '2026-10-01']);
         $result = $this->inspect();
 
         $this->assertTrue($result['has_schedule']);
         $this->assertSame(1, $result['schedule_row_count']);
-        $this->assertContains('SCHEDULE_EXISTS', $result['pricing_block_reasons']);
+        $this->assertContains('SCHEDULE_EXISTS', $result['pricing_warnings']);
+        $this->assertTrue($result['pricing_edit_allowed']);
     }
 
-    public function test_primary_and_legacy_ppr_evidence_block_pricing(): void
+    public function test_primary_and_legacy_ppr_evidence_is_reported(): void
     {
         DB::table('booking_vouchers')->insert(['booking_id' => $this->booking->id, 'voucher_series' => 'PPR']);
-        $this->assertContains('PAYMENT_ACTIVITY_EXISTS', $this->inspect()['pricing_block_reasons']);
+        $this->assertContains('PAYMENT_ACTIVITY_EXISTS', $this->inspect()['pricing_warnings']);
 
         DB::table('booking_vouchers')->delete();
         DB::table('customer_ledger')->insert([
@@ -80,8 +81,8 @@ class BookingDomainFoundationTest extends TestCase
 
         $this->assertTrue($result['has_transfer_history']);
         $this->assertTrue($result['has_resale_history']);
-        $this->assertContains('TRANSFER_HISTORY_EXISTS', $result['pricing_block_reasons']);
-        $this->assertContains('RESALE_HISTORY_EXISTS', $result['pricing_block_reasons']);
+        $this->assertContains('TRANSFER_HISTORY_EXISTS', $result['pricing_warnings']);
+        $this->assertContains('RESALE_HISTORY_EXISTS', $result['pricing_warnings']);
     }
 
     public function test_unexpected_non_resale_voucher_line_blocks_without_resale_history(): void
@@ -125,13 +126,14 @@ class BookingDomainFoundationTest extends TestCase
         $this->assertTrue($result['metadata_edit_allowed']);
     }
 
-    public function test_non_pending_voucher_statuses_block_pricing(): void
+    public function test_non_pending_voucher_statuses_warn_only(): void
     {
         foreach (['approved', 'rejected'] as $status) {
             DB::table('journal_vouchers')->where('id', $this->voucherId)->update(['status' => $status]);
             $result = $this->inspect();
             $this->assertSame($status, $result['original_voucher_status']);
-            $this->assertContains('VOUCHER_NOT_PENDING', $result['pricing_block_reasons']);
+            $this->assertContains('VOUCHER_NOT_PENDING', $result['pricing_warnings']);
+            $this->assertTrue($result['pricing_edit_allowed']);
         }
     }
 
@@ -211,7 +213,7 @@ class BookingDomainFoundationTest extends TestCase
         $this->assertContains('INITIAL_CUSTOMER_LEDGER_INVALID', $this->resolve()->blockReasons);
     }
 
-    public function test_unexpected_and_unbalanced_lines_block_pricing(): void
+    public function test_unexpected_and_unbalanced_lines_are_diagnostic(): void
     {
         DB::table('journal_voucher_details')->insert([
             'journal_voucher_id' => $this->voucherId, 'account_id' => 999,

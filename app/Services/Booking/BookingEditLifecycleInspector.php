@@ -42,8 +42,8 @@ final class BookingEditLifecycleInspector
         $isDeleted = $booking->trashed();
         $accounting = $this->accountingResolver->resolve($booking);
 
-        $warnings = $accounting->blockReasons;
-        $reasons = [];
+        $warnings = array_values(array_filter($accounting->blockReasons, fn (string $reason) => $reason === 'VOUCHER_NOT_PENDING'));
+        $reasons = array_values(array_filter($accounting->blockReasons, fn (string $reason) => $reason !== 'VOUCHER_NOT_PENDING'));
         if (!$isActive) {
             $reasons[] = 'BOOKING_NOT_ACTIVE';
         }
