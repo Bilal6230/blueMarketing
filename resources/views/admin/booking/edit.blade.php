@@ -54,12 +54,13 @@
                 @method('PUT')
                 <input type="hidden" name="expected_updated_at" value="{{ $booking->updated_at?->format('Y-m-d H:i:s.u') }}">
                 <input type="hidden" name="expected_broker_id" value="{{ $booking->broker_id }}">
+                <input type="hidden" name="expected_booking_date" value="{{ \Carbon\Carbon::parse($booking->booking_date)->format('Y-m-d H:i:s') }}">
+                <input type="hidden" name="expected_status" value="{{ $booking->status }}">
                 @if ($paymentSummary)<input type="hidden" name="expected_paid_to_date" value="{{ $paymentSummary['paid_to_date'] }}">@endif
                 <input type="hidden" name="reason" id="amendment_reason" value="{{ old('reason') }}">
-                @foreach (['project_id', 'customer_id', 'plot_id', 'plot_type', 'plot_size', 'status'] as $lockedField)
+                @foreach (['project_id', 'customer_id', 'plot_id', 'plot_type', 'plot_size'] as $lockedField)
                     <input type="hidden" name="{{ $lockedField }}" value="{{ $booking->{$lockedField} }}">
                 @endforeach
-                <input type="hidden" name="booking_date" value="{{ \Carbon\Carbon::parse($booking->booking_date)->format('Y-m-d H:i:s') }}">
                 @foreach (['plot_rate', 'is_park', 'park_facing', 'is_corner', 'carner_price', 'dicount_value', 'total_price'] as $field)
                     <input type="hidden" name="expected_{{ $field }}" value="{{ $booking->{$field} }}">
                 @endforeach
@@ -71,8 +72,8 @@
                             <div class="card-body" id="booking-form-card-body">
                                 <div class="row">
                                     <div class="col-md-4"><div class="form-group"><label>Booking ID</label><input class="form-control" value="{{ $booking->id }}" disabled></div></div>
-                                    <div class="col-md-4"><div class="form-group"><label>Booking Date</label><input class="form-control" value="{{ \Carbon\Carbon::parse($booking->booking_date)->format('d-m-Y') }}" disabled></div></div>
-                                    <div class="col-md-4"><div class="form-group"><label>Status</label><select class="form-control" disabled><option>{{ ucfirst((string) $booking->status) }}</option></select></div></div>
+                                    <div class="col-md-4"><div class="form-group"><label for="booking_date">Booking Date</label><input type="date" class="form-control" id="booking_date" name="booking_date" value="{{ old('booking_date', \Carbon\Carbon::parse($booking->booking_date)->format('Y-m-d')) }}" @disabled(!$canUpdateBroker)></div></div>
+                                    <div class="col-md-4"><div class="form-group"><label for="status">Status</label><select class="form-control" id="status" name="status" @disabled(!$canUpdateBroker)><option value="active" @selected(old('status', $booking->status) === 'active')>Active</option><option value="inactive" @selected(old('status', $booking->status) === 'inactive')>Inactive</option></select></div></div>
                                     <div class="col-md-6"><div class="form-group"><label>Project</label><select class="form-control select2" disabled><option>{{ $booking->project->project ?? 'Unavailable' }}</option></select></div></div>
                                     <div class="col-md-6"><div class="form-group">
                                         <label>Customer</label><select class="form-control select2" disabled><option>{{ $customerName !== '' ? $customerName : 'Unavailable' }}</option></select>
@@ -200,6 +201,8 @@
                 const form = document.getElementById('booking-edit-form');
                 const original = {
                     broker_id: @json((string) ($booking->broker_id ?? '')),
+                    booking_date: @json(\Carbon\Carbon::parse($booking->booking_date)->format('Y-m-d')),
+                    status: @json((string) $booking->status),
                     plot_rate: @json((string) $booking->plot_rate),
                     is_park: @json((string) $booking->is_park),
                     park_facing: @json((string) $booking->park_facing),
@@ -207,7 +210,7 @@
                     carner_price: @json((string) $booking->carner_price),
                     dicount_value: @json((string) $booking->dicount_value)
                 };
-                const labels = { broker_id: 'Broker', plot_rate: 'Plot Rate', is_park: 'Park Facing', park_facing: 'Park Charges', is_corner: 'Corner Plot', carner_price: 'Corner Charges', dicount_value: 'Discount' };
+                const labels = { broker_id: 'Broker', booking_date: 'Booking Date', status: 'Status', plot_rate: 'Plot Rate', is_park: 'Park Facing', park_facing: 'Park Charges', is_corner: 'Corner Plot', carner_price: 'Corner Charges', dicount_value: 'Discount' };
                 const escape = (value) => String(value).replace(/[&<>"']/g, (character) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[character]));
                 let confirmed = false;
                 form.addEventListener('submit', function (event) {
@@ -221,14 +224,14 @@
                         const same = ['plot_rate', 'park_facing', 'carner_price', 'dicount_value'].includes(key)
                             ? moneyToCents(oldValue) === moneyToCents(newValue) : oldValue === newValue;
                         if (!same) {
-                            const display = key === 'broker_id' ? (value) => field.querySelector('option[value="' + CSS.escape(value) + '"]')?.textContent || 'None'
+                            const display = ['broker_id', 'status'].includes(key) ? (value) => field.querySelector('option[value="' + CSS.escape(value) + '"]')?.textContent || 'None'
                                 : (['is_park', 'is_corner'].includes(key) ? (value) => value === '1' ? 'Yes' : 'No' : (value) => value);
                             changes.push(escape(labels[key]) + ': ' + escape(display(oldValue)) + ' → ' + escape(display(newValue)));
                         }
                     });
                     if (!changes.length) { Swal.fire('No changes to save.'); return; }
                     const revised = moneyToCents(grandTotal.value);
-                    const pricingChanged = changes.some((line) => !line.startsWith('Broker:'));
+                    const pricingChanged = changes.some((line) => !line.startsWith('Broker:') && !line.startsWith('Booking Date:') && !line.startsWith('Status:'));
                     if (pricingChanged) {
                         changes.push('Sale Price: ' + escape(format(originalTotal)) + ' → ' + escape(grandTotal.value));
                         changes.push('Already Paid: ' + escape(format(paid)));
@@ -254,7 +257,7 @@
                 });
             });
         </script>
-    @elseif ($canUpdateBroker)
+    @elseif (false)
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 const form = document.getElementById('booking-edit-form');
@@ -266,6 +269,37 @@
                     const before = broker.querySelector('option[value="' + CSS.escape(oldBroker) + '"]')?.textContent || 'None';
                     const after = broker.selectedOptions[0]?.textContent || 'None';
                     Swal.fire({title: 'Confirm Booking Update', text: 'Broker: ' + before + ' → ' + after,
+                        icon: 'warning', showCancelButton: true, confirmButtonText: 'Confirm Update'})
+                        .then(function (result) { if (result.isConfirmed) form.submit(); });
+                });
+            });
+        </script>
+    @endif
+    @if (!$pricingEnabled && $canUpdateBroker)
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const form = document.getElementById('booking-edit-form');
+                const broker = document.getElementById('broker_id');
+                const bookingDate = document.getElementById('booking_date');
+                const status = document.getElementById('status');
+                const oldBroker = @json((string) ($booking->broker_id ?? ''));
+                const oldBookingDate = @json(\Carbon\Carbon::parse($booking->booking_date)->format('Y-m-d'));
+                const oldStatus = @json((string) $booking->status);
+                form.addEventListener('submit', function (event) {
+                    event.preventDefault();
+                    const changes = [];
+                    if (broker.value !== oldBroker) {
+                        const before = broker.querySelector('option[value="' + CSS.escape(oldBroker) + '"]')?.textContent || 'None';
+                        const after = broker.selectedOptions[0]?.textContent || 'None';
+                        changes.push('Broker: ' + before + ' to ' + after);
+                    }
+                    if (bookingDate.value !== oldBookingDate) changes.push('Booking Date: ' + oldBookingDate + ' to ' + bookingDate.value);
+                    if (status.value !== oldStatus) {
+                        const before = status.querySelector('option[value="' + CSS.escape(oldStatus) + '"]')?.textContent || oldStatus;
+                        changes.push('Status: ' + before + ' to ' + status.selectedOptions[0].textContent);
+                    }
+                    if (!changes.length) { Swal.fire('No changes to save.'); return; }
+                    Swal.fire({title: 'Confirm Booking Update', html: changes.join('<br>'),
                         icon: 'warning', showCancelButton: true, confirmButtonText: 'Confirm Update'})
                         .then(function (result) { if (result.isConfirmed) form.submit(); });
                 });

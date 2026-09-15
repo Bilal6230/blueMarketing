@@ -84,6 +84,12 @@ class BookingEditPageTest extends TestCase
         $this->assertStringContainsString('class="col-md-7"', $html);
         $this->assertStringContainsString('class="col-md-5" id="pricing"', $html);
         $this->assertStringContainsString("name=\"broker_id\"", $html);
+        $this->assertStringContainsString('type="date" class="form-control" id="booking_date" name="booking_date"', $html);
+        $this->assertStringContainsString('name="expected_booking_date"', $html);
+        $this->assertStringContainsString('id="status" name="status"', $html);
+        $this->assertStringContainsString('name="expected_status"', $html);
+        $this->assertStringContainsString("booking_date: 'Booking Date'", $html);
+        $this->assertStringContainsString("status: 'Status'", $html);
         $this->assertStringContainsString('name="expected_{{ $field }}"', $html);
         $this->assertStringContainsString("'dicount_value', 'total_price'", $html);
         $this->assertStringNotContainsString("name=\"total_price\"", $html);
@@ -279,6 +285,94 @@ class BookingEditPageTest extends TestCase
         $this->assertSame(1, DB::table('booking_details')->count());
     }
 
+    public function test_booking_date_only_update_preserves_schedule_and_accounting(): void
+    {
+        $booking = $this->createBooking();
+        DB::table('booking_details')->insert(['booking_id' => $booking->id, 'installment_details' => 'Due', 'amount' => 100000, 'due_date' => '2026-10-01']);
+        $this->authorizeUpdate();
+        $scheduleBefore = $this->snapshot(['booking_details']);
+        $accountingBefore = $this->snapshot(array_diff($this->protectedTables(), ['booking_details']));
+
+        $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
+            ->put(route('booking.update', ['id' => $booking->id], false), $this->updatePayload($booking, ['booking_date' => '2026-09-20']))
+            ->assertRedirect(route('booking.plot.index'))->assertSessionHasNoErrors();
+
+        $this->assertSame('2026-09-20', \Carbon\Carbon::parse($booking->fresh()->booking_date)->format('Y-m-d'));
+        $this->assertSame($scheduleBefore, $this->snapshot(['booking_details']));
+        $this->assertSame($accountingBefore, $this->snapshot(array_diff($this->protectedTables(), ['booking_details'])));
+        $audit = json_decode(DB::table('booking_edit_audits')->sole()->new_values, true);
+        $this->assertSame('2026-09-20', $audit['booking_date']);
+    }
+
+    /** @dataProvider statusTransitions */
+    public function test_status_only_update_works_both_ways_and_preserves_schedule_and_accounting(string $from, string $to): void
+    {
+        $booking = $this->createBooking(['status' => $from]);
+        DB::table('booking_details')->insert(['booking_id' => $booking->id, 'installment_details' => 'Due', 'amount' => 100000, 'due_date' => '2026-10-01']);
+        $this->authorizeUpdate();
+        $scheduleBefore = $this->snapshot(['booking_details']);
+        $accountingBefore = $this->snapshot(array_diff($this->protectedTables(), ['booking_details']));
+
+        $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
+            ->put(route('booking.update', ['id' => $booking->id], false), $this->updatePayload($booking, ['status' => $to]))
+            ->assertRedirect(route('booking.plot.index'))->assertSessionHasNoErrors();
+
+        $this->assertSame($to, $booking->fresh()->status);
+        $this->assertSame($scheduleBefore, $this->snapshot(['booking_details']));
+        $this->assertSame($accountingBefore, $this->snapshot(array_diff($this->protectedTables(), ['booking_details'])));
+        $audit = json_decode(DB::table('booking_edit_audits')->sole()->new_values, true);
+        $this->assertSame($to, $audit['status']);
+    }
+
+    public function statusTransitions(): array
+    {
+        return ['active to inactive' => ['active', 'inactive'], 'inactive to active' => ['inactive', 'active']];
+    }
+
+    /** @dataProvider metadataStaleSnapshots */
+    public function test_stale_date_or_status_snapshot_is_rejected(string $expectedField, string $databaseField, string $databaseValue): void
+    {
+        $booking = $this->createBooking();
+        $payload = $this->updatePayload($booking, ['booking_date' => '2026-09-20']);
+        $timestamp = $booking->updated_at->format('Y-m-d H:i:s');
+        DB::table('bookings')->where('id', $booking->id)->update([$databaseField => $databaseValue, 'updated_at' => $timestamp]);
+        $payload['expected_updated_at'] = $booking->fresh()->updated_at?->format('Y-m-d H:i:s.u');
+        $this->authorizeUpdate();
+        $before = $this->snapshot($this->protectedTables());
+
+        $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
+            ->put(route('booking.update', ['id' => $booking->id], false), $payload)
+            ->assertSessionHasErrors('booking');
+
+        $this->assertNotSame($payload[$expectedField === 'expected_booking_date' ? 'booking_date' : 'status'], (string) $booking->fresh()->{$databaseField});
+        $this->assertSame($before, $this->snapshot($this->protectedTables()));
+        $this->assertSame(0, DB::table('booking_edit_audits')->count());
+    }
+
+    public function metadataStaleSnapshots(): array
+    {
+        return [
+            'booking date' => ['expected_booking_date', 'booking_date', '2026-09-15 00:00:00'],
+            'status' => ['expected_status', 'status', 'inactive'],
+        ];
+    }
+
+    public function test_pricing_change_on_inactive_booking_remains_blocked(): void
+    {
+        $booking = $this->createBooking(['status' => 'inactive']);
+        $this->user->givePermissionTo(Permission::create(['name' => 'update booking price', 'guard_name' => 'web']));
+        $before = $booking->fresh()->getAttributes();
+        $accountingBefore = $this->snapshot($this->protectedTables());
+
+        $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
+            ->put(route('booking.update', ['id' => $booking->id], false), $this->updatePayload($booking, [
+                'plot_rate' => '600000', 'reason' => 'Must remain blocked', 'expected_paid_to_date' => '0.00',
+            ]))->assertSessionHasErrors('booking');
+
+        $this->assertSame($before, $booking->fresh()->getAttributes());
+        $this->assertSame($accountingBefore, $this->snapshot($this->protectedTables()));
+    }
+
     public function test_legacy_null_updated_at_booking_loads_and_updates_without_accounting_mutation(): void
     {
         $booking = $this->createBooking();
@@ -378,8 +472,8 @@ class BookingEditPageTest extends TestCase
 
     public function immutableTamperingProvider(): array
     {
-        return collect(['project_id', 'customer_id', 'plot_id', 'plot_type', 'plot_size', 'booking_date', 'status', 'plot_rate', 'is_park', 'park_facing', 'is_corner', 'carner_price', 'dicount_value', 'total_price'])
-            ->mapWithKeys(fn ($field) => [$field => [$field, $field === 'booking_date' ? '2020-01-01 00:00:00' : '999']])
+        return collect(['project_id', 'customer_id', 'plot_id', 'plot_type', 'plot_size', 'plot_rate', 'is_park', 'park_facing', 'is_corner', 'carner_price', 'dicount_value', 'total_price'])
+            ->mapWithKeys(fn ($field) => [$field => [$field, '999']])
             ->all();
     }
 
@@ -694,6 +788,8 @@ class BookingEditPageTest extends TestCase
             $payload['expected_' . $field] = (string) $booking->{$field};
         }
         $payload['booking_date'] = \Carbon\Carbon::parse($booking->booking_date)->format('Y-m-d H:i:s');
+        $payload['expected_booking_date'] = \Carbon\Carbon::parse($booking->booking_date)->format('Y-m-d H:i:s');
+        $payload['expected_status'] = (string) $booking->status;
         $payload['expected_updated_at'] = $booking->updated_at?->format('Y-m-d H:i:s.u');
         $payload['expected_broker_id'] = $booking->broker_id;
         $payload['broker_id'] = $booking->broker_id;

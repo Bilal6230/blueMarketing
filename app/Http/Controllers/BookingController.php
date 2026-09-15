@@ -173,7 +173,11 @@ class BookingController extends Controller
         $request->validate([
             'expected_updated_at' => ['present', 'nullable', 'string'],
             'expected_broker_id' => ['present', 'nullable', 'integer'],
+            'expected_booking_date' => ['required', 'date'],
+            'expected_status' => ['required', 'string', 'in:active,inactive'],
             'broker_id' => ['nullable', 'integer'],
+            'booking_date' => ['required', 'date'],
+            'status' => ['required', 'string', 'in:active,inactive'],
             'expected_plot_rate' => ['required'],
             'expected_is_park' => ['required', 'integer', 'in:0,1'],
             'expected_park_facing' => ['required'],
@@ -204,7 +208,7 @@ class BookingController extends Controller
                 'STALE_BOOKING' => 'This booking was changed after you opened the page. Refresh and review the latest information before saving.',
                 'BROKER_NOT_IN_PROJECT' => 'The selected broker is not available for this project.',
                 'AMENDMENT_REASON_REQUIRED' => 'A reason is required for a pricing amendment.',
-                'BROKER_PERMISSION_REQUIRED', 'PRICING_PERMISSION_REQUIRED' => 'You do not have permission to make one or more of these changes.',
+                'BROKER_PERMISSION_REQUIRED', 'METADATA_PERMISSION_REQUIRED', 'PRICING_PERMISSION_REQUIRED' => 'You do not have permission to make one or more of these changes.',
                 default => 'This booking cannot be amended right now.',
             }])->withInput();
         } catch (ValidationException $exception) {
@@ -237,7 +241,6 @@ class BookingController extends Controller
     {
         $fields = [
             'project_id', 'customer_id', 'plot_id', 'plot_type', 'plot_size',
-            'booking_date', 'status',
         ];
 
         foreach ($fields as $field) {
@@ -246,9 +249,7 @@ class BookingController extends Controller
             }
 
             $submitted = trim((string) $request->input($field));
-            $persisted = $field === 'booking_date'
-                ? Carbon::parse($booking->{$field})->format('Y-m-d H:i:s')
-                : trim((string) $booking->{$field});
+            $persisted = trim((string) $booking->{$field});
 
             if ($submitted !== $persisted) {
                 $message = $field === 'customer_id'

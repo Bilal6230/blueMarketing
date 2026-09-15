@@ -289,6 +289,8 @@ class BookingPricingUpdateServiceTest extends TestCase
             'plot_id' => (string) $booking->plot_id, 'plot_type' => (string) $booking->plot_type,
             'plot_size' => (string) $booking->plot_size, 'booking_date' => \Carbon\Carbon::parse($booking->booking_date)->format('Y-m-d H:i:s'),
             'status' => $booking->status, 'expected_updated_at' => $booking->updated_at?->format('Y-m-d H:i:s.u'),
+            'expected_booking_date' => \Carbon\Carbon::parse($booking->booking_date)->format('Y-m-d H:i:s'),
+            'expected_status' => $booking->status,
             'expected_broker_id' => $booking->broker_id, 'broker_id' => $booking->broker_id,
             'expected_paid_to_date' => '0.00', 'reason' => 'Approved amendment',
         ], $this->snapshot(), $this->defaultPricing(), $pricing);

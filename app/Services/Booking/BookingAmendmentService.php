@@ -23,7 +23,7 @@ final class BookingAmendmentService
         return DB::transaction(function () use ($bookingId, $projectId, $input, $mayBroker, $mayPrice, $userId) {
             $booking = Booking::where('project_id', $projectId)->where('cancel_status', '0')
                 ->lockForUpdate()->findOrFail($bookingId);
-            if ($booking->trashed() || (string) $booking->status !== 'active') {
+            if ($booking->trashed()) {
                 throw new DomainException('BOOKING_NOT_ACTIVE');
             }
 
@@ -38,16 +38,27 @@ final class BookingAmendmentService
             if ($oldBroker !== (empty($input['expected_broker_id']) ? null : (int) $input['expected_broker_id'])) {
                 throw new DomainException('STALE_BOOKING');
             }
-            foreach (['project_id', 'customer_id', 'plot_id', 'plot_type', 'plot_size', 'booking_date', 'status'] as $field) {
+            foreach (['project_id', 'customer_id', 'plot_id', 'plot_type', 'plot_size'] as $field) {
                 if (!array_key_exists($field, $input)) {
                     throw new DomainException('STALE_BOOKING');
                 }
-                $actual = $field === 'booking_date'
-                    ? Carbon::parse($booking->{$field})->format('Y-m-d H:i:s')
-                    : (string) $booking->{$field};
+                $actual = (string) $booking->{$field};
                 if ((string) $input[$field] !== $actual) {
                     throw new DomainException('STALE_BOOKING');
                 }
+            }
+            $oldBookingDate = Carbon::parse($booking->booking_date)->format('Y-m-d H:i:s');
+            $expectedBookingDate = Carbon::parse($input['expected_booking_date'])->format('Y-m-d H:i:s');
+            $oldStatus = (string) $booking->status;
+            if ($oldBookingDate !== $expectedBookingDate || $oldStatus !== (string) $input['expected_status']) {
+                throw new DomainException('STALE_BOOKING');
+            }
+            $newBookingDate = Carbon::parse($input['booking_date'])->format('Y-m-d');
+            $newStatus = (string) $input['status'];
+            $dateChanged = Carbon::parse($booking->booking_date)->format('Y-m-d') !== $newBookingDate;
+            $statusChanged = $oldStatus !== $newStatus;
+            if (($dateChanged || $statusChanged) && !$mayBroker) {
+                throw new DomainException('METADATA_PERMISSION_REQUIRED');
             }
 
             $fields = ['plot_rate', 'is_park', 'park_facing', 'is_corner', 'carner_price', 'dicount_value', 'total_price'];
@@ -91,7 +102,10 @@ final class BookingAmendmentService
             if ($pricingChanged && !$mayPrice) {
                 throw new DomainException('PRICING_PERMISSION_REQUIRED');
             }
-            if (!$pricingChanged && !$brokerChanged) {
+            if ($pricingChanged && $oldStatus !== 'active') {
+                throw new DomainException('BOOKING_NOT_ACTIVE');
+            }
+            if (!$pricingChanged && !$brokerChanged && !$dateChanged && !$statusChanged) {
                 return ['changed' => false, 'price_changed' => false, 'schedule_reset' => false, 'refund_due' => '0.00'];
             }
 
@@ -132,6 +146,12 @@ final class BookingAmendmentService
 
             $oldTotal = (string) $booking->total_price;
             $booking->broker_id = $newBroker;
+            if ($dateChanged) {
+                $booking->booking_date = $newBookingDate;
+            }
+            if ($statusChanged) {
+                $booking->status = $newStatus;
+            }
             if ($pricingChanged) {
                 foreach ($requested as $field => $value) {
                     $booking->{$field} = $value;
@@ -144,12 +164,14 @@ final class BookingAmendmentService
                 'booking_id' => $booking->id,
                 'project_id' => $projectId,
                 'user_id' => $userId,
-                'operation' => $pricingChanged ? 'booking_price_amendment' : 'broker_update',
+                'operation' => $pricingChanged ? 'booking_price_amendment' : ($brokerChanged ? 'broker_update' : 'metadata_update'),
                 'reason' => $pricingChanged ? trim((string) $input['reason']) : null,
-                'old_values' => ['broker_id' => $oldBroker, 'pricing' => $oldPricing, 'paid_to_date' => $paid,
+                'old_values' => ['broker_id' => $oldBroker, 'booking_date' => $oldBookingDate, 'status' => $oldStatus,
+                    'pricing' => $oldPricing, 'paid_to_date' => $paid,
                     'old_outstanding' => $paid === null ? null : (bccomp($oldTotal, $paid, 2) === 1 ? bcsub($oldTotal, $paid, 2) : '0.00'),
                     'schedule_before' => $scheduleBefore],
-                'new_values' => ['broker_id' => $newBroker, 'pricing' => $pricingChanged ? array_merge($requested, ['total_price' => $newTotal]) : $oldPricing,
+                'new_values' => ['broker_id' => $newBroker, 'booking_date' => $newBookingDate, 'status' => $newStatus,
+                    'pricing' => $pricingChanged ? array_merge($requested, ['total_price' => $newTotal]) : $oldPricing,
                     'paid_to_date' => $paid, 'new_outstanding' => $outstanding, 'refund_due' => $refund,
                     'schedule_reset' => $scheduleReset, 'schedule_after' => []],
                 'old_total' => $oldTotal,
