@@ -64,6 +64,20 @@ class BookingEditPageTest extends TestCase
         $this->assertStringNotContainsString('Save Broker Change', $html);
         $this->assertStringNotContainsString('Save Pricing Change', $html);
         $this->assertStringContainsString('Confirm Booking Update', $html);
+        foreach (['Current Sale Price', 'Paid To Date', 'Current Outstanding', 'Estimated New Outstanding', 'Estimated Refund Due'] as $removedLabel) {
+            $this->assertStringNotContainsString('<label>' . $removedLabel . '</label>', $html);
+        }
+        $this->assertStringNotContainsString('id="pricing_reason"', $html);
+        $this->assertStringNotContainsString('<textarea id="pricing_reason"', $html);
+        $this->assertStringContainsString('name="reason" id="amendment_reason"', $html);
+        $this->assertStringContainsString("input: pricingChanged ? 'textarea'", $html);
+        $this->assertStringContainsString("inputLabel: pricingChanged ? 'Reason for pricing change'", $html);
+        $leftCardStart = strpos($html, 'id="booking-form-card-body"');
+        $saveButton = strpos($html, '>Save Changes</button>');
+        $leftCardEnd = strpos($html, '</div><!-- /.card-body -->', $leftCardStart);
+        $this->assertNotFalse($leftCardStart);
+        $this->assertGreaterThan($leftCardStart, $saveButton);
+        $this->assertLessThan($leftCardEnd, $saveButton);
         $this->assertStringContainsString('class="col-md-7"', $html);
         $this->assertStringContainsString('class="col-md-5" id="pricing"', $html);
         $this->assertStringContainsString("name=\"broker_id\"", $html);

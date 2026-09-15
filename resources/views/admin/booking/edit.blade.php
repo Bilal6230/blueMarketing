@@ -55,6 +55,7 @@
                 <input type="hidden" name="expected_updated_at" value="{{ $booking->updated_at?->format('Y-m-d H:i:s.u') }}">
                 <input type="hidden" name="expected_broker_id" value="{{ $booking->broker_id }}">
                 @if ($paymentSummary)<input type="hidden" name="expected_paid_to_date" value="{{ $paymentSummary['paid_to_date'] }}">@endif
+                <input type="hidden" name="reason" id="amendment_reason" value="{{ old('reason') }}">
                 @foreach (['project_id', 'customer_id', 'plot_id', 'plot_type', 'plot_size', 'status'] as $lockedField)
                     <input type="hidden" name="{{ $lockedField }}" value="{{ $booking->{$lockedField} }}">
                 @endforeach
@@ -67,7 +68,7 @@
 
                         <div class="card">
                             <div class="card-header"><h3 class="card-title">Booking Form</h3></div>
-                            <div class="card-body">
+                            <div class="card-body" id="booking-form-card-body">
                                 <div class="row">
                                     <div class="col-md-4"><div class="form-group"><label>Booking ID</label><input class="form-control" value="{{ $booking->id }}" disabled></div></div>
                                     <div class="col-md-4"><div class="form-group"><label>Booking Date</label><input class="form-control" value="{{ \Carbon\Carbon::parse($booking->booking_date)->format('d-m-Y') }}" disabled></div></div>
@@ -88,7 +89,8 @@
                                         </select>
                                     </div></div>
                                 </div>
-                            </div>
+                                @if ($canUpdateBroker || $canUpdatePricing)<button type="submit" class="btn btn-primary">Save Changes</button>@endif
+                            </div><!-- /.card-body -->
                         </div>
                 </div>
 
@@ -125,18 +127,11 @@
                                     <div class="col-md-3"><div class="form-group"><label for="grand_total">Grand Total</label></div></div>
                                     <div class="col-md-9"><div class="form-group"><input class="form-control" id="grand_total" value="{{ $booking->total_price }}" readonly><small class="form-text text-muted">Preview only. The server calculator is authoritative.</small></div></div>
                                 </div>
-                                <div class="form-group"><label for="pricing_reason">Reason for pricing change</label><textarea id="pricing_reason" name="reason" maxlength="500" class="form-control" rows="3" placeholder="Client-approved discount correction" @disabled(!$pricingEnabled)>{{ old('reason') }}</textarea></div>
-                                <div class="form-group"><label>Current Sale Price</label><input class="form-control" value="{{ $booking->total_price }}" readonly></div>
-                                <div class="form-group"><label>Paid To Date</label><input class="form-control" id="paid_to_date" value="{{ $paymentSummary['paid_to_date'] ?? 'Attribution review required' }}" readonly></div>
-                                <div class="form-group"><label>Current Outstanding</label><input class="form-control" value="{{ $paymentSummary ? (bccomp((string) $booking->total_price, $paymentSummary['paid_to_date'], 2) === 1 ? bcsub((string) $booking->total_price, $paymentSummary['paid_to_date'], 2) : '0.00') : 'Attribution review required' }}" readonly></div>
-                                <div class="form-group"><label>Estimated New Outstanding</label><input class="form-control" id="estimated_outstanding" readonly></div>
-                                <div class="form-group"><label>Estimated Refund Due</label><input class="form-control" id="estimated_refund" readonly></div>
                                 <small class="form-text text-muted">Existing accounting vouchers will remain unchanged. Previews are informational; the server recalculates on save.</small>
                             </div>
                         </div>
                 </div>
             </div>
-            @if ($canUpdateBroker || $canUpdatePricing)<button type="submit" class="btn btn-primary mb-3">Save Changes</button>@endif
             </form>
         </div></section>
     </div>
@@ -196,8 +191,6 @@
                     subTotal.value = format(base);
                     grandTotal.value = base === null || park === null || corner === null || less === null ? '' : format(base + park + corner - less);
                     const revised = base === null || park === null || corner === null || less === null ? null : base + park + corner - less;
-                    document.getElementById('estimated_outstanding').value = revised === null || paid === null ? '' : format(revised > paid ? revised - paid : 0n);
-                    document.getElementById('estimated_refund').value = revised === null || paid === null ? '' : format(paid > revised ? paid - revised : 0n);
                 }
                 [rate, parkToggle, parkCharge, cornerToggle, cornerCharge, discount].forEach(function (field) {
                     field.addEventListener(field.tagName === 'SELECT' ? 'change' : 'input', updatePreview);
@@ -234,17 +227,28 @@
                     });
                     if (!changes.length) { Swal.fire('No changes to save.'); return; }
                     const revised = moneyToCents(grandTotal.value);
-                    if (changes.some((line) => !line.startsWith('Broker:'))) {
+                    const pricingChanged = changes.some((line) => !line.startsWith('Broker:'));
+                    if (pricingChanged) {
                         changes.push('Sale Price: ' + escape(format(originalTotal)) + ' → ' + escape(grandTotal.value));
                         changes.push('Already Paid: ' + escape(format(paid)));
-                        changes.push(revised !== null && paid > revised ? 'Estimated Refund Due: ' + escape(format(paid - revised)) : 'Estimated Outstanding: ' + escape(document.getElementById('estimated_outstanding').value));
+                        changes.push(revised !== null && paid > revised ? 'Refund Due: ' + escape(format(paid - revised)) : 'New Outstanding: ' + escape(revised === null || paid === null ? '' : format(revised > paid ? revised - paid : 0n)));
                         changes.push('Payment Schedule: ' + (revised !== originalTotal ? 'Will be reset' : 'Will remain unchanged'));
                         changes.push('Existing Vouchers: Will remain unchanged');
                         if (revised !== null && paid > revised) changes.push('Accountant action will be required for the refund.');
                     }
                     Swal.fire({title: 'Confirm Booking Update', html: changes.join('<br>'), icon: 'warning', showCancelButton: true,
-                        confirmButtonText: 'Confirm Update'}).then(function (result) {
-                        if (result.isConfirmed) { confirmed = true; form.submit(); }
+                        confirmButtonText: 'Confirm Update', input: pricingChanged ? 'textarea' : undefined,
+                        inputLabel: pricingChanged ? 'Reason for pricing change' : undefined,
+                        inputPlaceholder: pricingChanged ? 'Enter the approved amendment reason' : undefined,
+                        inputValue: pricingChanged ? document.getElementById('amendment_reason').value : undefined,
+                        inputAttributes: pricingChanged ? {maxlength: '500'} : undefined,
+                        inputValidator: pricingChanged ? (value) => !String(value || '').trim() ? 'A reason is required for a pricing amendment.' : undefined : undefined
+                    }).then(function (result) {
+                        if (result.isConfirmed) {
+                            if (pricingChanged) document.getElementById('amendment_reason').value = String(result.value).trim();
+                            confirmed = true;
+                            form.submit();
+                        }
                     });
                 });
             });
