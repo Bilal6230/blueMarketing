@@ -64,6 +64,9 @@ class BookingEditPageTest extends TestCase
         $this->assertStringNotContainsString('Save Broker Change', $html);
         $this->assertStringNotContainsString('Save Pricing Change', $html);
         $this->assertStringContainsString('Confirm Booking Update', $html);
+        $sweetAlertAsset = "asset('template/admin/plugins/sweetalert2/sweetalert2.all.min.js')";
+        $this->assertStringContainsString($sweetAlertAsset, $html);
+        $this->assertLessThan(strpos($html, 'Swal.fire'), strpos($html, $sweetAlertAsset));
         foreach (['Current Sale Price', 'Paid To Date', 'Current Outstanding', 'Estimated New Outstanding', 'Estimated Refund Due'] as $removedLabel) {
             $this->assertStringNotContainsString('<label>' . $removedLabel . '</label>', $html);
         }

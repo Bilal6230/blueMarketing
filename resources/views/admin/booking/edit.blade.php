@@ -138,6 +138,7 @@
 @endsection
 
 @section('js')
+    <script src="{{ asset('template/admin/plugins/sweetalert2/sweetalert2.all.min.js') }}"></script>
     @if ($pricingEnabled)
         <script>
             document.addEventListener('DOMContentLoaded', function () {
