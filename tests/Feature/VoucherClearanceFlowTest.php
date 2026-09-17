@@ -100,7 +100,7 @@ class VoucherClearanceFlowTest extends TestCase
             'plot_rate' => '100,000',
             'total_price' => '500,000',
             'booking_date' => '2026-05-17',
-            'status' => 1,
+            'status' => 'active',
             'broker_id' => 1,
         ]);
         $session = app('session.store');
@@ -133,7 +133,8 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame((string) $this->plot->id, $loggedError['context']['plot_id']);
     }
 
-    public function test_successful_booking_create_redirects_to_booking_list(): void
+    /** @dataProvider canonicalBookingStatuses */
+    public function test_successful_booking_create_redirects_to_booking_list(string $status): void
     {
         ProjectHeadSubhead::create([
             'project_id' => $this->project->id,
@@ -149,7 +150,7 @@ class VoucherClearanceFlowTest extends TestCase
             'plot_rate' => '100,000',
             'total_price' => '500,000',
             'booking_date' => '2026-05-17',
-            'status' => 1,
+            'status' => $status,
             'broker_id' => 1,
         ]);
         $session = app('session.store');
@@ -161,7 +162,47 @@ class VoucherClearanceFlowTest extends TestCase
 
         $this->assertSame(route('booking.plot.index'), $response->getTargetUrl());
         $this->assertSame(2, DB::table('bookings')->count());
+        $this->assertSame($status, DB::table('bookings')->latest('id')->value('status'));
         $this->assertSame(0, DB::transactionLevel());
+    }
+
+    public function canonicalBookingStatuses(): array
+    {
+        return ['active' => ['active'], 'inactive' => ['inactive']];
+    }
+
+    /** @dataProvider invalidBookingStatuses */
+    public function test_booking_create_rejects_noncanonical_status($status): void
+    {
+        $before = DB::table('bookings')->count();
+        $request = Request::create('/admin/booking', 'POST', [
+            'project_id' => $this->project->id,
+            'customer_id' => $this->customer->id,
+            'plot_id' => (string) $this->plot->id,
+            'plot_type' => 1,
+            'plot_size' => '5',
+            'plot_rate' => '100,000',
+            'total_price' => '500,000',
+            'booking_date' => '2026-05-17',
+            'status' => $status,
+            'broker_id' => 1,
+        ]);
+        $session = app('session.store');
+        $session->start();
+        $session->setPreviousUrl('/admin/booking/sale');
+        $request->setLaravelSession($session);
+        $this->app->instance('request', $request);
+
+        $response = app(BookingController::class)->store($request);
+
+        $this->assertSame(302, $response->getStatusCode());
+        $this->assertTrue($session->get('errors')->has('status'));
+        $this->assertSame($before, DB::table('bookings')->count());
+    }
+
+    public function invalidBookingStatuses(): array
+    {
+        return ['numeric active' => [1], 'numeric inactive' => [0], 'arbitrary string' => ['enabled']];
     }
 
     /**

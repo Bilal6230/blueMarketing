@@ -9,7 +9,7 @@ class BookingCrossFlowLockingTest extends TestCase
     public function test_competing_flows_acquire_booking_lock_before_dependent_mutation(): void
     {
         $controller = file_get_contents(__DIR__ . '/../../app/Http/Controllers/BookingController.php');
-        $pricing = file_get_contents(__DIR__ . '/../../app/Services/Booking/BookingPricingUpdateService.php');
+        $amendment = file_get_contents(__DIR__ . '/../../app/Services/Booking/BookingAmendmentService.php');
 
         $this->assertOrdered($this->method($controller, 'storePaymentSchedule'), [
             'DB::transaction(', 'Booking::query()', '->lockForUpdate()', 'bccomp($submittedTotal, $lockedTotal, 2)', "BookingDetail::where('booking_id'", 'BookingDetail::create(',
@@ -23,8 +23,8 @@ class BookingCrossFlowLockingTest extends TestCase
         $this->assertOrdered($this->method($controller, 'cancel'), [
             'DB::transaction(', '$booking = Booking::where(', '->lockForUpdate()', '$plot = Plot::where(',
         ]);
-        $this->assertOrdered($this->method($pricing, 'updatePristineBooking'), [
-            'DB::transaction(', '$booking = Booking::query()', '->lockForUpdate()', '$this->assertLifecycleIsPristine($booking)',
+        $this->assertOrdered($this->method($amendment, 'update'), [
+            'DB::transaction(', '$booking = Booking::where(', '->lockForUpdate()',
         ]);
     }
 

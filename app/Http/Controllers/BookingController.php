@@ -307,7 +307,7 @@ class BookingController extends Controller
             'plot_rate' => 'required',
             'total_price' => 'required',
             'booking_date' => 'required|date',
-            'status' => 'required|numeric',
+            'status' => 'required|string|in:active,inactive',
         ]);
         if ($validator->fails()) {
             return back()->withErrors($validator)->withInput();
