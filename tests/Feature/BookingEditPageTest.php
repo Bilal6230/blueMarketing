@@ -34,6 +34,13 @@ class BookingEditPageTest extends TestCase
         app('url')->forceRootUrl('http://localhost');
 
         $this->createSchema();
+        DB::table('settings')->insert([
+            ['key' => 'app_name', 'value' => 'Blue Marketing'],
+            ['key' => 'app_favicon', 'value' => 'favicon.png'],
+            ['key' => 'app_logo', 'value' => 'logo.png'],
+            ['key' => 'app_short_name', 'value' => 'BM'],
+            ['key' => 'app_loading_gif', 'value' => 'loading.gif'],
+        ]);
         $this->user = User::factory()->create(['status_id' => 1]);
         $this->projectId = DB::table('projects')->insertGetId(['project' => 'A Long Demonstration Project Name']);
         $this->otherProjectId = DB::table('projects')->insertGetId(['project' => 'Other Project']);
@@ -201,6 +208,87 @@ class BookingEditPageTest extends TestCase
 
         $this->user->givePermissionTo($broker);
         $this->assertSame('opened', app(PermissionMiddleware::class)->handle($request, fn () => 'opened', 'update plot|update booking price'));
+    }
+
+    public function test_price_only_form_submits_current_metadata_and_can_save_pricing(): void
+    {
+        $booking = $this->createBooking();
+        $this->user->givePermissionTo(Permission::create(['name' => 'update booking price', 'guard_name' => 'web']));
+        DB::table('booking_details')->insert([
+            'booking_id' => $booking->id, 'installment_details' => 'Due',
+            'amount' => 100000, 'due_date' => '2026-10-01',
+        ]);
+
+        $page = $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
+            ->get(route('booking.edit', ['id' => $booking->id], false));
+        $page->assertOk();
+        $html = $page->getContent();
+        $this->assertStringContainsString('<input type="hidden" name="booking_date" value="2026-09-08">', $html);
+        $this->assertStringContainsString('<input type="hidden" name="status" value="active">', $html);
+        $this->assertStringContainsString('<input type="hidden" name="broker_id" value="' . $booking->broker_id . '">', $html);
+
+        $accountingBefore = $this->snapshot(array_diff($this->protectedTables(), ['booking_details']));
+        $original = $booking->fresh();
+        $payload = [
+            'project_id' => (string) $original->project_id,
+            'customer_id' => (string) $original->customer_id,
+            'plot_id' => (string) $original->plot_id,
+            'plot_type' => (string) $original->plot_type,
+            'plot_size' => (string) $original->plot_size,
+            'expected_updated_at' => $original->updated_at?->format('Y-m-d H:i:s.u'),
+            'expected_broker_id' => $original->broker_id,
+            'expected_booking_date' => \Carbon\Carbon::parse($original->booking_date)->format('Y-m-d H:i:s'),
+            'expected_status' => $original->status,
+            'booking_date' => \Carbon\Carbon::parse($original->booking_date)->format('Y-m-d'),
+            'status' => $original->status,
+            'broker_id' => $original->broker_id,
+            'expected_plot_rate' => (string) $original->plot_rate,
+            'expected_is_park' => (string) $original->is_park,
+            'expected_park_facing' => (string) $original->park_facing,
+            'expected_is_corner' => (string) $original->is_corner,
+            'expected_carner_price' => (string) $original->carner_price,
+            'expected_dicount_value' => (string) $original->dicount_value,
+            'expected_total_price' => (string) $original->total_price,
+            'expected_paid_to_date' => '0.00',
+            'plot_rate' => '600000',
+            'is_park' => (string) $original->is_park,
+            'park_facing' => (string) $original->park_facing,
+            'is_corner' => (string) $original->is_corner,
+            'carner_price' => (string) $original->carner_price,
+            'dicount_value' => (string) $original->dicount_value,
+            'reason' => 'Price-only browser amendment',
+        ];
+
+        $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
+            ->put(route('booking.update', ['id' => $booking->id], false), $payload)
+            ->assertRedirect(route('booking.plot.index'))->assertSessionHasNoErrors();
+
+        $updated = $booking->fresh();
+        $this->assertSame('2026-09-08', \Carbon\Carbon::parse($updated->booking_date)->format('Y-m-d'));
+        $this->assertSame('active', $updated->status);
+        $this->assertSame((int) $original->broker_id, (int) $updated->broker_id);
+        $this->assertSame($accountingBefore, $this->snapshot(array_diff($this->protectedTables(), ['booking_details'])));
+        $this->assertSame(0, DB::table('booking_details')->where('booking_id', $booking->id)->count());
+    }
+
+    public function test_save_visibility_respects_effective_permissions_when_pricing_is_blocked(): void
+    {
+        $booking = $this->createBooking(['status' => 'inactive']);
+        $pricing = Permission::create(['name' => 'update booking price', 'guard_name' => 'web']);
+        $broker = Permission::create(['name' => 'update plot', 'guard_name' => 'web']);
+
+        $this->user->givePermissionTo($pricing);
+        $priceOnly = $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
+            ->get(route('booking.edit', ['id' => $booking->id], false));
+        $priceOnly->assertOk()->assertDontSee('Save Changes');
+
+        $this->user->revokePermissionTo($pricing);
+        $this->user->givePermissionTo($broker);
+        $metadata = $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
+            ->get(route('booking.edit', ['id' => $booking->id], false));
+        $metadata->assertOk()->assertSee('Save Changes')->assertSee('Confirm Booking Update');
+        $this->assertStringContainsString('const bookingDate = document.getElementById(\'booking_date\');', $metadata->getContent());
+        $this->assertStringContainsString('const status = document.getElementById(\'status\');', $metadata->getContent());
     }
 
     public function test_unauthenticated_update_is_blocked(): void
@@ -808,6 +896,16 @@ class BookingEditPageTest extends TestCase
 
     private function createSchema(): void
     {
+        Schema::create('settings', function (Blueprint $table) {
+            $table->id();
+            $table->string('key')->unique();
+            $table->text('value')->nullable();
+            $table->string('name')->nullable();
+            $table->string('type')->nullable();
+            $table->string('ext')->nullable();
+            $table->string('category')->nullable();
+            $table->timestamps();
+        });
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');

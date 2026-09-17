@@ -56,6 +56,11 @@
                 <input type="hidden" name="expected_broker_id" value="{{ $booking->broker_id }}">
                 <input type="hidden" name="expected_booking_date" value="{{ \Carbon\Carbon::parse($booking->booking_date)->format('Y-m-d H:i:s') }}">
                 <input type="hidden" name="expected_status" value="{{ $booking->status }}">
+                @if (!$canUpdateBroker)
+                    <input type="hidden" name="booking_date" value="{{ \Carbon\Carbon::parse($booking->booking_date)->format('Y-m-d') }}">
+                    <input type="hidden" name="status" value="{{ $booking->status }}">
+                    <input type="hidden" name="broker_id" value="{{ $booking->broker_id }}">
+                @endif
                 @if ($paymentSummary)<input type="hidden" name="expected_paid_to_date" value="{{ $paymentSummary['paid_to_date'] }}">@endif
                 <input type="hidden" name="reason" id="amendment_reason" value="{{ old('reason') }}">
                 @foreach (['project_id', 'customer_id', 'plot_id', 'plot_type', 'plot_size'] as $lockedField)
@@ -90,7 +95,7 @@
                                         </select>
                                     </div></div>
                                 </div>
-                                @if ($canUpdateBroker || $canUpdatePricing)<button type="submit" class="btn btn-primary">Save Changes</button>@endif
+                                @if ($canUpdateBroker || $pricingEnabled)<button type="submit" class="btn btn-primary">Save Changes</button>@endif
                             </div><!-- /.card-body -->
                         </div>
                 </div>
