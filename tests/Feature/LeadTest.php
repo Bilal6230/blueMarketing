@@ -6,9 +6,11 @@ use App\Http\Middleware\CheckUserStatus;
 use App\Http\Controllers\LeadController;
 use App\Models\Lead;
 use App\Models\User;
+use App\Repository\Lead\LeadRepository as lead_repo;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Middlewares\PermissionMiddleware;
@@ -316,6 +318,64 @@ class LeadTest extends TestCase
         $this->assertStringContainsString('Delete Lead', $deleteModal);
     }
 
+    public function test_lead_page_renders_project_badge_with_valid_project(): void
+    {
+        $lead = $this->createLead([
+            'project_id' => $this->projectId,
+        ]);
+
+        $leadRow = lead_repo::getLeadsList($this->user->id)->firstWhere('id', $lead->id);
+
+        $this->assertSame('Alpha Town', $leadRow->project_name);
+
+        $html = $this->renderLeadProjectBadge($leadRow);
+
+        $this->assertStringContainsString('Alpha Town', $html);
+        $this->assertStringContainsString((string) \Setting::getProjectColorClass($this->projectId), $html);
+    }
+
+    public function test_lead_page_does_not_crash_when_project_relation_is_missing(): void
+    {
+        $lead = $this->createLead([
+            'project_id' => null,
+        ]);
+
+        $leadRow = lead_repo::getLeadsList($this->user->id)->firstWhere('id', $lead->id);
+
+        $this->assertSame('No Project', $leadRow->project_name);
+
+        $html = $this->renderLeadProjectBadge($leadRow);
+
+        $this->assertStringContainsString('No Project', $html);
+    }
+
+    public function test_lead_page_does_not_crash_if_project_name_is_array(): void
+    {
+        $leadRow = (object) [
+            'project_id' => [$this->projectId],
+            'project_name' => ['Alpha Town', 'Beta Town'],
+            'project' => null,
+        ];
+
+        $html = $this->renderLeadProjectBadge($leadRow);
+
+        $this->assertStringContainsString('Alpha Town, Beta Town', $html);
+        $this->assertStringNotContainsString('Array', $html);
+    }
+
+    public function test_lead_project_badge_shows_no_project_when_project_is_missing(): void
+    {
+        $leadRow = (object) [
+            'project_id' => null,
+            'project_name' => null,
+            'project' => null,
+        ];
+
+        $html = $this->renderLeadProjectBadge($leadRow);
+
+        $this->assertStringContainsString('No Project', $html);
+    }
+
     public function test_deleting_existing_lead_marks_it_inactive_and_keeps_users(): void
     {
         $otherUser = User::factory()->create();
@@ -520,5 +580,32 @@ class LeadTest extends TestCase
         auth()->setUser($this->user);
 
         return app(LeadController::class)->{$action}($request);
+    }
+
+    protected function renderLeadProjectBadge(object $leadRow): string
+    {
+        return trim(Blade::render(<<<'BLADE'
+@php
+    $projectId = is_array($i->project_id) ? null : $i->project_id;
+
+    $projectClass = Setting::getProjectColorClass($projectId);
+    $projectClass = is_array($projectClass)
+        ? implode(' ', array_filter($projectClass))
+        : (string) ($projectClass ?? '');
+
+    $projectName = $i->project_name ?? optional($i->project)->project ?? 'No Project';
+    $projectName = is_array($projectName)
+        ? implode(', ', array_filter($projectName))
+        : (string) ($projectName ?? 'No Project');
+
+    if (trim($projectName) === '') {
+        $projectName = 'No Project';
+    }
+@endphp
+
+<span class="btn btn-sm {{ $projectClass }}">
+    {{ $projectName }}
+</span>
+BLADE, ['i' => $leadRow]));
     }
 }
