@@ -6,7 +6,10 @@ use App\Http\Controllers\ReportController;
 use App\Models\Lead;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ViewErrorBag;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Testing\TestResponse;
@@ -14,6 +17,72 @@ use Tests\TestCase;
 
 class AllLeadsReportRenderingTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config()->set('database.default', 'sqlite');
+        config()->set('database.connections.sqlite.database', ':memory:');
+        DB::purge('sqlite');
+        DB::setDefaultConnection('sqlite');
+
+        Schema::create('settings', function (Blueprint $table) {
+            $table->id();
+            $table->string('key')->unique();
+            $table->text('value')->nullable();
+            $table->string('name')->nullable();
+            $table->string('type')->nullable();
+            $table->string('ext')->nullable();
+            $table->string('category')->nullable();
+            $table->timestamps();
+        });
+        DB::table('settings')->insert([
+            ['key' => 'app_name', 'value' => 'Blue Marketing', 'name' => 'Application Name'],
+            ['key' => 'app_favicon', 'value' => 'favicon.png', 'name' => 'Favicon'],
+            ['key' => 'app_logo', 'value' => 'logo.png', 'name' => 'Logo'],
+            ['key' => 'app_short_name', 'value' => 'BM', 'name' => 'Short Name'],
+            ['key' => 'app_loading_gif', 'value' => 'loading.gif', 'name' => 'Loading'],
+        ]);
+        Schema::create('zones', function (Blueprint $table) {
+            $table->id();
+            $table->boolean('is_active')->default(true);
+        });
+        Schema::create('areas', function (Blueprint $table) {
+            $table->id();
+            $table->boolean('is_active')->default(true);
+        });
+        Schema::create('projects', function (Blueprint $table) {
+            $table->id();
+            $table->string('project');
+        });
+        Schema::create('permissions', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('guard_name');
+            $table->timestamps();
+        });
+        Schema::create('roles', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('guard_name');
+            $table->timestamps();
+        });
+        Schema::create('model_has_permissions', function (Blueprint $table) {
+            $table->unsignedBigInteger('permission_id');
+            $table->string('model_type');
+            $table->unsignedBigInteger('model_id');
+        });
+        Schema::create('model_has_roles', function (Blueprint $table) {
+            $table->unsignedBigInteger('role_id');
+            $table->string('model_type');
+            $table->unsignedBigInteger('model_id');
+        });
+        Schema::create('role_has_permissions', function (Blueprint $table) {
+            $table->unsignedBigInteger('permission_id');
+            $table->unsignedBigInteger('role_id');
+        });
+    }
+
     public function test_lead_without_project_or_follow_status_renders_safe_fallbacks(): void
     {
         $user = new User();
