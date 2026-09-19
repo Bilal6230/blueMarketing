@@ -552,7 +552,9 @@ class LeadController extends Controller
         if (isset($request->number)) {
             $data = lead_repo::getLeadByNumber($request->number);
             if (!empty($data)) {
-                $projectDetails = getProjectDetails($data->project_id);
+                $projectDetails = $data->project_id
+                    ? getProjectDetails($data->project_id)
+                    : null;
 
                 $result['active'] = "Already Register";
                 $result['name'] = $data->first_name . ' ' . $data->last_name;
@@ -560,7 +562,7 @@ class LeadController extends Controller
                 $result['created_at'] = $data->created_at;
                 $result['updated_at'] = $data->updated_at;
                 $result['assignTo'] = $data->users;
-                $result['project'] = $projectDetails['project'];
+                $result['project'] = $projectDetails['project'] ?? 'No Project';
                 $result['status'] = 'success';
                 $result['follow_status'] = $data->follow_status;
 

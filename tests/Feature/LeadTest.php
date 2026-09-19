@@ -6,9 +6,11 @@ use App\Http\Middleware\CheckUserStatus;
 use App\Http\Controllers\LeadController;
 use App\Models\Lead;
 use App\Models\User;
+use App\Repository\Lead\LeadRepository as lead_repo;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Middlewares\PermissionMiddleware;
@@ -257,6 +259,87 @@ class LeadTest extends TestCase
         $this->assertCount(2, $payload['data']['users']);
     }
 
+    public function test_dashboard_search_returns_active_lead_with_valid_project(): void
+    {
+        $lead = $this->createLead(['phone_number' => '03048471583']);
+
+        $response = $this->callLeadController('search', 'POST', ['number' => '03048471583']);
+        $payload = $response->getData(true);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame($lead->id, $payload['data']['id']);
+        $this->assertSame('Alpha Town', $payload['data']['project']);
+        $this->assertSame('Already Register', $payload['data']['active']);
+    }
+
+    public function test_dashboard_search_returns_active_lead_with_null_project(): void
+    {
+        $lead = $this->createLead([
+            'phone_number' => '03006792223',
+            'project_id' => null,
+        ]);
+
+        $response = $this->callLeadController('search', 'POST', ['number' => '03006792223']);
+        $payload = $response->getData(true);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame($lead->id, $payload['data']['id']);
+        $this->assertSame('No Project', $payload['data']['project']);
+    }
+
+    public function test_dashboard_search_returns_active_lead_with_missing_project(): void
+    {
+        $lead = $this->createLead([
+            'phone_number' => '03006792224',
+            'project_id' => 999999,
+        ]);
+
+        $response = $this->callLeadController('search', 'POST', ['number' => '03006792224']);
+        $payload = $response->getData(true);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame($lead->id, $payload['data']['id']);
+        $this->assertSame('No Project', $payload['data']['project']);
+    }
+
+    public function test_dashboard_search_matches_active_secondary_mobile_number(): void
+    {
+        $lead = $this->createLead(['mobile_number' => '03001234567']);
+
+        $response = $this->callLeadController('search', 'POST', ['number' => '03001234567']);
+        $payload = $response->getData(true);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame($lead->id, $payload['data']['id']);
+    }
+
+    /** @dataProvider inactiveSearchNumberProvider */
+    public function test_dashboard_search_does_not_return_inactive_lead(string $field, string $number): void
+    {
+        $this->createLead([$field => $number, 'is_active' => 0]);
+
+        $response = $this->callLeadController('search', 'POST', ['number' => $number]);
+
+        $this->assertSame(404, $response->getStatusCode());
+        $this->assertSame(['error' => 'No Record Found'], $response->getData(true));
+    }
+
+    public function test_dashboard_search_preserves_unknown_number_response(): void
+    {
+        $response = $this->callLeadController('search', 'POST', ['number' => '03999999999']);
+
+        $this->assertSame(404, $response->getStatusCode());
+        $this->assertSame(['error' => 'No Record Found'], $response->getData(true));
+    }
+
+    public function inactiveSearchNumberProvider(): array
+    {
+        return [
+            'primary phone' => ['phone_number', '03001111111'],
+            'secondary mobile' => ['mobile_number', '03002222222'],
+        ];
+    }
+
     public function test_lead_page_js_prefers_assigned_user_ids_for_edit_modal(): void
     {
         $html = file_get_contents(resource_path('views/admin/crm/lead.blade.php'));
@@ -314,6 +397,64 @@ class LeadTest extends TestCase
         $this->assertStringContainsString("route('crm.lead.destroy')", $deleteModal);
         $this->assertStringNotContainsString("route('user.destroy')", $deleteModal);
         $this->assertStringContainsString('Delete Lead', $deleteModal);
+    }
+
+    public function test_lead_page_renders_project_badge_with_valid_project(): void
+    {
+        $lead = $this->createLead([
+            'project_id' => $this->projectId,
+        ]);
+
+        $leadRow = lead_repo::getLeadsList($this->user->id)->firstWhere('id', $lead->id);
+
+        $this->assertSame('Alpha Town', $leadRow->project_name);
+
+        $html = $this->renderLeadProjectBadge($leadRow);
+
+        $this->assertStringContainsString('Alpha Town', $html);
+        $this->assertStringContainsString((string) \Setting::getProjectColorClass($this->projectId), $html);
+    }
+
+    public function test_lead_page_does_not_crash_when_project_relation_is_missing(): void
+    {
+        $lead = $this->createLead([
+            'project_id' => null,
+        ]);
+
+        $leadRow = lead_repo::getLeadsList($this->user->id)->firstWhere('id', $lead->id);
+
+        $this->assertSame('No Project', $leadRow->project_name);
+
+        $html = $this->renderLeadProjectBadge($leadRow);
+
+        $this->assertStringContainsString('No Project', $html);
+    }
+
+    public function test_lead_page_does_not_crash_if_project_name_is_array(): void
+    {
+        $leadRow = (object) [
+            'project_id' => [$this->projectId],
+            'project_name' => ['Alpha Town', 'Beta Town'],
+            'project' => null,
+        ];
+
+        $html = $this->renderLeadProjectBadge($leadRow);
+
+        $this->assertStringContainsString('Alpha Town, Beta Town', $html);
+        $this->assertStringNotContainsString('Array', $html);
+    }
+
+    public function test_lead_project_badge_shows_no_project_when_project_is_missing(): void
+    {
+        $leadRow = (object) [
+            'project_id' => null,
+            'project_name' => null,
+            'project' => null,
+        ];
+
+        $html = $this->renderLeadProjectBadge($leadRow);
+
+        $this->assertStringContainsString('No Project', $html);
     }
 
     public function test_deleting_existing_lead_marks_it_inactive_and_keeps_users(): void
@@ -520,5 +661,32 @@ class LeadTest extends TestCase
         auth()->setUser($this->user);
 
         return app(LeadController::class)->{$action}($request);
+    }
+
+    protected function renderLeadProjectBadge(object $leadRow): string
+    {
+        return trim(Blade::render(<<<'BLADE'
+@php
+    $projectId = is_array($i->project_id) ? null : $i->project_id;
+
+    $projectClass = Setting::getProjectColorClass($projectId);
+    $projectClass = is_array($projectClass)
+        ? implode(' ', array_filter($projectClass))
+        : (string) ($projectClass ?? '');
+
+    $projectName = $i->project_name ?? optional($i->project)->project ?? 'No Project';
+    $projectName = is_array($projectName)
+        ? implode(', ', array_filter($projectName))
+        : (string) ($projectName ?? 'No Project');
+
+    if (trim($projectName) === '') {
+        $projectName = 'No Project';
+    }
+@endphp
+
+<span class="btn btn-sm {{ $projectClass }}">
+    {{ $projectName }}
+</span>
+BLADE, ['i' => $leadRow]));
     }
 }
