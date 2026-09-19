@@ -149,8 +149,8 @@
                                                 {{-- <label for="status">Status</label> --}}
                                                 <select class="form-control" id="status" name="status" required
                                                     placeholder="Status">
-                                                    <option value="1">Active</option>
-                                                    <option value="0">Inactive</option>
+                                                      <option value="active" {{ old('status', 'active') === 'active' ? 'selected' : '' }}>Active</option>
+                                                      <option value="inactive" {{ old('status') === 'inactive' ? 'selected' : '' }}>Inactive</option>
                                                 </select>
                                             </div>
                                         </div>

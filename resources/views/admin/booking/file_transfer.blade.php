@@ -32,6 +32,22 @@
                                 </div><!-- /.card-header -->
                                 <div class="card-body">
                                     @csrf
+                                    <input type="hidden" name="expected_updated_at" value="{{ $booking->updated_at?->format('Y-m-d H:i:s.u') }}">
+                                    <input type="hidden" name="expected_project_id" value="{{ $booking->project_id }}">
+                                    <input type="hidden" name="expected_customer_id" value="{{ $booking->customer_id }}">
+                                    <input type="hidden" name="expected_plot_id" value="{{ $booking->plot_id }}">
+                                    <input type="hidden" name="expected_plot_type" value="{{ $booking->plot_type }}">
+                                    <input type="hidden" name="expected_plot_size" value="{{ $booking->plot_size }}">
+                                    <input type="hidden" name="expected_plot_rate" value="{{ $booking->plot_rate }}">
+                                    <input type="hidden" name="expected_is_park" value="{{ $booking->is_park }}">
+                                    <input type="hidden" name="expected_park_facing" value="{{ $booking->park_facing }}">
+                                    <input type="hidden" name="expected_is_corner" value="{{ $booking->is_corner }}">
+                                    <input type="hidden" name="expected_carner_price" value="{{ $booking->carner_price }}">
+                                    <input type="hidden" name="expected_dicount_value" value="{{ $booking->dicount_value }}">
+                                    <input type="hidden" name="expected_total_price" value="{{ $booking->total_price }}">
+                                    <input type="hidden" name="expected_booking_date" value="{{ $booking->booking_date }}">
+                                    <input type="hidden" name="expected_status" value="{{ $booking->status }}">
+                                    <input type="hidden" name="expected_broker_id" value="{{ $booking->broker_id }}">
                                     <div class="row">
                                         <div class="col-md-4">
                                             <div class="form-group">
@@ -172,12 +188,12 @@
                                             <div class="form-group">
                                                 {{-- <label for="status">Status</label> --}}
                                                 <input type="hidden" name="status"
-                                                    value="{{ $booking->status == 'active' ? '1' : '0' }}">
+                                                    value="{{ $booking->status }}">
                                                 <select class="form-control" id="status" name="status" required
                                                     placeholder="Status" disabled>
-                                                    <option value="1" {{ $booking->status == '1' ? 'selected' : '' }}>Active
+                                                    <option value="active" {{ $booking->status == 'active' ? 'selected' : '' }}>Active
                                                     </option>
-                                                    <option value="0" {{ $booking->status == '0' ? 'selected' : '' }}>Inactive
+                                                    <option value="inactive" {{ $booking->status == 'inactive' ? 'selected' : '' }}>Inactive
                                                     </option>
                                                 </select>
                                             </div>
