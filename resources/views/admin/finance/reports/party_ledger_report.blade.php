@@ -6,217 +6,729 @@
     <title>Party Ledger Report</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        @page {
-            size: auto;
-            margin: 8mm 7mm;
-        }
+/* =========================================================
+   PARTY LEDGER REPORT
+   COMPLETE SCREEN + PRINT CSS
+   ========================================================= */
 
-        @media print {
-            body {
-                margin: 0;
-                padding: 0;
-                background: #fff !important;
-                font-size: 10px;
-            }
 
-            .no-print {
-                display: none !important;
-            }
+/* =========================================================
+   PRINT PAGE SETTINGS
+   ========================================================= */
 
-            .container {
-                max-width: 100% !important;
-                margin: 0 !important;
-                padding: 6px 8px !important;
-                box-shadow: none !important;
-                border-radius: 0 !important;
-            }
+@page {
+    size: A4 portrait;
+    margin: 8mm 7mm;
+}
 
-            .header {
-                margin-bottom: 8px !important;
-            }
 
-            .header h1 {
-                font-size: 18px !important;
-                margin-bottom: 2px !important;
-            }
+/* =========================================================
+   GENERAL PAGE STYLES
+   ========================================================= */
 
-            .header p,
-            .party-list,
-            .footer {
-                font-size: 10px !important;
-                line-height: 1.2 !important;
-            }
+body {
+    background-color: #f5f7fa;
+    font-family: Arial, sans-serif;
+    color: #222;
+    font-size: 13px;
+    line-height: 1.25;
+    margin: 0;
+    padding: 0;
+}
 
-            .section-title {
-                font-size: 13px !important;
-                margin-bottom: 6px !important;
-                padding-left: 6px !important;
-            }
 
-            .table {
-                margin-bottom: 0 !important;
-                table-layout: fixed;
-            }
+/* =========================================================
+   MAIN CONTAINER
+   ========================================================= */
 
-            .table th,
-            .table td {
-                padding: 3px 5px !important;
-                font-size: 9.5px !important;
-                line-height: 1.15 !important;
-            }
+.container {
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 
-            .table-responsive {
-                overflow: visible !important;
-            }
+    padding: 14px 16px;
 
-            .report-block {
-                page-break-inside: avoid;
-            }
+    margin-top: 12px;
+    margin-bottom: 10px;
 
-            .footer {
-                margin-top: 6px !important;
-            }
-        }
+    max-width: 1100px;
+}
 
-        body {
-            background-color: #f5f7fa;
-            font-family: 'Arial', sans-serif;
-            color: #222;
-            font-size: 13px;
-            line-height: 1.25;
-        }
 
-        .container {
-            background: #ffffff;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            padding: 14px 16px;
-            margin-top: 12px;
-            margin-bottom: 10px;
-            max-width: 1100px;
-        }
+/* =========================================================
+   REPORT HEADER
+   ========================================================= */
 
-        .header {
-            margin-bottom: 12px;
-        }
+.header {
+    margin-bottom: 12px;
+}
 
-        .header h1 {
-            font-size: 24px;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 4px;
-        }
+.header h1 {
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
 
-        .header p {
-            font-size: 13px;
-            color: #555;
-            margin-bottom: 2px;
-        }
+    margin-top: 0;
+    margin-bottom: 4px;
+}
 
-        .section-title {
-            font-size: 16px;
-            font-weight: bold;
-            color: #2c3e50;
-            border-left: 4px solid #3498db;
-            padding-left: 8px;
-            margin-bottom: 8px;
-            line-height: 1.1;
-        }
+.header p {
+    font-size: 13px;
+    color: #555;
 
-        .table {
-            background: #ffffff;
-            border-radius: 5px;
-            overflow: hidden;
-            margin-bottom: 0;
-            table-layout: auto;
-        }
+    margin-top: 0;
+    margin-bottom: 2px;
 
-        .table thead th {
-            background-color: #3498db;
-            color: #ffffff;
-            border: none;
-            padding: 6px 8px;
-            font-size: 12px;
-            line-height: 1.1;
-            white-space: nowrap;
-        }
+    line-height: 1.2;
+}
 
-        .table tbody tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
 
-        .opening-balance-row {
-            font-weight: bold;
-            color: #6c757d; /* Light black color */
-        }
+/* =========================================================
+   PARTY LIST
+   ========================================================= */
 
-        /* Balance Color Classes */
-        .balance-negative {
-            color: red !important; /* Using !important to override any other styling */
-        }
+.party-list {
+    margin-bottom: 4px;
 
-        .balance-positive {
-            color: green !important; /* Using !important to override any other styling */
-        }
+    font-size: 13px;
+    line-height: 1.2;
 
-        .btn-primary {
-            background-color: #3498db;
-            border: none;
-        }
+    color: #333;
+}
 
-        .btn-primary:hover {
-            background-color: #2c81ba;
-        }
 
-        .footer {
-            text-align: center;
-            margin-top: 10px;
-            font-size: 12px;
-            color: #888;
-        }
+/* =========================================================
+   SECTION TITLE
+   ========================================================= */
 
-        .table tbody td {
-            color: #333;
-            padding: 4px 6px;
-            font-size: 12px;
-            line-height: 1.15;
-            vertical-align: top;
-        }
+.section-title {
+    font-size: 16px;
+    font-weight: bold;
 
-        .party-list {
-            margin-bottom: 4px;
-            line-height: 1.2;
-        }
+    color: #2c3e50;
 
-        .report-block {
-            margin-top: 8px;
-        }
+    border-left: 4px solid #3498db;
 
-        .col-index {
-            width: 42px;
-            white-space: nowrap;
-        }
+    padding-left: 8px;
 
-        .col-date {
-            width: 88px;
-            white-space: nowrap;
-        }
+    margin-top: 0;
+    margin-bottom: 8px;
 
-        .col-voucher {
-            width: 112px;
-            white-space: nowrap;
-        }
+    line-height: 1.1;
+}
 
-        .col-amount {
-            width: 86px;
-            white-space: nowrap;
-            text-align: right;
-        }
 
-        .table tbody td.col-date,
-        .table tbody td.col-voucher {
-            white-space: nowrap;
-        }
+/* =========================================================
+   REPORT BLOCK
+   ========================================================= */
+
+.report-block {
+    margin-top: 8px;
+}
+
+
+/* =========================================================
+   TABLE RESPONSIVE WRAPPER
+   ========================================================= */
+
+.table-responsive {
+    width: 100%;
+}
+
+
+/* =========================================================
+   TABLE
+   ========================================================= */
+
+.table {
+    width: 100%;
+
+    background: #ffffff;
+
+    border-radius: 5px;
+
+    overflow: hidden;
+
+    margin-bottom: 0;
+
+    table-layout: auto;
+}
+
+
+/* =========================================================
+   TABLE HEADER
+   ========================================================= */
+
+.table thead th {
+    background-color: #3498db;
+
+    color: #ffffff;
+
+    border: none;
+
+    padding: 6px 8px;
+
+    font-size: 12px;
+
+    line-height: 1.1;
+
+    white-space: nowrap;
+
+    vertical-align: middle;
+}
+
+
+/* =========================================================
+   TABLE BODY
+   ========================================================= */
+
+.table tbody td {
+    color: #333;
+
+    padding: 4px 6px;
+
+    font-size: 12px;
+
+    line-height: 1.15;
+
+    vertical-align: top;
+}
+
+
+/* =========================================================
+   ALTERNATE ROW BACKGROUND
+   ========================================================= */
+
+.table tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+
+/* =========================================================
+   OPENING BALANCE
+   ========================================================= */
+
+.opening-balance-row {
+    font-weight: bold;
+
+    color: #6c757d;
+}
+
+
+/* =========================================================
+   BALANCE COLORS
+   ========================================================= */
+
+.balance-negative {
+    color: red !important;
+}
+
+.balance-positive {
+    color: green !important;
+}
+
+
+/* =========================================================
+   TABLE COLUMN WIDTHS
+   ========================================================= */
+
+.col-index {
+    width: 42px;
+    white-space: nowrap;
+}
+
+.col-date {
+    width: 88px;
+    white-space: nowrap;
+}
+
+.col-voucher {
+    width: 112px;
+    white-space: nowrap;
+}
+
+.col-amount {
+    width: 86px;
+
+    white-space: nowrap;
+
+    text-align: right;
+}
+
+
+/* Prevent date / voucher wrapping */
+
+.table tbody td.col-date,
+.table tbody td.col-voucher {
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   BUTTON
+   ========================================================= */
+
+.btn-primary {
+    background-color: #3498db;
+
+    border: none;
+}
+
+.btn-primary:hover {
+    background-color: #2c81ba;
+}
+
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+.footer {
+    text-align: center;
+
+    margin-top: 10px;
+
+    margin-bottom: 10px;
+
+    font-size: 12px;
+
+    color: #888;
+}
+
+
+/* =========================================================
+   PRINT STYLES
+   ========================================================= */
+
+@media print {
+
+    /*
+     * Basic document
+     */
+
+    html,
+    body {
+        width: 100% !important;
+
+        margin: 0 !important;
+
+        padding: 0 !important;
+
+        background: #ffffff !important;
+
+        font-size: 10px !important;
+
+        overflow: visible !important;
+    }
+
+
+    /*
+     * Hide print button and other non-print content
+     */
+
+    .no-print {
+        display: none !important;
+    }
+
+
+    /*
+     * Main report container
+     */
+
+    .container {
+        width: 100% !important;
+
+        max-width: 100% !important;
+
+        margin: 0 !important;
+
+        padding: 0 !important;
+
+        background: #ffffff !important;
+
+        box-shadow: none !important;
+
+        border-radius: 0 !important;
+
+        overflow: visible !important;
+    }
+
+
+    /*
+     * Header
+     *
+     * Keep only the report header together.
+     * DO NOT keep the entire report together.
+     */
+
+    .header {
+        margin-top: 0 !important;
+
+        margin-bottom: 6px !important;
+
+        padding: 0 !important;
+
+        break-inside: avoid !important;
+
+        page-break-inside: avoid !important;
+    }
+
+
+    .header h1 {
+        font-size: 18px !important;
+
+        line-height: 1.1 !important;
+
+        margin-top: 0 !important;
+
+        margin-bottom: 2px !important;
+    }
+
+
+    .header p {
+        font-size: 9px !important;
+
+        line-height: 1.15 !important;
+
+        margin-top: 0 !important;
+
+        margin-bottom: 1px !important;
+    }
+
+
+    /*
+     * Party names
+     */
+
+    .party-list {
+        font-size: 9px !important;
+
+        line-height: 1.15 !important;
+
+        margin-top: 0 !important;
+
+        margin-bottom: 2px !important;
+    }
+
+
+    /*
+     * Ledger section title
+     */
+
+    .section-title {
+        font-size: 11px !important;
+
+        line-height: 1.1 !important;
+
+        margin-top: 4px !important;
+
+        margin-bottom: 4px !important;
+
+        padding-left: 5px !important;
+
+        border-left-width: 3px !important;
+
+        /*
+         * Keep Ledger Details title
+         * with the following table.
+         */
+
+        break-after: avoid !important;
+
+        page-break-after: avoid !important;
+    }
+
+
+    /*
+     * =====================================================
+     * IMPORTANT FIX
+     * =====================================================
+     *
+     * Previously:
+     *
+     * .report-block {
+     *     page-break-inside: avoid;
+     * }
+     *
+     * That forced Chrome to move the COMPLETE ledger
+     * table onto the following page.
+     *
+     * We now explicitly allow the report block to split.
+     */
+
+    .report-block {
+        width: 100% !important;
+
+        margin-top: 4px !important;
+
+        padding: 0 !important;
+
+        break-inside: auto !important;
+
+        page-break-inside: auto !important;
+
+        page-break-before: auto !important;
+
+        break-before: auto !important;
+    }
+
+
+    /*
+     * Responsive Bootstrap wrapper must not interfere
+     * with printing.
+     */
+
+    .table-responsive {
+        width: 100% !important;
+
+        overflow: visible !important;
+
+        margin: 0 !important;
+
+        padding: 0 !important;
+
+        break-inside: auto !important;
+
+        page-break-inside: auto !important;
+    }
+
+
+    /*
+     * Main table
+     */
+
+    .table {
+        width: 100% !important;
+
+        max-width: 100% !important;
+
+        margin: 0 !important;
+
+        padding: 0 !important;
+
+        border-collapse: collapse !important;
+
+        border-spacing: 0 !important;
+
+        table-layout: fixed !important;
+
+        overflow: visible !important;
+
+        break-inside: auto !important;
+
+        page-break-inside: auto !important;
+    }
+
+
+    /*
+     * Repeat column headings on every printed page.
+     */
+
+    .table thead {
+        display: table-header-group !important;
+    }
+
+
+    /*
+     * Allow tbody to continue naturally
+     * on following pages.
+     */
+
+    .table tbody {
+        display: table-row-group !important;
+
+        break-inside: auto !important;
+
+        page-break-inside: auto !important;
+    }
+
+
+    /*
+     * Do not split ONE transaction row
+     * between two pages.
+     */
+
+    .table tr {
+        break-inside: avoid !important;
+
+        page-break-inside: avoid !important;
+
+        page-break-after: auto !important;
+    }
+
+
+    /*
+     * Table header cells
+     */
+
+    .table thead th {
+        background-color: #3498db !important;
+
+        color: #ffffff !important;
+
+        -webkit-print-color-adjust: exact !important;
+
+        print-color-adjust: exact !important;
+
+        padding: 3px 4px !important;
+
+        font-size: 8px !important;
+
+        line-height: 1.05 !important;
+
+        white-space: nowrap !important;
+
+        vertical-align: middle !important;
+    }
+
+
+    /*
+     * Table body cells
+     */
+
+    .table tbody td {
+        padding: 2px 4px !important;
+
+        font-size: 8px !important;
+
+        line-height: 1.1 !important;
+
+        vertical-align: top !important;
+    }
+
+
+    /*
+     * Preserve alternating rows in PDF/printing
+     */
+
+    .table tbody tr:nth-child(even) {
+        background-color: #f9f9f9 !important;
+
+        -webkit-print-color-adjust: exact !important;
+
+        print-color-adjust: exact !important;
+    }
+
+
+    /*
+     * Opening balance
+     */
+
+    .opening-balance-row {
+        font-weight: bold !important;
+
+        break-inside: avoid !important;
+
+        page-break-inside: avoid !important;
+    }
+
+
+    /*
+     * Balance colors
+     */
+
+    .balance-negative {
+        color: red !important;
+
+        -webkit-print-color-adjust: exact !important;
+
+        print-color-adjust: exact !important;
+    }
+
+
+    .balance-positive {
+        color: green !important;
+
+        -webkit-print-color-adjust: exact !important;
+
+        print-color-adjust: exact !important;
+    }
+
+
+    /*
+     * Column widths optimized for A4 portrait
+     */
+
+    .col-index {
+        width: 5% !important;
+
+        white-space: nowrap !important;
+    }
+
+
+    .col-date {
+        width: 11% !important;
+
+        white-space: nowrap !important;
+    }
+
+
+    .col-voucher {
+        width: 14% !important;
+
+        white-space: nowrap !important;
+    }
+
+
+    .col-amount {
+        width: 11% !important;
+
+        white-space: nowrap !important;
+
+        text-align: right !important;
+    }
+
+
+    /*
+     * Details column can wrap naturally
+     */
+
+    .table th:nth-child(4),
+    .table td:nth-child(4) {
+        width: auto !important;
+
+        white-space: normal !important;
+
+        word-break: normal !important;
+
+        overflow-wrap: break-word !important;
+    }
+
+
+    /*
+     * Make amount columns right aligned
+     */
+
+    .table th:nth-child(5),
+    .table th:nth-child(6),
+    .table th:nth-child(7),
+    .table td:nth-child(5),
+    .table td:nth-child(6),
+    .table td:nth-child(7) {
+        text-align: right !important;
+    }
+
+
+    /*
+     * Footer
+     */
+
+    .footer {
+        margin-top: 5px !important;
+
+        margin-bottom: 0 !important;
+
+        padding: 0 !important;
+
+        font-size: 8px !important;
+
+        line-height: 1.1 !important;
+
+        break-inside: avoid !important;
+
+        page-break-inside: avoid !important;
+    }
+}
     </style>
 </head>
 <body>
@@ -232,7 +744,7 @@
             <p>Date Range: <strong>{{ \Carbon\Carbon::parse($fdate)->format('d-m-y') }} </strong> to <strong>{{ \Carbon\Carbon::parse($tdate)->format('d-m-y') }} </strong></p>
             <p>Project: <strong>{{ $projectName }}</strong></p>
         </div>
-        
+
 
         <!-- Party Details Table -->
         {{-- <div class="mb-4 col-sm-4">
