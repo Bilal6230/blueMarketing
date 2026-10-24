@@ -88,12 +88,12 @@ class LandingPageAdminController extends Controller
         $overrides = [];
         foreach (($validated['project_overrides'] ?? []) as $id => $item) {
             if (!ctype_digit((string) $id) || !Project::whereKey($id)->exists()) {
-                throw \\Illuminate\\Validation\\ValidationException::withMessages(['project_overrides' => 'Invalid project selected.']);
+                throw \Illuminate\Validation\ValidationException::withMessages(['project_overrides' => 'Invalid project selected.']);
             }
             $image = trim((string) ($item['image'] ?? ''));
             if ($image !== '' && !preg_match('~^https://[^\\s"<>]+$~i', $image)
                 && !preg_match('~^/storage/landing-page/[a-zA-Z0-9/_\\.-]+$~', $image)) {
-                throw \\Illuminate\\Validation\\ValidationException::withMessages(['project_overrides' => 'Invalid project image URL.']);
+                throw \Illuminate\Validation\ValidationException::withMessages(['project_overrides' => 'Invalid project image URL.']);
             }
             $overrides[$id] = [
                 'title' => trim((string) ($item['title'] ?? '')),
