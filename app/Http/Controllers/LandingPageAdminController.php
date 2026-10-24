@@ -44,8 +44,8 @@ class LandingPageAdminController extends Controller
             'project_ids' => ['nullable', 'array'],
             'project_ids.*' => ['integer', 'distinct', Rule::exists('projects', 'id')],
             'content' => ['required', 'array'],
-            'content.hero_image' => ['nullable', 'url', 'max:2048', 'starts_with:https://'],
-            'content.about_image' => ['nullable', 'url', 'max:2048', 'starts_with:https://'],
+            'content.hero_image' => ['nullable', 'string', 'max:2048'],
+            'content.about_image' => ['nullable', 'string', 'max:2048'],
             'sections' => ['nullable', 'array'],
         ]);
 
@@ -57,6 +57,15 @@ class LandingPageAdminController extends Controller
             }
             if (!in_array($key, ['hero_image', 'about_image'], true) && mb_strlen($value) > 1200) {
                 throw \Illuminate\Validation\ValidationException::withMessages(["content.$key" => 'Maximum 1200 characters.']);
+            }
+            if (in_array($key, ['hero_image', 'about_image'], true) && trim($value) !== '') {
+                $image = trim($value);
+                if (!preg_match('~^https://[^\\s"\\x27<>]+$~i', $image)
+                    && !preg_match('~^/storage/landing-page/[a-zA-Z0-9/_\\.-]+$~', $image)) {
+                    throw \\Illuminate\\Validation\\ValidationException::withMessages([
+                        "content.$key" => 'Use an HTTPS image URL or an uploaded landing-page image.'
+                    ]);
+                }
             }
             $content[$key] = trim($value) !== '' ? trim($value) : $fallback;
         }
