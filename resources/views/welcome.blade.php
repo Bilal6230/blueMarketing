@@ -1,3 +1,10 @@
+@php
+    $landingPage = \App\Models\LandingPage::first() ?? new \App\Models\LandingPage();
+    $landingTheme = in_array($landingPage->theme, ['corporate','luxury','vibrant']) ? $landingPage->theme : 'corporate';
+    $actualProjects = ($landingPage->projects_mode === 'actual' && !empty($landingPage->project_ids))
+        ? \App\Models\Project::whereIn('id',$landingPage->project_ids)->where('is_active',1)->get()
+        : collect();
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -30,8 +37,35 @@
       @media(max-width:760px){.topline{display:none}.nav{height:70px}.menu-toggle{display:block}.nav-links{display:none;position:absolute;left:0;right:0;top:70px;background:white;flex-direction:column;align-items:stretch;padding:23px;border-top:1px solid var(--line);box-shadow:0 15px 25px #09142918}.nav-links.open{display:flex}.hero-grid{display:flex;flex-direction:column;align-items:stretch;padding:56px 0 50px;gap:42px}.hero h1{font-size:43px}.hero-photo{min-height:365px}.hero-card{left:15px;top:18px}.proof-inner{justify-content:center;text-align:center}.proof-sep{display:none}.section{padding:75px 0}.service-grid,.projects-grid,.steps{grid-template-columns:1fr}.about-grid,.faq-grid,.contact-grid{grid-template-columns:1fr}.about-photo{height:330px}.cta-inner,.projects-intro{align-items:start;flex-direction:column}.form-grid{grid-template-columns:1fr;gap:0}.contact-form{padding:23px}.footer-grid,.copyright{flex-direction:column}.project-img{height:220px}}
       @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
     </style>
+
+    <style>
+      /* Website themes: markup stays shared while brand presentation changes. */
+      body.theme-luxury{--navy:#ded6c8;--dark:#090d14;--blue:#c49b5f;--gold:#d5ae72;--cream:#121820;--text:#d1d0cf;--muted:#a6aebc;--line:#303a48;--white:#101822;background:#0e141c;color:#d1d0cf}
+      body.theme-luxury h1,body.theme-luxury h2,body.theme-luxury h3,body.theme-luxury h4{color:#f3f1ed}
+      body.theme-luxury .nav,body.theme-luxury .service-card,body.theme-luxury .project-card,body.theme-luxury .contact-form{background:#141c27;border-color:#303a48}
+      body.theme-luxury .brand,body.theme-luxury .nav-links,body.theme-luxury .nav-actions .btn-outline{color:#f2f0e9}
+      body.theme-luxury .btn-primary{color:#151515;background:#d6b17b;box-shadow:none}
+      body.theme-luxury .btn-outline{background:transparent;color:#e5dac9;border-color:#596478}
+      body.theme-luxury .hero,body.theme-luxury .about,body.theme-luxury .process,body.theme-luxury .contact{background:#101823}
+      body.theme-luxury .hero h1 span{color:#d6b17b}
+      body.theme-luxury .hero-photo{filter:saturate(.7)}
+      body.theme-luxury .hero-card,body.theme-luxury .service-icon{background:#222d3c;color:#e7c38d}
+      body.theme-luxury .hero-card strong,body.theme-luxury .project-body h3,body.theme-luxury summary{color:#fff}
+      body.theme-luxury .field input,body.theme-luxury .field select,body.theme-luxury .field textarea{background:#202a36;color:#fff;border-color:#465363}
+      body.theme-luxury .field label{color:#ddd}
+      body.theme-luxury .form-pending{background:#362d1d;border-color:#705631;color:#f5d19a}
+      body.theme-luxury .cta,body.theme-luxury footer{background:#080c13}
+      body.theme-vibrant{--navy:#122a65;--dark:#102969;--blue:#155cf9;--gold:#26bcde;--cream:#edf6ff;--text:#294069;--muted:#5f7298;--line:#d6e5fb;--white:#fff}
+      body.theme-vibrant .hero{background:linear-gradient(135deg,#f4f9ff 0%,#e1edff 55%,#eff7ff 100%)}
+      body.theme-vibrant .hero h1 span{background:linear-gradient(110deg,#2055e7,#12a4d9);-webkit-background-clip:text;background-clip:text;color:transparent}
+      body.theme-vibrant .btn-primary{background:linear-gradient(105deg,#1757f5,#177ecf);box-shadow:0 12px 25px #2663df38;border-radius:12px}
+      body.theme-vibrant .service-card,body.theme-vibrant .project-card{border-radius:18px}
+      body.theme-vibrant .hero-photo,body.theme-vibrant .about-photo{border-radius:20px}
+      body.theme-vibrant .proofbar,body.theme-vibrant .cta{background:linear-gradient(100deg,#10276b,#1760de)}
+      @media(max-width:760px){body.theme-luxury .nav-links{background:#141c27}}
+    </style>
 </head>
-<body>
+<body class="theme-{{ $landingTheme }}">
 <div class="topline"><div class="container"><span>Thoughtful guidance for your next property decision.</span><span>Welcome to <strong>BlueMarketing</strong></span></div></div>
 <header class="nav">
   <div class="container nav-inner">
@@ -44,38 +78,61 @@
 </header>
 <main id="top">
   <section class="hero" aria-labelledby="hero-title"><div class="container hero-grid">
-    <div><span class="eyebrow">Your property journey starts here</span><h1 id="hero-title">A better place to <span>begin your next chapter.</span></h1><p>Discover property possibilities with a marketing partner that puts clarity, confidence and your goals first.</p>
+    <div><span class="eyebrow">{{ $landingPage->contentValue('hero_eyebrow') }}</span><h1 id="hero-title">{{ $landingPage->contentValue('hero_title') }}</h1><p>{{ $landingPage->contentValue('hero_description') }}</p>
       <div class="hero-buttons"><a class="btn btn-primary" href="#contact">Explore Your Options <span aria-hidden="true">↗</span></a><a class="btn btn-outline" href="#about">Get to Know Us <span aria-hidden="true">→</span></a></div>
       <div class="hero-note"><span class="dot"></span>Personal attention. Transparent conversations. Clear next steps.</div>
     </div>
-    <div class="hero-photo" role="img" aria-label="Contemporary residential architecture"><div class="hero-card"><strong>Space to dream bigger.</strong><span>Find a direction that feels right for you.</span></div><div class="image-label">Picture your possibilities</div></div>
+    <div class="hero-photo" @if($landingPage->contentValue('hero_image')) style="background-image:url('{{ $landingPage->contentValue('hero_image') }}')" @endif role="img" aria-label="Contemporary residential architecture"><div class="hero-card"><strong>Space to dream bigger.</strong><span>Find a direction that feels right for you.</span></div><div class="image-label">Picture your possibilities</div></div>
   </div></section>
   <div class="proofbar"><div class="container proof-inner"><span><strong>People-first</strong> approach</span><i class="proof-sep"></i><span><strong>Clear</strong> communication</span><i class="proof-sep"></i><span><strong>Thoughtful</strong> property guidance</span><i class="proof-sep"></i><span><strong>One-to-one</strong> support</span></div></div>
-  <section class="section" id="services"><div class="container"><div class="section-heading center"><span class="eyebrow">What we do</span><h2>More than property marketing. A partner in the process.</h2><p>From initial discovery to your next decision, we're here to make the experience more understandable and personal.</p></div>
+  @if($landingPage->sectionEnabled('services'))
+<section class="section" id="services"><div class="container"><div class="section-heading center"><span class="eyebrow">What we do</span><h2>{{ $landingPage->contentValue('services_title') }}</h2><p>From initial discovery to your next decision, we're here to make the experience more understandable and personal.</p></div>
     <div class="service-grid">
       <article class="service-card"><div class="service-icon" aria-hidden="true">⌂</div><h3>Property Discovery</h3><p>Explore real estate options aligned with your needs, lifestyle and priorities.</p></article>
       <article class="service-card"><div class="service-icon" aria-hidden="true">◇</div><h3>Marketing & Promotion</h3><p>Compelling presentation that helps property opportunities reach the right audience.</p></article>
       <article class="service-card"><div class="service-icon" aria-hidden="true">↗</div><h3>Customer Guidance</h3><p>Ask questions, compare options and move forward with greater clarity.</p></article>
     </div></div></section>
-  <section class="section about" id="about"><div class="container about-grid"><div class="about-photo" role="img" aria-label="Modern residential exterior"></div><div class="about-copy"><span class="eyebrow">About BlueMarketing</span><h2>Real estate is personal. Your experience should be too.</h2><p>Every property decision is connected to a bigger story — a home, a business, a family or a future plan. BlueMarketing is built around making that journey easier to navigate.</p><p>We believe good guidance starts with listening, asking the right questions and communicating clearly along the way.</p><ul class="check-list"><li>Start with your requirements and priorities</li><li>Explore options with straightforward guidance</li><li>Stay informed from inquiry to next steps</li></ul><a class="btn btn-primary" href="#contact">Start a Conversation <span aria-hidden="true">↗</span></a></div></div></section>
-  <section class="section" id="opportunities"><div class="container"><div class="projects-intro"><div class="section-heading"><span class="eyebrow">Explore possibilities</span><h2>What does your next move look like?</h2><p>Whether you are exploring a new home, a plot or a commercial opportunity, start by choosing what matters most.</p></div><a class="btn btn-outline" href="#contact">Discuss Your Requirements →</a></div>
+@endif
+  @if($landingPage->sectionEnabled('about'))
+<section class="section about" id="about"><div class="container about-grid"><div class="about-photo" @if($landingPage->contentValue('about_image')) style="background-image:url('{{ $landingPage->contentValue('about_image') }}')" @endif role="img" aria-label="Modern residential exterior"></div><div class="about-copy"><span class="eyebrow">About BlueMarketing</span><h2>{{ $landingPage->contentValue('about_title') }}</h2><p>{{ $landingPage->contentValue('about_description') }}</p><p>We believe good guidance starts with listening, asking the right questions and communicating clearly along the way.</p><ul class="check-list"><li>Start with your requirements and priorities</li><li>Explore options with straightforward guidance</li><li>Stay informed from inquiry to next steps</li></ul><a class="btn btn-primary" href="#contact">Start a Conversation <span aria-hidden="true">↗</span></a></div></div></section>
+@endif
+  @if($landingPage->sectionEnabled('opportunities'))
+<section class="section" id="opportunities"><div class="container"><div class="projects-intro"><div class="section-heading"><span class="eyebrow">Explore possibilities</span><h2>{{ $landingPage->contentValue('projects_title') }}</h2><p>Whether you are exploring a new home, a plot or a commercial opportunity, start by choosing what matters most.</p></div><a class="btn btn-outline" href="#contact">Discuss Your Requirements →</a></div>
+    @if($actualProjects->isNotEmpty())
+    <div class="projects-grid">
+      @foreach($actualProjects as $project)
+        <article class="project-card">
+          <div class="project-img one" role="img" aria-label="Project property illustration"></div>
+          <div class="project-body"><small>Featured project</small><h3>{{ $project->project }}</h3><p>{{ $project->address }}</p><a href="#contact">Ask About This Project →</a></div>
+        </article>
+      @endforeach
+    </div>
+    @else
     <div class="projects-grid">
       <article class="project-card"><div class="project-img one" role="img" aria-label="Elegant residential interior"></div><div class="project-body"><small>Residential</small><h3>A place to call home</h3><p>Discover spaces designed around everyday living.</p><a href="#contact">Ask About Homes →</a></div></article>
       <article class="project-card"><div class="project-img two" role="img" aria-label="Refined contemporary property interior"></div><div class="project-body"><small>Investment</small><h3>Room for your plans</h3><p>Talk through property opportunities and your goals.</p><a href="#contact">Explore Options →</a></div></article>
       <article class="project-card"><div class="project-img three" role="img" aria-label="Modern building exterior"></div><div class="project-body"><small>Commercial</small><h3>Space for what comes next</h3><p>Find a direction for your business ambitions.</p><a href="#contact">Make an Inquiry →</a></div></article>
-    </div><p class="disclaimer">Images are illustrative. These are interest categories, not advertised listings or claims of project availability.</p></div></section>
-  <section class="section process" id="process"><div class="container"><div class="section-heading center"><span class="eyebrow">Simple by design</span><h2>Good decisions start with a conversation.</h2><p>We keep the first steps simple, so you can focus on finding the right fit.</p></div><div class="steps"><article class="step"><b>01</b><h3>Tell us your goals</h3><p>Share what you're looking for, what matters to you and your preferred budget.</p></article><article class="step"><b>02</b><h3>Discuss your options</h3><p>Connect with our team to explore relevant possibilities and get your questions answered.</p></article><article class="step"><b>03</b><h3>Choose your next step</h3><p>Move ahead at a pace that suits you, with clarity about the process.</p></article></div></div></section>
-  <section class="cta"><div class="container cta-inner"><div><span class="eyebrow">Let's talk property</span><h2>Your next opportunity starts with one good conversation.</h2><p>Tell us what you're looking for and let's explore where to begin.</p></div><a class="btn btn-white" href="#contact">Get in Touch <span aria-hidden="true">↗</span></a></div></section>
-  <section class="section" id="faq"><div class="container faq-grid"><div><span class="eyebrow">Helpful answers</span><h2>Questions? You're in the right place.</h2><p>Here are a few common questions to help you get started.</p></div><div><details><summary>How do I get started with BlueMarketing?</summary><p>Share your requirements with the team. We can then discuss your interests and the best next steps.</p></details><details><summary>Can I discuss both residential and commercial options?</summary><p>Yes. Tell us which type of property you're considering so the conversation can focus on your goals.</p></details><details><summary>What should I prepare before making an inquiry?</summary><p>A preferred location, an approximate budget and the purpose of the property are useful starting points.</p></details><details><summary>Are the photos on this page actual project listings?</summary><p>No. The images illustrate property styles. Specific project details and availability should be confirmed directly with the team.</p></details></div></div></section>
-  <section class="section contact" id="contact"><div class="container contact-grid"><div><span class="eyebrow">Let's connect</span><h2>Tell us what you're looking for.</h2><p>We'd love to understand your plans and help you take the next step. The inquiry system is currently being prepared; contact details and live form submissions will be enabled after configuration.</p><div class="contact-points"><div>✓ Residential, commercial & investment interests</div><div>✓ Personalized discussion of your requirements</div><div>✓ No pressure — just a clearer starting point</div></div></div>
+    </div>
+    @endif<p class="disclaimer">Images are illustrative. Confirm project details and availability with our team.</p></div></section>
+@endif
+  @if($landingPage->sectionEnabled('process'))
+<section class="section process" id="process"><div class="container"><div class="section-heading center"><span class="eyebrow">Simple by design</span><h2>Good decisions start with a conversation.</h2><p>We keep the first steps simple, so you can focus on finding the right fit.</p></div><div class="steps"><article class="step"><b>01</b><h3>Tell us your goals</h3><p>Share what you're looking for, what matters to you and your preferred budget.</p></article><article class="step"><b>02</b><h3>Discuss your options</h3><p>Connect with our team to explore relevant possibilities and get your questions answered.</p></article><article class="step"><b>03</b><h3>Choose your next step</h3><p>Move ahead at a pace that suits you, with clarity about the process.</p></article></div></div></section>
+@endif
+  <section class="cta"><div class="container cta-inner"><div><span class="eyebrow">Let's talk property</span><h2>{{ $landingPage->contentValue('cta_title') }}</h2><p>Tell us what you're looking for and let's explore where to begin.</p></div><a class="btn btn-white" href="#contact">Get in Touch <span aria-hidden="true">↗</span></a></div></section>
+  @if($landingPage->sectionEnabled('faq'))
+<section class="section" id="faq"><div class="container faq-grid"><div><span class="eyebrow">Helpful answers</span><h2>Questions? You're in the right place.</h2><p>Here are a few common questions to help you get started.</p></div><div><details><summary>How do I get started with BlueMarketing?</summary><p>Share your requirements with the team. We can then discuss your interests and the best next steps.</p></details><details><summary>Can I discuss both residential and commercial options?</summary><p>Yes. Tell us which type of property you're considering so the conversation can focus on your goals.</p></details><details><summary>What should I prepare before making an inquiry?</summary><p>A preferred location, an approximate budget and the purpose of the property are useful starting points.</p></details><details><summary>Are the photos on this page actual project listings?</summary><p>No. The images illustrate property styles. Specific project details and availability should be confirmed directly with the team.</p></details></div></div></section>
+@endif
+  @if($landingPage->sectionEnabled('contact'))
+<section class="section contact" id="contact"><div class="container contact-grid"><div><span class="eyebrow">Let's connect</span><h2>{{ $landingPage->contentValue('contact_title') }}</h2><p>We'd love to understand your plans and help you take the next step. The inquiry system is currently being prepared; contact details and live form submissions will be enabled after configuration.</p><div class="contact-points"><div>✓ Residential, commercial & investment interests</div><div>✓ Personalized discussion of your requirements</div><div>✓ No pressure — just a clearer starting point</div></div></div>
     <div class="contact-form"><h3>Request a conversation</h3><p style="margin:0 0 18px;font-size:13px">A quick introduction helps us prepare for your inquiry.</p><div class="form-pending" role="status">Preview only: submissions are not enabled yet. No personal information is collected by this form.</div>
       <form aria-label="Inquiry form preview" onsubmit="return false">
       <div class="form-grid"><div class="field"><label for="full-name">Full name</label><input id="full-name" type="text" placeholder="Your name" autocomplete="name" disabled></div><div class="field"><label for="phone">Phone number</label><input id="phone" type="tel" placeholder="Your phone number" autocomplete="tel" disabled></div></div>
       <div class="form-grid"><div class="field"><label for="interest">I'm interested in</label><select id="interest" disabled><option>Choose a category</option><option>Residential</option><option>Commercial</option><option>Investment</option><option>General inquiry</option></select></div><div class="field"><label for="budget">Approximate budget</label><input id="budget" type="text" placeholder="Optional" disabled></div></div>
       <div class="field"><label for="message">Your requirements</label><textarea id="message" placeholder="Tell us a little about what you're looking for" disabled></textarea></div><button class="btn btn-primary" type="button" disabled aria-disabled="true">Inquiry Submission Coming Soon →</button><div class="form-hint">We'll connect this form to a secure lead-capture endpoint in the next development stage.</div>
       </form></div></div></section>
+@endif
 </main>
-<footer><div class="container"><div class="footer-grid"><div><a class="brand footer-brand" href="#top"><span class="brand-mark" style="background:#2563df">B</span><span>Blue<span style="color:#93b5ff">Marketing</span></span></a><p class="footer-copy">A people-first approach to real estate discovery, marketing and customer guidance.</p></div><nav class="footer-links" aria-label="Footer navigation"><a href="#about">About</a><a href="#services">Services</a><a href="#opportunities">Explore</a><a href="#faq">FAQs</a><a href="#contact">Contact</a><a href="{{ route('login') }}">Staff Login</a></nav></div><div class="copyright"><span>© {{ date('Y') }} BlueMarketing. All rights reserved.</span><span>Made with care for your next move.</span></div></div></footer>
+<footer><div class="container"><div class="footer-grid"><div><a class="brand footer-brand" href="#top"><span class="brand-mark" style="background:#2563df">B</span><span>Blue<span style="color:#93b5ff">Marketing</span></span></a><p class="footer-copy">{{ $landingPage->contentValue('footer_description') }}</p></div><nav class="footer-links" aria-label="Footer navigation"><a href="#about">About</a><a href="#services">Services</a><a href="#opportunities">Explore</a><a href="#faq">FAQs</a><a href="#contact">Contact</a><a href="{{ route('login') }}">Staff Login</a></nav></div><div class="copyright"><span>© {{ date('Y') }} BlueMarketing. All rights reserved.</span><span>Made with care for your next move.</span></div></div></footer>
 <script>
 (function(){
   var toggle=document.getElementById('menu-toggle');
