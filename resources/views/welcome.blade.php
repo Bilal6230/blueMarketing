@@ -157,13 +157,37 @@ Selected theme: {{ ['corporate'=>'Premium Corporate','luxury'=>'Luxury Real Esta
 <section class="section" id="faq" style="order:{{ array_search('faq', $landingPage->orderedSections(), true) + 2 }}"><div class="container faq-grid"><div><span class="eyebrow">Helpful answers</span><h2>Questions? You're in the right place.</h2><p>Here are a few common questions to help you get started.</p></div><div><details><summary>How do I get started with BlueMarketing?</summary><p>Share your requirements with the team. We can then discuss your interests and the best next steps.</p></details><details><summary>Can I discuss both residential and commercial options?</summary><p>Yes. Tell us which type of property you're considering so the conversation can focus on your goals.</p></details><details><summary>What should I prepare before making an inquiry?</summary><p>A preferred location, an approximate budget and the purpose of the property are useful starting points.</p></details><details><summary>Are the photos on this page actual project listings?</summary><p>No. The images illustrate property styles. Specific project details and availability should be confirmed directly with the team.</p></details></div></div></section>
 @endif
   @if($landingPage->sectionEnabled('contact'))
-<section class="section contact" id="contact" style="order:{{ array_search('contact', $landingPage->orderedSections(), true) + 2 }}"><div class="container contact-grid"><div><span class="eyebrow">Let's connect</span><h2>{{ $landingPage->contentValue('contact_title') }}</h2><p>We'd love to understand your plans and help you take the next step. The inquiry system is currently being prepared; contact details and live form submissions will be enabled after configuration.</p><div class="contact-points"><div>✓ Residential, commercial & investment interests</div><div>✓ Personalized discussion of your requirements</div><div>✓ No pressure — just a clearer starting point</div></div></div>
-    <div class="contact-form"><h3>Request a conversation</h3><p style="margin:0 0 18px;font-size:13px">A quick introduction helps us prepare for your inquiry.</p><div class="form-pending" role="status">Preview only: submissions are not enabled yet. No personal information is collected by this form.</div>
-      <form aria-label="Inquiry form preview" onsubmit="return false">
-      <div class="form-grid"><div class="field"><label for="full-name">Full name</label><input id="full-name" type="text" placeholder="Your name" autocomplete="name" disabled></div><div class="field"><label for="phone">Phone number</label><input id="phone" type="tel" placeholder="Your phone number" autocomplete="tel" disabled></div></div>
-      <div class="form-grid"><div class="field"><label for="interest">I'm interested in</label><select id="interest" disabled><option>Choose a category</option><option>Residential</option><option>Commercial</option><option>Investment</option><option>General inquiry</option></select></div><div class="field"><label for="budget">Approximate budget</label><input id="budget" type="text" placeholder="Optional" disabled></div></div>
-      <div class="field"><label for="message">Your requirements</label><textarea id="message" placeholder="Tell us a little about what you're looking for" disabled></textarea></div><button class="btn btn-primary" type="button" disabled aria-disabled="true">Inquiry Submission Coming Soon →</button><div class="form-hint">We'll connect this form to a secure lead-capture endpoint in the next development stage.</div>
-      </form></div></div></section>
+<section class="section contact" id="contact" style="order:{{ array_search('contact', $landingPage->orderedSections(), true) + 2 }}">
+  @php
+    $phone = $landingPage->contentValue('contact_phone');
+    $whatsapp = $landingPage->contentValue('contact_whatsapp');
+    $email = $landingPage->contentValue('contact_email');
+    $whatsappDigits = preg_replace('/\\D+/', '', $whatsapp);
+  @endphp
+  <div class="container contact-grid">
+    <div><span class="eyebrow">Let's connect</span>
+      <h2>{{ $landingPage->contentValue('contact_title') }}</h2>
+      <p>Connect directly with our team using your preferred contact method. This website does not collect inquiries or store visitor contact details.</p>
+      <div class="contact-points"><div>✓ Direct communication with the BlueMarketing team</div><div>✓ No website inquiry form or account required</div><div>✓ Project questions and next steps handled personally</div></div>
+    </div>
+    <div class="contact-form">
+      <h3>Contact BlueMarketing</h3><p style="margin:0 0 22px;font-size:14px">Choose a channel to open your phone, email app or WhatsApp.</p>
+      @if($whatsappDigits)
+      <a class="btn btn-primary" style="width:100%;margin-bottom:13px" href="https://wa.me/{{ $whatsappDigits }}?text={{ rawurlencode('Hello BlueMarketing, I would like to know more about your property opportunities.') }}" target="_blank" rel="noopener noreferrer">Chat on WhatsApp ↗</a>
+      @endif
+      @if($phone)
+      <a class="btn btn-outline" style="width:100%;margin-bottom:13px" href="tel:{{ $phone }}">Call {{ $phone }} ↗</a>
+      @endif
+      @if($email)
+      <a class="btn btn-outline" style="width:100%;margin-bottom:13px" href="mailto:{{ $email }}">Email {{ $email }} ↗</a>
+      @endif
+      @if(!$whatsappDigits && !$phone && !$email)
+      <p class="form-pending">Contact information will appear here when configured by the website administrator.</p>
+      @endif
+      <p class="form-hint">Contact actions open external communication apps. No message is submitted to this website.</p>
+    </div>
+  </div>
+</section>
 @endif
 </main>
 <footer><div class="container"><div class="footer-grid"><div><a class="brand footer-brand" href="#top"><span class="brand-mark" style="background:#2563df">B</span><span>Blue<span style="color:#93b5ff">Marketing</span></span></a><p class="footer-copy">{{ $landingPage->contentValue('footer_description') }}</p></div><nav class="footer-links" aria-label="Footer navigation"><a href="#about">About</a><a href="#services">Services</a><a href="#opportunities">Explore</a><a href="#faq">FAQs</a><a href="#contact">Contact</a><a href="{{ route('login') }}">Staff Login</a></nav></div><div class="copyright"><span>© {{ date('Y') }} BlueMarketing. All rights reserved.</span><span>Made with care for your next move.</span></div></div></footer>
