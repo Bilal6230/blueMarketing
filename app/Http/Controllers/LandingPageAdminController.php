@@ -157,7 +157,8 @@ class LandingPageAdminController extends Controller
     {
         $request->validate([
             'image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
-            'slot' => ['required', Rule::in(['hero_image', 'about_image'])],
+            'slot' => ['required', Rule::in(['hero_image', 'about_image', 'project_image'])],
+            'project_id' => ['required_if:slot,project_image', 'nullable', 'integer', Rule::exists('projects', 'id')],
         ]);
 
         // Laravel public disk uses a dedicated folder. Never allow executable uploads.
@@ -175,7 +176,12 @@ class LandingPageAdminController extends Controller
             'project_overrides' => $draft->project_overrides ?? [],
             'content' => $draft->content ?? [],
         ];
-        $payload['content'][$request->slot] = Storage::disk('public')->url($path);
+        if ($request->slot === 'project_image') {
+            $projectId = (int) $request->project_id;
+            $payload['project_overrides'][$projectId]['image'] = Storage::disk('public')->url($path);
+        } else {
+            $payload['content'][$request->slot] = Storage::disk('public')->url($path);
+        }
 
         $page->draft_payload = $payload;
         $page->save();
