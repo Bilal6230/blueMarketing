@@ -6,20 +6,37 @@ use App\Models\LandingPage;
 use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class LandingPageAdminController extends Controller
 {
+    private function record(): LandingPage
+    {
+        return LandingPage::first() ?? new LandingPage();
+    }
+
+    private function draftPage(LandingPage $record): LandingPage
+    {
+        $draft = clone $record;
+        if (is_array($record->draft_payload)) {
+            $draft->fill($record->draft_payload);
+        }
+        return $draft;
+    }
+
     public function index()
     {
+        $record = $this->record();
         return view('admin.landing-page.index', [
             'title' => 'Landing Page Manager',
-            'page' => LandingPage::first() ?? new LandingPage(),
+            'page' => $this->draftPage($record),
+            'hasDraft' => !is_null($record->draft_payload),
             'projects' => Project::orderBy('project')->get(['id', 'project', 'address']),
         ]);
     }
 
-    public function update(Request $request)
+    private function validatedPayload(Request $request): array
     {
         $validated = $request->validate([
             'theme' => ['required', Rule::in(['corporate', 'luxury', 'vibrant'])],
@@ -36,29 +53,93 @@ class LandingPageAdminController extends Controller
         foreach (LandingPage::DEFAULT_CONTENT as $key => $fallback) {
             $value = $validated['content'][$key] ?? '';
             if (!is_string($value)) {
-                return back()->withErrors(["content.$key" => 'Invalid field value.'])->withInput();
+                throw \Illuminate\Validation\ValidationException::withMessages(["content.$key" => 'Invalid field value.']);
             }
             if (!in_array($key, ['hero_image', 'about_image'], true) && mb_strlen($value) > 1200) {
-                return back()->withErrors(["content.$key" => 'Maximum 1200 characters.'])->withInput();
+                throw \Illuminate\Validation\ValidationException::withMessages(["content.$key" => 'Maximum 1200 characters.']);
             }
             $content[$key] = trim($value) !== '' ? trim($value) : $fallback;
         }
 
         $sections = [];
         foreach (LandingPage::SECTION_NAMES as $key => $label) {
-            $sections[$key] = ($request->input('sections.'.$key) === '1');
+            $sections[$key] = $request->input('sections.'.$key) === '1';
         }
 
-        DB::transaction(function () use ($validated, $content, $sections) {
-            $page = LandingPage::first() ?? new LandingPage();
-            $page->theme = $validated['theme'];
-            $page->projects_mode = $validated['projects_mode'];
-            $page->content = $content;
-            $page->sections = $sections;
-            $page->project_ids = $validated['project_ids'] ?? [];
+        return [
+            'theme' => $validated['theme'],
+            'projects_mode' => $validated['projects_mode'],
+            'project_ids' => $validated['project_ids'] ?? [],
+            'content' => $content,
+            'sections' => $sections,
+        ];
+    }
+
+    public function update(Request $request)
+    {
+        $payload = $this->validatedPayload($request);
+
+        DB::transaction(function () use ($payload) {
+            $page = LandingPage::query()->lockForUpdate()->first() ?? new LandingPage();
+            $page->draft_payload = $payload;
             $page->save();
         });
 
-        return redirect()->route('landing-page.admin.index')->with('success', 'Landing page settings saved successfully.');
+        return redirect()->route('landing-page.admin.index')->with('success', 'Draft saved. Public website has not changed.');
+    }
+
+    public function preview()
+    {
+        $record = $this->record();
+        $landingPage = $this->draftPage($record);
+        return response()->view('welcome', ['landingPage' => $landingPage, 'isLandingPreview' => true])
+            ->header('Cache-Control', 'private, no-store')
+            ->header('X-Robots-Tag', 'noindex, nofollow')
+            ->header('Content-Security-Policy', "frame-ancestors 'self'");
+    }
+
+    public function publish()
+    {
+        DB::transaction(function () {
+            $page = LandingPage::query()->lockForUpdate()->first();
+            if (!$page || !is_array($page->draft_payload)) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['draft' => 'Save a draft before publishing.']);
+            }
+            $payload = $page->draft_payload;
+            $page->fill($payload);
+            $page->draft_payload = null;
+            $page->published_at = now();
+            $page->save();
+        });
+
+        return redirect()->route('landing-page.admin.index')->with('success', 'Landing page published successfully.');
+    }
+
+    public function uploadImage(Request $request)
+    {
+        $request->validate([
+            'image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'slot' => ['required', Rule::in(['hero_image', 'about_image'])],
+        ]);
+
+        // Laravel public disk uses a dedicated folder. Never allow executable uploads.
+        $file = $request->file('image');
+        $path = $file->store('landing-page', 'public');
+
+        $page = LandingPage::query()->first() ?? new LandingPage();
+        $draft = $this->draftPage($page);
+        $payload = [
+            'theme' => $draft->theme ?: 'corporate',
+            'projects_mode' => $draft->projects_mode ?: 'default',
+            'project_ids' => $draft->project_ids ?? [],
+            'sections' => $draft->sections ?? [],
+            'content' => $draft->content ?? [],
+        ];
+        $payload['content'][$request->slot] = Storage::disk('public')->url($path);
+
+        $page->draft_payload = $payload;
+        $page->save();
+
+        return redirect()->route('landing-page.admin.index')->with('success', 'Image uploaded to draft. Review and publish when ready.');
     }
 }
