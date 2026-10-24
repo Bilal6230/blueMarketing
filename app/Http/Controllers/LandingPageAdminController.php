@@ -47,6 +47,12 @@ class LandingPageAdminController extends Controller
             'content.hero_image' => ['nullable', 'string', 'max:2048'],
             'content.about_image' => ['nullable', 'string', 'max:2048'],
             'sections' => ['nullable', 'array'],
+            'section_order' => ['nullable', 'array'],
+            'section_order.*' => ['string', Rule::in(array_keys(LandingPage::SECTION_NAMES)), 'distinct'],
+            'project_overrides' => ['nullable', 'array'],
+            'project_overrides.*.title' => ['nullable', 'string', 'max:150'],
+            'project_overrides.*.description' => ['nullable', 'string', 'max:600'],
+            'project_overrides.*.image' => ['nullable', 'string', 'max:2048'],
         ]);
 
         $content = [];
@@ -75,7 +81,30 @@ class LandingPageAdminController extends Controller
             $sections[$key] = $request->input('sections.'.$key) === '1';
         }
 
+        $order = array_values(array_unique(array_merge(
+            $validated['section_order'] ?? [],
+            array_keys(LandingPage::SECTION_NAMES)
+        )));
+        $overrides = [];
+        foreach (($validated['project_overrides'] ?? []) as $id => $item) {
+            if (!ctype_digit((string) $id) || !Project::whereKey($id)->exists()) {
+                throw \\Illuminate\\Validation\\ValidationException::withMessages(['project_overrides' => 'Invalid project selected.']);
+            }
+            $image = trim((string) ($item['image'] ?? ''));
+            if ($image !== '' && !preg_match('~^https://[^\\s"<>]+$~i', $image)
+                && !preg_match('~^/storage/landing-page/[a-zA-Z0-9/_\\.-]+$~', $image)) {
+                throw \\Illuminate\\Validation\\ValidationException::withMessages(['project_overrides' => 'Invalid project image URL.']);
+            }
+            $overrides[$id] = [
+                'title' => trim((string) ($item['title'] ?? '')),
+                'description' => trim((string) ($item['description'] ?? '')),
+                'image' => $image,
+            ];
+        }
+
         return [
+            'section_order' => $order,
+            'project_overrides' => $overrides,
             'theme' => $validated['theme'],
             'projects_mode' => $validated['projects_mode'],
             'project_ids' => $validated['project_ids'] ?? [],
@@ -142,6 +171,8 @@ class LandingPageAdminController extends Controller
             'projects_mode' => $draft->projects_mode ?: 'default',
             'project_ids' => $draft->project_ids ?? [],
             'sections' => $draft->sections ?? [],
+            'section_order' => $draft->section_order ?? [],
+            'project_overrides' => $draft->project_overrides ?? [],
             'content' => $draft->content ?? [],
         ];
         $payload['content'][$request->slot] = Storage::disk('public')->url($path);
