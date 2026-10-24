@@ -1,5 +1,5 @@
 @php
-    $landingPage = \App\Models\LandingPage::first() ?? new \App\Models\LandingPage();
+    $landingPage = $landingPage ?? (\App\Models\LandingPage::first() ?? new \App\Models\LandingPage());
     $landingTheme = in_array($landingPage->theme, ['corporate','luxury','vibrant']) ? $landingPage->theme : 'corporate';
     $actualProjects = ($landingPage->projects_mode === 'actual' && !empty($landingPage->project_ids))
         ? \App\Models\Project::whereIn('id',$landingPage->project_ids)->where('is_active',1)->get()
@@ -64,6 +64,27 @@
       body.theme-vibrant .proofbar,body.theme-vibrant .cta{background:linear-gradient(100deg,#10276b,#1760de)}
       body.theme-luxury .proofbar{background:#05080e}body.theme-luxury .topline{background:#080b11}body.theme-luxury .hero-photo{box-shadow:0 30px 80px #0008}body.theme-luxury .about-photo{filter:brightness(.75)}body.theme-luxury .step b{color:#b18c55}body.theme-luxury .btn-white{background:#d6b17b;color:#111827}
       body.theme-vibrant .nav{background:#f7fbff}body.theme-vibrant .hero-card{border-left-color:#19b6eb}body.theme-vibrant .service-icon{background:#ddecff}body.theme-vibrant .section-heading h2{color:#1746b2}body.theme-vibrant .about{background:#e8f3ff}body.theme-vibrant .process{background:linear-gradient(120deg,#deebff,#f7fbff)}body.theme-vibrant .step b{color:#a6c6fe}body.theme-vibrant .contact{background:#e8f3ff}body.theme-vibrant .project-card{box-shadow:0 16px 36px #2165ce1a}
+      /* Each theme has a distinct page composition, not just different colours. */
+      body.theme-luxury .hero{background:#090d14}
+      body.theme-luxury .hero-grid{grid-template-columns:1fr;min-height:720px;padding:105px 0;position:relative;isolation:isolate}
+      body.theme-luxury .hero-photo{position:absolute;inset:0;z-index:-2;min-height:0;border-radius:0;background-position:center 48%;filter:brightness(.38) saturate(.7)}
+      body.theme-luxury .hero-photo:before{background:linear-gradient(90deg,rgba(5,8,15,.95),rgba(5,8,15,.4))}
+      body.theme-luxury .hero-grid>div:first-child{max-width:730px}
+      body.theme-luxury .hero h1{font-family:Georgia,serif;font-weight:400;font-size:clamp(52px,7vw,95px);line-height:1.04;letter-spacing:-.045em;color:#fff}
+      body.theme-luxury .hero p{color:#d2d5db;font-size:19px}
+      body.theme-luxury .hero-photo .hero-card,body.theme-luxury .hero-photo .image-label{display:none}
+      body.theme-luxury .service-grid{grid-template-columns:1fr 1fr 1fr}
+      body.theme-luxury .service-card{border-radius:0;border-top:3px solid #caa567}
+      body.theme-luxury .project-img{height:320px}
+      body.theme-luxury .project-card{border-radius:0}
+      body.theme-vibrant .hero-grid{grid-template-columns:1.14fr .86fr;min-height:640px;gap:55px}
+      body.theme-vibrant .hero h1{font-size:clamp(52px,6.4vw,84px);font-weight:800;line-height:1.07}
+      body.theme-vibrant .hero-photo{border-radius:34px 120px 34px 120px;transform:rotate(2deg);box-shadow:0 35px 75px rgba(29,98,215,.22)}
+      body.theme-vibrant .hero-card{border:0;border-radius:16px;left:-45px;top:auto;bottom:60px;box-shadow:0 18px 45px #1a4fc23b}
+      body.theme-vibrant .service-grid{gap:28px}
+      body.theme-vibrant .service-card{padding:40px;box-shadow:0 15px 35px #245ce514}
+      body.theme-vibrant .step{background:#fff;border-radius:24px;padding:30px;box-shadow:0 12px 34px #2156b010}
+      @media(max-width:760px){body.theme-luxury .hero-grid{min-height:640px;padding:80px 0}body.theme-luxury .hero-photo{min-height:0}body.theme-luxury .service-grid{grid-template-columns:1fr}body.theme-vibrant .hero-grid{display:flex;gap:35px}body.theme-vibrant .hero-photo{transform:none;min-height:330px;border-radius:20px}body.theme-vibrant .hero-card{left:15px;bottom:15px;top:auto}body.theme-vibrant .hero h1{font-size:48px}}
       @media(max-width:760px){body.theme-luxury .nav-links{background:#141c27}}
     </style>
 </head>
