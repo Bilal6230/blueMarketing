@@ -35,16 +35,15 @@
         @foreach(\App\Models\LandingPage::SECTION_NAMES as $key => $label)
         <div class="col-md-4"><input type="hidden" name="sections[{{ $key }}]" value="0"><label><input type="checkbox" name="sections[{{ $key }}]" value="1" {{ old('sections.'.$key,$page->sectionEnabled($key) ? '1':'0') === '1' ? 'checked':'' }}> {{ $label }}</label></div>
         @endforeach
-        <hr><h5>Section order</h5><p class="text-muted">Use the ↑ and ↓ buttons to change the order. Save Draft to preview the result.</p>
+        </div><hr><h5>Section order</h5><p class="text-muted">Use the ↑ and ↓ buttons to change the order. Save Draft to preview the result.</p>
         <div id="landing-section-list">
         @foreach($page->orderedSections() as $sectionKey)
           <div class="d-flex align-items-center border rounded p-2 mb-2 section-sort-row" data-section="{{ $sectionKey }}">
-          <span class="flex-grow-1 font-weight-bold">{{ \\App\\Models\\LandingPage::SECTION_NAMES[$sectionKey] }}</span>
+          <span class="flex-grow-1 font-weight-bold">{{ \App\Models\LandingPage::SECTION_NAMES[$sectionKey] }}</span>
           <input type="hidden" name="section_order[]" value="{{ $sectionKey }}">
           <button type="button" class="btn btn-sm btn-outline-secondary mr-2 move-up" aria-label="Move section up">↑</button>
           <button type="button" class="btn btn-sm btn-outline-secondary move-down" aria-label="Move section down">↓</button></div>
         @endforeach
-        </div>
         </div></div></div>
         <div class="card"><div class="card-header"><h3 class="card-title">3. Project showcase</h3></div><div class="card-body">
         <div class="form-group"><label for="projects_mode">Content source</label><select class="form-control" id="projects_mode" name="projects_mode">
