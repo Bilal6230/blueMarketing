@@ -23,7 +23,7 @@
         </div></div></div>
         <div class="card"><div class="card-header"><h3 class="card-title">2. Customize website sections</h3></div><div class="card-body"><p class="text-muted">Leave a text field blank to restore its original promotional copy.</p><div class="row">
         @foreach(\App\Models\LandingPage::DEFAULT_CONTENT as $key => $fallback)
-        @continue(in_array($key, ['contact_phone', 'contact_whatsapp', 'contact_email']))
+        @continue(in_array($key, ['contact_phone', 'contact_whatsapp', 'contact_email', 'seo_title', 'seo_description']))
         <div class="{{ in_array($key,['hero_description','about_description','footer_description']) ? 'col-12':'col-md-6' }}"><div class="form-group"><label for="field-{{ $key }}">{{ ucwords(str_replace('_',' ',$key)) }}</label>
           @if(in_array($key,['hero_description','about_description','footer_description']))
           <textarea class="form-control" id="field-{{ $key }}" rows="3" name="content[{{ $key }}]">{{ old('content.'.$key,$page->contentValue($key)) }}</textarea>
@@ -33,6 +33,13 @@
         </div></div>
         @endforeach
         </div>
+        <div class="card border-secondary mt-3"><div class="card-header"><strong>Search Engine Optimization (SEO)</strong></div>
+        <div class="card-body"><div class="form-group"><label for="seo-title">Page title (up to 70 characters)</label>
+        <input id="seo-title" type="text" maxlength="70" class="form-control" name="content[seo_title]" value="{{ old('content.seo_title',$page->contentValue('seo_title')) }}">
+        </div><div class="form-group"><label for="seo-description">Meta description (up to 200 characters)</label>
+        <textarea id="seo-description" maxlength="200" rows="3" class="form-control" name="content[seo_description]">{{ old('content.seo_description',$page->contentValue('seo_description')) }}</textarea>
+        </div><small class="text-muted">Changes follow Save Draft → Preview → Publish. Search engines choose whether to display these snippets.</small>
+        </div></div>
         <hr><h5>Show or hide sections</h5><div class="row">
         @foreach(\App\Models\LandingPage::SECTION_NAMES as $key => $label)
         <div class="col-md-4"><input type="hidden" name="sections[{{ $key }}]" value="0"><label><input type="checkbox" name="sections[{{ $key }}]" value="1" {{ old('sections.'.$key,$page->sectionEnabled($key) ? '1':'0') === '1' ? 'checked':'' }}> {{ $label }}</label></div>
