@@ -33,15 +33,6 @@
         </div></div>
         @endforeach
         </div>
-        <div class="card border-primary mt-3"><div class="card-header"><strong>Direct Contact Details (no website submissions)</strong></div>
-        <div class="card-body"><p class="text-muted">Enter your company's contact details, then click Save Draft. The preview will show only the channels you configure.</p>
-        <div class="row">
-          <div class="col-md-4 form-group"><label for="contact-phone">Phone (country code recommended)</label><input id="contact-phone" type="tel" class="form-control" name="content[contact_phone]" value="{{ old('content.contact_phone',$page->contentValue('contact_phone')) }}" placeholder="+923001234567" maxlength="24"></div>
-          <div class="col-md-4 form-group"><label for="contact-whatsapp">WhatsApp number</label><input id="contact-whatsapp" type="tel" class="form-control" name="content[contact_whatsapp]" value="{{ old('content.contact_whatsapp',$page->contentValue('contact_whatsapp')) }}" placeholder="+923001234567" maxlength="24"></div>
-          <div class="col-md-4 form-group"><label for="contact-email">Email address</label><input id="contact-email" type="email" class="form-control" name="content[contact_email]" value="{{ old('content.contact_email',$page->contentValue('contact_email')) }}" placeholder="contact@example.com" maxlength="255"></div>
-        </div>
-        <button type="submit" class="btn btn-outline-primary">Save Contact Details to Draft</button>
-        </div></div>
         <hr><h5>Show or hide sections</h5><div class="row">
         @foreach(\App\Models\LandingPage::SECTION_NAMES as $key => $label)
         <div class="col-md-4"><input type="hidden" name="sections[{{ $key }}]" value="0"><label><input type="checkbox" name="sections[{{ $key }}]" value="1" {{ old('sections.'.$key,$page->sectionEnabled($key) ? '1':'0') === '1' ? 'checked':'' }}> {{ $label }}</label></div>
@@ -73,6 +64,18 @@
         @if($projects->isEmpty())<p>No projects found. You can keep the default promotional cards.</p>@endif
         </div></div>
         <div class="mb-4 d-flex align-items-center"><button type="submit" class="btn btn-primary btn-lg mr-3">Save Draft</button><span class="text-muted">Saving does not change the live website. Preview and publish when ready.</span></div>
+      </form>
+      <form method="POST" action="{{ route('landing-page.admin.contact') }}" id="landing-contact-form">
+        @csrf
+        <div class="card border-primary mt-3"><div class="card-header"><strong>Direct Contact Details (no website submissions)</strong></div>
+        <div class="card-body"><p class="text-muted">Enter your company's contact details, then click Save Draft. The preview will show only the channels you configure.</p>
+        <div class="row">
+          <div class="col-md-4 form-group"><label for="contact-phone">Phone (country code recommended)</label><input id="contact-phone" type="tel" class="form-control" name="content[contact_phone]" value="{{ old('content.contact_phone',$page->contentValue('contact_phone')) }}" placeholder="+923001234567" maxlength="24"></div>
+          <div class="col-md-4 form-group"><label for="contact-whatsapp">WhatsApp number</label><input id="contact-whatsapp" type="tel" class="form-control" name="content[contact_whatsapp]" value="{{ old('content.contact_whatsapp',$page->contentValue('contact_whatsapp')) }}" placeholder="+923001234567" maxlength="24"></div>
+          <div class="col-md-4 form-group"><label for="contact-email">Email address</label><input id="contact-email" type="email" class="form-control" name="content[contact_email]" value="{{ old('content.contact_email',$page->contentValue('contact_email')) }}" placeholder="contact@example.com" maxlength="255"></div>
+        </div>
+        <button type="submit" class="btn btn-outline-primary">Save Contact Details Only</button>
+        </div></div>
       </form>
       <div class="card"><div class="card-header"><h3 class="card-title">4. Image Manager</h3></div>
       <div class="card-body"><p class="text-muted">Upload JPG, PNG or WebP images up to 4 MB. Uploads apply to the draft. Save text edits before uploading.</p>
