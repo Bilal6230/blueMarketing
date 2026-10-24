@@ -76,6 +76,9 @@
     <div class="nav-actions"><a class="btn btn-outline" href="{{ route('login') }}">Staff Login</a><a class="btn btn-primary" href="#contact">Talk to Our Team <span aria-hidden="true">↗</span></a><button class="menu-toggle" id="menu-toggle" type="button" aria-label="Toggle navigation" aria-controls="site-menu" aria-expanded="false">☰</button></div>
   </div>
 </header>
+@if(!empty($isLandingPreview))
+<div style="background:#ffefbd;color:#573a0c;padding:10px 20px;text-align:center;font-size:14px;font-weight:700">DRAFT PREVIEW — changes are not yet published</div>
+@endif
 <main id="top">
   <section class="hero" aria-labelledby="hero-title"><div class="container hero-grid">
     <div><span class="eyebrow">{{ $landingPage->contentValue('hero_eyebrow') }}</span><h1 id="hero-title">{{ $landingPage->contentValue('hero_title') }}</h1><p>{{ $landingPage->contentValue('hero_description') }}</p>
