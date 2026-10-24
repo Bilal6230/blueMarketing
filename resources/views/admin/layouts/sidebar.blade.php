@@ -31,7 +31,7 @@
                         <p>Dashboard</p>
                     </a>
                 </li>
-                @can('update setting')
+                @can('read landing page')
                     <li class="nav-item">
                         <a href="{{ route('landing-page.admin.index') }}" class="nav-link {{ request()->routeIs('landing-page.admin.*') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-palette"></i><p>Landing Page Manager</p>
