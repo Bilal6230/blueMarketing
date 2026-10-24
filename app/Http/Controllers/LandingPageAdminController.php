@@ -36,6 +36,33 @@ class LandingPageAdminController extends Controller
         ]);
     }
 
+    private function normalizeImageUrl(string $image): string
+    {
+        $image = trim($image);
+        if ($image === '') return '';
+
+        // Uploads must be stored as origin-independent paths, so local :8001 and production both work.
+        $urlPath = parse_url($image, PHP_URL_PATH);
+        if (is_string($urlPath) && preg_match('~^/storage/landing-page/[A-Za-z0-9_-]+\\.(?:jpg|jpeg|png|webp)$~i', $urlPath)) {
+            // Only accept absolute upload URLs from this application or the previously configured app origin.
+            $host = parse_url($image, PHP_URL_HOST);
+            $allowedHosts = array_filter([
+                request()->getHost(),
+                parse_url(config('app.url'), PHP_URL_HOST),
+            ]);
+            if (str_starts_with($image, '/') || ($host && in_array(strtolower($host), array_map('strtolower', $allowedHosts), true))) {
+                return $urlPath;
+            }
+        }
+        if (filter_var($image, FILTER_VALIDATE_URL) && parse_url($image, PHP_URL_SCHEME) === 'https'
+            && !preg_match('~[\x00-\x1f"<>]~', $image)) {
+            return $image;
+        }
+        throw \\Illuminate\\Validation\\ValidationException::withMessages([
+            'image' => 'Use a valid HTTPS image URL or an image uploaded through the Landing Page Manager.'
+        ]);
+    }
+
     private function validatedPayload(Request $request): array
     {
         $validated = $request->validate([
@@ -64,14 +91,8 @@ class LandingPageAdminController extends Controller
             if (!in_array($key, ['hero_image', 'about_image'], true) && mb_strlen($value) > 1200) {
                 throw \Illuminate\Validation\ValidationException::withMessages(["content.$key" => 'Maximum 1200 characters.']);
             }
-            if (in_array($key, ['hero_image', 'about_image'], true) && trim($value) !== '') {
-                $image = trim($value);
-                if (!preg_match('~^https://[^\\s"\\x27<>]+$~i', $image)
-                    && !preg_match('~^/storage/landing-page/[a-zA-Z0-9/_\\.-]+$~', $image)) {
-                    throw \Illuminate\Validation\ValidationException::withMessages([
-                        "content.$key" => 'Use an HTTPS image URL or an uploaded landing-page image.'
-                    ]);
-                }
+            if (in_array($key, ['hero_image', 'about_image'], true)) {
+                $value = $this->normalizeImageUrl($value);
             }
             $content[$key] = trim($value) !== '' ? trim($value) : $fallback;
         }
@@ -91,10 +112,7 @@ class LandingPageAdminController extends Controller
                 throw \Illuminate\Validation\ValidationException::withMessages(['project_overrides' => 'Invalid project selected.']);
             }
             $image = trim((string) ($item['image'] ?? ''));
-            if ($image !== '' && !preg_match('~^https://[^\\s"<>]+$~i', $image)
-                && !preg_match('~^/storage/landing-page/[a-zA-Z0-9/_\\.-]+$~', $image)) {
-                throw \Illuminate\Validation\ValidationException::withMessages(['project_overrides' => 'Invalid project image URL.']);
-            }
+            $image = $this->normalizeImageUrl($image);
             $overrides[$id] = [
                 'title' => trim((string) ($item['title'] ?? '')),
                 'description' => trim((string) ($item['description'] ?? '')),
@@ -178,7 +196,7 @@ class LandingPageAdminController extends Controller
         ];
         if ($request->slot === 'project_image') {
             $projectId = (int) $request->project_id;
-            $payload['project_overrides'][$projectId]['image'] = Storage::disk('public')->url($path);
+            $payload['project_overrides'][$projectId]['image'] = '/storage/' . $path;
         } else {
             $payload['content'][$request->slot] = Storage::disk('public')->url($path);
         }
