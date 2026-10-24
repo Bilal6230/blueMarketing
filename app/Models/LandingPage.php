@@ -6,8 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class LandingPage extends Model
 {
-    protected $fillable = ['theme', 'content', 'sections', 'projects_mode', 'project_ids', 'draft_payload', 'published_at'];
-    protected $casts = ['content' => 'array', 'sections' => 'array', 'project_ids' => 'array', 'draft_payload' => 'array', 'published_at' => 'datetime'];
+    protected $fillable = ['theme', 'content', 'sections', 'projects_mode', 'project_ids', 'draft_payload', 'published_at', 'section_order', 'project_overrides'];
+    protected $casts = ['content' => 'array', 'sections' => 'array', 'project_ids' => 'array', 'draft_payload' => 'array', 'published_at' => 'datetime', 'section_order' => 'array', 'project_overrides' => 'array'];
 
     public const DEFAULT_CONTENT = [
         'hero_eyebrow' => 'Your property journey starts here',
@@ -25,6 +25,18 @@ class LandingPage extends Model
     ];
 
     public const SECTION_NAMES = ['services'=>'Services', 'about'=>'About us', 'opportunities'=>'Projects / opportunities', 'process'=>'How it works', 'faq'=>'FAQs', 'contact'=>'Contact'];
+
+    public function orderedSections(): array
+    {
+        $valid = array_keys(self::SECTION_NAMES);
+        $saved = array_values(array_intersect($this->section_order ?? [], $valid));
+        return array_values(array_unique(array_merge($saved, $valid)));
+    }
+
+    public function projectOverride(int $projectId, string $key): string
+    {
+        return (string) (($this->project_overrides ?? [])[$projectId][$key] ?? '');
+    }
 
     public function contentValue(string $key): string
     {
