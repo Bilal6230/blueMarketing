@@ -44,15 +44,15 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
     Route::get('landing-page', [\App\Http\Controllers\LandingPageAdminController::class, 'index'])
         ->middleware('permission:read landing page')->name('landing-page.admin.index');
     Route::put('landing-page', [\App\Http\Controllers\LandingPageAdminController::class, 'update'])
-        ->middleware('permission:update landing page')->name('landing-page.admin.update');
+        ->middleware(['permission:update landing page', 'throttle:30,1'])->name('landing-page.admin.update');
     Route::post('landing-page/contact', [\App\Http\Controllers\LandingPageAdminController::class, 'updateContact'])
-        ->middleware('permission:update landing page')->name('landing-page.admin.contact');
+        ->middleware(['permission:update landing page', 'throttle:30,1'])->name('landing-page.admin.contact');
     Route::get('landing-page/preview', [\App\Http\Controllers\LandingPageAdminController::class, 'preview'])
         ->middleware('permission:read landing page')->name('landing-page.admin.preview');
     Route::post('landing-page/publish', [\App\Http\Controllers\LandingPageAdminController::class, 'publish'])
-        ->middleware('permission:update landing page')->name('landing-page.admin.publish');
+        ->middleware(['permission:update landing page', 'throttle:10,1'])->name('landing-page.admin.publish');
     Route::post('landing-page/upload-image', [\App\Http\Controllers\LandingPageAdminController::class, 'uploadImage'])
-        ->middleware('permission:update landing page')->name('landing-page.admin.upload-image');
+        ->middleware(['permission:update landing page', 'throttle:10,1'])->name('landing-page.admin.upload-image');
     Route::get('/', [DashboardController::class, 'index'])->name('admin');
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('punch', [DashboardController::class, 'punch']);
