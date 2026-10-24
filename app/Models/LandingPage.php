@@ -22,6 +22,9 @@ class LandingPage extends Model
         'footer_description' => 'A people-first approach to real estate discovery, marketing and customer guidance.',
         'hero_image' => '',
         'about_image' => '',
+        'contact_phone' => '',
+        'contact_whatsapp' => '',
+        'contact_email' => '',
     ];
 
     public const SECTION_NAMES = ['services'=>'Services', 'about'=>'About us', 'opportunities'=>'Projects / opportunities', 'process'=>'How it works', 'faq'=>'FAQs', 'contact'=>'Contact'];
