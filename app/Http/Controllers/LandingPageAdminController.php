@@ -62,7 +62,7 @@ class LandingPageAdminController extends Controller
                 $image = trim($value);
                 if (!preg_match('~^https://[^\\s"\\x27<>]+$~i', $image)
                     && !preg_match('~^/storage/landing-page/[a-zA-Z0-9/_\\.-]+$~', $image)) {
-                    throw \\Illuminate\\Validation\\ValidationException::withMessages([
+                    throw \Illuminate\Validation\ValidationException::withMessages([
                         "content.$key" => 'Use an HTTPS image URL or an uploaded landing-page image.'
                     ]);
                 }
