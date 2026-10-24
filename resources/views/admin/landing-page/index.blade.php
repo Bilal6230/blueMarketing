@@ -70,9 +70,9 @@
         <div class="card border-primary mt-3"><div class="card-header"><strong>Direct Contact Details (no website submissions)</strong></div>
         <div class="card-body"><p class="text-muted">Enter your company's contact details, then click Save Draft. The preview will show only the channels you configure.</p>
         <div class="row">
-          <div class="col-md-4 form-group"><label for="contact-phone">Phone (country code recommended)</label><input id="contact-phone" type="tel" class="form-control" name="content[contact_phone]" value="{{ old('content.contact_phone',$page->contentValue('contact_phone')) }}" placeholder="+923001234567" maxlength="24"></div>
-          <div class="col-md-4 form-group"><label for="contact-whatsapp">WhatsApp number</label><input id="contact-whatsapp" type="tel" class="form-control" name="content[contact_whatsapp]" value="{{ old('content.contact_whatsapp',$page->contentValue('contact_whatsapp')) }}" placeholder="+923001234567" maxlength="24"></div>
-          <div class="col-md-4 form-group"><label for="contact-email">Email address</label><input id="contact-email" type="email" class="form-control" name="content[contact_email]" value="{{ old('content.contact_email',$page->contentValue('contact_email')) }}" placeholder="contact@example.com" maxlength="255"></div>
+          <div class="col-md-4 form-group"><label for="contact-phone">Phone (country code recommended)</label><input id="contact-phone" type="tel" class="form-control" name="contact_phone" value="{{ old('contact_phone',$page->contentValue('contact_phone')) }}" placeholder="+923001234567" maxlength="24"></div>
+          <div class="col-md-4 form-group"><label for="contact-whatsapp">WhatsApp number</label><input id="contact-whatsapp" type="tel" class="form-control" name="contact_whatsapp" value="{{ old('contact_whatsapp',$page->contentValue('contact_whatsapp')) }}" placeholder="+923001234567" maxlength="24"></div>
+          <div class="col-md-4 form-group"><label for="contact-email">Email address</label><input id="contact-email" type="email" class="form-control" name="contact_email" value="{{ old('contact_email',$page->contentValue('contact_email')) }}" placeholder="contact@example.com" maxlength="255"></div>
         </div>
         <button type="submit" class="btn btn-outline-primary">Save Contact Details Only</button>
         </div></div>
