@@ -45,6 +45,12 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         ->middleware('permission:read landing page')->name('landing-page.admin.index');
     Route::put('landing-page', [\App\Http\Controllers\LandingPageAdminController::class, 'update'])
         ->middleware('permission:update landing page')->name('landing-page.admin.update');
+    Route::get('landing-page/preview', [\\App\\Http\\Controllers\\LandingPageAdminController::class, 'preview'])
+        ->middleware('permission:read landing page')->name('landing-page.admin.preview');
+    Route::post('landing-page/publish', [\\App\\Http\\Controllers\\LandingPageAdminController::class, 'publish'])
+        ->middleware('permission:update landing page')->name('landing-page.admin.publish');
+    Route::post('landing-page/upload-image', [\\App\\Http\\Controllers\\LandingPageAdminController::class, 'uploadImage'])
+        ->middleware('permission:update landing page')->name('landing-page.admin.upload-image');
     Route::get('/', [DashboardController::class, 'index'])->name('admin');
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('punch', [DashboardController::class, 'punch']);
