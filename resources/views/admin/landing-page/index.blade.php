@@ -10,7 +10,7 @@
       @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
       @if($errors->any())<div class="alert alert-danger"><strong>Check your changes:</strong><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
       <div class="card border-info"><div class="card-body d-flex flex-wrap justify-content-between align-items-center">
-        <div><strong>Publishing workflow</strong><p class="text-muted mb-0">Save Draft → Preview Draft → Publish. Public visitors see the last published version.</p></div>
+        <div><strong>Publishing workflow</strong><div class="mt-1 mb-1"><span class="badge badge-info">Editing: {{ ucfirst($page->theme ?: 'corporate') }} theme</span><span class="badge {{ $hasDraft ? 'badge-warning' : 'badge-success' }}">{{ $hasDraft ? 'Unpublished draft' : 'Published / no pending draft' }}</span></div><p class="text-muted mb-0">Save Draft → Preview Draft → Publish. Public visitors see the last published version.</p></div>
         <div class="mt-2"><a class="btn btn-outline-info mr-2" href="{{ route('landing-page.admin.preview') }}" target="_blank" rel="noopener">Preview Draft ↗</a>
         @can('update landing page')<button type="submit" form="publish-landing" class="btn btn-success" onclick="return confirm('Publish your saved draft to the public website?')">Publish Saved Draft</button>@endcan</div>
       </div></div>
