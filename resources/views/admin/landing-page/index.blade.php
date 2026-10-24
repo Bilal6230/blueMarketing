@@ -35,6 +35,16 @@
         @foreach(\App\Models\LandingPage::SECTION_NAMES as $key => $label)
         <div class="col-md-4"><input type="hidden" name="sections[{{ $key }}]" value="0"><label><input type="checkbox" name="sections[{{ $key }}]" value="1" {{ old('sections.'.$key,$page->sectionEnabled($key) ? '1':'0') === '1' ? 'checked':'' }}> {{ $label }}</label></div>
         @endforeach
+        <hr><h5>Section order</h5><p class="text-muted">Use the ↑ and ↓ buttons to change the order. Save Draft to preview the result.</p>
+        <div id="landing-section-list">
+        @foreach($page->orderedSections() as $sectionKey)
+          <div class="d-flex align-items-center border rounded p-2 mb-2 section-sort-row" data-section="{{ $sectionKey }}">
+          <span class="flex-grow-1 font-weight-bold">{{ \\App\\Models\\LandingPage::SECTION_NAMES[$sectionKey] }}</span>
+          <input type="hidden" name="section_order[]" value="{{ $sectionKey }}">
+          <button type="button" class="btn btn-sm btn-outline-secondary mr-2 move-up" aria-label="Move section up">↑</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary move-down" aria-label="Move section down">↓</button></div>
+        @endforeach
+        </div>
         </div></div></div>
         <div class="card"><div class="card-header"><h3 class="card-title">3. Project showcase</h3></div><div class="card-body">
         <div class="form-group"><label for="projects_mode">Content source</label><select class="form-control" id="projects_mode" name="projects_mode">
@@ -42,6 +52,14 @@
         <option value="actual" {{ old('projects_mode',$page->projects_mode ?: 'default') === 'actual'?'selected':'' }}>Selected actual projects</option></select></div>
         <p class="text-muted">Choose project records below. Project names and addresses will be read from existing CRM project records; no CRM records will be edited.</p>
         <div class="row">@foreach($projects as $project)<div class="col-md-4 mb-2"><label class="border rounded p-2 d-block"><input type="checkbox" name="project_ids[]" value="{{ $project->id }}" {{ in_array($project->id,old('project_ids',$page->project_ids ?? [])) ? 'checked':'' }}> <strong>{{ $project->project }}</strong><small class="d-block text-muted">{{ $project->address }}</small></label></div>@endforeach</div>
+        <hr><h5>Project promotional details</h5><p class="text-muted">These changes are only for the landing page. Original CRM project records remain unchanged. Leave a field blank to use CRM name/address or default artwork.</p>
+        @foreach($projects as $project)
+        <details class="border rounded p-3 mb-2"><summary class="font-weight-bold" style="cursor:pointer">{{ $project->project }} — Customize card</summary><div class="row mt-3">
+        <div class="col-md-6 form-group"><label>Promotional title</label><input class="form-control" maxlength="150" name="project_overrides[{{ $project->id }}][title]" value="{{ old('project_overrides.'.$project->id.'.title',$page->projectOverride($project->id,'title')) }}"></div>
+        <div class="col-md-6 form-group"><label>Image URL (HTTPS or uploaded path)</label><input class="form-control" maxlength="2048" name="project_overrides[{{ $project->id }}][image]" value="{{ old('project_overrides.'.$project->id.'.image',$page->projectOverride($project->id,'image')) }}"></div>
+        <div class="col-12 form-group"><label>Promotional description</label><textarea class="form-control" maxlength="600" rows="2" name="project_overrides[{{ $project->id }}][description]">{{ old('project_overrides.'.$project->id.'.description',$page->projectOverride($project->id,'description')) }}</textarea></div>
+        </div></details>
+        @endforeach
         @if($projects->isEmpty())<p>No projects found. You can keep the default promotional cards.</p>@endif
         </div></div>
         <div class="mb-4 d-flex align-items-center"><button type="submit" class="btn btn-primary btn-lg mr-3">Save Draft</button><span class="text-muted">Saving does not change the live website. Preview and publish when ready.</span></div>
@@ -61,4 +79,20 @@
       </div></div></div>
     </div></section>
 </div>
+@endsection
+
+@section('js')
+<script>
+(function(){
+ const list=document.getElementById('landing-section-list');
+ if(!list)return;
+ list.addEventListener('click',function(e){
+   const button=e.target.closest('button');
+   if(!button)return;
+   const row=button.closest('.section-sort-row');
+   if(button.classList.contains('move-up')&&row.previousElementSibling)list.insertBefore(row,row.previousElementSibling);
+   if(button.classList.contains('move-down')&&row.nextElementSibling)list.insertBefore(row.nextElementSibling,row);
+ });
+})();
+</script>
 @endsection
