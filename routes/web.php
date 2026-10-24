@@ -45,6 +45,8 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         ->middleware('permission:read landing page')->name('landing-page.admin.index');
     Route::put('landing-page', [\App\Http\Controllers\LandingPageAdminController::class, 'update'])
         ->middleware('permission:update landing page')->name('landing-page.admin.update');
+    Route::post('landing-page/contact', [\App\Http\Controllers\LandingPageAdminController::class, 'updateContact'])
+        ->middleware('permission:update landing page')->name('landing-page.admin.contact');
     Route::get('landing-page/preview', [\App\Http\Controllers\LandingPageAdminController::class, 'preview'])
         ->middleware('permission:read landing page')->name('landing-page.admin.preview');
     Route::post('landing-page/publish', [\App\Http\Controllers\LandingPageAdminController::class, 'publish'])
