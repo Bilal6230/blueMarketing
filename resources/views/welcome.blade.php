@@ -106,6 +106,12 @@
 @if(!empty($isLandingPreview))
 <div style="text-align:center;padding:9px 18px;background:#eaf1ff;color:#153c7a;font-size:12px;font-weight:800">
 Selected theme: {{ ['corporate'=>'Premium Corporate','luxury'=>'Luxury Real Estate','vibrant'=>'Modern & Vibrant'][$landingTheme] ?? $landingTheme }}
+<div style="font-size:12px;font-weight:600;margin-top:5px">
+Contact settings in draft:
+Phone {{ $landingPage->contentValue('contact_phone') !== '' ? '✓' : '—' }} ·
+WhatsApp {{ $landingPage->contentValue('contact_whatsapp') !== '' ? '✓' : '—' }} ·
+Email {{ $landingPage->contentValue('contact_email') !== '' ? '✓' : '—' }}
+</div>
 </div>
 @endif
 <main id="top" class="landing-ordered-main">
