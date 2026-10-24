@@ -154,6 +154,39 @@ class LandingPageAdminController extends Controller
         return redirect()->route('landing-page.admin.index')->with('success', 'Draft saved. Public website has not changed.');
     }
 
+    public function updateContact(Request $request)
+    {
+        $data = $request->validate([
+            'contact_phone' => ['nullable', 'string', 'max:24', 'regex:/^\\+?[0-9\\s()\\-]{7,24}$/'],
+            'contact_whatsapp' => ['nullable', 'string', 'max:24', 'regex:/^\\+?[0-9\\s()\\-]{7,24}$/'],
+            'contact_email' => ['nullable', 'email', 'max:255'],
+        ]);
+
+        DB::transaction(function () use ($data) {
+            $record = LandingPage::query()->lockForUpdate()->first() ?? new LandingPage();
+            $draft = $this->draftPage($record);
+            $payload = [
+                'theme' => $draft->theme ?: 'corporate',
+                'projects_mode' => $draft->projects_mode ?: 'default',
+                'project_ids' => $draft->project_ids ?? [],
+                'sections' => $draft->sections ?? [],
+                'section_order' => $draft->section_order ?? [],
+                'project_overrides' => $draft->project_overrides ?? [],
+                'content' => $draft->content ?? [],
+            ];
+            foreach (['contact_phone', 'contact_whatsapp', 'contact_email'] as $key) {
+                $value = trim((string) ($data[$key] ?? ''));
+                if ($key !== 'contact_email') {
+                    $value = preg_replace('/[\\s()\\-]/', '', $value);
+                }
+                $payload['content'][$key] = $value;
+            }
+            $record->draft_payload = $payload;
+            $record->save();
+        });
+        return redirect()->route('landing-page.admin.index')->with('success', 'Contact details saved to draft. Preview before publishing.');
+    }
+
     public function preview()
     {
         $record = $this->record();
