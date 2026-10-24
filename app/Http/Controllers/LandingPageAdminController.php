@@ -58,7 +58,7 @@ class LandingPageAdminController extends Controller
             && !preg_match('~[\x00-\x1f"<>]~', $image)) {
             return $image;
         }
-        throw \\Illuminate\\Validation\\ValidationException::withMessages([
+        throw \Illuminate\Validation\ValidationException::withMessages([
             'image' => 'Use a valid HTTPS image URL or an image uploaded through the Landing Page Manager.'
         ]);
     }
