@@ -6,8 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class LandingPage extends Model
 {
-    protected $fillable = ['theme', 'content', 'sections', 'projects_mode', 'project_ids'];
-    protected $casts = ['content' => 'array', 'sections' => 'array', 'project_ids' => 'array'];
+    protected $fillable = ['theme', 'content', 'sections', 'projects_mode', 'project_ids', 'draft_payload', 'published_at'];
+    protected $casts = ['content' => 'array', 'sections' => 'array', 'project_ids' => 'array', 'draft_payload' => 'array', 'published_at' => 'datetime'];
 
     public const DEFAULT_CONTENT = [
         'hero_eyebrow' => 'Your property journey starts here',
