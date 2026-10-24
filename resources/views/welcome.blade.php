@@ -11,8 +11,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0b1730">
-    <meta name="description" content="BlueMarketing helps you explore real estate opportunities with clear guidance, thoughtful service, and confidence at every step.">
-    <title>BlueMarketing | Property Decisions, Made Clear</title>
+    <meta name="description" content="{{ $landingPage->contentValue('seo_description') }}">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{{ $landingPage->contentValue('seo_title') }}">
+    <meta property="og:description" content="{{ $landingPage->contentValue('seo_description') }}">
+    <title>{{ $landingPage->contentValue('seo_title') }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -88,6 +91,16 @@
       @media(max-width:760px){body.theme-luxury .nav-links{background:#141c27}}
     </style>
 <style>.landing-ordered-main{display:flex;flex-direction:column}.landing-ordered-main>.hero{order:0}.landing-ordered-main>.proofbar{order:1}.landing-ordered-main>.cta{order:90}</style>
+<style>
+  .projects-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))}
+  .projects-grid:has(.project-card:only-child){grid-template-columns:minmax(0,600px);justify-content:center}
+  .project-img{background-position:center;background-size:cover}
+  .contact-form .btn{min-height:48px}
+  .quick-contact{position:fixed;bottom:21px;right:21px;z-index:45;padding:13px 20px;border-radius:40px;background:#15803d;color:white;font-weight:800;font-size:13px;box-shadow:0 12px 35px #0003}
+  .quick-contact:focus-visible{outline:3px solid #cbaa70;outline-offset:4px}
+  @media(max-width:760px){.quick-contact{bottom:14px;right:14px;padding:11px 16px}.projects-grid{grid-template-columns:1fr}}
+  @media print{.quick-contact{display:none}}
+</style>
 </head>
 <body class="theme-{{ $landingTheme }}">
 <div class="topline"><div class="container"><span>Thoughtful guidance for your next property decision.</span><span>Welcome to <strong>BlueMarketing</strong></span></div></div>
@@ -196,6 +209,12 @@ Email {{ $landingPage->contentValue('contact_email') !== '' ? '✓' : '—' }}
 </section>
 @endif
 </main>
+@php
+  $floatingWhatsapp = preg_replace('/\\D+/', '', $landingPage->contentValue('contact_whatsapp'));
+@endphp
+@if($floatingWhatsapp)
+<a class="quick-contact" href="https://wa.me/{{ $floatingWhatsapp }}?text={{ rawurlencode('Hello BlueMarketing, I would like information about your property opportunities.') }}" target="_blank" rel="noopener noreferrer" aria-label="Contact BlueMarketing on WhatsApp">WhatsApp ↗</a>
+@endif
 <footer><div class="container"><div class="footer-grid"><div><a class="brand footer-brand" href="#top"><span class="brand-mark" style="background:#2563df">B</span><span>Blue<span style="color:#93b5ff">Marketing</span></span></a><p class="footer-copy">{{ $landingPage->contentValue('footer_description') }}</p></div><nav class="footer-links" aria-label="Footer navigation"><a href="#about">About</a><a href="#services">Services</a><a href="#opportunities">Explore</a><a href="#faq">FAQs</a><a href="#contact">Contact</a><a href="{{ route('login') }}">Staff Login</a></nav></div><div class="copyright"><span>© {{ date('Y') }} BlueMarketing. All rights reserved.</span><span>Made with care for your next move.</span></div></div></footer>
 <script>
 (function(){
