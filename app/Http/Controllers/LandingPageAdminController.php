@@ -101,6 +101,12 @@ class LandingPageAdminController extends Controller
                 }
                 $value = $number;
             }
+            if ($key === 'seo_title' && mb_strlen(trim($value)) > 70) {
+                throw \Illuminate\Validation\ValidationException::withMessages(["content.$key" => 'SEO title must not exceed 70 characters.']);
+            }
+            if ($key === 'seo_description' && mb_strlen(trim($value)) > 200) {
+                throw \Illuminate\Validation\ValidationException::withMessages(["content.$key" => 'SEO description must not exceed 200 characters.']);
+            }
             if ($key === 'contact_email' && trim($value) !== '' && !filter_var(trim($value), FILTER_VALIDATE_EMAIL)) {
                 throw \Illuminate\Validation\ValidationException::withMessages(["content.$key" => 'Enter a valid email address.']);
             }
@@ -147,6 +153,13 @@ class LandingPageAdminController extends Controller
 
         DB::transaction(function () use ($payload) {
             $page = LandingPage::query()->lockForUpdate()->first() ?? new LandingPage();
+            // Contact details use their own form: never erase them when saving other page sections.
+            $existing = $page->draft_payload['content'] ?? $page->content ?? [];
+            foreach (['contact_phone', 'contact_whatsapp', 'contact_email'] as $key) {
+                if (array_key_exists($key, $existing)) {
+                    $payload['content'][$key] = $existing[$key];
+                }
+            }
             $page->draft_payload = $payload;
             $page->save();
         });
@@ -241,7 +254,7 @@ class LandingPageAdminController extends Controller
             $projectId = (int) $request->project_id;
             $payload['project_overrides'][$projectId]['image'] = '/storage/' . $path;
         } else {
-            $payload['content'][$request->slot] = Storage::disk('public')->url($path);
+            $payload['content'][$request->slot] = '/storage/' . $path;
         }
 
         $page->draft_payload = $payload;
