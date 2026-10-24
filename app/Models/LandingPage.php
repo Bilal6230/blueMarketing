@@ -25,6 +25,8 @@ class LandingPage extends Model
         'contact_phone' => '',
         'contact_whatsapp' => '',
         'contact_email' => '',
+        'seo_title' => 'BlueMarketing | Property Decisions, Made Clear',
+        'seo_description' => 'Explore real estate opportunities with BlueMarketing. Discover properties, learn about our services, and contact our team directly.',
     ];
 
     public const SECTION_NAMES = ['services'=>'Services', 'about'=>'About us', 'opportunities'=>'Projects / opportunities', 'process'=>'How it works', 'faq'=>'FAQs', 'contact'=>'Contact'];
