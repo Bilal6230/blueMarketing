@@ -62,6 +62,8 @@
       body.theme-vibrant .service-card,body.theme-vibrant .project-card{border-radius:18px}
       body.theme-vibrant .hero-photo,body.theme-vibrant .about-photo{border-radius:20px}
       body.theme-vibrant .proofbar,body.theme-vibrant .cta{background:linear-gradient(100deg,#10276b,#1760de)}
+      body.theme-luxury .proofbar{background:#05080e}body.theme-luxury .topline{background:#080b11}body.theme-luxury .hero-photo{box-shadow:0 30px 80px #0008}body.theme-luxury .about-photo{filter:brightness(.75)}body.theme-luxury .step b{color:#b18c55}body.theme-luxury .btn-white{background:#d6b17b;color:#111827}
+      body.theme-vibrant .nav{background:#f7fbff}body.theme-vibrant .hero-card{border-left-color:#19b6eb}body.theme-vibrant .service-icon{background:#ddecff}body.theme-vibrant .section-heading h2{color:#1746b2}body.theme-vibrant .about{background:#e8f3ff}body.theme-vibrant .process{background:linear-gradient(120deg,#deebff,#f7fbff)}body.theme-vibrant .step b{color:#a6c6fe}body.theme-vibrant .contact{background:#e8f3ff}body.theme-vibrant .project-card{box-shadow:0 16px 36px #2165ce1a}
       @media(max-width:760px){body.theme-luxury .nav-links{background:#141c27}}
     </style>
 </head>
@@ -78,6 +80,11 @@
 </header>
 @if(!empty($isLandingPreview))
 <div style="background:#ffefbd;color:#573a0c;padding:10px 20px;text-align:center;font-size:14px;font-weight:700">DRAFT PREVIEW — changes are not yet published</div>
+@endif
+@if(!empty($isLandingPreview))
+<div style="text-align:center;padding:9px 18px;background:#eaf1ff;color:#153c7a;font-size:12px;font-weight:800">
+Selected theme: {{ ['corporate'=>'Premium Corporate','luxury'=>'Luxury Real Estate','vibrant'=>'Modern & Vibrant'][$landingTheme] ?? $landingTheme }}
+</div>
 @endif
 <main id="top">
   <section class="hero" aria-labelledby="hero-title"><div class="container hero-grid">
