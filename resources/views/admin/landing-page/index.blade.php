@@ -83,7 +83,11 @@
        @if($page->contentValue($slot))<img src="{{ $page->contentValue($slot) }}" alt="Current {{ $group }} image" loading="lazy">@endif
        <input form="landing-editor" class="form-control mb-2" id="lp-{{ $slot }}" name="content[{{ $slot }}]" maxlength="2048" value="{{ old('content.'.$slot,$page->contentValue($slot)) }}" placeholder="Image URL or /storage/landing-page/...">
        <button type="button" class="btn btn-sm btn-outline-secondary mb-3 reset-image" data-target="lp-{{ $slot }}">Use default image</button>
-       <div class="lp-muted">Upload below, or provide an HTTPS image URL.</div>
+       <form method="POST" action="{{ route('landing-page.admin.upload-image') }}" enctype="multipart/form-data" class="mt-2">@csrf
+        <input type="hidden" name="slot" value="{{ $slot }}"><input type="file" name="image" accept="image/jpeg,image/png,image/webp" required class="form-control-file mb-2">
+        <button class="btn btn-sm btn-outline-primary" type="submit">Upload {{ $group }} image</button>
+       </form>
+       <div class="lp-muted mt-2">Image uploads save to draft separately. Save text changes first.</div>
       </div>
     </div>
     @endif
@@ -118,6 +122,10 @@
        <label for="project-image-{{ $project->id }}">Cover image URL</label>
        <input form="landing-editor" id="project-image-{{ $project->id }}" class="form-control mb-2" maxlength="2048" name="project_overrides[{{ $project->id }}][image]" value="{{ old('project_overrides.'.$project->id.'.image',$page->projectOverride($project->id,'image')) }}">
        <button type="button" class="btn btn-sm btn-outline-secondary mb-2 reset-image" data-target="project-image-{{ $project->id }}">Use default artwork</button>
+       <form method="POST" action="{{ route('landing-page.admin.upload-image') }}" enctype="multipart/form-data" class="mt-2">@csrf
+       <input type="hidden" name="slot" value="project_image"><input type="hidden" name="project_id" value="{{ $project->id }}">
+       <input type="file" name="image" accept="image/jpeg,image/png,image/webp" required class="form-control-file mb-2">
+       <button class="btn btn-sm btn-outline-primary" type="submit">Upload project cover</button></form>
       </div></div>
      </div></div>
     </details>
@@ -159,23 +167,6 @@
     @endforeach
     </div>
    </div>
-  </div>
-  <div class="lp-panel">
-   <div class="lp-heading">Image uploads</div><p class="lp-muted">Upload images here or edit their URL beside the corresponding content. Uploads update draft only. Save unsaved text edits first.</p>
-   <div class="row">
-    @foreach(['hero_image'=>'Hero','about_image'=>'About'] as $slot=>$label)
-    <div class="col-md-6 mb-3"><form method="POST" action="{{ route('landing-page.admin.upload-image') }}" enctype="multipart/form-data" class="lp-media">@csrf
-     <strong>{{ $label }} image</strong><input type="hidden" name="slot" value="{{ $slot }}"><input class="form-control-file my-2" type="file" name="image" accept="image/jpeg,image/png,image/webp" required>
-     <button type="submit" class="btn btn-sm btn-outline-primary">Upload {{ $label }} image</button>
-    </form></div>@endforeach
-   </div>
-   <details><summary class="font-weight-bold" style="cursor:pointer">Upload individual project covers</summary><div class="row mt-3">
-    @foreach($projects as $project)<div class="col-md-4 mb-3">
-     <form method="POST" action="{{ route('landing-page.admin.upload-image') }}" enctype="multipart/form-data" class="lp-media">@csrf
-      <strong>{{ $project->project }}</strong><input type="hidden" name="slot" value="project_image"><input type="hidden" name="project_id" value="{{ $project->id }}">
-      <input class="form-control-file my-2" type="file" name="image" accept="image/jpeg,image/png,image/webp" required><button class="btn btn-sm btn-outline-primary" type="submit">Upload cover</button>
-     </form></div>@endforeach
-   </div></details>
   </div>
  </div></section>
 </div>
