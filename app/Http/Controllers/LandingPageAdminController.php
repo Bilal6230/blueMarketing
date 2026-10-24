@@ -94,6 +94,16 @@ class LandingPageAdminController extends Controller
             if (in_array($key, ['hero_image', 'about_image'], true)) {
                 $value = $this->normalizeImageUrl($value);
             }
+            if (in_array($key, ['contact_phone', 'contact_whatsapp'], true)) {
+                $number = preg_replace('/[\\s()\\-]/', '', trim($value));
+                if ($number !== '' && !preg_match('/^\\+?[0-9]{7,15}$/', $number)) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(["content.$key" => 'Enter a valid international phone number.']);
+                }
+                $value = $number;
+            }
+            if ($key === 'contact_email' && trim($value) !== '' && !filter_var(trim($value), FILTER_VALIDATE_EMAIL)) {
+                throw \Illuminate\Validation\ValidationException::withMessages(["content.$key" => 'Enter a valid email address.']);
+            }
             $content[$key] = trim($value) !== '' ? trim($value) : $fallback;
         }
 
