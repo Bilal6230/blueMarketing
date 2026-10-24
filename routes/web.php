@@ -42,9 +42,9 @@ Route::middleware(['auth'])->get('/home', [DashboardController::class, 'index'])
 Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(function () {
     // Public website editor: same authentication and settings permission as the existing admin.
     Route::get('landing-page', [\App\Http\Controllers\LandingPageAdminController::class, 'index'])
-        ->middleware('permission:update setting')->name('landing-page.admin.index');
+        ->middleware('permission:read landing page')->name('landing-page.admin.index');
     Route::put('landing-page', [\App\Http\Controllers\LandingPageAdminController::class, 'update'])
-        ->middleware('permission:update setting')->name('landing-page.admin.update');
+        ->middleware('permission:update landing page')->name('landing-page.admin.update');
     Route::get('/', [DashboardController::class, 'index'])->name('admin');
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('punch', [DashboardController::class, 'punch']);
