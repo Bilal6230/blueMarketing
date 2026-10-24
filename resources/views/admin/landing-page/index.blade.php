@@ -75,7 +75,17 @@
        <button class="btn btn-outline-primary" type="submit">Upload to Draft</button>
        </form></div>
       @endforeach
-      </div></div></div>
+      </div></div>
+      <div class="card"><div class="card-header"><h3 class="card-title">5. Project cover uploads</h3></div><div class="card-body"><p class="text-muted">Save other edits first. Uploading a cover updates only your draft.</p>
+       <div class="row">@foreach($projects as $project)
+        <div class="col-md-4 mb-3"><form method="POST" action="{{ route('landing-page.admin.upload-image') }}" enctype="multipart/form-data" class="border p-3 rounded">
+        @csrf <input type="hidden" name="slot" value="project_image"><input type="hidden" name="project_id" value="{{ $project->id }}">
+        <strong>{{ $project->project }}</strong>
+        <input type="file" accept="image/jpeg,image/png,image/webp" name="image" required class="form-control-file my-2">
+        <button type="submit" class="btn btn-sm btn-outline-primary">Upload Cover</button>
+        </form></div>
+       @endforeach</div>
+      </div></div>
     </div></section>
 </div>
 @endsection
