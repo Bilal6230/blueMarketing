@@ -30,7 +30,15 @@
                         <i class="nav-icon fas fa-home"></i>
                         <p>Dashboard</p>
                     </a>
-                </li>@php $i = 1; @endphp
+                </li>
+                @can('update setting')
+                    <li class="nav-item">
+                        <a href="{{ route('landing-page.admin.index') }}" class="nav-link {{ request()->routeIs('landing-page.admin.*') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-palette"></i><p>Landing Page Manager</p>
+                        </a>
+                    </li>
+                @endcan
+                @php $i = 1; @endphp
                 @foreach ($modulemenus as $menus)
                     @if ($menus['menu_count'] == 1)
                         @foreach ($menus['menus'] as $menu)
