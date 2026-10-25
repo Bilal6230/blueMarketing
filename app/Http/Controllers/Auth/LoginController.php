@@ -107,7 +107,7 @@ class LoginController extends Controller
                         'remoteip' => $request->ip(),
                     ]);
                 $verified = $verification->successful() && $verification->json('success') === true;
-            } catch (\\Throwable $exception) {
+            } catch (\Throwable $exception) {
                 $verified = false;
             }
 
