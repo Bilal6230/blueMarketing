@@ -7,7 +7,7 @@ use PHPUnit\Framework\TestCase;
 
 class SettingHelperDisplayTest extends TestCase
 {
-    /** @dataProvider invalidDisplayValueProvider */
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidDisplayValueProvider')]
     public function test_display_helpers_return_safe_strings_for_invalid_values($value): void
     {
         $this->assertSame('btn-secondary', SettingHelper::getProjectColorClass($value));
@@ -23,7 +23,7 @@ class SettingHelperDisplayTest extends TestCase
         $this->assertSame('New Lead', SettingHelper::getCallStatus(6));
     }
 
-    public function invalidDisplayValueProvider(): array
+    public static function invalidDisplayValueProvider(): array
     {
         return [
             'null' => [null],
