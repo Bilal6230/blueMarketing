@@ -143,7 +143,7 @@ class AllLeadsReportRenderingTest extends TestCase
         $this->assertStringNotContainsString('window.location.origin+"/admin/report/leads?"', $blade);
     }
 
-    /** @dataProvider selectedFilterProvider */
+    #[\PHPUnit\Framework\Attributes\DataProvider('selectedFilterProvider')]
     public function test_server_rendered_page_preserves_selected_filter(?string $filter, string $selectedValue): void
     {
         $user = new User();
@@ -173,7 +173,7 @@ class AllLeadsReportRenderingTest extends TestCase
         $this->assertMatchesRegularExpression('/<option value="9" selected>Selected User<\/option>/', $html);
     }
 
-    public function selectedFilterProvider(): array
+    public static function selectedFilterProvider(): array
     {
         return [
             'no filter' => [null, ''],
@@ -183,7 +183,7 @@ class AllLeadsReportRenderingTest extends TestCase
         ];
     }
 
-    /** @dataProvider malformedFilterProvider */
+    #[\PHPUnit\Framework\Attributes\DataProvider('malformedFilterProvider')]
     public function test_array_filter_inputs_are_rejected(string $field, array $value): void
     {
         $request = Request::create('/admin/report/leads', 'GET', [$field => $value]);
@@ -196,7 +196,7 @@ class AllLeadsReportRenderingTest extends TestCase
         }
     }
 
-    public function malformedFilterProvider(): array
+    public static function malformedFilterProvider(): array
     {
         return [
             'filter array' => ['filter', ['all']],
