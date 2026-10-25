@@ -12,7 +12,7 @@
         "alexusmai/laravel-file-manager": "^3.0",
         "guzzlehttp/guzzle": "^7.2",
         "laravel/framework": "^13.0",
-        "laravel/sanctum": "^3.2",
+        "laravel/sanctum": "^4.3.3",
         "laravel/tinker": "^3.0",
         "laravel/ui": "^4.0",
         "nwidart/laravel-modules": "^13.0",
