@@ -16,13 +16,13 @@ class BookingPriceCalculatorTest extends TestCase
         $this->calculator = new BookingPriceCalculator();
     }
 
-    /** @dataProvider validCalculations */
+    #[\PHPUnit\Framework\Attributes\DataProvider('validCalculations')]
     public function test_exact_calculations(array $input, array $expected): void
     {
         $this->assertSame($expected, $this->calculator->calculate(...$input)->toArray());
     }
 
-    public function validCalculations(): array
+    public static function validCalculations(): array
     {
         return [
             'rate only and two decimals' => [
@@ -40,7 +40,7 @@ class BookingPriceCalculatorTest extends TestCase
         ];
     }
 
-    /** @dataProvider invalidInputs */
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidInputs')]
     public function test_invalid_inputs_are_rejected(array $input, string $code): void
     {
         try {
@@ -51,7 +51,7 @@ class BookingPriceCalculatorTest extends TestCase
         }
     }
 
-    public function invalidInputs(): array
+    public static function invalidInputs(): array
     {
         $base = ['10', '500000', 0, '0', 0, '0', '0'];
 
@@ -79,13 +79,13 @@ class BookingPriceCalculatorTest extends TestCase
         $this->assertNotContains('total_price', $names);
     }
 
-    /** @dataProvider halfUpCases */
+    #[\PHPUnit\Framework\Attributes\DataProvider('halfUpCases')]
     public function test_money_is_rounded_half_up(string $value, string $expected): void
     {
         $this->assertSame($expected, $this->calculator->roundMoneyHalfUp($value));
     }
 
-    public function halfUpCases(): array
+    public static function halfUpCases(): array
     {
         return [
             'below half' => ['1.004', '1.00'],
