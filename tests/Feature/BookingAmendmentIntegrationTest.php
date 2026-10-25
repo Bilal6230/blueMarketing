@@ -88,7 +88,7 @@ class BookingAmendmentIntegrationTest extends TestCase
         $this->assertSame($before, $this->accountingRows());
     }
 
-    /** @dataProvider historicalVoucherStatuses */
+    #[\PHPUnit\Framework\Attributes\DataProvider('historicalVoucherStatuses')]
     public function test_unified_http_nonpending_historical_voucher_is_unchanged(string $status): void
     {
         $user = $this->authorizedPricingUser();
@@ -100,7 +100,7 @@ class BookingAmendmentIntegrationTest extends TestCase
         $this->assertSame($before, $this->accountingRows());
     }
 
-    public function historicalVoucherStatuses(): array
+    public static function historicalVoucherStatuses(): array
     {
         return ['approved' => ['approved'], 'rejected' => ['rejected']];
     }
