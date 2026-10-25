@@ -205,9 +205,7 @@ class VoucherClearanceFlowTest extends TestCase
         return ['numeric active' => [1], 'numeric inactive' => [0], 'arbitrary string' => ['enabled']];
     }
 
-    /**
-     * @see pendingReceiptPaymentTypesProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('pendingReceiptPaymentTypesProvider')]
     public function test_ppr_pending_bank_received_payment_creates_ledger_immediately(int $paymentType): void
     {
         $response = $this->callDeposit($this->depositPayload($paymentType, [
@@ -241,9 +239,7 @@ class VoucherClearanceFlowTest extends TestCase
         }
     }
 
-    /**
-     * @see pendingReceiptPaymentTypesProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('pendingReceiptPaymentTypesProvider')]
     public function test_cr_online_and_check_vouchers_create_ledger_immediately_and_remain_pending(int $paymentType): void
     {
         $response = $this->callLedgerStore($this->cashVoucherPayload([
