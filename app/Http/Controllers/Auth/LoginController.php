@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use RealRashid\SweetAlert\Facades\Alert;
@@ -84,6 +85,39 @@ class LoginController extends Controller
     
     public function login(Request $request)
     {
+        // Keep the existing credentials flow, but verify configured reCAPTCHA v2 server-side.
+        // A missing or invalid challenge never authenticates a user.
+        $siteKey = (string) config('recaptcha.api_site_key', '');
+        $secretKey = (string) config('recaptcha.api_secret_key', '');
+        if ($siteKey !== '' || $secretKey !== '') {
+            $request->validate(['g-recaptcha-response' => 'required|string']);
+
+            if ($siteKey === '' || $secretKey === '') {
+                throw ValidationException::withMessages([
+                    'g-recaptcha-response' => ['CAPTCHA is not configured correctly. Please contact support.'],
+                ]);
+            }
+
+            try {
+                $verification = Http::asForm()
+                    ->timeout(10)
+                    ->post('https://www.google.com/recaptcha/api/siteverify', [
+                        'secret' => $secretKey,
+                        'response' => $request->input('g-recaptcha-response'),
+                        'remoteip' => $request->ip(),
+                    ]);
+                $verified = $verification->successful() && $verification->json('success') === true;
+            } catch (\\Throwable $exception) {
+                $verified = false;
+            }
+
+            if (!$verified) {
+                throw ValidationException::withMessages([
+                    'g-recaptcha-response' => ['CAPTCHA verification failed. Please try again.'],
+                ]);
+            }
+        }
+
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',
