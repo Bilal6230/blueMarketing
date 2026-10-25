@@ -133,7 +133,7 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame((string) $this->plot->id, $loggedError['context']['plot_id']);
     }
 
-    /** @dataProvider canonicalBookingStatuses */
+    #[\PHPUnit\Framework\Attributes\DataProvider('canonicalBookingStatuses')]
     public function test_successful_booking_create_redirects_to_booking_list(string $status): void
     {
         ProjectHeadSubhead::create([
@@ -166,12 +166,12 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame(0, DB::transactionLevel());
     }
 
-    public function canonicalBookingStatuses(): array
+    public static function canonicalBookingStatuses(): array
     {
         return ['active' => ['active'], 'inactive' => ['inactive']];
     }
 
-    /** @dataProvider invalidBookingStatuses */
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidBookingStatuses')]
     public function test_booking_create_rejects_noncanonical_status($status): void
     {
         $before = DB::table('bookings')->count();
@@ -200,13 +200,13 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame($before, DB::table('bookings')->count());
     }
 
-    public function invalidBookingStatuses(): array
+    public static function invalidBookingStatuses(): array
     {
         return ['numeric active' => [1], 'numeric inactive' => [0], 'arbitrary string' => ['enabled']];
     }
 
     /**
-     * @dataProvider pendingReceiptPaymentTypesProvider
+     * @see pendingReceiptPaymentTypesProvider
      */
     public function test_ppr_pending_bank_received_payment_creates_ledger_immediately(int $paymentType): void
     {
@@ -242,7 +242,7 @@ class VoucherClearanceFlowTest extends TestCase
     }
 
     /**
-     * @dataProvider pendingReceiptPaymentTypesProvider
+     * @see pendingReceiptPaymentTypesProvider
      */
     public function test_cr_online_and_check_vouchers_create_ledger_immediately_and_remain_pending(int $paymentType): void
     {
