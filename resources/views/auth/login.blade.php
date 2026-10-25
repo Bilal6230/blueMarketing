@@ -11,7 +11,9 @@
     <link rel="stylesheet" href="{{ asset('template/admin/plugins/fontawesome-free/css/all.min.css') }}">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    {!! htmlScriptTagJsApi() !!}
+    @if(config('recaptcha.api_site_key'))
+        <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    @endif
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -62,7 +64,7 @@
                 </div>
 
                 <div class="bg-white rounded-xl shadow-md p-8">
-                    <form method="POST" id="#recaptcha-form" action="{{ route('login') }}">
+                    <form method="POST" id="recaptcha-form" action="{{ route('login') }}">
                         @csrf
                         <div class="space-y-5">
                             <!-- Email Field -->
@@ -127,6 +129,15 @@
                                     </label>
                                 </div>
                             </div>
+
+                            @if(config('recaptcha.api_site_key'))
+                                <div>
+                                    <div class="g-recaptcha" data-sitekey="{{ config('recaptcha.api_site_key') }}"></div>
+                                    @error('g-recaptcha-response')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                            @endif
 
                             <!-- Submit Button -->
                             <div>
