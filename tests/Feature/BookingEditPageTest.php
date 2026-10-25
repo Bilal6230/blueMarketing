@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 use Spatie\Permission\Exceptions\UnauthorizedException;
-use Spatie\Permission\Middlewares\PermissionMiddleware;
+use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
@@ -392,7 +392,7 @@ class BookingEditPageTest extends TestCase
         $this->assertSame('2026-09-20', $audit['booking_date']);
     }
 
-    /** @dataProvider statusTransitions */
+    #[\PHPUnit\Framework\Attributes\DataProvider('statusTransitions')]
     public function test_status_only_update_works_both_ways_and_preserves_schedule_and_accounting(string $from, string $to): void
     {
         $booking = $this->createBooking(['status' => $from]);
@@ -412,12 +412,12 @@ class BookingEditPageTest extends TestCase
         $this->assertSame($to, $audit['status']);
     }
 
-    public function statusTransitions(): array
+    public static function statusTransitions(): array
     {
         return ['active to inactive' => ['active', 'inactive'], 'inactive to active' => ['inactive', 'active']];
     }
 
-    /** @dataProvider metadataStaleSnapshots */
+    #[\PHPUnit\Framework\Attributes\DataProvider('metadataStaleSnapshots')]
     public function test_stale_date_or_status_snapshot_is_rejected(string $expectedField, string $databaseField, string $databaseValue): void
     {
         $booking = $this->createBooking();
@@ -437,7 +437,7 @@ class BookingEditPageTest extends TestCase
         $this->assertSame(0, DB::table('booking_edit_audits')->count());
     }
 
-    public function metadataStaleSnapshots(): array
+    public static function metadataStaleSnapshots(): array
     {
         return [
             'booking date' => ['expected_booking_date', 'booking_date', '2026-09-15 00:00:00'],
@@ -540,7 +540,7 @@ class BookingEditPageTest extends TestCase
         $this->assertSame(0, DB::table('booking_edit_audits')->count());
     }
 
-    /** @dataProvider immutableTamperingProvider */
+    #[\PHPUnit\Framework\Attributes\DataProvider('immutableTamperingProvider')]
     public function test_immutable_and_financial_tampering_is_rejected(string $field, $value): void
     {
         $booking = $this->createBooking();
@@ -558,7 +558,7 @@ class BookingEditPageTest extends TestCase
         }
     }
 
-    public function immutableTamperingProvider(): array
+    public static function immutableTamperingProvider(): array
     {
         return collect(['project_id', 'customer_id', 'plot_id', 'plot_type', 'plot_size', 'plot_rate', 'is_park', 'park_facing', 'is_corner', 'carner_price', 'dicount_value', 'total_price'])
             ->mapWithKeys(fn ($field) => [$field => [$field, '999']])
@@ -613,7 +613,7 @@ class BookingEditPageTest extends TestCase
         }
     }
 
-    /** @dataProvider receiptStatusProvider */
+    #[\PHPUnit\Framework\Attributes\DataProvider('receiptStatusProvider')]
     public function test_exact_booking_receipt_status_policy(int $paymentType, $status, string $bucket, string $paid): void
     {
         $booking = $this->createBooking();
@@ -625,7 +625,7 @@ class BookingEditPageTest extends TestCase
         $this->assertSame($before, $this->snapshot($this->protectedTables()));
     }
 
-    public function receiptStatusProvider(): array
+    public static function receiptStatusProvider(): array
     {
         return [
             'cash' => [1, null, 'counted_receipt_ids', '1000.00'],
