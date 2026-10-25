@@ -114,7 +114,7 @@ class BookingCrossFlowStaleWriteTest extends TestCase
         $this->assertSame('2026-09-09', DB::table('journal_vouchers')->value('date'));
     }
 
-    /** @dataProvider immutableTamperingProvider */
+    #[\PHPUnit\Framework\Attributes\DataProvider('immutableTamperingProvider')]
     public function test_file_transfer_rejects_requested_immutable_field_tampering(string $field, mixed $value): void
     {
         $payload = $this->trueTransferPayload();
@@ -134,7 +134,7 @@ class BookingCrossFlowStaleWriteTest extends TestCase
         $this->assertSame(0, DB::table('booking_edit_audits')->count());
     }
 
-    public function immutableTamperingProvider(): array
+    public static function immutableTamperingProvider(): array
     {
         return [
             'project' => ['project_id', 11],
