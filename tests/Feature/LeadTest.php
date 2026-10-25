@@ -313,7 +313,7 @@ class LeadTest extends TestCase
         $this->assertSame($lead->id, $payload['data']['id']);
     }
 
-    /** @dataProvider inactiveSearchNumberProvider */
+    #[\PHPUnit\Framework\Attributes\DataProvider('inactiveSearchNumberProvider')]
     public function test_dashboard_search_does_not_return_inactive_lead(string $field, string $number): void
     {
         $this->createLead([$field => $number, 'is_active' => 0]);
@@ -332,7 +332,7 @@ class LeadTest extends TestCase
         $this->assertSame(['error' => 'No Record Found'], $response->getData(true));
     }
 
-    public function inactiveSearchNumberProvider(): array
+    public static function inactiveSearchNumberProvider(): array
     {
         return [
             'primary phone' => ['phone_number', '03001111111'],
