@@ -10,13 +10,13 @@
 | **4. Modules and integrations** | **NOT STARTED** | agreed modules/integrations including attendance |
 | **5. Staging / release** | **NOT STARTED** | tests, backed-up staging signoff and explicit live deployment approval |
 
-**Progress snapshot (baseline set 2026-10-26; estimates, not measured delivery):** Phase 1 **40%**, Phases 2–5 **0%**, overall **8%** (equal five-phase weighting). Keep same scale and do not advance on test-only commits without passing acceptance gates. **0/5 stages complete.**
+**Progress snapshot (baseline set 2026-10-26; estimates, not measured delivery):** Phase 1 **45%**, Phases 2–5 **0%**, overall **9%** (equal five-phase weighting). Keep same scale and do not advance on test-only commits without passing acceptance gates. **0/5 stages complete.**
 
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (JV serial/line tests verified; authenticated Spatie permission tests added, unrun)
+**Last updated:** 2026-10-26 (authenticated permissions verified; JV serial isolation and second-write rollback test batch awaiting local run)
 **Active Git branch:** `upgrade/laravel-framework`  
-**Latest confirmed local verification:** JV posting/validation + guest permission suite **16 passed / 125 assertions** after user pull of `3e09092`. New authenticated permission tests unrun.
+**Latest confirmed local verification:** user pulled `73af9be` and ran JV posting/validation + real authenticated and guest finance permission suite: **18 passed / 135 assertions**. Three newly added posting edge-case tests unrun.
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
 **Status:** In-progress accounting integrity hardening; **not production approved**.
 
@@ -299,3 +299,9 @@ Assistant must:
 - User pulled `3e09092`; lint passed and selected JV integration, invalid-input and guest route tests **16 passed, 125 assertions**. Verified two sequential JV numbers, empty/dual-sided rejection, valid ledger posting and rollback. The conservative 5 percentage-point increase recognizes this local verification; NOT the new test file.
 - Added `tests/Feature/Finance/VoucherAuthenticatedPermissionIntegrationTest.php`: actual Laravel authenticated HTTP requests with isolated SQLite Spatie tables, 5 denied write URLs without permissions (expect 403), and same 5 with explicitly granted action permissions (expect existing HTTP 409 business safety gates). **Not yet locally executed**. This does not certify JV store permission, idempotency, concurrent numbering or full financial reconciliation.
 - Percentage comparison: Phase 1 **35 -> 40%**, Phase 2-5 **0 -> 0%**, equal-weight overall **7 -> 8%**; **0 of 5 phases closed**. Remaining important work: hard authenticated permission results, idempotency/concurrency design requiring approved DB uniqueness, full-suite RED remediation, typed JV/CV reconciliation and reversal framework.
+
+## Verified security milestone and new JV posting regression batch — 2026-10-26
+- User pulled `73af9be`, linted and ran `VoucherAuthenticatedPermissionIntegrationTest|VoucherGuestAccessIntegrationTest|JournalVoucherPostingIntegrationTest|JournalVoucherStoreValidationTest`: **18 passed / 135 assertions**. Authenticated user without permission got denied; authorized user reached 409 guarded writes. Actual HTTP permission middleware is now tested, not just declared.
+- Added three actual-controller SQLite integration tests in `JournalVoucherPostingIntegrationTest.php`: second ledger write failure must roll back *already inserted first ledger* plus details/header; other-project voucher number must not influence current project's next serial; and soft-deleted JV serial must not be reused. **New tests pending local execution.**
+- Progress planning estimates: Phase 1 **40% -> 45%**, other phases **0%**, overall **8% -> 9%**, **0/5 closed**. Increase is based on verified authenticated permission milestone, not the unrun tests. Stable percent scale is still subjective, not precise code-completion measurement.
+- Remains: DB-level concurrency/idempotency, irreversible CV/JV historical ambiguity, reversal workflows, source RED failures, full-suite/staging reconciliation. No MySQL migrations/production writes/deployment.
