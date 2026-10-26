@@ -302,6 +302,36 @@ class JournalVoucherPostingIntegrationTest extends TestCase
         $this->assertSame(2, DB::table('ledgers')->count());
     }
 
+    public function test_read_only_inspector_reports_consistent_header_and_details(): void
+    {
+        app(JournalVoucherController::class)->store($this->request($this->payload()));
+        $result = app(\App\\Services\\Finance\\JournalVoucherIntegrityInspector::class)->inspect(7, 1);
+        $this->assertTrue($result['header_details_consistent']);
+        $this->assertSame([], $result['issues']);
+        $this->assertSame(2, $result['active_detail_count']);
+        $this->assertSame(10025, $result['detail_debit_cents']);
+        $this->assertSame(10025, $result['detail_credit_cents']);
+        $this->assertSame('unverified_legacy_type_id_collision_possible', $result['ledger_provenance']);
+    }
+
+    public function test_inspector_detects_header_detail_mismatch_without_mutation(): void
+    {
+        app(JournalVoucherController::class)->store($this->request($this->payload()));
+        DB::table('journal_vouchers')->where('id', 1)->update(['total_debit' => '99.99']);
+        $result = app(\App\\Services\\Finance\\JournalVoucherIntegrityInspector::class)->inspect(7, 1);
+        $this->assertFalse($result['header_details_consistent']);
+        $this->assertContains('header_detail_mismatch', $result['issues']);
+        $this->assertEquals(99.99, DB::table('journal_vouchers')->where('id', 1)->value('total_debit'));
+        $this->assertSame(2, DB::table('ledgers')->count());
+    }
+
+    public function test_inspector_denies_other_project_voucher_lookup(): void
+    {
+        app(JournalVoucherController::class)->store($this->request($this->payload()));
+        $this->expectException(\Illuminate\\Database\\Eloquent\\ModelNotFoundException::class);
+        app(\App\\Services\\Finance\\JournalVoucherIntegrityInspector::class)->inspect(8, 1);
+    }
+
     public function test_ledger_failure_rolls_back_header_and_details(): void
     {
         Ledger::creating(function () { throw new \RuntimeException('Simulated ledger write failure'); });
