@@ -30,3 +30,9 @@
 - Production deploy/merge to `master_live`.
 - Running any migration or modifying a real/staging database.
 - Destroying or rewriting finance/accounting data.
+
+## 2026-10-26 — Phase 1B reproducible snapshot scan
+- Inspected attached SQL snapshot read-only (57 table definitions, 40 FK constraints, 19 CASCADE actions, 394 INSERT statements). No DB connection or mutation.
+- Compared critical finance, booking, user and stock columns to selected migrations and models; verified structural drift and soft-delete inconsistency.
+- Detailed observations and remaining work: [PHASE1B_SCHEMA_FINDINGS.md](PHASE1B_SCHEMA_FINDINGS.md).
+- Next: complete all-table migration matrix and read-only data integrity checks. No production authorization.
