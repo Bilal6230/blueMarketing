@@ -414,6 +414,44 @@ class JournalVoucherPostingIntegrationTest extends TestCase
         app(\App\Services\Finance\CommissionVoucherIntegrityInspector::class)->inspect(8, 10);
     }
 
+    public function test_combined_jv_cv_audit_detects_mismatch_without_writing(): void
+    {
+        app(JournalVoucherController::class)->store($this->request($this->payload()));
+        DB::table('commision_vouchers')->insert([
+            'id' => 40, 'project_id' => 7, 'voucher_number' => 'CV-40',
+            'total_debit' => '99.00', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('commision_voucher_details')->insert([
+            ['commision_voucher_id' => 40, 'account_id' => 11, 'debit' => '90.00', 'credit' => '0.00'],
+            ['commision_voucher_id' => 40, 'account_id' => 22, 'debit' => '0.00', 'credit' => '90.00'],
+        ]);
+
+        $this->artisan('finance:audit-jv', ['project' => 7, '--type' => 'ALL', '--only-issues' => true])
+            ->expectsOutputToContain('Read-only audit: 2 vouchers, 1 flagged.')
+            ->assertExitCode(1);
+        $this->assertSame(1, DB::table('journal_vouchers')->count());
+        $this->assertEquals(99.00, DB::table('commision_vouchers')->value('total_debit'));
+        $this->assertSame(2, DB::table('ledgers')->count());
+    }
+
+    public function test_audit_limit_reports_incomplete_scan_instead_of_false_success(): void
+    {
+        app(JournalVoucherController::class)->store($this->request($this->payload()));
+        app(JournalVoucherController::class)->store($this->request($this->payload()));
+        $this->artisan('finance:audit-jv', ['project' => 7, '--limit' => 1])
+            ->expectsOutputToContain('INCOMPLETE SCAN: 1 additional vouchers not inspected')
+            ->assertExitCode(1);
+        $this->assertSame(2, DB::table('journal_vouchers')->count());
+    }
+
+    public function test_invalid_audit_type_is_rejected_before_financial_scan(): void
+    {
+        $this->artisan('finance:audit-jv', ['project' => 7, '--type' => 'OTHER'])
+            ->expectsOutputToContain('Provide positive project ID')
+            ->assertExitCode(2);
+        $this->assertSame(0, DB::table('journal_vouchers')->count());
+    }
+
     public function test_ledger_failure_rolls_back_header_and_details(): void
     {
         Ledger::creating(function () { throw new \RuntimeException('Simulated ledger write failure'); });
