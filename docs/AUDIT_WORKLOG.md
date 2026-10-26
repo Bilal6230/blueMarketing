@@ -292,3 +292,8 @@
 - Added `JournalVoucherPostingIntegrationTest.php`: five real controller SQLite :memory: checks for balanced header+details+ledgers, project scoping, head pairing, 0.01 imbalance, and atomic rollback on ledger failure. **Unrun**. No controller modified in this new batch; previous JV hardening under verification.
 - Set stable subjective percentage baseline Phase 1 30%; 2–5 0%; weighted overall 6%. Progress not advanced merely for writing tests. Future replies must show percentage comparisons; 0 of 5 phases completed.
 - No MySQL, migration, master_live or live deployment touched.
+
+## 2026-10-26 — JV posting verified locally; new serial/line acceptance tests
+- User pulled `3a1f6bf`, PHP lint passed; integration + validation + guest HTTP tests **13 passed, 115 assertions**. Five real posting scenarios passed: valid balanced write, cross-project reject, wrong head pairing reject, cents imbalance reject, atomic rollback on simulated ledger failure.
+- Added three tests to `JournalVoucherPostingIntegrationTest.php` for sequential per-project serials and forbidding double-sided or empty individual rows. Not run yet. Added explicit source warning: idempotency is not implemented; project lock alone does not prove concurrent uniqueness.
+- Consistent percentage indicator Phase 1 **30% -> 35%** because valid posting + rollback gate verified; other four phases 0%, overall **6% -> 7%**. Still 0/5 phases completed. No production DB, migration, `master_live` or deployment changes.
