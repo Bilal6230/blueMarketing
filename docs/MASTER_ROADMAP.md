@@ -10,11 +10,11 @@
 | **4. Modules and integrations** | **NOT STARTED** | agreed modules/integrations including attendance |
 | **5. Staging / release** | **NOT STARTED** | tests, backed-up staging signoff and explicit live deployment approval |
 
-**Progress bar:** Phase 1 [■■■□□□□□□□] *illustrative partial progress only, not measured completion*; Phases 2–5 [□□□□□□□□□□]. **0 of 5 stages finished.**
+**Progress snapshot (baseline set 2026-10-26; estimates, not measured delivery):** Phase 1 **30%**, Phases 2–5 **0%**, overall **6%** (equal five-phase weighting). Keep same scale and do not advance on test-only commits without passing acceptance gates. **0/5 stages complete.**
 
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (Phase 1 delivery batch: JV store validation and atomic posting hardening, UNVERIFIED locally)
+**Last updated:** 2026-10-26 (JV posting integration tests, 5 scenarios added; local verification pending)
 **Active Git branch:** `upgrade/laravel-framework`  
 **Latest confirmed local verification:** 13 targeted tests passed / 126 assertions (prior batch). New JV hardening tests remain unrun.
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
@@ -281,3 +281,10 @@ Assistant must:
 - Added `tests/Feature/Finance/JournalVoucherStoreValidationTest.php` with 5 invalid input scenarios: mismatched rows, negatives, fractional cents, nonnumeric money and empty rows. **Tests are not locally executed**. Test only rejects inputs before DB writes; valid posting + rollback needs further SQLite fixture and verification.
 - Caution: newly added numeric/account rules may reject previously accepted user input formats; verify production form payloads and genuine balanced JV posting using isolated SQLite before any deployment. No migrations/production MySQL touched.
 - Next: user lint + targeted tests and existing finance regression; then full authorized/unauthorized middleware tests, valid posting/rollback fixture, staging reconciliation. Never alter `master_live` without approval.
+
+## Phase 1 — verified validation plus real posting acceptance tests added (2026-10-26)
+- User pulled `4bb5c18`; PHP lints succeeded; new JV input validation **5 passed / 5 assertions**, finance authorization/409 and CV listing suite **11 passed / 120 assertions**. Combined two command results **16 passed, 125 assertions**. No claim of full suite green.
+- Added `tests/Feature/Finance/JournalVoucherPostingIntegrationTest.php` (SQLite :memory: enforced), five tests calling **actual** `JournalVoucherController::store`: valid balanced posting creates one header/two details/two ledgers; selected project isolation; head/subaccount pairing; 0.01 imbalance rejection; simulated ledger insert failure rolls back all writes. **Not locally verified yet.**
+- Run PHP lint and targeted tests first, then broader regression. If failing, distinguish fixture from real posting issue. Production MySQL untouched.
+- Standard visual tracking effective immediately: **Phase 1 30%, Phase 2 0%, Phase 3 0%, Phase 4 0%, Phase 5 0%, overall 6%**. This is an explicit conservative planning baseline (not actual precise completion). Raise percentages only after meaningful verified acceptance criteria, and always show previous => current comparison. Do not imply 30% of application code is complete.
+- Pending: real authenticated allow/deny permissions, no-duplicate/concurrency protection, reversible JV/CV actions, provenance reconciliation and final suite. No financial production changes or deployment.
