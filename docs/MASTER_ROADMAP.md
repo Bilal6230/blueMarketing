@@ -1,6 +1,6 @@
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (Phase 1T SoftDeletes fixture corrected; rerun pending)  
+**Last updated:** 2026-10-26 (Phase 1T actual DataTables collision verified)  
 **Active Git branch:** `upgrade/laravel-framework`  
 **Latest confirmed local verification:** `UnsafeVoucherActionGateTest` — **5 passed, 10 assertions** (user's local Laragon environment)  
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
@@ -181,3 +181,9 @@ Assistant must:
 ## Phase 1T — SoftDeletes fixture repair
 - User reran actual DataTables test after `b40d1a9`: got **1 failed / 3 assertions**, because Yajra response included SQLite error `no such column: journal_vouchers.deleted_at`; this is a test fixture schema omission, not proof of report display behavior.
 - Added `$table->softDeletes()` to isolated `journal_vouchers` fixture in test (commit `3290c709`). **Test rerun pending**. Do not interpret any result as live production ledger issue before the display assertion executes.
+
+## Phase 1T — locally verified real DataTables lookup collision
+- User pulled `a2f6b6e`, PHP lint passed; actual `LedgerController::fetch_data_url` SQLite regression reached voucher display and was **RED: 1 failed, 5 assertions**: expected `JV-7001`, received `JV-9001`.
+- This establishes the report reader's behavior for a constructed ambiguous numeric-ID fixture. **It does NOT prove any production ledger row belongs to CV or that actual production financial reports are wrong.**
+- Do not unconditionally switch report display to stored voucher numbers or mass-convert `JV` to `CV`; valid JV report display can depend on header identity. No report code changed.
+- Next Phase 1U: read-only provenance and report/export impact inventory, derive safe typed identity/read fallback policy, add authenticated permission coverage. Review possible live data inspection only with explicit approval, SELECT-only.
