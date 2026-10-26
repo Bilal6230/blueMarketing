@@ -31,6 +31,7 @@ class JournalVoucherCollisionTest extends TestCase
         Schema::create('journal_vouchers', function (Blueprint $table) {
             $table->id();
             $table->string('voucher_number');
+            $table->string('type')->nullable();
             $table->string('reference')->nullable();
             $table->date('date');
             $table->text('description')->nullable();
