@@ -10,13 +10,13 @@
 | **4. Modules and integrations** | **NOT STARTED** | agreed modules/integrations including attendance |
 | **5. Staging / release** | **NOT STARTED** | tests, backed-up staging signoff and explicit live deployment approval |
 
-**Progress snapshot (baseline set 2026-10-26; estimates, not measured delivery):** Phase 1 **30%**, Phases 2–5 **0%**, overall **6%** (equal five-phase weighting). Keep same scale and do not advance on test-only commits without passing acceptance gates. **0/5 stages complete.**
+**Progress snapshot (baseline set 2026-10-26; estimates, not measured delivery):** Phase 1 **35%**, Phases 2–5 **0%**, overall **7%** (equal five-phase weighting). Keep same scale and do not advance on test-only commits without passing acceptance gates. **0/5 stages complete.**
 
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (JV posting integration tests, 5 scenarios added; local verification pending)
+**Last updated:** 2026-10-26 (JV posting verified; sequential serial and line safeguards tests added)
 **Active Git branch:** `upgrade/laravel-framework`  
-**Latest confirmed local verification:** 13 targeted tests passed / 126 assertions (prior batch). New JV hardening tests remain unrun.
+**Latest confirmed local verification:** User pulled `3a1f6bf`: real JV posting + validation + guest-access tests **13 passed / 115 assertions**. The separate previous selected batch had **16 passed / 125 assertions**; don't add overlapping totals.
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
 **Status:** In-progress accounting integrity hardening; **not production approved**.
 
@@ -288,3 +288,9 @@ Assistant must:
 - Run PHP lint and targeted tests first, then broader regression. If failing, distinguish fixture from real posting issue. Production MySQL untouched.
 - Standard visual tracking effective immediately: **Phase 1 30%, Phase 2 0%, Phase 3 0%, Phase 4 0%, Phase 5 0%, overall 6%**. This is an explicit conservative planning baseline (not actual precise completion). Raise percentages only after meaningful verified acceptance criteria, and always show previous => current comparison. Do not imply 30% of application code is complete.
 - Pending: real authenticated allow/deny permissions, no-duplicate/concurrency protection, reversible JV/CV actions, provenance reconciliation and final suite. No financial production changes or deployment.
+
+## Phase 1 measurable milestone updated: 30% -> 35% (2026-10-26)
+- User locally verified **13 passed, 115 assertions** across `JournalVoucherPostingIntegrationTest`, `JournalVoucherStoreValidationTest`, and `VoucherGuestAccessIntegrationTest`; includes actual valid header/detail/ledger writes (SQLite only), rejection of cross-project/subhead mismatch and 0.01 imbalance, and atomic rollback on injected failure. **The 5% Phase 1 uplift is for verified application behavior**, not newly authored tests.
+- Added three additional real posting tests: two sequential JV records must receive distinct project JV serials, both positive debit and credit on one line must reject, and zero/zero line must reject. **New tests unrun**. Explicit comment warns idempotency has NOT been implemented; sequential uniqueness is not proof of concurrency safety.
+- Current comparable estimate: Phase 1 **35%**, Phase 2 **0%**, Phase 3 **0%**, Phase 4 **0%**, Phase 5 **0%**, overall **7%** (equal 5 stages). 0/5 formally completed.
+- High-priority remaining work: authenticated user permission allow/deny, real DB-unique idempotency after schema approval, tested immutable typed CV/JV reversal model, historical provenance and staged reconciliation, full suite. No `master_live`/production DB changes.
