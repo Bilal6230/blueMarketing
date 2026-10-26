@@ -280,3 +280,9 @@
 - User asked why Phase 1 still unfinished and requested clear roadmap. Updated `docs/MASTER_ROADMAP.md` top status board and Phase 1 exit gates: authenticated permission granted/denied, active JV store integrity/security, historical source identity/readers, approved typed posting/reversals, full-suite and staging reconciliation.
 - Previously recorded full suite 233 pass / 4 intentionally RED is stale and does not include later tests; two intentionally RED display diagnostics also remain. No claim of Phase 1 completion.
 - Only documentation updated; no application code, production data, `master_live` or migrations modified.
+
+## 2026-10-26 — Phase 1 actual JV posting hardening batch, unverified locally
+- User requested meaningful functional batches and five-stage visual progress with each response. Stages finished: **0 of 5**.
+- Committed changes to `JournalVoucherController::store` for stricter row/money and project ownership validation, fixed-point debit/credit check, transactional posting and project row lock. Left CV/JV update/delete guards and production data untouched. This changes active JV behavior on upgrade branch, not deployed.
+- Added `JournalVoucherStoreValidationTest.php` with five invalid cases. **No local execution yet**, so no claim of correctness or phase completion. More tests for valid balanced postings/rollback and actual permission grants remain necessary.
+- Existing finance test suite should be rerun; regression compatibility and PHP lint must be checked locally. Master Roadmap progress board updated.
