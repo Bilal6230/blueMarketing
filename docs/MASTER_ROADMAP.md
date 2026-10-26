@@ -1,6 +1,6 @@
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (Phase 1Y isolated Spatie permissions fixture expanded; rerun pending)
+**Last updated:** 2026-10-26 (Phase 1Z 14 voucher route security test and active JV posting audit)
 **Active Git branch:** `upgrade/laravel-framework`  
 **Latest confirmed local verification:** `UnsafeVoucherActionGateTest` — **5 passed, 10 assertions** (user's local Laragon environment)  
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
@@ -231,3 +231,9 @@ Assistant must:
 - User pulled `db16d30`; PHP lint passed; CV listing test failed **before assertions** in `actions.blade.php`: missing SQLite `permissions` table under `@canany` permission checks.
 - Expanded test-only isolated SQLite schema to include `permissions`, `model_has_permissions`, `model_has_roles`, and `role_has_permissions`, and cleared Spatie permission cache (commit `f02fd008`). No permissions or application logic changed in live database.
 - **Unrun change:** rerun targeted test after pull. If it fails again, inspect fixture/Blade dependency, not business logic. Authenticated end-to-end route permission coverage still pending.
+
+## Phase 1Y verified, Phase 1Z substantial batch completed (tests pending)
+- User pulled `6d0e047`, PHP lint and actual `CommissionVoucherListingResponseTest` passed **1 test / 4 assertions**. Repeated fixture repair cycle is completed.
+- Added `tests/Feature/Finance/VoucherGuestAccessIntegrationTest.php`, covering **14 real JV/CV routes** for declared auth and exact action permission, unauthenticated HTTP access (middleware enabled), and **5** temporary 409 write gates after explicitly bypassing middleware. Unlike Phase 1Q, its guest test keeps middleware enabled. **New tests not locally run.**
+- Added `docs/PHASE1Z_FINANCE_SECURITY_POSTING_AUDIT.md`: comprehensive read-only check of active JV store risks (array length/value validation, decimal balance, per-project serial concurrency, exception rollback, idempotency, project ownership) and safe approved posting-service roadmap.
+- Next batch: actual user roles/permission integration (not merely guest), and isolated JV store input validation tests; no controller, migrations, production MySQL or master_live modifications. Known intentionally RED diagnostics remain.
