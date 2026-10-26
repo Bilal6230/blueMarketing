@@ -1,6 +1,6 @@
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (Phase 1Q voucher route checks added; execution pending)  
+**Last updated:** 2026-10-26 (Phase 1R reader mapping)  
 **Active Git branch:** `upgrade/laravel-framework`  
 **Latest confirmed local verification:** `UnsafeVoucherActionGateTest` — **5 passed, 10 assertions** (user's local Laragon environment)  
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
@@ -69,7 +69,8 @@ User works on **Windows / Laragon**, project path `C:\laragon\www\blueMarketing`
 | 1N | Full suite compatibility audit and CV store guard | 233 passed/4 source RED; CV-store guard 5/5 test pass |
 | **1O** | **Master roadmap and cross-chat handoff introduced** | This file |
 | **1P** | JV creation risk and actual route surface read-only inspection | `docs/PHASE1P_VOUCHER_CREATION_ROUTE_AUDIT.md` |
-| **1Q** | Real registered URL safety and permission-declaration tests | `tests/Feature/Finance/VoucherSafetyHttpRouteTest.php` — not yet executed |
+| **1Q** | Real registered URL safety and permission-declaration tests | **2 passed, 17 assertions** locally |
+| **1R** | Limited financial report reader mapping | `docs/PHASE1R_LEDGER_REPORT_READER_MAP.md` |
 
 **Committed worklog:** `docs/AUDIT_WORKLOG.md`. Continue updating both the worklog (chronological facts) and this roadmap (current state and future plan).
 
@@ -133,6 +134,14 @@ Assistant must:
 - Limitation: this does **not** verify actual authentication/permission enforcement end-to-end because the mutation test bypasses middleware. A future isolated authenticated fixture is needed for that. Do not claim security integration fully tested.
 - Full suite still last verified at 233 passed / 4 intentional source-level failures, prior to this new test.
 - Next after local verification: read-only inventory of ledger report readers and voucher source identity; then authentication/authorization fixture and JV-create integrity tests.
+
+## Phase 1R — ledger report source mapping and next gate
+
+- Phase 1Q user verification **2 passed, 17 assertions** after pull of `d048614`. These route tests bypass middleware for action checks; authenticated role/permission behavior still requires testing.
+- Added `docs/PHASE1R_LEDGER_REPORT_READER_MAP.md`. In `LedgerController` the DataTables `display_voucher_number` reader resolves **every `JV` ledger `type_id` as a Journal Voucher header** and may overwrite its displayed voucher number. Since historic CV creation also posted `JV` ledger rows, colliding IDs create a **potential display misattribution** (not yet proven with isolated test or production data).
+- No ledger type conversion, changes to reports, migrations or production data.
+- **Next action:** isolated read-only display-number collision regression, then broader helper/Blade/report reader inventory and end-to-end auth fixture. Keep original source RED evidence.
+- Full suite last 233 passed / 4 RED and was run before the latest CV-store guard; latest Phase 1Q route suite verified separately.
 
 ## 9. Most recent user feedback
 
