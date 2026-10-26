@@ -256,3 +256,7 @@
 - User pulled `ed8d215` and ran `CommissionVoucherNumberingBaselineTest`: **2 passed, 6 assertions**.
 - Created SQLite-only direct CommissionVoucher index AJAX test `CommissionVoucherListingResponseTest.php` (commit `801b852`), checking CV header number padded and selected project filter. Unrun; route permissions are not covered.
 - Master Roadmap updated; no database production changes, schema migrations or master_live edits.
+
+## 2026-10-26 — Phase 1Y missing roles table in fixture
+- User pulled `f92df53`; PHP lint passed. CV listing regression failed on missing SQLite `roles` table before any assertions; not a business error.
+- Fixed only test fixture: minimal Spatie roles table plus loaded role model (commit `2f937621`). Pending local rerun. No MySQL, controller changes or master_live changes.
