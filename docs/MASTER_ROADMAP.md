@@ -10,13 +10,13 @@
 | **4. Modules and integrations** | **NOT STARTED** | agreed modules/integrations including attendance |
 | **5. Staging / release** | **NOT STARTED** | tests, backed-up staging signoff and explicit live deployment approval |
 
-**Progress snapshot (baseline set 2026-10-26; estimates, not measured delivery):** Phase 1 **45%**, Phases 2–5 **0%**, overall **9%** (equal five-phase weighting). Keep same scale and do not advance on test-only commits without passing acceptance gates. **0/5 stages complete.**
+**Progress snapshot (baseline set 2026-10-26; estimates, not measured delivery):** Phase 1 **50%**, Phases 2–5 **0%**, overall **10%** (equal five-phase weighting). Keep same scale and do not advance on test-only commits without passing acceptance gates. **0/5 stages complete.**
 
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (authenticated permissions verified; JV serial isolation and second-write rollback test batch awaiting local run)
+**Last updated:** 2026-10-26 (21 tests verified; exact JV decimal money posting implementation pending retest)
 **Active Git branch:** `upgrade/laravel-framework`  
-**Latest confirmed local verification:** user pulled `73af9be` and ran JV posting/validation + real authenticated and guest finance permission suite: **18 passed / 135 assertions**. Three newly added posting edge-case tests unrun.
+**Latest confirmed local verification:** user pulled `8b7ad2e` and ran JV integration, validation, authenticated/guest security tests: **21 passed / 144 assertions**. New exact-decimal code/test unrun.
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
 **Status:** In-progress accounting integrity hardening; **not production approved**.
 
@@ -305,3 +305,9 @@ Assistant must:
 - Added three actual-controller SQLite integration tests in `JournalVoucherPostingIntegrationTest.php`: second ledger write failure must roll back *already inserted first ledger* plus details/header; other-project voucher number must not influence current project's next serial; and soft-deleted JV serial must not be reused. **New tests pending local execution.**
 - Progress planning estimates: Phase 1 **40% -> 45%**, other phases **0%**, overall **8% -> 9%**, **0/5 closed**. Increase is based on verified authenticated permission milestone, not the unrun tests. Stable percent scale is still subjective, not precise code-completion measurement.
 - Remains: DB-level concurrency/idempotency, irreversible CV/JV historical ambiguity, reversal workflows, source RED failures, full-suite/staging reconciliation. No MySQL migrations/production writes/deployment.
+
+## Latest batch — 21 verified tests and exact-cent JV posting hardening
+- User locally verified 21 tests / 144 assertions following pull of `8b7ad2e`: second-ledger rollback, project-specific serial isolation, soft-deleted JV serial continuity passed alongside auth and balance tests.
+- Updated `JournalVoucherController::store` to persist header totals through integer-cent string formatting and per-line debit/credit through exact validated decimal strings (removed float round-trip); corrected erroneous comment suggesting deduplication was already implemented. Added real SQLite posting regression for `123456789.01` across header, two details and two ledgers. **Code and new test NOT locally rerun**; verify before release. Real database decimal precision may differ from fixture, so confirm schema before claiming compatibility.
+- Conservative progress estimate increased Phase 1 **45% -> 50%** on verified transaction and serial gates; Phase 2-5 remain 0%, overall **9% -> 10%** (5 equal stage weights), **0/5 complete**. These are planned milestone estimates, not objectively measured percentages.
+- Still unresolved: true idempotency and serial DB constraints, mutable JV/CV legacy identity, safe reversal, full regression suite, staging reconciliation, full deployment approval. No migrations/production DB writes, `master_live` edits or deployed changes.
