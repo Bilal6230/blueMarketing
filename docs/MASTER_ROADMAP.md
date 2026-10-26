@@ -1,6 +1,6 @@
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (Phase 1P read-only audit)  
+**Last updated:** 2026-10-26 (Phase 1Q voucher route checks added; execution pending)  
 **Active Git branch:** `upgrade/laravel-framework`  
 **Latest confirmed local verification:** `UnsafeVoucherActionGateTest` — **5 passed, 10 assertions** (user's local Laragon environment)  
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
@@ -69,6 +69,7 @@ User works on **Windows / Laragon**, project path `C:\laragon\www\blueMarketing`
 | 1N | Full suite compatibility audit and CV store guard | 233 passed/4 source RED; CV-store guard 5/5 test pass |
 | **1O** | **Master roadmap and cross-chat handoff introduced** | This file |
 | **1P** | JV creation risk and actual route surface read-only inspection | `docs/PHASE1P_VOUCHER_CREATION_ROUTE_AUDIT.md` |
+| **1Q** | Real registered URL safety and permission-declaration tests | `tests/Feature/Finance/VoucherSafetyHttpRouteTest.php` — not yet executed |
 
 **Committed worklog:** `docs/AUDIT_WORKLOG.md`. Continue updating both the worklog (chronological facts) and this roadmap (current state and future plan).
 
@@ -123,6 +124,15 @@ Assistant must:
 - CV `store` and both JV/CV update/delete entrypoints remain HTTP 409 guarded. Actual HTTP-route and middleware integration is still untested by this phase; direct tests alone are insufficient.
 - Next: add isolated HTTP-route access/409 tests and inspect ledger report readers, keeping database untouched and four historic source RED tests intact.
 - Phase 1P was documentation/source inspection only. No controller, migrations, deployed environment or database changed.
+
+## Phase 1Q — actual HTTP route gate tests added
+
+- User pulled Phase 1P commit `6632e9e` successfully.
+- Added `tests/Feature/Finance/VoucherSafetyHttpRouteTest.php`: tests registered URLs for CV store/update/delete and JV update/delete return HTTP 409 **with middleware disabled** to isolate controller actions; separately checks expected route-level permission middleware declarations for these routes and JV store.
+- **Not yet run by user**; next local command: `php artisan test --filter=VoucherSafetyHttpRouteTest`.
+- Limitation: this does **not** verify actual authentication/permission enforcement end-to-end because the mutation test bypasses middleware. A future isolated authenticated fixture is needed for that. Do not claim security integration fully tested.
+- Full suite still last verified at 233 passed / 4 intentional source-level failures, prior to this new test.
+- Next after local verification: read-only inventory of ledger report readers and voucher source identity; then authentication/authorization fixture and JV-create integrity tests.
 
 ## 9. Most recent user feedback
 
