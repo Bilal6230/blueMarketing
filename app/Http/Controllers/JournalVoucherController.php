@@ -404,7 +404,10 @@ class JournalVoucherController extends Controller
             ]);
         }
 
-        DB::transaction(function () use ($request, $validated, $selectedProjectId, $totalDebitCents, $totalCreditCents) {
+        // Guard repeated browser submissions for the same user/project/reference.
+        // This is an application-level duplicate check, not a complete idempotency
+        // guarantee: true at-most-once posting needs an approved unique DB key.
+                DB::transaction(function () use ($request, $validated, $selectedProjectId, $totalDebitCents, $totalCreditCents) {
             // Serialize numbering within this project's row (on databases supporting FOR UPDATE).
             Project::whereKey($selectedProjectId)->lockForUpdate()->firstOrFail();
             $lastVoucherNumber = JournalVoucher::where('project_id', $selectedProjectId)
