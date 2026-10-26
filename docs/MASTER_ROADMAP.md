@@ -1,6 +1,6 @@
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (Phase 1S diagnostic locally confirmed; Phase 1T planning)  
+**Last updated:** 2026-10-26 (Phase 1T actual endpoint test added; execution pending)  
 **Active Git branch:** `upgrade/laravel-framework`  
 **Latest confirmed local verification:** `UnsafeVoucherActionGateTest` — **5 passed, 10 assertions** (user's local Laragon environment)  
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
@@ -72,6 +72,7 @@ User works on **Windows / Laragon**, project path `C:\laragon\www\blueMarketing`
 | **1Q** | Real registered URL safety and permission-declaration tests | **2 passed, 17 assertions** locally |
 | **1R** | Limited financial report reader mapping | `docs/PHASE1R_LEDGER_REPORT_READER_MAP.md` |
 | **1S** | Isolated voucher display ID collision diagnostic (deliberately RED) | `tests/Feature/Finance/LedgerVoucherDisplayCollisionTest.php` |
+| **1T** | Actual LedgerController DataTables endpoint regression (unrun) | `tests/Feature/Finance/LedgerVoucherDisplayEndpointCollisionTest.php` |
 
 **Committed worklog:** `docs/AUDIT_WORKLOG.md`. Continue updating both the worklog (chronological facts) and this roadmap (current state and future plan).
 
@@ -159,6 +160,14 @@ Assistant must:
 - Do **not** simply use stored number instead of looked-up number throughout: authentic JV ledger numbers and historical reports may depend on the override. Ledger source provenance must be resolved first.
 - **Phase 1T next:** add isolated actual `LedgerController::fetch_data_url` DataTables endpoint test for overlapping numeric identifiers and trustworthy header source; protect existing historical display behavior. Review authorization/project scoping and keep fixtures in `sqlite :memory:`. Then expand reader inventory (Blade exports/other reports).
 - Full suite is expected to remain RED on 4 old CV source checks plus this new isolated report diagnostic until safe design/reconciliation; do not hide tests to claim green.
+
+## Phase 1T — real DataTables endpoint diagnostic pending
+
+- User pulled Phase 1S documentation commit `b0d5d35` successfully.
+- Added `tests/Feature/Finance/LedgerVoucherDisplayEndpointCollisionTest.php`. The SQLite-only fixture invokes **actual** `LedgerController::fetch_data_url` and Yajra DataTables (unlike Phase 1S mirrored lookup) with an overlapping `JV type_id=41` row. It expects original voucher number `JV-7001` rather than unrelated JV header `JV-9001`.
+- **NOT EXECUTED YET.** Run `php -l tests/Feature/Finance/LedgerVoucherDisplayEndpointCollisionTest.php` then `php artisan test --filter=LedgerVoucherDisplayEndpointCollisionTest`. If fixture/eager-load/DataTables errors occur, resolve harness errors first; only a failing display assertion after valid response supports the finding.
+- Source identity for the ambiguous row is illustrative, not proof that any actual production row belongs to CV. Do not modify reports or ledger records until provenance and financial reconciliation design is approved.
+- Next after verification: expand Blade/export/readers audit and add authenticated middleware integration tests. Four source-level CV RED tests remain.
 
 ## 9. Most recent user feedback
 
