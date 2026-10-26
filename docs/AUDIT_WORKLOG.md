@@ -251,3 +251,8 @@
 - User pulled `c6664f8` successfully.
 - Added guarded SQLite-only `CommissionVoucherNumberingBaselineTest.php` covering `get_jv_number()` padding, project-filtered `getLastJvId()` versus `getLastJvVNumber()`, and computed CV legacy number. Tests not run yet.
 - Reviewed prior finance permission tests, which bypass middleware; authenticated route tests remain pending. No application behavior or production DB changes.
+
+## 2026-10-26 — Phase 1X tests passed and Phase 1Y listing fixture created
+- User pulled `ed8d215` and ran `CommissionVoucherNumberingBaselineTest`: **2 passed, 6 assertions**.
+- Created SQLite-only direct CommissionVoucher index AJAX test `CommissionVoucherListingResponseTest.php` (commit `801b852`), checking CV header number padded and selected project filter. Unrun; route permissions are not covered.
+- Master Roadmap updated; no database production changes, schema migrations or master_live edits.
