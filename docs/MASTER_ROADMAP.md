@@ -2,9 +2,32 @@
 
 **Last updated:** 2026-10-26 (Phase 1Z 14 voucher route security test and active JV posting audit)
 **Active Git branch:** `upgrade/laravel-framework`  
-**Latest confirmed local verification:** `UnsafeVoucherActionGateTest` — **5 passed, 10 assertions** (user's local Laragon environment)  
+**Latest confirmed local verification:** Phase 1Z `VoucherGuestAccessIntegrationTest` **3 passed / 89 assertions**; combined finance safety tests **10 passed / 37 assertions** (2026-10-26; user's local Laragon environment).
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
 **Status:** In-progress accounting integrity hardening; **not production approved**.
+
+
+## PHASE 1 STATUS BOARD — UPDATED 2026-10-26 (read first)
+
+**Phase 1 is NOT complete**. Sub-phases 1B–1Z mostly consist of discovery, diagnostic tests and temporary controls; do not equate many phase labels with production-ready financial repair.
+
+**Latest local user evidence** after pulling `09e5778`:
+- `VoucherGuestAccessIntegrationTest`: **3 passed, 89 assertions**; verifies 14 JV/CV registered routes' declared action permissions, guest denial with middleware enabled, and 5 temporary HTTP 409 gates with middleware bypassed.
+- `CommissionVoucherListingResponseTest|CommissionVoucherNumberingBaselineTest|VoucherSafetyHttpRouteTest|UnsafeVoucherActionGateTest`: **10 passed, 37 assertions**.
+- **Together: 13 passed, 126 assertions, no failures in the selected tests.** They do NOT cover authenticated users with differing actual permissions and do NOT establish full-suite green.
+- Most recent full-suite baseline still **233 passed / 4 failed / 1070 assertions**, recorded before newer guards/tests; now stale. At least four deliberately RED CV source-contract assertions and two report collision diagnostics remain until safe remediation.
+
+**Phase 1 exit gates — none can be marked complete without evidence:**
+1. Authenticated real-user *granted/denied* permission integration (not just route declarations and guest redirects).
+2. Active `JournalVoucherController::store` security/accounting validation tests: malformed/mismatched arrays, cross-project account ownership, negative/non-numeric decimal amounts, balancing and failure rollback. Resolve reproducible vulnerabilities via narrow reviewed fixes.
+3. Complete source identity and financial reader mapping, including ledger history and exports; distinguish genuine JV from ambiguous historic CV-origin records without guessing.
+4. Plan and implement approved typed, balanced, atomic posting/reversal replacement; decide whether this belongs in Phase 1 closure or formal Phase 2 delivery **before claiming Phase 1 done**. No silent migrations.
+5. Keep four legacy CV source-contract RED checks and explicit collision diagnostics visible; clear them only with real reviewed remediation, never by skipping tests.
+6. Run full test suite, record exact pass/fail counts, complete staging reconciliation and sign-off for eventual deployment. Safety guards intentionally disable business functions and need replacement or explicit release limitation.
+
+**High-level next stages (proposed labels, not formal approved milestones):** Financial posting/reconciliation; centralized activity logging and broader security; remaining modules and attendance integrations; staging/deployment approval. Only Phase 1 subphases are concretely tracked so far.
+
+**Immediate next substantial batch:** implement authenticated Spatie permission allow/deny route fixtures; add isolated JV-store validation/security regression tests; record observed defects separately from speculative risks. Continue business-code guardrails until data provenance and migration plan are approved.
 
 ## 1. Goal and working style
 
@@ -29,9 +52,9 @@ User works on **Windows / Laragon**, project path `C:\laragon\www\blueMarketing`
 | Area | Current condition |
 |---|---|
 | Framework | Laravel 13.38.0 / PHP 8.3 in upgrade effort (verify locally if relevant) |
-| Git | `upgrade/laravel-framework`; latest verified user pull **`1daaccf`** |
+| Git | `upgrade/laravel-framework`; latest verified user pull **`09e5778`** |
 | Full suite baseline | **233 passed, 4 failed, 1070 assertions** on 2026-10-26 at commit `6c782e7`; all 4 failures in `CommissionVoucherUpdateIsolationTest` |
-| Latest targeted suite | **5 passed, 10 assertions**, `UnsafeVoucherActionGateTest` after pull of `1daaccf` |
+| Latest targeted suite | **13 passed, 126 assertions**, two targeted command runs after pull of `09e5778`; not a full suite run |
 | Previous finance protection suite | **8 passed, 16 assertions** (JV/CV collision and financial-preservation tests; before CV-store gate) |
 | JV update and destroy | **HTTP 409 temporary fail-closed**, not functional |
 | CV store, update and destroy | **HTTP 409 temporary fail-closed**, not functional |
@@ -78,7 +101,7 @@ User works on **Windows / Laragon**, project path `C:\laragon\www\blueMarketing`
 
 ## 6. Next actionable engineering tasks — ordered
 
-### Next immediately: Phase 1P — complete safety verification, then design repair
+### Next immediately: Phase 1AA — authenticated permissions and active JV creation integrity
 
 1. User pulls this roadmap commit; run full suite `php artisan test` **after CV-store gate** and record exact pass/fail counts. Expect four known RED source-contract failures; inspect anything else separately.
 2. Audit `JournalVoucherController::store` and any additional call paths which create `JV` ledger rows; check voucher numbering, authorization, project scoping, atomic transactions, idempotency, balancing; use read-only source inspection first.
