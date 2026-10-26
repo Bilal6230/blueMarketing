@@ -82,3 +82,10 @@
 - Results: **4 failed, 16 assertions**, matching intentional source guards. These are not integration proof of production data loss.
 - Added [PHASE1F_COMMISSION_LEDGER_SAFETY_DESIGN.md](PHASE1F_COMMISSION_LEDGER_SAFETY_DESIGN.md): explicitly distinguishes store/update/destroy legacy type/type_id behavior; prescribes typed source identity, void/reversal, isolated collision fixture tests and legacy-data reconciliation before any controller changes.
 - No app business logic, databases, migrations or `master_live` changes.
+
+## 2026-10-26 — Phase 1G isolated CV/JV colliding-ID regression fixture
+- User synced `87c81ab` successfully; Phase 1G proceeded automatically per workflow instruction.
+- Added `tests/Feature/Finance/CommissionVoucherCollisionTest.php`: creates independent CV/JV headers sharing ID `41` and an existing JV ledger row, then calls CV update and asserts JV ledger row survives.
+- Safety guard enforces `sqlite` + `:memory:` before dropping test tables. Fixture includes schema needed by `getVocuherNumber`. Test additionally checks redirect target to flag controller caught exceptions/rollback rather than falsely passing history check.
+- **Unexecuted** by assistant: local PHP test result needed to verify fixture completeness; expected RED if legacy CV update commits destructive JV deletion. Run: `php artisan test --filter=CommissionVoucherCollisionTest`.
+- No production DB, migrations, application controller changes, or `master_live` changes.
