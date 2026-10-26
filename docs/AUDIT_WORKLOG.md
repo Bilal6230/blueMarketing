@@ -211,3 +211,9 @@
 - This validates mirrored report lookup on fabricated overlapping identifiers; NOT a DataTables endpoint integration test and NOT evidence of actual production data mislabeling.
 - Updated `docs/MASTER_ROADMAP.md` for Phase 1T: isolated real endpoint test, provenance and reader inventory before any report changes.
 - No controllers, production data, migrations or master_live touched.
+
+## 2026-10-26 — Phase 1T actual DataTables endpoint test added (not yet executed)
+- User pulled Phase 1S worklog update `b0d5d35` successfully.
+- Added `tests/Feature/Finance/LedgerVoucherDisplayEndpointCollisionTest.php`, using SQLite `:memory:` only to invoke real `LedgerController::fetch_data_url` and Yajra DataTables rather than mirroring code. Creates illustrative overlapping numeric JV references and expects stored voucher number not to be overwritten.
+- **Test remains unrun**; potential fixture errors must be handled separately from a true display assertion. No claim of actual production CV row provenance or report mislabeling.
+- Updated Master Roadmap. Next user commands: pull, lint, targeted test. No business logic, migrations, MySQL or master_live changes.
