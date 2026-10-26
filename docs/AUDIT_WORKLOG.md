@@ -217,3 +217,7 @@
 - Added `tests/Feature/Finance/LedgerVoucherDisplayEndpointCollisionTest.php`, using SQLite `:memory:` only to invoke real `LedgerController::fetch_data_url` and Yajra DataTables rather than mirroring code. Creates illustrative overlapping numeric JV references and expects stored voucher number not to be overwritten.
 - **Test remains unrun**; potential fixture errors must be handled separately from a true display assertion. No claim of actual production CV row provenance or report mislabeling.
 - Updated Master Roadmap. Next user commands: pull, lint, targeted test. No business logic, migrations, MySQL or master_live changes.
+
+## 2026-10-26 — Phase 1T zero-row fixture blocker
+- User pulled `34aee731`, PHP lint passed; real DataTables test failed with `recordsFiltered=0` (expected 1), before display-number assertion. No conclusion on real report misattribution yet.
+- Added isolated test-only diagnostics for selected project, seeded ledger row and DataTables payload in commit `1634104`; pending local rerun. No business controller or database changes.
