@@ -1,6 +1,6 @@
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (Phase 1V genuine JV positive-control test added; run pending)
+**Last updated:** 2026-10-26 (Phase 1W commission numbering and listing reader audit)
 **Active Git branch:** `upgrade/laravel-framework`  
 **Latest confirmed local verification:** `UnsafeVoucherActionGateTest` — **5 passed, 10 assertions** (user's local Laragon environment)  
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
@@ -199,3 +199,9 @@ Assistant must:
 - Added a second actual `LedgerController::fetch_data_url` SQLite test in `LedgerVoucherDisplayEndpointCollisionTest.php`: a known genuine JV with header ID 42 and stored ledger voucher 7002 must display header number `JV-9002` (positive control). The existing ambiguous reference test remains intentionally RED expecting retained number `JV-7001`, actual `JV-9001`.
 - **New positive control not yet locally executed**; use `php artisan test --filter=LedgerVoucherDisplayEndpointCollisionTest`. Expect one pass and one intentional failure if fixture is sound. This does not resolve historical provenance or authorize display changes.
 - Next: trace `get_jv_number` and commission index backend plus authenticated route middleware tests; do not alter financial ledger/report code until approved typed-source design.
+
+## Phase 1V result and Phase 1W commission numbering audit
+- User pulled `4c46aa4`, PHP lint passed, and real DataTables tests yielded **1 pass / 1 intentionally RED (8 assertions)**. Genuine JV display matches header number; ambiguous lookup overwrites stored display number. SQLite only, no known production CV provenance.
+- Added `docs/PHASE1W_COMMISSION_NUMBERING_READER_AUDIT.md`: commission index reads CV header `voucher_number` and pads it via `get_jv_number()` (seven-character str_pad); independent of LedgerController JV reference resolver.
+- Found legacy CV store (now HTTP 409 blocked) computes CV numbering from `getLastJvId() + 1`, where helper is **max JournalVoucher header ID** per selected project, not a CV sequence. Numbering semantics require review before any correction; no confirmed real data issue.
+- Next: isolated CV listing/numbering tests and authenticated permission integration; maintain existing RED ledger collision diagnostics. No code business logic, MySQL or master_live changes.
