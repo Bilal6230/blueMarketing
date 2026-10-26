@@ -308,3 +308,9 @@
 - Extended `JournalVoucherPostingIntegrationTest.php` with: second ledger insert exception must roll back first ledger/detail/header, numbering independent between projects, serial cannot reuse soft-deleted JV number. Added tests not yet executed.
 - Progress estimate Phase 1 **40 -> 45%**, overall **8 -> 9%** (five equally weighted phases); 0/5 complete. Verified security milestone accounts for increase.
 - No active production database writes, migrations, financial history modifications or master_live changes.
+
+## 2026-10-26 — 21 verified JV/security cases; exact decimal posting hardening
+- User pulled `8b7ad2e`; PHP lint clean and combined JV posting/validation/authentication suite passed **21 tests / 144 assertions**. Second-ledger rollback, soft-delete serial non-reuse and cross-project numbering confirmed on SQLite fixture.
+- Modified active JV store on upgrade branch only: remove float round-trip when persisting header and per-row monetary values, instead format from integer cents and validated decimal strings. Corrected inaccurate source comment about client retry idempotency (still NOT implemented).
+- Added large-amount `123456789.01` real posting regression (not run yet). Schema precision and compatibility need verification; no release authorization.
+- Planning progress Phase 1 **45% -> 50%**, overall **9% -> 10%** based on verified gates; other stages 0%, no phase complete. Updated Master Roadmap; no live MySQL/migrations/master_live touched.
