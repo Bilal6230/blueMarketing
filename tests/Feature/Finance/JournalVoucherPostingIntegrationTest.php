@@ -482,6 +482,25 @@ class JournalVoucherPostingIntegrationTest extends TestCase
         $this->artisan('finance:audit-voucher-collisions', ['project' => 7])->assertExitCode(0);
     }
 
+    public function test_balanced_voucher_with_colliding_cv_id_is_flagged_by_combined_audit(): void
+    {
+        app(JournalVoucherController::class)->store($this->request($this->payload()));
+        DB::table('commision_vouchers')->insert([
+            'id' => 1, 'project_id' => 7, 'voucher_number' => 'CV-1',
+            'total_debit' => '100.25', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('commision_voucher_details')->insert([
+            ['commision_voucher_id' => 1, 'account_id' => 11, 'debit' => '100.25', 'credit' => '0.00'],
+            ['commision_voucher_id' => 1, 'account_id' => 22, 'debit' => '0.00', 'credit' => '100.25'],
+        ]);
+        $this->artisan('finance:audit-jv', ['project' => 7, '--type' => 'ALL', '--only-issues' => true])
+            ->expectsOutputToContain('Read-only audit: 2 vouchers, 2 flagged.')
+            ->assertExitCode(1);
+        $this->assertSame(2, DB::table('ledgers')->count());
+        $this->assertSame(1, DB::table('journal_vouchers')->count());
+        $this->assertSame(1, DB::table('commision_vouchers')->count());
+    }
+
     public function test_ledger_failure_rolls_back_header_and_details(): void
     {
         Ledger::creating(function () { throw new \RuntimeException('Simulated ledger write failure'); });
