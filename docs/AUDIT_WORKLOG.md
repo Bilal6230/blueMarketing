@@ -36,3 +36,9 @@
 - Compared critical finance, booking, user and stock columns to selected migrations and models; verified structural drift and soft-delete inconsistency.
 - Detailed observations and remaining work: [PHASE1B_SCHEMA_FINDINGS.md](PHASE1B_SCHEMA_FINDINGS.md).
 - Next: complete all-table migration matrix and read-only data integrity checks. No production authorization.
+
+## 2026-10-26 — Phase 1C targeted financial schema review
+- Compared dump column inventories for twelve core business tables against nine original create-table migrations and selected model behavior.
+- Distinguished original-creation-file drift from a *full cumulative* migration diff (still pending).
+- Added [PHASE1C_FINANCIAL_SCHEMA_CHECKS.md](PHASE1C_FINANCIAL_SCHEMA_CHECKS.md), containing schema drift matrix and SELECT-only orphan/imbalance/duplicate diagnostics for isolated DB copy.
+- No data-level checks yet executed; no repository application changes or database modifications.
