@@ -241,3 +241,8 @@
 - User pulled `d427a59` successfully.
 - Added genuine JV header 42 / ledger row positive-control to real DataTables fixture alongside previously RED ambiguous JV/CV-style collision. Expected genuine JV display `JV-9002`; not yet executed by user.
 - No business logic, MySQL changes, migrations or master_live changes. Both roadmap files updated.
+
+## 2026-10-26 — Phase 1V positive control verified and Phase 1W read-only formatter audit
+- User confirmed `LedgerVoucherDisplayEndpointCollisionTest`: **1 passed, 1 intentionally failed (8 assertions)** after pull of `4c46aa4`; genuine JV expected display passes, ambiguous numeric collision scenario shows mismatched header number. No production CV misattribution proven.
+- Created `docs/PHASE1W_COMMISSION_NUMBERING_READER_AUDIT.md`: CV index formatting uses CV header number and 7-character padding; legacy guarded CV store derives its numeric voucher number from `getLastJvId()` (max JV header ID). Reviewed distinctions and follow-up tests.
+- Updated Master Roadmap and Audit Worklog. No financial logic changed, DB writes/migrations or master_live deployment.
