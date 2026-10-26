@@ -136,3 +136,10 @@
 - User pulled `b9ee71d`; PHP lint passed. Test result 1 failed / 3 assertions: unrelated JV ledger row **remained present**; failure was only redirect destination `http://localhost` instead of journal index.
 - Inspecting `JournalVoucherController::update` showed it writes `journal_vouchers.type='JV'`, but Phase 1J fixture omitted `type` column. SQLite would reject that write and roll back, explaining why ledger preservation cannot yet be interpreted as success. This is a likely cause pending rerun, not proven runtime trace.
 - Added `type` column to isolated test schema in `JournalVoucherCollisionTest.php` (commit `edc28e7`). Rerun required before concluding cross-JV deletion. No app/controller or production DB changes.
+
+## 2026-10-26 — Phase 1J genuine JV header/detail collision RED confirmed
+- User pulled `43fe20e`, PHP lint passed, and ran `php artisan test --filter=JournalVoucherCollisionTest`.
+- Result: **1 failed, 2 assertions**; unrelated JV ledger `id=1,type=JV,type_id=88` was deleted when JV header `41` updated and one of its detail IDs was `88`. Remaining ledger `id=2,type=JV,type_id=41` proves update proceeded rather than rolling back.
+- This is a second independent, confirmed isolated SQLite cross-voucher ledger deletion bug (alongside CV update collision). **No claim of actual production loss.**
+- Previous syntax and redirect failures were test fixture issues and are now distinct from this final real regression failure.
+- Next: stop adding diagnostic red tests in a loop; consolidate a safe immutable-ledger repair plan, and add isolated fix only following design review. Never alter `master_live` or MySQL data without explicit approval.
