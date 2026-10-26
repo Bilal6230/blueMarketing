@@ -14,9 +14,9 @@
 
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (21 tests verified; exact JV decimal money posting implementation pending retest)
+**Last updated:** 2026-10-26 (22/150 verified; four new posting acceptance tests pending)
 **Active Git branch:** `upgrade/laravel-framework`  
-**Latest confirmed local verification:** user pulled `8b7ad2e` and ran JV integration, validation, authenticated/guest security tests: **21 passed / 144 assertions**. New exact-decimal code/test unrun.
+**Latest confirmed local verification:** user pulled `48cc8f2`: JV posting/validation/authenticated and guest permission suite **22 passed / 150 assertions**. Added four new unrun edge-case tests.
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
 **Status:** In-progress accounting integrity hardening; **not production approved**.
 
@@ -311,3 +311,9 @@ Assistant must:
 - Updated `JournalVoucherController::store` to persist header totals through integer-cent string formatting and per-line debit/credit through exact validated decimal strings (removed float round-trip); corrected erroneous comment suggesting deduplication was already implemented. Added real SQLite posting regression for `123456789.01` across header, two details and two ledgers. **Code and new test NOT locally rerun**; verify before release. Real database decimal precision may differ from fixture, so confirm schema before claiming compatibility.
 - Conservative progress estimate increased Phase 1 **45% -> 50%** on verified transaction and serial gates; Phase 2-5 remain 0%, overall **9% -> 10%** (5 equal stage weights), **0/5 complete**. These are planned milestone estimates, not objectively measured percentages.
 - Still unresolved: true idempotency and serial DB constraints, mutable JV/CV legacy identity, safe reversal, full regression suite, staging reconciliation, full deployment approval. No migrations/production DB writes, `master_live` edits or deployed changes.
+
+## 2026-10-26 — consolidation batch and percent integrity
+- User verified **22 passed / 150 assertions** (including exact decimal preservation in header/details/ledger); PHP lint passed. These are targeted tests, not full-suite green.
+- Expanded real SQLite controller posting tests in `JournalVoucherPostingIntegrationTest.php` with four additional scenarios: missing selected project, nonexistent subaccount, three-line balanced split debit, and failed transaction followed by successful new JV posting without consumed serial. **New tests unrun**. This is test coverage, not new duplicate/idempotency implementation.
+- **Progress remains Phase 1 50%, other four phases 0%, overall 10%, 0/5 phases complete.** No automatic 10–20 percentage-point increase for tests alone. Bigger future increments require completion of multiple release gates: permission & valid posting evidence already done; next safe production-ready finance workflow needs idempotency, reversible ledger, reconciliation and full suite. User prefers bigger implementation batches and honest % comparisons.
+- Before release: full test suite; source RED diagnostics unresolved; user approval needed for any MySQL schema migrations/backfills and financial posting reversal design. No production data changed.
