@@ -76,3 +76,9 @@
 - Added two more deliberately RED source guards for CV-store type labeling and CV-update type_id consistency. Four source guards total in `CommissionVoucherUpdateIsolationTest.php`. **New tests not run yet.**
 - Do NOT blindly rename all old JV ledger rows to CV: historical IDs may collide and reports may rely on legacy encoding. First audit actual staged data and queries, design typed source identity with migration/reconciliation, and implement only in isolated environment.
 - No production/mySQL changes, no controller fixes or migrations.
+
+## 2026-10-26 — Phase 1F four RED tests verified; safety-design gate
+- User confirmed fast-forward pull to `648f9d7`, then ran `php artisan test --filter=CommissionVoucherUpdateIsolationTest`.
+- Results: **4 failed, 16 assertions**, matching intentional source guards. These are not integration proof of production data loss.
+- Added [PHASE1F_COMMISSION_LEDGER_SAFETY_DESIGN.md](PHASE1F_COMMISSION_LEDGER_SAFETY_DESIGN.md): explicitly distinguishes store/update/destroy legacy type/type_id behavior; prescribes typed source identity, void/reversal, isolated collision fixture tests and legacy-data reconciliation before any controller changes.
+- No app business logic, databases, migrations or `master_live` changes.
