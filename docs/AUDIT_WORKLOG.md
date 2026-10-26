@@ -358,3 +358,8 @@
 - User verified `81b2c8a` full suite **280 passed, 4 failed, 1314 assertions**; CV source-contract tests became green and old CLI text mismatch cleared. Two remaining 409 gate tests fail solely because revised CV update/delete messages lacked literal `accounting history` (status 409 confirmed).
 - Updated both messages to include `accounting history`, retaining 409 and zero write path. Not locally verified.
 - Two remaining actual ledger-display collisions must stay RED until real typed posting provenance; no dangerous numbering heuristics. Progress 60% Phase 1, overall 12%, rest zero. No MySQL/live write.
+
+## 2026-10-26 — verified 282 passing / 2 genuine collision failures; detection tooling added
+- User locally verified `4e03751`: CV safety targeted suite **9 passed / 26 assertions**, full suite **282 passed / 2 failed / 1314 assertions**. Remaining RED diagnostics are legitimate `JV type_id` / legacy CV source collisions.
+- Created read-only `LegacyVoucherCollisionInspector` and `finance:audit-voucher-collisions` CLI with explicit project scope and bounded IDs; risk classification is only numeric header overlap, not verified source. Two SQLite tests added; **unrun**.
+- No ledger display heuristics or mutations, no production access. Progress Phase 1 60%, overall 12%, 0/5 phases complete pending testing/typed source design.
