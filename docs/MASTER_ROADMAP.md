@@ -26,9 +26,9 @@
 
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (284 passed / 2 known collision failures; audit flags overlapping IDs even when balanced; new test unrun)
+**Last updated:** 2026-10-26 (285 passing / 2 genuine RED full-suite diagnostics; formal typed ledger provenance/reversal blueprint committed)
 **Active Git branch:** `upgrade/laravel-framework`  
-**Latest confirmed local verification:** user pulled `e4b8876`; focused **39 passed / 137 assertions**, full suite **284 passed / 2 failed / 1323 assertions**. Two historical JV/CV display collision RED diagnostics still unresolved.
+**Latest confirmed local verification:** user pulled `a56335d`; finance subset **32 passed / 2 failed / 125 assertions**, full suite **285 passed / 2 failed / 1328 assertions**. New balanced-voucher-collision audit scenario passed. Two existing ledger DataTables collision diagnostics remain RED.
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
 **Status:** In-progress accounting integrity hardening; **not production approved**.
 
@@ -384,3 +384,9 @@ Assistant must:
 - User pulled `e4b8876` and verified new collision inventory (39/39 selected tests), full suite **284 PASS, 2 FAIL, 1323 assertions**. Two remaining RED ledger-display diagnostics represent genuine ambiguous `ledgers.type='JV', type_id` source ownership; neither was hidden or weakened.
 - Upgraded `finance:audit-jv --type=JV|CV|ALL`: an overlapping JV/CV header ID in the selected project now adds `numeric_jv_cv_header_id_overlap` to issues and counts as flagged **even if the header/detail totals balance**. The change avoids presenting ambiguous vouchers as clean and respects `--only-issues`, without assigning source ownership. Added real isolated SQLite integration regression for collision + balanced headers; **new code/test not locally run yet**.
 - Estimated Phase 1 **60% -> 65%** (verified inventory milestone), Phases 2–5 0%, overall **12% -> 13%**, 0/5 closed. No schema/data writes, migrations, master_live or deployment. Typed source provenance, durable idempotency, reversal and staged reconciliation remain approval-dependent.
+
+## 2026-10-26 — formal typed financial identity implementation blueprint
+- Verified from user terminal paste: **285 passed, 2 failed, 1328 assertions** on full suite after `a56335d`. Balanced source-overlap audit test passed; two unchanged RED ledger-display collision tests show original `JV-7001` is incorrectly displayed as unrelated `JV-9001`.
+- Added comprehensive `docs/FINANCIAL_SOURCE_IDENTITY_AND_REVERSAL_DESIGN.md` detailing typed immutable ledger-source metadata, evidence-driven classification (unknown legacy stays unknown), durable per-project idempotency, new JV/CV atomic posting rules, append-only reversal, reader rendering, acceptance suite, schema staging and release gates.
+- This is a **design artifact only**, not an approved schema migration or implemented typed posting; guards remain 409, history untouched, no deployment. Do not assert remaining tests green. Critical dependency: actual production schema inspection and finance-reviewed migration signoff before identity metadata can be populated or user-facing reader fixed.
+- Progress Phase 1 **65% -> 65%**, Phase 2–5 0%, overall **13% -> 13%**. Big requested increases require production-ready implementation acceptance, not document count.
