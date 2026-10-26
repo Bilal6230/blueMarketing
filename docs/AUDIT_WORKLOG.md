@@ -302,3 +302,9 @@
 - User pulled `3e09092`, PHP lint clean, ran `JournalVoucherPostingIntegrationTest|JournalVoucherStoreValidationTest|VoucherGuestAccessIntegrationTest`: **16 passed, 125 assertions**. This includes newly verified serial separation and per-line posting checks.
 - Added `VoucherAuthenticatedPermissionIntegrationTest.php` with isolated SQLite Spatie schema: authenticated user without finance permissions must get 403 for five gated mutation routes; after granting permissions the same routes must reach HTTP 409 safety guards. **Tests unrun**; fixture errors must not be confused with access defects.
 - Progress estimate Phase 1 **35% -> 40%**, overall **7% -> 8%**, phases 2-5 still 0%, no finished phases. No schema migrations, production SQL or master_live changed.
+
+## 2026-10-26 — 18 finance/security tests passed; 3 JV posting edge cases added
+- User pulled `73af9be`; PHP lint passed; real auth + guest permissions and actual JV posting/validation selected suite **18 passed, 135 assertions**. This verifies denied/granted Spatie middleware and 409 gates.
+- Extended `JournalVoucherPostingIntegrationTest.php` with: second ledger insert exception must roll back first ledger/detail/header, numbering independent between projects, serial cannot reuse soft-deleted JV number. Added tests not yet executed.
+- Progress estimate Phase 1 **40 -> 45%**, overall **8 -> 9%** (five equally weighted phases); 0/5 complete. Verified security milestone accounts for increase.
+- No active production database writes, migrations, financial history modifications or master_live changes.
