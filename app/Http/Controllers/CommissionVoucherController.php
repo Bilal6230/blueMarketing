@@ -123,136 +123,16 @@ class CommissionVoucherController extends Controller
         return view('admin.reports.vouchers.commision_voucher', $x);
     }
 
+    // Legacy CV posting has no trustworthy source-typed ledger relationship.
+    // No dead write path is retained behind these deliberate safety gates.
     public function store(Request $request)
     {
-        // Legacy CV creation posts entries as JV, so fail closed until typed posting is implemented.
         abort(409, 'Commission voucher creation is temporarily disabled to protect accounting history.');
-
-        // dd($request->all());
-        $lastVoucherId = getLastJvId();
-
-        $request->validate([
-            'voucher_number' => 'required|string',
-            'reference' => 'nullable|string',
-            'date' => 'required|date',
-            'description' => 'required|string',
-            'accounts' => 'required|array|min:1',
-            'sub_accounts' => 'required|array|min:1',
-            'line_description' => 'nullable|array',
-            'debit' => 'required|array|min:1',
-            'credit' => 'required|array|min:1',
-        ]);
-
-        $totalDebit = array_sum($request->debit);
-        $totalCredit = array_sum($request->credit);
-
-        if ($totalDebit !== $totalCredit) {
-            return redirect()->back()->withErrors(['Total debit and credit must be equal.']);
-        }
-        $selectedProjectId = getSelectedTown();
-
-        DB::beginTransaction();
-        try {
-            // Create Journal Voucher Record
-            $CommisionVoucher = CommisionVoucher::create([
-                'voucher_number' => $lastVoucherId + 1,
-                'reference' => $request->reference,
-                'date' => $request->date,
-                'description' => $request->description,
-                'total_debit' => $totalDebit, // Add total debit
-                'total_credit' => $totalCredit, // Add total credit
-                'created_by' => auth()->id(),
-                'project_id' => $selectedProjectId,
-            ]);
-            // Add Ledger Entries
-            foreach ($request->accounts as $index => $accountId) {
-
-                $JvDetails = CommisionVoucherDetail::create([
-                    'commision_voucher_id' => $CommisionVoucher->id,
-                    'account_id' => $request->sub_accounts[$index],
-                    'debit' => $request->debit[$index] ?? 0,
-                    'credit' => $request->credit[$index] ?? 0,
-                    'description' => $request->line_description[$index] ?? '',
-                    'created_by' => auth()->id(),
-                ]);
-
-                $voucherNumber = getVocuherNumber(($request->debit[$index] ?? 0) > 0 ? 'JV' : 'JV');
-
-                $ledgerData = Ledger::create([
-                    'type' => ($request->debit[$index] ?? 0) > 0 ? 'JV' : 'JV',
-                
-                    'type_id' => $CommisionVoucher->id,
-                    'voucher' => $voucherNumber,
-                    'project_head_subheads_id' => $request->sub_accounts[$index],
-                    'reference' => $request->reference,
-                    'amount_in' => $request->debit[$index] ?? 0,
-                    'amount_out' => $request->credit[$index] ?? 0,
-                    'detail' => $request->line_description[$index] ?? '',
-                    'create_by' => auth()->id(),
-                    'is_active' => true,
-                    'status' => '0',
-                    'date' => $request->date,
-                ]);
-            }
-
-            DB::commit();
-            return redirect()->route('commision.voucher.index')->with('success', 'Journal Voucher created successfully.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()->withErrors(['error' => $e->getMessage()]);
-        }
     }
-
-    // public function edit($id)
-    // {
-    //     $voucher = CommisionVoucher::with('details')->findOrFail($id);
-    //     $x['voucher'] = $voucher;
-    //     $power = Auth::user()->roles[0]->name;
-    //     $x['title']     = 'Edit General Journal Voucher';
-    //     $x['role']      = Role::get();
-    //     $x['users']      = User::get();
-    //     $x['power']     = $power;
-    //     $x['type']      =   'JV';
-
-    //     // Get selected town's project_id
-    //     $selectedProjectId = getSelectedTown();
-
-    //     $projects = Project::where('id', $selectedProjectId )->get();
-    //     $x['projects'] = $projects;
-
-    //     $Accounts = ProjectHeadSubhead::select('project_id','head_accounting_id')
-    //                     ->distinct()
-    //                     ->with('headAccounting')
-    //                     ->where(['project_id' => $selectedProjectId])
-    //                     ->get();
-
-    //     $x['accounts'] = $Accounts;
-
-    //     return view('admin.reports.vouchers.edit_journal_voucher', $x );
-
-
-    // }
 
     public function destroy($id)
     {
-        // Temporary Phase 1K safety gate: posted/legacy identity is ambiguous.
-        // Fail closed until append-only financial reversal and typed source mapping exist.
-        abort(409, 'This voucher action is temporarily disabled to protect accounting history.');
-
-        DB::beginTransaction();
-        try {
-            // Delete Journal Voucher and related details
-            $CommisionVoucher = CommisionVoucher::findOrFail($id);
-            CommisionVoucherDetail::where('commision_voucher_id', $id)->delete();
-            Ledger::where('type_id', $id)->whereIn('type', ['CV', 'CV'])->delete();
-            $CommisionVoucher->delete();
-
-            DB::commit();
-            return redirect()->route('commision.voucher.index')->with('success', 'Journal Voucher deleted successfully.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()->withErrors(['error' => $e->getMessage()]);
-        }
+        abort(409, 'Commission voucher deletion is temporarily disabled until reversal posting is implemented.');
     }
 
     public function edit($id)
@@ -277,80 +157,7 @@ class CommissionVoucherController extends Controller
 
     public function update(Request $request, $id)
     {
-        // Temporary Phase 1K safety gate: posted/legacy identity is ambiguous.
-        // Fail closed until append-only financial reversal and typed source mapping exist.
-        abort(409, 'This voucher action is temporarily disabled to protect accounting history.');
-
-        $request->validate([
-            'voucher_number' => 'required|string',
-            'reference' => 'nullable|string',
-            'date' => 'required|date',
-            'description' => 'required|string',
-            'accounts' => 'required|array|min:1',
-            'sub_accounts' => 'required|array|min:1',
-            'line_description' => 'nullable|array',
-            'debit' => 'required|array|min:1',
-            'credit' => 'required|array|min:1',
-        ]);
-
-        $totalDebit = array_sum($request->debit);
-        $totalCredit = array_sum($request->credit);
-
-        if ($totalDebit !== $totalCredit) {
-            return redirect()->back()->withErrors(['Total debit and credit must be equal.']);
-        }
-
-        DB::beginTransaction();
-        try {
-            // Update Journal Voucher Record
-            $CommisionVoucher = CommisionVoucher::findOrFail($id);
-            $CommisionVoucher->update([
-                'voucher_number' => $request->voucher_number,
-                'reference' => $request->reference,
-                'date' => $request->date,
-                'description' => $request->description,
-                'total_debit' => $totalDebit,
-                'total_credit' => $totalCredit,
-                'updated_by' => auth()->id(),
-            ]);
-
-            // Delete existing details and ledger entries
-            CommisionVoucherDetail::where('commision_voucher_id', $id)->delete();
-            Ledger::where('type_id', $id)->whereIn('type', ['JV', 'JV'])->delete();
-
-            // Add updated Ledger Entries
-            foreach ($request->accounts as $index => $accountId) {
-                $JvDetails = CommisionVoucherDetail::create([
-                    'commision_voucher_id' => $CommisionVoucher->id,
-                    'account_id' => $request->sub_accounts[$index],
-                    'debit' => $request->debit[$index] ?? 0,
-                    'credit' => $request->credit[$index] ?? 0,
-                    'description' => $request->line_description[$index] ?? '',
-                    'created_by' => auth()->id(),
-                ]);
-                $voucherNumber = getVocuherNumber(($request->debit[$index] ?? 0) > 0 ? 'JV' : 'JV');
-                Ledger::create([
-                    'type' => ($request->debit[$index] ?? 0) > 0 ? 'JV' : 'JV',
-                    'type_id' => $JvDetails->id,
-                    'voucher' => $voucherNumber,
-                    'project_head_subheads_id' => $request->sub_accounts[$index],
-                    'reference' => $request->reference,
-                    'amount_in' => $request->debit[$index] ?? 0,
-                    'amount_out' => $request->credit[$index] ?? 0,
-                    'detail' => $request->line_description[$index] ?? '',
-                    'create_by' => auth()->id(),
-                    'is_active' => true,
-                    'status' => '0',
-                    'date' => $request->date,
-                ]);
-            }
-
-            DB::commit();
-            return redirect()->route('commision.voucher.index')->with('success', 'Journal Voucher updated successfully.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()->withErrors(['error' => $e->getMessage()]);
-        }
+        abort(409, 'Commission voucher updates are temporarily disabled until reversal posting is implemented.');
     }
 
     public function print($id)
