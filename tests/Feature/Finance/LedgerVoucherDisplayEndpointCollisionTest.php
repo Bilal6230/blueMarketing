@@ -73,12 +73,14 @@ class LedgerVoucherDisplayEndpointCollisionTest extends TestCase
         $request = Request::create('/fetch-data-url', 'POST', ['draw' => 1, 'start' => 0, 'length' => 10]);
         $request->cookies->set('selected_action', '7');
         $this->app->instance('request', $request);
+        $this->assertSame('7', (string) getSelectedTown(), 'Selected project cookie not visible to request helper.');
+        $this->assertSame(1, DB::table('ledgers')->where('project_head_subheads_id', 3)->count());
 
         // Call the real controller/DataTables callback without authentication
         // or a live database; this isolates the display behavior only.
         $response = app(LedgerController::class)->fetch_data_url($request);
         $payload = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
-        $this->assertSame(1, $payload['recordsFiltered']);
+        $this->assertSame(1, $payload['recordsFiltered'], 'DataTables returned: ' . json_encode($payload));
         $this->assertCount(1, $payload['data']);
 
         // This should be sourced from a known, typed voucher posting in the
