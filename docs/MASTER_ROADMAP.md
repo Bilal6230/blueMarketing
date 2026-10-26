@@ -1,3 +1,15 @@
+# BlueMarketing — Current five-stage progress (2026-10-26)
+
+| Stage | Estimated progress | Main outstanding gate |
+|---|---:|---|
+| Phase 1 — Audit & Financial Safety | **60%** | Verify CV dead-code removal and full suite; two historic provenance collision diagnostics |
+| Phase 2 — Financial Posting & Reconciliation | **0%** | Typed ledger identity, durable idempotency, reversal, staged reconciliation |
+| Phase 3 — Security & Activity Logging | **0%** | Central audit logging |
+| Phase 4 — Modules & Integrations | **0%** | Approved module scope |
+| Phase 5 — Staging & Deployment | **0%** | Approval, backup/recovery and production release |
+
+**Overall 12%; previous 12% → current 12%. These are planning estimates, not measured productivity. 0/5 phases complete.**
+
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
 ## Five-stage delivery progress (qualitative, NOT percentage of code completed)
@@ -14,9 +26,9 @@
 
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (35 passing tests, combined JV/CV audit CLI and partial-scan safety added; new tests pending)
+**Last updated:** 2026-10-26 (full suite 277 pass/7 fail; remove unreachable CV destructive write code and fix stale test; retest pending)
 **Active Git branch:** `upgrade/laravel-framework`  
-**Latest confirmed local verification:** user pulled `e1c7b60` and ran focused finance tests: **35 passed / 195 assertions**. User first tried --type before git pull, so old installed command rejected option; CV command integration tests passed after pull.
+**Latest confirmed local verification:** user full suite at `17c99c3`: **277 passed, 7 failed, 1314 assertions**. Four RED CV source contracts; two intentionally RED report-collision diagnostics; one stale audit command message expectation. Focused run: 37 passed, 1 failed. The five remediation changes are NOT locally retested.
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
 **Status:** In-progress accounting integrity hardening; **not production approved**.
 
@@ -348,3 +360,10 @@ Assistant must:
 - Enhanced read-only `finance:audit-jv` to support `--type=ALL` (scan both JV and CV in one bounded run), `--only-issues` (hide consistent record lines), validate unknown types and explicitly WARN+return nonzero when `--limit` silently excludes records. This prevents false audit-clean reports when only part of a project is scanned. Project ID is mandatory and query remains project-scoped; no financial writes.
 - Added three SQLite integration checks: combined JV/CV mixed healthy/mismatch report without mutation, limit truncation warning/error status, invalid voucher type rejection. **New code/tests NOT locally verified.** Do not treat these as a resolved immutable posting or historical provenance fix.
 - Percent remains Phase 1 **60%** and others **0%**, overall **12%**, **0/5 phases closed**. Keep previous/current comparison, never invent 10% progress based solely on tests. Major remaining signoff: full-suite failures, source-typed ledger ID, durable idempotency, reversal model and staging reconciliation. No MySQL migrations/production writes/deploy/master_live changes.
+
+## 2026-10-26 — Full suite evidence and significant CV hazardous-code removal (UNVERIFIED)
+- User pasted full local `php artisan test`: **277 passed, 7 failed, 1314 assertions** on `17c99c3`; focused run **37 passed, 1 failed, 206 assertions**. Exact failures: four known `CommissionVoucherUpdateIsolationTest` tests found unsafe unreachable CV source; two known historic JV/CV display-collision diagnostics remained RED; one `JournalVoucherPostingIntegrationTest` invalid-project test expected previous CLI error string.
+- Removed entire *unreachable* legacy financial posting/mutation/deletion implementation from `CommissionVoucherController::store`, `update`, and `destroy` while keeping each action HTTP 409 fail-closed. This eliminates accidental future exposure of old JV-type CV writes and destructive ledger deletion if guards are later edited. **CV create/update/delete still disabled**, not restored; no historical rows changed.
+- Aligned outdated CLI invalid-project output expectation in `JournalVoucherPostingIntegrationTest.php` with the current command message. This is only a string-contract update, not bypass of invalid project behavior.
+- **Both edits are UNVERIFIED by user local tests**. Predict four source-contract failures and one assertion failure may clear; do not promise suite green: two genuine report collision tests deliberately remain RED pending typed provenance and approved correction design. Run full suite and 409 gate tests after pull.
+- No migration, MySQL writes, master_live deployment, or financial history mutation. Progress Phase 1 60%, overall 12% until local validation. Safety-driven dead code removal is not a reversal workflow.
