@@ -55,11 +55,11 @@ class CommissionVoucherCollisionTest extends TestCase
             $table->id();
             $table->string('voucher_number');
         });
-        Schema::create('ledgers', function (Blueprint $table) {
+        Schema::create('project_head_subheads', function (Blueprint $table) {\n            $table->id();\n            $table->unsignedBigInteger('project_id')->nullable();\n        });\n        Schema::create('ledgers', function (Blueprint $table) {
             $table->id();
             $table->string('type');
             $table->unsignedBigInteger('type_id');
-            $table->string('voucher')->nullable();
+            $table->string('voucher')->nullable();\n            $table->unsignedBigInteger('voucher_number')->nullable();
             $table->unsignedBigInteger('project_head_subheads_id')->nullable();
             $table->string('reference')->nullable();
             $table->decimal('amount_in', 15, 2)->default(0);
@@ -100,7 +100,7 @@ class CommissionVoucherCollisionTest extends TestCase
         $request->setRedirector($this->app['redirect']);
         $this->app->instance('request', $request);
 
-        app(CommissionVoucherController::class)->update($request, $id);
+        $response = app(CommissionVoucherController::class)->update($request, $id);\n        $this->assertSame(302, $response->getStatusCode());\n        $this->assertStringContainsString('commision', $response->getTargetUrl());
 
         $this->assertDatabaseHas('ledgers', [
             'id' => $jvLedgerId, 'type' => 'JV', 'type_id' => $id,
