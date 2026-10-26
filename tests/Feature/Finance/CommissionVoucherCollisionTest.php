@@ -101,8 +101,6 @@ class CommissionVoucherCollisionTest extends TestCase
             'accounts' => [1], 'sub_accounts' => [1],
             'debit' => [0], 'credit' => [0],
         ]);
-        $request->setContainer($this->app);
-        $request->setRedirector($this->app['redirect']);
         $this->app->instance('request', $request);
 
         $response = app(CommissionVoucherController::class)->update($request, $id);
