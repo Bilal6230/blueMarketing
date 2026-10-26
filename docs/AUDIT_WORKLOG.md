@@ -353,3 +353,8 @@
 - Updated one test assertion to match revised CLI invalid project guidance, without weakening project ID validation.
 - Changes require local syntax, known safety route tests and full suite rerun. If source contract tests turn green, that means unsafe source no longer exists, NOT CV posting restored. Two display collisions still unresolved. No migrations, production MySQL changes, or master_live operations.
 - Progress stays Phase 1 60%, overall 12% (0/5 completed) pending successful validation.
+
+## 2026-10-26 — full suite 280 PASS / 4 FAIL and CV 409 wording correction
+- User verified `81b2c8a` full suite **280 passed, 4 failed, 1314 assertions**; CV source-contract tests became green and old CLI text mismatch cleared. Two remaining 409 gate tests fail solely because revised CV update/delete messages lacked literal `accounting history` (status 409 confirmed).
+- Updated both messages to include `accounting history`, retaining 409 and zero write path. Not locally verified.
+- Two remaining actual ledger-display collisions must stay RED until real typed posting provenance; no dangerous numbering heuristics. Progress 60% Phase 1, overall 12%, rest zero. No MySQL/live write.
