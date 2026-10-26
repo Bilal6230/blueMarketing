@@ -33,11 +33,18 @@ class CommissionVoucherListingResponseTest extends TestCase
             $table->softDeletes();
             $table->timestamps();
         });
-        // Controller index requires an authenticated user with at least one role.
-        // Avoid persistence or Spatie role tables: this test does not exercise middleware.
+        // Controller index queries Role::get(), even for AJAX.
+        // Provide the minimal Spatie roles table in this SQLite-only fixture.
+        Schema::create('roles', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('guard_name');
+            $table->timestamps();
+        });
+        // Auth user with an already-loaded role, without touching any real user table.
         $user = new User();
         $user->id = 1;
-        $user->setRelation('roles', collect([(object) ['name' => 'Test Role']]));
+        $user->setRelation('roles', collect([new \Spatie\Permission\Models\Role(['name' => 'Test Role', 'guard_name' => 'web'])]));
         Auth::setUser($user);
     }
 
