@@ -127,3 +127,7 @@
 - User pulled `f245065` and PHP lint passed; test stopped on expected success redirect check (`http://localhost` rather than journal route): 1 failed, 2 assertions.
 - **No verified cross-JV ledger loss yet**: test was blocked before ledger assertion. Updated test to check unrelated ledger preservation first, then diagnose redirect; rerun needed. An error redirect may indicate controller caught an exception and rolled back.
 - No application controller / financial database changes.
+
+## 2026-10-26 — Phase 1J second syntax correction
+- User pull to `0c3d985` succeeded, but PHPUnit stopped before running a test: parse error line 112 (literal `\\n` before diagnostic string). This was an assistant-generated fixture error, **not an application or ledger result**.
+- Replaced literal escaped newline with actual source newline in `JournalVoucherCollisionTest.php` (commit `87ef56fc`). Local PHP lint/retest required; no controller or database modifications.
