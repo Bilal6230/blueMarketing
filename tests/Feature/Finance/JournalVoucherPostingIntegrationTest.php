@@ -452,6 +452,36 @@ class JournalVoucherPostingIntegrationTest extends TestCase
         $this->assertSame(0, DB::table('journal_vouchers')->count());
     }
 
+    public function test_collision_inventory_detects_overlapping_jv_cv_header_ids_without_claiming_ownership(): void
+    {
+        app(JournalVoucherController::class)->store($this->request($this->payload()));
+        DB::table('commision_vouchers')->insert([
+            'id' => 1, 'project_id' => 7, 'voucher_number' => 'CV-1',
+            'total_debit' => '100.25', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $report = app(\App\Services\Finance\LegacyVoucherCollisionInspector::class)->inspect(7);
+        $this->assertSame(1, $report['overlap_total']);
+        $this->assertSame(1, $report['rows'][0]['overlapping_header_id']);
+        $this->assertSame(2, $report['rows'][0]['candidate_jv_ledger_rows']);
+        $this->assertFalse($report['rows'][0]['source_identified']);
+        $this->artisan('finance:audit-voucher-collisions', ['project' => 7])
+            ->expectsOutputToContain('Potential JV/CV header ID overlaps: 1; reported: 1.')
+            ->assertExitCode(1);
+        $this->assertSame(2, DB::table('ledgers')->count());
+    }
+
+    public function test_collision_inventory_ignores_header_ids_from_other_projects(): void
+    {
+        app(JournalVoucherController::class)->store($this->request($this->payload()));
+        DB::table('commision_vouchers')->insert([
+            'id' => 1, 'project_id' => 8, 'voucher_number' => 'CV-1',
+            'total_debit' => '100.25', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $report = app(\App\Services\Finance\LegacyVoucherCollisionInspector::class)->inspect(7);
+        $this->assertSame(0, $report['overlap_total']);
+        $this->artisan('finance:audit-voucher-collisions', ['project' => 7])->assertExitCode(0);
+    }
+
     public function test_ledger_failure_rolls_back_header_and_details(): void
     {
         Ledger::creating(function () { throw new \RuntimeException('Simulated ledger write failure'); });
