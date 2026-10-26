@@ -132,7 +132,7 @@ class CommissionVoucherController extends Controller
 
     public function destroy($id)
     {
-        abort(409, 'Commission voucher deletion is temporarily disabled until reversal posting is implemented.');
+        abort(409, 'Commission voucher deletion is temporarily disabled to protect accounting history until reversal posting is implemented.');
     }
 
     public function edit($id)
@@ -157,7 +157,7 @@ class CommissionVoucherController extends Controller
 
     public function update(Request $request, $id)
     {
-        abort(409, 'Commission voucher updates are temporarily disabled until reversal posting is implemented.');
+        abort(409, 'Commission voucher updates are temporarily disabled to protect accounting history until reversal posting is implemented.');
     }
 
     public function print($id)
