@@ -168,3 +168,11 @@
 - Passing tests demonstrate temporary fail-closed HTTP 409 protection, **not** restoration of normal voucher edit/delete, historical data correction or implementation of reversal posting.
 - Four `CommissionVoucherUpdateIsolationTest` source tests still target unsafe statements located behind unconditional guards and are intentionally RED. Next: preserve this historical diagnostic evidence, introduce explicit behavioral guards, and run full suite to identify wider compatibility breaks. Do not claim full suite green.
 - No production deployments, migrations or MySQL data changes.
+
+## 2026-10-26 — Phase 1N full suite results and CV creation safety closure
+- User ran `php artisan test` after pulling `6c782e7`: **233 passed, 4 failed, 1070 assertions**. All 4 failures were known intentionally RED source-contract checks in `CommissionVoucherUpdateIsolationTest`, NOT new functional module failures. PHPUnit XML deprecation warning is separate.
+- Re-inspected CV store: it is **still executable** and creates `ledgers.type='JV'` for new Commission Vouchers. This risks creating additional ambiguous financial postings despite the existing update/delete gate.
+- Added a temporary HTTP 409 guard to `CommissionVoucherController::store` to prevent further legacy CV-to-JV posting on **upgrade branch only**, and added a fifth case to `UnsafeVoucherActionGateTest`. No MySQL or production changes.
+- **Operational effect if deployed:** CV create/update/delete are all unavailable until an approved typed posting/reversal workflow exists. JV update/delete remain unavailable; JV create not changed.
+- New test not yet executed. Run targeted `php artisan test --filter=UnsafeVoucherActionGateTest` on local SQLite test environment.
+- Four source-contract failures remain and must **not** be silently skipped or reclassified as resolved. Full suite remains NOT GREEN until remaining risky source is removed/reworked. 
