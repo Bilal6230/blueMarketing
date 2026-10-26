@@ -48,3 +48,10 @@
 - Verified destructive stock item/party cascading application deletes and JV/CV ledger deletion paths, CV update filtering JV-type postings, hard-delete risks in User/Labour controllers, and builder updates bypassing observers.
 - Source references, risk levels and test gates: [PHASE1D_APPLICATION_WRITE_AUDIT.md](PHASE1D_APPLICATION_WRITE_AUDIT.md).
 - No DB/data/code changes. Next: targeted regression tests and complete controller coverage before implementation.
+
+## 2026-10-26 — Phase 1E first red finance safety tests
+- Added `tests/Feature/Finance/FinancialHistoryPreservationTest.php` with two isolated SQLite regression tests protecting general-ledger rows on CV/JV voucher deletion.
+- **Intentional RED phase:** current controller source hard-deletes `Ledger` rows; these expectations are designed to fail until a reviewed reversal/void design replaces destructive deletes. No PHP test runner is connected to the user's local machine; **not executed/verified yet**.
+- Safety guard refuses database schema setup unless connection is in-memory SQLite, as also forced in `phpunit.xml`.
+- To execute ONLY the new red tests on a verified local development copy: `php artisan test --filter=FinancialHistoryPreservationTest`. Expect failing assertions; do not use `--filter` to silently claim entire suite green.
+- Next: capture test output, then plan CV update/JV type-isolation tests and Stock history regressions. No production changes authorized.
