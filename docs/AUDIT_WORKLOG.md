@@ -368,3 +368,8 @@
 - User verified `e4b8876`: targeted **39 pass/137 assertions**, complete suite **284 pass/2 fail/1323 assertions**. Last failures are ledger display mis-attribution from overlapping legacy numeric IDs.
 - Actual `finance:audit-jv` now flags `numeric_jv_cv_header_id_overlap` for each project-scoped JV/CV ID overlap even if each posting's header/detail balances; issue-only reporting shows it; no ledger source guessing or data modification. Added unrun SQLite regression.
 - Planning Phase 1 **60 -> 65%**, overall **12 -> 13%** due to verified collision-inventory milestone, not new unverified change. Other phases remain 0%, 0/5 complete. Production and master_live untouched.
+
+## 2026-10-26 — full suite 285 PASS / 2 RED and typed-source architecture specification
+- User locally pulled `a56335d`; audit collision case passed; full suite **285 pass, 2 fail, 1328 assertions**. Both failing tests are real JV/CV legacy ledger number mis-attribution and must remain visible.
+- Created `docs/FINANCIAL_SOURCE_IDENTITY_AND_REVERSAL_DESIGN.md`: evidence-based typed ledger attribution, legacy unknown classification, transactional JV/CV writes with durable idempotency and locking, immutable reversal, safe reader rules, comprehensive acceptance tests and staged deployment gates. The document is a proposal; NO schema changes approved or executed.
+- Phase 1 stays 65%, overall 13%, Phases 2–5 0%, 0/5 phases complete. No production MySQL changes, master_live or deployed financial mutation.
