@@ -1,6 +1,6 @@
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (Phase 1Y CV listing SQLite roles fixture corrected; rerun pending)
+**Last updated:** 2026-10-26 (Phase 1Y SQLite users fixture corrected; rerun pending)
 **Active Git branch:** `upgrade/laravel-framework`  
 **Latest confirmed local verification:** `UnsafeVoucherActionGateTest` — **5 passed, 10 assertions** (user's local Laragon environment)  
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
@@ -221,3 +221,8 @@ Assistant must:
 - User pulled `f92df53`, PHP syntax lint passed. `CommissionVoucherListingResponseTest` failed **before assertions**, SQLite `no such table: roles` because controller `index()` calls `Role::get()` even on AJAX route.
 - Added minimal `roles` table to the isolated SQLite fixture and used concrete Spatie Role instance in preloaded authenticated user relation (commit `2f937621`). **Not yet rerun**; any additional fixture error must be differentiated from actual listing behavior.
 - Next: pull and `php artisan test --filter=CommissionVoucherListingResponseTest`; then authenticated middleware tests. No production DB or controller behavior changes.
+
+## Phase 1Y follow-up — missing users table
+- User pulled `f06b2d4`, PHP lint passed; CV listing test still fails **before assertions** with SQLite `no such table: users` because `CommissionVoucherController::index` fetches `User::get()` even for AJAX.
+- Added minimal SQLite-only `users` fixture (commit `e2c63a38`); **not yet rerun**. This is a test fixture correction, not evidence of a business behavior bug.
+- Next verify targeted test before permission route work. Production MySQL / master_live unchanged.
