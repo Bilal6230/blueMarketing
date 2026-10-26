@@ -14,9 +14,9 @@
 
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (JV CLI 32/186 verified; CV reconciliation inspector and dual-type CLI added, unrun)
+**Last updated:** 2026-10-26 (35 passing tests, combined JV/CV audit CLI and partial-scan safety added; new tests pending)
 **Active Git branch:** `upgrade/laravel-framework`  
-**Latest confirmed local verification:** user pulled `31d57b7` and locally verified JV posting/validation/auth/security + audit command **32 passed / 186 assertions**. Newly added CV inspector and CLI tests NOT locally run.
+**Latest confirmed local verification:** user pulled `e1c7b60` and ran focused finance tests: **35 passed / 195 assertions**. User first tried --type before git pull, so old installed command rejected option; CV command integration tests passed after pull.
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
 **Status:** In-progress accounting integrity hardening; **not production approved**.
 
@@ -342,3 +342,9 @@ Assistant must:
 - Extended existing `finance:audit-jv {project}` CLI with `--type=JV|CV` (default JV) and bounded CV iteration; detects invalid type and returns JSON status. Added three SQLite real command/service tests for CV balanced, CV mismatch without mutation, and cross-project access. **New changes not locally verified**. CLI remains read-only; no production execution without approval.
 - Planning estimate Phase 1 **55 -> 60%** from verified JV CLI; phases 2-5 0%, overall **11 -> 12%**. Increase deliberately NOT 10 points merely for writing more unrun code. 0/5 formal stages complete.
 - Important blockers: source ID provenance, real durable idempotency and typed reversal, data schema signoff, full suite RED diagnostics, staging reconciliation. No production MySQL writes, migration or master_live touched.
+
+## 2026-10-26 — combined JV/CV reconciliation CLI and honest scan completeness
+- User's pasted output after pulling `e1c7b60` confirmed **35 passed / 195 assertions**. Initial `--type` command not found happened **before** pulling the upgraded command. Do not claim current command broken on this evidence.
+- Enhanced read-only `finance:audit-jv` to support `--type=ALL` (scan both JV and CV in one bounded run), `--only-issues` (hide consistent record lines), validate unknown types and explicitly WARN+return nonzero when `--limit` silently excludes records. This prevents false audit-clean reports when only part of a project is scanned. Project ID is mandatory and query remains project-scoped; no financial writes.
+- Added three SQLite integration checks: combined JV/CV mixed healthy/mismatch report without mutation, limit truncation warning/error status, invalid voucher type rejection. **New code/tests NOT locally verified.** Do not treat these as a resolved immutable posting or historical provenance fix.
+- Percent remains Phase 1 **60%** and others **0%**, overall **12%**, **0/5 phases closed**. Keep previous/current comparison, never invent 10% progress based solely on tests. Major remaining signoff: full-suite failures, source-typed ledger ID, durable idempotency, reversal model and staging reconciliation. No MySQL migrations/production writes/deploy/master_live changes.
