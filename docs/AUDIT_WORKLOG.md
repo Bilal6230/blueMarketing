@@ -105,3 +105,8 @@
 - Original JV ledger `id=1,type=JV,type_id=41` disappeared. After CV update only `id=2,type=JV,type_id=1` remained, also demonstrating wrong commission detail-ID linkage.
 - Evidence and safe remediation gates: [PHASE1G_COLLISION_CONFIRMED.md](PHASE1G_COLLISION_CONFIRMED.md).
 - No app logic changes or production/DB writes. Next: finish tracing readers/writers and prepare safe isolated repair tests; no blind type conversion.
+
+## 2026-10-26 — Phase 1H targeted ledger reference audit
+- User successfully pulled Phase 1G report commit `29839d3`.
+- Traced ledgers `type`/`type_id` usages in JV, CV, Ledger, Accounting and Booking flows plus helper numbering. Critical: LedgerController resolves JV-type entries to JournalVoucher by type_id; JournalVoucher update matches both header/detail IDs.
+- See [PHASE1H_LEDGER_REFERENCE_AUDIT.md](PHASE1H_LEDGER_REFERENCE_AUDIT.md). Read-only partial coverage; no database/controller changes.
