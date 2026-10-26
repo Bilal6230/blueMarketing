@@ -26,9 +26,9 @@
 
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (full suite 280 passed/4 failed; CV safety message compatibility corrected, retest pending)
+**Last updated:** 2026-10-26 (282/2 full-suite baseline; read-only JV/CV header collision inventory added, unverified)
 **Active Git branch:** `upgrade/laravel-framework`  
-**Latest confirmed local verification:** user pulled `81b2c8a`; full suite **280 passed / 4 failed / 1314 assertions**. Four CV unsafe source tests now pass; two 409 text assertion failures and two genuine ledger identity collision diagnostics fail. New 409 message correction awaits verification.
+**Latest confirmed local verification:** user pulled `4e03751`; targeted CV safety **9 passed / 26 assertions**, full suite **282 passed / 2 failed / 1314 assertions**. Only known two ledger display source-collision diagnostics remain RED.
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
 **Status:** In-progress accounting integrity hardening; **not production approved**.
 
@@ -373,3 +373,9 @@ Assistant must:
 - Two `UnsafeVoucherActionGateTest` failures are narrowly a 409 exception message contract (`accounting history` required); the HTTP 409 itself still worked. Restored exact safety phrase in CV update/delete exception messages without changing the fail-closed logic. This fix **not locally verified yet**.
 - Remaining two `LedgerVoucherDisplayCollisionTest` and `LedgerVoucherDisplayEndpointCollisionTest` failures are genuine: header number 9001 overrides ambiguous original ledger number 7001. The endpoint's positive-control fixture explicitly expects header 9002 for a purported genuine JV even though current schema offers no validated typed provenance to distinguish it from legacy CV. **Do not modify the reader by heuristic, change tests to green, or auto-attribute row ownership**. Requires agreed typed identity strategy and safe source migration.
 - Progress previous/current stays Phase 1 **60% -> 60%**, others 0%, overall **12% -> 12%**, 0/5 complete pending verified 409 contract and typed source repair. No production DB or master_live change.
+
+## 2026-10-26 — verified 282/2 suite and new project-scoped historical collision inventory
+- User pulled `4e03751`, controller lint passed, targeted CV guard/source checks **9/9 passed, 26 assertions** and full suite **282 passed, 2 failed, 1314 assertions**. Only two known historical ledger display collision tests remain RED. No full-suite green claim.
+- Added `LegacyVoucherCollisionInspector` service and `finance:audit-voucher-collisions {project} --limit=100` CLI: detects numeric ID overlap of JV/CV headers *within the same project*, counts possible JV-typed ledger rows scoped via selected project's subaccounts, labels provenance UNKNOWN and does not mutate history. Limits 1–1000 and returns nonzero when overlaps are present. This is **collision risk inventory**, not proof that any candidate ledger actually belongs to CV.
+- Added 2 SQLite-only integration tests checking overlapping header IDs, conservative provenance and cross-project exclusion. **New CLI/service/tests awaiting local execution.** Do not run against production DB without explicit approval even though read-only.
+- Progress remains Phase 1 **60% -> 60%**, others 0%, overall **12% -> 12%**, 0/5 completed, pending local verification and approved typed-provenance design. No MySQL migrations, production changes, backfills or master_live touched.
