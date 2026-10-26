@@ -10,13 +10,13 @@
 | **4. Modules and integrations** | **NOT STARTED** | agreed modules/integrations including attendance |
 | **5. Staging / release** | **NOT STARTED** | tests, backed-up staging signoff and explicit live deployment approval |
 
-**Progress snapshot (baseline set 2026-10-26; estimates, not measured delivery):** Phase 1 **50%**, Phases 2–5 **0%**, overall **10%** (equal five-phase weighting). Keep same scale and do not advance on test-only commits without passing acceptance gates. **0/5 stages complete.**
+**Progress snapshot (baseline set 2026-10-26; estimates, not measured delivery):** Phase 1 **55%**, Phases 2–5 **0%**, overall **11%** (equal five-phase weighting). Keep same scale and do not advance on test-only commits without passing acceptance gates. **0/5 stages complete.**
 
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (fixed syntax blocker in read-only inspector integration tests; rerun pending)
+**Last updated:** 2026-10-26 (read-only JV integrity inspector verified, bounded Artisan audit command added unrun)
 **Active Git branch:** `upgrade/laravel-framework`  
-**Latest confirmed local verification:** 26 tests / 165 assertions passed before inspector tests. User pull of `78d1d72` showed inspector PHP lint clean but new `JournalVoucherPostingIntegrationTest` failed at PHP PARSE (line 308); suite never began. FQCN escaping now corrected in `06d964b`; rerun pending.
+**Latest confirmed local verification:** user pulled `17d3668` and ran combined finance suite **29 passed / 176 assertions**, including three read-only inspector checks. New finance:audit-jv Artisan tests NOT locally verified.
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
 **Status:** In-progress accounting integrity hardening; **not production approved**.
 
@@ -329,3 +329,9 @@ Assistant must:
 - User pulled `78d1d72`. `php -l app/Services/Finance/JournalVoucherIntegrityInspector.php` passed. Test PHP lint failed on line 308 due to accidentally doubled namespace separators `\\App\\Services`; PHPUnit could not load suite at all. **This was assistant-authored test syntax, not a business code failure.**
 - Fixed all three service FQCN references plus `ModelNotFoundException` in `JournalVoucherPostingIntegrationTest.php` in commit `06d964b`. Fetched file again and confirmed namespace spelling; **PHP lint and tests remain unverified locally**.
 - Progress remains Phase 1 **50%**, Phase 2-5 **0%**, overall **10%** (0/5 closed). Do not advance on syntax repair or pending tests. Next run isolated lint and full targeted finance tests; if green, classify full-suite baseline and tackle typed ledger source/reversal design without touching production DB.
+
+## 2026-10-26 — reconciler verified; bounded read-only Artisan audit command delivered
+- User pulled `17d3668`; PHP lint and combined JV posting/validation/authentication/guest security suite **29 passed, 176 assertions**. Read-only integrity inspector valid match, mismatch detection and cross-project denial are verified.
+- New `app/Console/Commands/AuditJournalVouchers.php` exposes `php artisan finance:audit-jv {project} --limit=100`, scoped to explicit positive project ID, max 1000 headers, read-only header/detail scan, one JSON result per voucher, summary and nonzero exit on mismatch; ledger candidate rows explicitly marked unverified because CV historical records may overlap JV type IDs. Do NOT run against live production DB without approval, despite read-only behavior; command code not locally tested yet.
+- Three actual SQLite Artisan command checks added to `JournalVoucherPostingIntegrationTest.php` for good voucher, mismatch and invalid project. **New tests pending local execution.** The registered command's class sits in normal Laravel app/Console/Commands auto-discovery directory; confirm via test.
+- Planning progress Phase 1 **50% -> 55%**, Phase 2–5 0%, overall **10% -> 11%** because **inspector milestone is now verified**, not for unrun command. 0/5 phases formally finished. Full suite, durable idempotency, typed provenance, reversal/reconciliation and deployment approval remain unresolved.
