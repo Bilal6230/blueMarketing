@@ -109,6 +109,7 @@ class JournalVoucherCollisionTest extends TestCase
         $this->assertDatabaseHas('ledgers', [
             'id' => $unrelatedLedgerId, 'type' => 'JV', 'type_id' => 88,
         ]);
-        $this->assertStringContainsString('journal', $response->getTargetUrl() ?: '',\n            'JV update did not reach its success redirect; investigate caught exception before interpreting preservation.');
+        $this->assertStringContainsString('journal', $response->getTargetUrl() ?: '',
+            'JV update did not reach its success redirect; investigate caught exception before interpreting preservation.');
     }
 }
