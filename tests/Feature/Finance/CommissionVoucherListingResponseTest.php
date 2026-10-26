@@ -33,6 +33,12 @@ class CommissionVoucherListingResponseTest extends TestCase
             $table->softDeletes();
             $table->timestamps();
         });
+        Schema::create('users', function (Blueprint $table) {
+            $table->id();
+            $table->string('name')->nullable();
+            $table->string('email')->nullable();
+            $table->timestamps();
+        });
         // Controller index queries Role::get(), even for AJAX.
         // Provide the minimal Spatie roles table in this SQLite-only fixture.
         Schema::create('roles', function (Blueprint $table) {
