@@ -55,3 +55,11 @@
 - Safety guard refuses database schema setup unless connection is in-memory SQLite, as also forced in `phpunit.xml`.
 - To execute ONLY the new red tests on a verified local development copy: `php artisan test --filter=FinancialHistoryPreservationTest`. Expect failing assertions; do not use `--filter` to silently claim entire suite green.
 - Next: capture test output, then plan CV update/JV type-isolation tests and Stock history regressions. No production changes authorized.
+
+## 2026-10-26 — Phase 1E genuine RED results (user local execution)
+- User ran `php artisan test --filter=FinancialHistoryPreservationTest` after fixing PDO SQLite and assertDatabaseHas test argument.
+- Result: **2 failed / 2 assertions**, both because `ledgers` table became empty after `CommissionVoucherController::destroy` and `JournalVoucherController::destroy` in isolated SQLite.
+- This verifies controller-level permanent ledger removal in these exercised scenarios; **does not prove any real production records were lost**. No production database involved.
+- Corrected test assertion commit `88302244`. Tests are intentionally red until an approved financial void/reversal design is implemented.
+- **Blocking decisions before code change:** whether historic JV/CV may be voided, how approved entries are reversed, ledger balances and report filtering, linked voucher detail retention, authorization/reason requirements, and old-data compatibility.
+- Next: add CV update cross-type isolation tests, document void/reversal transaction invariants, implement in isolation only after review. Do not change `master_live` or run migrations.
