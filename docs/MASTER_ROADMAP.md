@@ -10,13 +10,13 @@
 | **4. Modules and integrations** | **NOT STARTED** | agreed modules/integrations including attendance |
 | **5. Staging / release** | **NOT STARTED** | tests, backed-up staging signoff and explicit live deployment approval |
 
-**Progress snapshot (baseline set 2026-10-26; estimates, not measured delivery):** Phase 1 **35%**, Phases 2–5 **0%**, overall **7%** (equal five-phase weighting). Keep same scale and do not advance on test-only commits without passing acceptance gates. **0/5 stages complete.**
+**Progress snapshot (baseline set 2026-10-26; estimates, not measured delivery):** Phase 1 **40%**, Phases 2–5 **0%**, overall **8%** (equal five-phase weighting). Keep same scale and do not advance on test-only commits without passing acceptance gates. **0/5 stages complete.**
 
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (JV posting verified; sequential serial and line safeguards tests added)
+**Last updated:** 2026-10-26 (JV serial/line tests verified; authenticated Spatie permission tests added, unrun)
 **Active Git branch:** `upgrade/laravel-framework`  
-**Latest confirmed local verification:** User pulled `3a1f6bf`: real JV posting + validation + guest-access tests **13 passed / 115 assertions**. The separate previous selected batch had **16 passed / 125 assertions**; don't add overlapping totals.
+**Latest confirmed local verification:** JV posting/validation + guest permission suite **16 passed / 125 assertions** after user pull of `3e09092`. New authenticated permission tests unrun.
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
 **Status:** In-progress accounting integrity hardening; **not production approved**.
 
@@ -294,3 +294,8 @@ Assistant must:
 - Added three additional real posting tests: two sequential JV records must receive distinct project JV serials, both positive debit and credit on one line must reject, and zero/zero line must reject. **New tests unrun**. Explicit comment warns idempotency has NOT been implemented; sequential uniqueness is not proof of concurrency safety.
 - Current comparable estimate: Phase 1 **35%**, Phase 2 **0%**, Phase 3 **0%**, Phase 4 **0%**, Phase 5 **0%**, overall **7%** (equal 5 stages). 0/5 formally completed.
 - High-priority remaining work: authenticated user permission allow/deny, real DB-unique idempotency after schema approval, tested immutable typed CV/JV reversal model, historical provenance and staged reconciliation, full suite. No `master_live`/production DB changes.
+
+## Phase 1 milestone 35% -> 40%, authenticated permissions test pending (2026-10-26)
+- User pulled `3e09092`; lint passed and selected JV integration, invalid-input and guest route tests **16 passed, 125 assertions**. Verified two sequential JV numbers, empty/dual-sided rejection, valid ledger posting and rollback. The conservative 5 percentage-point increase recognizes this local verification; NOT the new test file.
+- Added `tests/Feature/Finance/VoucherAuthenticatedPermissionIntegrationTest.php`: actual Laravel authenticated HTTP requests with isolated SQLite Spatie tables, 5 denied write URLs without permissions (expect 403), and same 5 with explicitly granted action permissions (expect existing HTTP 409 business safety gates). **Not yet locally executed**. This does not certify JV store permission, idempotency, concurrent numbering or full financial reconciliation.
+- Percentage comparison: Phase 1 **35 -> 40%**, Phase 2-5 **0 -> 0%**, equal-weight overall **7 -> 8%**; **0 of 5 phases closed**. Remaining important work: hard authenticated permission results, idempotency/concurrency design requiring approved DB uniqueness, full-suite RED remediation, typed JV/CV reconciliation and reversal framework.
