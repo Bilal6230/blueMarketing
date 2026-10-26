@@ -104,9 +104,11 @@ class JournalVoucherCollisionTest extends TestCase
 
         $response = app(JournalVoucherController::class)->update($request, 41);
         $this->assertSame(302, $response->getStatusCode());
-        $this->assertStringContainsString('journal', $response->getTargetUrl() ?: '');
+        // Redirect to localhost can mean controller caught an exception.
+        // Inspect the ledger regardless, while reporting redirect diagnostics.
         $this->assertDatabaseHas('ledgers', [
             'id' => $unrelatedLedgerId, 'type' => 'JV', 'type_id' => 88,
         ]);
+        $this->assertStringContainsString('journal', $response->getTargetUrl() ?: '',\n            'JV update did not reach its success redirect; investigate caught exception before interpreting preservation.');
     }
 }
