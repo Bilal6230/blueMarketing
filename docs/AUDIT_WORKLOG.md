@@ -148,3 +148,10 @@
 - User authorized continuing planned work after isolated JV/CV collision failures; no permission to modify production data or deploy.
 - Added [PHASE1K_FINANCIAL_POSTING_SAFETY_BLUEPRINT.md](PHASE1K_FINANCIAL_POSTING_SAFETY_BLUEPRINT.md): tested failure evidence, fail-closed interim safeguards, typed source identity, append-only reversals, accounting invariants, required regression gates and explicit migration/deployment boundaries.
 - Documentation only. Next step: controlled isolated fail-closed implementation with tests, preserving legacy rows and accounting reports.
+
+## 2026-10-26 — Phase 1L temporary financial safety gate (code change on upgrade branch)
+- Added unconditional HTTP 409 safety guard at the beginning of `JournalVoucherController::update`, `JournalVoucherController::destroy`, `CommissionVoucherController::update`, and `CommissionVoucherController::destroy`.
+- This intentionally **disables all JV/CV edits/deletions, including drafts**, until source identity / append-only reversal architecture is ready. It does NOT add reversal features, fix historical rows, or alter store/create flows.
+- Added 4 controller-entry regression tests in `tests/Feature/Finance/UnsafeVoucherActionGateTest.php`; **not yet run by local developer**. Run `php artisan test --filter=UnsafeVoucherActionGateTest` after pull.
+- Existing intentionally RED collision/source tests still represent unsafe legacy code and may continue failing; the prior controller-execution collision tests may now fail because guarded actions throw 409. Do not claim entire suite green until regression expectations are updated.
+- No migrations, MySQL imports/writes, deployment or `master_live` changes. Code only on `upgrade/laravel-framework`. Requires workflow/UI review before any deployment; the block impacts users.
