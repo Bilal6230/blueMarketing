@@ -89,7 +89,12 @@ class FinancialHistoryPreservationTest extends TestCase
             'created_at' => now(), 'updated_at' => now(),
         ]);
 
-        app(CommissionVoucherController::class)->destroy($voucherId);
+        try {
+            app(CommissionVoucherController::class)->destroy($voucherId);
+            $this->fail('Unsafe posted voucher deletion must be blocked.');
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $exception) {
+            $this->assertSame(409, $exception->getStatusCode());
+        }
 
         $this->assertDatabaseHas('ledgers', ['id' => $ledgerId]);
     }
@@ -107,7 +112,12 @@ class FinancialHistoryPreservationTest extends TestCase
             'created_at' => now(), 'updated_at' => now(),
         ]);
 
-        app(JournalVoucherController::class)->destroy($voucherId);
+        try {
+            app(JournalVoucherController::class)->destroy($voucherId);
+            $this->fail('Unsafe posted voucher deletion must be blocked.');
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $exception) {
+            $this->assertSame(409, $exception->getStatusCode());
+        }
 
         $this->assertDatabaseHas('ledgers', ['id' => $ledgerId]);
     }
