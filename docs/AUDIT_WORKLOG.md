@@ -143,3 +143,8 @@
 - This is a second independent, confirmed isolated SQLite cross-voucher ledger deletion bug (alongside CV update collision). **No claim of actual production loss.**
 - Previous syntax and redirect failures were test fixture issues and are now distinct from this final real regression failure.
 - Next: stop adding diagnostic red tests in a loop; consolidate a safe immutable-ledger repair plan, and add isolated fix only following design review. Never alter `master_live` or MySQL data without explicit approval.
+
+## 2026-10-26 — Phase 1K consolidated financial safety blueprint
+- User authorized continuing planned work after isolated JV/CV collision failures; no permission to modify production data or deploy.
+- Added [PHASE1K_FINANCIAL_POSTING_SAFETY_BLUEPRINT.md](PHASE1K_FINANCIAL_POSTING_SAFETY_BLUEPRINT.md): tested failure evidence, fail-closed interim safeguards, typed source identity, append-only reversals, accounting invariants, required regression gates and explicit migration/deployment boundaries.
+- Documentation only. Next step: controlled isolated fail-closed implementation with tests, preserving legacy rows and accounting reports.
