@@ -1,6 +1,6 @@
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (Phase 1S report display collision diagnostic added)  
+**Last updated:** 2026-10-26 (Phase 1S diagnostic locally confirmed; Phase 1T planning)  
 **Active Git branch:** `upgrade/laravel-framework`  
 **Latest confirmed local verification:** `UnsafeVoucherActionGateTest` — **5 passed, 10 assertions** (user's local Laragon environment)  
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
@@ -151,6 +151,14 @@ Assistant must:
 - **Scope limitation:** the test mirrors the reader logic using isolated SQL; it **does not call the actual DataTables endpoint**, prove actual CV provenance, or establish a production mismatch. Preserve as diagnostic until provenance-based policy and real endpoint integration tests are designed.
 - Next verification: `php artisan test --filter=LedgerVoucherDisplayCollisionTest` (expected 1 intentional failure at voucher display assertion). Do not confuse this with a fresh application runtime error.
 - Historical source-contract RED tests still present; do not make full suite green by skipping genuine risk tests. No controller/DB migrations changed in this phase.
+
+## Phase 1S verification and Phase 1T next plan
+
+- User successfully pulled `5771196`; `php -l tests/Feature/Finance/LedgerVoucherDisplayCollisionTest.php` passed.
+- Locally ran `LedgerVoucherDisplayCollisionTest`: **1 failed / 1 assertion, as intentionally designed**. Expected `JV-7001`, actual `JV-9001`. This validates the **mirrored report lookup** under the test's constructed colliding IDs, not live data or actual DataTables endpoint behavior.
+- Do **not** simply use stored number instead of looked-up number throughout: authentic JV ledger numbers and historical reports may depend on the override. Ledger source provenance must be resolved first.
+- **Phase 1T next:** add isolated actual `LedgerController::fetch_data_url` DataTables endpoint test for overlapping numeric identifiers and trustworthy header source; protect existing historical display behavior. Review authorization/project scoping and keep fixtures in `sqlite :memory:`. Then expand reader inventory (Blade exports/other reports).
+- Full suite is expected to remain RED on 4 old CV source checks plus this new isolated report diagnostic until safe design/reconciliation; do not hide tests to claim green.
 
 ## 9. Most recent user feedback
 
