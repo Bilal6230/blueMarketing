@@ -25,6 +25,15 @@ class JournalVoucherPostingIntegrationTest extends TestCase
         Schema::create('project_head_subheads', function (Blueprint $t) {
             $t->id(); $t->unsignedBigInteger('project_id'); $t->unsignedBigInteger('head_accounting_id');
         });
+        Schema::create('commision_vouchers', function (Blueprint $t) {
+            $t->id(); $t->unsignedBigInteger('project_id'); $t->string('voucher_number');
+            $t->decimal('total_debit', 15, 2); $t->softDeletes(); $t->timestamps();
+        });
+        Schema::create('commision_voucher_details', function (Blueprint $t) {
+            $t->id(); $t->unsignedBigInteger('commision_voucher_id');
+            $t->unsignedBigInteger('account_id'); $t->decimal('debit', 15, 2);
+            $t->decimal('credit', 15, 2); $t->softDeletes(); $t->timestamps();
+        });
         Schema::create('journal_vouchers', function (Blueprint $t) {
             $t->id(); $t->string('voucher_number'); $t->string('type'); $t->unsignedBigInteger('project_id');
             $t->string('reference')->nullable(); $t->date('date'); $t->text('description');
@@ -358,6 +367,51 @@ class JournalVoucherPostingIntegrationTest extends TestCase
             ->expectsOutputToContain('Provide a positive numeric project ID')
             ->assertExitCode(2);
         $this->assertSame(0, DB::table('journal_vouchers')->count());
+    }
+
+    public function test_cv_integrity_inspector_and_artisan_report_are_read_only(): void
+    {
+        DB::table('commision_vouchers')->insert([
+            'id' => 10, 'project_id' => 7, 'voucher_number' => 'CV-10',
+            'total_debit' => '85.20', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('commision_voucher_details')->insert([
+            ['commision_voucher_id' => 10, 'account_id' => 11, 'debit' => '85.20', 'credit' => '0.00'],
+            ['commision_voucher_id' => 10, 'account_id' => 22, 'debit' => '0.00', 'credit' => '85.20'],
+        ]);
+        $report = app(\App\Services\Finance\CommissionVoucherIntegrityInspector::class)->inspect(7, 10);
+        $this->assertTrue($report['header_details_consistent']);
+        $this->assertSame(8520, $report['detail_debit_cents']);
+        $this->artisan('finance:audit-jv', ['project' => 7, '--type' => 'CV'])
+            ->expectsOutputToContain('Read-only audit: 1 vouchers, 0 flagged.')
+            ->assertExitCode(0);
+        $this->assertSame(2, DB::table('commision_voucher_details')->count());
+    }
+
+    public function test_cv_audit_detects_mismatch_without_modifying_historical_rows(): void
+    {
+        DB::table('commision_vouchers')->insert([
+            'id' => 10, 'project_id' => 7, 'voucher_number' => 'CV-10',
+            'total_debit' => '90.00', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('commision_voucher_details')->insert([
+            ['commision_voucher_id' => 10, 'account_id' => 11, 'debit' => '80.00', 'credit' => '0.00'],
+            ['commision_voucher_id' => 10, 'account_id' => 22, 'debit' => '0.00', 'credit' => '80.00'],
+        ]);
+        $this->artisan('finance:audit-jv', ['project' => 7, '--type' => 'CV'])
+            ->expectsOutputToContain('Read-only audit: 1 vouchers, 1 flagged.')
+            ->assertExitCode(1);
+        $this->assertEquals(90, DB::table('commision_vouchers')->value('total_debit'));
+    }
+
+    public function test_cv_audit_rejects_cross_project_lookup(): void
+    {
+        DB::table('commision_vouchers')->insert([
+            'id' => 10, 'project_id' => 7, 'voucher_number' => 'CV-10',
+            'total_debit' => '0.00', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+        app(\App\Services\Finance\CommissionVoucherIntegrityInspector::class)->inspect(8, 10);
     }
 
     public function test_ledger_failure_rolls_back_header_and_details(): void
