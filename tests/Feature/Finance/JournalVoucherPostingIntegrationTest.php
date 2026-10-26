@@ -77,8 +77,8 @@ class JournalVoucherPostingIntegrationTest extends TestCase
         $this->assertSame(1, DB::table('journal_vouchers')->count());
         $this->assertSame(2, DB::table('journal_voucher_details')->count());
         $this->assertSame(2, DB::table('ledgers')->count());
-        $this->assertSame('100.25', (string) DB::table('journal_vouchers')->value('total_debit'));
-        $this->assertSame('100.25', (string) DB::table('journal_vouchers')->value('total_credit'));
+        $this->assertEquals(100.25, DB::table('journal_vouchers')->value('total_debit'));
+        $this->assertEquals(100.25, DB::table('journal_vouchers')->value('total_credit'));
         $this->assertEquals(100.25, DB::table('ledgers')->sum('amount_in'));
         $this->assertEquals(100.25, DB::table('ledgers')->sum('amount_out'));
     }
@@ -92,6 +92,34 @@ class JournalVoucherPostingIntegrationTest extends TestCase
             $this->fail('Cross-project posting was accepted.');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('sub_accounts', $e->errors());
+        }
+        $this->assertSame(0, DB::table('journal_vouchers')->count());
+        $this->assertSame(0, DB::table('ledgers')->count());
+    }
+
+    public function test_wrong_head_subaccount_pair_is_rejected_before_posting(): void
+    {
+        $p = $this->payload();
+        $p['accounts'][1] = 1;
+        try {
+            app(JournalVoucherController::class)->store($this->request($p));
+            $this->fail('Incorrect head/subaccount pairing was accepted.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('accounts', $e->errors());
+        }
+        $this->assertSame(0, DB::table('journal_vouchers')->count());
+        $this->assertSame(0, DB::table('ledgers')->count());
+    }
+
+    public function test_unbalanced_journal_is_rejected_before_posting(): void
+    {
+        $p = $this->payload();
+        $p['credit'][1] = '100.24';
+        try {
+            app(JournalVoucherController::class)->store($this->request($p));
+            $this->fail('Unbalanced journal was accepted.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('debit', $e->errors());
         }
         $this->assertSame(0, DB::table('journal_vouchers')->count());
         $this->assertSame(0, DB::table('ledgers')->count());
