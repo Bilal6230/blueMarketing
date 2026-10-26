@@ -221,3 +221,7 @@
 ## 2026-10-26 — Phase 1T zero-row fixture blocker
 - User pulled `34aee731`, PHP lint passed; real DataTables test failed with `recordsFiltered=0` (expected 1), before display-number assertion. No conclusion on real report misattribution yet.
 - Added isolated test-only diagnostics for selected project, seeded ledger row and DataTables payload in commit `1634104`; pending local rerun. No business controller or database changes.
+
+## 2026-10-26 — Phase 1T DataTables fixture missing SoftDeletes column
+- User test output showed one failure after 3 assertions; DataTables JSON error: SQLite column `journal_vouchers.deleted_at` missing, because `JournalVoucher` has SoftDeletes scope.
+- Fixed **only** the SQLite fixture by adding `softDeletes()` in `LedgerVoucherDisplayEndpointCollisionTest.php` (commit `3290c709`). Await user rerun. No controller / report / DB changes.
