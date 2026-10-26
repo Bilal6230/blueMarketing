@@ -330,3 +330,9 @@
 - User pulled `78d1d72`; inspector PHP lint passed. `JournalVoucherPostingIntegrationTest.php` lint and PHPUnit loader failed on line 308 `unexpected token \\` due to doubled backslashes in class FQCNs inserted by assistant. No test assertions ran. This is a test syntax error, not evidence of a business defect.
 - Corrected all introduced FQCN escapes at 3 inspector calls and exception class in commit `06d964b`; fetched post-commit source to verify text. Await local PHP lint and targeted test execution. No MySQL, migration, production data or master_live touched.
 - Status remains Phase 1 50%, overall 10%; 0/5 completed.
+
+## 2026-10-26 — verified inspector; bounded read-only Artisan auditor and tests
+- User pulled `17d3668`, passed PHP lint, ran selected finance suite **29 passed, 176 assertions**, including 3 new inspector tests (balanced, mismatch, project scope).
+- Added bounded project-specific read-only `finance:audit-jv {project} --limit=100` artisan command at `app/Console/Commands/AuditJournalVouchers.php`; emits JSON summaries and flags mismatch without mutating rows. Source `type='JV'` ledger provenance remains ambiguous. Added 3 integration tests for command success, mismatch failure code, invalid project. **Not yet run**. Avoid production DB execution without explicit approval.
+- Progress Phase 1 **50 -> 55%**, overall **10 -> 11%**, phases 2–5 0%, 0/5 complete; uplift from verified inspector milestone only.
+- No migration, production MySQL write, master_live change or deployment.
