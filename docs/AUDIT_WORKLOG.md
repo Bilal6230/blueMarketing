@@ -94,3 +94,8 @@
 - User pull to `466ed0c` succeeded; PHPUnit failed loading new `CommissionVoucherCollisionTest.php` at line 58 with PHP parse error before any test executed.
 - Root cause: literal backslash-n sequences inserted into the PHP test fixture schema source, including lines 58 and 62.
 - Fixed those escaped newline sequences in test file (commit `53d18a6f`). No application/database changes. Test behavior is **not yet verified**; rerun isolated collision test after pulling.
+
+## 2026-10-26 — Phase 1G unsupported Request setup fixed
+- User confirmed PHP syntax lint passes, but isolated collision test failed before controller execution: `Illuminate\\Http\\Request::setContainer` does not exist (0 assertions).
+- Removed unsupported `setContainer()` and `setRedirector()` calls from `CommissionVoucherCollisionTest.php`; existing Laravel app request binding remains.
+- Collision test **not yet re-run** after fix. Production / MySQL / application controllers untouched.
