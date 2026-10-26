@@ -346,3 +346,10 @@
 - User uploaded terminal transcript: after pulling `e1c7b60`, linted CV inspector/command/tests successfully and ran finance suite **35 passed, 195 assertions**. Earlier `--type` error happened before pull, so cannot conclude new command fails.
 - Upgraded `finance:audit-jv` command with `--type=ALL`, `--only-issues`, explicit partial-scan detection when bounded `--limit` omits vouchers, with nonzero exit to prevent false clean report. Added 3 SQLite integration tests; unrun locally.
 - Progress unchanged at Phase 1 60%, overall 12%, other four phases 0%, 0/5 closed. This is unverified new implementation. Next verify command + run full suite. No production MySQL data, migrations or master_live touched.
+
+## 2026-10-26 — 277 passed / 7 full-suite failures; CV dead financial code physically removed
+- User pasted full local test output at `17c99c3`: **277 passed, 7 failed (1314 assertions)**. Failure classification: four source-level CV legacy posting/update dangerous statements; two known historical report collision diagnostics; one stale invalid-project command error message expectation. Targeted suite 37 passed / 1 failed (206 assertions).
+- Removed unreachable behind-abort legacy CV store/update/destroy write/delete statements from the actual `CommissionVoucherController`, retaining HTTP 409 for all three. This prevents accidental resurrection of known destructive JV/CV ledger operations; it does NOT restore CV operations or repair history.
+- Updated one test assertion to match revised CLI invalid project guidance, without weakening project ID validation.
+- Changes require local syntax, known safety route tests and full suite rerun. If source contract tests turn green, that means unsafe source no longer exists, NOT CV posting restored. Two display collisions still unresolved. No migrations, production MySQL changes, or master_live operations.
+- Progress stays Phase 1 60%, overall 12% (0/5 completed) pending successful validation.
