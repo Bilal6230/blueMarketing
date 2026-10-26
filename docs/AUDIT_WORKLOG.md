@@ -200,3 +200,8 @@
 - Created `docs/PHASE1R_LEDGER_REPORT_READER_MAP.md`: LedgerController's JV DataTables display reader resolves `type_id` against JournalVoucher for all `type='JV'` entries; legacy CV stores also emitted `JV` rows, so colliding IDs pose a possible voucher-number display misattribution. This is source inspection, not confirmed production corruption.
 - Updated `docs/MASTER_ROADMAP.md`. Next: isolated display-collision regression and broader readers/auth audit.
 - No MySQL writes, migrations, controller logic modifications, deployments or master_live changes.
+
+## 2026-10-26 — Phase 1S isolated report-display collision diagnostic
+- User successfully pulled `f9dab903` Phase 1R docs.
+- Added `tests/Feature/Finance/LedgerVoucherDisplayCollisionTest.php` using guarded SQLite `:memory:` and a mirrored copy of the report display-number lookup for numeric JV/CV identity collision. **Expected RED**, not executed yet and not an end-to-end DataTables test; the scenario cannot prove CV source identity from existing ledger columns.
+- Recorded test limitations and next steps in `docs/MASTER_ROADMAP.md`. No controller, reporting behavior, MySQL data, migration or `master_live` modifications.
