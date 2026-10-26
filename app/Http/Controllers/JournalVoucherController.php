@@ -337,30 +337,30 @@ class JournalVoucherController extends Controller
             'line_description' => 'nullable|array',
             'line_description.*' => 'nullable|string',
             'debit' => 'required|array|min:2',
-            'debit.*' => ['required', 'regex:/^\\d+(?:\\.\\d{1,2})?$/'],
+            'debit.*' => ['required', 'regex:/^\d+(?:\.\d{1,2})?$/'],
             'credit' => 'required|array|min:2',
-            'credit.*' => ['required', 'regex:/^\\d+(?:\\.\\d{1,2})?$/'],
+            'credit.*' => ['required', 'regex:/^\d+(?:\.\d{1,2})?$/'],
         ]);
 
         $count = count($validated['accounts']);
         foreach (['sub_accounts', 'debit', 'credit'] as $field) {
             if (count($validated[$field]) !== $count ||
                 array_keys($validated[$field]) !== array_keys($validated['accounts'])) {
-                throw \\Illuminate\\Validation\\ValidationException::withMessages([
+                throw \Illuminate\Validation\ValidationException::withMessages([
                     $field => 'Voucher line arrays must have identical row keys and lengths.',
                 ]);
             }
         }
         if (isset($validated['line_description']) &&
             array_diff(array_keys($validated['line_description']), array_keys($validated['accounts']))) {
-            throw \\Illuminate\\Validation\\ValidationException::withMessages([
+            throw \Illuminate\Validation\ValidationException::withMessages([
                 'line_description' => 'Descriptions must belong to existing voucher rows.',
             ]);
         }
 
         $selectedProjectId = getSelectedTown();
         if (!$selectedProjectId) {
-            throw \\Illuminate\\Validation\\ValidationException::withMessages([
+            throw \Illuminate\Validation\ValidationException::withMessages([
                 'project' => 'Select a project before posting a journal voucher.',
             ]);
         }
@@ -369,7 +369,7 @@ class JournalVoucherController extends Controller
         $ownedAccounts = ProjectHeadSubhead::where('project_id', $selectedProjectId)
             ->whereIn('id', $subAccountIds)->get(['id', 'head_accounting_id']);
         if ($ownedAccounts->count() !== count($subAccountIds)) {
-            throw \\Illuminate\\Validation\\ValidationException::withMessages([
+            throw \Illuminate\Validation\ValidationException::withMessages([
                 'sub_accounts' => 'Every voucher account must belong to the selected project.',
             ]);
         }
@@ -379,7 +379,7 @@ class JournalVoucherController extends Controller
         foreach ($validated['accounts'] as $index => $headId) {
             $subId = $validated['sub_accounts'][$index];
             if ((string) $headIds->get($subId) !== (string) $headId) {
-                throw \\Illuminate\\Validation\\ValidationException::withMessages([
+                throw \Illuminate\Validation\ValidationException::withMessages([
                     'accounts' => 'Head and subaccount pairing does not match.',
                 ]);
             }
@@ -391,7 +391,7 @@ class JournalVoucherController extends Controller
             $creditCents = ((int) $creditParts[0] * 100) + (int) str_pad($creditParts[1] ?? '', 2, '0');
             if (($debitCents === 0 && $creditCents === 0) ||
                 ($debitCents > 0 && $creditCents > 0)) {
-                throw \\Illuminate\\Validation\\ValidationException::withMessages([
+                throw \Illuminate\Validation\ValidationException::withMessages([
                     'debit' => 'Each row must have either debit or credit, but not both or neither.',
                 ]);
             }
@@ -399,7 +399,7 @@ class JournalVoucherController extends Controller
             $totalCreditCents += $creditCents;
         }
         if ($totalDebitCents <= 0 || $totalDebitCents !== $totalCreditCents) {
-            throw \\Illuminate\\Validation\\ValidationException::withMessages([
+            throw \Illuminate\Validation\ValidationException::withMessages([
                 'debit' => 'Total debit and credit must be equal and greater than zero.',
             ]);
         }
