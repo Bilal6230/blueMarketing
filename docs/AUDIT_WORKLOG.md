@@ -246,3 +246,8 @@
 - User confirmed `LedgerVoucherDisplayEndpointCollisionTest`: **1 passed, 1 intentionally failed (8 assertions)** after pull of `4c46aa4`; genuine JV expected display passes, ambiguous numeric collision scenario shows mismatched header number. No production CV misattribution proven.
 - Created `docs/PHASE1W_COMMISSION_NUMBERING_READER_AUDIT.md`: CV index formatting uses CV header number and 7-character padding; legacy guarded CV store derives its numeric voucher number from `getLastJvId()` (max JV header ID). Reviewed distinctions and follow-up tests.
 - Updated Master Roadmap and Audit Worklog. No financial logic changed, DB writes/migrations or master_live deployment.
+
+## 2026-10-26 — Phase 1X legacy commission numbering baseline tests added
+- User pulled `c6664f8` successfully.
+- Added guarded SQLite-only `CommissionVoucherNumberingBaselineTest.php` covering `get_jv_number()` padding, project-filtered `getLastJvId()` versus `getLastJvVNumber()`, and computed CV legacy number. Tests not run yet.
+- Reviewed prior finance permission tests, which bypass middleware; authenticated route tests remain pending. No application behavior or production DB changes.
