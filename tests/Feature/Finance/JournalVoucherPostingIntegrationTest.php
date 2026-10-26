@@ -236,6 +236,72 @@ class JournalVoucherPostingIntegrationTest extends TestCase
             ->where('project_id', 8)->value('voucher_number'));
     }
 
+    public function test_missing_selected_project_rejects_before_financial_writes(): void
+    {
+        $request = Request::create('/admin/journal-voucher/create', 'POST', $this->payload());
+        $this->app->instance('request', $request);
+        try {
+            app(JournalVoucherController::class)->store($request);
+            $this->fail('Unselected project was accepted.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('project', $e->errors());
+        }
+        $this->assertSame(0, DB::table('journal_vouchers')->count());
+        $this->assertSame(0, DB::table('ledgers')->count());
+    }
+
+    public function test_unknown_subaccount_rejects_before_financial_writes(): void
+    {
+        $p = $this->payload();
+        $p['sub_accounts'][1] = 999999;
+        try {
+            app(JournalVoucherController::class)->store($this->request($p));
+            $this->fail('Unknown subaccount was accepted.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('sub_accounts', $e->errors());
+        }
+        $this->assertSame(0, DB::table('journal_vouchers')->count());
+        $this->assertSame(0, DB::table('ledgers')->count());
+    }
+
+    public function test_three_line_balanced_journal_preserves_totals_and_row_count(): void
+    {
+        $p = $this->payload();
+        $p['accounts'] = [1, 1, 2];
+        $p['sub_accounts'] = [11, 11, 22];
+        $p['debit'] = ['40.10', '60.15', '0.00'];
+        $p['credit'] = ['0.00', '0.00', '100.25'];
+        $p['line_description'] = ['first', 'second', 'third'];
+        app(JournalVoucherController::class)->store($this->request($p));
+        $this->assertSame(1, DB::table('journal_vouchers')->count());
+        $this->assertSame(3, DB::table('journal_voucher_details')->count());
+        $this->assertSame(3, DB::table('ledgers')->count());
+        $this->assertEquals(100.25, DB::table('ledgers')->sum('amount_in'));
+        $this->assertEquals(100.25, DB::table('ledgers')->sum('amount_out'));
+    }
+
+    public function test_failed_posting_does_not_consume_next_header_serial(): void
+    {
+        $attempts = 0;
+        Ledger::creating(function () use (&$attempts) {
+            if (++$attempts === 2) {
+                throw new \RuntimeException('Injected rollback');
+            }
+        });
+        try {
+            app(JournalVoucherController::class)->store($this->request($this->payload()));
+            $this->fail('Expected injected failure.');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('Injected rollback', $e->getMessage());
+        } finally {
+            Ledger::flushEventListeners();
+        }
+        app(JournalVoucherController::class)->store($this->request($this->payload()));
+        $this->assertEquals('1', (string) DB::table('journal_vouchers')->value('voucher_number'));
+        $this->assertSame(1, DB::table('journal_vouchers')->count());
+        $this->assertSame(2, DB::table('ledgers')->count());
+    }
+
     public function test_ledger_failure_rolls_back_header_and_details(): void
     {
         Ledger::creating(function () { throw new \RuntimeException('Simulated ledger write failure'); });
