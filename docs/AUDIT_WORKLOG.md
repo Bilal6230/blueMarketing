@@ -297,3 +297,8 @@
 - User pulled `3a1f6bf`, PHP lint passed; integration + validation + guest HTTP tests **13 passed, 115 assertions**. Five real posting scenarios passed: valid balanced write, cross-project reject, wrong head pairing reject, cents imbalance reject, atomic rollback on simulated ledger failure.
 - Added three tests to `JournalVoucherPostingIntegrationTest.php` for sequential per-project serials and forbidding double-sided or empty individual rows. Not run yet. Added explicit source warning: idempotency is not implemented; project lock alone does not prove concurrent uniqueness.
 - Consistent percentage indicator Phase 1 **30% -> 35%** because valid posting + rollback gate verified; other four phases 0%, overall **6% -> 7%**. Still 0/5 phases completed. No production DB, migration, `master_live` or deployment changes.
+
+## 2026-10-26 — Phase 1 40% milestone; real authenticated Spatie checks added
+- User pulled `3e09092`, PHP lint clean, ran `JournalVoucherPostingIntegrationTest|JournalVoucherStoreValidationTest|VoucherGuestAccessIntegrationTest`: **16 passed, 125 assertions**. This includes newly verified serial separation and per-line posting checks.
+- Added `VoucherAuthenticatedPermissionIntegrationTest.php` with isolated SQLite Spatie schema: authenticated user without finance permissions must get 403 for five gated mutation routes; after granting permissions the same routes must reach HTTP 409 safety guards. **Tests unrun**; fixture errors must not be confused with access defects.
+- Progress estimate Phase 1 **35% -> 40%**, overall **7% -> 8%**, phases 2-5 still 0%, no finished phases. No schema migrations, production SQL or master_live changed.
