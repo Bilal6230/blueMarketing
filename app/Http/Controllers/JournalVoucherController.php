@@ -404,10 +404,9 @@ class JournalVoucherController extends Controller
             ]);
         }
 
-        // Guard repeated browser submissions for the same user/project/reference.
-        // This is an application-level duplicate check, not a complete idempotency
-        // guarantee: true at-most-once posting needs an approved unique DB key.
-                DB::transaction(function () use ($request, $validated, $selectedProjectId, $totalDebitCents, $totalCreditCents) {
+        // Posting is atomic, but client retry idempotency requires a separate
+        // durable uniqueness design. Do not claim retries are deduplicated.
+        DB::transaction(function () use ($validated, $selectedProjectId, $totalDebitCents, $totalCreditCents) {
             // Serialize numbering within this project's row (on databases supporting FOR UPDATE).
             Project::whereKey($selectedProjectId)->lockForUpdate()->firstOrFail();
             $lastVoucherNumber = JournalVoucher::where('project_id', $selectedProjectId)
@@ -418,15 +417,18 @@ class JournalVoucherController extends Controller
                 'reference' => $validated['reference'] ?? null,
                 'date' => $validated['date'],
                 'description' => $validated['description'],
-                'total_debit' => number_format($totalDebitCents / 100, 2, '.', ''),
-                'total_credit' => number_format($totalCreditCents / 100, 2, '.', ''),
+                'total_debit' => intdiv($totalDebitCents, 100) . '.' . str_pad((string) ($totalDebitCents % 100), 2, '0', STR_PAD_LEFT),
+                'total_credit' => intdiv($totalCreditCents, 100) . '.' . str_pad((string) ($totalCreditCents % 100), 2, '0', STR_PAD_LEFT),
                 'created_by' => auth()->id(),
                 'project_id' => $selectedProjectId,
             ]);
 
             foreach ($validated['accounts'] as $index => $accountId) {
-                $debit = number_format((int) explode('.', (string) $validated['debit'][$index])[0] + (int) str_pad(explode('.', (string) $validated['debit'][$index])[1] ?? '', 2, '0') / 100, 2, '.', '');
-                $credit = number_format((int) explode('.', (string) $validated['credit'][$index])[0] + (int) str_pad(explode('.', (string) $validated['credit'][$index])[1] ?? '', 2, '0') / 100, 2, '.', '');
+                // Preserve exact validated decimal digits; do not round-trip through float.
+                $debitParts = explode('.', (string) $validated['debit'][$index]);
+                $creditParts = explode('.', (string) $validated['credit'][$index]);
+                $debit = $debitParts[0] . '.' . str_pad($debitParts[1] ?? '', 2, '0');
+                $credit = $creditParts[0] . '.' . str_pad($creditParts[1] ?? '', 2, '0');
                 JournalVoucherDetail::create([
                     'journal_voucher_id' => $journalVoucher->id,
                     'account_id' => $validated['sub_accounts'][$index],
