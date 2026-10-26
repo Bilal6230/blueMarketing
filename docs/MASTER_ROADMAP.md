@@ -1,6 +1,6 @@
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (Phase 1Y SQLite users fixture corrected; rerun pending)
+**Last updated:** 2026-10-26 (Phase 1Y isolated Spatie permissions fixture expanded; rerun pending)
 **Active Git branch:** `upgrade/laravel-framework`  
 **Latest confirmed local verification:** `UnsafeVoucherActionGateTest` — **5 passed, 10 assertions** (user's local Laragon environment)  
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
@@ -226,3 +226,8 @@ Assistant must:
 - User pulled `f06b2d4`, PHP lint passed; CV listing test still fails **before assertions** with SQLite `no such table: users` because `CommissionVoucherController::index` fetches `User::get()` even for AJAX.
 - Added minimal SQLite-only `users` fixture (commit `e2c63a38`); **not yet rerun**. This is a test fixture correction, not evidence of a business behavior bug.
 - Next verify targeted test before permission route work. Production MySQL / master_live unchanged.
+
+## Phase 1Y — permissions view fixture dependency
+- User pulled `db16d30`; PHP lint passed; CV listing test failed **before assertions** in `actions.blade.php`: missing SQLite `permissions` table under `@canany` permission checks.
+- Expanded test-only isolated SQLite schema to include `permissions`, `model_has_permissions`, `model_has_roles`, and `role_has_permissions`, and cleared Spatie permission cache (commit `f02fd008`). No permissions or application logic changed in live database.
+- **Unrun change:** rerun targeted test after pull. If it fails again, inspect fixture/Blade dependency, not business logic. Authenticated end-to-end route permission coverage still pending.
