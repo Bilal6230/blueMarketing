@@ -91,8 +91,7 @@ class FinancialHistoryPreservationTest extends TestCase
 
         app(CommissionVoucherController::class)->destroy($voucherId);
 
-        $this->assertDatabaseHas('ledgers', ['id' => $ledgerId],
-            'A voucher delete must preserve source ledger history for reversal/voiding.');
+        $this->assertDatabaseHas('ledgers', ['id' => $ledgerId]);
     }
 
     public function test_deleting_journal_voucher_preserves_original_ledger_rows(): void
@@ -110,7 +109,6 @@ class FinancialHistoryPreservationTest extends TestCase
 
         app(JournalVoucherController::class)->destroy($voucherId);
 
-        $this->assertDatabaseHas('ledgers', ['id' => $ledgerId],
-            'A journal voucher delete must preserve source ledger history for reversal/voiding.');
+        $this->assertDatabaseHas('ledgers', ['id' => $ledgerId]);
     }
 }
