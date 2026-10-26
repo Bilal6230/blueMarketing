@@ -122,3 +122,8 @@
 - Added `tests/Feature/Finance/JournalVoucherCollisionTest.php`: independent JV headers `41` and `88`; detail ID `88` belongs to header `41`; ledger `type=JV,type_id=88` belongs to independent header `88`. The test invokes JV header `41` update and expects unrelated ledger row to survive.
 - Fixture enforces SQLite `:memory:` before schema setup; **not executed** yet. A failing ledger assertion would demonstrate cross-voucher header/detail ID collision, while any earlier setup error must be fixed first.
 - Run `php -l tests/Feature/Finance/JournalVoucherCollisionTest.php` and `php artisan test --filter=JournalVoucherCollisionTest` locally; no MySQL migrations, controller changes or production deployment.
+
+## 2026-10-26 — Phase 1J redirect diagnostic gate
+- User pulled `f245065` and PHP lint passed; test stopped on expected success redirect check (`http://localhost` rather than journal route): 1 failed, 2 assertions.
+- **No verified cross-JV ledger loss yet**: test was blocked before ledger assertion. Updated test to check unrelated ledger preservation first, then diagnose redirect; rerun needed. An error redirect may indicate controller caught an exception and rolled back.
+- No application controller / financial database changes.
