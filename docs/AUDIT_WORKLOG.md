@@ -319,3 +319,9 @@
 - User pulled `48cc8f2`, PHP lint passed and selected JV posting/authentication suite **22 passed, 150 assertions**, including 123456789.01 exact decimal regression.
 - Expanded actual-controller SQLite JV posting integration tests with missing project, unknown subaccount, split three-line balanced journal, rollback followed by successful next serial. **Not yet run.** Did not change business logic; true concurrent idempotency still requires approved durable uniqueness design.
 - Percentage remains **Phase 1 50%, overall 10%, other phases 0%** pending new verified exit gates. Avoid invented 10/20-point jumps. No production SQL, master_live or migrations touched.
+
+## 2026-10-26 — 26 passing selected tests; actual read-only JV inspector introduced
+- User pulled `c6a6626`, PHP lint clean, local JV/security suite **26 PASS / 165 assertions**.
+- Added `JournalVoucherIntegrityInspector` as a reusable read-only financial check: balanced header versus active details using integer cents and project-scoped header selection, explicit report issue codes and candidate ledger count while marking provenance unknown. Historic JV/CV overlaps cannot be resolved from `type_id` alone.
+- Extended real controller SQLite posting integration test with three reconciliation checks: balanced match, mismatch flag without mutation, other-project blocked. **New code/tests not locally executed**.
+- Progress **Phase 1 50%, overall 10%, remaining four phases 0%**, pending verification. No data migrations, production MySQL or master_live changes.
