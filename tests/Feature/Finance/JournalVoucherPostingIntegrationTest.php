@@ -332,6 +332,34 @@ class JournalVoucherPostingIntegrationTest extends TestCase
         app(\App\Services\Finance\JournalVoucherIntegrityInspector::class)->inspect(8, 1);
     }
 
+    public function test_artisan_read_only_jv_audit_reports_consistent_project_voucher(): void
+    {
+        app(JournalVoucherController::class)->store($this->request($this->payload()));
+        $this->artisan('finance:audit-jv', ['project' => 7, '--limit' => 10])
+            ->expectsOutputToContain('Read-only audit: 1 vouchers, 0 flagged.')
+            ->assertExitCode(0);
+        $this->assertSame(1, DB::table('journal_vouchers')->count());
+        $this->assertSame(2, DB::table('ledgers')->count());
+    }
+
+    public function test_artisan_read_only_jv_audit_returns_failure_for_header_detail_mismatch(): void
+    {
+        app(JournalVoucherController::class)->store($this->request($this->payload()));
+        DB::table('journal_vouchers')->where('id', 1)->update(['total_credit' => '99.00']);
+        $this->artisan('finance:audit-jv', ['project' => 7, '--limit' => 10])
+            ->expectsOutputToContain('Read-only audit: 1 vouchers, 1 flagged.')
+            ->assertExitCode(1);
+        $this->assertEquals(99.00, DB::table('journal_vouchers')->where('id', 1)->value('total_credit'));
+    }
+
+    public function test_artisan_jv_audit_rejects_invalid_project_before_querying(): void
+    {
+        $this->artisan('finance:audit-jv', ['project' => '0'])
+            ->expectsOutputToContain('Provide a positive numeric project ID')
+            ->assertExitCode(2);
+        $this->assertSame(0, DB::table('journal_vouchers')->count());
+    }
+
     public function test_ledger_failure_rolls_back_header_and_details(): void
     {
         Ledger::creating(function () { throw new \RuntimeException('Simulated ledger write failure'); });
