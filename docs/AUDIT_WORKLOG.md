@@ -314,3 +314,8 @@
 - Modified active JV store on upgrade branch only: remove float round-trip when persisting header and per-row monetary values, instead format from integer cents and validated decimal strings. Corrected inaccurate source comment about client retry idempotency (still NOT implemented).
 - Added large-amount `123456789.01` real posting regression (not run yet). Schema precision and compatibility need verification; no release authorization.
 - Planning progress Phase 1 **45% -> 50%**, overall **9% -> 10%** based on verified gates; other stages 0%, no phase complete. Updated Master Roadmap; no live MySQL/migrations/master_live touched.
+
+## 2026-10-26 — 22 verified targeted tests / 150 assertions; broader acceptance tests added
+- User pulled `48cc8f2`, PHP lint passed and selected JV posting/authentication suite **22 passed, 150 assertions**, including 123456789.01 exact decimal regression.
+- Expanded actual-controller SQLite JV posting integration tests with missing project, unknown subaccount, split three-line balanced journal, rollback followed by successful next serial. **Not yet run.** Did not change business logic; true concurrent idempotency still requires approved durable uniqueness design.
+- Percentage remains **Phase 1 50%, overall 10%, other phases 0%** pending new verified exit gates. Avoid invented 10/20-point jumps. No production SQL, master_live or migrations touched.
