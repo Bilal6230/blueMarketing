@@ -325,80 +325,131 @@ class JournalVoucherController extends Controller
 
     public function store(Request $request)
     {
-        $lastVoucherId = getLastJvVNumber();
-
-        $request->validate([
+        $validated = $request->validate([
             'voucher_number' => 'required|string',
             'reference' => 'nullable|string',
             'date' => 'required|date',
             'description' => 'required|string',
-            'accounts' => 'required|array|min:1',
-            'sub_accounts' => 'required|array|min:1',
+            'accounts' => 'required|array|min:2',
+            'accounts.*' => 'required|integer',
+            'sub_accounts' => 'required|array|min:2',
+            'sub_accounts.*' => 'required|integer',
             'line_description' => 'nullable|array',
-            'debit' => 'required|array|min:1',
-            'credit' => 'required|array|min:1',
+            'line_description.*' => 'nullable|string',
+            'debit' => 'required|array|min:2',
+            'debit.*' => ['required', 'regex:/^\\d+(?:\\.\\d{1,2})?$/'],
+            'credit' => 'required|array|min:2',
+            'credit.*' => ['required', 'regex:/^\\d+(?:\\.\\d{1,2})?$/'],
         ]);
 
-        $totalDebit = array_sum($request->debit);
-        $totalCredit = array_sum($request->credit);
-
-        if ($totalDebit !== $totalCredit) {
-            return redirect()->back()->withErrors(['Total debit and credit must be equal.']);
+        $count = count($validated['accounts']);
+        foreach (['sub_accounts', 'debit', 'credit'] as $field) {
+            if (count($validated[$field]) !== $count ||
+                array_keys($validated[$field]) !== array_keys($validated['accounts'])) {
+                throw \\Illuminate\\Validation\\ValidationException::withMessages([
+                    $field => 'Voucher line arrays must have identical row keys and lengths.',
+                ]);
+            }
         }
+        if (isset($validated['line_description']) &&
+            array_diff(array_keys($validated['line_description']), array_keys($validated['accounts']))) {
+            throw \\Illuminate\\Validation\\ValidationException::withMessages([
+                'line_description' => 'Descriptions must belong to existing voucher rows.',
+            ]);
+        }
+
         $selectedProjectId = getSelectedTown();
-
-        DB::beginTransaction();
-        // try {
-        // Create Journal Voucher Record
-        $journalVoucher = JournalVoucher::create([
-            'voucher_number' => $lastVoucherId + 1,
-            'type' => 'JV',
-            'reference' => $request->reference,
-            'date' => $request->date,
-            'description' => $request->description,
-            'total_debit' => $totalDebit, // Add total debit
-            'total_credit' => $totalCredit, // Add total credit
-            'created_by' => auth()->id(),
-            'project_id' => $selectedProjectId,
-        ]);
-
-
-        // Add Ledger Entries
-        foreach ($request->accounts as $index => $accountId) {
-
-            $JvDetails = JournalVoucherDetail::create([
-                'journal_voucher_id' => $journalVoucher->id,
-                'account_id' => $request->sub_accounts[$index],
-                'debit' => $request->debit[$index] ?? 0,
-                'credit' => $request->credit[$index] ?? 0,
-                'description' => $request->line_description[$index] ?? '',
-                'created_by' => auth()->id(),
-            ]);
-
-
-            $voucherNumber = getVocuherNumber(($request->debit[$index] ?? 0) > 0 ? 'JV' : 'JV');
-            $ledgerData = Ledger::create([
-                'voucher_number' => $voucherNumber,
-                'type' => ($request->debit[$index] ?? 0) > 0 ? 'JV' : 'JV',
-                'type_id' => $journalVoucher->id,
-                'project_head_subheads_id' => $request->sub_accounts[$index],
-                'reference' => $request->reference,
-                'amount_in' => $request->debit[$index] ?? 0,
-                'amount_out' => $request->credit[$index] ?? 0,
-                'detail' => $request->line_description[$index] ?? '',
-                'create_by' => auth()->id(),
-                'is_active' => true,
-                'status' => '0',
-                'date' => $request->date,
+        if (!$selectedProjectId) {
+            throw \\Illuminate\\Validation\\ValidationException::withMessages([
+                'project' => 'Select a project before posting a journal voucher.',
             ]);
         }
 
-        DB::commit();
+        $subAccountIds = array_values(array_unique(array_map('intval', $validated['sub_accounts'])));
+        $ownedAccounts = ProjectHeadSubhead::where('project_id', $selectedProjectId)
+            ->whereIn('id', $subAccountIds)->get(['id', 'head_accounting_id']);
+        if ($ownedAccounts->count() !== count($subAccountIds)) {
+            throw \\Illuminate\\Validation\\ValidationException::withMessages([
+                'sub_accounts' => 'Every voucher account must belong to the selected project.',
+            ]);
+        }
+        $headIds = $ownedAccounts->pluck('head_accounting_id', 'id');
+        $totalDebitCents = 0;
+        $totalCreditCents = 0;
+        foreach ($validated['accounts'] as $index => $headId) {
+            $subId = $validated['sub_accounts'][$index];
+            if ((string) $headIds->get($subId) !== (string) $headId) {
+                throw \\Illuminate\\Validation\\ValidationException::withMessages([
+                    'accounts' => 'Head and subaccount pairing does not match.',
+                ]);
+            }
+
+            // Fixed-point addition avoids floating point equality errors.
+            $debitParts = explode('.', (string) $validated['debit'][$index]);
+            $creditParts = explode('.', (string) $validated['credit'][$index]);
+            $debitCents = ((int) $debitParts[0] * 100) + (int) str_pad($debitParts[1] ?? '', 2, '0');
+            $creditCents = ((int) $creditParts[0] * 100) + (int) str_pad($creditParts[1] ?? '', 2, '0');
+            if (($debitCents === 0 && $creditCents === 0) ||
+                ($debitCents > 0 && $creditCents > 0)) {
+                throw \\Illuminate\\Validation\\ValidationException::withMessages([
+                    'debit' => 'Each row must have either debit or credit, but not both or neither.',
+                ]);
+            }
+            $totalDebitCents += $debitCents;
+            $totalCreditCents += $creditCents;
+        }
+        if ($totalDebitCents <= 0 || $totalDebitCents !== $totalCreditCents) {
+            throw \\Illuminate\\Validation\\ValidationException::withMessages([
+                'debit' => 'Total debit and credit must be equal and greater than zero.',
+            ]);
+        }
+
+        DB::transaction(function () use ($request, $validated, $selectedProjectId, $totalDebitCents, $totalCreditCents) {
+            // Serialize numbering within this project's row (on databases supporting FOR UPDATE).
+            Project::whereKey($selectedProjectId)->lockForUpdate()->firstOrFail();
+            $lastVoucherNumber = JournalVoucher::where('project_id', $selectedProjectId)
+                ->where('type', 'JV')->withTrashed()->orderByDesc('id')->value('voucher_number');
+            $journalVoucher = JournalVoucher::create([
+                'voucher_number' => ((int) $lastVoucherNumber) + 1,
+                'type' => 'JV',
+                'reference' => $validated['reference'] ?? null,
+                'date' => $validated['date'],
+                'description' => $validated['description'],
+                'total_debit' => number_format($totalDebitCents / 100, 2, '.', ''),
+                'total_credit' => number_format($totalCreditCents / 100, 2, '.', ''),
+                'created_by' => auth()->id(),
+                'project_id' => $selectedProjectId,
+            ]);
+
+            foreach ($validated['accounts'] as $index => $accountId) {
+                $debit = number_format((float) $validated['debit'][$index], 2, '.', '');
+                $credit = number_format((float) $validated['credit'][$index], 2, '.', '');
+                JournalVoucherDetail::create([
+                    'journal_voucher_id' => $journalVoucher->id,
+                    'account_id' => $validated['sub_accounts'][$index],
+                    'debit' => $debit,
+                    'credit' => $credit,
+                    'description' => $validated['line_description'][$index] ?? '',
+                    'created_by' => auth()->id(),
+                ]);
+                Ledger::create([
+                    'voucher_number' => getVocuherNumber('JV'),
+                    'type' => 'JV',
+                    'type_id' => $journalVoucher->id,
+                    'project_head_subheads_id' => $validated['sub_accounts'][$index],
+                    'reference' => $validated['reference'] ?? null,
+                    'amount_in' => $debit,
+                    'amount_out' => $credit,
+                    'detail' => $validated['line_description'][$index] ?? '',
+                    'create_by' => auth()->id(),
+                    'is_active' => true,
+                    'status' => '0',
+                    'date' => $validated['date'],
+                ]);
+            }
+        });
+
         return redirect()->route('journal.voucher.index')->with('success', 'Journal Voucher created successfully.');
-        // } catch (\Exception $e) {
-        //     DB::rollBack();
-        //     return redirect()->back()->withErrors(['error' => $e->getMessage()]);
-        // }
     }
 
     // public function edit($id)
