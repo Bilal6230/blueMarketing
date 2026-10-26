@@ -25,6 +25,12 @@ class UnsafeVoucherActionGateTest extends TestCase
         $this->assertBlocked(fn () => app(JournalVoucherController::class)->destroy(41));
     }
 
+    public function test_commission_voucher_create_is_blocked_before_financial_mutation(): void
+    {
+        $this->assertBlocked(fn () => app(CommissionVoucherController::class)
+            ->store(Request::create('/test-cv', 'POST')));
+    }
+
     public function test_commission_voucher_update_is_blocked_before_financial_mutation(): void
     {
         $this->assertBlocked(fn () => app(CommissionVoucherController::class)
