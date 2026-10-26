@@ -162,3 +162,9 @@
 - Historical `CommissionVoucherUpdateIsolationTest` source-contract guards remain intentionally RED because original unsafe statements are still present behind the temporary 409 gate. Full suite may still report these failures; do not advertise full suite passing.
 - New transitioned tests **not yet executed**; recommended targeted run `php artisan test --filter='UnsafeVoucherActionGateTest|CommissionVoucherCollisionTest|JournalVoucherCollisionTest|FinancialHistoryPreservationTest'` in isolated testing environment.
 - No migrations, production data changes or `master_live` changes.
+
+## 2026-10-26 — Phase 1M isolated safety suite GREEN
+- User pulled commit `9eff1c7` and ran isolated targeted suite: **8 passed, 16 assertions**, covering JV/CV four blocked update/delete entrypoints and four ledger-preservation scenarios.
+- Passing tests demonstrate temporary fail-closed HTTP 409 protection, **not** restoration of normal voucher edit/delete, historical data correction or implementation of reversal posting.
+- Four `CommissionVoucherUpdateIsolationTest` source tests still target unsafe statements located behind unconditional guards and are intentionally RED. Next: preserve this historical diagnostic evidence, introduce explicit behavioral guards, and run full suite to identify wider compatibility breaks. Do not claim full suite green.
+- No production deployments, migrations or MySQL data changes.
