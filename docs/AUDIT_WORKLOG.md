@@ -325,3 +325,8 @@
 - Added `JournalVoucherIntegrityInspector` as a reusable read-only financial check: balanced header versus active details using integer cents and project-scoped header selection, explicit report issue codes and candidate ledger count while marking provenance unknown. Historic JV/CV overlaps cannot be resolved from `type_id` alone.
 - Extended real controller SQLite posting integration test with three reconciliation checks: balanced match, mismatch flag without mutation, other-project blocked. **New code/tests not locally executed**.
 - Progress **Phase 1 50%, overall 10%, remaining four phases 0%**, pending verification. No data migrations, production MySQL or master_live changes.
+
+## 2026-10-26 — test PHP parse failure after read-only inspector implementation
+- User pulled `78d1d72`; inspector PHP lint passed. `JournalVoucherPostingIntegrationTest.php` lint and PHPUnit loader failed on line 308 `unexpected token \\` due to doubled backslashes in class FQCNs inserted by assistant. No test assertions ran. This is a test syntax error, not evidence of a business defect.
+- Corrected all introduced FQCN escapes at 3 inspector calls and exception class in commit `06d964b`; fetched post-commit source to verify text. Await local PHP lint and targeted test execution. No MySQL, migration, production data or master_live touched.
+- Status remains Phase 1 50%, overall 10%; 0/5 completed.
