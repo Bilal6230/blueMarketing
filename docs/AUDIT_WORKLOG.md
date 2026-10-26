@@ -194,3 +194,9 @@
 - Added `tests/Feature/Finance/VoucherSafetyHttpRouteTest.php` to exercise actual registered CV create/edit/delete and JV edit/delete HTTP endpoints with middleware disabled and independently verify permission middleware declarations for those plus JV creation.
 - These checks do not yet prove authentication or permission middleware behavior end-to-end; a separate authenticated isolated test is still needed.
 - Updated master roadmap; next local gate `php artisan test --filter=VoucherSafetyHttpRouteTest`. No code business logic changes, migrations or production activity.
+
+## 2026-10-26 — Phase 1Q locally verified, Phase 1R limited ledger reader map
+- User pulled `d048614`, ran `VoucherSafetyHttpRouteTest`: **2 passed / 17 assertions**; route actions have middleware disabled in this test and auth permissions are verified by route declaration only.
+- Created `docs/PHASE1R_LEDGER_REPORT_READER_MAP.md`: LedgerController's JV DataTables display reader resolves `type_id` against JournalVoucher for all `type='JV'` entries; legacy CV stores also emitted `JV` rows, so colliding IDs pose a possible voucher-number display misattribution. This is source inspection, not confirmed production corruption.
+- Updated `docs/MASTER_ROADMAP.md`. Next: isolated display-collision regression and broader readers/auth audit.
+- No MySQL writes, migrations, controller logic modifications, deployments or master_live changes.
