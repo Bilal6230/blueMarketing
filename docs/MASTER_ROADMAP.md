@@ -1,8 +1,22 @@
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (Phase 1Z 14 voucher route security test and active JV posting audit)
+## Five-stage delivery progress (qualitative, NOT percentage of code completed)
+
+| Stage | Progress | Exit condition |
+|---|---|---|
+| **1. Audit / safe accounting baseline** | **IN PROGRESS** — investigation + first JV-create hardening committed, awaiting tests | real permissions, tested JV posting, historical integrity plan and full-suite verification |
+| **2. Typed financial posting & reconciliation** | **NOT STARTED** | approved source IDs, reversal workflow, staging reconciliation |
+| **3. Security / activity logging** | **NOT STARTED** | centralized auditable change history and authorization hardening |
+| **4. Modules and integrations** | **NOT STARTED** | agreed modules/integrations including attendance |
+| **5. Staging / release** | **NOT STARTED** | tests, backed-up staging signoff and explicit live deployment approval |
+
+**Progress bar:** Phase 1 [■■■□□□□□□□] *illustrative partial progress only, not measured completion*; Phases 2–5 [□□□□□□□□□□]. **0 of 5 stages finished.**
+
+# BlueMarketing — Master Roadmap & Cross-Chat Handoff
+
+**Last updated:** 2026-10-26 (Phase 1 delivery batch: JV store validation and atomic posting hardening, UNVERIFIED locally)
 **Active Git branch:** `upgrade/laravel-framework`  
-**Latest confirmed local verification:** Phase 1Z `VoucherGuestAccessIntegrationTest` **3 passed / 89 assertions**; combined finance safety tests **10 passed / 37 assertions** (2026-10-26; user's local Laragon environment).
+**Latest confirmed local verification:** 13 targeted tests passed / 126 assertions (prior batch). New JV hardening tests remain unrun.
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
 **Status:** In-progress accounting integrity hardening; **not production approved**.
 
@@ -260,3 +274,10 @@ Assistant must:
 - Added `tests/Feature/Finance/VoucherGuestAccessIntegrationTest.php`, covering **14 real JV/CV routes** for declared auth and exact action permission, unauthenticated HTTP access (middleware enabled), and **5** temporary 409 write gates after explicitly bypassing middleware. Unlike Phase 1Q, its guest test keeps middleware enabled. **New tests not locally run.**
 - Added `docs/PHASE1Z_FINANCE_SECURITY_POSTING_AUDIT.md`: comprehensive read-only check of active JV store risks (array length/value validation, decimal balance, per-project serial concurrency, exception rollback, idempotency, project ownership) and safe approved posting-service roadmap.
 - Next batch: actual user roles/permission integration (not merely guest), and isolated JV store input validation tests; no controller, migrations, production MySQL or master_live modifications. Known intentionally RED diagnostics remain.
+
+## Latest Phase 1 engineering delivery: active JV creation hardened (verification pending)
+- User requested meaningful multi-change batches and a visible five-phase progress indicator in every reply, rather than endless lettered subphases. Keep **0/5 phases completed** until formal exit gates pass.
+- Modified `JournalVoucherController::store` on **upgrade branch only**: validate same row keys/lengths, two-sided accounting rows, bounded 2-decimal nonnegative monetary inputs, exactly one debit/credit side per row, project and account/head ownership, required balanced positive debit/credit cents, plus `DB::transaction` and project-row lock before serial assignment. Controller's existing success redirect maintained; no historic ledgers were modified. This is **not** full idempotent immutable posting or a deployment-approved fix.
+- Added `tests/Feature/Finance/JournalVoucherStoreValidationTest.php` with 5 invalid input scenarios: mismatched rows, negatives, fractional cents, nonnumeric money and empty rows. **Tests are not locally executed**. Test only rejects inputs before DB writes; valid posting + rollback needs further SQLite fixture and verification.
+- Caution: newly added numeric/account rules may reject previously accepted user input formats; verify production form payloads and genuine balanced JV posting using isolated SQLite before any deployment. No migrations/production MySQL touched.
+- Next: user lint + targeted tests and existing finance regression; then full authorized/unauthorized middleware tests, valid posting/rollback fixture, staging reconciliation. Never alter `master_live` without approval.
