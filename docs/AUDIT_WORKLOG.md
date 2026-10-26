@@ -363,3 +363,8 @@
 - User locally verified `4e03751`: CV safety targeted suite **9 passed / 26 assertions**, full suite **282 passed / 2 failed / 1314 assertions**. Remaining RED diagnostics are legitimate `JV type_id` / legacy CV source collisions.
 - Created read-only `LegacyVoucherCollisionInspector` and `finance:audit-voucher-collisions` CLI with explicit project scope and bounded IDs; risk classification is only numeric header overlap, not verified source. Two SQLite tests added; **unrun**.
 - No ledger display heuristics or mutations, no production access. Progress Phase 1 60%, overall 12%, 0/5 phases complete pending testing/typed source design.
+
+## 2026-10-26 — 284 passing / 2 known RED diagnostics; collision-aware audit
+- User verified `e4b8876`: targeted **39 pass/137 assertions**, complete suite **284 pass/2 fail/1323 assertions**. Last failures are ledger display mis-attribution from overlapping legacy numeric IDs.
+- Actual `finance:audit-jv` now flags `numeric_jv_cv_header_id_overlap` for each project-scoped JV/CV ID overlap even if each posting's header/detail balances; issue-only reporting shows it; no ledger source guessing or data modification. Added unrun SQLite regression.
+- Planning Phase 1 **60 -> 65%**, overall **12 -> 13%** due to verified collision-inventory milestone, not new unverified change. Other phases remain 0%, 0/5 complete. Production and master_live untouched.
