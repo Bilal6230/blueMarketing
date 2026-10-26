@@ -336,3 +336,8 @@
 - Added bounded project-specific read-only `finance:audit-jv {project} --limit=100` artisan command at `app/Console/Commands/AuditJournalVouchers.php`; emits JSON summaries and flags mismatch without mutating rows. Source `type='JV'` ledger provenance remains ambiguous. Added 3 integration tests for command success, mismatch failure code, invalid project. **Not yet run**. Avoid production DB execution without explicit approval.
 - Progress Phase 1 **50 -> 55%**, overall **10 -> 11%**, phases 2–5 0%, 0/5 complete; uplift from verified inspector milestone only.
 - No migration, production MySQL write, master_live change or deployment.
+
+## 2026-10-26 — 32 finance tests verified; combined JV/CV read-only audit delivered, pending test
+- User pulled `31d57b7`, lint clean; selected JV posting, validation and authorization suite **32 passed / 186 assertions**, including 3 genuine Artisan auditor scenarios.
+- Added `CommissionVoucherIntegrityInspector` (project-scoped, integer-cents, read-only) and expanded `finance:audit-jv` CLI `--type=CV` (JV remains default). Added 3 CV balanced/mismatch/foreign-project tests in SQLite only, unrun. Historical JV/CV ledger provenance still uncertain and never inferred from numeric collision.
+- Progress Phase 1 **55 -> 60%** based on verified JV CLI, overall **11 -> 12%** with equal 5-phase weights. No stages completed. No live database, migrations or master_live writes.
