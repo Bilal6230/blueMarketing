@@ -42,3 +42,9 @@
 - Distinguished original-creation-file drift from a *full cumulative* migration diff (still pending).
 - Added [PHASE1C_FINANCIAL_SCHEMA_CHECKS.md](PHASE1C_FINANCIAL_SCHEMA_CHECKS.md), containing schema drift matrix and SELECT-only orphan/imbalance/duplicate diagnostics for isolated DB copy.
 - No data-level checks yet executed; no repository application changes or database modifications.
+
+## 2026-10-26 — Phase 1D application code audit
+- Inspected write/delete paths in eleven controllers (finance, ledger, JV/CV, booking, stock, labour, users, leads, projects/plots).
+- Verified destructive stock item/party cascading application deletes and JV/CV ledger deletion paths, CV update filtering JV-type postings, hard-delete risks in User/Labour controllers, and builder updates bypassing observers.
+- Source references, risk levels and test gates: [PHASE1D_APPLICATION_WRITE_AUDIT.md](PHASE1D_APPLICATION_WRITE_AUDIT.md).
+- No DB/data/code changes. Next: targeted regression tests and complete controller coverage before implementation.
