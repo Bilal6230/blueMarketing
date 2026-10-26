@@ -125,6 +125,9 @@ class CommissionVoucherController extends Controller
 
     public function store(Request $request)
     {
+        // Legacy CV creation posts entries as JV, so fail closed until typed posting is implemented.
+        abort(409, 'Commission voucher creation is temporarily disabled to protect accounting history.');
+
         // dd($request->all());
         $lastVoucherId = getLastJvId();
 
