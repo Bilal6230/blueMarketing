@@ -188,3 +188,9 @@
 - Observed potential JV store concerns: incomplete array/numeric/project validation, lack of explicit exception rollback, voucher sequence concurrency and idempotency; these require isolated tests and are not demonstrated production failures.
 - CV store and JV/CV update/destroy remain temporarily guarded. Next: HTTP-route tests with middleware and read-only voucher-report mapping.
 - Updated `docs/MASTER_ROADMAP.md` as continuity contract requires. No production data, migrations or master_live changes; no tests executed during this audit phase.
+
+## 2026-10-26 — Phase 1Q registered voucher route safety checks (pending local execution)
+- User successfully pulled Phase 1P latest commit `6632e9e`.
+- Added `tests/Feature/Finance/VoucherSafetyHttpRouteTest.php` to exercise actual registered CV create/edit/delete and JV edit/delete HTTP endpoints with middleware disabled and independently verify permission middleware declarations for those plus JV creation.
+- These checks do not yet prove authentication or permission middleware behavior end-to-end; a separate authenticated isolated test is still needed.
+- Updated master roadmap; next local gate `php artisan test --filter=VoucherSafetyHttpRouteTest`. No code business logic changes, migrations or production activity.
