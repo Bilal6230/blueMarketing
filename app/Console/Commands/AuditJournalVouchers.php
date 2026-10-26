@@ -7,6 +7,7 @@ use App\Models\CommisionVoucher;
 use App\Services\Finance\CommissionVoucherIntegrityInspector;
 use App\Services\Finance\JournalVoucherIntegrityInspector;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Read-only integrity report. Never modifies or reclassifies ledger history.
@@ -43,17 +44,26 @@ class AuditJournalVouchers extends Command
                 $result = $voucherType === 'JV'
                     ? $inspector->inspect($project, (int) $id)
                     : $cvInspector->inspect($project, (int) $id);
+                // A shared numeric ID across the two header tables is an
+                // unresolved source-identity risk even if both vouchers balance.
+                $otherTable = $voucherType === 'JV' ? 'commision_vouchers' : 'journal_vouchers';
+                $overlappingHeader = DB::table($otherTable)
+                    ->where('project_id', $project)->where('id', $id)->exists();
+                $issues = $result['issues'];
+                if ($overlappingHeader) {
+                    $issues[] = 'numeric_jv_cv_header_id_overlap';
+                }
                 $total++;
-                if (!$result['header_details_consistent']) {
+                if ($issues !== []) {
                     $flagged++;
                 }
-                if ($onlyIssues && $result['header_details_consistent']) {
+                if ($onlyIssues && $issues === []) {
                     continue;
                 }
                 $this->line(json_encode([
                     'voucher_type' => $voucherType,
                     'voucher_id' => (int) $id,
-                    'issues' => $result['issues'],
+                    'issues' => $issues,
                     'detail_debit_cents' => $result['detail_debit_cents'],
                     'detail_credit_cents' => $result['detail_credit_cents'],
                     'candidate_jv_ledger_rows' => $result['candidate_jv_ledger_rows'] ?? null,
