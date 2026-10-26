@@ -116,3 +116,9 @@
 - Parsed uploaded staging SQL export **read-only**: 17,850 ledger rows; 2,823 JV-type; 991 JV headers; 5,080 JV detail rows. CV header and detail tables exist, but **no INSERT records** found.
 - Of JV-ledger references, 2,742 IDs exist in both JV header and detail tables; 81 exist only in details. Numeric overlap is ambiguous and NOT automatically corruption.
 - Aggregate-only findings and caveats: [PHASE1I_STAGING_LEDGER_REFERENCE_INVENTORY.md](PHASE1I_STAGING_LEDGER_REFERENCE_INVENTORY.md). No personal row values committed. Next: isolated JV update collision test and reader audit.
+
+## 2026-10-26 — Phase 1J JV header/detail ID collision regression added
+- User successfully pulled Phase 1I docs (`751a6bc`).
+- Added `tests/Feature/Finance/JournalVoucherCollisionTest.php`: independent JV headers `41` and `88`; detail ID `88` belongs to header `41`; ledger `type=JV,type_id=88` belongs to independent header `88`. The test invokes JV header `41` update and expects unrelated ledger row to survive.
+- Fixture enforces SQLite `:memory:` before schema setup; **not executed** yet. A failing ledger assertion would demonstrate cross-voucher header/detail ID collision, while any earlier setup error must be fixed first.
+- Run `php -l tests/Feature/Finance/JournalVoucherCollisionTest.php` and `php artisan test --filter=JournalVoucherCollisionTest` locally; no MySQL migrations, controller changes or production deployment.
