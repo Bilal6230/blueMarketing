@@ -63,3 +63,9 @@
 - Corrected test assertion commit `88302244`. Tests are intentionally red until an approved financial void/reversal design is implemented.
 - **Blocking decisions before code change:** whether historic JV/CV may be voided, how approved entries are reversed, ledger balances and report filtering, linked voucher detail retention, authorization/reason requirements, and old-data compatibility.
 - Next: add CV update cross-type isolation tests, document void/reversal transaction invariants, implement in isolation only after review. Do not change `master_live` or run migrations.
+
+## 2026-10-26 — Phase 1F CV update isolation guards
+- Inspected `CommissionVoucherController::update`: deletes ledger rows filtered as `JV`, then creates new ledger entries with `type='JV'` even though this controller edits Commission Vouchers. Type/type_id may refer to detail identities: actual database-backed collision scenarios remain to be tested.
+- Added `tests/Unit/Finance/CommissionVoucherUpdateIsolationTest.php` (two intentional RED source-contract guards: no JV-type deletion or creation by CV update).
+- These are **static guards**, not integration tests and not yet executed. Run with `php artisan test --filter=CommissionVoucherUpdateIsolationTest` on local machine; failure is expected until reviewed implementation.
+- No production DB, migrations or controller code changed. Next: use failure result to design isolated fixture-backed update regression and safe fix.
