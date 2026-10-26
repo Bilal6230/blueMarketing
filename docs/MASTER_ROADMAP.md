@@ -1,6 +1,6 @@
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (Phase 1T actual endpoint test added; execution pending)  
+**Last updated:** 2026-10-26 (Phase 1T fixture diagnostics pending rerun)  
 **Active Git branch:** `upgrade/laravel-framework`  
 **Latest confirmed local verification:** `UnsafeVoucherActionGateTest` — **5 passed, 10 assertions** (user's local Laragon environment)  
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
@@ -173,3 +173,7 @@ Assistant must:
 
 2026-10-26 user explicitly requested this durable roadmap because chat limits can force migration to a new conversation; **the roadmap must be refreshed after every change**, enabling continuous work with no loss of context.
 
+
+## Phase 1T latest local feedback
+- User pulled `34aee731` and PHP lint passed. Real DataTables test failed **before voucher display assertion**: expected `recordsFiltered=1`, got `0` (1 failed/1 assertion). **Not yet verified as report-number mismatch.**
+- Added read-only diagnostic assertions for selected-project cookie and fixture row plus full DataTables payload on mismatch (`1634104`). Rerun required to determine whether cookie resolution or DataTables filtering is responsible. Avoid assuming report bug until output reaches display assertion.
