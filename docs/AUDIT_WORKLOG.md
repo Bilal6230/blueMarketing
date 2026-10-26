@@ -286,3 +286,9 @@
 - Committed changes to `JournalVoucherController::store` for stricter row/money and project ownership validation, fixed-point debit/credit check, transactional posting and project row lock. Left CV/JV update/delete guards and production data untouched. This changes active JV behavior on upgrade branch, not deployed.
 - Added `JournalVoucherStoreValidationTest.php` with five invalid cases. **No local execution yet**, so no claim of correctness or phase completion. More tests for valid balanced postings/rollback and actual permission grants remain necessary.
 - Existing finance test suite should be rerun; regression compatibility and PHP lint must be checked locally. Master Roadmap progress board updated.
+
+## 2026-10-26 — user verification, JV posting end-to-end SQLite tests, fixed-percentage milestone baseline
+- User pulled `4bb5c18`, controller/test PHP lint clean. `JournalVoucherStoreValidationTest` **5 passed/5 assertions**; finance regression batch **11 passed/120 assertions**, total 16/125 for these selected test commands.
+- Added `JournalVoucherPostingIntegrationTest.php`: five real controller SQLite :memory: checks for balanced header+details+ledgers, project scoping, head pairing, 0.01 imbalance, and atomic rollback on ledger failure. **Unrun**. No controller modified in this new batch; previous JV hardening under verification.
+- Set stable subjective percentage baseline Phase 1 30%; 2–5 0%; weighted overall 6%. Progress not advanced merely for writing tests. Future replies must show percentage comparisons; 0 of 5 phases completed.
+- No MySQL, migration, master_live or live deployment touched.
