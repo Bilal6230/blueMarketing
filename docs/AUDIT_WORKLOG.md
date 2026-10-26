@@ -230,3 +230,9 @@
 - User pulled `a2f6b6e`, PHP lint passed, targeted test **1 failed, 5 assertions**: fixture expected displayed number `JV-7001` but actual `LedgerController::fetch_data_url` returned `JV-9001`.
 - This confirms behavior in isolated SQLite actual controller/DataTables code, not actual production incorrect data or CV provenance.
 - Current display code and posted ledger history left unchanged. Next Phase 1U: report/print/export reader inventory and typed source design; no bulk relabeling.
+
+## 2026-10-26 — Phase 1U limited print, ledger report and export reader inventory
+- User pulled latest Phase 1T documentation commit `0d03512` successfully.
+- Added `docs/PHASE1U_PRINT_REPORT_EXPORT_READER_INVENTORY.md`, tracking actual ledger DataTables display/print field, JV print formatter, commission index voucher field and finance voucher print paths.
+- Source-level inference only: erroneous DataTables display could propagate to printable ledger report; no evidence of production incorrect rows or all exports. Proposed positive-control and reader integration tests.
+- Updated `docs/MASTER_ROADMAP.md`; no source business logic, schema, production DB or master_live changes.
