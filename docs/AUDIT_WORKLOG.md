@@ -236,3 +236,8 @@
 - Added `docs/PHASE1U_PRINT_REPORT_EXPORT_READER_INVENTORY.md`, tracking actual ledger DataTables display/print field, JV print formatter, commission index voucher field and finance voucher print paths.
 - Source-level inference only: erroneous DataTables display could propagate to printable ledger report; no evidence of production incorrect rows or all exports. Proposed positive-control and reader integration tests.
 - Updated `docs/MASTER_ROADMAP.md`; no source business logic, schema, production DB or master_live changes.
+
+## 2026-10-26 — Phase 1V genuine JV positive-control added
+- User pulled `d427a59` successfully.
+- Added genuine JV header 42 / ledger row positive-control to real DataTables fixture alongside previously RED ambiguous JV/CV-style collision. Expected genuine JV display `JV-9002`; not yet executed by user.
+- No business logic, MySQL changes, migrations or master_live changes. Both roadmap files updated.
