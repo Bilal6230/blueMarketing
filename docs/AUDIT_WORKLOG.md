@@ -89,3 +89,8 @@
 - Safety guard enforces `sqlite` + `:memory:` before dropping test tables. Fixture includes schema needed by `getVocuherNumber`. Test additionally checks redirect target to flag controller caught exceptions/rollback rather than falsely passing history check.
 - **Unexecuted** by assistant: local PHP test result needed to verify fixture completeness; expected RED if legacy CV update commits destructive JV deletion. Run: `php artisan test --filter=CommissionVoucherCollisionTest`.
 - No production DB, migrations, application controller changes, or `master_live` changes.
+
+## 2026-10-26 — Phase 1G fixture syntax correction
+- User pull to `466ed0c` succeeded; PHPUnit failed loading new `CommissionVoucherCollisionTest.php` at line 58 with PHP parse error before any test executed.
+- Root cause: literal backslash-n sequences inserted into the PHP test fixture schema source, including lines 58 and 62.
+- Fixed those escaped newline sequences in test file (commit `53d18a6f`). No application/database changes. Test behavior is **not yet verified**; rerun isolated collision test after pulling.
