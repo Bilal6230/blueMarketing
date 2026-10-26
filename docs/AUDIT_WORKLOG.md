@@ -268,3 +268,9 @@
 ## 2026-10-26 — Phase 1Y permissions Blade fixture blocker
 - User pulled `db16d30`; lint passed. CV AJAX listing fixture failed with SQLite `no such table: permissions` from `actions.blade.php` @canany; 0 assertions.
 - Updated isolated test fixture with minimal Spatie permission and pivot tables plus cache reset in commit `f02fd008`. Rerun pending. Production MySQL and master_live untouched.
+
+## 2026-10-26 — Phase 1Y green and Phase 1Z larger test/audit batch
+- User confirmed `CommissionVoucherListingResponseTest` **PASS 1 test / 4 assertions**, after successful pull/lint.
+- Added `VoucherGuestAccessIntegrationTest.php`: 14 real registered JV/CV routes guest protection + auth/permission declarations, 5 temporary mutation HTTP 409 gates. New test not yet locally executed.
+- Added `docs/PHASE1Z_FINANCE_SECURITY_POSTING_AUDIT.md`, documenting high-priority active JV store validation, atomicity, tenant ownership, serial and idempotency gaps with testing/delivery plan. Review only; no business logic modifications.
+- Both docs updated; no production DB, master_live, migrations or financial data touched.
