@@ -99,3 +99,9 @@
 - User confirmed PHP syntax lint passes, but isolated collision test failed before controller execution: `Illuminate\\Http\\Request::setContainer` does not exist (0 assertions).
 - Removed unsupported `setContainer()` and `setRedirector()` calls from `CommissionVoucherCollisionTest.php`; existing Laravel app request binding remains.
 - Collision test **not yet re-run** after fix. Production / MySQL / application controllers untouched.
+
+## 2026-10-26 — Phase 1G collision test reproduced (critical)
+- User ran isolated `CommissionVoucherCollisionTest`: **1 failed, 3 assertions**, confirming CV update deletes unrelated JV ledger record with colliding header IDs (41).
+- Original JV ledger `id=1,type=JV,type_id=41` disappeared. After CV update only `id=2,type=JV,type_id=1` remained, also demonstrating wrong commission detail-ID linkage.
+- Evidence and safe remediation gates: [PHASE1G_COLLISION_CONFIRMED.md](PHASE1G_COLLISION_CONFIRMED.md).
+- No app logic changes or production/DB writes. Next: finish tracing readers/writers and prepare safe isolated repair tests; no blind type conversion.
