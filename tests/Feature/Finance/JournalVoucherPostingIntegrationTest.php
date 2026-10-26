@@ -165,6 +165,61 @@ class JournalVoucherPostingIntegrationTest extends TestCase
         $this->assertSame(0, DB::table('ledgers')->count());
     }
 
+    public function test_second_ledger_failure_rolls_back_all_header_detail_and_ledger_writes(): void
+    {
+        $writes = 0;
+        Ledger::creating(function () use (&$writes) {
+            $writes++;
+            if ($writes === 2) {
+                throw new \RuntimeException('Simulated second ledger failure');
+            }
+        });
+        try {
+            app(JournalVoucherController::class)->store($this->request($this->payload()));
+            $this->fail('Expected second ledger failure.');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('Simulated second ledger failure', $e->getMessage());
+        } finally {
+            Ledger::flushEventListeners();
+        }
+        $this->assertSame(2, $writes);
+        $this->assertSame(0, DB::table('journal_vouchers')->count());
+        $this->assertSame(0, DB::table('journal_voucher_details')->count());
+        $this->assertSame(0, DB::table('ledgers')->count());
+    }
+
+    public function test_existing_soft_deleted_jv_serial_is_not_reused(): void
+    {
+        DB::table('journal_vouchers')->insert([
+            'voucher_number' => '40', 'type' => 'JV', 'project_id' => 7,
+            'date' => '2026-10-01', 'description' => 'Historical removed voucher',
+            'total_debit' => 10, 'total_credit' => 10, 'deleted_at' => now(),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        app(JournalVoucherController::class)->store($this->request($this->payload()));
+        $this->assertEquals(
+            ['40', '41'],
+            DB::table('journal_vouchers')->orderBy('id')->pluck('voucher_number')
+                ->map(fn ($number) => (string) $number)->toArray()
+        );
+        $this->assertSame(2, DB::table('journal_vouchers')->count());
+    }
+
+    public function test_jv_header_serial_stays_scoped_to_selected_project(): void
+    {
+        DB::table('journal_vouchers')->insert([
+            'voucher_number' => '800', 'type' => 'JV', 'project_id' => 8,
+            'date' => '2026-10-01', 'description' => 'Other project voucher',
+            'total_debit' => 10, 'total_credit' => 10,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        app(JournalVoucherController::class)->store($this->request($this->payload()));
+        $this->assertEquals('1', (string) DB::table('journal_vouchers')
+            ->where('project_id', 7)->value('voucher_number'));
+        $this->assertEquals('800', (string) DB::table('journal_vouchers')
+            ->where('project_id', 8)->value('voucher_number'));
+    }
+
     public function test_ledger_failure_rolls_back_header_and_details(): void
     {
         Ledger::creating(function () { throw new \RuntimeException('Simulated ledger write failure'); });
