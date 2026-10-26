@@ -264,3 +264,7 @@
 ## 2026-10-26 — Phase 1Y second SQLite fixture gap
 - User successfully pulled `f06b2d4`; PHP lint passed, targeted listing test still failed before assertions due to `User::get()` and missing `users` table.
 - Added minimal `users` table in isolated SQLite `CommissionVoucherListingResponseTest` (commit `e2c63a38`). Local rerun pending; no production DB, controllers or master_live touched.
+
+## 2026-10-26 — Phase 1Y permissions Blade fixture blocker
+- User pulled `db16d30`; lint passed. CV AJAX listing fixture failed with SQLite `no such table: permissions` from `actions.blade.php` @canany; 0 assertions.
+- Updated isolated test fixture with minimal Spatie permission and pivot tables plus cache reset in commit `f02fd008`. Rerun pending. Production MySQL and master_live untouched.
