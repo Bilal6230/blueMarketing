@@ -125,6 +125,46 @@ class JournalVoucherPostingIntegrationTest extends TestCase
         $this->assertSame(0, DB::table('ledgers')->count());
     }
 
+    public function test_two_sequential_vouchers_receive_distinct_project_jv_numbers(): void
+    {
+        app(JournalVoucherController::class)->store($this->request($this->payload()));
+        app(JournalVoucherController::class)->store($this->request($this->payload()));
+
+        $this->assertSame(2, DB::table('journal_vouchers')->count());
+        $numbers = DB::table('journal_vouchers')->orderBy('id')->pluck('voucher_number')->toArray();
+        $this->assertEquals(['1', '2'], array_map('strval', $numbers));
+        $this->assertSame(4, DB::table('journal_voucher_details')->count());
+        $this->assertSame(4, DB::table('ledgers')->count());
+    }
+
+    public function test_both_debit_and_credit_on_same_line_are_rejected_without_writes(): void
+    {
+        $p = $this->payload();
+        $p['credit'][0] = '1.00';
+        try {
+            app(JournalVoucherController::class)->store($this->request($p));
+            $this->fail('Mixed debit/credit posting was accepted.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('debit', $e->errors());
+        }
+        $this->assertSame(0, DB::table('journal_vouchers')->count());
+        $this->assertSame(0, DB::table('ledgers')->count());
+    }
+
+    public function test_both_zero_on_same_line_are_rejected_without_writes(): void
+    {
+        $p = $this->payload();
+        $p['debit'][0] = '0.00';
+        try {
+            app(JournalVoucherController::class)->store($this->request($p));
+            $this->fail('Empty financial posting line was accepted.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('debit', $e->errors());
+        }
+        $this->assertSame(0, DB::table('journal_vouchers')->count());
+        $this->assertSame(0, DB::table('ledgers')->count());
+    }
+
     public function test_ledger_failure_rolls_back_header_and_details(): void
     {
         Ledger::creating(function () { throw new \RuntimeException('Simulated ledger write failure'); });
