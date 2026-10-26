@@ -69,3 +69,10 @@
 - Added `tests/Unit/Finance/CommissionVoucherUpdateIsolationTest.php` (two intentional RED source-contract guards: no JV-type deletion or creation by CV update).
 - These are **static guards**, not integration tests and not yet executed. Run with `php artisan test --filter=CommissionVoucherUpdateIsolationTest` on local machine; failure is expected until reviewed implementation.
 - No production DB, migrations or controller code changed. Next: use failure result to design isolated fixture-backed update regression and safe fix.
+
+## 2026-10-26 — Phase 1F RED results and additional posting-identity checks
+- User ran `php artisan test --filter=CommissionVoucherUpdateIsolationTest`: **2 failures, 8 assertions** (as intended) because CV update targets JV-type ledgers and writes JV-type entries. PHPunit XML deprecation warning is unrelated.
+- Further inspected `CommissionVoucherController::store` versus `::update`: store creates ledger rows labeled `JV` with `type_id = CommisionVoucher->id`; update creates `JV` rows with `type_id = CommisionVoucherDetail->id`. This is an additional posting-identity inconsistency beyond the source-level tests.
+- Added two more deliberately RED source guards for CV-store type labeling and CV-update type_id consistency. Four source guards total in `CommissionVoucherUpdateIsolationTest.php`. **New tests not run yet.**
+- Do NOT blindly rename all old JV ledger rows to CV: historical IDs may collide and reports may rely on legacy encoding. First audit actual staged data and queries, design typed source identity with migration/reconciliation, and implement only in isolated environment.
+- No production/mySQL changes, no controller fixes or migrations.
