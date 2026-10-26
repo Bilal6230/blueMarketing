@@ -274,3 +274,9 @@
 - Added `VoucherGuestAccessIntegrationTest.php`: 14 real registered JV/CV routes guest protection + auth/permission declarations, 5 temporary mutation HTTP 409 gates. New test not yet locally executed.
 - Added `docs/PHASE1Z_FINANCE_SECURITY_POSTING_AUDIT.md`, documenting high-priority active JV store validation, atomicity, tenant ownership, serial and idempotency gaps with testing/delivery plan. Review only; no business logic modifications.
 - Both docs updated; no production DB, master_live, migrations or financial data touched.
+
+## 2026-10-26 — Phase 1Z locally verified; Phase 1 status board corrected
+- User pulled `09e5778`, lint passed; `VoucherGuestAccessIntegrationTest` **3 passed, 89 assertions**. Additional finance batch tests **10 passed, 37 assertions**. Combined latest targeted runs **13 passed, 126 assertions**, not the full suite.
+- User asked why Phase 1 still unfinished and requested clear roadmap. Updated `docs/MASTER_ROADMAP.md` top status board and Phase 1 exit gates: authenticated permission granted/denied, active JV store integrity/security, historical source identity/readers, approved typed posting/reversals, full-suite and staging reconciliation.
+- Previously recorded full suite 233 pass / 4 intentionally RED is stale and does not include later tests; two intentionally RED display diagnostics also remain. No claim of Phase 1 completion.
+- Only documentation updated; no application code, production data, `master_live` or migrations modified.
