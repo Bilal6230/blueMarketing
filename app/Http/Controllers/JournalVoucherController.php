@@ -433,6 +433,10 @@ class JournalVoucherController extends Controller
 
     public function destroy($id)
     {
+        // Temporary Phase 1K safety gate: posted/legacy identity is ambiguous.
+        // Fail closed until append-only financial reversal and typed source mapping exist.
+        abort(409, 'This voucher action is temporarily disabled to protect accounting history.');
+
         DB::beginTransaction();
         try {
             // Delete Journal Voucher and related details
@@ -471,6 +475,10 @@ class JournalVoucherController extends Controller
 
     public function update(Request $request, $id)
     {
+        // Temporary Phase 1K safety gate: posted/legacy identity is ambiguous.
+        // Fail closed until append-only financial reversal and typed source mapping exist.
+        abort(409, 'This voucher action is temporarily disabled to protect accounting history.');
+
         $request->validate([
             'voucher_number' => 'required|string',
             'reference' => 'nullable|string',
