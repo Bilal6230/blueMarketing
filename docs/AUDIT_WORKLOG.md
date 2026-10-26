@@ -155,3 +155,10 @@
 - Added 4 controller-entry regression tests in `tests/Feature/Finance/UnsafeVoucherActionGateTest.php`; **not yet run by local developer**. Run `php artisan test --filter=UnsafeVoucherActionGateTest` after pull.
 - Existing intentionally RED collision/source tests still represent unsafe legacy code and may continue failing; the prior controller-execution collision tests may now fail because guarded actions throw 409. Do not claim entire suite green until regression expectations are updated.
 - No migrations, MySQL imports/writes, deployment or `master_live` changes. Code only on `upgrade/laravel-framework`. Requires workflow/UI review before any deployment; the block impacts users.
+
+## 2026-10-26 — Phase 1M safety gate verification and collision regression transition
+- User executed `UnsafeVoucherActionGateTest` locally: **4 passed, 8 assertions**, proving direct JV/CV update/delete controller entrypoints currently reject with HTTP 409.
+- Updated isolated `CommissionVoucherCollisionTest`, `JournalVoucherCollisionTest`, and two `FinancialHistoryPreservationTest` cases to assert HTTP 409 **and original ledger row remains present**. Previously confirmed destructive behavior remains documented in Phase 1G/1J reports and Git history; green protection tests DO NOT mean a permanent reversal fix exists.
+- Historical `CommissionVoucherUpdateIsolationTest` source-contract guards remain intentionally RED because original unsafe statements are still present behind the temporary 409 gate. Full suite may still report these failures; do not advertise full suite passing.
+- New transitioned tests **not yet executed**; recommended targeted run `php artisan test --filter='UnsafeVoucherActionGateTest|CommissionVoucherCollisionTest|JournalVoucherCollisionTest|FinancialHistoryPreservationTest'` in isolated testing environment.
+- No migrations, production data changes or `master_live` changes.
