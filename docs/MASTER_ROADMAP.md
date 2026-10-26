@@ -14,9 +14,9 @@
 
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (22/150 verified; four new posting acceptance tests pending)
+**Last updated:** 2026-10-26 (26 verified finance tests; new read-only JV integrity inspector awaits execution)
 **Active Git branch:** `upgrade/laravel-framework`  
-**Latest confirmed local verification:** user pulled `48cc8f2`: JV posting/validation/authenticated and guest permission suite **22 passed / 150 assertions**. Added four new unrun edge-case tests.
+**Latest confirmed local verification:** user pulled `c6a6626` and ran selected JV/security suite **26 passed / 165 assertions**. New inspection integration tests not run.
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
 **Status:** In-progress accounting integrity hardening; **not production approved**.
 
@@ -317,3 +317,10 @@ Assistant must:
 - Expanded real SQLite controller posting tests in `JournalVoucherPostingIntegrationTest.php` with four additional scenarios: missing selected project, nonexistent subaccount, three-line balanced split debit, and failed transaction followed by successful new JV posting without consumed serial. **New tests unrun**. This is test coverage, not new duplicate/idempotency implementation.
 - **Progress remains Phase 1 50%, other four phases 0%, overall 10%, 0/5 phases complete.** No automatic 10–20 percentage-point increase for tests alone. Bigger future increments require completion of multiple release gates: permission & valid posting evidence already done; next safe production-ready finance workflow needs idempotency, reversible ledger, reconciliation and full suite. User prefers bigger implementation batches and honest % comparisons.
 - Before release: full test suite; source RED diagnostics unresolved; user approval needed for any MySQL schema migrations/backfills and financial posting reversal design. No production data changed.
+
+## 2026-10-26 — first read-only JV reconciliation implementation (UNVERIFIED)
+- User verified **26 passed / 165 assertions** including missing project, unknown account, three-line split and rollback-followed-by-serial recovery.
+- Created actual reusable `app/Services/Finance/JournalVoucherIntegrityInspector.php`: project-scoped read-only lookup of JV header including soft-deleted, active detail sums using integer cents, error codes for missing detail, invalid amounts, imbalance and header/detail mismatch; count candidate `JV` ledger rows **without asserting they belong to this JV**, since historic CV-origin postings share `type='JV',type_id` IDs.
+- Added three actual SQLite tests to `JournalVoucherPostingIntegrationTest.php` for valid reconciliation, header/detail mismatch detection without correction, and denial of other-project lookup. New service and tests **not locally verified**. No modifications to historic records or production DB.
+- Progress stays **Phase 1 50%, Phases 2-5 0%, overall 10%** until new service tested and finance reconciliation acceptance gates are clearer. 0/5 phases formally finished; estimated progress must not be inflated for authored but unverified code.
+- Remaining: reliable typed posting provenance, approved durable request idempotency/DB uniqueness, immutable reversal workflow, full-suite comparison, staging reconciliation; deploy only with explicit approval.
