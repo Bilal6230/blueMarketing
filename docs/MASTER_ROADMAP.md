@@ -2,13 +2,13 @@
 
 | Stage | Estimated progress | Main outstanding gate |
 |---|---:|---|
-| Phase 1 — Audit & Financial Safety | **60%** | Verify CV dead-code removal and full suite; two historic provenance collision diagnostics |
+| Phase 1 — Audit & Financial Safety | **65%** | Verify CV dead-code removal and full suite; two historic provenance collision diagnostics |
 | Phase 2 — Financial Posting & Reconciliation | **0%** | Typed ledger identity, durable idempotency, reversal, staged reconciliation |
 | Phase 3 — Security & Activity Logging | **0%** | Central audit logging |
 | Phase 4 — Modules & Integrations | **0%** | Approved module scope |
 | Phase 5 — Staging & Deployment | **0%** | Approval, backup/recovery and production release |
 
-**Overall 12%; previous 12% → current 12%. These are planning estimates, not measured productivity. 0/5 phases complete.**
+**Overall 13%; previous 12% → current 13%. These are planning estimates, not measured productivity. 0/5 phases complete.**
 
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
@@ -26,9 +26,9 @@
 
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (282/2 full-suite baseline; read-only JV/CV header collision inventory added, unverified)
+**Last updated:** 2026-10-26 (284 passed / 2 known collision failures; audit flags overlapping IDs even when balanced; new test unrun)
 **Active Git branch:** `upgrade/laravel-framework`  
-**Latest confirmed local verification:** user pulled `4e03751`; targeted CV safety **9 passed / 26 assertions**, full suite **282 passed / 2 failed / 1314 assertions**. Only known two ledger display source-collision diagnostics remain RED.
+**Latest confirmed local verification:** user pulled `e4b8876`; focused **39 passed / 137 assertions**, full suite **284 passed / 2 failed / 1323 assertions**. Two historical JV/CV display collision RED diagnostics still unresolved.
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
 **Status:** In-progress accounting integrity hardening; **not production approved**.
 
@@ -379,3 +379,8 @@ Assistant must:
 - Added `LegacyVoucherCollisionInspector` service and `finance:audit-voucher-collisions {project} --limit=100` CLI: detects numeric ID overlap of JV/CV headers *within the same project*, counts possible JV-typed ledger rows scoped via selected project's subaccounts, labels provenance UNKNOWN and does not mutate history. Limits 1–1000 and returns nonzero when overlaps are present. This is **collision risk inventory**, not proof that any candidate ledger actually belongs to CV.
 - Added 2 SQLite-only integration tests checking overlapping header IDs, conservative provenance and cross-project exclusion. **New CLI/service/tests awaiting local execution.** Do not run against production DB without explicit approval even though read-only.
 - Progress remains Phase 1 **60% -> 60%**, others 0%, overall **12% -> 12%**, 0/5 completed, pending local verification and approved typed-provenance design. No MySQL migrations, production changes, backfills or master_live touched.
+
+## 2026-10-26 — verified collision discovery and upgrade accounting audit issue classification
+- User pulled `e4b8876` and verified new collision inventory (39/39 selected tests), full suite **284 PASS, 2 FAIL, 1323 assertions**. Two remaining RED ledger-display diagnostics represent genuine ambiguous `ledgers.type='JV', type_id` source ownership; neither was hidden or weakened.
+- Upgraded `finance:audit-jv --type=JV|CV|ALL`: an overlapping JV/CV header ID in the selected project now adds `numeric_jv_cv_header_id_overlap` to issues and counts as flagged **even if the header/detail totals balance**. The change avoids presenting ambiguous vouchers as clean and respects `--only-issues`, without assigning source ownership. Added real isolated SQLite integration regression for collision + balanced headers; **new code/test not locally run yet**.
+- Estimated Phase 1 **60% -> 65%** (verified inventory milestone), Phases 2–5 0%, overall **12% -> 13%**, 0/5 closed. No schema/data writes, migrations, master_live or deployment. Typed source provenance, durable idempotency, reversal and staged reconciliation remain approval-dependent.
