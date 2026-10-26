@@ -26,9 +26,9 @@
 
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (full suite 277 pass/7 fail; remove unreachable CV destructive write code and fix stale test; retest pending)
+**Last updated:** 2026-10-26 (full suite 280 passed/4 failed; CV safety message compatibility corrected, retest pending)
 **Active Git branch:** `upgrade/laravel-framework`  
-**Latest confirmed local verification:** user full suite at `17c99c3`: **277 passed, 7 failed, 1314 assertions**. Four RED CV source contracts; two intentionally RED report-collision diagnostics; one stale audit command message expectation. Focused run: 37 passed, 1 failed. The five remediation changes are NOT locally retested.
+**Latest confirmed local verification:** user pulled `81b2c8a`; full suite **280 passed / 4 failed / 1314 assertions**. Four CV unsafe source tests now pass; two 409 text assertion failures and two genuine ledger identity collision diagnostics fail. New 409 message correction awaits verification.
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
 **Status:** In-progress accounting integrity hardening; **not production approved**.
 
@@ -367,3 +367,9 @@ Assistant must:
 - Aligned outdated CLI invalid-project output expectation in `JournalVoucherPostingIntegrationTest.php` with the current command message. This is only a string-contract update, not bypass of invalid project behavior.
 - **Both edits are UNVERIFIED by user local tests**. Predict four source-contract failures and one assertion failure may clear; do not promise suite green: two genuine report collision tests deliberately remain RED pending typed provenance and approved correction design. Run full suite and 409 gate tests after pull.
 - No migration, MySQL writes, master_live deployment, or financial history mutation. Progress Phase 1 60%, overall 12% until local validation. Safety-driven dead code removal is not a reversal workflow.
+
+## 2026-10-26 — 280 green; 2 CV contract messages fixed; 2 true provenance failures persist
+- User full-suite result on `81b2c8a`: **280 passed / 4 failed / 1314 assertions**. Prior four CV source-contract RED tests now PASS because unsafe dead financial posting/deletion logic was physically removed. Prior CLI invalid-project test also PASS.
+- Two `UnsafeVoucherActionGateTest` failures are narrowly a 409 exception message contract (`accounting history` required); the HTTP 409 itself still worked. Restored exact safety phrase in CV update/delete exception messages without changing the fail-closed logic. This fix **not locally verified yet**.
+- Remaining two `LedgerVoucherDisplayCollisionTest` and `LedgerVoucherDisplayEndpointCollisionTest` failures are genuine: header number 9001 overrides ambiguous original ledger number 7001. The endpoint's positive-control fixture explicitly expects header 9002 for a purported genuine JV even though current schema offers no validated typed provenance to distinguish it from legacy CV. **Do not modify the reader by heuristic, change tests to green, or auto-attribute row ownership**. Requires agreed typed identity strategy and safe source migration.
+- Progress previous/current stays Phase 1 **60% -> 60%**, others 0%, overall **12% -> 12%**, 0/5 complete pending verified 409 contract and typed source repair. No production DB or master_live change.
