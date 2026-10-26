@@ -131,3 +131,8 @@
 ## 2026-10-26 — Phase 1J second syntax correction
 - User pull to `0c3d985` succeeded, but PHPUnit stopped before running a test: parse error line 112 (literal `\\n` before diagnostic string). This was an assistant-generated fixture error, **not an application or ledger result**.
 - Replaced literal escaped newline with actual source newline in `JournalVoucherCollisionTest.php` (commit `87ef56fc`). Local PHP lint/retest required; no controller or database modifications.
+
+## 2026-10-26 — Phase 1J ledger assertion passed, fixture incomplete
+- User pulled `b9ee71d`; PHP lint passed. Test result 1 failed / 3 assertions: unrelated JV ledger row **remained present**; failure was only redirect destination `http://localhost` instead of journal index.
+- Inspecting `JournalVoucherController::update` showed it writes `journal_vouchers.type='JV'`, but Phase 1J fixture omitted `type` column. SQLite would reject that write and roll back, explaining why ledger preservation cannot yet be interpreted as success. This is a likely cause pending rerun, not proven runtime trace.
+- Added `type` column to isolated test schema in `JournalVoucherCollisionTest.php` (commit `edc28e7`). Rerun required before concluding cross-JV deletion. No app/controller or production DB changes.
