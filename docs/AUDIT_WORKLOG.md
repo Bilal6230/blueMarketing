@@ -341,3 +341,8 @@
 - User pulled `31d57b7`, lint clean; selected JV posting, validation and authorization suite **32 passed / 186 assertions**, including 3 genuine Artisan auditor scenarios.
 - Added `CommissionVoucherIntegrityInspector` (project-scoped, integer-cents, read-only) and expanded `finance:audit-jv` CLI `--type=CV` (JV remains default). Added 3 CV balanced/mismatch/foreign-project tests in SQLite only, unrun. Historical JV/CV ledger provenance still uncertain and never inferred from numeric collision.
 - Progress Phase 1 **55 -> 60%** based on verified JV CLI, overall **11 -> 12%** with equal 5-phase weights. No stages completed. No live database, migrations or master_live writes.
+
+## 2026-10-26 — 35 selected finance tests passed; combined JV/CV audit safety upgrade
+- User uploaded terminal transcript: after pulling `e1c7b60`, linted CV inspector/command/tests successfully and ran finance suite **35 passed, 195 assertions**. Earlier `--type` error happened before pull, so cannot conclude new command fails.
+- Upgraded `finance:audit-jv` command with `--type=ALL`, `--only-issues`, explicit partial-scan detection when bounded `--limit` omits vouchers, with nonzero exit to prevent false clean report. Added 3 SQLite integration tests; unrun locally.
+- Progress unchanged at Phase 1 60%, overall 12%, other four phases 0%, 0/5 closed. This is unverified new implementation. Next verify command + run full suite. No production MySQL data, migrations or master_live touched.
