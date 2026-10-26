@@ -1,6 +1,6 @@
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (Phase 1W commission numbering and listing reader audit)
+**Last updated:** 2026-10-26 (Phase 1X numbering baseline tests added; execution pending)
 **Active Git branch:** `upgrade/laravel-framework`  
 **Latest confirmed local verification:** `UnsafeVoucherActionGateTest` — **5 passed, 10 assertions** (user's local Laragon environment)  
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
@@ -205,3 +205,9 @@ Assistant must:
 - Added `docs/PHASE1W_COMMISSION_NUMBERING_READER_AUDIT.md`: commission index reads CV header `voucher_number` and pads it via `get_jv_number()` (seven-character str_pad); independent of LedgerController JV reference resolver.
 - Found legacy CV store (now HTTP 409 blocked) computes CV numbering from `getLastJvId() + 1`, where helper is **max JournalVoucher header ID** per selected project, not a CV sequence. Numbering semantics require review before any correction; no confirmed real data issue.
 - Next: isolated CV listing/numbering tests and authenticated permission integration; maintain existing RED ledger collision diagnostics. No code business logic, MySQL or master_live changes.
+
+## Phase 1X — commission voucher numbering baseline tests
+- User successfully pulled Phase 1W commit `c6664f8`.
+- Added `tests/Feature/Finance/CommissionVoucherNumberingBaselineTest.php` using strictly guarded SQLite `:memory:`. It checks pure seven-character padding `get_jv_number()` and establishes legacy `getLastJvId()` uses project-filtered JV header ID, not voucher serial; tests project-selection cookie and distinct `getLastJvVNumber()` semantics.
+- **Not locally executed yet**. Next: `php -l tests/Feature/Finance/CommissionVoucherNumberingBaselineTest.php` and `php artisan test --filter=CommissionVoucherNumberingBaselineTest`.
+- This is a behavioral baseline, NOT an endorsement of CV numbering tied to JV ID. CV store stays HTTP 409 blocked. Next after green: actual authenticated route permissions and commission listing response fixtures.
