@@ -1,6 +1,6 @@
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26  
+**Last updated:** 2026-10-26 (Phase 1P read-only audit)  
 **Active Git branch:** `upgrade/laravel-framework`  
 **Latest confirmed local verification:** `UnsafeVoucherActionGateTest` — **5 passed, 10 assertions** (user's local Laragon environment)  
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
@@ -68,6 +68,7 @@ User works on **Windows / Laragon**, project path `C:\laragon\www\blueMarketing`
 | 1M | Collision/preservation tests transitioned to guarded behavior | 8/8, 16 assertions |
 | 1N | Full suite compatibility audit and CV store guard | 233 passed/4 source RED; CV-store guard 5/5 test pass |
 | **1O** | **Master roadmap and cross-chat handoff introduced** | This file |
+| **1P** | JV creation risk and actual route surface read-only inspection | `docs/PHASE1P_VOUCHER_CREATION_ROUTE_AUDIT.md` |
 
 **Committed worklog:** `docs/AUDIT_WORKLOG.md`. Continue updating both the worklog (chronological facts) and this roadmap (current state and future plan).
 
@@ -115,6 +116,13 @@ Assistant must:
 4. After **every meaningful committed change**, update **both** `docs/MASTER_ROADMAP.md` and `docs/AUDIT_WORKLOG.md` in the **same task**. Update date, completed phase, changed paths, verified/unverified results, new risks, next step and explicit deployment restrictions.
 5. Never alter `master_live`, production DB or financial history without specific approval. **Do not run destructive SQL** without consent. Preserve uncommitted developer work.
 6. If prior roadmap is stale or conflicts with source/test output, reconcile evidence and record corrections before proceeding.
+
+## Phase 1P — latest read-only audit
+
+- Added `docs/PHASE1P_VOUCHER_CREATION_ROUTE_AUDIT.md`. JV `store` is active and has source-level gaps involving array validation, subaccount project scoping, monetary precision, voucher-number concurrency, idempotency and explicit transaction exception rollback. These are **potential risks requiring isolated proof**, not yet reproduced.
+- CV `store` and both JV/CV update/delete entrypoints remain HTTP 409 guarded. Actual HTTP-route and middleware integration is still untested by this phase; direct tests alone are insufficient.
+- Next: add isolated HTTP-route access/409 tests and inspect ledger report readers, keeping database untouched and four historic source RED tests intact.
+- Phase 1P was documentation/source inspection only. No controller, migrations, deployed environment or database changed.
 
 ## 9. Most recent user feedback
 
