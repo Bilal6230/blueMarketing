@@ -260,3 +260,7 @@
 ## 2026-10-26 — Phase 1Y missing roles table in fixture
 - User pulled `f92df53`; PHP lint passed. CV listing regression failed on missing SQLite `roles` table before any assertions; not a business error.
 - Fixed only test fixture: minimal Spatie roles table plus loaded role model (commit `2f937621`). Pending local rerun. No MySQL, controller changes or master_live changes.
+
+## 2026-10-26 — Phase 1Y second SQLite fixture gap
+- User successfully pulled `f06b2d4`; PHP lint passed, targeted listing test still failed before assertions due to `User::get()` and missing `users` table.
+- Added minimal `users` table in isolated SQLite `CommissionVoucherListingResponseTest` (commit `e2c63a38`). Local rerun pending; no production DB, controllers or master_live touched.
