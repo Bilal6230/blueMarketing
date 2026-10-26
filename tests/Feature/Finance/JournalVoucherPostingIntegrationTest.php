@@ -364,7 +364,7 @@ class JournalVoucherPostingIntegrationTest extends TestCase
     public function test_artisan_jv_audit_rejects_invalid_project_before_querying(): void
     {
         $this->artisan('finance:audit-jv', ['project' => '0'])
-            ->expectsOutputToContain('Provide a positive numeric project ID')
+            ->expectsOutputToContain('Provide positive project ID')
             ->assertExitCode(2);
         $this->assertSame(0, DB::table('journal_vouchers')->count());
     }
