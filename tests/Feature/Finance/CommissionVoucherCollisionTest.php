@@ -103,9 +103,12 @@ class CommissionVoucherCollisionTest extends TestCase
         ]);
         $this->app->instance('request', $request);
 
-        $response = app(CommissionVoucherController::class)->update($request, $id);
-        $this->assertSame(302, $response->getStatusCode());
-        $this->assertStringContainsString('commision', $response->getTargetUrl());
+        try {
+            app(CommissionVoucherController::class)->update($request, $id);
+            $this->fail('Unsafe CV update must be blocked.');
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $exception) {
+            $this->assertSame(409, $exception->getStatusCode());
+        }
 
         $this->assertDatabaseHas('ledgers', [
             'id' => $jvLedgerId, 'type' => 'JV', 'type_id' => $id,
