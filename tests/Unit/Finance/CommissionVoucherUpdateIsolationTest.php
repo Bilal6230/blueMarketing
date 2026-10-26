@@ -29,6 +29,36 @@ class CommissionVoucherUpdateIsolationTest extends TestCase
         return substr($source, $start, $end - $start);
     }
 
+    public function test_commission_creation_does_not_post_ledger_rows_as_journal_vouchers(): void
+    {
+        $source = file_get_contents(__DIR__ . '/../../../app/Http/Controllers/CommissionVoucherController.php');
+        self::assertNotFalse($source);
+
+        $start = strpos($source, 'public function store(');
+        $end = strpos($source, 'public function destroy(', $start === false ? 0 : $start);
+        self::assertNotFalse($start);
+        self::assertNotFalse($end);
+
+        $method = substr($source, $start, $end - $start);
+
+        self::assertDoesNotMatchRegularExpression(
+            '/[\\x27\\x22]type[\\x27\\x22]\\s*=>[^;]*[\\x27\\x22]JV[\\x27\\x22]/s',
+            $method,
+            'CV creation must not label commission posting as a Journal Voucher.'
+        );
+    }
+
+    public function test_commission_update_links_new_ledgers_to_voucher_not_detail_ids(): void
+    {
+        $method = $this->updateMethodSource();
+
+        self::assertDoesNotMatchRegularExpression(
+            '/[\\x27\\x22]type_id[\\x27\\x22]\\s*=>\\s*\\$JvDetails->id/',
+            $method,
+            'Existing CV posting convention links ledger type_id to voucher id, not detail row id.'
+        );
+    }
+
     public function test_commission_update_does_not_select_journal_ledger_rows_for_deletion(): void
     {
         $method = $this->updateMethodSource();
