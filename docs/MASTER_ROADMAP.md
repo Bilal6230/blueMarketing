@@ -1,6 +1,6 @@
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (Phase 1R reader mapping)  
+**Last updated:** 2026-10-26 (Phase 1S report display collision diagnostic added)  
 **Active Git branch:** `upgrade/laravel-framework`  
 **Latest confirmed local verification:** `UnsafeVoucherActionGateTest` — **5 passed, 10 assertions** (user's local Laragon environment)  
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
@@ -71,6 +71,7 @@ User works on **Windows / Laragon**, project path `C:\laragon\www\blueMarketing`
 | **1P** | JV creation risk and actual route surface read-only inspection | `docs/PHASE1P_VOUCHER_CREATION_ROUTE_AUDIT.md` |
 | **1Q** | Real registered URL safety and permission-declaration tests | **2 passed, 17 assertions** locally |
 | **1R** | Limited financial report reader mapping | `docs/PHASE1R_LEDGER_REPORT_READER_MAP.md` |
+| **1S** | Isolated voucher display ID collision diagnostic (deliberately RED) | `tests/Feature/Finance/LedgerVoucherDisplayCollisionTest.php` |
 
 **Committed worklog:** `docs/AUDIT_WORKLOG.md`. Continue updating both the worklog (chronological facts) and this roadmap (current state and future plan).
 
@@ -142,6 +143,14 @@ Assistant must:
 - No ledger type conversion, changes to reports, migrations or production data.
 - **Next action:** isolated read-only display-number collision regression, then broader helper/Blade/report reader inventory and end-to-end auth fixture. Keep original source RED evidence.
 - Full suite last 233 passed / 4 RED and was run before the latest CV-store guard; latest Phase 1Q route suite verified separately.
+
+## Phase 1S — isolated display-collision diagnostic (execution pending)
+
+- User pulled Phase 1R commit `f9dab903` successfully.
+- Added `tests/Feature/Finance/LedgerVoucherDisplayCollisionTest.php`, a **deliberately RED** SQLite `:memory:` illustration of the exact `LedgerController::fetch_data_url` voucher-number lookup with colliding IDs. Example: ledger's original voucher number 7001 is overridden by unrelated JV header number 9001 because `type='JV',type_id=41`.
+- **Scope limitation:** the test mirrors the reader logic using isolated SQL; it **does not call the actual DataTables endpoint**, prove actual CV provenance, or establish a production mismatch. Preserve as diagnostic until provenance-based policy and real endpoint integration tests are designed.
+- Next verification: `php artisan test --filter=LedgerVoucherDisplayCollisionTest` (expected 1 intentional failure at voucher display assertion). Do not confuse this with a fresh application runtime error.
+- Historical source-contract RED tests still present; do not make full suite green by skipping genuine risk tests. No controller/DB migrations changed in this phase.
 
 ## 9. Most recent user feedback
 
