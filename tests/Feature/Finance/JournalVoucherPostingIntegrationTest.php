@@ -165,6 +165,22 @@ class JournalVoucherPostingIntegrationTest extends TestCase
         $this->assertSame(0, DB::table('ledgers')->count());
     }
 
+    public function test_large_two_decimal_amount_is_preserved_exactly_in_all_postings(): void
+    {
+        $p = $this->payload();
+        $p['debit'][0] = '123456789.01';
+        $p['credit'][1] = '123456789.01';
+
+        app(JournalVoucherController::class)->store($this->request($p));
+
+        $this->assertEquals('123456789.01', DB::table('journal_vouchers')->value('total_debit'));
+        $this->assertEquals('123456789.01', DB::table('journal_vouchers')->value('total_credit'));
+        $this->assertEquals('123456789.01', DB::table('journal_voucher_details')->where('account_id', 11)->value('debit'));
+        $this->assertEquals('123456789.01', DB::table('journal_voucher_details')->where('account_id', 22)->value('credit'));
+        $this->assertEquals('123456789.01', DB::table('ledgers')->where('project_head_subheads_id', 11)->value('amount_in'));
+        $this->assertEquals('123456789.01', DB::table('ledgers')->where('project_head_subheads_id', 22)->value('amount_out'));
+    }
+
     public function test_second_ledger_failure_rolls_back_all_header_detail_and_ledger_writes(): void
     {
         $writes = 0;
