@@ -205,3 +205,9 @@
 - User successfully pulled `f9dab903` Phase 1R docs.
 - Added `tests/Feature/Finance/LedgerVoucherDisplayCollisionTest.php` using guarded SQLite `:memory:` and a mirrored copy of the report display-number lookup for numeric JV/CV identity collision. **Expected RED**, not executed yet and not an end-to-end DataTables test; the scenario cannot prove CV source identity from existing ledger columns.
 - Recorded test limitations and next steps in `docs/MASTER_ROADMAP.md`. No controller, reporting behavior, MySQL data, migration or `master_live` modifications.
+
+## 2026-10-26 — Phase 1S locally reproduced display-number mismatch
+- User pulled `5771196` and PHP lint passed. `LedgerVoucherDisplayCollisionTest` intentionally RED: **1 failed / 1 assertion**, expected `JV-7001`, actual `JV-9001`.
+- This validates mirrored report lookup on fabricated overlapping identifiers; NOT a DataTables endpoint integration test and NOT evidence of actual production data mislabeling.
+- Updated `docs/MASTER_ROADMAP.md` for Phase 1T: isolated real endpoint test, provenance and reader inventory before any report changes.
+- No controllers, production data, migrations or master_live touched.
