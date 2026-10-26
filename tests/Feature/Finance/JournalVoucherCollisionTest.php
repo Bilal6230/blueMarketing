@@ -103,14 +103,15 @@ class JournalVoucherCollisionTest extends TestCase
         ]);
         $this->app->instance('request', $request);
 
-        $response = app(JournalVoucherController::class)->update($request, 41);
-        $this->assertSame(302, $response->getStatusCode());
-        // Redirect to localhost can mean controller caught an exception.
-        // Inspect the ledger regardless, while reporting redirect diagnostics.
+        try {
+            app(JournalVoucherController::class)->update($request, 41);
+            $this->fail('Unsafe JV update must be blocked.');
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $exception) {
+            $this->assertSame(409, $exception->getStatusCode());
+        }
         $this->assertDatabaseHas('ledgers', [
             'id' => $unrelatedLedgerId, 'type' => 'JV', 'type_id' => 88,
         ]);
-        $this->assertStringContainsString('journal', $response->getTargetUrl() ?: '',
-            'JV update did not reach its success redirect; investigate caught exception before interpreting preservation.');
+
     }
 }
