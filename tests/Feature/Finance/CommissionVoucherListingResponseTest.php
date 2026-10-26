@@ -47,6 +47,27 @@ class CommissionVoucherListingResponseTest extends TestCase
             $table->string('guard_name');
             $table->timestamps();
         });
+        Schema::create('permissions', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('guard_name');
+            $table->timestamps();
+        });
+        Schema::create('model_has_permissions', function (Blueprint $table) {
+            $table->unsignedBigInteger('permission_id');
+            $table->string('model_type');
+            $table->unsignedBigInteger('model_id');
+        });
+        Schema::create('model_has_roles', function (Blueprint $table) {
+            $table->unsignedBigInteger('role_id');
+            $table->string('model_type');
+            $table->unsignedBigInteger('model_id');
+        });
+        Schema::create('role_has_permissions', function (Blueprint $table) {
+            $table->unsignedBigInteger('permission_id');
+            $table->unsignedBigInteger('role_id');
+        });
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
         // Auth user with an already-loaded role, without touching any real user table.
         $user = new User();
         $user->id = 1;
