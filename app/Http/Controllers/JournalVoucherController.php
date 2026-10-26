@@ -337,9 +337,9 @@ class JournalVoucherController extends Controller
             'line_description' => 'nullable|array',
             'line_description.*' => 'nullable|string',
             'debit' => 'required|array|min:2',
-            'debit.*' => ['required', 'regex:/^\d+(?:\.\d{1,2})?$/'],
+            'debit.*' => ['required', 'regex:/^\d{1,9}(?:\.\d{1,2})?$/'],
             'credit' => 'required|array|min:2',
-            'credit.*' => ['required', 'regex:/^\d+(?:\.\d{1,2})?$/'],
+            'credit.*' => ['required', 'regex:/^\d{1,9}(?:\.\d{1,2})?$/'],
         ]);
 
         $count = count($validated['accounts']);
@@ -422,8 +422,8 @@ class JournalVoucherController extends Controller
             ]);
 
             foreach ($validated['accounts'] as $index => $accountId) {
-                $debit = number_format((float) $validated['debit'][$index], 2, '.', '');
-                $credit = number_format((float) $validated['credit'][$index], 2, '.', '');
+                $debit = number_format((int) explode('.', (string) $validated['debit'][$index])[0] + (int) str_pad(explode('.', (string) $validated['debit'][$index])[1] ?? '', 2, '0') / 100, 2, '.', '');
+                $credit = number_format((int) explode('.', (string) $validated['credit'][$index])[0] + (int) str_pad(explode('.', (string) $validated['credit'][$index])[1] ?? '', 2, '0') / 100, 2, '.', '');
                 JournalVoucherDetail::create([
                     'journal_voucher_id' => $journalVoucher->id,
                     'account_id' => $validated['sub_accounts'][$index],
