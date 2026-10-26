@@ -110,3 +110,9 @@
 - User successfully pulled Phase 1G report commit `29839d3`.
 - Traced ledgers `type`/`type_id` usages in JV, CV, Ledger, Accounting and Booking flows plus helper numbering. Critical: LedgerController resolves JV-type entries to JournalVoucher by type_id; JournalVoucher update matches both header/detail IDs.
 - See [PHASE1H_LEDGER_REFERENCE_AUDIT.md](PHASE1H_LEDGER_REFERENCE_AUDIT.md). Read-only partial coverage; no database/controller changes.
+
+## 2026-10-26 — Phase 1I staging SQL ledger reference inventory
+- User pulled Phase 1H docs (`480e544`) successfully.
+- Parsed uploaded staging SQL export **read-only**: 17,850 ledger rows; 2,823 JV-type; 991 JV headers; 5,080 JV detail rows. CV header and detail tables exist, but **no INSERT records** found.
+- Of JV-ledger references, 2,742 IDs exist in both JV header and detail tables; 81 exist only in details. Numeric overlap is ambiguous and NOT automatically corruption.
+- Aggregate-only findings and caveats: [PHASE1I_STAGING_LEDGER_REFERENCE_INVENTORY.md](PHASE1I_STAGING_LEDGER_REFERENCE_INVENTORY.md). No personal row values committed. Next: isolated JV update collision test and reader audit.
