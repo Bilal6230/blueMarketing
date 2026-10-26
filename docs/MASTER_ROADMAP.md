@@ -14,9 +14,9 @@
 
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (26 verified finance tests; new read-only JV integrity inspector awaits execution)
+**Last updated:** 2026-10-26 (fixed syntax blocker in read-only inspector integration tests; rerun pending)
 **Active Git branch:** `upgrade/laravel-framework`  
-**Latest confirmed local verification:** user pulled `c6a6626` and ran selected JV/security suite **26 passed / 165 assertions**. New inspection integration tests not run.
+**Latest confirmed local verification:** 26 tests / 165 assertions passed before inspector tests. User pull of `78d1d72` showed inspector PHP lint clean but new `JournalVoucherPostingIntegrationTest` failed at PHP PARSE (line 308); suite never began. FQCN escaping now corrected in `06d964b`; rerun pending.
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
 **Status:** In-progress accounting integrity hardening; **not production approved**.
 
@@ -324,3 +324,8 @@ Assistant must:
 - Added three actual SQLite tests to `JournalVoucherPostingIntegrationTest.php` for valid reconciliation, header/detail mismatch detection without correction, and denial of other-project lookup. New service and tests **not locally verified**. No modifications to historic records or production DB.
 - Progress stays **Phase 1 50%, Phases 2-5 0%, overall 10%** until new service tested and finance reconciliation acceptance gates are clearer. 0/5 phases formally finished; estimated progress must not be inflated for authored but unverified code.
 - Remaining: reliable typed posting provenance, approved durable request idempotency/DB uniqueness, immutable reversal workflow, full-suite comparison, staging reconciliation; deploy only with explicit approval.
+
+## 2026-10-26 — inspector test syntax blocker repaired
+- User pulled `78d1d72`. `php -l app/Services/Finance/JournalVoucherIntegrityInspector.php` passed. Test PHP lint failed on line 308 due to accidentally doubled namespace separators `\\App\\Services`; PHPUnit could not load suite at all. **This was assistant-authored test syntax, not a business code failure.**
+- Fixed all three service FQCN references plus `ModelNotFoundException` in `JournalVoucherPostingIntegrationTest.php` in commit `06d964b`. Fetched file again and confirmed namespace spelling; **PHP lint and tests remain unverified locally**.
+- Progress remains Phase 1 **50%**, Phase 2-5 **0%**, overall **10%** (0/5 closed). Do not advance on syntax repair or pending tests. Next run isolated lint and full targeted finance tests; if green, classify full-suite baseline and tackle typed ledger source/reversal design without touching production DB.
