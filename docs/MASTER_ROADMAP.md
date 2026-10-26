@@ -1,6 +1,6 @@
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (Phase 1T fixture diagnostics pending rerun)  
+**Last updated:** 2026-10-26 (Phase 1T SoftDeletes fixture corrected; rerun pending)  
 **Active Git branch:** `upgrade/laravel-framework`  
 **Latest confirmed local verification:** `UnsafeVoucherActionGateTest` — **5 passed, 10 assertions** (user's local Laragon environment)  
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
@@ -177,3 +177,7 @@ Assistant must:
 ## Phase 1T latest local feedback
 - User pulled `34aee731` and PHP lint passed. Real DataTables test failed **before voucher display assertion**: expected `recordsFiltered=1`, got `0` (1 failed/1 assertion). **Not yet verified as report-number mismatch.**
 - Added read-only diagnostic assertions for selected-project cookie and fixture row plus full DataTables payload on mismatch (`1634104`). Rerun required to determine whether cookie resolution or DataTables filtering is responsible. Avoid assuming report bug until output reaches display assertion.
+
+## Phase 1T — SoftDeletes fixture repair
+- User reran actual DataTables test after `b40d1a9`: got **1 failed / 3 assertions**, because Yajra response included SQLite error `no such column: journal_vouchers.deleted_at`; this is a test fixture schema omission, not proof of report display behavior.
+- Added `$table->softDeletes()` to isolated `journal_vouchers` fixture in test (commit `3290c709`). **Test rerun pending**. Do not interpret any result as live production ledger issue before the display assertion executes.
