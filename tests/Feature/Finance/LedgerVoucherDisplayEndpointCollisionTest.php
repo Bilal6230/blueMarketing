@@ -46,6 +46,7 @@ class LedgerVoucherDisplayEndpointCollisionTest extends TestCase
         Schema::create('journal_vouchers', function (Blueprint $table) {
             $table->id();
             $table->string('voucher_number');
+            $table->softDeletes();
         });
         Schema::create('ledgers', function (Blueprint $table) {
             $table->id();
