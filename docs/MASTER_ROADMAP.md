@@ -10,13 +10,13 @@
 | **4. Modules and integrations** | **NOT STARTED** | agreed modules/integrations including attendance |
 | **5. Staging / release** | **NOT STARTED** | tests, backed-up staging signoff and explicit live deployment approval |
 
-**Progress snapshot (baseline set 2026-10-26; estimates, not measured delivery):** Phase 1 **55%**, Phases 2–5 **0%**, overall **11%** (equal five-phase weighting). Keep same scale and do not advance on test-only commits without passing acceptance gates. **0/5 stages complete.**
+**Progress snapshot (baseline set 2026-10-26; estimates, not measured delivery):** Phase 1 **60%**, Phases 2–5 **0%**, overall **12%** (equal five-phase weighting). Keep same scale and do not advance on test-only commits without passing acceptance gates. **0/5 stages complete.**
 
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (read-only JV integrity inspector verified, bounded Artisan audit command added unrun)
+**Last updated:** 2026-10-26 (JV CLI 32/186 verified; CV reconciliation inspector and dual-type CLI added, unrun)
 **Active Git branch:** `upgrade/laravel-framework`  
-**Latest confirmed local verification:** user pulled `17d3668` and ran combined finance suite **29 passed / 176 assertions**, including three read-only inspector checks. New finance:audit-jv Artisan tests NOT locally verified.
+**Latest confirmed local verification:** user pulled `31d57b7` and locally verified JV posting/validation/auth/security + audit command **32 passed / 186 assertions**. Newly added CV inspector and CLI tests NOT locally run.
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
 **Status:** In-progress accounting integrity hardening; **not production approved**.
 
@@ -335,3 +335,10 @@ Assistant must:
 - New `app/Console/Commands/AuditJournalVouchers.php` exposes `php artisan finance:audit-jv {project} --limit=100`, scoped to explicit positive project ID, max 1000 headers, read-only header/detail scan, one JSON result per voucher, summary and nonzero exit on mismatch; ledger candidate rows explicitly marked unverified because CV historical records may overlap JV type IDs. Do NOT run against live production DB without approval, despite read-only behavior; command code not locally tested yet.
 - Three actual SQLite Artisan command checks added to `JournalVoucherPostingIntegrationTest.php` for good voucher, mismatch and invalid project. **New tests pending local execution.** The registered command's class sits in normal Laravel app/Console/Commands auto-discovery directory; confirm via test.
 - Planning progress Phase 1 **50% -> 55%**, Phase 2–5 0%, overall **10% -> 11%** because **inspector milestone is now verified**, not for unrun command. 0/5 phases formally finished. Full suite, durable idempotency, typed provenance, reversal/reconciliation and deployment approval remain unresolved.
+
+## 2026-10-26 — full JV audit CLI verified and Commission Voucher inspection batch
+- User locally confirmed 32 tests / 186 assertions (including three Artisan JV CLI tests). Phase 1 milestone verified: project-scoped read-only audit command and mismatch exit statuses work on SQLite.
+- Created `CommissionVoucherIntegrityInspector`: read-only selected-project CV header vs non-deleted detail integer-cent reconciliation, issue codes, no assumption CV ledger rows can be reliably found by `JV type_id`. Legacy CV header may only contain `total_debit`, so it does not demand a `total_credit` column.
+- Extended existing `finance:audit-jv {project}` CLI with `--type=JV|CV` (default JV) and bounded CV iteration; detects invalid type and returns JSON status. Added three SQLite real command/service tests for CV balanced, CV mismatch without mutation, and cross-project access. **New changes not locally verified**. CLI remains read-only; no production execution without approval.
+- Planning estimate Phase 1 **55 -> 60%** from verified JV CLI; phases 2-5 0%, overall **11 -> 12%**. Increase deliberately NOT 10 points merely for writing more unrun code. 0/5 formal stages complete.
+- Important blockers: source ID provenance, real durable idempotency and typed reversal, data schema signoff, full suite RED diagnostics, staging reconciliation. No production MySQL writes, migration or master_live touched.
