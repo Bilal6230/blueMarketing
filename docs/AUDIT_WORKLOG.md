@@ -490,3 +490,7 @@
 - Source-level fix: normalized doubled backslashes to one in PHP integration test class references; verification pending.
 
 - User reported real PHP parse error line 627 in new tests; repaired every doubled namespace separator in newly appended fixture, leaving existing tests untouched. Pending focused lint/test; no progress uplift or production changes.
+
+
+## 2026-10-27 — verified conflict gate; project-wide review coverage implementation
+- User confirmed clean PHP syntax and conflict_gate **4 PASS/9 assertions**. Added LegacyEvidenceCoverageInspector and finance:audit-legacy-review-coverage requiring explicit JSON project_id/ledger_ids; SQL project scope, checked review set, coverage totals, bounded missing samples, schema guard. Six SQLite :memory: cases pending test. No migrations, production writes or source certification. Overall planning 31% provisional.

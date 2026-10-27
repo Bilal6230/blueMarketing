@@ -534,3 +534,7 @@ Assistant must:
 - Corrected literal doubled namespace separators in integration fixtures; targeted local PHP lint and tests required before considering completion.
 
 - Corrected malformed double namespace separators in conflict-gate integration test fixture after user reported PHP parse error at line 627. Tests still pending locally; verified progress remains 29% pending green validation.
+
+
+## 2026-10-27 — complete-project historical review coverage reconciliation (pending tests)
+- User verified conflict gate 4 PASS/9 assertions after PHP fixture repair. Added database-backed full-scope project coverage inspector and CLI: checks review IDs against actual unverified scoped ledger rows, enumerates capped missing IDs, detects foreign/already-attributed/irrelevant rows, warns when metadata schema absent. Six SQLite isolated integration tests. This is coverage only, not certified source evidence. Overall **31% provisional** until new tests pass; verified baseline 29%, Phase 1 85%, Phase 2 40%, Phase 3 0%, Phase 4 0%, Phase 5 20%.
