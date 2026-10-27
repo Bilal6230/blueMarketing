@@ -432,3 +432,6 @@
 
 ## 2026-10-27 — read-only discovery of real project IDs
 - Last 19/19 source audit tests passed. Example project 7 did not exist in user local environment. Added --list-projects to existing CLI; bounded, JSON project IDs only; three regressions cover listing, unknown ID, and invalid combined parameters. No schema edits/migration or production data touched; all files in one commit.
+
+## 2026-10-27 — larger read-only readiness inventory implementation
+- Previous isolated metadata suite 22/22 PASS. New FinancialReadinessInspector and finance:audit-readiness console command to inventory real project JV/CV headers, typed-vs-unverified JV ledgers and missing metadata schema, with explicit blockers. Five new SQLite tests; no claims of production completeness or code test pass yet. Code/tests/docs bundled in one commit, no live migration.

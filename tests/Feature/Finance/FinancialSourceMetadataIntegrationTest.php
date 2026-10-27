@@ -307,4 +307,46 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
             ->assertExitCode(2);
     }
 
+    public function test_readiness_reports_no_unverified_rows_when_typed_jv_attributed(): void
+    {
+        app(LedgerSourceAttributionWriter::class)->recordNewPosting(1, 7, 'journal_voucher', 41);
+        $report = app(\App\Services\Finance\FinancialReadinessInspector::class)->inspect(7);
+        $this->assertSame('preliminary_ready', $report['status']);
+        $this->assertSame(1, $report['apparently_attributed_ledgers']);
+        $this->assertSame(0, $report['unverified_jv_type_ledgers']);
+        $this->assertSame([], $report['blockers']);
+    }
+
+    public function test_readiness_blocks_unattributed_legacy_without_guessing_jv_ownership(): void
+    {
+        $report = app(\App\Services\Finance\FinancialReadinessInspector::class)->inspect(7);
+        $this->assertSame('blocked', $report['status']);
+        $this->assertSame(1, $report['unverified_jv_type_ledgers']);
+        $this->assertContains('unverified_legacy_jv_type_ledger_rows', $report['blockers']);
+        $this->assertSame(0, DB::table('ledger_source_attributions')->count());
+    }
+
+    public function test_readiness_ignores_ledgers_of_other_projects(): void
+    {
+        $report = app(\App\Services\Finance\FinancialReadinessInspector::class)->inspect(8);
+        $this->assertSame(0, $report['candidate_jv_type_ledgers']);
+        $this->assertSame('preliminary_ready', $report['status']);
+    }
+
+    public function test_readiness_command_returns_failure_for_historical_unknowns(): void
+    {
+        $this->artisan('finance:audit-readiness', ['project' => 7])
+            ->expectsOutputToContain('unverified_legacy_jv_type_ledger_rows')
+            ->assertExitCode(1);
+        $this->assertSame('7001', DB::table('ledgers')->where('id', 1)->value('voucher_number'));
+    }
+
+    public function test_readiness_detects_partial_finance_schema(): void
+    {
+        Schema::drop('financial_posting_requests');
+        $report = app(\App\Services\Finance\FinancialReadinessInspector::class)->inspect(7);
+        $this->assertContains('finance_metadata_schema_missing_or_partial', $report['blockers']);
+        $this->assertFalse($report['schema']['financial_posting_requests']);
+    }
+
 }
