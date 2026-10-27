@@ -404,8 +404,13 @@ class JournalVoucherController extends Controller
             ]);
         }
 
-        $metadataReady = \Illuminate\Support\Facades\Schema::hasTable('ledger_source_attributions')
-            && \Illuminate\Support\Facades\Schema::hasTable('financial_posting_requests');
+        $hasAttributions = \Illuminate\Support\Facades\Schema::hasTable('ledger_source_attributions');
+        $hasRequestKeys = \Illuminate\Support\Facades\Schema::hasTable('financial_posting_requests');
+        // A half-applied finance migration is never a valid legacy-mode fallback.
+        if ($hasAttributions !== $hasRequestKeys) {
+            throw new \RuntimeException('Incomplete financial metadata schema: posting is blocked until schema is reconciled.');
+        }
+        $metadataReady = $hasAttributions && $hasRequestKeys;
         $requestKey = $request->input('idempotency_key');
         if ($requestKey !== null && (!$metadataReady || !is_string($requestKey)
             || !preg_match('/^[A-Za-z0-9_-]{16,128}$/D', $requestKey))) {

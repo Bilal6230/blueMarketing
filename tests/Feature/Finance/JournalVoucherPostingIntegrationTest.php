@@ -576,4 +576,34 @@ class JournalVoucherPostingIntegrationTest extends TestCase
         $this->assertSame(0, DB::table('journal_vouchers')->count());
     }
 
+    public function test_partial_metadata_attribution_table_blocks_financial_posting(): void
+    {
+        \Illuminate\Support\Facades\Schema::create('ledger_source_attributions', function (\Illuminate\Database\Schema\Blueprint $table) {
+            $table->id();
+        });
+        try {
+            app(JournalVoucherController::class)->store($this->request($this->payload()));
+            $this->fail('Posting must fail on incomplete finance metadata installation.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('Incomplete financial metadata schema', $e->getMessage());
+        }
+        $this->assertSame(0, DB::table('journal_vouchers')->count());
+        $this->assertSame(0, DB::table('ledgers')->count());
+    }
+
+    public function test_partial_metadata_request_table_blocks_financial_posting(): void
+    {
+        \Illuminate\Support\Facades\Schema::create('financial_posting_requests', function (\Illuminate\Database\Schema\Blueprint $table) {
+            $table->id();
+        });
+        try {
+            app(JournalVoucherController::class)->store($this->request($this->payload()));
+            $this->fail('Posting must fail on incomplete finance metadata installation.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('Incomplete financial metadata schema', $e->getMessage());
+        }
+        $this->assertSame(0, DB::table('journal_vouchers')->count());
+        $this->assertSame(0, DB::table('ledgers')->count());
+    }
+
 }

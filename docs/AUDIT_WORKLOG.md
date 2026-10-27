@@ -407,3 +407,7 @@
 ## 2026-10-27 — actual JV typed posting path wired, local verification pending
 - JournalVoucherController::store optionally uses atomic typed source attribution and durable keyed replay when approved metadata tables exist. Default existing legacy-schema path retained; idempotency key fails closed if schema missing. Four new SQLite integration tests added. No deployment or schema migration run, no CV 409 gates lifted.
 - Code plus integration tests plus both docs prepared in same change. Last verified full suite 309 PASS before this batch. Progress 70% phase 1, overall 14%; no claim of new test green yet.
+
+## 2026-10-27 — fail-closed partial metadata schema validation
+- JV Controller actual store now blocks writes when exactly one of ledger_source_attributions / financial_posting_requests exists. Added two SQLite unit-fixture integration regressions (unverified), no migration run or financial DB writes. User previously confirmed 313 PASS full suite. Baseline progress 70% Phase 1, 10% Phase 2, 16% overall.
+- Code, tests, master roadmap and worklog travel together in one commit; no documentation-only commit.
