@@ -99,6 +99,19 @@ jobs:
             tests/Feature/Api/SanctumTokenRegressionTest.php \
             tests/Feature/FinanceApprovalWorkflowTest.php
 
+      - name: Laravel 13 broad operational feature regressions (isolated)
+        run: |
+          php artisan test \
+            tests/Feature/LeadPendingApprovalTest.php \
+            tests/Feature/LeadTest.php \
+            tests/Feature/AllLeadsReportRenderingTest.php \
+            tests/Feature/BookingEditPageTest.php \
+            tests/Feature/LabourReportTest.php \
+            tests/Feature/LabourViewTest.php \
+            tests/Feature/VoucherClearanceFlowTest.php \
+            tests/Feature/VoucherDeleteProtectionTest.php \
+            tests/Feature/LoginRecaptchaTest.php
+
       - name: Check finance migrations are not executed on CI runtime
         if: always()
         run: |
