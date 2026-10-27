@@ -50,6 +50,13 @@ jobs:
           cp .env.example .env
           php artisan key:generate --force
 
+      - name: Laravel 13 app boot and route registration smoke checks
+        run: |
+          php artisan --version
+          php artisan about --only=environment
+          php artisan route:list --json > /tmp/bluemarketing-routes.json
+          php -r '$routes=json_decode(file_get_contents("/tmp/bluemarketing-routes.json"),true,512,JSON_THROW_ON_ERROR); if (!is_array($routes) || count($routes)<10) {fwrite(STDERR,"Unexpectedly empty route registry".PHP_EOL); exit(1);} echo "Registered routes: ".count($routes).PHP_EOL;'
+
       - name: PHP lint changed financial application files
         run: |
           find app/Services/Finance app/Http/Controllers/Finance app/Console/Commands -name '*.php' -print0 | xargs -0 -n1 php -l
