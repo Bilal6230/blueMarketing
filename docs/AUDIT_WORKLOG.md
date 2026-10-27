@@ -447,3 +447,6 @@
 
 ## 2026-10-27 — all-project finance rollout readiness aggregation
 - Baseline 31 metadata tests PASS, real MySQL finance metadata schema absent. Implemented finance:rollout-assessment and FinanceRolloutAssessment, read-only bounded cross-project inventory + schema preflight with fail-closed JSON blockers and 5 SQLite tests. No migration, no production mutation, single code+tests+docs commit. Tests pending.
+
+## 2026-10-27 — substantial legacy evidence discovery workflow
+- Actual user read-only MySQL rollout report found 2873 unverified JV-type ledgers among 6 projects. Implemented finance:audit-legacy-cases with explicit numeric-header ambiguity classification, original ledger number, bounded review case details and fail-closed exit code. Four SQLite isolated tests; code/test/docs in one commit, pending verification. No migration or live data mutation.

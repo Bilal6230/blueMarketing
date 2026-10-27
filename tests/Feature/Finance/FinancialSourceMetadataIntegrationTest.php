@@ -440,4 +440,39 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
             ->assertExitCode(2);
     }
 
+    public function test_legacy_case_inventory_never_guesses_owner_from_colliding_headers(): void
+    {
+        $report = app(\App\Services\Finance\LegacyVoucherCollisionInventory::class)->inspect(7);
+        $this->assertSame(1, $report['available']);
+        $this->assertSame('both_headers', $report['cases'][0]['candidate_category']);
+        $this->assertFalse($report['cases'][0]['source_verified']);
+        $this->assertSame('7001', $report['cases'][0]['original_voucher_number']);
+    }
+
+    public function test_legacy_case_inventory_excludes_explicitly_attributed_rows(): void
+    {
+        app(LedgerSourceAttributionWriter::class)->recordNewPosting(1, 7, 'journal_voucher', 41);
+        $report = app(\App\Services\Finance\LegacyVoucherCollisionInventory::class)->inspect(7);
+        $this->assertSame(0, $report['available']);
+        $this->assertSame([], $report['cases']);
+    }
+
+    public function test_legacy_case_inventory_bounded_scan_cannot_claim_completeness(): void
+    {
+        DB::table('ledgers')->insert(['id'=>2,'project_head_subheads_id'=>3,'type'=>'JV',
+            'type_id'=>999,'voucher_number'=>'7002']);
+        $report = app(\App\Services\Finance\LegacyVoucherCollisionInventory::class)->inspect(7, 1);
+        $this->assertTrue($report['incomplete']);
+        $this->assertSame(2, $report['available']);
+        $this->assertSame(1, $report['scanned']);
+    }
+
+    public function test_legacy_case_artisan_is_read_only_and_nonzero_on_review_needed(): void
+    {
+        $this->artisan('finance:audit-legacy-cases', ['project'=>7, '--limit'=>100])
+            ->expectsOutputToContain('"candidate_category":"both_headers"')->assertExitCode(1);
+        $this->assertSame('7001', DB::table('ledgers')->where('id',1)->value('voucher_number'));
+        $this->assertSame(0, DB::table('ledger_source_attributions')->count());
+    }
+
 }
