@@ -465,3 +465,9 @@
 
 ## 2026-10-27 — user-requested chat transfer checkpoint
 - Last verified local source metadata suite: **52 PASS / 145 assertions**. finance:audit-legacy-evidence 6 12179 reports type_id 1310, original voucher 249, account 428, no JV/CV header candidates, source unverified; source attribution still requires independent evidence. Current branch has an additional unverified consolidated batch evidence commit (cde6447345d3a9da88c21dc2b4fb68aa759f8420). Added docs/NEW_CHAT_HANDOFF_2026_10_27.md for resuming safely in new conversation. Explicit user-requested docs-only exception; no production or finance code changes.
+
+
+## 2026-10-27 — code milestone: independent evidence worksheet and reviewer preflight
+- Added pure `LegacyEvidenceReviewWorksheet` service, `finance:review-legacy-evidence` JSON template/validation CLI, six regression tests. Template fingerprints project-scoped ledger and candidate headers; validator enforces complete review coverage, stable snapshots, documented reviewer identity/date/references/notes, and cross-checks header candidate claims. Even clean review is only `ready_for_independent_approval`, always `source_verified=false`; no historical attributions automatically written.
+- Usage: `php artisan finance:review-legacy-evidence 6 12179,12180` to emit worksheet JSON; save JSON to file, complete review fields, then `php artisan finance:review-legacy-evidence 6 12179,12180 --review-file=path/to/review.json`. Never treat the resulting status as a signed-off or approved attribution.
+- Pending user local PHP verification (new six unit tests and previously unrun four batch tests). Baseline still 52 PASS/145 assertions. Progress **unchanged at 25%** until verified. Production DB, migrations, master_live untouched.

@@ -509,3 +509,8 @@ Assistant must:
 ## 2026-10-27 — user-requested new-chat handoff (documentation only, explicit exception)
 - Verified local status: 52 metadata tests PASS / 145 assertions and project 6 ledger 12179 read-only evidence packet with original voucher 249, type_id 1310 and no numeric JV/CV header; not a verified origin. Latest branch code includes newer consolidated batch evidence CLI commit cde6447345d3a9da88c21dc2b4fb68aa759f8420, **unverified** in user terminal.
 - Persistent handoff at docs/NEW_CHAT_HANDOFF_2026_10_27.md includes branch, commands, real database safety blockers, 2873 unverified ledger rows and current 25% estimated roadmap. No functional code changed in this explicit handoff-only docs commit; percentages unchanged.
+
+
+## 2026-10-27 — fingerprinted independent evidence review workflow (pending local verification)
+- Added `finance:review-legacy-evidence` for a deterministic, project-scoped JSON review worksheet and optional `--review-file` validation against fresh immutable ledger/header fingerprints. Rejects stale, duplicate, missing, cross-project and undocumented claims; it does not certify provenance or post/write metadata. Six pure PHPUnit regression tests added.
+- Last **locally** verified baseline remains 52 PASS/145 assertions for FinancialSourceMetadataIntegrationTest; consolidated batch evidence tests and the new review workflow tests are unverified locally. Overall remains **25%** (Phase 1 85%, Phase 2 25%, Phase 3 0%, Phase 4 0%, Phase 5 10%); no stage closed. Production metadata tables absent; no migration or accounting mutation approved.
