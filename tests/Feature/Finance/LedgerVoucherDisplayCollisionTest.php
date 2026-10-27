@@ -8,9 +8,8 @@ use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
- * RED diagnostic for the currently ambiguous JV report-number lookup.
- * This recreates the exact ledger/JV-header lookup in LedgerController's
- * display_voucher_number callback; it does NOT invoke the DataTables endpoint.
+ * Unit-level historical collision regression for the active fail-closed display service.
+ * No source attribution exists, so the original ledger number must survive.
  */
 class LedgerVoucherDisplayCollisionTest extends TestCase
 {
@@ -49,20 +48,9 @@ class LedgerVoucherDisplayCollisionTest extends TestCase
         ]);
 
         $ledger = DB::table('ledgers')->find(1);
-        $voucherNumber = $ledger->voucher_number;
+        $display = app(\App\Services\Finance\LedgerVoucherDisplayService::class)
+            ->display($ledger, 7);
 
-        // Mirror the active reader in LedgerController::fetch_data_url.
-        if ($ledger->type === 'JV' && !empty($ledger->type_id)) {
-            $header = DB::table('journal_vouchers')
-                ->where('id', $ledger->type_id)
-                ->first(['id', 'voucher_number']);
-            if ($header && !empty($header->voucher_number)) {
-                $voucherNumber = $header->voucher_number;
-            }
-        }
-
-        // An ambiguous legacy row should not be confidently relabeled
-        // as another voucher. RED until source provenance is available.
-        $this->assertSame('JV-7001', $ledger->type . '-' . $voucherNumber);
+        $this->assertSame('JV-7001', $display);
     }
 }
