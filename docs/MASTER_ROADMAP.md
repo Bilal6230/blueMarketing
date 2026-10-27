@@ -514,3 +514,8 @@ Assistant must:
 ## 2026-10-27 — fingerprinted independent evidence review workflow (pending local verification)
 - Added `finance:review-legacy-evidence` for a deterministic, project-scoped JSON review worksheet and optional `--review-file` validation against fresh immutable ledger/header fingerprints. Rejects stale, duplicate, missing, cross-project and undocumented claims; it does not certify provenance or post/write metadata. Six pure PHPUnit regression tests added.
 - Last **locally** verified baseline remains 52 PASS/145 assertions for FinancialSourceMetadataIntegrationTest; consolidated batch evidence tests and the new review workflow tests are unverified locally. Overall remains **25%** (Phase 1 85%, Phase 2 25%, Phase 3 0%, Phase 4 0%, Phase 5 10%); no stage closed. Production metadata tables absent; no migration or accounting mutation approved.
+
+
+## 2026-10-27 — validated review baseline, independent checkpoint milestone (pending tests)
+- User confirmed 6 PASS/16 assertions worksheet tests and 56 PASS/154 assertions finance integration tests: combined 62 PASS/170 assertions. Independent read-only dual-approval checkpoint added: canonical review hash, stale edits rejected, reviewer/approver distinct, explicit evidence references; standalone CLI and six tests pending local verification. No source attribution, authentication, migration, production DB mutation or deployment.
+- Overall planning estimate **27%** (25% -> 27%, reflecting prior validated workflow and new distinct substantial review gate), Phase 1 85%, Phase 2 35%, Phase 3 0%, Phase 4 0%, Phase 5 15%. No phase complete.
