@@ -57,6 +57,10 @@ jobs:
           php artisan route:list --json > /tmp/bluemarketing-routes.json
           php -r '$routes=json_decode(file_get_contents("/tmp/bluemarketing-routes.json"),true,512,JSON_THROW_ON_ERROR); if (!is_array($routes) || count($routes)<10) {fwrite(STDERR,"Unexpectedly empty route registry".PHP_EOL); exit(1);} echo "Registered routes: ".count($routes).PHP_EOL;'
 
+      - name: Laravel modular application discovery (no migrations)
+        run: |
+          php artisan module:list
+
       - name: PHP lint changed financial application files
         run: |
           find app/Services/Finance app/Http/Controllers/Finance app/Console/Commands -name '*.php' -print0 | xargs -0 -n1 php -l
@@ -78,7 +82,8 @@ jobs:
             tests/Feature/Finance/LegacyEvidencePortfolioReconciliationTest.php \
             tests/Feature/Finance/JournalVoucherStoreValidationTest.php \
             tests/Feature/Finance/UnsafeVoucherActionGateTest.php \
-            tests/Feature/Finance/VoucherGuestAccessIntegrationTest.php
+            tests/Feature/Finance/VoucherGuestAccessIntegrationTest.php \
+            tests/Feature/Compatibility/Laravel13RouteContractTest.php
 
       - name: Check finance migrations are not executed on CI runtime
         if: always()
