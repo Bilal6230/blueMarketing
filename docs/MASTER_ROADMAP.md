@@ -26,9 +26,9 @@
 
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-27 (typed ledger display resolver and immutable reversal plan foundation delivered, pending PHP unit tests)
+**Last updated:** 2026-10-27 (typed finance unit foundation 7/7 verified; financial idempotency fingerprint added, tests pending)
 **Active Git branch:** `upgrade/laravel-framework`  
-**Latest confirmed local verification:** user last verified **285 passed / 2 known RED failures / 1328 assertions** on full test suite at `a56335d`. Latest `7c03e02` documentation-only pull succeeded. New typed finance foundation unit tests not yet run.
+**Latest confirmed local verification:** User pulled `d72c8fd`; three PHP lints clean, TypedFinanceFoundationTest **7 passed / 14 assertions**, full suite **292 passed / 2 failed / 1342 assertions**. Two known legacy display collision diagnostics RED.
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
 **Status:** In-progress accounting integrity hardening; **not production approved**.
 
@@ -396,3 +396,8 @@ Assistant must:
 - Added `FinancialReversalPlanner` for exact integer cents debit/credit flip of a verified balanced JV/CV source. Rejects unverified source, invalid/mixed/zero lines or unbalanced originals. **Produces a draft data structure only; never writes ledger, never lifts CV/JV 409 gates**. The boolean sourceVerified must eventually come from a trustworthy server-side typed attribution, NOT client request data.
 - Added 7 PHPUnit pure unit tests for unknown/typed JV/typed CV/cross-project display, reversal precision and invalid-source/unbalanced rejection. Source code commit only; no local PHP runtime or test pass evidence yet.
 - Progress remains Phase 1 65% and Phases 2–5 0%, overall 13%, 0/5 phases formally complete. Actual Phase 2 progress only after verified integrated durable metadata, idempotency and reversal posting with isolated migration approval. No migration or master_live or production data touched.
+
+## 2026-10-27 — typed finance foundation verified and deterministic idempotency identity batch
+- User verified `d72c8fd` locally: finance typed service unit tests **7 PASS, 14 assertions**; full suite **292 PASS, 2 FAIL, 1342 assertions**. The two pre-existing legacy JV/CV display mis-attribution tests remain RED. No regressions from new unit service classes verified.
+- New `FinancialPostingFingerprint`: pure deterministic amount-cents / ordered-line canonicalization; derives SHA-256 payload hash and a project + voucher-kind + client request key scope hash; classifies `same_request`, `conflicting_payload` and `new_request`, refuses malformed keys, unbalanced amounts and invalid lines. Adds 6 unit tests. **This is NOT production request idempotency** because the durable unique request key table and atomic MySQL transaction boundary remain unimplemented; no posting controller calls it yet. Unit tests UNVERIFIED.
+- Progress phase 1 **65% -> 65%**, phase 2 **0% -> 0%**, remaining phases 0%, overall **13% -> 13%**, 0/5 phases complete. No migration, production database write, deployed change or master_live modification. Important next: approved schema, unique index, real parallel writes test, typed attribution and user-facing display integration before any feature enablement.
