@@ -1130,20 +1130,10 @@ class LedgerController extends Controller
         }
 
         return DataTables::eloquent($query)
-            ->addColumn('display_voucher_number', function ($ledger) {
-                $voucherNumber = $ledger->voucher_number;
-
-                if ($ledger->type === 'JV' && !empty($ledger->type_id)) {
-                    $journalVoucher = JournalVoucher::where('id', $ledger->type_id)
-                        ->select('id', 'voucher_number')
-                        ->first();
-
-                    if ($journalVoucher && !empty($journalVoucher->voucher_number)) {
-                        $voucherNumber = $journalVoucher->voucher_number;
-                    }
-                }
-
-                return ($ledger->type ?? '') . '-' . $voucherNumber;
+            ->addColumn('display_voucher_number', function ($ledger) use ($selectedProjectId) {
+                // Untyped legacy JV/type_id can refer to either JV or CV.
+                return app(\App\Services\Finance\LedgerVoucherDisplayService::class)
+                    ->display($ledger, (int) $selectedProjectId);
             })
             ->addColumn('project_name', function ($ledger) {
                 return $ledger->projectHeadSubhead->project->project ?? '';
