@@ -55,6 +55,17 @@ final class FinanceMysqlStagingPreflight extends Command
             return self::FAILURE;
         }
 
+        // Verify the server-selected database, not merely Laravel's config.
+        // This SELECT does not inspect or mutate business tables.
+        $selectedDatabase = $connection->selectOne('SELECT DATABASE() AS active_database');
+        if (!self::databaseIdentityMatches(
+            $expectedDatabase,
+            $selectedDatabase->active_database ?? null
+        )) {
+            $this->error('Connected MySQL session is not using the approved staging database.');
+            return self::FAILURE;
+        }
+
         $report = $assessment->inspect((int) $limit);
         $report['context'] = 'staging_read_only';
         $report['deployment_approved'] = false;
@@ -62,5 +73,12 @@ final class FinanceMysqlStagingPreflight extends Command
         $this->line(json_encode($report, JSON_THROW_ON_ERROR));
         $this->warn('Read-only staging inventory only: no migrations, ownership backfill, or production approval.');
         return $report['status'] === 'preliminary_ready' ? self::SUCCESS : self::FAILURE;
+    }
+
+    /** Match session identity exactly; missing/empty values must fail closed. */
+    public static function databaseIdentityMatches(string $expected, ?string $actual): bool
+    {
+        return $expected !== '' && $actual !== null
+            && $actual !== '' && hash_equals($expected, $actual);
     }
 }
