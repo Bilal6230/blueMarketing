@@ -2,13 +2,13 @@
 
 | Stage | Estimated progress | Main outstanding gate |
 |---|---:|---|
-| Phase 1 — Audit & Financial Safety | **65%** | Verify CV dead-code removal and full suite; two historic provenance collision diagnostics |
+| Phase 1 — Audit & Financial Safety | **70%** | Verify CV dead-code removal and full suite; two historic provenance collision diagnostics |
 | Phase 2 — Financial Posting & Reconciliation | **0%** | Typed ledger identity, durable idempotency, reversal, staged reconciliation |
 | Phase 3 — Security & Activity Logging | **0%** | Central audit logging |
 | Phase 4 — Modules & Integrations | **0%** | Approved module scope |
 | Phase 5 — Staging & Deployment | **0%** | Approval, backup/recovery and production release |
 
-**Overall 13%; previous 12% → current 13%. These are planning estimates, not measured productivity. 0/5 phases complete.**
+**Overall 14%; previous 13% → current 14%. These are planning estimates, not measured productivity. 0/5 phases complete.**
 
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
@@ -26,9 +26,9 @@
 
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-27 (legacy voucher report display fixed conservatively in actual LedgerController; local verification pending)
+**Last updated:** 2026-10-27 (actual ledger-display collision repair fully verified: 301 passing, 0 failing, 1351 assertions)
 **Active Git branch:** `upgrade/laravel-framework`  
-**Latest confirmed local verification:** user pulled `3a79eb8`; pure finance unit tests **13 passed / 22 assertions**, full suite **298 passed / 2 failed / 1350 assertions**, both failures were legacy ledger display collisions. Controller display fix on upgrade branch NOT locally verified.
+**Latest confirmed local verification:** user pulled `d74e6db`, lint of LedgerController and LedgerVoucherDisplayService clean, 4 targeted collision tests PASS (10 assertions), full suite **301 PASS / 0 FAIL / 1351 assertions**. Verified in isolated test environment, not live reconciliation.
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
 **Status:** In-progress accounting integrity hardening; **not production approved**.
 
@@ -408,3 +408,9 @@ Assistant must:
 - Updated *legacy isolated diagnostic* to call the actual service instead of its stale copied broken logic. Updated genuine JV positive endpoint test fixture with an explicit independent attribution record (previous fixture claimed source was known but lacked proof). Added verified CV with colliding JV header endpoint regression. This changes test fixture evidence, not expected financial correctness; legacy `JV-7001` and verified `JV-9002` expectations remain.
 - **Caution:** conservative default means old unverified genuine JV rows will now show their originally stored ledger voucher number, rather than an assumed header number; an authoritative attribution rollout/review is still required for fully normalized historical reports. Two former RED cases are expected to pass but are NOT verified; do not claim full suite green until user executes.
 - Progress Phase 1 **65% -> 65%**, overall **13% -> 13%**, other phases 0%, 0/5 formally complete pending verification and production provenance schema approval. No production DB, migration, master_live or history changed.
+
+## 2026-10-27 — SOURCE-COLLISION DISPLAY BUG VERIFIED RESOLVED (isolated tests)
+- User terminal confirmed pull through `d74e6db`, PHP lint clean for actual `LedgerController` + `LedgerVoucherDisplayService`, focused display regression **4 passed / 10 assertions**, and full test suite **301 passed / ZERO failed / 1351 assertions**.
+- Known repeated legacy ledger-number collision RED diagnostics are now green against real service and DataTables endpoint, including explicit verified JV, verified CV and ambiguous legacy cases. Unverified rows preserve their original ledger voucher numbers instead of borrowing unrelated JV headers.
+- This closes the **application-level incorrect voucher display defect as captured by tests**; it does **not** establish real historical ledger source attribution, migrate metadata, prove production balance reconciliation, or enable protected CV/JV writes. Metadata table in endpoint tests is SQLite-only; production metadata schema not installed. Conservative unknown-row fallback remains a policy requiring historical review.
+- Estimated progress Phase 1 **65% -> 70%** for verified repair/full-suite green; Phase 2–5 still 0%, overall **13% -> 14%**, 0/5 formally completed. No production DB access, migration, finance writes, deploy or master_live touch.
