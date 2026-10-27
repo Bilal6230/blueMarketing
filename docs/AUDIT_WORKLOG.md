@@ -444,3 +444,6 @@
 
 ## 2026-10-27 — implemented finance deployment metadata preflight in code/tests/docs
 - Baseline latest 40/40 JV tests PASS. New read-only command finance:metadata-preflight validates real finance metadata columns and DB-enforced unique constraints using SQLite/MySQL index introspection, with four isolated tests. Single commit with code, tests, docs. No schema migration or production writes; verification pending; overall progress 20% provisional.
+
+## 2026-10-27 — all-project finance rollout readiness aggregation
+- Baseline 31 metadata tests PASS, real MySQL finance metadata schema absent. Implemented finance:rollout-assessment and FinanceRolloutAssessment, read-only bounded cross-project inventory + schema preflight with fail-closed JSON blockers and 5 SQLite tests. No migration, no production mutation, single code+tests+docs commit. Tests pending.

@@ -397,4 +397,47 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
         $this->assertSame(0, DB::table('financial_posting_requests')->count());
     }
 
+    public function test_rollout_assessment_reports_all_projects_and_legacy_gaps(): void
+    {
+        $report = app(\App\Services\Finance\FinanceRolloutAssessment::class)->inspect();
+        $this->assertSame(2, $report['scanned_projects']);
+        $this->assertSame('blocked', $report['status']);
+        $this->assertSame(1, $report['unverified_jv_type_ledgers']);
+        $this->assertSame(7, $report['projects'][0]['project_id']);
+        $this->assertSame(8, $report['projects'][1]['project_id']);
+    }
+
+    public function test_rollout_assessment_succeeds_only_for_fully_attributed_fixture(): void
+    {
+        app(LedgerSourceAttributionWriter::class)->recordNewPosting(1, 7, 'journal_voucher', 41);
+        $report = app(\App\Services\Finance\FinanceRolloutAssessment::class)->inspect();
+        $this->assertSame('preliminary_ready', $report['status']);
+        $this->assertSame(0, $report['blocked_projects']);
+        $this->assertSame(0, $report['unverified_jv_type_ledgers']);
+    }
+
+    public function test_rollout_assessment_detects_incomplete_project_inventory(): void
+    {
+        $report = app(\App\Services\Finance\FinanceRolloutAssessment::class)->inspect(1);
+        $this->assertTrue($report['incomplete']);
+        $this->assertSame('blocked', $report['status']);
+        $this->assertSame(1, $report['scanned_projects']);
+    }
+
+    public function test_rollout_command_is_read_only_and_exits_nonzero_on_blockers(): void
+    {
+        $this->artisan('finance:rollout-assessment', ['--limit' => 100])
+            ->expectsOutputToContain('"unverified_jv_type_ledgers":1')
+            ->assertExitCode(1);
+        $this->assertSame(0, DB::table('ledger_source_attributions')->count());
+        $this->assertSame('7001', DB::table('ledgers')->where('id', 1)->value('voucher_number'));
+    }
+
+    public function test_rollout_command_rejects_invalid_scan_limit(): void
+    {
+        $this->artisan('finance:rollout-assessment', ['--limit' => 0])
+            ->expectsOutputToContain('Project limit must be between 1 and 1000.')
+            ->assertExitCode(2);
+    }
+
 }
