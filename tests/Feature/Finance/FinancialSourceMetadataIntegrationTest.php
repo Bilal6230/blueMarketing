@@ -765,4 +765,26 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
         $this->artisan('finance:mysql-staging-preflight')->assertExitCode(1);
         $this->assertSame(0,DB::table('ledger_source_attributions')->count());
     }
+
+    public function test_staging_preflight_requires_pinned_host_and_database(): void
+    {
+        config()->set('app.env','staging');
+        $this->artisan('finance:mysql-staging-preflight',[
+            '--ack-staging'=>true,
+        ])->expectsOutputToContain('Explicit --expected-host and --expected-database are required.')
+          ->assertExitCode(1);
+        $this->assertSame(0,DB::table('ledger_source_attributions')->count());
+    }
+
+    public function test_staging_preflight_refuses_non_mysql_even_with_explicit_target(): void
+    {
+        config()->set('app.env','staging');
+        $this->artisan('finance:mysql-staging-preflight',[
+            '--ack-staging'=>true,
+            '--expected-host'=>'staging-db.internal',
+            '--expected-database'=>'blue_marketing_staging',
+        ])->expectsOutputToContain('An authorized MySQL staging connection is required.')
+          ->assertExitCode(1);
+        $this->assertSame('7001',DB::table('ledgers')->where('id',1)->value('voucher_number'));
+    }
 }

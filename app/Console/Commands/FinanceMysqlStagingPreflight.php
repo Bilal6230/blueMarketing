@@ -14,7 +14,9 @@ final class FinanceMysqlStagingPreflight extends Command
 {
     protected $signature = 'finance:mysql-staging-preflight
         {--limit=100 : Scan limit, 1 to 1000 projects}
-        {--ack-staging : Confirm this is an authorized, isolated staging database}';
+        {--ack-staging : Confirm this is an authorized, isolated staging database}
+        {--expected-host= : Required exact staging database host}
+        {--expected-database= : Required exact staging database name}';
     protected $description = 'Read-only MySQL staging-only schema and project finance blockers';
 
     public function handle(FinanceRolloutAssessment $assessment): int
@@ -32,8 +34,24 @@ final class FinanceMysqlStagingPreflight extends Command
             $this->error('Staging acknowledgment and APP_ENV=staging are required.');
             return self::FAILURE;
         }
+        // Pin the intended target before any financial inspection. Setting
+        // APP_ENV=staging must not silently authorize a different database.
+        $expectedHost = trim((string) $this->option('expected-host'));
+        $expectedDatabase = trim((string) $this->option('expected-database'));
+        if ($expectedHost === '' || $expectedDatabase === '') {
+            $this->error('Explicit --expected-host and --expected-database are required.');
+            return self::FAILURE;
+        }
         if (DB::connection()->getDriverName() !== 'mysql') {
             $this->error('An authorized MySQL staging connection is required.');
+            return self::FAILURE;
+        }
+
+        $connection = DB::connection();
+        $configuredHost = (string) $connection->getConfig('host');
+        $configuredDatabase = (string) $connection->getDatabaseName();
+        if ($configuredHost !== $expectedHost || $configuredDatabase !== $expectedDatabase) {
+            $this->error('MySQL target does not match the explicitly approved staging host/database.');
             return self::FAILURE;
         }
 
