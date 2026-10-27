@@ -575,3 +575,44 @@
 
 ## 2026-10-27 — full application PHPUnit acceptance gate, not selective suite only
 - User locally verified MysqlStagingDatabaseIdentityTest 4 PASS/6 assertions plus FinancialSourceMetadataIntegrationTest 70 PASS/195 assertions (74 PASS/201); GitHub CI run 40482713836 passed. Added an explicit **full `php artisan test`** CI gate under isolated PHP 8.3 + SQLite :memory: to identify regressions in all registered Unit and Feature classes, beyond the individually enumerated finance/booking/CRM/attendance flows. New full-suite CI status pending: do NOT claim full application test success unless the run passes. Live MySQL staging, manual UI acceptance, financial historical ownership and production signoff remain release blockers. No production credentials, schema mutations or `master_live` changes. Qualitative verified 79% baseline, no increase pending full-suite acceptance.
+
+## 2026-10-27 — autonomous local continuation, isolated acceptance and legacy inventory repair
+
+Completed: verified branch/HEAD and initial clean tracked tree (only preserved vendor backup untracked); inspected sanitized connection settings, 55 migration files, finance preflight/readiness/evidence services, PHPUnit and CI definitions. Git ownership was handled using a temporary exact-path Git config selected only in child processes. Laravel 13.38.0 / PHP 8.3.0 / PHPUnit 12.5.40 confirmed. Route JSON returned 314 routes (exit 0); module:list returned no module rows (exit 0); composer validate --no-check-publish passed (exit 0, ownership warnings).
+
+Tests and commands:
+- Initial `php vendor/phpunit/phpunit/phpunit --no-progress`: 445 tests, 1742 assertions, exit 0; one deprecated XML schema warning.
+- Diagnostic `--filter MysqlUniqueIndexPreflightTest --display-phpunit-deprecations --no-progress`: 4 tests, 4 assertions, exit 0; identified obsolete PHPUnit configuration schema.
+- PHPUnit `--migrate-configuration` executed against a temporary XML copy only, exit 0; repository XML changed minimally from obsolete coverage wrapper to source wrapper, preserving discovery and forced SQLite memory.
+- Focused `php vendor/phpunit/phpunit/phpunit tests/Feature/Finance/FinancialSourceMetadataIntegrationTest.php --no-progress --display-phpunit-deprecations`: 74 tests, 256 assertions, exit 0, no warning.
+- Final full `php vendor/phpunit/phpunit/phpunit --no-progress --display-phpunit-deprecations`: **449 tests, 1803 assertions, exit 0**, no warning.
+- `php -l` on both changed PHP files and `git diff --check`: exit 0.
+- All regression runs used process-scoped testing/SQLite memory, empty DATABASE_URL, non-operational MySQL test credentials, array cache/session and sync queue; no cached app config present. `.env` unchanged. Existing fixture creation occurs only in memory.
+
+Confirmed code defect and repair: `LegacyVoucherCollisionInventory` excluded any ledger with any attribution row, including wrong-project/source or unsupported evidence. Its three review modes now apply the same apparent-attribution predicates as readiness. Four data-driven cases verify continued visibility, CLI exit 1 and unchanged ledger/metadata snapshots. Valid attribution exclusion remains covered. These filters are not independent proof of source ownership.
+
+Migration hazards: March site_id up() does historical UPDATE even if its column already exists. Empty account mapping weakens the match; duplicate site descriptions/account mappings can produce order-dependent assignment. No unique source proof or amount reconciliation is required by this migration. Old permission migration uses static pivot properties that reflection confirms are instance properties in the installed package. Existing create and unguarded alter migrations require exact physical-schema comparison before reconciliation. None were executed or rewritten.
+
+Financial safety and blockers: user confirmed restricted staging credentials exist only in an earlier PowerShell variable and instructed this session to skip authenticated staging inspection. No credential-file retrieval/reset, MySQL connection or historical/attribution writes occurred. Staging counts (60 tables, 17 migration records, 2873 unverified rows) remain user handoff evidence, not reverified data. No backup/restore rerun, concurrency approval, financial signoff or deployment approval. GitHub connector's PR-only workflow lookup returned no runs for HEAD; current push CI remains unverified.
+
+Files changed: app/Services/Finance/LegacyVoucherCollisionInventory.php (read-only filtering); tests/Feature/Finance/FinancialSourceMetadataIntegrationTest.php (four new regression cases plus valid-summary assertion); phpunit.xml (current schema); docs/LARAVEL13_READINESS_AUDIT_2026_10_27.md (detailed audit and all 55 source migration operations); docs/MASTER_ROADMAP.md (current verified snapshot); this worklog. No commit, push, merge or production change.
+
+Next action: resume independent SELECT DATABASE() verification and read-only schema/evidence scans only after a secure restricted credential handoff is available and the user resumes staging inspection. Exact schema/history changes cannot be proposed responsibly until that comparison exists. Disposable MySQL provisioning/writes, historical attribution, permission/schema changes and deployment require separate explicit approval. Manual authenticated UAT and independently verified backup/restore remain outstanding. **Deployment BLOCKED**; no progress percentage increased.
+
+## 2026-10-27 — final independent pre-commit review (not committed)
+
+Reviewed git status, complete diffs for every tracked task file and full contents of new task files; git diff --check passes. Index is empty. No .env, SQL backup, customer records, credentials or vendor backup staged; task-file credential-pattern scan found zero matches and manual review found only synthetic fixtures/aggregate evidence. Branch remains upgrade/laravel-framework. No staging, commit, push, merge, database access or unrelated-file changes.
+
+Finance review: added predicates only narrow the set of metadata rows that can exclude a ledger; project isolation, bounded scans, category matching and source_verified=false remain unchanged. No write query, ownership reassignment or permission change introduced. Remaining limitations are explicit: apparent attribution does not prove source header existence/authentic evidence/balances; duplicate predicates must stay aligned; actual MySQL collation, query planning and snapshot behavior remain unverified. Deployment remains BLOCKED for historical reconciliation, schema/history review, disposable MySQL concurrency, backup/restore evidence, UAT and explicit release approval.
+
+Issue fixed during review: forced SQLite env variables did not protect against cached config or inherited URL/server values. Added test-only DatabaseIsolation guard before provider bootstrap: refuse cached config; require effective testing/SQLite :memory: with no URL/read/write overrides; remove all other configured connections. PHPUnit also forces APP_ENV and empty DATABASE_URL. Cache/.env files preserved. This is protection for the configured test suite, not arbitrary code that deliberately bypasses the test bootstrap.
+
+Verification:
+- Previous 449 tests / 1803 assertions and 74 finance tests / 256 assertions were confirmed from observed exit-0 SQLite runs.
+- New guard plus focused finance run: 84 tests / 269 assertions, exit 0.
+- Deliberate inherited production/MySQL/bluenew/URL negative run: 459 tests discovered, 370 application-bootstrap rejections, exit 2, before providers/connections. Expected fail-closed evidence, not an application pass.
+- Final explicit isolated SQLite full run: `php vendor/phpunit/phpunit/phpunit --no-progress --display-phpunit-deprecations` — **459 tests / 1816 assertions, exit 0**, no warnings.
+- Separate final `php vendor/phpunit/phpunit/phpunit tests/Feature/Finance/FinancialSourceMetadataIntegrationTest.php --no-progress --display-phpunit-deprecations` — **74 tests / 256 assertions, exit 0**, no warnings.
+- New/changed bootstrap PHP files lint clean; git diff --check passes. No MySQL connection, operational migration or historical financial writes.
+
+Exact proposed commit scope (nine files): app/Services/Finance/LegacyVoucherCollisionInventory.php; phpunit.xml; tests/CreatesApplication.php; tests/Support/DatabaseIsolation.php; tests/Unit/DatabaseIsolationTest.php; tests/Feature/Finance/FinancialSourceMetadataIntegrationTest.php; docs/MASTER_ROADMAP.md; docs/AUDIT_WORKLOG.md; docs/LARAVEL13_READINESS_AUDIT_2026_10_27.md. The vendor backup stays untracked and excluded. Suggested commit: fix: preserve unresolved finance audit cases and enforce SQLite test isolation. Awaiting explicit approval before committing or pushing.

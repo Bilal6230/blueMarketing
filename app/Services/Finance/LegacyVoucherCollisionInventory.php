@@ -23,10 +23,7 @@ final class LegacyVoucherCollisionInventory
                 $q->select('id')->from('project_head_subheads')->where('project_id', $projectId);
             });
         if (Schema::hasTable('ledger_source_attributions')) {
-            $scope->whereNotExists(function ($q) {
-                $q->selectRaw('1')->from('ledger_source_attributions as a')
-                    ->whereColumn('a.ledger_id', 'ledgers.id');
-            });
+            $this->excludeApparentlyAttributed($scope, $projectId);
         }
         $available = (clone $scope)->count();
         $rows = (clone $scope)->orderBy('id')->limit($limit)->get(['id', 'type_id', 'voucher_number']);
@@ -72,10 +69,7 @@ final class LegacyVoucherCollisionInventory
                 $q->select('id')->from('project_head_subheads')->where('project_id', $projectId);
             });
         if (Schema::hasTable('ledger_source_attributions')) {
-            $query->whereNotExists(function ($q) {
-                $q->selectRaw('1')->from('ledger_source_attributions as a')
-                    ->whereColumn('a.ledger_id', 'ledgers.id');
-            });
+            $this->excludeApparentlyAttributed($query, $projectId);
         }
         $available = (clone $query)->count();
         $categories = ['both_headers' => 0, 'jv_only' => 0, 'cv_only' => 0, 'neither_header' => 0];
@@ -130,10 +124,7 @@ final class LegacyVoucherCollisionInventory
                 $q->select('id')->from('project_head_subheads')->where('project_id', $projectId);
             });
         if (Schema::hasTable('ledger_source_attributions')) {
-            $scope->whereNotExists(function ($q) {
-                $q->selectRaw('1')->from('ledger_source_attributions as a')
-                    ->whereColumn('a.ledger_id', 'ledgers.id');
-            });
+            $this->excludeApparentlyAttributed($scope, $projectId);
         }
         // SQL existence predicates permit filtering before LIMIT; a large
         // project cannot hide the requested minority category beyond 100 rows.
@@ -173,4 +164,21 @@ final class LegacyVoucherCollisionInventory
         ];
     }
 
+    /**
+     * Match readiness's apparent-attribution scope. An unrelated or malformed
+     * metadata row must not hide a ledger that still needs investigation.
+     * This predicate is an inventory filter, not independent source proof.
+     */
+    private function excludeApparentlyAttributed(\Illuminate\Database\Query\Builder $query, int $projectId): void
+    {
+        $query->whereNotExists(function ($q) use ($projectId) {
+            $q->selectRaw('1')->from('ledger_source_attributions as a')
+                ->whereColumn('a.ledger_id', 'ledgers.id')
+                ->where('a.project_id', $projectId)
+                ->whereIn('a.source_kind', ['journal_voucher', 'commission_voucher'])
+                ->whereIn('a.evidence_kind', [
+                    'new_write_transaction', 'verified_external_reference', 'manual_review',
+                ])->whereColumn('a.source_id', 'ledgers.type_id');
+        });
+    }
 }

@@ -1,3 +1,17 @@
+# Latest verified continuation — 2026-10-27
+
+**Deployment: BLOCKED.** This snapshot supersedes older verification counts below; historical entries remain preserved. No percentage increase or phase completion is claimed.
+
+- Branch verified `upgrade/laravel-framework`, HEAD `19f559e`; Laravel 13.38.0, PHP 8.3.0, PHPUnit 12.5.40.
+- Final review full isolated SQLite regression: **459 tests / 1816 assertions, exit 0**, including ten new test-isolation guard cases (previous 449 / 1803 run also passed). Focused finance metadata: **74 tests / 256 assertions, exit 0**. No tests disabled.
+- Review fixed a test-isolation gap: reject cached configuration, unsafe effective database settings and URL/read/write overrides before providers boot; remove non-SQLite test connections. Deliberately inherited MySQL settings were rejected without connecting. See the readiness report for the negative-test outcome and guard scope.
+- Fixed read-only legacy inventory, summary and review queue: wrong-project/source or unsupported-evidence attribution rows no longer conceal ledgers that readiness still considers unverified. No ownership certification or write-path changes.
+- Static inventory covers all **55 migrations**. March site_id migration performs a historical description/account-based UPDATE even when its column exists; do not execute. Old permission migration references installed instance properties as static. Neither migration was modified.
+- User directed authenticated staging work to be skipped: restricted password belongs to a previous PowerShell session and is unavailable here. No private credential search, MySQL access, migration, historical update or backfill. Reported **2873** unresolved rows, 60 tables and 17 history rows remain handoff evidence awaiting fresh verification.
+- Release gates remain: exact staging schema/history matrix, historical provenance review, approved disposable MySQL concurrency tests, backup/restore evidence, manual role-based UAT and explicit deployment approval. Current push-triggered CI was not independently verified.
+- Full evidence, migration inventory and next read-only steps: [continuation audit](LARAVEL13_READINESS_AUDIT_2026_10_27.md). `.env`, vendor backup, production and `master_live` preserved; no commit, push or merge.
+
+---
 # BlueMarketing — Current five-stage progress (2026-10-26)
 
 | Stage | Estimated progress | Main outstanding gate |

@@ -455,6 +455,44 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
         $report = app(\App\Services\Finance\LegacyVoucherCollisionInventory::class)->inspect(7);
         $this->assertSame(0, $report['available']);
         $this->assertSame([], $report['cases']);
+        $this->assertSame(0, app(\App\Services\Finance\LegacyVoucherCollisionInventory::class)
+            ->summarize(7)['available']);
+    }
+
+    public static function invalidLegacyAttributions(): array
+    {
+        return [
+            'different project' => [['project_id' => 8]],
+            'different source ID' => [['source_id' => 999]],
+            'unsupported source kind' => [['source_kind' => 'unknown']],
+            'unsupported evidence kind' => [['evidence_kind' => 'numeric_id_guess']],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidLegacyAttributions')]
+    public function test_invalid_attribution_cannot_hide_unverified_ledger_from_any_review_mode(array $invalid): void
+    {
+        DB::table('ledger_source_attributions')->insert(array_replace([
+            'ledger_id' => 1, 'project_id' => 7, 'source_kind' => 'journal_voucher',
+            'source_id' => 41, 'evidence_kind' => 'new_write_transaction',
+        ], $invalid));
+        $beforeLedger = (array) DB::table('ledgers')->where('id', 1)->first();
+        $beforeAttribution = (array) DB::table('ledger_source_attributions')->first();
+        $inventory = app(\App\Services\Finance\LegacyVoucherCollisionInventory::class);
+        $readiness = app(\App\Services\Finance\FinancialReadinessInspector::class)->inspect(7);
+
+        $this->assertSame(1, $readiness['unverified_jv_type_ledgers']);
+        foreach ([$inventory->inspect(7), $inventory->summarize(7),
+            $inventory->reviewQueue(7, 'both_headers')] as $report) {
+            $this->assertSame($readiness['unverified_jv_type_ledgers'], $report['available']);
+            $this->assertSame(1, $report['scanned']);
+            $this->assertFalse($report['incomplete']);
+        }
+        $this->artisan('finance:audit-legacy-cases', ['project' => 7, '--summary' => true])
+            ->expectsOutputToContain('"available":1')->assertExitCode(1);
+        $this->assertSame($beforeLedger, (array) DB::table('ledgers')->where('id', 1)->first());
+        $this->assertSame($beforeAttribution, (array) DB::table('ledger_source_attributions')->first());
+        $this->assertSame(1, DB::table('ledger_source_attributions')->count());
     }
 
     public function test_legacy_case_inventory_bounded_scan_cannot_claim_completeness(): void
