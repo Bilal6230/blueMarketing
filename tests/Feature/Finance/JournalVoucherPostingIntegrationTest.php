@@ -860,4 +860,31 @@ class JournalVoucherPostingIntegrationTest extends TestCase
         $this->assertSame(1,DB::table('journal_vouchers')->count());
         $this->assertSame(1,DB::table('ledgers')->count());
     }
+
+    public function test_foreign_project_jv_edit_and_print_are_not_found(): void
+    {
+        DB::table('journal_vouchers')->insert([
+            'id'=>41,'project_id'=>8,'voucher_number'=>'41','type'=>'JV',
+            'date'=>'2026-10-26','description'=>'Other project','total_debit'=>'0',
+            'total_credit'=>'0','created_at'=>now(),'updated_at'=>now(),
+        ]);
+        $request=$this->request($this->payload());
+        foreach (['edit','print'] as $method) {
+            try {
+                app(JournalVoucherController::class)->$method(41);
+                $this->fail('Other project JV was exposed by '.$method);
+            } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
+                $this->assertNotNull($exception);
+            }
+        }
+    }
+
+    public function test_jv_edit_and_print_queries_are_project_scoped(): void
+    {
+        $source=file_get_contents(app_path('Http/Controllers/JournalVoucherController.php'));
+        $this->assertStringContainsString(
+            "JournalVoucher::with('details')->where('project_id', getSelectedTown())->findOrFail(\$id)",$source);
+        $this->assertStringContainsString(
+            "JournalVoucher::with('details.account.headAccounting', 'details.account.subheadAccounting')->where('project_id', getSelectedTown())->findOrFail(\$id)",$source);
+    }
 }

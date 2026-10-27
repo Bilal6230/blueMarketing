@@ -93,8 +93,8 @@ class JournalVoucherController extends Controller
         // If it's an AJAX request, return JSON data
         if ($request->ajax()) {
             // Pagination parameters
-            $start = (int) $request->input('start', 0);
-            $length = (int) $request->input('length', 10);
+            $start = max(0, (int) $request->input('start', 0));
+            $length = min(100, max(1, (int) $request->input('length', 10)));
 
             $recordsTotal = (clone $baseQuery)->count();
             $recordsFiltered = (clone $query)->count();
@@ -519,7 +519,7 @@ class JournalVoucherController extends Controller
 
     // public function edit($id)
     // {
-    //     $voucher = JournalVoucher::with('details')->findOrFail($id);
+    //     $voucher = JournalVoucher::with('details')->where('project_id', getSelectedTown())->findOrFail($id);
     //     $x['voucher'] = $voucher;
     //     $power = Auth::user()->roles[0]->name;
     //     $x['title']     = 'Edit General Journal Voucher';
@@ -681,7 +681,7 @@ class JournalVoucherController extends Controller
 
     public function print($id)
     {
-        $voucher = JournalVoucher::with('details.account.headAccounting', 'details.account.subheadAccounting')->findOrFail($id);
+        $voucher = JournalVoucher::with('details.account.headAccounting', 'details.account.subheadAccounting')->where('project_id', getSelectedTown())->findOrFail($id);
         return view('admin.reports.vouchers.print_journal_voucher', compact('voucher'));
     }
 
