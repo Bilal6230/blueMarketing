@@ -739,4 +739,30 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
         $this->assertContains('external_schema_preflight_blocked',$report['schema']['blockers']);
         $this->assertSame(0,DB::table('ledger_source_attributions')->count());
     }
+
+    public function test_mysql_staging_preflight_rejects_sqlite_without_any_financial_mutation(): void
+    {
+        config()->set('app.env','staging');
+        $this->artisan('finance:mysql-staging-preflight',[
+            '--ack-staging'=>true,'--limit'=>100,
+        ])->assertExitCode(1);
+        $this->assertSame(0,DB::table('ledger_source_attributions')->count());
+        $this->assertSame('7001',DB::table('ledgers')->where('id',1)->value('voucher_number'));
+    }
+
+    public function test_mysql_staging_preflight_refuses_nonstaging_environment(): void
+    {
+        config()->set('app.env','production');
+        $this->artisan('finance:mysql-staging-preflight',[
+            '--ack-staging'=>true,
+        ])->assertExitCode(1);
+        $this->assertSame(0,DB::table('financial_posting_requests')->count());
+    }
+
+    public function test_mysql_staging_preflight_requires_explicit_acknowledgment(): void
+    {
+        config()->set('app.env','staging');
+        $this->artisan('finance:mysql-staging-preflight')->assertExitCode(1);
+        $this->assertSame(0,DB::table('ledger_source_attributions')->count());
+    }
 }
