@@ -1,0 +1,73 @@
+name: Laravel 13 finance safety (non-production)
+
+on:
+  push:
+    branches: [upgrade/laravel-framework]
+  pull_request:
+    branches: [upgrade/laravel-framework]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  finance-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      APP_ENV: testing
+      APP_DEBUG: "false"
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ":memory:"
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+    steps:
+      - name: Checkout upgrade branch
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.3 and isolated SQLite
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_sqlite, sqlite3, bcmath, intl, gd, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Verify dependency manifest and install locked dependencies
+        run: |
+          composer validate --no-check-publish
+          composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Check installed framework and PHPUnit versions
+        run: |
+          php -r 'require "vendor/autoload.php"; $f=Composer\InstalledVersions::getPrettyVersion("laravel/framework"); if (!preg_match("/^v?13\./", $f)) {fwrite(STDERR,"Expected Laravel 13, got ".$f.PHP_EOL); exit(1);} echo "Laravel ".$f.PHP_EOL;'
+          php -r 'require "vendor/autoload.php"; $v=Composer\InstalledVersions::getPrettyVersion("phpunit/phpunit"); if (!preg_match("/^v?12\./", $v)) {fwrite(STDERR,"Expected PHPUnit 12, got ".$v.PHP_EOL); exit(1);} echo "PHPUnit ".$v.PHP_EOL;'
+
+      - name: Prepare isolated test environment (never migrate production)
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+
+      - name: PHP lint changed financial application files
+        run: |
+          find app/Services/Finance app/Http/Controllers/Finance app/Console/Commands -name '*.php' -print0 | xargs -0 -n1 php -l
+          php -l app/Http/Controllers/JournalVoucherController.php
+          php -l app/Http/Controllers/CommissionVoucherController.php
+
+      - name: End-to-end finance safety regression suite (SQLite in memory)
+        run: |
+          php artisan test \
+            tests/Feature/Finance/JournalVoucherPostingIntegrationTest.php \
+            tests/Feature/Finance/CommissionVoucherListingResponseTest.php \
+            tests/Feature/Finance/FinancePostingSchemaGateTest.php \
+            tests/Feature/Finance/FinancialSourceMetadataIntegrationTest.php \
+            tests/Feature/Finance/LegacyEvidenceCoverageIntegrationTest.php \
+            tests/Feature/Finance/LegacyEvidenceReleaseGateTest.php \
+            tests/Feature/Finance/VoucherSafetyHttpRouteTest.php
+
+      - name: Check finance migrations are not executed on CI runtime
+        if: always()
+        run: |
+          echo "Only isolated SQLite :memory: tests were run. No production database or deployment credentials configured."
