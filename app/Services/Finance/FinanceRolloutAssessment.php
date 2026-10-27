@@ -40,10 +40,26 @@ final class FinanceRolloutAssessment
                 $blockedProjects++;
             }
         }
-        $ready = !$truncated && $schema['status'] === 'schema_verified' && $blockedProjects === 0;
+        // An empty project inventory must never be mistaken for a verified rollout.
+        $ready = count($projects) > 0 && !$truncated
+            && $schema['status'] === 'schema_verified' && $blockedProjects === 0;
+        $globalBlockers = [];
+        if ($projects === []) {
+            $globalBlockers[] = 'no_projects_scanned';
+        }
+        if ($truncated) {
+            $globalBlockers[] = 'project_scan_incomplete';
+        }
+        if ($schema['status'] !== 'schema_verified') {
+            $globalBlockers[] = 'finance_metadata_schema_unsafe';
+        }
+        if ($blockedProjects > 0) {
+            $globalBlockers[] = 'blocked_projects_present';
+        }
         return [
             'status' => $ready ? 'preliminary_ready' : 'blocked',
             'schema' => $schema,
+            'blockers' => $globalBlockers,
             'scanned_projects' => count($projects),
             'incomplete' => $truncated,
             'blocked_projects' => $blockedProjects,

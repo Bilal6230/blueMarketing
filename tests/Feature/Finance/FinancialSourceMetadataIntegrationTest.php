@@ -686,4 +686,31 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
             app(\App\Services\Finance\LegacyEvidenceApprovalCheckpoint::class));
         $this->assertContains('attribution_schema_missing',array_column($result['issues'],'code'));
     }
+
+    public function test_rollout_assessment_discloses_truncated_project_scan_as_blocked(): void
+    {
+        $report=app(\App\Services\Finance\FinanceRolloutAssessment::class)->inspect(1);
+        $this->assertSame('blocked',$report['status']);
+        $this->assertTrue($report['incomplete']);
+        $this->assertContains('project_scan_incomplete',$report['blockers']);
+        $this->assertSame(1,$report['scanned_projects']);
+    }
+
+    public function test_rollout_assessment_cannot_report_ready_with_no_projects(): void
+    {
+        DB::table('projects')->delete();
+        $report=app(\App\Services\Finance\FinanceRolloutAssessment::class)->inspect();
+        $this->assertSame('blocked',$report['status']);
+        $this->assertSame(0,$report['scanned_projects']);
+        $this->assertContains('no_projects_scanned',$report['blockers']);
+    }
+
+    public function test_rollout_assessment_exposes_unverified_ledger_blocker_without_writes(): void
+    {
+        $report=app(\App\Services\Finance\FinanceRolloutAssessment::class)->inspect();
+        $this->assertSame('blocked',$report['status']);
+        $this->assertContains('blocked_projects_present',$report['blockers']);
+        $this->assertSame(1,$report['unverified_jv_type_ledgers']);
+        $this->assertSame(0,DB::table('ledger_source_attributions')->count());
+    }
 }
