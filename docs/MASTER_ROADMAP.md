@@ -26,9 +26,9 @@
 
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-26 (285 passing / 2 genuine RED full-suite diagnostics; formal typed ledger provenance/reversal blueprint committed)
+**Last updated:** 2026-10-27 (typed ledger display resolver and immutable reversal plan foundation delivered, pending PHP unit tests)
 **Active Git branch:** `upgrade/laravel-framework`  
-**Latest confirmed local verification:** user pulled `a56335d`; finance subset **32 passed / 2 failed / 125 assertions**, full suite **285 passed / 2 failed / 1328 assertions**. New balanced-voucher-collision audit scenario passed. Two existing ledger DataTables collision diagnostics remain RED.
+**Latest confirmed local verification:** user last verified **285 passed / 2 known RED failures / 1328 assertions** on full test suite at `a56335d`. Latest `7c03e02` documentation-only pull succeeded. New typed finance foundation unit tests not yet run.
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
 **Status:** In-progress accounting integrity hardening; **not production approved**.
 
@@ -390,3 +390,9 @@ Assistant must:
 - Added comprehensive `docs/FINANCIAL_SOURCE_IDENTITY_AND_REVERSAL_DESIGN.md` detailing typed immutable ledger-source metadata, evidence-driven classification (unknown legacy stays unknown), durable per-project idempotency, new JV/CV atomic posting rules, append-only reversal, reader rendering, acceptance suite, schema staging and release gates.
 - This is a **design artifact only**, not an approved schema migration or implemented typed posting; guards remain 409, history untouched, no deployment. Do not assert remaining tests green. Critical dependency: actual production schema inspection and finance-reviewed migration signoff before identity metadata can be populated or user-facing reader fixed.
 - Progress Phase 1 **65% -> 65%**, Phase 2–5 0%, overall **13% -> 13%**. Big requested increases require production-ready implementation acceptance, not document count.
+
+## 2026-10-27 — First typed financial foundation implementation, no schema rollout
+- Added `VerifiedLedgerSourceResolver` as a pure fail-closed typed display resolver. Accepts independently supplied typed attribution and verified header; rejects missing/mismatched IDs, project IDs and unsupported evidence. No database access and no heuristic from legacy `type_id`. For unknown legacy rows preserves original ledger voucher number. **NOT wired into existing `LedgerController` yet** because no approved authoritative attribution store exists; two original ledger display collision diagnostics deliberately remain RED.
+- Added `FinancialReversalPlanner` for exact integer cents debit/credit flip of a verified balanced JV/CV source. Rejects unverified source, invalid/mixed/zero lines or unbalanced originals. **Produces a draft data structure only; never writes ledger, never lifts CV/JV 409 gates**. The boolean sourceVerified must eventually come from a trustworthy server-side typed attribution, NOT client request data.
+- Added 7 PHPUnit pure unit tests for unknown/typed JV/typed CV/cross-project display, reversal precision and invalid-source/unbalanced rejection. Source code commit only; no local PHP runtime or test pass evidence yet.
+- Progress remains Phase 1 65% and Phases 2–5 0%, overall 13%, 0/5 phases formally complete. Actual Phase 2 progress only after verified integrated durable metadata, idempotency and reversal posting with isolated migration approval. No migration or master_live or production data touched.
