@@ -91,6 +91,7 @@ jobs:
             tests/Unit/BookingPriceCalculatorTest.php \
             tests/Unit/Finance/FinancialPostingFingerprintTest.php \
             tests/Unit/Finance/TypedFinanceFoundationTest.php \
+            tests/Unit/Finance/MysqlUniqueIndexPreflightTest.php \
             tests/Feature/BookingDomainFoundationTest.php \
             tests/Feature/BookingAmendmentIntegrationTest.php \
             tests/Feature/BookingCrossFlowLockingTest.php \

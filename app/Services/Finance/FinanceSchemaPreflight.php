@@ -79,20 +79,42 @@ final class FinanceSchemaPreflight
         }
         if ($driver === 'mysql') {
             $rows = DB::select('SHOW INDEX FROM ' . $table);
-            $groups = [];
-            foreach ($rows as $row) {
-                if ((int) $row->Non_unique === 0) {
-                    $groups[$row->Key_name][(int) $row->Seq_in_index] = $row->Column_name;
-                }
-            }
-            foreach ($groups as $group) {
-                ksort($group);
-                if (array_values($group) === $columns) {
-                    return true;
-                }
-            }
-            return false;
+            return self::mysqlHasCompleteUniqueIndex($rows, $columns);
         }
         return false; // Unknown DB driver never gives false confidence.
+    }
+    /**
+     * MySQL SHOW INDEX rows. Prefix indexes and nullable unique key parts
+     * cannot certify durable whole-value idempotency guarantees.
+     */
+    public static function mysqlHasCompleteUniqueIndex(array $rows, array $columns): bool
+    {
+        $groups = [];
+        foreach ($rows as $row) {
+            if ((int) $row->Non_unique !== 0) {
+                continue;
+            }
+            $groups[$row->Key_name][(int) $row->Seq_in_index] = $row;
+        }
+        foreach ($groups as $group) {
+            ksort($group);
+            if (array_keys($group) !== range(1, count($columns))) {
+                continue;
+            }
+            if (array_map(fn ($row) => $row->Column_name, array_values($group)) !== $columns) {
+                continue;
+            }
+            $safe = true;
+            foreach ($group as $row) {
+                if (($row->Sub_part ?? null) !== null || strtoupper((string) ($row->Null ?? '')) === 'YES') {
+                    $safe = false;
+                    break;
+                }
+            }
+            if ($safe) {
+                return true;
+            }
+        }
+        return false;
     }
 }
