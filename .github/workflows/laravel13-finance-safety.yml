@@ -114,6 +114,10 @@ jobs:
             tests/Feature/VoucherDeleteProtectionTest.php \
             tests/Feature/LoginRecaptchaTest.php
 
+      - name: Full Laravel 13 PHPUnit application regression gate (SQLite in memory)
+        run: |
+          php artisan test
+
       - name: Check finance migrations are not executed on CI runtime
         if: always()
         run: |
