@@ -26,7 +26,7 @@
 
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-27 (actual ledger-display collision repair fully verified: 301 passing, 0 failing, 1351 assertions)
+**Last updated:** 2026-10-27 (301/301 verified before additive metadata implementation; new isolated finance metadata/idempotency tests pending)
 **Active Git branch:** `upgrade/laravel-framework`  
 **Latest confirmed local verification:** user pulled `d74e6db`, lint of LedgerController and LedgerVoucherDisplayService clean, 4 targeted collision tests PASS (10 assertions), full suite **301 PASS / 0 FAIL / 1351 assertions**. Verified in isolated test environment, not live reconciliation.
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
@@ -414,3 +414,10 @@ Assistant must:
 - Known repeated legacy ledger-number collision RED diagnostics are now green against real service and DataTables endpoint, including explicit verified JV, verified CV and ambiguous legacy cases. Unverified rows preserve their original ledger voucher numbers instead of borrowing unrelated JV headers.
 - This closes the **application-level incorrect voucher display defect as captured by tests**; it does **not** establish real historical ledger source attribution, migrate metadata, prove production balance reconciliation, or enable protected CV/JV writes. Metadata table in endpoint tests is SQLite-only; production metadata schema not installed. Conservative unknown-row fallback remains a policy requiring historical review.
 - Estimated progress Phase 1 **65% -> 70%** for verified repair/full-suite green; Phase 2–5 still 0%, overall **13% -> 14%**, 0/5 formally completed. No production DB access, migration, finance writes, deploy or master_live touch.
+
+## 2026-10-27 — additive persistent identity and idempotency foundation (UNRUN)
+- Added **non-executed migration file** `2026_10_27_000001_create_financial_source_identity_tables.php`: new-only `ledger_source_attributions` (unique per ledger ID) and `financial_posting_requests` (unique per project + typed source + request key). Does NOT modify ledgers, existing voucher tables, or backfill legacy rows. Its rollback deliberately refuses destructive table drops; requires independently reviewed data-preserving rollback plan.
+- Added `LedgerSourceAttributionWriter::recordNewPosting` which requires source header and ledger membership in same project before append-only insertion; uses `new_write_transaction` evidence. It is an internal service and MUST ONLY be used in same transaction as genuinely new header/ledger posting. It is **not authorized for legacy attribution**. No CV/JV existing write route wired or 409 guard removed.
+- Added `DurableFinancialRequest::execute` project row locking + durable DB uniqueness + committed voucher ID reuse + conflicting hash rejection + rollback on failed callback. This is a future posting primitive, NOT connected to posting controllers; parallel MySQL and payload-integrity tests needed before releasing user-facing idempotency.
+- Added 8 SQLite :memory: integration tests including running migration only on their isolated in-memory schema, verified CV overlap display, immutable unique attribution, cross-project rejection, duplicate replay, changed payload conflict, rollback and project/type scope separation. **Tests unverified**. No live migrations or production DB access.
+- Progress remains Phase 1 **70%**, Phases 2–5 **0%**, overall **14%** until local tests pass, real controller integration and staging reconciliation. The test suite was last confirmed all green (301 passed) BEFORE this batch.
