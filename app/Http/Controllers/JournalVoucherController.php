@@ -404,9 +404,17 @@ class JournalVoucherController extends Controller
             ]);
         }
 
-        // Posting is atomic, but client retry idempotency requires a separate
-        // durable uniqueness design. Do not claim retries are deduplicated.
-        DB::transaction(function () use ($validated, $selectedProjectId, $totalDebitCents, $totalCreditCents) {
+        $metadataReady = \Illuminate\Support\Facades\Schema::hasTable('ledger_source_attributions')
+            && \Illuminate\Support\Facades\Schema::hasTable('financial_posting_requests');
+        $requestKey = $request->input('idempotency_key');
+        if ($requestKey !== null && (!$metadataReady || !is_string($requestKey)
+            || !preg_match('/^[A-Za-z0-9_-]{16,128}$/D', $requestKey))) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'idempotency_key' => 'Valid request key requires the approved finance metadata schema.',
+            ]);
+        }
+
+        $post = function () use ($validated, $selectedProjectId, $totalDebitCents, $totalCreditCents, $metadataReady) {
             // Serialize numbering within this project's row (on databases supporting FOR UPDATE).
             Project::whereKey($selectedProjectId)->lockForUpdate()->firstOrFail();
             $lastVoucherNumber = JournalVoucher::where('project_id', $selectedProjectId)
@@ -437,7 +445,7 @@ class JournalVoucherController extends Controller
                     'description' => $validated['line_description'][$index] ?? '',
                     'created_by' => auth()->id(),
                 ]);
-                Ledger::create([
+                $ledger = Ledger::create([
                     'voucher_number' => getVocuherNumber('JV'),
                     'type' => 'JV',
                     'type_id' => $journalVoucher->id,
@@ -451,8 +459,40 @@ class JournalVoucherController extends Controller
                     'status' => '0',
                     'date' => $validated['date'],
                 ]);
+                if ($metadataReady) {
+                    app(\App\Services\Finance\LedgerSourceAttributionWriter::class)
+                        ->recordNewPosting((int) $ledger->id, (int) $selectedProjectId,
+                            'journal_voucher', (int) $journalVoucher->id);
+                }
             }
-        });
+            return (int) $journalVoucher->id;
+        };
+
+        if ($requestKey !== null) {
+            // A retry must match metadata AND amounts, not just the debit total.
+            $canonical = [
+                'reference' => $validated['reference'] ?? null,
+                'date' => $validated['date'],
+                'description' => $validated['description'],
+                'lines' => [],
+            ];
+            foreach ($validated['accounts'] as $index => $headId) {
+                $d = explode('.', (string) $validated['debit'][$index]);
+                $c = explode('.', (string) $validated['credit'][$index]);
+                $canonical['lines'][] = [
+                    (int) $headId, (int) $validated['sub_accounts'][$index],
+                    (int) $d[0] * 100 + (int) str_pad($d[1] ?? '', 2, '0'),
+                    (int) $c[0] * 100 + (int) str_pad($c[1] ?? '', 2, '0'),
+                    $validated['line_description'][$index] ?? '',
+                ];
+            }
+            $hash = hash('sha256', json_encode($canonical, JSON_THROW_ON_ERROR));
+            app(\App\Services\Finance\DurableFinancialRequest::class)->execute(
+                'journal_voucher', (int) $selectedProjectId, $requestKey, $hash, $post
+            );
+        } else {
+            DB::transaction($post);
+        }
 
         return redirect()->route('journal.voucher.index')->with('success', 'Journal Voucher created successfully.');
     }

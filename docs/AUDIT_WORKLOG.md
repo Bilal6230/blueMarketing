@@ -403,3 +403,7 @@
 - User pulled `ac1c7cd` and ran four PHP syntax checks (all clean). FinancialSourceMetadataIntegrationTest **8 PASS / 21 assertions**; full suite **309 PASS / 0 FAIL / 1372 assertions**.
 - Unique ledger source attribution and project validation, deduplicated financial callbacks, changed-payload conflict, rollback on late simulated posting failure, and project/type isolation tested against SQLite :memory: only. No evidence yet of MySQL concurrent-write safety, actual controller integration or live historical reconciliation.
 - New migration source file present but NOT executed on real database. CV/JV 409 guards remain. No live MySQL, master_live or historical financial data touched. Phase 1 70%, overall 14%, Phase 2–5 0%, 0/5 phases complete.
+
+## 2026-10-27 — actual JV typed posting path wired, local verification pending
+- JournalVoucherController::store optionally uses atomic typed source attribution and durable keyed replay when approved metadata tables exist. Default existing legacy-schema path retained; idempotency key fails closed if schema missing. Four new SQLite integration tests added. No deployment or schema migration run, no CV 409 gates lifted.
+- Code plus integration tests plus both docs prepared in same change. Last verified full suite 309 PASS before this batch. Progress 70% phase 1, overall 14%; no claim of new test green yet.

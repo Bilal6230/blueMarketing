@@ -516,4 +516,64 @@ class JournalVoucherPostingIntegrationTest extends TestCase
         $this->assertSame(0, DB::table('journal_voucher_details')->count());
         $this->assertSame(0, DB::table('ledgers')->count());
     }
+    private function installFinanceMetadata(): void
+    {
+        $migration = require base_path('database/migrations/2026_10_27_000001_create_financial_source_identity_tables.php');
+        $migration->up();
+    }
+
+    public function test_typed_jv_posting_records_both_source_rows_atomically(): void
+    {
+        $this->installFinanceMetadata();
+        app(JournalVoucherController::class)->store($this->request($this->payload()));
+        $this->assertSame(1, DB::table('journal_vouchers')->count());
+        $this->assertSame(2, DB::table('ledger_source_attributions')->count());
+        $this->assertSame(['journal_voucher','journal_voucher'],
+            DB::table('ledger_source_attributions')->orderBy('id')->pluck('source_kind')->all());
+        $this->assertSame(2, DB::table('ledgers')->count());
+    }
+
+    public function test_real_jv_store_with_retry_key_posts_only_once(): void
+    {
+        $this->installFinanceMetadata();
+        $payload = $this->payload();
+        $payload['idempotency_key'] = 'jv_request_123456789012';
+        app(JournalVoucherController::class)->store($this->request($payload));
+        app(JournalVoucherController::class)->store($this->request($payload));
+        $this->assertSame(1, DB::table('journal_vouchers')->count());
+        $this->assertSame(2, DB::table('ledgers')->count());
+        $this->assertSame(2, DB::table('ledger_source_attributions')->count());
+        $this->assertSame(1, DB::table('financial_posting_requests')->count());
+    }
+
+    public function test_real_jv_store_rejects_conflicting_retry_without_changes(): void
+    {
+        $this->installFinanceMetadata();
+        $payload = $this->payload();
+        $payload['idempotency_key'] = 'jv_request_123456789012';
+        app(JournalVoucherController::class)->store($this->request($payload));
+        $payload['description'] = 'Changed description on same key';
+        try {
+            app(JournalVoucherController::class)->store($this->request($payload));
+            $this->fail('Changed retry was accepted.');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString('different financial payload', $e->getMessage());
+        }
+        $this->assertSame(1, DB::table('journal_vouchers')->count());
+        $this->assertSame(2, DB::table('ledgers')->count());
+    }
+
+    public function test_real_jv_store_rejects_retry_key_when_schema_missing(): void
+    {
+        $payload = $this->payload();
+        $payload['idempotency_key'] = 'jv_request_123456789012';
+        try {
+            app(JournalVoucherController::class)->store($this->request($payload));
+            $this->fail('Request key without metadata schema was accepted.');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $this->assertArrayHasKey('idempotency_key', $e->errors());
+        }
+        $this->assertSame(0, DB::table('journal_vouchers')->count());
+    }
+
 }
