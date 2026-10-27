@@ -589,3 +589,6 @@ Assistant must:
 
 ## 2026-10-27 — Laravel 13 route contract compatibility repair
 - User local output: Laravel 13.38.0, `module:list` exits normally but shows **no module rows**, so do not count that as discovered modules. Route contract tests: 2 passed, 1 failed (`getRoutesByMethod()` returns a nested indexed map, not a flat Route array). Changed only failing contract iteration to `Route::getRoutes()->getRoutes()` and exact URI + verb match. CI and user verification pending. No completion-percentage increase for a regression fix. No production changes.
+
+## 2026-10-27 — cross-domain Laravel 13 behavioural CI acceptance
+- User locally verified Laravel13RouteContractTest **3 PASS /29 assertions**. GitHub Actions run **40478524612** success for current route+finance CI. Added dedicated behavioural test step covering existing unit finance/booking calculator plus BookingDomainFoundation, BookingAmendment, concurrent booking cross-flow locking and stale-write, mobile authentication and Sanctum token regression, and finance approvals. Test runner stays SQLite in-memory; CI status for this new step pending. Known scope excludes historical finance ownership signoff and live deployment. Qualitative baseline **56% verified**, provisional **60%** subject to successful new clean CI. Do not count test names as passing without observed results.

@@ -85,6 +85,20 @@ jobs:
             tests/Feature/Finance/VoucherGuestAccessIntegrationTest.php \
             tests/Feature/Compatibility/Laravel13RouteContractTest.php
 
+      - name: Laravel 13 cross-module behavioural compatibility (isolated)
+        run: |
+          php artisan test \
+            tests/Unit/BookingPriceCalculatorTest.php \
+            tests/Unit/Finance/FinancialPostingFingerprintTest.php \
+            tests/Unit/Finance/TypedFinanceFoundationTest.php \
+            tests/Feature/BookingDomainFoundationTest.php \
+            tests/Feature/BookingAmendmentIntegrationTest.php \
+            tests/Feature/BookingCrossFlowLockingTest.php \
+            tests/Feature/BookingCrossFlowStaleWriteTest.php \
+            tests/Feature/Api/MobileAuthenticationTest.php \
+            tests/Feature/Api/SanctumTokenRegressionTest.php \
+            tests/Feature/FinanceApprovalWorkflowTest.php
+
       - name: Check finance migrations are not executed on CI runtime
         if: always()
         run: |
