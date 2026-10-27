@@ -398,3 +398,8 @@
 - Last user run `d74e6db`: 301 PASS/0 FAIL/1351 assertions. Added additive migration **but did NOT execute it** except new SQLite-only test fixture intended to run under isolation.
 - New provenance table unique by ledger ID, request table uniquely keyed by project/kind/key. New `LedgerSourceAttributionWriter` checks ledger and header scope; `DurableFinancialRequest` returns existing committed voucher on same request, refuses changed payload, commits callback and row together. Eight new finance isolated integration tests. All unverified.
 - Ledger history unchanged. Migration rollback prohibited by design pending reviewed rollback. Existing CV/JV safety gates remain 409. No master_live, prod MySQL or staging migration run. Phase 1 70%, overall 14%, 0/5 phases closed.
+
+## 2026-10-27 — 309/309 full tests green; isolated financial metadata and idempotency verified
+- User pulled `ac1c7cd` and ran four PHP syntax checks (all clean). FinancialSourceMetadataIntegrationTest **8 PASS / 21 assertions**; full suite **309 PASS / 0 FAIL / 1372 assertions**.
+- Unique ledger source attribution and project validation, deduplicated financial callbacks, changed-payload conflict, rollback on late simulated posting failure, and project/type isolation tested against SQLite :memory: only. No evidence yet of MySQL concurrent-write safety, actual controller integration or live historical reconciliation.
+- New migration source file present but NOT executed on real database. CV/JV 409 guards remain. No live MySQL, master_live or historical financial data touched. Phase 1 70%, overall 14%, Phase 2–5 0%, 0/5 phases complete.
