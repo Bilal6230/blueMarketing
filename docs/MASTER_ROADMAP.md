@@ -530,3 +530,5 @@ Assistant must:
 - Previous portfolio 5 PASS/10 assertions confirmed. Added read-only conflict gate comparing reviewed historical packet with current typed attribution rows, blocking duplicates, unresolved ownership, stale claim, missing schema and unapproved review. Four focused SQLite integration cases added. Production schema remains absent; no historical backfill. Overall estimate **31%** conditional on new tests; Phase 2 reconciliation gains tangible DB-aware blocker but historical review remains incomplete.
 
 - Focused fixture namespace escape corrected in follow-up code/test commit; conflict gate verification still pending. No progress increase for correction.
+
+- Corrected literal doubled namespace separators in integration fixtures; targeted local PHP lint and tests required before considering completion.

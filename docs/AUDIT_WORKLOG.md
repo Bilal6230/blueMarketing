@@ -486,3 +486,5 @@
 - User verified prior portfolio suite 5 PASS/10 assertions. Implemented LegacyEvidenceConflictGate and finance:audit-legacy-evidence-conflicts as non-mutating preflight comparing reviewed ledgers to actual typed attribution metadata. Added four SQLite integration tests for conflict, unresolved, eligible-only and missing-schema cases (pending local run). Still no source certification, ledger writes, production migration or master_live change. Overall estimated 31% provisional.
 
 - Post-commit test source inspection caught escaped PHP namespace tokens in newly added fixture; corrected fixture before local verification. No production changes.
+
+- Source-level fix: normalized doubled backslashes to one in PHP integration test class references; verification pending.
