@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Schema;
  */
 final class FinancialReadinessInspector
 {
-    public function inspect(int $projectId): array
+    public function inspect(int $projectId, ?array $validatedSchema = null): array
     {
         if ($projectId < 1 || !DB::table('projects')->where('id', $projectId)->exists()) {
             throw new \DomainException('Valid existing project ID required.');
@@ -22,7 +22,7 @@ final class FinancialReadinessInspector
         $requests = Schema::hasTable('financial_posting_requests');
         // Table existence alone cannot protect concurrent typed postings.
         // Align per-project readiness with the actual validated metadata schema.
-        $schemaReport = app(FinanceSchemaPreflight::class)->inspect();
+        $schemaReport = $validatedSchema ?? app(FinanceSchemaPreflight::class)->inspect();
         $schemaReady = $schemaReport['status'] === 'schema_verified';
         $scope = DB::table('ledgers')->where('type', 'JV')
             ->whereIn('project_head_subheads_id', function ($q) use ($projectId) {

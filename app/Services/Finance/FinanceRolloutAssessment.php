@@ -24,7 +24,7 @@ final class FinanceRolloutAssessment
         $totalUnverified = 0;
         $blockedProjects = 0;
         foreach ($ids->take($limit) as $id) {
-            $report = app(FinancialReadinessInspector::class)->inspect((int) $id);
+            $report = app(FinancialReadinessInspector::class)->inspect((int) $id, $schema);
             $projects[] = [
                 'project_id' => (int) $id,
                 'status' => $report['status'],

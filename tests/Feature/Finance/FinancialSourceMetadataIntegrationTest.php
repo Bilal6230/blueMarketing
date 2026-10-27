@@ -726,4 +726,17 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
         $this->assertContains('finance_metadata_schema_missing_or_partial',$report['blockers']);
         $this->assertContains('financial_posting_requests_incomplete_columns',$report['schema']['blockers']);
     }
+
+    public function test_project_readiness_respects_provided_unsafe_schema_snapshot(): void
+    {
+        $schema=app(\App\Services\Finance\FinanceSchemaPreflight::class)->inspect();
+        $this->assertSame('schema_verified',$schema['status']);
+        $schema['status']='blocked';
+        $schema['blockers']=['external_schema_preflight_blocked'];
+        $report=app(\App\Services\Finance\FinancialReadinessInspector::class)->inspect(7,$schema);
+        $this->assertSame('blocked',$report['status']);
+        $this->assertContains('finance_metadata_schema_missing_or_partial',$report['blockers']);
+        $this->assertContains('external_schema_preflight_blocked',$report['schema']['blockers']);
+        $this->assertSame(0,DB::table('ledger_source_attributions')->count());
+    }
 }
