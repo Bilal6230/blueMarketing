@@ -65,7 +65,13 @@ jobs:
             tests/Feature/Finance/FinancialSourceMetadataIntegrationTest.php \
             tests/Feature/Finance/LegacyEvidenceCoverageIntegrationTest.php \
             tests/Feature/Finance/LegacyEvidenceReleaseGateTest.php \
-            tests/Feature/Finance/VoucherSafetyHttpRouteTest.php
+            tests/Feature/Finance/VoucherSafetyHttpRouteTest.php \
+            tests/Feature/Finance/LegacyEvidenceReviewWorksheetTest.php \
+            tests/Feature/Finance/LegacyEvidenceApprovalCheckpointTest.php \
+            tests/Feature/Finance/LegacyEvidencePortfolioReconciliationTest.php \
+            tests/Feature/Finance/JournalVoucherStoreValidationTest.php \
+            tests/Feature/Finance/UnsafeVoucherActionGateTest.php \
+            tests/Feature/Finance/VoucherGuestAccessIntegrationTest.php
 
       - name: Check finance migrations are not executed on CI runtime
         if: always()
