@@ -145,4 +145,44 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
         $service->execute('journal_voucher', 8, $key, $hash, fn (): int => 99);
         $this->assertSame(3, DB::table('financial_posting_requests')->count());
     }
+    public function test_committed_request_with_missing_voucher_refuses_false_replay(): void
+    {
+        $service = app(DurableFinancialRequest::class);
+        $key = 'request_key_123456789';
+        $hash = str_repeat('a', 64);
+        DB::table('financial_posting_requests')->insert([
+            'project_id' => 7, 'source_kind' => 'journal_voucher',
+            'request_key' => $key, 'payload_hash' => $hash,
+            'status' => 'committed', 'voucher_id' => 999,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $called = false;
+        try {
+            $service->execute('journal_voucher', 7, $key, $hash, function () use (&$called): int {
+                $called = true;
+                return 41;
+            });
+            $this->fail('Orphaned idempotency record must not be treated as a safe replay.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('missing or mismatched voucher', $e->getMessage());
+        }
+        $this->assertFalse($called);
+        $this->assertSame(1, DB::table('financial_posting_requests')->count());
+    }
+
+    public function test_committed_request_for_other_project_voucher_refuses_replay(): void
+    {
+        $service = app(DurableFinancialRequest::class);
+        $key = 'request_key_123456789';
+        $hash = str_repeat('a', 64);
+        DB::table('financial_posting_requests')->insert([
+            'project_id' => 8, 'source_kind' => 'journal_voucher',
+            'request_key' => $key, 'payload_hash' => $hash,
+            'status' => 'committed', 'voucher_id' => 41,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->expectException(\RuntimeException::class);
+        $service->execute('journal_voucher', 8, $key, $hash, fn (): int => 99);
+    }
+
 }

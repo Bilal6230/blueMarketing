@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Durable, database-unique idempotent execution for future financial posting.
- * Not connected to existing JV/CV controller actions until atomic posting is reviewed.
+ * Used by new JV posting when approved finance metadata schema is present.
  */
 final class DurableFinancialRequest
 {
@@ -47,6 +47,15 @@ final class DurableFinancialRequest
                 }
                 if ($existing->status !== 'committed' || !$existing->voucher_id) {
                     throw new \RuntimeException('Previous financial request has not committed.');
+                }
+                // A committed request is not enough if its voucher has since
+                // disappeared or is in a different project. Never return a
+                // false successful replay for an orphaned financial request.
+                $headerTable = $sourceKind === 'journal_voucher'
+                    ? 'journal_vouchers' : 'commision_vouchers';
+                if (!DB::table($headerTable)->where('id', $existing->voucher_id)
+                    ->where('project_id', $projectId)->exists()) {
+                    throw new \RuntimeException('Previous financial request references a missing or mismatched voucher.');
                 }
                 return ['replayed' => true, 'voucher_id' => (int) $existing->voucher_id];
             }

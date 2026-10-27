@@ -411,3 +411,6 @@
 ## 2026-10-27 — fail-closed partial metadata schema validation
 - JV Controller actual store now blocks writes when exactly one of ledger_source_attributions / financial_posting_requests exists. Added two SQLite unit-fixture integration regressions (unverified), no migration run or financial DB writes. User previously confirmed 313 PASS full suite. Baseline progress 70% Phase 1, 10% Phase 2, 16% overall.
 - Code, tests, master roadmap and worklog travel together in one commit; no documentation-only commit.
+
+## 2026-10-27 — durable replay fail-closed against orphan voucher (unverified)
+- Updated actual DurableFinancialRequest committed-replay branch to validate typed voucher ID and project before returning success; two isolated tests cover deleted/missing and other-project JV record. No live database, master_live or schema migration executed. Focused testing required; baseline 37 JV PASS. Docs + service + tests in one commit.
