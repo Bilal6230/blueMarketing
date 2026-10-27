@@ -482,7 +482,10 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
         $readiness = app(\App\Services\Finance\FinancialReadinessInspector::class)->inspect(7);
 
         $this->assertSame(1, $readiness['unverified_jv_type_ledgers']);
-        foreach ([$inventory->inspect(7), $inventory->summarize(7),
+        $coverage = app(\App\Services\Finance\LegacyEvidenceCoverageInspector::class)->inspect(7, []);
+        $this->assertSame(1, $coverage['total_unverified']);
+        $this->assertSame('blocked', $coverage['status']);
+        foreach ([$inventory->inspect(7), $inventory->summarize(7), $inventory->summarizeEvidence(7),
             $inventory->reviewQueue(7, 'both_headers')] as $report) {
             $this->assertSame($readiness['unverified_jv_type_ledgers'], $report['available']);
             $this->assertSame(1, $report['scanned']);
@@ -658,6 +661,115 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
             ['project'=>7,'ledgers'=>'1'])
             ->expectsOutputToContain('"scanned":1')->assertExitCode(0);
         $this->assertSame(0,DB::table('ledger_source_attributions')->count());
+    }
+
+    public function test_evidence_summary_partitions_candidates_without_claiming_independent_proof(): void
+    {
+        DB::table('journal_vouchers')->insert([
+            ['id'=>42,'project_id'=>7,'voucher_number'=>'SYNTHETIC-REF'],
+            ['id'=>43,'project_id'=>7,'voucher_number'=>'0043'],
+            ['id'=>44,'project_id'=>7,'voucher_number'=>''],
+        ]);
+        DB::table('ledgers')->insert([
+            ['id'=>2,'project_head_subheads_id'=>3,'type'=>'JV','type_id'=>42,'voucher_number'=>'SYNTHETIC-REF'],
+            ['id'=>3,'project_head_subheads_id'=>3,'type'=>'JV','type_id'=>43,'voucher_number'=>'43'],
+            ['id'=>4,'project_head_subheads_id'=>3,'type'=>'JV','type_id'=>44,'voucher_number'=>'44'],
+            ['id'=>5,'project_head_subheads_id'=>3,'type'=>'JV','type_id'=>999,'voucher_number'=>'45'],
+            ['id'=>6,'project_head_subheads_id'=>4,'type'=>'JV','type_id'=>42,'voucher_number'=>'SYNTHETIC-OTHER-PROJECT'],
+        ]);
+        DB::connection()->enableQueryLog();
+        DB::connection()->flushQueryLog();
+        $report = app(\App\Services\Finance\LegacyVoucherCollisionInventory::class)->summarizeEvidence(7);
+        foreach (DB::connection()->getQueryLog() as $query) {
+            $this->assertMatchesRegularExpression('/^\s*(select|pragma)\b/i', $query['query']);
+        }
+        DB::connection()->disableQueryLog();
+        $this->assertSame(5, $report['scanned']);
+        $this->assertSame(5, $report['available']);
+        $this->assertFalse($report['incomplete']);
+        $this->assertSame([1,1,1,1,1], array_values($report['evidence_categories_in_scanned_rows']));
+        $this->assertSame(5, $report['manual_review_required']);
+        $this->assertNull($report['independently_verified_ownership_count']);
+        $this->assertFalse($report['source_verified']);
+        $this->assertFalse($report['deployment_approved']);
+        $json = json_encode($report);
+        $this->assertStringNotContainsString('SYNTHETIC-REF', $json);
+        $this->assertStringNotContainsString('SYNTHETIC-OTHER-PROJECT', $json);
+        $this->assertSame(0, DB::table('ledger_source_attributions')->count());
+    }
+
+    public function test_evidence_summary_reports_truncation_and_never_extrapolates_counts(): void
+    {
+        DB::table('ledgers')->insert(['id'=>2,'project_head_subheads_id'=>3,'type'=>'JV',
+            'type_id'=>999,'voucher_number'=>'2']);
+        $r = app(\App\Services\Finance\LegacyVoucherCollisionInventory::class)->summarizeEvidence(7, 1);
+        $this->assertSame(2, $r['available']);
+        $this->assertSame(1, $r['scanned']);
+        $this->assertSame(1, array_sum($r['evidence_categories_in_scanned_rows']));
+        $this->assertTrue($r['incomplete']);
+        $this->assertSame('incomplete', $r['status']);
+    }
+
+    public function test_evidence_summary_command_outputs_only_aggregate_triage_and_ids(): void
+    {
+        $this->assertSame(1, \Illuminate\Support\Facades\Artisan::call('finance:audit-legacy-cases',
+            ['project'=>7, '--evidence-summary'=>true]));
+        $output = \Illuminate\Support\Facades\Artisan::output();
+        $report = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertSame(1, $report['evidence_categories_in_scanned_rows']['ambiguous_candidates']);
+        $this->assertNull($report['independently_verified_ownership_count']);
+        $this->assertStringNotContainsString('original_voucher_number', $output);
+        $this->assertSame('7001', DB::table('ledgers')->where('id',1)->value('voucher_number'));
+        $this->assertSame(0, DB::table('ledger_source_attributions')->count());
+    }
+
+    public function test_evidence_summary_refuses_invalid_caps_and_combined_modes(): void
+    {
+        foreach ([['--max-rows'=>0], ['--max-rows'=>10001], ['--summary'=>true],
+            ['--review-category'=>'both_headers']] as $options) {
+            $this->artisan('finance:audit-legacy-cases', array_merge(
+                ['project'=>7, '--evidence-summary'=>true], $options))->assertExitCode(2);
+        }
+    }
+
+    public function test_evidence_summary_batches_over_one_hundred_and_bounds_example_ids(): void
+    {
+        $rows = [];
+        for ($id = 2; $id <= 101; $id++) {
+            $rows[] = ['id'=>$id,'project_head_subheads_id'=>3,'type'=>'JV',
+                'type_id'=>41,'voucher_number'=>'SYNTHETIC'];
+        }
+        DB::table('ledgers')->insert($rows);
+        $r = app(\App\Services\Finance\LegacyVoucherCollisionInventory::class)->summarizeEvidence(7, 101);
+        $this->assertSame(101, $r['scanned']);
+        $this->assertSame(101, $r['evidence_categories_in_scanned_rows']['ambiguous_candidates']);
+        $this->assertSame([1,2,3,4,5], $r['review_examples_ledger_ids']['ambiguous_candidates']);
+        $this->assertFalse($r['incomplete']);
+        $capped = app(\App\Services\Finance\LegacyVoucherCollisionInventory::class)->summarizeEvidence(7, 100);
+        $this->assertSame(101, $capped['available']);
+        $this->assertSame(100, $capped['scanned']);
+        $this->assertSame(100, array_sum($capped['evidence_categories_in_scanned_rows']));
+        $this->assertTrue($capped['incomplete']);
+        $this->assertSame('incomplete', $capped['status']);
+    }
+
+    public function test_evidence_summary_empty_project_does_not_certify_ownership(): void
+    {
+        $r = app(\App\Services\Finance\LegacyVoucherCollisionInventory::class)->summarizeEvidence(8);
+        $this->assertSame(0, $r['scanned']);
+        $this->assertSame(0, array_sum($r['evidence_categories_in_scanned_rows']));
+        $this->assertFalse($r['independent_ownership_evidence_assessed']);
+        $this->assertNull($r['independently_verified_ownership_count']);
+        $this->assertFalse($r['source_verified']);
+    }
+
+    public function test_evidence_summary_checks_cv_reference_without_promoting_match_to_proof(): void
+    {
+        DB::table('journal_vouchers')->where('id',41)->delete();
+        DB::table('ledgers')->where('id',1)->update(['voucher_number'=>'22']);
+        $r = app(\App\Services\Finance\LegacyVoucherCollisionInventory::class)->summarizeEvidence(7);
+        $this->assertSame(1, $r['evidence_categories_in_scanned_rows']['matching_reference_requires_manual_review']);
+        $this->assertFalse($r['source_verified']);
     }
 
     private function conflictReviewFixture(int $sourceId = 41): array

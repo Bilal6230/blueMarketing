@@ -10,21 +10,67 @@ use Illuminate\Support\Facades\Schema;
  */
 final class LegacyVoucherCollisionInventory
 {
+    /** Shared project-scoped review population; query construction never writes. */
+    public function unverifiedQuery(int $projectId): \Illuminate\Database\Query\Builder
+    {
+        if ($projectId < 1 || !DB::table('projects')->where('id', $projectId)->exists()) {
+            throw new \DomainException('Project does not exist.');
+        }
+        $query = DB::table('ledgers')->where('type', 'JV')
+            ->whereIn('project_head_subheads_id', function ($q) use ($projectId) {
+                $q->select('id')->from('project_head_subheads')->where('project_id', $projectId);
+            });
+        if (Schema::hasTable('ledger_source_attributions')) {
+            if (!Schema::hasColumns('ledger_source_attributions',
+                ['ledger_id', 'project_id', 'source_kind', 'source_id', 'evidence_kind'])
+                || !Schema::hasColumn('ledgers', 'type_id')) {
+                throw new \DomainException('Attribution review schema is incomplete; no complete coverage can be reported.');
+            }
+            $this->excludeApparentlyAttributed($query, $projectId);
+        }
+        return $query;
+    }
+
+    /** Bounded, aggregate-only triage using the existing immutable packet reader. */
+    public function summarizeEvidence(int $projectId, int $maxRows = 5000): array
+    {
+        if ($maxRows < 1 || $maxRows > 10000) {
+            throw new \InvalidArgumentException('Evidence scan cap must be 1-10000.');
+        }
+        $query = $this->unverifiedQuery($projectId);
+        $available = (clone $query)->count();
+        $ids = (clone $query)->orderBy('id')->limit($maxRows)->pluck('id');
+        $counts = array_fill_keys(['ambiguous_candidates', 'missing_candidate_header',
+            'missing_voucher_reference', 'candidate_reference_disagreement',
+            'matching_reference_requires_manual_review'], 0);
+        $examples = array_fill_keys(array_keys($counts), []);
+        $reader = app(LegacyVoucherEvidencePacket::class);
+        foreach ($ids->chunk(100) as $chunk) {
+            $batch = $reader->inspectBatch($projectId, $chunk->map(fn ($id) => (int) $id)->values()->all());
+            foreach ($batch['packets'] as $packet) {
+                $category = $reader->triageCategory($packet);
+                $counts[$category]++;
+                if (count($examples[$category]) < 5) {
+                    $examples[$category][] = $packet['ledger']['id'];
+                }
+            }
+        }
+        $scanned = $ids->count();
+        return ['project_id' => $projectId, 'available' => $available, 'scanned' => $scanned,
+            'incomplete' => $available > $scanned, 'status' => $available > $scanned ? 'incomplete' : 'review_required',
+            'evidence_categories_in_scanned_rows' => $counts, 'review_examples_ledger_ids' => $examples,
+            'manual_review_required' => $scanned, 'independent_ownership_evidence_assessed' => false,
+            'independently_verified_ownership_count' => null,
+            'source_verified' => false, 'deployment_approved' => false,
+            'limitations' => 'Exclusive triage categories, not ownership findings. Reference disagreement is only with a numeric candidate; matching references are not proof. Detail lines, amounts, external evidence and authenticated signoff are not assessed. Run on a stable read-only snapshot.'];
+    }
+
     public function inspect(int $projectId, int $limit = 100): array
     {
         if ($projectId < 1 || $limit < 1 || $limit > 1000) {
             throw new \InvalidArgumentException('Valid project and limit (1-1000) required.');
         }
-        if (!DB::table('projects')->where('id', $projectId)->exists()) {
-            throw new \DomainException('Project does not exist.');
-        }
-        $scope = DB::table('ledgers')->where('type', 'JV')
-            ->whereIn('project_head_subheads_id', function ($q) use ($projectId) {
-                $q->select('id')->from('project_head_subheads')->where('project_id', $projectId);
-            });
-        if (Schema::hasTable('ledger_source_attributions')) {
-            $this->excludeApparentlyAttributed($scope, $projectId);
-        }
+        $scope = $this->unverifiedQuery($projectId);
         $available = (clone $scope)->count();
         $rows = (clone $scope)->orderBy('id')->limit($limit)->get(['id', 'type_id', 'voucher_number']);
         $cases = [];
@@ -61,16 +107,7 @@ final class LegacyVoucherCollisionInventory
         if ($projectId < 1 || $maxRows < 1 || $maxRows > 10000) {
             throw new \InvalidArgumentException('Valid project and maxRows (1-10000) required.');
         }
-        if (!DB::table('projects')->where('id', $projectId)->exists()) {
-            throw new \DomainException('Project does not exist.');
-        }
-        $query = DB::table('ledgers')->where('type', 'JV')
-            ->whereIn('project_head_subheads_id', function ($q) use ($projectId) {
-                $q->select('id')->from('project_head_subheads')->where('project_id', $projectId);
-            });
-        if (Schema::hasTable('ledger_source_attributions')) {
-            $this->excludeApparentlyAttributed($query, $projectId);
-        }
+        $query = $this->unverifiedQuery($projectId);
         $available = (clone $query)->count();
         $categories = ['both_headers' => 0, 'jv_only' => 0, 'cv_only' => 0, 'neither_header' => 0];
         $examples = ['both_headers' => [], 'jv_only' => [], 'cv_only' => [], 'neither_header' => []];
@@ -116,16 +153,7 @@ final class LegacyVoucherCollisionInventory
             !in_array($category, ['both_headers', 'jv_only', 'cv_only', 'neither_header'], true)) {
             throw new \InvalidArgumentException('Valid project, category and limit (1-1000) required.');
         }
-        if (!DB::table('projects')->where('id', $projectId)->exists()) {
-            throw new \DomainException('Project does not exist.');
-        }
-        $scope = DB::table('ledgers')->where('type', 'JV')
-            ->whereIn('project_head_subheads_id', function ($q) use ($projectId) {
-                $q->select('id')->from('project_head_subheads')->where('project_id', $projectId);
-            });
-        if (Schema::hasTable('ledger_source_attributions')) {
-            $this->excludeApparentlyAttributed($scope, $projectId);
-        }
+        $scope = $this->unverifiedQuery($projectId);
         // SQL existence predicates permit filtering before LIMIT; a large
         // project cannot hide the requested minority category beyond 100 rows.
         $jvExists = function ($q) use ($projectId) {

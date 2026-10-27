@@ -1,3 +1,15 @@
+# Latest evidence-audit verification — 2026-10-27
+
+**Deployment BLOCKED.** Baseline 14560873feac8e2f3ff5f25aa3afa6622ddc88d3 on upgrade/laravel-framework; baseline CI run 40498082989 verified successful. The following new changes remain uncommitted; earlier snapshots below are historical.
+
+- Preserved/reviewed the six existing PHP changes and untracked report. Aggregate --evidence-summary reuses packet batches and collision scope; coverage now retains invalid attribution cases and refuses incomplete metadata.
+- Final resumed SQLite suite: **467 tests / 1908 assertions, exit 0**. Focused finance/evidence suites: **113 tests / 412 assertions, exit 0**. No warnings. Six PHP lints and git diff --check pass. Exact 100/101-row boundaries and bounded example IDs verified.
+- Matching IDs/references never certify ownership. Independent evidence remains not assessed/null; all scanned rows require manual review. Real 2873-row inventory remains prior-session evidence (6:1430, 5:749, 3:692, 1:2; 2/4:0).
+- [Historical reconciliation report](HISTORICAL_JV_RECONCILIATION_2026_10_27.md) records category definitions, prior project-6 findings, tool limitations and exact future steps. [Readiness audit](LARAVEL13_READINESS_AUDIT_2026_10_27.md) updated.
+- No MySQL access authorized in this task. Next: review uncommitted changes, then separately authorize read-only staging access with secure restricted credentials. Original-document/detail reconciliation, finance judgment, MySQL concurrency, backup/restore, UAT and deployment approval remain blockers.
+- No staging, commit, push, merge, migration or deployment. .env, master_live, historical data and vendor backup untouched. No phase completion or percentage increase claimed.
+
+---
 # Latest verified continuation — 2026-10-27
 
 **Deployment: BLOCKED.** This snapshot supersedes older verification counts below; historical entries remain preserved. No percentage increase or phase completion is claimed.

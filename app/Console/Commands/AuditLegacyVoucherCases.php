@@ -6,7 +6,7 @@ use Illuminate\Console\Command;
 
 final class AuditLegacyVoucherCases extends Command
 {
-    protected $signature = 'finance:audit-legacy-cases {project : Numeric project ID} {--limit=100 : Max ledger rows (1-1000)} {--summary : Compact bounded project-wide classification} {--review-category= : Export one review category (both_headers, jv_only, cv_only, neither_header)} {--max-rows=5000 : Summary scan cap (1-10000)}';
+    protected $signature = 'finance:audit-legacy-cases {project : Numeric project ID} {--limit=100 : Max ledger rows (1-1000)} {--summary : Compact bounded project-wide classification} {--evidence-summary : Aggregate packet/reference triage without raw references} {--review-category= : Export one review category (both_headers, jv_only, cv_only, neither_header)} {--max-rows=5000 : Summary scan cap (1-10000)}';
     protected $description = 'Read-only ledger-level JV/CV source ambiguity inventory for manual review';
 
     public function handle(LegacyVoucherCollisionInventory $inspector): int
@@ -20,7 +20,12 @@ final class AuditLegacyVoucherCases extends Command
             return self::INVALID;
         }
         $summary = (bool) $this->option('summary');
+        $evidenceSummary = (bool) $this->option('evidence-summary');
         $reviewCategory = $this->option('review-category');
+        if ($evidenceSummary && ($summary || $reviewCategory !== null)) {
+            $this->error('Choose --evidence-summary without other report modes.');
+            return self::INVALID;
+        }
         if ($reviewCategory !== null &&
             (!in_array($reviewCategory, ['both_headers', 'jv_only', 'cv_only', 'neither_header'], true) || $summary)) {
             $this->error('Choose a valid --review-category without --summary.');
@@ -28,16 +33,18 @@ final class AuditLegacyVoucherCases extends Command
         }
         $maxRows = filter_var($this->option('max-rows'), FILTER_VALIDATE_INT,
             ['options'=>['min_range'=>1,'max_range'=>10000]]);
-        if ($summary && $maxRows === false) {
+        if (($summary || $evidenceSummary) && $maxRows === false) {
             $this->error('Summary --max-rows must be between 1 and 10000.');
             return self::INVALID;
         }
         try {
-            $result = $summary
+            $result = $evidenceSummary
+                ? $inspector->summarizeEvidence((int) $project, (int) $maxRows)
+                : ($summary
                 ? $inspector->summarize((int) $project, (int) $maxRows)
                 : ($reviewCategory !== null
                     ? $inspector->reviewQueue((int) $project, (string) $reviewCategory, (int) $limit)
-                    : $inspector->inspect((int) $project, (int) $limit));
+                    : $inspector->inspect((int) $project, (int) $limit)));
         } catch (\DomainException $e) {
             $this->error($e->getMessage());
             return self::FAILURE;

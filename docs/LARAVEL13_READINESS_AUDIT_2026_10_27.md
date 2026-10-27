@@ -1,5 +1,13 @@
 # Laravel 13 continuation audit — 2026-10-27
 
+## Latest resumed evidence-audit status
+
+Baseline is now `14560873feac8e2f3ff5f25aa3afa6622ddc88d3`. CI run 40498082989 was independently verified completed/success for this commit during the evidence audit; earlier CI observations below are historical. New changes remain uncommitted and are not covered by that CI run.
+
+Preserved and reviewed six existing PHP changes and the untracked [historical reconciliation report](HISTORICAL_JV_RECONCILIATION_2026_10_27.md). The new aggregate evidence summary reuses existing packets and the shared collision scope; invalid attribution metadata no longer hides rows from coverage. Partial attribution schema is refused. Exact 100/101-row batch boundaries, bounded examples and conservative classification are covered by isolated tests. No source ownership is certified, and independent-evidence count remains null/not assessed.
+
+The reported 2873 rows (projects 6:1430, 5:749, 3:692, 1:2; projects 2/4:0) remain handoff evidence. Previously recorded project-6 categories are 1420 JV-only candidates and ten missing numeric headers, not verified owners. No fresh MySQL scan, detail/amount reconciliation or source-document authentication occurred. The resumed task explicitly prohibits MySQL access. Future staging reads require renewed authorization and secure restricted credentials; all prior release blockers remain. See the latest worklog for final test results. No commit, push, merge, migration or deployment in this evidence-audit task.
+
 Deployment status: **BLOCKED**. This report distinguishes observations made in this session from the supplied handoff. No production or historical database writes are authorized.
 
 ## Repository and environment

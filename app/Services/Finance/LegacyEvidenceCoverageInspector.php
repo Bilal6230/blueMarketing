@@ -23,19 +23,7 @@ final class LegacyEvidenceCoverageInspector
             }
             $ids[$id] = true;
         }
-        if (!DB::table('projects')->where('id',$projectId)->exists()) {
-            throw new \DomainException('Project does not exist.');
-        }
-        $query = DB::table('ledgers')->where('type','JV')
-            ->whereIn('project_head_subheads_id',function ($q) use ($projectId) {
-                $q->select('id')->from('project_head_subheads')->where('project_id',$projectId);
-            });
-        if (Schema::hasTable('ledger_source_attributions')) {
-            $query->whereNotExists(function ($q) {
-                $q->selectRaw('1')->from('ledger_source_attributions as a')
-                  ->whereColumn('a.ledger_id','ledgers.id');
-            });
-        }
+        $query = app(LegacyVoucherCollisionInventory::class)->unverifiedQuery($projectId);
         $total = (clone $query)->count();
         $reviewed = 0;
         // The entire provided ID set is checked, rather than trusting IDs from

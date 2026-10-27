@@ -20,6 +20,7 @@ final class LegacyEvidenceCoverageIntegrationTest extends TestCase
         Schema::create('project_head_subheads',function(Blueprint $t){$t->id();$t->unsignedBigInteger('project_id');});
         Schema::create('ledgers',function(Blueprint $t){
             $t->id();$t->unsignedBigInteger('project_head_subheads_id');$t->string('type');
+            $t->unsignedBigInteger('type_id')->default(41);
         });
         DB::table('projects')->insert([['id'=>6],['id'=>7]]);
         DB::table('project_head_subheads')->insert([['id'=>10,'project_id'=>6],['id'=>11,'project_id'=>7]]);
@@ -55,9 +56,7 @@ final class LegacyEvidenceCoverageIntegrationTest extends TestCase
     }
     public function test_full_coverage_with_schema_is_not_provenance_certification(): void
     {
-        Schema::create('ledger_source_attributions',function(Blueprint $t){
-            $t->id();$t->unsignedBigInteger('ledger_id');
-        });
+        $this->createAttributionSchema();
         $r=app(LegacyEvidenceCoverageInspector::class)->inspect(6,[1,2,3]);
         $this->assertSame('coverage_only_complete',$r['status']);
         $this->assertFalse($r['source_verified']);
@@ -65,10 +64,9 @@ final class LegacyEvidenceCoverageIntegrationTest extends TestCase
     }
     public function test_already_attributed_rows_do_not_reappear_as_missing_review(): void
     {
-        Schema::create('ledger_source_attributions',function(Blueprint $t){
-            $t->id();$t->unsignedBigInteger('ledger_id');
-        });
-        DB::table('ledger_source_attributions')->insert(['ledger_id'=>3]);
+        $this->createAttributionSchema();
+        DB::table('ledger_source_attributions')->insert(['ledger_id'=>3, 'project_id'=>6,
+            'source_kind'=>'journal_voucher', 'source_id'=>41, 'evidence_kind'=>'new_write_transaction']);
         $r=app(LegacyEvidenceCoverageInspector::class)->inspect(6,[1,2]);
         $this->assertSame(2,$r['total_unverified']);
         $this->assertSame(0,$r['remaining_unreviewed']);
@@ -78,5 +76,23 @@ final class LegacyEvidenceCoverageIntegrationTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
         app(LegacyEvidenceCoverageInspector::class)->inspect(6,[1,1]);
+    }
+
+    public function test_incomplete_metadata_cannot_claim_complete_coverage(): void
+    {
+        Schema::create('ledger_source_attributions', function (Blueprint $t) {
+            $t->id(); $t->unsignedBigInteger('ledger_id');
+        });
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('Attribution review schema is incomplete');
+        app(LegacyEvidenceCoverageInspector::class)->inspect(6, [1,2,3]);
+    }
+
+    private function createAttributionSchema(): void
+    {
+        Schema::create('ledger_source_attributions', function (Blueprint $t) {
+            $t->id(); $t->unsignedBigInteger('ledger_id'); $t->unsignedBigInteger('project_id');
+            $t->string('source_kind'); $t->unsignedBigInteger('source_id'); $t->string('evidence_kind');
+        });
     }
 }

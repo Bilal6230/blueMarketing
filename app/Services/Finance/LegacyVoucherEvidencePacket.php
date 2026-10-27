@@ -10,6 +10,30 @@ use Illuminate\Support\Facades\DB;
  */
 final class LegacyVoucherEvidencePacket
 {
+    /** Classify an internally generated packet without promoting hints to proof. */
+    public function triageCategory(array $packet): string
+    {
+        if ($packet['candidate_category'] === 'both_headers') {
+            return 'ambiguous_candidates';
+        }
+        if ($packet['candidate_category'] === 'neither_header') {
+            return 'missing_candidate_header';
+        }
+        $header = match ($packet['candidate_category']) {
+            'jv_only' => $packet['candidate_jv_header'],
+            'cv_only' => $packet['candidate_cv_header'],
+            default => throw new \InvalidArgumentException('Unknown packet candidate category.'),
+        };
+        $ledgerReference = $packet['ledger']['original_voucher_number'];
+        $headerReference = $header['voucher_number'];
+        if (trim($ledgerReference) === '' || trim($headerReference) === '') {
+            return 'missing_voucher_reference';
+        }
+        // Exact string comparison deliberately preserves leading zeros/format.
+        return $ledgerReference === $headerReference
+            ? 'matching_reference_requires_manual_review' : 'candidate_reference_disagreement';
+    }
+
     public function inspect(int $projectId, int $ledgerId): array
     {
         if ($projectId < 1 || $ledgerId < 1 ||
