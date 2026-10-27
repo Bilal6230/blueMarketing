@@ -462,3 +462,6 @@
 
 ## 2026-10-27 — consolidated legacy ledger review packets
 - Prior metadata tests 52 PASS and ledger 12179 no-header evidence confirmed. Added batch evidence CLI for up to 100 distinct ledger IDs with cross-project rejection and four focused tests. Read-only, no auto attribution; code, tests and docs single commit; new tests pending.
+
+## 2026-10-27 — user-requested chat transfer checkpoint
+- Last verified local source metadata suite: **52 PASS / 145 assertions**. finance:audit-legacy-evidence 6 12179 reports type_id 1310, original voucher 249, account 428, no JV/CV header candidates, source unverified; source attribution still requires independent evidence. Current branch has an additional unverified consolidated batch evidence commit (cde6447345d3a9da88c21dc2b4fb68aa759f8420). Added docs/NEW_CHAT_HANDOFF_2026_10_27.md for resuming safely in new conversation. Explicit user-requested docs-only exception; no production or finance code changes.
