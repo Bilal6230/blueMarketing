@@ -525,7 +525,9 @@ class JournalVoucherPostingIntegrationTest extends TestCase
     public function test_typed_jv_posting_records_both_source_rows_atomically(): void
     {
         $this->installFinanceMetadata();
-        app(JournalVoucherController::class)->store($this->request($this->payload()));
+        $payload=$this->payload();
+        $payload['idempotency_key']='jv_typed_post_123456789';
+        app(JournalVoucherController::class)->store($this->request($payload));
         $this->assertSame(1, DB::table('journal_vouchers')->count());
         $this->assertSame(2, DB::table('ledger_source_attributions')->count());
         $this->assertSame(['journal_voucher','journal_voucher'],
@@ -648,4 +650,79 @@ class JournalVoucherPostingIntegrationTest extends TestCase
         $this->assertSame(1, DB::table('financial_posting_requests')->count());
     }
 
+
+    public function test_typed_schema_refuses_missing_key_before_any_accounting_write(): void
+    {
+        $this->installFinanceMetadata();
+        try {
+            app(JournalVoucherController::class)->store($this->request($this->payload()));
+            $this->fail('Typed financial posting without request key succeeded.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('idempotency_key',$e->errors());
+        }
+        $this->assertSame(0,DB::table('journal_vouchers')->count());
+        $this->assertSame(0,DB::table('ledgers')->count());
+        $this->assertSame(0,DB::table('financial_posting_requests')->count());
+    }
+
+    public function test_metadata_tables_without_request_unique_index_block_real_jv_store(): void
+    {
+        $this->installFinanceMetadata();
+        Schema::drop('financial_posting_requests');
+        Schema::create('financial_posting_requests',function(Blueprint $t) {
+            $t->id();$t->unsignedBigInteger('project_id');$t->string('source_kind');
+            $t->string('request_key');$t->char('payload_hash',64);$t->string('status');
+            $t->unsignedBigInteger('voucher_id')->nullable();$t->timestamps();
+        });
+        $payload=$this->payload();
+        $payload['idempotency_key']='jv_typed_post_123456789';
+        try {
+            app(JournalVoucherController::class)->store($this->request($payload));
+            $this->fail('Broken uniqueness allowed posting.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('financial_request_unique_index_missing',$e->getMessage());
+        }
+        $this->assertSame(0,DB::table('journal_vouchers')->count());
+        $this->assertSame(0,DB::table('ledgers')->count());
+    }
+
+    public function test_typed_ledger_failure_rolls_back_request_header_and_source_rows(): void
+    {
+        $this->installFinanceMetadata();
+        $payload=$this->payload();
+        $payload['idempotency_key']='jv_typed_post_123456789';
+        Ledger::creating(function () {throw new \RuntimeException('Simulated typed ledger failure');});
+        try {
+            app(JournalVoucherController::class)->store($this->request($payload));
+            $this->fail('Expected ledger failure.');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('Simulated typed ledger failure',$e->getMessage());
+        } finally {
+            Ledger::flushEventListeners();
+        }
+        $this->assertSame(0,DB::table('journal_vouchers')->count());
+        $this->assertSame(0,DB::table('journal_voucher_details')->count());
+        $this->assertSame(0,DB::table('ledgers')->count());
+        $this->assertSame(0,DB::table('ledger_source_attributions')->count());
+        $this->assertSame(0,DB::table('financial_posting_requests')->count());
+    }
+
+    public function test_conflicting_keyed_retry_preserves_existing_typed_source_rows(): void
+    {
+        $this->installFinanceMetadata();
+        $payload=$this->payload();
+        $payload['idempotency_key']='jv_typed_post_123456789';
+        app(JournalVoucherController::class)->store($this->request($payload));
+        $payload['debit'][0]='200.25';
+        $payload['credit'][1]='200.25';
+        try {
+            app(JournalVoucherController::class)->store($this->request($payload));
+            $this->fail('Different balanced payload reused same request key.');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString('different financial payload',$e->getMessage());
+        }
+        $this->assertSame(1,DB::table('journal_vouchers')->count());
+        $this->assertSame(2,DB::table('ledger_source_attributions')->count());
+        $this->assertSame(1,DB::table('financial_posting_requests')->count());
+    }
 }

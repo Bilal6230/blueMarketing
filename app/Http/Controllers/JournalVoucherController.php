@@ -416,6 +416,13 @@ class JournalVoucherController extends Controller
         // without required columns and unique constraints is not safe.
         $metadataReady = app(\App\Services\Finance\FinancePostingSchemaGate::class)->mode() === 'typed';
         $requestKey = $request->input('idempotency_key');
+        // Typed posting must always reserve a durable request identity.
+        // Never silently downgrade a metadata-ready install to an unkeyed write.
+        if ($metadataReady && $requestKey === null) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'idempotency_key' => 'A unique request key is required for typed financial posting.',
+            ]);
+        }
         if ($requestKey !== null && (!$metadataReady || !is_string($requestKey)
             || !preg_match('/^[A-Za-z0-9_-]{16,128}$/D', $requestKey))) {
             throw \Illuminate\Validation\ValidationException::withMessages([
