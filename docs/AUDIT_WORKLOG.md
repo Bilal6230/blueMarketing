@@ -393,3 +393,8 @@
 - Local pull `d74e6db` succeeded, LedgerController and new display service PHP syntax clean. Four targeted collision tests **4 pass / 10 assertions**, full suite **301 pass / 0 fail / 1351 assertions**.
 - Actual DataTables voucher display is now fail-closed: unknown legacy ledger retains stored number, verified JV/CV can use typed header. Previous two failing finance collision regressions now pass. No historical provenance populated or financial postings enabled; no live migration performed.
 - Phase 1 65→70%, overall 13→14% (estimated), other stages 0%, 0/5 complete. Remaining finance gates: authoritative typed source storage, durable idempotency unique constraints, reversal postings and reviewed staging reconciliation. No master_live or production DB touch.
+
+## 2026-10-27 — metadata schema and transactional replay services added (pending local tests)
+- Last user run `d74e6db`: 301 PASS/0 FAIL/1351 assertions. Added additive migration **but did NOT execute it** except new SQLite-only test fixture intended to run under isolation.
+- New provenance table unique by ledger ID, request table uniquely keyed by project/kind/key. New `LedgerSourceAttributionWriter` checks ledger and header scope; `DurableFinancialRequest` returns existing committed voucher on same request, refuses changed payload, commits callback and row together. Eight new finance isolated integration tests. All unverified.
+- Ledger history unchanged. Migration rollback prohibited by design pending reviewed rollback. Existing CV/JV safety gates remain 409. No master_live, prod MySQL or staging migration run. Phase 1 70%, overall 14%, 0/5 phases closed.
