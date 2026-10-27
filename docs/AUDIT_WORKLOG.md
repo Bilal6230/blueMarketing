@@ -378,3 +378,8 @@
 - Last verified full suite 285 PASS / 2 known ledger collision RED, 1328 assertions; docs-only pull `7c03e02` successful.
 - Added `VerifiedLedgerSourceResolver` (explicit project/type/evidence validation, fallback original number on unknown) and `FinancialReversalPlanner` (immutable reversal data from balanced verified JV/CV lines, integer cents, never posts). Added 7 PHPUnit unit tests, unverified locally.
 - These services are not connected to actual controller or DB yet; no typed source attribution database table, idempotency, reversal posting, migrations, live changes. Keep 409 gates and both true RED tests. Progress 65% Phase 1, overall 13%, others 0%.
+
+## 2026-10-27 — 292 PASS / 2 RED; typed ledger and replay foundation
+- User pulled `d72c8fd`, lint green; typed foundation unit suite 7 PASS/14 assertions and full suite **292 PASS / 2 FAIL / 1342 assertions**. Both RED tests still reveal historical JV/CV display collisions.
+- Committed pure `FinancialPostingFingerprint` and six unrun unit tests. It validates line amounts with integer cents, hashes canonical financial payload and scoped idempotency request keys, classifies duplicate same vs conflicting payload. No durable DB unique constraint, no controller integration, no claim of real at-most-once guarantee.
+- Phase 1 65%, rest zero, overall 13%, 0/5 formally complete. Production MySQL and master_live untouched.
