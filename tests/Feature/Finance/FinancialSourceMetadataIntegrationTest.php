@@ -248,4 +248,41 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
             app(\App\Services\Finance\LedgerVoucherDisplayService::class)->display($ledger, 7));
     }
 
+    public function test_provenance_reconciliation_clean_verified_record(): void
+    {
+        app(LedgerSourceAttributionWriter::class)->recordNewPosting(1,7,'journal_voucher',41);
+        $report = app(\App\Services\Finance\FinancialSourceReconciliationInspector::class)->inspect(7);
+        $this->assertSame(1,$report['scanned']);
+        $this->assertSame([],$report['issues']);
+        $this->assertFalse($report['incomplete']);
+    }
+
+    public function test_provenance_reconciliation_detects_wrong_ledger_source(): void
+    {
+        app(LedgerSourceAttributionWriter::class)->recordNewPosting(1,7,'journal_voucher',41);
+        DB::table('ledgers')->where('id',1)->update(['type_id'=>99]);
+        $report = app(\App\Services\Finance\FinancialSourceReconciliationInspector::class)->inspect(7);
+        $this->assertContains('ledger_source_mismatch',$report['issues'][0]['codes']);
+        $this->assertSame(99,DB::table('ledgers')->where('id',1)->value('type_id'));
+    }
+
+    public function test_provenance_reconciliation_reports_incomplete_bounded_scan(): void
+    {
+        app(LedgerSourceAttributionWriter::class)->recordNewPosting(1,7,'journal_voucher',41);
+        DB::table('ledgers')->insert(['id'=>2,'project_head_subheads_id'=>3,'type'=>'JV','type_id'=>41,'voucher_number'=>'7002']);
+        app(LedgerSourceAttributionWriter::class)->recordNewPosting(2,7,'journal_voucher',41);
+        $report = app(\App\Services\Finance\FinancialSourceReconciliationInspector::class)->inspect(7,1);
+        $this->assertTrue($report['incomplete']);
+        $this->assertSame(2,$report['available']);
+    }
+
+    public function test_provenance_reconciliation_artisan_fails_on_discrepancy(): void
+    {
+        app(LedgerSourceAttributionWriter::class)->recordNewPosting(1,7,'journal_voucher',41);
+        DB::table('ledgers')->where('id',1)->update(['type_id'=>99]);
+        $this->artisan('finance:audit-source-attributions',['project'=>7])
+            ->expectsOutputToContain('ledger_source_mismatch')->assertExitCode(1);
+        $this->assertSame(1,DB::table('ledger_source_attributions')->count());
+    }
+
 }

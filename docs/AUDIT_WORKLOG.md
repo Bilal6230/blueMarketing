@@ -426,3 +426,6 @@
 
 ## 2026-10-27 — bulk ledger provenance safety improvements (pending tests)
 - Previous user run: 38/38 JV focused tests PASS. Updated production source writer (type_id + JV soft-delete + selected-project validation) and report resolver (real ledger project ownership + typed source ID cross-check); four regression tests added. Documentation bundled in same code commit; no live DB or master_live touched.
+
+## 2026-10-27 — implemented read-only typed-source reconciliation
+- Project-scoped inspector and CLI with bounded scan, structured discrepancy codes and nonzero exit on incomplete/mismatched provenance. Four SQLite isolated tests, unverified. Code+tests+docs single commit; no live DB touch. User prior finance verification 56 PASS / 178 assertions.
