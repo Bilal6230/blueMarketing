@@ -420,3 +420,6 @@
 
 ## 2026-10-27 — corrected SQLite fixture for deleted_at regression
 - User observed 10 passing and 1 failing FinancialSourceMetadataIntegrationTest after committed replay began checking JV deleted_at. Root cause outdated fixture schema, not verified production defect. Added softDeletes to shared in-memory JV table and removed per-test duplicate addition. Focused verification pending; code/tests/docs same commit, no live schema changes.
+
+## 2026-10-27 — early JV idempotency-key validation
+- Previous metadata suite 11/11 PASS. Added early framework-level validation of optional JV idempotency key and isolated rejection/no-ledger regression. Code, test and docs in one commit; new JV focused test unverified. No production mutation.

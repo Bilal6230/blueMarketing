@@ -606,4 +606,18 @@ class JournalVoucherPostingIntegrationTest extends TestCase
         $this->assertSame(0, DB::table('ledgers')->count());
     }
 
+    public function test_invalid_short_retry_key_is_rejected_without_writes(): void
+    {
+        $payload = $this->payload();
+        $payload['idempotency_key'] = 'short';
+        try {
+            app(JournalVoucherController::class)->store($this->request($payload));
+            $this->fail('Expected retry key validation to fail.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('idempotency_key', $e->errors());
+        }
+        $this->assertSame(0, DB::table('journal_vouchers')->count());
+        $this->assertSame(0, DB::table('ledgers')->count());
+    }
+
 }

@@ -326,6 +326,7 @@ class JournalVoucherController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'idempotency_key' => ['sometimes', 'required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
             'voucher_number' => 'required|string',
             'reference' => 'nullable|string',
             'date' => 'required|date',

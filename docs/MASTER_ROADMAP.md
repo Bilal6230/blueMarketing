@@ -448,3 +448,6 @@ Assistant must:
 
 ## 2026-10-27 — test fixture correction for verified soft-delete replay gate
 - User's focused run of previous change: **10 PASS / 1 FAIL / 23 assertions**. Root cause: existing SQLite journal_vouchers fixture lacked production-model deleted_at column; new DurableFinancialRequest correctly checks deleted_at and caused previously green replay test to error. Updated shared isolated test table schema to include softDeletes from creation and removed redundant per-test alteration; preserved actual finance service behavior. Re-run focused 11 tests pending. No production DB or migration applied; progress unchanged Phase 1 70%, Phase 2 10%, overall 16%.
+
+## 2026-10-27 — request-level JV retry key validation
+- User verified previous finance metadata replay suite **11 PASS / 27 assertions**. Added Laravel request validation for optional idempotency_key (16–128 ASCII letters/numbers/_/-) at the start of actual JV store, before account lookups; added one isolated invalid-short-key regression proving no posting. Focused tests pending; legacy no-key remains compatible. MySQL concurrency/staging still pending, no live migration. Phase 1 70%, Phase 2 10%, overall 16%.
