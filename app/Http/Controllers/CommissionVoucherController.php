@@ -30,39 +30,29 @@ class CommissionVoucherController extends Controller
         // Get selected town's project_id
         $selectedProjectId = getSelectedTown();
 
-        // Build base query for vouchers
-        $query = CommisionVoucher::latest()->where('project_id', $selectedProjectId);
-
-        // Apply filters if they exist
-        if ($request->has('filter_voucher_number') && $request->filter_voucher_number) {
-            $query->where('voucher_number', 'like', '%' . $request->filter_voucher_number . '%');
+        // Keep pagination counts independent of skip/take; restrict every
+        // query to the currently selected project.
+        $baseQuery = CommisionVoucher::query()->where('project_id', $selectedProjectId);
+        $query = clone $baseQuery;
+        if ($request->filled('filter_voucher_number')) {
+            $query->where('voucher_number', 'like', '%' . $request->input('filter_voucher_number') . '%');
+        }
+        if ($request->filled('filter_reference')) {
+            $query->where('reference', 'like', '%' . $request->input('filter_reference') . '%');
+        }
+        if ($request->filled('filter_amount')) {
+            $query->where('total_debit', '>=', $request->input('filter_amount'));
+        }
+        if ($request->filled('filter_date')) {
+            $query->whereDate('date', $request->input('filter_date'));
         }
 
-        if ($request->has('filter_reference') && $request->filter_reference) {
-            $query->where('reference', 'like', '%' . $request->filter_reference . '%');
-        }
-
-        if ($request->has('filter_amount') && $request->filter_amount) {
-            $query->where('total_debit', '>=', $request->filter_amount);
-        }
-
-        if ($request->has('filter_date') && $request->filter_date) {
-            $query->whereDate('date', '=', $request->filter_date); // Apply date filter if provided
-        }
-
-        // If it's an AJAX request, return JSON data
         if ($request->ajax()) {
-            // Pagination parameters
-            $start = (int) $request->input('start', 0);
-            $length = (int) $request->input('length', 10);
-
-            // Fetch paginated rows
-            $vouchers = $query->skip($start)->take($length)->get();
-
-            // Count total records
-            $total = $query->count();
-
-            // Prepare the data, including the "actions" column
+            $total = (clone $baseQuery)->count();
+            $filtered = (clone $query)->count();
+            $start = max(0, (int) $request->input('start', 0));
+            $length = min(100, max(1, (int) $request->input('length', 10)));
+            $vouchers = $query->orderByDesc('id')->skip($start)->take($length)->get();
             $data = $vouchers->map(function ($voucher) {
                 return [
                     'id' => $voucher->id,
@@ -71,16 +61,14 @@ class CommissionVoucherController extends Controller
                     'date' => $voucher->date,
                     'description' => $voucher->description,
                     'total_debit' => $voucher->total_debit,
-                    'actions' => view('admin.reports.vouchers.actions', compact('voucher'))->render() // Render actions view
+                    'actions' => view('admin.reports.vouchers.actions', compact('voucher'))->render(),
                 ];
             });
-
-            // Return JSON data
             return response()->json([
-                'draw' => $request->input('draw', 1),
+                'draw' => (int) $request->input('draw', 1),
                 'recordsTotal' => $total,
-                'recordsFiltered' => $total,
-                'data' => $data
+                'recordsFiltered' => $filtered,
+                'data' => $data,
             ]);
         }
 
@@ -137,7 +125,7 @@ class CommissionVoucherController extends Controller
 
     public function edit($id)
     {
-        $voucher = CommisionVoucher::with('details')->findOrFail($id);
+        $voucher = CommisionVoucher::with('details')->where('project_id', getSelectedTown())->findOrFail($id);
         $x = $this->getCommonData('Edit Commision Voucher');
         $x['voucher'] = $voucher;
 
@@ -162,7 +150,7 @@ class CommissionVoucherController extends Controller
 
     public function print($id)
     {
-        $voucher = CommisionVoucher::with('details.account.headAccounting', 'details.account.subheadAccounting')->findOrFail($id);
+        $voucher = CommisionVoucher::with('details.account.headAccounting', 'details.account.subheadAccounting')->where('project_id', getSelectedTown())->findOrFail($id);
         return view('admin.reports.vouchers.print_journal_voucher', compact('voucher'));
     }
 

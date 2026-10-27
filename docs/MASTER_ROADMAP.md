@@ -564,3 +564,7 @@ Assistant must:
 
 ## 2026-10-27 — replay collision regression fix, precedence and missing-ledger isolation
 - User reported 49 PASS/1 FAIL (182 assertions): foreign-project moved ledger emitted generic ledger/detail mismatch before expected foreign project blocker. Moved cross-project count validation before detail-count validation, leaving missing-ledger handling after it. Added real-store cases for extra foreign ledger link and missing ledger distinct classification, preserving previous 50-case suite. **No test PASS claimed until user reruns**; no progress increase for bug correction. No production writes or migrations.
+
+## 2026-10-27 — CV listing and project access control milestone (pending tests)
+- User verified 52 PASS /189 assertions for JV posting. Fixed actual CommissionVoucherController AJAX pagination to separate pre-pagination total/filtered counts, cap page length, and deterministic ordering. Both CV edit and print now restrict lookup to the selected project, blocking foreign-project voucher ID access. Three SQLite integration regressions added; new tests awaiting local execution.
+- Overall qualitative verified planning baseline **42%**, new cross-module functional coverage **46% provisional** pending integration verification. CV posting/update/delete remain intentionally 409 blocked, no financial migration or historical mutation, master_live untouched. Largest safe cohesive batches remain default.

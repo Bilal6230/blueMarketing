@@ -97,4 +97,55 @@ class CommissionVoucherListingResponseTest extends TestCase
         $this->assertSame('CV-0000041', $payload['data'][0]['voucher_number']);
         $this->assertSame('CV-Own', $payload['data'][0]['reference']);
     }
+
+    public function test_ajax_pagination_returns_total_and_filtered_counts_without_page_truncation(): void
+    {
+        DB::table('commision_vouchers')->insert([
+            ['id'=>1,'project_id'=>7,'voucher_number'=>'1','reference'=>'MATCH',
+                'created_at'=>now(),'updated_at'=>now()],
+            ['id'=>2,'project_id'=>7,'voucher_number'=>'2','reference'=>'MATCH',
+                'created_at'=>now(),'updated_at'=>now()],
+            ['id'=>3,'project_id'=>7,'voucher_number'=>'3','reference'=>'OTHER',
+                'created_at'=>now(),'updated_at'=>now()],
+            ['id'=>4,'project_id'=>8,'voucher_number'=>'4','reference'=>'MATCH',
+                'created_at'=>now(),'updated_at'=>now()],
+        ]);
+        $request=Request::create('/commision-voucher','GET',[
+            'draw'=>2,'start'=>1,'length'=>1,'filter_reference'=>'MATCH'
+        ]);
+        $request->headers->set('X-Requested-With','XMLHttpRequest');
+        $request->cookies->set('selected_action','7');
+        $this->app->instance('request',$request);
+        $data=app(CommissionVoucherController::class)->index($request)->getData(true);
+        $this->assertSame(3,$data['recordsTotal']);
+        $this->assertSame(2,$data['recordsFiltered']);
+        $this->assertCount(1,$data['data']);
+        $this->assertSame(1,$data['data'][0]['id']);
+    }
+
+    public function test_foreign_project_commission_edit_is_not_found(): void
+    {
+        DB::table('commision_vouchers')->insert([
+            'id'=>41,'project_id'=>8,'voucher_number'=>'41',
+            'created_at'=>now(),'updated_at'=>now()
+        ]);
+        $request=Request::create('/commision-voucher/41/edit','GET');
+        $request->cookies->set('selected_action','7');
+        $this->app->instance('request',$request);
+        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+        app(CommissionVoucherController::class)->edit(41);
+    }
+
+    public function test_foreign_project_commission_print_is_not_found(): void
+    {
+        DB::table('commision_vouchers')->insert([
+            'id'=>41,'project_id'=>8,'voucher_number'=>'41',
+            'created_at'=>now(),'updated_at'=>now()
+        ]);
+        $request=Request::create('/commision-voucher/41/print','GET');
+        $request->cookies->set('selected_action','7');
+        $this->app->instance('request',$request);
+        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+        app(CommissionVoucherController::class)->print(41);
+    }
 }
