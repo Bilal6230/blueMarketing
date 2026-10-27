@@ -40,10 +40,14 @@ final class Laravel13RouteContractTest extends TestCase
             'admin/commision-voucher/create'=>'POST',
         ];
         foreach ($expected as $uri=>$method) {
-            $matching=Route::getRoutes()->getRoutesByMethod($method);
             $found=false;
-            foreach ($matching as $route) {
-                if ($route->uri()===$uri) {$found=true;break;}
+            // Iterate the RouteCollection's public Route objects; internal
+            // method-index maps are nested and are not a flat route list.
+            foreach (Route::getRoutes()->getRoutes() as $route) {
+                if ($route->uri()===$uri && in_array($method,$route->methods(),true)) {
+                    $found=true;
+                    break;
+                }
             }
             $this->assertTrue($found, "Missing {$method} {$uri}");
         }

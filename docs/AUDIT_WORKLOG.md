@@ -542,3 +542,6 @@
 
 ## 2026-10-27 — expanded Laravel 13 compatibility acceptance across application modules
 - User confirms `php artisan --version` Laravel 13.38.0 and **319 registered routes**; GitHub Actions run 40478011146 succeeded for framework boot/route JSON and 13 finance classes. CI now additionally runs `module:list` for nwidart module discovery and three non-mutating route contract regressions spanning CRM, booking, stocks, landing page, labour, finance and mobile APIs including write permissions. This is compatibility smoke coverage rather than end-to-end business validation. Pending new CI green verification. Existing qualitative baseline 54% after previous success, provisional 56% pending new CI. No production changes.
+
+## 2026-10-27 — Laravel 13 route contract compatibility repair
+- User local output: Laravel 13.38.0, `module:list` exits normally but shows **no module rows**, so do not count that as discovered modules. Route contract tests: 2 passed, 1 failed (`getRoutesByMethod()` returns a nested indexed map, not a flat Route array). Changed only failing contract iteration to `Route::getRoutes()->getRoutes()` and exact URI + verb match. CI and user verification pending. No completion-percentage increase for a regression fix. No production changes.
