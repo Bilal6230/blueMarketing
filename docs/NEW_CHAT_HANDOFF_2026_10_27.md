@@ -43,3 +43,8 @@
 - Use functions.exec tools.mcp__GitHub__fetch_file({repository_full_name:repo,path,ref:"upgrade/laravel-framework"}). Verify current branch head via GitHub fetch API, never assume history.
 - Single code commit: create_tree(base_tree_sha=head, tree_elements), create_commit(parent_sha=head), update_ref(branch_name,sha,expected_sha=head).
 - User prefers Roman Urdu and PowerShell commands, practical progress UI.
+
+## Working agreement — large milestones by default (user reiterated 2026-10-27)
+- Each successful focused test result must trigger the **largest safe cohesive multi-feature development batch** feasible, not one tiny CLI/report addition. Combine implementation, end-to-end workflow integration, edge cases and regression tests. Prioritize product impact and genuine phase exit criteria over inflating percentages or accumulating scripts.
+- Don't require user to repeat this; avoid unnecessary follow-up questions. Every functional commit updates MASTER_ROADMAP and AUDIT_WORKLOG together. Single consolidated PowerShell section with only vital pull/lint/focused tests; no full suite except major shared refactor/release.
+- Distinguish verified percentage from provisional; never claim project complete or increment solely because a response was sent.

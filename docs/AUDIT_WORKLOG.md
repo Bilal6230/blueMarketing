@@ -494,3 +494,11 @@
 
 ## 2026-10-27 — verified conflict gate; project-wide review coverage implementation
 - User confirmed clean PHP syntax and conflict_gate **4 PASS/9 assertions**. Added LegacyEvidenceCoverageInspector and finance:audit-legacy-review-coverage requiring explicit JSON project_id/ledger_ids; SQL project scope, checked review set, coverage totals, bounded missing samples, schema guard. Six SQLite :memory: cases pending test. No migrations, production writes or source certification. Overall planning 31% provisional.
+
+## Working agreement — large milestones by default (user reiterated 2026-10-27)
+- Each successful focused test result must trigger the **largest safe cohesive multi-feature development batch** feasible, not one tiny CLI/report addition. Combine implementation, end-to-end workflow integration, edge cases and regression tests. Prioritize product impact and genuine phase exit criteria over inflating percentages or accumulating scripts.
+- Don't require user to repeat this; avoid unnecessary follow-up questions. Every functional commit updates MASTER_ROADMAP and AUDIT_WORKLOG together. Single consolidated PowerShell section with only vital pull/lint/focused tests; no full suite except major shared refactor/release.
+- Distinguish verified percentage from provisional; never claim project complete or increment solely because a response was sent.
+
+## 2026-10-27 — coverage verified, integrated read-only review-scope release gate
+- User test output: 6 PASS/17 assertions; syntax clean. Created LegacyEvidenceReleaseGate + CLI with project sorted deterministic digest, cross-project coverage/claim blocker aggregation, count/identity guards and eight pure tests. Code+docs same commit, new tests pending locally. Still neither signed source verification nor write authorization; overall 33% provisional, 31% verified.

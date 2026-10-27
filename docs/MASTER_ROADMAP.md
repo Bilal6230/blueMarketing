@@ -538,3 +538,11 @@ Assistant must:
 
 ## 2026-10-27 — complete-project historical review coverage reconciliation (pending tests)
 - User verified conflict gate 4 PASS/9 assertions after PHP fixture repair. Added database-backed full-scope project coverage inspector and CLI: checks review IDs against actual unverified scoped ledger rows, enumerates capped missing IDs, detects foreign/already-attributed/irrelevant rows, warns when metadata schema absent. Six SQLite isolated integration tests. This is coverage only, not certified source evidence. Overall **31% provisional** until new tests pass; verified baseline 29%, Phase 1 85%, Phase 2 40%, Phase 3 0%, Phase 4 0%, Phase 5 20%.
+
+## Working agreement — large milestones by default (user reiterated 2026-10-27)
+- Each successful focused test result must trigger the **largest safe cohesive multi-feature development batch** feasible, not one tiny CLI/report addition. Combine implementation, end-to-end workflow integration, edge cases and regression tests. Prioritize product impact and genuine phase exit criteria over inflating percentages or accumulating scripts.
+- Don't require user to repeat this; avoid unnecessary follow-up questions. Every functional commit updates MASTER_ROADMAP and AUDIT_WORKLOG together. Single consolidated PowerShell section with only vital pull/lint/focused tests; no full suite except major shared refactor/release.
+- Distinguish verified percentage from provisional; never claim project complete or increment solely because a response was sent.
+
+## 2026-10-27 — consolidated cross-project coverage and conflict gate
+- User confirmed 6 PASS/17 assertions for coverage. Added project-sorted deterministic SHA256 release-preflight report that composes coverage and conflict outputs, cross-validates counts and IDs, blocks partial/duplicate/mismatched work; eight tests pending. No provenance certification. Verified baseline **31%** based on recent local focused success; **33% provisional** after new code pending user verification. No rollout approval.
