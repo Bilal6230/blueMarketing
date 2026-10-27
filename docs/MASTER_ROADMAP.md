@@ -519,3 +519,8 @@ Assistant must:
 ## 2026-10-27 — validated review baseline, independent checkpoint milestone (pending tests)
 - User confirmed 6 PASS/16 assertions worksheet tests and 56 PASS/154 assertions finance integration tests: combined 62 PASS/170 assertions. Independent read-only dual-approval checkpoint added: canonical review hash, stale edits rejected, reviewer/approver distinct, explicit evidence references; standalone CLI and six tests pending local verification. No source attribution, authentication, migration, production DB mutation or deployment.
 - Overall planning estimate **27%** (25% -> 27%, reflecting prior validated workflow and new distinct substantial review gate), Phase 1 85%, Phase 2 35%, Phase 3 0%, Phase 4 0%, Phase 5 15%. No phase complete.
+
+
+## 2026-10-27 — portfolio-level legacy evidence reconciliation (pending local tests)
+- User verified previous dual-review checkpoint **6 PASS /8 assertions** and clean syntax. Added read-only multi-project portfolio aggregator, stable SHA-256 portfolio report, deterministic project ordering, fail-closed partial review handling and a JSON manifest CLI. Five tests added. No finance DB writes or new migrations; still external proof/signoff needed.
+- Estimated overall **29%** (27% ->29%, qualitative estimate from verified checkpoint and this larger portfolio development); Phase 1 85%, Phase 2 40%, Phase 3 0%, Phase 4 0%, Phase 5 20%. No phase completed; portfolio test verification pending.

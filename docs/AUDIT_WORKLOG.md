@@ -476,3 +476,7 @@
 ## 2026-10-27 — substantial read-only dual-review checkpoint
 - User verified last batch: 6/6 worksheet PASS (16 assertions) and 56/56 metadata suite PASS (154 assertions). Implemented LegacyEvidenceApprovalCheckpoint and finance:audit-legacy-review-checkpoint with immutable canonical review digest, two declared distinct approvers, case reviewer segregation, missing evidence and stale checkpoint failures. Six pure unit tests added, local verification pending. Output always source_verified=false, external signoff required; reviewer names are not authenticated credentials.
 - Use `php artisan finance:audit-legacy-review-checkpoint 6 12179 path/to/review.json` for manifest, supply `--approval-file=path/to/approval.json` for read-only declaration checks. No MySQL changes, master_live or migration. Progress estimate 27% with verification caveat.
+
+
+## 2026-10-27 — verified dual-review, implemented multi-project portfolio checkpoint
+- User pulled 9b2c64d; lints clean; **6 PASS/8 assertions** in LegacyEvidenceApprovalCheckpointTest. Implemented LegacyEvidencePortfolioReconciliation (deterministic project-sorted aggregate hash, fail-closed group review), CLI finance:audit-legacy-review-portfolio reading JSON groups with project_id, ledger_ids, review, approval, and five pure unit tests (pending local run). Real packets loaded read-only in CLI, no staged/production migration or ledger updates. Status never certifies ownership. Estimated progress 29%, not deployment approval.
