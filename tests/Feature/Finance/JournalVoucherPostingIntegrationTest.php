@@ -725,4 +725,56 @@ class JournalVoucherPostingIntegrationTest extends TestCase
         $this->assertSame(2,DB::table('ledger_source_attributions')->count());
         $this->assertSame(1,DB::table('financial_posting_requests')->count());
     }
+
+    public function test_typed_retry_rejects_deleted_source_attribution_without_reposting(): void
+    {
+        $this->installFinanceMetadata();
+        $payload=$this->payload();
+        $payload['idempotency_key']='jv_replay_check_123456789';
+        app(JournalVoucherController::class)->store($this->request($payload));
+        DB::table('ledger_source_attributions')->where('ledger_id',1)->delete();
+        try {
+            app(JournalVoucherController::class)->store($this->request($payload));
+            $this->fail('Broken attribution allowed successful financial replay.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('source attribution',$e->getMessage());
+        }
+        $this->assertSame(1,DB::table('journal_vouchers')->count());
+        $this->assertSame(2,DB::table('ledgers')->count());
+        $this->assertSame(1,DB::table('ledger_source_attributions')->count());
+    }
+
+    public function test_typed_retry_rejects_modified_ledger_amount_without_reposting(): void
+    {
+        $this->installFinanceMetadata();
+        $payload=$this->payload();
+        $payload['idempotency_key']='jv_replay_check_123456789';
+        app(JournalVoucherController::class)->store($this->request($payload));
+        DB::table('ledgers')->where('id',1)->update(['amount_in'=>'99.99']);
+        try {
+            app(JournalVoucherController::class)->store($this->request($payload));
+            $this->fail('Changed ledger amount allowed successful financial replay.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('mismatched posting lines',$e->getMessage());
+        }
+        $this->assertSame(1,DB::table('journal_vouchers')->count());
+        $this->assertSame(2,DB::table('ledgers')->count());
+    }
+
+    public function test_typed_retry_rejects_missing_detail_without_reposting(): void
+    {
+        $this->installFinanceMetadata();
+        $payload=$this->payload();
+        $payload['idempotency_key']='jv_replay_check_123456789';
+        app(JournalVoucherController::class)->store($this->request($payload));
+        DB::table('journal_voucher_details')->where('id',1)->delete();
+        try {
+            app(JournalVoucherController::class)->store($this->request($payload));
+            $this->fail('Missing detail allowed successful financial replay.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('missing posting details',$e->getMessage());
+        }
+        $this->assertSame(1,DB::table('journal_vouchers')->count());
+        $this->assertSame(2,DB::table('ledgers')->count());
+    }
 }

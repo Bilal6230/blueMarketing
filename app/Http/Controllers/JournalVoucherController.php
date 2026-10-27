@@ -503,9 +503,13 @@ class JournalVoucherController extends Controller
                 ];
             }
             $hash = hash('sha256', json_encode($canonical, JSON_THROW_ON_ERROR));
-            app(\App\Services\Finance\DurableFinancialRequest::class)->execute(
+            $posting = app(\App\Services\Finance\DurableFinancialRequest::class)->execute(
                 'journal_voucher', (int) $selectedProjectId, $requestKey, $hash, $post
             );
+            if ($posting['replayed']) {
+                app(\App\Services\Finance\JournalVoucherReplayIntegrity::class)
+                    ->assertIntact((int) $selectedProjectId, (int) $posting['voucher_id']);
+            }
         } else {
             DB::transaction($post);
         }
