@@ -555,4 +555,38 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
         $this->assertSame('7002', DB::table('ledgers')->where('id',2)->value('voucher_number'));
     }
 
+    public function test_evidence_packet_preserves_colliding_jv_cv_candidates_without_certifying(): void
+    {
+        $packet = app(\App\Services\Finance\LegacyVoucherEvidencePacket::class)->inspect(7,1);
+        $this->assertSame('both_headers', $packet['candidate_category']);
+        $this->assertSame('7001', $packet['ledger']['original_voucher_number']);
+        $this->assertSame('9001', $packet['candidate_jv_header']['voucher_number']);
+        $this->assertSame('22', $packet['candidate_cv_header']['voucher_number']);
+        $this->assertFalse($packet['source_verified']);
+    }
+
+    public function test_evidence_packet_refuses_other_project_ledger(): void
+    {
+        $this->expectException(\DomainException::class);
+        app(\App\Services\Finance\LegacyVoucherEvidencePacket::class)->inspect(8,1);
+    }
+
+    public function test_evidence_packet_reports_neither_header_without_guessing(): void
+    {
+        DB::table('ledgers')->where('id',1)->update(['type_id'=>999]);
+        $packet = app(\App\Services\Finance\LegacyVoucherEvidencePacket::class)->inspect(7,1);
+        $this->assertSame('neither_header',$packet['candidate_category']);
+        $this->assertNull($packet['candidate_jv_header']);
+        $this->assertNull($packet['candidate_cv_header']);
+        $this->assertFalse($packet['source_verified']);
+    }
+
+    public function test_evidence_packet_cli_is_read_only(): void
+    {
+        $this->artisan('finance:audit-legacy-evidence',['project'=>7,'ledger'=>1])
+            ->expectsOutputToContain('"requires_external_evidence"')->assertExitCode(0);
+        $this->assertSame('7001',DB::table('ledgers')->where('id',1)->value('voucher_number'));
+        $this->assertSame(0,DB::table('ledger_source_attributions')->count());
+    }
+
 }

@@ -456,3 +456,6 @@
 
 ## 2026-10-27 — SQL-filtered legacy case review export
 - Verified project 6 full classification 1420 jv_only + 10 neither_header (1430/1430). New --review-category mode filters selected category at DB level before LIMIT, retaining original voucher number and explicit source_verified=false; four SQLite regression tests added. Code+tests+docs one commit, tests pending. No DB writes.
+
+## 2026-10-27 — legacy evidence packet generator
+- Verified all 10 neither-header Project 6 IDs and 48 passing tests. Added single-ledger forensic candidate packet and Artisan command with cross-project denial, collision-safe JV/CV references, unverified flag and 4 isolated tests. One code/tests/docs commit, tests pending. Read-only.

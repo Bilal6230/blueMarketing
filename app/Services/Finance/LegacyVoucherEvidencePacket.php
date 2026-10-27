@@ -1,0 +1,49 @@
+<?php
+
+namespace App\Services\Finance;
+
+use Illuminate\Support\Facades\DB;
+
+/**
+ * Immutable-in-memory review packet for a legacy ledger; never derives an
+ * authoritative voucher owner from the numerical type_id.
+ */
+final class LegacyVoucherEvidencePacket
+{
+    public function inspect(int $projectId, int $ledgerId): array
+    {
+        if ($projectId < 1 || $ledgerId < 1 ||
+            !DB::table('projects')->where('id', $projectId)->exists()) {
+            throw new \DomainException('Valid existing project and ledger required.');
+        }
+        $ledger = DB::table('ledgers')->where('id', $ledgerId)
+            ->where('type', 'JV')
+            ->whereIn('project_head_subheads_id', function ($q) use ($projectId) {
+                $q->select('id')->from('project_head_subheads')->where('project_id', $projectId);
+            })->first(['id','type','type_id','voucher_number','project_head_subheads_id']);
+        if (!$ledger) {
+            throw new \DomainException('JV-type ledger is absent from requested project.');
+        }
+        $jv = DB::table('journal_vouchers')->where('project_id', $projectId)
+            ->where('id', $ledger->type_id)->first(['id','voucher_number']);
+        $cv = DB::table('commision_vouchers')->where('project_id', $projectId)
+            ->where('id', $ledger->type_id)->first(['id','voucher_number']);
+        $category = $jv ? ($cv ? 'both_headers' : 'jv_only')
+            : ($cv ? 'cv_only' : 'neither_header');
+        return [
+            'project_id'=>$projectId,
+            'ledger'=>[
+                'id'=>(int)$ledger->id,'type'=>$ledger->type,
+                'legacy_type_id'=>(int)$ledger->type_id,
+                'original_voucher_number'=>(string)$ledger->voucher_number,
+                'project_account_id'=>(int)$ledger->project_head_subheads_id,
+            ],
+            'candidate_category'=>$category,
+            'candidate_jv_header'=>$jv ? ['id'=>(int)$jv->id,'voucher_number'=>(string)$jv->voucher_number] : null,
+            'candidate_cv_header'=>$cv ? ['id'=>(int)$cv->id,'voucher_number'=>(string)$cv->voucher_number] : null,
+            'source_verified'=>false,
+            'review_status'=>'requires_external_evidence',
+            'limitations'=>'Numerical header match is not provenance; no history or attribution is modified.',
+        ];
+    }
+}
