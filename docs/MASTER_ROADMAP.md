@@ -26,9 +26,9 @@
 
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-27 (301/301 verified before additive metadata implementation; new isolated finance metadata/idempotency tests pending)
+**Last updated:** 2026-10-27 (verified new financial metadata isolated integration: 8 PASS, full suite 309 PASS/0 FAIL)
 **Active Git branch:** `upgrade/laravel-framework`  
-**Latest confirmed local verification:** user pulled `d74e6db`, lint of LedgerController and LedgerVoucherDisplayService clean, 4 targeted collision tests PASS (10 assertions), full suite **301 PASS / 0 FAIL / 1351 assertions**. Verified in isolated test environment, not live reconciliation.
+**Latest confirmed local verification:** user pulled `ac1c7cd`, four finance PHP lints passed, FinancialSourceMetadataIntegrationTest **8 PASS / 21 assertions**, full test suite **309 PASS / 0 FAIL / 1372 assertions**, SQLite :memory: only for metadata migration tests.
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
 **Status:** In-progress accounting integrity hardening; **not production approved**.
 
@@ -421,3 +421,9 @@ Assistant must:
 - Added `DurableFinancialRequest::execute` project row locking + durable DB uniqueness + committed voucher ID reuse + conflicting hash rejection + rollback on failed callback. This is a future posting primitive, NOT connected to posting controllers; parallel MySQL and payload-integrity tests needed before releasing user-facing idempotency.
 - Added 8 SQLite :memory: integration tests including running migration only on their isolated in-memory schema, verified CV overlap display, immutable unique attribution, cross-project rejection, duplicate replay, changed payload conflict, rollback and project/type scope separation. **Tests unverified**. No live migrations or production DB access.
 - Progress remains Phase 1 **70%**, Phases 2–5 **0%**, overall **14%** until local tests pass, real controller integration and staging reconciliation. The test suite was last confirmed all green (301 passed) BEFORE this batch.
+
+## 2026-10-27 — financial identity + idempotency foundation independently verified
+- User pulled through `ac1c7cd`: additive migration, attribution writer, durable request repository and test all PHP syntax PASS. New finance metadata isolated SQLite integration **8 PASS / 21 assertions**; full suite **309 PASS / 0 FAIL / 1372 assertions**. Thus no regression detected in current test environment.
+- Verified capabilities: unique typed ledger ownership record, project validation, source-safe display, replay suppression, changed-payload conflict, rollback of request reservation + inserted voucher on simulated failure, and project/type request scoping. These do **not** prove parallel MySQL concurrency, deployment migration compatibility, source provenance of existing historic rows or real JV/CV route idempotency.
+- New migration **must not be run on user's business/production database** until backup, schema audit, staging rehearsal and explicit approval; existing 409 unsafe mutation guards remain enabled. Metadata tests ran in SQLite :memory: only.
+- Planning estimate: Phase 1 **70%**, Phase 2 **0%** (independently tested foundation, but no integrated postings/reversals), Phase 3–5 0%, overall **14%**, 0/5 phases formally finished. Next scope: staging MySQL schema compatibility, parallel request test, wiring atomic typed JV posting under controlled feature gate, approved provenance rollout and reversal workflow.
