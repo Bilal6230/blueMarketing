@@ -46,7 +46,16 @@ class LedgerVoucherDisplayEndpointCollisionTest extends TestCase
         Schema::create('journal_vouchers', function (Blueprint $table) {
             $table->id();
             $table->string('voucher_number');
+            $table->unsignedBigInteger('project_id')->default(7);
             $table->softDeletes();
+        });
+        Schema::create('ledger_source_attributions', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('ledger_id')->unique();
+            $table->unsignedBigInteger('project_id');
+            $table->string('source_kind');
+            $table->unsignedBigInteger('source_id');
+            $table->string('evidence_kind');
         });
         Schema::create('ledgers', function (Blueprint $table) {
             $table->id();
@@ -65,6 +74,11 @@ class LedgerVoucherDisplayEndpointCollisionTest extends TestCase
         DB::table('projects')->insert(['id' => 7, 'project' => 'Test']);
         DB::table('project_head_subheads')->insert(['id' => 3, 'project_id' => 7]);
         DB::table('journal_vouchers')->insert(['id' => 42, 'voucher_number' => '9002']);
+        // Independent typed attribution is the proof; numeric type_id alone is not.
+        DB::table('ledger_source_attributions')->insert([
+            'ledger_id' => 2, 'project_id' => 7, 'source_kind' => 'journal_voucher',
+            'source_id' => 42, 'evidence_kind' => 'new_write_transaction',
+        ]);
         DB::table('ledgers')->insert([
             'id' => 2, 'type' => 'JV', 'type_id' => 42,
             'project_head_subheads_id' => 3, 'voucher_number' => '7002',
@@ -79,7 +93,7 @@ class LedgerVoucherDisplayEndpointCollisionTest extends TestCase
         $payload = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
         $this->assertSame(1, $payload['recordsFiltered'], json_encode($payload));
         $this->assertCount(1, $payload['data']);
-        // Header 42 is explicitly a genuine JV in this fixture: preserve the existing display rule.
+        // Verified ledger→JV attribution preserves the genuine header number.
         $this->assertSame('JV-9002', $payload['data'][0]['display_voucher_number']);
     }
 
