@@ -438,3 +438,6 @@
 
 ## 2026-10-27 — JV create UI wired to existing durable transaction-safe posting
 - Added conditional request UUID generation to JournalVoucherController::create, hidden idempotency_key field to real JV create form, and two integration/source assertions for UI wiring and repeated browser submission. Only metadata-ready installs use this; legacy no-schema path unaffected. Code+tests+docs same commit; local verification pending. Phase 2 estimated 10->20%, overall 16->18% provisional. No production DB/master_live touched.
+
+## 2026-10-27 — functional browser JV double-submit guard + red-test fix
+- Corrected the broken test literal that expected a non-existent backslash in Blade source (39 PASS/1 FAIL baseline). Added one-shot confirmation submit guard and disabled button, with focused source assertions. One code+tests+docs commit; pending local verification. No financial history/migrations touched.

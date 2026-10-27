@@ -219,8 +219,15 @@
                 }
             });
 
-            // Confirm and Submit the Form
+            // One browser confirmation may result in one network submission.
+            // A retry after a network problem retains the server-issued key.
+            let journalSubmissionStarted = false;
             $('#confirmSubmit').on('click', function() {
+                if (journalSubmissionStarted) {
+                    return;
+                }
+                journalSubmissionStarted = true;
+                $(this).prop('disabled', true);
                 $('#journalForm')[0].submit();
             });
 

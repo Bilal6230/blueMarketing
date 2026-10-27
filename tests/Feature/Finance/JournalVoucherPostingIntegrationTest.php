@@ -628,7 +628,11 @@ class JournalVoucherPostingIntegrationTest extends TestCase
         $this->assertStringContainsString("Str::uuid()", $controller);
         $this->assertStringContainsString("@if (\$financeRetryReady ?? false)", $template);
         $this->assertStringContainsString('name="idempotency_key"', $template);
-        $this->assertStringContainsString('value="{{ \$financeRetryKey }}"', $template);
+        $this->assertStringContainsString('value="{{ $financeRetryKey }}"', $template);
+        $this->assertStringContainsString('let journalSubmissionStarted = false;', $template);
+        $this->assertStringContainsString('if (journalSubmissionStarted)', $template);
+        $this->assertStringContainsString("journalSubmissionStarted = true;", $template);
+        $this->assertStringContainsString("$(this).prop('disabled', true);", $template);
     }
 
     public function test_real_jv_form_retry_deduplicates_even_after_failed_redirect_retry(): void
