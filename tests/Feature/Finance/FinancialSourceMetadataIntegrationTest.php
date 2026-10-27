@@ -185,4 +185,33 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
         $service->execute('journal_voucher', 8, $key, $hash, fn (): int => 99);
     }
 
+    public function test_soft_deleted_jv_header_rejects_committed_request_replay(): void
+    {
+        Schema::table('journal_vouchers', function (Blueprint $table) {
+            $table->softDeletes();
+        });
+        DB::table('journal_vouchers')->where('id', 41)
+            ->update(['deleted_at' => now()]);
+        $key = 'request_key_123456789';
+        $hash = str_repeat('a', 64);
+        DB::table('financial_posting_requests')->insert([
+            'project_id' => 7, 'source_kind' => 'journal_voucher',
+            'request_key' => $key, 'payload_hash' => $hash,
+            'status' => 'committed', 'voucher_id' => 41,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $called = false;
+        try {
+            app(DurableFinancialRequest::class)->execute('journal_voucher', 7, $key, $hash,
+                function () use (&$called): int {
+                    $called = true;
+                    return 41;
+                });
+            $this->fail('Soft-deleted voucher must not be replayed as a success.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('missing or mismatched voucher', $e->getMessage());
+        }
+        $this->assertFalse($called);
+    }
+
 }

@@ -414,3 +414,6 @@
 
 ## 2026-10-27 — durable replay fail-closed against orphan voucher (unverified)
 - Updated actual DurableFinancialRequest committed-replay branch to validate typed voucher ID and project before returning success; two isolated tests cover deleted/missing and other-project JV record. No live database, master_live or schema migration executed. Focused testing required; baseline 37 JV PASS. Docs + service + tests in one commit.
+
+## 2026-10-27 — non-deleted JV header required for durable replay
+- Last user focused finance tests 10 PASS/25 assertions. Actual replay code now rejects committed JV requests when header is soft deleted; SQLite focused test added. Code, tests and documentation in one commit. No production actions; new test pending.

@@ -53,8 +53,14 @@ final class DurableFinancialRequest
                 // false successful replay for an orphaned financial request.
                 $headerTable = $sourceKind === 'journal_voucher'
                     ? 'journal_vouchers' : 'commision_vouchers';
-                if (!DB::table($headerTable)->where('id', $existing->voucher_id)
-                    ->where('project_id', $projectId)->exists()) {
+                $headerQuery = DB::table($headerTable)->where('id', $existing->voucher_id)
+                    ->where('project_id', $projectId);
+                // The JV model uses SoftDeletes: a tombstoned voucher is not
+                // a valid success target even if its row physically remains.
+                if ($sourceKind === 'journal_voucher') {
+                    $headerQuery->whereNull('deleted_at');
+                }
+                if (!$headerQuery->exists()) {
                     throw new \RuntimeException('Previous financial request references a missing or mismatched voucher.');
                 }
                 return ['replayed' => true, 'voucher_id' => (int) $existing->voucher_id];

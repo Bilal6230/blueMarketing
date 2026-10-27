@@ -441,3 +441,7 @@ Assistant must:
 ## 2026-10-27 — durable replay ownership validation (pending focused tests)
 - Security hardening in real DurableFinancialRequest: even after a matching committed idempotency record is found, replay is allowed only if its typed JV/CV voucher header still exists in the **same project**. Orphan/cross-project request records fail closed, rather than reporting posting success and returning an invalid voucher ID. Does not modify old records or post a new voucher.
 - Added two isolated SQLite regressions for orphan/mismatched-header replay; focused tests UNVERIFIED. Baseline: user verified previous JV suite **37 PASS / 135 assertions** and prior full suite **313 PASS / 0 FAIL / 1385 assertions**. MySQL parallel-posting tests still pending; no live/staging migration executed. Progress unchanged: Phase 1 70%, Phase 2 10%, overall 16%.
+
+## 2026-10-27 — typed JV soft-delete replay guard (new focused test pending)
+- User confirmed FinancialSourceMetadataIntegrationTest **10 PASS / 25 assertions** against latest previous source replay validation. Extended durable committed-JV replay to require non-soft-deleted header (deleted_at IS NULL). This avoids false successful retries against financially removed/tombstoned JV headers. Added isolated SQLite test and no migrations or staging DB changes.
+- Focused new test UNVERIFIED; planned baseline Phase 1 70%, Phase 2 10%, overall 16%. No standalone documentation commits; MySQL concurrency remains unverified.
