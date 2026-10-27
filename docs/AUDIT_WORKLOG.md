@@ -388,3 +388,8 @@
 - User's last local full suite: **298 passed, 2 failed, 1350 assertions**, both known legacy DataTables JV-number collision diagnostics.
 - Replaced real LedgerController DataTables `display_voucher_number` guesswork with `LedgerVoucherDisplayService`: unknown JV ledger keeps original voucher number; typed JV/CV metadata if present and independently verified resolves its correct project-scoped header. No metadata table created, only optionally read. Updated diagnostic to test service, positive endpoint fixture to supply explicit proof, and added verified CV collision integration test.
 - **Unverified code**; no PHP local test execution by assistant. Conservative default may change displayed legacy genuine JV number; reviewed attribution rollout needed. No production MySQL write or master_live.
+
+## 2026-10-27 — user verified all 301 tests green after ledger display repair
+- Local pull `d74e6db` succeeded, LedgerController and new display service PHP syntax clean. Four targeted collision tests **4 pass / 10 assertions**, full suite **301 pass / 0 fail / 1351 assertions**.
+- Actual DataTables voucher display is now fail-closed: unknown legacy ledger retains stored number, verified JV/CV can use typed header. Previous two failing finance collision regressions now pass. No historical provenance populated or financial postings enabled; no live migration performed.
+- Phase 1 65→70%, overall 13→14% (estimated), other stages 0%, 0/5 complete. Remaining finance gates: authoritative typed source storage, durable idempotency unique constraints, reversal postings and reviewed staging reconciliation. No master_live or production DB touch.
