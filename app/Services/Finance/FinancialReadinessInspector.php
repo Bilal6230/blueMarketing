@@ -20,7 +20,10 @@ final class FinancialReadinessInspector
 
         $attributions = Schema::hasTable('ledger_source_attributions');
         $requests = Schema::hasTable('financial_posting_requests');
-        $schemaReady = $attributions && $requests;
+        // Table existence alone cannot protect concurrent typed postings.
+        // Align per-project readiness with the actual validated metadata schema.
+        $schemaReport = app(FinanceSchemaPreflight::class)->inspect();
+        $schemaReady = $schemaReport['status'] === 'schema_verified';
         $scope = DB::table('ledgers')->where('type', 'JV')
             ->whereIn('project_head_subheads_id', function ($q) use ($projectId) {
                 $q->select('id')->from('project_head_subheads')->where('project_id', $projectId);
@@ -58,7 +61,9 @@ final class FinancialReadinessInspector
             'project_id' => $projectId,
             'status' => $blockers === [] ? 'preliminary_ready' : 'blocked',
             'schema' => ['ledger_source_attributions' => $attributions,
-                'financial_posting_requests' => $requests],
+                'financial_posting_requests' => $requests,
+                'status' => $schemaReport['status'],
+                'blockers' => $schemaReport['blockers']],
             'jv_headers' => $jvHeaders,
             'cv_headers' => $cvHeaders,
             'candidate_jv_type_ledgers' => $candidateCount,

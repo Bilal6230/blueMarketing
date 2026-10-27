@@ -554,3 +554,6 @@
 
 ## 2026-10-27 — verified operational CI and explicit fail-closed rollout blockers
 - User verified local LeadPendingApproval 9 PASS/45, LabourReport 3 PASS/10 and VoucherClearanceFlow 24 PASS/178; 36 PASS/233 in selected local suites. GitHub CI run 40479678896 success for broader operations regressions. Hardened actual read-only FinanceRolloutAssessment: do not report preliminary_ready when no projects exist, provide explicit all-project blockers for incomplete scans, missing/unsafe schema and blocked projects. Three SQLite service regression tests, no historical mutation or migrations. Planning baseline 64% verified; provisional 66% pending local+CI tests; production readiness NOT certified.
+
+## 2026-10-27 — validated per-project schema readiness rather than table-existence false positive
+- User locally verified FinancialSourceMetadataIntegrationTest **63 PASS/174 assertions**; GitHub Actions run 40480104084 succeeded. Per-project FinancialReadinessInspector now uses full FinanceSchemaPreflight structural/uniqueness validation, not only metadata table existence, and exposes specific blockers. Added isolated SQLite regression for incomplete existing request table. No historical attribution, migrations or production changes. Qualitative verified baseline 66%, provisional 68% until tests pass; production rollout still blocked absent signoffs.

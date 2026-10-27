@@ -713,4 +713,17 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
         $this->assertSame(1,$report['unverified_jv_type_ledgers']);
         $this->assertSame(0,DB::table('ledger_source_attributions')->count());
     }
+
+    public function test_project_readiness_blocks_partial_metadata_structure(): void
+    {
+        Schema::drop('financial_posting_requests');
+        Schema::create('financial_posting_requests', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('project_id');
+        });
+        $report=app(\App\Services\Finance\FinancialReadinessInspector::class)->inspect(7);
+        $this->assertSame('blocked',$report['status']);
+        $this->assertContains('finance_metadata_schema_missing_or_partial',$report['blockers']);
+        $this->assertContains('financial_posting_requests_incomplete_columns',$report['schema']['blockers']);
+    }
 }
