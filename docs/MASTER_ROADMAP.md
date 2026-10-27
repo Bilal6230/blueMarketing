@@ -26,9 +26,9 @@
 
 # BlueMarketing — Master Roadmap & Cross-Chat Handoff
 
-**Last updated:** 2026-10-27 (typed finance unit foundation 7/7 verified; financial idempotency fingerprint added, tests pending)
+**Last updated:** 2026-10-27 (legacy voucher report display fixed conservatively in actual LedgerController; local verification pending)
 **Active Git branch:** `upgrade/laravel-framework`  
-**Latest confirmed local verification:** User pulled `d72c8fd`; three PHP lints clean, TypedFinanceFoundationTest **7 passed / 14 assertions**, full suite **292 passed / 2 failed / 1342 assertions**. Two known legacy display collision diagnostics RED.
+**Latest confirmed local verification:** user pulled `3a79eb8`; pure finance unit tests **13 passed / 22 assertions**, full suite **298 passed / 2 failed / 1350 assertions**, both failures were legacy ledger display collisions. Controller display fix on upgrade branch NOT locally verified.
 **Purpose:** This is the **canonical project continuity file**. Read this first in every new chat, before planning or changing code. Maintain this file after every meaningful audit, code, test, data finding or deployment decision.  
 **Status:** In-progress accounting integrity hardening; **not production approved**.
 
@@ -401,3 +401,10 @@ Assistant must:
 - User verified `d72c8fd` locally: finance typed service unit tests **7 PASS, 14 assertions**; full suite **292 PASS, 2 FAIL, 1342 assertions**. The two pre-existing legacy JV/CV display mis-attribution tests remain RED. No regressions from new unit service classes verified.
 - New `FinancialPostingFingerprint`: pure deterministic amount-cents / ordered-line canonicalization; derives SHA-256 payload hash and a project + voucher-kind + client request key scope hash; classifies `same_request`, `conflicting_payload` and `new_request`, refuses malformed keys, unbalanced amounts and invalid lines. Adds 6 unit tests. **This is NOT production request idempotency** because the durable unique request key table and atomic MySQL transaction boundary remain unimplemented; no posting controller calls it yet. Unit tests UNVERIFIED.
 - Progress phase 1 **65% -> 65%**, phase 2 **0% -> 0%**, remaining phases 0%, overall **13% -> 13%**, 0/5 phases complete. No migration, production database write, deployed change or master_live modification. Important next: approved schema, unique index, real parallel writes test, typed attribution and user-facing display integration before any feature enablement.
+
+## 2026-10-27 — Actual ledger display collision remediation (awaiting local tests)
+- User reported repeated two RED failures after full suite **298 PASS / 2 FAIL (1350 assertions)**. Confirmed actual root cause `LedgerController::fetch_data_url` unconditionally overrode legacy JV ledger number using `journal_vouchers.id=ledgers.type_id`; this numeric ID can also come from CV posting.
+- Updated actual DataTables controller callback to delegate to `LedgerVoucherDisplayService`. Default for unverified legacy JV rows = original stored `ledgers.voucher_number`; no misleading header lookup. Optional `ledger_source_attributions` table is READ-ONLY if it already exists. Only verified attributed ledger/project/source_kind/source_id/evidence_kind and existing typed header/project produce JV or CV header number. No attribution table/migration was installed; no backfill or financial writes.
+- Updated *legacy isolated diagnostic* to call the actual service instead of its stale copied broken logic. Updated genuine JV positive endpoint test fixture with an explicit independent attribution record (previous fixture claimed source was known but lacked proof). Added verified CV with colliding JV header endpoint regression. This changes test fixture evidence, not expected financial correctness; legacy `JV-7001` and verified `JV-9002` expectations remain.
+- **Caution:** conservative default means old unverified genuine JV rows will now show their originally stored ledger voucher number, rather than an assumed header number; an authoritative attribution rollout/review is still required for fully normalized historical reports. Two former RED cases are expected to pass but are NOT verified; do not claim full suite green until user executes.
+- Progress Phase 1 **65% -> 65%**, overall **13% -> 13%**, other phases 0%, 0/5 formally complete pending verification and production provenance schema approval. No production DB, migration, master_live or history changed.
