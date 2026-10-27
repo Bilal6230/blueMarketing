@@ -514,4 +514,45 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
             ->assertExitCode(2);
     }
 
+    public function test_review_queue_finds_unmatched_case_past_earlier_matched_rows(): void
+    {
+        DB::table('ledgers')->insert(['id'=>2,'project_head_subheads_id'=>3,
+            'type'=>'JV','type_id'=>999,'voucher_number'=>'7002']);
+        $review = app(\App\Services\Finance\LegacyVoucherCollisionInventory::class)
+            ->reviewQueue(7, 'neither_header', 1);
+        $this->assertSame(1, $review['available']);
+        $this->assertSame(2, $review['cases'][0]['ledger_id']);
+        $this->assertSame('7002', $review['cases'][0]['original_voucher_number']);
+        $this->assertFalse($review['cases'][0]['source_verified']);
+    }
+
+    public function test_review_queue_only_returns_requested_collision_category(): void
+    {
+        $review = app(\App\Services\Finance\LegacyVoucherCollisionInventory::class)
+            ->reviewQueue(7, 'both_headers', 100);
+        $this->assertSame(1, $review['available']);
+        $this->assertSame(1, $review['cases'][0]['ledger_id']);
+        $this->assertFalse($review['incomplete']);
+    }
+
+    public function test_review_queue_omits_records_with_explicit_attribution(): void
+    {
+        app(LedgerSourceAttributionWriter::class)->recordNewPosting(1, 7, 'journal_voucher', 41);
+        $review = app(\App\Services\Finance\LegacyVoucherCollisionInventory::class)
+            ->reviewQueue(7, 'both_headers', 100);
+        $this->assertSame(0, $review['available']);
+        $this->assertSame([], $review['cases']);
+    }
+
+    public function test_review_queue_command_exports_focused_cases_read_only(): void
+    {
+        DB::table('ledgers')->insert(['id'=>2,'project_head_subheads_id'=>3,
+            'type'=>'JV','type_id'=>999,'voucher_number'=>'7002']);
+        $this->artisan('finance:audit-legacy-cases',
+            ['project'=>7, '--review-category'=>'neither_header', '--limit'=>100])
+            ->expectsOutputToContain('"ledger_id":2')->assertExitCode(1);
+        $this->assertSame(0, DB::table('ledger_source_attributions')->count());
+        $this->assertSame('7002', DB::table('ledgers')->where('id',2)->value('voucher_number'));
+    }
+
 }

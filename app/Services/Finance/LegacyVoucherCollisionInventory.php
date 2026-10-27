@@ -112,4 +112,65 @@ final class LegacyVoucherCollisionInventory
         ];
     }
 
+    /**
+     * Read-only review export: a bounded set of unmatched cases with original
+     * ledger evidence and candidate-header presence. Never certifies ownership.
+     */
+    public function reviewQueue(int $projectId, string $category = 'neither_header', int $limit = 100): array
+    {
+        if ($projectId < 1 || $limit < 1 || $limit > 1000 ||
+            !in_array($category, ['both_headers', 'jv_only', 'cv_only', 'neither_header'], true)) {
+            throw new \InvalidArgumentException('Valid project, category and limit (1-1000) required.');
+        }
+        if (!DB::table('projects')->where('id', $projectId)->exists()) {
+            throw new \DomainException('Project does not exist.');
+        }
+        $scope = DB::table('ledgers')->where('type', 'JV')
+            ->whereIn('project_head_subheads_id', function ($q) use ($projectId) {
+                $q->select('id')->from('project_head_subheads')->where('project_id', $projectId);
+            });
+        if (Schema::hasTable('ledger_source_attributions')) {
+            $scope->whereNotExists(function ($q) {
+                $q->selectRaw('1')->from('ledger_source_attributions as a')
+                    ->whereColumn('a.ledger_id', 'ledgers.id');
+            });
+        }
+        // SQL existence predicates permit filtering before LIMIT; a large
+        // project cannot hide the requested minority category beyond 100 rows.
+        $jvExists = function ($q) use ($projectId) {
+            $q->selectRaw('1')->from('journal_vouchers as jv')
+                ->whereColumn('jv.id', 'ledgers.type_id')->where('jv.project_id', $projectId);
+        };
+        $cvExists = function ($q) use ($projectId) {
+            $q->selectRaw('1')->from('commision_vouchers as cv')
+                ->whereColumn('cv.id', 'ledgers.type_id')->where('cv.project_id', $projectId);
+        };
+        if ($category === 'both_headers' || $category === 'jv_only') {
+            $scope->whereExists($jvExists);
+        } else {
+            $scope->whereNotExists($jvExists);
+        }
+        if ($category === 'both_headers' || $category === 'cv_only') {
+            $scope->whereExists($cvExists);
+        } else {
+            $scope->whereNotExists($cvExists);
+        }
+        $total = (clone $scope)->count();
+        $rows = (clone $scope)->orderBy('id')->limit($limit)
+            ->get(['id', 'type_id', 'voucher_number']);
+        return [
+            'project_id' => $projectId, 'category' => $category,
+            'available' => $total, 'scanned' => $rows->count(),
+            'incomplete' => $total > $rows->count(),
+            'cases' => $rows->map(fn ($row) => [
+                'ledger_id' => (int) $row->id,
+                'legacy_type_id' => (int) $row->type_id,
+                'original_voucher_number' => (string) $row->voucher_number,
+                'source_verified' => false,
+            ])->all(),
+            'status' => $total > $rows->count() ? 'incomplete' : 'review_required',
+            'limitations' => 'No historical attribution or balances are changed; candidate header existence is not proof.',
+        ];
+    }
+
 }

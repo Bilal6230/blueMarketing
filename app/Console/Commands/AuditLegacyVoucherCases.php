@@ -6,7 +6,7 @@ use Illuminate\Console\Command;
 
 final class AuditLegacyVoucherCases extends Command
 {
-    protected $signature = 'finance:audit-legacy-cases {project : Numeric project ID} {--limit=100 : Max ledger rows (1-1000)} {--summary : Compact bounded project-wide classification} {--max-rows=5000 : Summary scan cap (1-10000)}';
+    protected $signature = 'finance:audit-legacy-cases {project : Numeric project ID} {--limit=100 : Max ledger rows (1-1000)} {--summary : Compact bounded project-wide classification} {--review-category= : Export one review category (both_headers, jv_only, cv_only, neither_header)} {--max-rows=5000 : Summary scan cap (1-10000)}';
     protected $description = 'Read-only ledger-level JV/CV source ambiguity inventory for manual review';
 
     public function handle(LegacyVoucherCollisionInventory $inspector): int
@@ -20,6 +20,12 @@ final class AuditLegacyVoucherCases extends Command
             return self::INVALID;
         }
         $summary = (bool) $this->option('summary');
+        $reviewCategory = $this->option('review-category');
+        if ($reviewCategory !== null &&
+            (!in_array($reviewCategory, ['both_headers', 'jv_only', 'cv_only', 'neither_header'], true) || $summary)) {
+            $this->error('Choose a valid --review-category without --summary.');
+            return self::INVALID;
+        }
         $maxRows = filter_var($this->option('max-rows'), FILTER_VALIDATE_INT,
             ['options'=>['min_range'=>1,'max_range'=>10000]]);
         if ($summary && $maxRows === false) {
@@ -29,7 +35,9 @@ final class AuditLegacyVoucherCases extends Command
         try {
             $result = $summary
                 ? $inspector->summarize((int) $project, (int) $maxRows)
-                : $inspector->inspect((int) $project, (int) $limit);
+                : ($reviewCategory !== null
+                    ? $inspector->reviewQueue((int) $project, (string) $reviewCategory, (int) $limit)
+                    : $inspector->inspect((int) $project, (int) $limit));
         } catch (\DomainException $e) {
             $this->error($e->getMessage());
             return self::FAILURE;

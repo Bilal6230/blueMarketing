@@ -453,3 +453,6 @@
 
 ## 2026-10-27 — compact project-scale JV/CV ambiguity classification
 - User's previous 40/40 tests PASS; actual project 6 sample 90 jv-only / 10 neither over 100 of 1430 unverified. Implemented --summary and --max-rows with 500-row batched header reads and 5 examples per category; four tests; existing case export unchanged. No writes; code/tests/docs single commit, verification pending.
+
+## 2026-10-27 — SQL-filtered legacy case review export
+- Verified project 6 full classification 1420 jv_only + 10 neither_header (1430/1430). New --review-category mode filters selected category at DB level before LIMIT, retaining original voucher number and explicit source_verified=false; four SQLite regression tests added. Code+tests+docs one commit, tests pending. No DB writes.
