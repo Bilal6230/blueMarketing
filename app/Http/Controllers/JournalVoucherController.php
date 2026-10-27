@@ -322,8 +322,7 @@ class JournalVoucherController extends Controller
 
         // Existing production databases may not have the reviewed finance metadata
         // migration. Only issue a durable retry key when both tables are present.
-        $x['financeRetryReady'] = \Illuminate\Support\Facades\Schema::hasTable('ledger_source_attributions')
-            && \Illuminate\Support\Facades\Schema::hasTable('financial_posting_requests');
+        $x['financeRetryReady'] = app(\App\Services\Finance\FinancePostingSchemaGate::class)->isReady();
         $x['financeRetryKey'] = $x['financeRetryReady']
             ? old('idempotency_key', (string) \Illuminate\Support\Str::uuid())
             : null;
@@ -413,13 +412,9 @@ class JournalVoucherController extends Controller
             ]);
         }
 
-        $hasAttributions = \Illuminate\Support\Facades\Schema::hasTable('ledger_source_attributions');
-        $hasRequestKeys = \Illuminate\Support\Facades\Schema::hasTable('financial_posting_requests');
-        // A half-applied finance migration is never a valid legacy-mode fallback.
-        if ($hasAttributions !== $hasRequestKeys) {
-            throw new \RuntimeException('Incomplete financial metadata schema: posting is blocked until schema is reconciled.');
-        }
-        $metadataReady = $hasAttributions && $hasRequestKeys;
+        // Guard the REAL posting path, not only an audit CLI: table presence
+        // without required columns and unique constraints is not safe.
+        $metadataReady = app(\App\Services\Finance\FinancePostingSchemaGate::class)->mode() === 'typed';
         $requestKey = $request->input('idempotency_key');
         if ($requestKey !== null && (!$metadataReady || !is_string($requestKey)
             || !preg_match('/^[A-Za-z0-9_-]{16,128}$/D', $requestKey))) {

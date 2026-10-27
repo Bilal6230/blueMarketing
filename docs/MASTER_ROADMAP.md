@@ -546,3 +546,7 @@ Assistant must:
 
 ## 2026-10-27 — consolidated cross-project coverage and conflict gate
 - User confirmed 6 PASS/17 assertions for coverage. Added project-sorted deterministic SHA256 release-preflight report that composes coverage and conflict outputs, cross-validates counts and IDs, blocks partial/duplicate/mismatched work; eight tests pending. No provenance certification. Verified baseline **31%** based on recent local focused success; **33% provisional** after new code pending user verification. No rollout approval.
+
+## 2026-10-27 — actual JV create/store metadata structural guard (pending focused verification)
+- User verified consolidated release-gate 8 PASS /13 assertions. Fixed real JournalVoucherController create/store to share FinancePostingSchemaGate: legacy mode only when BOTH tables absent; half-installed schema or missing required columns/unique indexes hard blocks posting instead of treating mere table presence as safe. Reuses existing FinanceSchemaPreflight; does not migrate any DB. Six focused SQLite / source regressions added.
+- Last locally verified milestone **33% qualitative estimate**, new integration is unverified locally. Does not unlock CV 409, reverse postings or certify 2873 legacy rows. Strict user instruction: substantial multi-function milestones, minimal focused tests, same-commit docs; do not inflate progress for mere activity.
