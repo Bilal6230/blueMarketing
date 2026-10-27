@@ -524,3 +524,7 @@ Assistant must:
 ## 2026-10-27 — portfolio-level legacy evidence reconciliation (pending local tests)
 - User verified previous dual-review checkpoint **6 PASS /8 assertions** and clean syntax. Added read-only multi-project portfolio aggregator, stable SHA-256 portfolio report, deterministic project ordering, fail-closed partial review handling and a JSON manifest CLI. Five tests added. No finance DB writes or new migrations; still external proof/signoff needed.
 - Estimated overall **29%** (27% ->29%, qualitative estimate from verified checkpoint and this larger portfolio development); Phase 1 85%, Phase 2 40%, Phase 3 0%, Phase 4 0%, Phase 5 20%. No phase completed; portfolio test verification pending.
+
+
+## 2026-10-27 — live-source conflict reconciliation gate (pending focused tests)
+- Previous portfolio 5 PASS/10 assertions confirmed. Added read-only conflict gate comparing reviewed historical packet with current typed attribution rows, blocking duplicates, unresolved ownership, stale claim, missing schema and unapproved review. Four focused SQLite integration cases added. Production schema remains absent; no historical backfill. Overall estimate **31%** conditional on new tests; Phase 2 reconciliation gains tangible DB-aware blocker but historical review remains incomplete.

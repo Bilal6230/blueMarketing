@@ -480,3 +480,7 @@
 
 ## 2026-10-27 — verified dual-review, implemented multi-project portfolio checkpoint
 - User pulled 9b2c64d; lints clean; **6 PASS/8 assertions** in LegacyEvidenceApprovalCheckpointTest. Implemented LegacyEvidencePortfolioReconciliation (deterministic project-sorted aggregate hash, fail-closed group review), CLI finance:audit-legacy-review-portfolio reading JSON groups with project_id, ledger_ids, review, approval, and five pure unit tests (pending local run). Real packets loaded read-only in CLI, no staged/production migration or ledger updates. Status never certifies ownership. Estimated progress 29%, not deployment approval.
+
+
+## 2026-10-27 — conflict-aware historical evidence reconciliation checkpoint
+- User verified prior portfolio suite 5 PASS/10 assertions. Implemented LegacyEvidenceConflictGate and finance:audit-legacy-evidence-conflicts as non-mutating preflight comparing reviewed ledgers to actual typed attribution metadata. Added four SQLite integration tests for conflict, unresolved, eligible-only and missing-schema cases (pending local run). Still no source certification, ledger writes, production migration or master_live change. Overall estimated 31% provisional.
