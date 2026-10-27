@@ -620,4 +620,28 @@ class JournalVoucherPostingIntegrationTest extends TestCase
         $this->assertSame(0, DB::table('ledgers')->count());
     }
 
+    public function test_jv_form_source_emits_retry_key_only_when_finance_schema_available(): void
+    {
+        $controller = file_get_contents(app_path('Http/Controllers/JournalVoucherController.php'));
+        $template = file_get_contents(resource_path('views/admin/reports/vouchers/journal_voucher.blade.php'));
+        $this->assertStringContainsString("financeRetryReady", $controller);
+        $this->assertStringContainsString("Str::uuid()", $controller);
+        $this->assertStringContainsString("@if (\$financeRetryReady ?? false)", $template);
+        $this->assertStringContainsString('name="idempotency_key"', $template);
+        $this->assertStringContainsString('value="{{ \$financeRetryKey }}"', $template);
+    }
+
+    public function test_real_jv_form_retry_deduplicates_even_after_failed_redirect_retry(): void
+    {
+        $this->installFinanceMetadata();
+        $payload = $this->payload();
+        // A normal created form reuses one server-issued UUID across browser retries.
+        $payload['idempotency_key'] = (string) \Illuminate\Support\Str::uuid();
+        app(JournalVoucherController::class)->store($this->request($payload));
+        app(JournalVoucherController::class)->store($this->request($payload));
+        $this->assertSame(1, DB::table('journal_vouchers')->count());
+        $this->assertSame(2, DB::table('ledger_source_attributions')->count());
+        $this->assertSame(1, DB::table('financial_posting_requests')->count());
+    }
+
 }

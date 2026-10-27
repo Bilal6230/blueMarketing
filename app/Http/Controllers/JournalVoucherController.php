@@ -320,6 +320,14 @@ class JournalVoucherController extends Controller
         $x['accounts'] = $data_list;
 
 
+        // Existing production databases may not have the reviewed finance metadata
+        // migration. Only issue a durable retry key when both tables are present.
+        $x['financeRetryReady'] = \Illuminate\Support\Facades\Schema::hasTable('ledger_source_attributions')
+            && \Illuminate\Support\Facades\Schema::hasTable('financial_posting_requests');
+        $x['financeRetryKey'] = $x['financeRetryReady']
+            ? old('idempotency_key', (string) \Illuminate\Support\Str::uuid())
+            : null;
+
         return view('admin.reports.vouchers.journal_voucher', $x);
     }
 

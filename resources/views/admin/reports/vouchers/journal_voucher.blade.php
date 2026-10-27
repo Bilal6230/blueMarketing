@@ -11,6 +11,11 @@
                     <div class="card-body">
                         <form id="journalForm" action="{{ route('journal.voucher.store') }}" method="POST">
                             @csrf
+                            {{-- A stable key for this rendered form; browser retries reuse it.
+                                 Legacy installs without metadata keep the old no-key path. --}}
+                            @if ($financeRetryReady ?? false)
+                                <input type="hidden" name="idempotency_key" value="{{ $financeRetryKey }}">
+                            @endif
                             <!-- Voucher Details -->
                             <div class="row mb-4">
                                 <div class="col-sm-4">

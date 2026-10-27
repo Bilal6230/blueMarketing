@@ -435,3 +435,6 @@
 
 ## 2026-10-27 — larger read-only readiness inventory implementation
 - Previous isolated metadata suite 22/22 PASS. New FinancialReadinessInspector and finance:audit-readiness console command to inventory real project JV/CV headers, typed-vs-unverified JV ledgers and missing metadata schema, with explicit blockers. Five new SQLite tests; no claims of production completeness or code test pass yet. Code/tests/docs bundled in one commit, no live migration.
+
+## 2026-10-27 — JV create UI wired to existing durable transaction-safe posting
+- Added conditional request UUID generation to JournalVoucherController::create, hidden idempotency_key field to real JV create form, and two integration/source assertions for UI wiring and repeated browser submission. Only metadata-ready installs use this; legacy no-schema path unaffected. Code+tests+docs same commit; local verification pending. Phase 2 estimated 10->20%, overall 16->18% provisional. No production DB/master_live touched.
