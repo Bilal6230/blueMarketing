@@ -589,4 +589,37 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
         $this->assertSame(0,DB::table('ledger_source_attributions')->count());
     }
 
+    public function test_evidence_batch_keeps_all_packets_unverified(): void
+    {
+        DB::table('ledgers')->insert(['id'=>2,'project_head_subheads_id'=>3,'type'=>'JV',
+            'type_id'=>999,'voucher_number'=>'7002']);
+        $result = app(\App\Services\Finance\LegacyVoucherEvidencePacket::class)->inspectBatch(7,[1,2]);
+        $this->assertSame(2,$result['scanned']);
+        $this->assertSame(1,$result['candidate_categories']['both_headers']);
+        $this->assertSame(1,$result['candidate_categories']['neither_header']);
+        $this->assertFalse($result['source_verified']);
+    }
+
+    public function test_evidence_batch_refuses_duplicate_ledger_ids(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        app(\App\Services\Finance\LegacyVoucherEvidencePacket::class)->inspectBatch(7,[1,1]);
+    }
+
+    public function test_evidence_batch_denies_mixed_project_records(): void
+    {
+        DB::table('ledgers')->insert(['id'=>2,'project_head_subheads_id'=>4,'type'=>'JV',
+            'type_id'=>99,'voucher_number'=>'7002']);
+        $this->expectException(\DomainException::class);
+        app(\App\Services\Finance\LegacyVoucherEvidencePacket::class)->inspectBatch(7,[1,2]);
+    }
+
+    public function test_evidence_batch_command_outputs_read_only_packets(): void
+    {
+        $this->artisan('finance:audit-legacy-evidence-batch',
+            ['project'=>7,'ledgers'=>'1'])
+            ->expectsOutputToContain('"scanned":1')->assertExitCode(0);
+        $this->assertSame(0,DB::table('ledger_source_attributions')->count());
+    }
+
 }

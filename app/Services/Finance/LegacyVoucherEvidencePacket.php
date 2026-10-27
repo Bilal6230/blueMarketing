@@ -46,4 +46,30 @@ final class LegacyVoucherEvidencePacket
             'limitations'=>'Numerical header match is not provenance; no history or attribution is modified.',
         ];
     }
+    /**
+     * Multi-case evidence review, strictly read-only. Invalid/cross-project
+     * records abort instead of being silently omitted from a review packet.
+     */
+    public function inspectBatch(int $projectId, array $ledgerIds): array
+    {
+        if ($projectId < 1 || !$ledgerIds || count($ledgerIds) > 100 ||
+            count(array_unique($ledgerIds)) !== count($ledgerIds)) {
+            throw new \InvalidArgumentException('Provide 1-100 distinct ledger IDs.');
+        }
+        $packets = [];
+        foreach ($ledgerIds as $id) {
+            if (!is_int($id) || $id < 1) {
+                throw new \InvalidArgumentException('Positive numeric ledger IDs required.');
+            }
+            $packets[] = $this->inspect($projectId, $id);
+        }
+        $categories = ['both_headers'=>0,'jv_only'=>0,'cv_only'=>0,'neither_header'=>0];
+        foreach ($packets as $packet) {
+            $categories[$packet['candidate_category']]++;
+        }
+        return ['project_id'=>$projectId,'scanned'=>count($packets),
+            'candidate_categories'=>$categories,'packets'=>$packets,
+            'source_verified'=>false,'review_status'=>'requires_external_evidence'];
+    }
+
 }

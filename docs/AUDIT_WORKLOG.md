@@ -459,3 +459,6 @@
 
 ## 2026-10-27 — legacy evidence packet generator
 - Verified all 10 neither-header Project 6 IDs and 48 passing tests. Added single-ledger forensic candidate packet and Artisan command with cross-project denial, collision-safe JV/CV references, unverified flag and 4 isolated tests. One code/tests/docs commit, tests pending. Read-only.
+
+## 2026-10-27 — consolidated legacy ledger review packets
+- Prior metadata tests 52 PASS and ledger 12179 no-header evidence confirmed. Added batch evidence CLI for up to 100 distinct ledger IDs with cross-project rejection and four focused tests. Read-only, no auto attribution; code, tests and docs single commit; new tests pending.
