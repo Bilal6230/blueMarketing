@@ -429,3 +429,6 @@
 
 ## 2026-10-27 — implemented read-only typed-source reconciliation
 - Project-scoped inspector and CLI with bounded scan, structured discrepancy codes and nonzero exit on incomplete/mismatched provenance. Four SQLite isolated tests, unverified. Code+tests+docs single commit; no live DB touch. User prior finance verification 56 PASS / 178 assertions.
+
+## 2026-10-27 — read-only discovery of real project IDs
+- Last 19/19 source audit tests passed. Example project 7 did not exist in user local environment. Added --list-projects to existing CLI; bounded, JSON project IDs only; three regressions cover listing, unknown ID, and invalid combined parameters. No schema edits/migration or production data touched; all files in one commit.

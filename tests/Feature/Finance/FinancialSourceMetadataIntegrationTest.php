@@ -285,4 +285,26 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
         $this->assertSame(1,DB::table('ledger_source_attributions')->count());
     }
 
+    public function test_source_audit_lists_real_project_ids_read_only(): void
+    {
+        $this->artisan('finance:audit-source-attributions', ['--list-projects' => true])
+            ->expectsOutputToContain('"project_ids":[7,8]')->assertExitCode(0);
+        $this->assertSame(2, DB::table('projects')->count());
+        $this->assertSame(0, DB::table('ledger_source_attributions')->count());
+    }
+
+    public function test_source_audit_rejects_unrecognized_project_id(): void
+    {
+        $this->artisan('finance:audit-source-attributions', ['project' => 999])
+            ->expectsOutputToContain('Project does not exist.')->assertExitCode(1);
+    }
+
+    public function test_source_audit_rejects_list_mode_with_project_id(): void
+    {
+        $this->artisan('finance:audit-source-attributions',
+            ['project' => 7, '--list-projects' => true])
+            ->expectsOutputToContain('Use --list-projects without a project ID.')
+            ->assertExitCode(2);
+    }
+
 }
