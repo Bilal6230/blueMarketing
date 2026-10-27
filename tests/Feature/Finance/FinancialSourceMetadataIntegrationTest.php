@@ -349,4 +349,52 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
         $this->assertFalse($report['schema']['financial_posting_requests']);
     }
 
+    public function test_finance_metadata_preflight_verifies_columns_and_unique_indexes(): void
+    {
+        $result = app(\App\Services\Finance\FinanceSchemaPreflight::class)->inspect();
+        $this->assertSame('schema_verified', $result['status']);
+        $this->assertSame([], $result['blockers']);
+        $this->assertTrue($result['unique_indexes']['ledger_source_attributions']);
+        $this->assertTrue($result['unique_indexes']['financial_posting_requests']);
+    }
+
+    public function test_finance_metadata_preflight_rejects_missing_unique_request_index(): void
+    {
+        Schema::drop('financial_posting_requests');
+        Schema::create('financial_posting_requests', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('project_id');
+            $table->string('source_kind');
+            $table->string('request_key');
+            $table->char('payload_hash', 64);
+            $table->string('status');
+            $table->unsignedBigInteger('voucher_id')->nullable();
+            $table->timestamps();
+        });
+        $report = app(\App\Services\Finance\FinanceSchemaPreflight::class)->inspect();
+        $this->assertSame('blocked', $report['status']);
+        $this->assertContains('financial_request_unique_index_missing', $report['blockers']);
+    }
+
+    public function test_finance_metadata_preflight_rejects_missing_column(): void
+    {
+        Schema::drop('financial_posting_requests');
+        Schema::create('financial_posting_requests', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('project_id');
+            $table->string('source_kind');
+            $table->string('request_key');
+            $table->unique(['project_id', 'source_kind', 'request_key']);
+        });
+        $report = app(\App\Services\Finance\FinanceSchemaPreflight::class)->inspect();
+        $this->assertContains('financial_posting_requests_incomplete_columns', $report['blockers']);
+    }
+
+    public function test_finance_metadata_preflight_artisan_is_read_only(): void
+    {
+        $this->artisan('finance:metadata-preflight')
+            ->expectsOutputToContain('schema_verified')->assertExitCode(0);
+        $this->assertSame(0, DB::table('financial_posting_requests')->count());
+    }
+
 }

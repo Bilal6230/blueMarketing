@@ -441,3 +441,6 @@
 
 ## 2026-10-27 — functional browser JV double-submit guard + red-test fix
 - Corrected the broken test literal that expected a non-existent backslash in Blade source (39 PASS/1 FAIL baseline). Added one-shot confirmation submit guard and disabled button, with focused source assertions. One code+tests+docs commit; pending local verification. No financial history/migrations touched.
+
+## 2026-10-27 — implemented finance deployment metadata preflight in code/tests/docs
+- Baseline latest 40/40 JV tests PASS. New read-only command finance:metadata-preflight validates real finance metadata columns and DB-enforced unique constraints using SQLite/MySQL index introspection, with four isolated tests. Single commit with code, tests, docs. No schema migration or production writes; verification pending; overall progress 20% provisional.
