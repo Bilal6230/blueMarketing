@@ -29,6 +29,7 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
             $t->id();
             $t->unsignedBigInteger('project_id');
             $t->string('voucher_number');
+            $t->softDeletes();
         });
         Schema::create('commision_vouchers', function (Blueprint $t) {
             $t->id();
@@ -187,9 +188,6 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
 
     public function test_soft_deleted_jv_header_rejects_committed_request_replay(): void
     {
-        Schema::table('journal_vouchers', function (Blueprint $table) {
-            $table->softDeletes();
-        });
         DB::table('journal_vouchers')->where('id', 41)
             ->update(['deleted_at' => now()]);
         $key = 'request_key_123456789';

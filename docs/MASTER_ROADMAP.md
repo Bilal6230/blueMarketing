@@ -445,3 +445,6 @@ Assistant must:
 ## 2026-10-27 — typed JV soft-delete replay guard (new focused test pending)
 - User confirmed FinancialSourceMetadataIntegrationTest **10 PASS / 25 assertions** against latest previous source replay validation. Extended durable committed-JV replay to require non-soft-deleted header (deleted_at IS NULL). This avoids false successful retries against financially removed/tombstoned JV headers. Added isolated SQLite test and no migrations or staging DB changes.
 - Focused new test UNVERIFIED; planned baseline Phase 1 70%, Phase 2 10%, overall 16%. No standalone documentation commits; MySQL concurrency remains unverified.
+
+## 2026-10-27 — test fixture correction for verified soft-delete replay gate
+- User's focused run of previous change: **10 PASS / 1 FAIL / 23 assertions**. Root cause: existing SQLite journal_vouchers fixture lacked production-model deleted_at column; new DurableFinancialRequest correctly checks deleted_at and caused previously green replay test to error. Updated shared isolated test table schema to include softDeletes from creation and removed redundant per-test alteration; preserved actual finance service behavior. Re-run focused 11 tests pending. No production DB or migration applied; progress unchanged Phase 1 70%, Phase 2 10%, overall 16%.

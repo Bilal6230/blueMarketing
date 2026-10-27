@@ -417,3 +417,6 @@
 
 ## 2026-10-27 — non-deleted JV header required for durable replay
 - Last user focused finance tests 10 PASS/25 assertions. Actual replay code now rejects committed JV requests when header is soft deleted; SQLite focused test added. Code, tests and documentation in one commit. No production actions; new test pending.
+
+## 2026-10-27 — corrected SQLite fixture for deleted_at regression
+- User observed 10 passing and 1 failing FinancialSourceMetadataIntegrationTest after committed replay began checking JV deleted_at. Root cause outdated fixture schema, not verified production defect. Added softDeletes to shared in-memory JV table and removed per-test duplicate addition. Focused verification pending; code/tests/docs same commit, no live schema changes.
