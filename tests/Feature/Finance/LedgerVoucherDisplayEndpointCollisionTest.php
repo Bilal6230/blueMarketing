@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
- * RED endpoint-level diagnostic: calls the real DataTables controller.
- * The legacy row is SOURCE-AMBIGUOUS by design, not proven to be CV.
+ * Endpoint-level provenance regression: calls the real DataTables controller.
+ * An unknown legacy source retains the original number; verified typed sources use the correct header.
  */
 class LedgerVoucherDisplayEndpointCollisionTest extends TestCase
 {
@@ -97,6 +97,33 @@ class LedgerVoucherDisplayEndpointCollisionTest extends TestCase
         $this->assertSame('JV-9002', $payload['data'][0]['display_voucher_number']);
     }
 
+    public function test_verified_commission_ledger_displays_cv_header_not_colliding_jv_header(): void
+    {
+        Schema::create('commision_vouchers', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('project_id');
+            $table->string('voucher_number');
+        });
+        DB::table('projects')->insert(['id' => 7, 'project' => 'Test']);
+        DB::table('project_head_subheads')->insert(['id' => 3, 'project_id' => 7]);
+        DB::table('journal_vouchers')->insert(['id' => 41, 'voucher_number' => '9001']);
+        DB::table('commision_vouchers')->insert(['id' => 41, 'project_id' => 7, 'voucher_number' => '22']);
+        DB::table('ledgers')->insert([
+            'id' => 1, 'type' => 'JV', 'type_id' => 41,
+            'project_head_subheads_id' => 3, 'voucher_number' => '7001',
+            'is_active' => true, 'date' => '2026-10-26',
+        ]);
+        DB::table('ledger_source_attributions')->insert([
+            'ledger_id' => 1, 'project_id' => 7, 'source_kind' => 'commission_voucher',
+            'source_id' => 41, 'evidence_kind' => 'manual_review',
+        ]);
+        $request = Request::create('/fetch-data-url', 'POST', ['draw' => 1, 'start' => 0, 'length' => 10]);
+        $request->cookies->set('selected_action', '7');
+        $this->app->instance('request', $request);
+        $payload = json_decode(app(LedgerController::class)->fetch_data_url($request)->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        $this->assertSame('CV-22', $payload['data'][0]['display_voucher_number']);
+    }
+
     public function test_actual_datatables_reader_does_not_override_ambiguous_legacy_number(): void
     {
         DB::table('projects')->insert(['id' => 7, 'project' => 'Isolated Test']);
@@ -121,8 +148,7 @@ class LedgerVoucherDisplayEndpointCollisionTest extends TestCase
         $this->assertSame(1, $payload['recordsFiltered'], 'DataTables returned: ' . json_encode($payload));
         $this->assertCount(1, $payload['data']);
 
-        // This should be sourced from a known, typed voucher posting in the
-        // future. Today the reader incorrectly trusts a colliding JV header.
+        // No independent source evidence exists, so the original ledger number survives.
         $this->assertSame('JV-7001', $payload['data'][0]['display_voucher_number']);
     }
 }
