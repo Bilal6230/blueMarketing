@@ -488,3 +488,5 @@
 - Post-commit test source inspection caught escaped PHP namespace tokens in newly added fixture; corrected fixture before local verification. No production changes.
 
 - Source-level fix: normalized doubled backslashes to one in PHP integration test class references; verification pending.
+
+- User reported real PHP parse error line 627 in new tests; repaired every doubled namespace separator in newly appended fixture, leaving existing tests untouched. Pending focused lint/test; no progress uplift or production changes.

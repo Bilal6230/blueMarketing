@@ -624,15 +624,15 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
 
     private function conflictReviewFixture(int $sourceId = 41): array
     {
-        $packet = app(\App\\Services\\Finance\\LegacyVoucherEvidencePacket::class)->inspectBatch(7,[1]);
-        $worksheet = app(\App\\Services\\Finance\\LegacyEvidenceReviewWorksheet::class);
+        $packet = app(\App\Services\Finance\LegacyVoucherEvidencePacket::class)->inspectBatch(7,[1]);
+        $worksheet = app(\App\Services\Finance\LegacyEvidenceReviewWorksheet::class);
         $review = $worksheet->template($packet);
         $review['rows'][0] = array_merge($review['rows'][0],[
             'proposed_source_kind'=>'journal_voucher','proposed_header_id'=>$sourceId,
             'evidence_reference'=>'independent-archive','reviewer'=>'Auditor',
             'reviewed_at'=>'2026-10-27','review_note'=>'External evidence separately verified',
         ]);
-        $checkpoint = app(\App\\Services\\Finance\\LegacyEvidenceApprovalCheckpoint::class);
+        $checkpoint = app(\App\Services\Finance\LegacyEvidenceApprovalCheckpoint::class);
         $approval = $checkpoint->manifest($packet,$review,$worksheet);
         $approval['approvals'][0]=['role'=>'finance_reviewer','name'=>'Lead','reviewed_at'=>'2026-10-27','evidence_reference'=>'F-1'];
         $approval['approvals'][1]=['role'=>'independent_approver','name'=>'Controller','reviewed_at'=>'2026-10-27','evidence_reference'=>'A-2'];
@@ -643,9 +643,9 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
     {
         [$batch,$review,$approval]=$this->conflictReviewFixture();
         app(LedgerSourceAttributionWriter::class)->recordNewPosting(1,7,'journal_voucher',41);
-        $result=app(\App\\Services\\Finance\\LegacyEvidenceConflictGate::class)->inspect(
-            $batch,$review,$approval,app(\App\\Services\\Finance\\LegacyEvidenceReviewWorksheet::class),
-            app(\App\\Services\\Finance\\LegacyEvidenceApprovalCheckpoint::class));
+        $result=app(\App\Services\Finance\LegacyEvidenceConflictGate::class)->inspect(
+            $batch,$review,$approval,app(\App\Services\Finance\LegacyEvidenceReviewWorksheet::class),
+            app(\App\Services\Finance\LegacyEvidenceApprovalCheckpoint::class));
         $this->assertSame('blocked',$result['status']);
         $this->assertContains('ledger_already_attributed',array_column($result['issues'],'code'));
         $this->assertSame(1,DB::table('ledger_source_attributions')->count());
@@ -656,12 +656,12 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
         [$batch,$review,$approval]=$this->conflictReviewFixture();
         $review['rows'][0]['proposed_source_kind']='unresolved';
         $review['rows'][0]['proposed_header_id']=null;
-        $worksheet=app(\App\\Services\\Finance\\LegacyEvidenceReviewWorksheet::class);
-        $checkpoint=app(\App\\Services\\Finance\\LegacyEvidenceApprovalCheckpoint::class);
+        $worksheet=app(\App\Services\Finance\LegacyEvidenceReviewWorksheet::class);
+        $checkpoint=app(\App\Services\Finance\LegacyEvidenceApprovalCheckpoint::class);
         $approval=$checkpoint->manifest($batch,$review,$worksheet);
         $approval['approvals'][0]=['role'=>'finance_reviewer','name'=>'Lead','reviewed_at'=>'2026-10-27','evidence_reference'=>'F-1'];
         $approval['approvals'][1]=['role'=>'independent_approver','name'=>'Controller','reviewed_at'=>'2026-10-27','evidence_reference'=>'A-2'];
-        $result=app(\App\\Services\\Finance\\LegacyEvidenceConflictGate::class)->inspect($batch,$review,$approval,$worksheet,$checkpoint);
+        $result=app(\App\Services\Finance\LegacyEvidenceConflictGate::class)->inspect($batch,$review,$approval,$worksheet,$checkpoint);
         $this->assertContains('ownership_unresolved',array_column($result['issues'],'code'));
         $this->assertFalse($result['source_verified']);
     }
@@ -669,9 +669,9 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
     public function test_conflict_gate_succeeds_only_as_external_reconciliation_candidate(): void
     {
         [$batch,$review,$approval]=$this->conflictReviewFixture();
-        $result=app(\App\\Services\\Finance\\LegacyEvidenceConflictGate::class)->inspect(
-            $batch,$review,$approval,app(\App\\Services\\Finance\\LegacyEvidenceReviewWorksheet::class),
-            app(\App\\Services\\Finance\\LegacyEvidenceApprovalCheckpoint::class));
+        $result=app(\App\Services\Finance\LegacyEvidenceConflictGate::class)->inspect(
+            $batch,$review,$approval,app(\App\Services\Finance\LegacyEvidenceReviewWorksheet::class),
+            app(\App\Services\Finance\LegacyEvidenceApprovalCheckpoint::class));
         $this->assertSame('eligible_for_external_reconciliation',$result['status']);
         $this->assertFalse($result['source_verified']);
         $this->assertSame(0,DB::table('ledger_source_attributions')->count());
@@ -681,9 +681,9 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
     {
         [$batch,$review,$approval]=$this->conflictReviewFixture();
         Schema::drop('ledger_source_attributions');
-        $result=app(\App\\Services\\Finance\\LegacyEvidenceConflictGate::class)->inspect(
-            $batch,$review,$approval,app(\App\\Services\\Finance\\LegacyEvidenceReviewWorksheet::class),
-            app(\App\\Services\\Finance\\LegacyEvidenceApprovalCheckpoint::class));
+        $result=app(\App\Services\Finance\LegacyEvidenceConflictGate::class)->inspect(
+            $batch,$review,$approval,app(\App\Services\Finance\LegacyEvidenceReviewWorksheet::class),
+            app(\App\Services\Finance\LegacyEvidenceApprovalCheckpoint::class));
         $this->assertContains('attribution_schema_missing',array_column($result['issues'],'code'));
     }
 }

@@ -532,3 +532,5 @@ Assistant must:
 - Focused fixture namespace escape corrected in follow-up code/test commit; conflict gate verification still pending. No progress increase for correction.
 
 - Corrected literal doubled namespace separators in integration fixtures; targeted local PHP lint and tests required before considering completion.
+
+- Corrected malformed double namespace separators in conflict-gate integration test fixture after user reported PHP parse error at line 627. Tests still pending locally; verified progress remains 29% pending green validation.
