@@ -27,10 +27,15 @@ final class LedgerSourceAttributionWriter
         }
 
         $headerTable = $sourceKind === 'journal_voucher' ? 'journal_vouchers' : 'commision_vouchers';
-        $headerExists = DB::table($headerTable)->where('id', $sourceId)
-            ->where('project_id', $projectId)->exists();
+        $headerQuery = DB::table($headerTable)->where('id', $sourceId)
+            ->where('project_id', $projectId);
+        if ($sourceKind === 'journal_voucher') {
+            $headerQuery->whereNull('deleted_at');
+        }
+        $headerExists = $headerQuery->exists();
 
         $ledgerExists = DB::table('ledgers')->where('id', $ledgerId)
+            ->where('type', 'JV')->where('type_id', $sourceId)
             ->whereIn('project_head_subheads_id', function ($query) use ($projectId) {
                 $query->select('id')->from('project_head_subheads')->where('project_id', $projectId);
             })->exists();

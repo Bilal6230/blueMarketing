@@ -19,6 +19,15 @@ final class LedgerVoucherDisplayService
             return $original;
         }
 
+        // Re-check real ledger ownership, not only a potentially stale or
+        // forged attribution record or caller-provided ledger object.
+        $ledgerOwned = DB::table('ledgers')->where('id', $ledger->id)
+            ->where('type', 'JV')->whereIn('project_head_subheads_id', function ($query) use ($projectId) {
+                $query->select('id')->from('project_head_subheads')->where('project_id', $projectId);
+            })->exists();
+        if (!$ledgerOwned) {
+            return $original;
+        }
         $attribution = DB::table('ledger_source_attributions')
             ->where('ledger_id', $ledger->id)->first();
         if (!$attribution
@@ -27,7 +36,8 @@ final class LedgerVoucherDisplayService
             || !in_array($attribution->evidence_kind, [
                 'new_write_transaction', 'verified_external_reference', 'manual_review',
             ], true)
-            || empty($attribution->source_id)) {
+            || empty($attribution->source_id)
+            || (int) ($ledger->type_id ?? 0) !== (int) $attribution->source_id) {
             return $original;
         }
 

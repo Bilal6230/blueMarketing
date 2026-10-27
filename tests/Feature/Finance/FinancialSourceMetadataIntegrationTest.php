@@ -212,4 +212,40 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
         $this->assertFalse($called);
     }
 
+    public function test_new_attribution_rejects_wrong_ledger_voucher_id(): void
+    {
+        DB::table('ledgers')->where('id', 1)->update(['type_id' => 99]);
+        try {
+            app(LedgerSourceAttributionWriter::class)->recordNewPosting(1, 7, 'journal_voucher', 41);
+            $this->fail('Mismatched voucher must not be attributed.');
+        } catch (\DomainException $e) {
+            $this->assertSame(0, DB::table('ledger_source_attributions')->count());
+        }
+    }
+
+    public function test_new_attribution_rejects_deleted_journal_header(): void
+    {
+        DB::table('journal_vouchers')->where('id', 41)->update(['deleted_at' => now()]);
+        $this->expectException(\DomainException::class);
+        app(LedgerSourceAttributionWriter::class)->recordNewPosting(1, 7, 'journal_voucher', 41);
+    }
+
+    public function test_display_ignores_wrong_project_even_with_valid_typed_attribution(): void
+    {
+        app(LedgerSourceAttributionWriter::class)->recordNewPosting(1, 7, 'journal_voucher', 41);
+        DB::table('ledgers')->where('id', 1)->update(['project_head_subheads_id' => 4]);
+        $ledger = DB::table('ledgers')->where('id', 1)->first();
+        $this->assertSame('JV-7001',
+            app(\App\Services\Finance\LedgerVoucherDisplayService::class)->display($ledger, 7));
+    }
+
+    public function test_display_ignores_stale_voucher_link_without_relabeling(): void
+    {
+        app(LedgerSourceAttributionWriter::class)->recordNewPosting(1, 7, 'journal_voucher', 41);
+        DB::table('ledgers')->where('id', 1)->update(['type_id' => 99]);
+        $ledger = DB::table('ledgers')->where('id', 1)->first();
+        $this->assertSame('JV-7001',
+            app(\App\Services\Finance\LedgerVoucherDisplayService::class)->display($ledger, 7));
+    }
+
 }

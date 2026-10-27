@@ -451,3 +451,7 @@ Assistant must:
 
 ## 2026-10-27 — request-level JV retry key validation
 - User verified previous finance metadata replay suite **11 PASS / 27 assertions**. Added Laravel request validation for optional idempotency_key (16–128 ASCII letters/numbers/_/-) at the start of actual JV store, before account lookups; added one isolated invalid-short-key regression proving no posting. Focused tests pending; legacy no-key remains compatible. MySQL concurrency/staging still pending, no live migration. Phase 1 70%, Phase 2 10%, overall 16%.
+
+## 2026-10-27 — source identity hardening batch (tests pending)
+- Last verified user focused JV integration: **38 PASS / 138 assertions**. Fixed LedgerSourceAttributionWriter to require ledger.type = JV, ledger.type_id equals typed header ID, project-owned account, and a non-soft-deleted JV header; protects against misattribution of unrelated legacy ledger rows. Hardened LedgerVoucherDisplayService to independently confirm the actual ledger belongs to selected project and matches the typed attribution's source ID, so a stale/forged attribution cannot relabel another project or header.
+- Four new isolated SQLite integration tests cover wrong type_id on attribution, deleted JV header, cross-project stale ledger, and stale voucher linkage in reader. No running migrations, no live updates. Progress remains Phase 1 **70%**, Phase 2 **10%**, overall **16%** until tests verified and staging gates closed; MySQL concurrency still pending.

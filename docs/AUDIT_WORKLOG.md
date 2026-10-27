@@ -423,3 +423,6 @@
 
 ## 2026-10-27 — early JV idempotency-key validation
 - Previous metadata suite 11/11 PASS. Added early framework-level validation of optional JV idempotency key and isolated rejection/no-ledger regression. Code, test and docs in one commit; new JV focused test unverified. No production mutation.
+
+## 2026-10-27 — bulk ledger provenance safety improvements (pending tests)
+- Previous user run: 38/38 JV focused tests PASS. Updated production source writer (type_id + JV soft-delete + selected-project validation) and report resolver (real ledger project ownership + typed source ID cross-check); four regression tests added. Documentation bundled in same code commit; no live DB or master_live touched.
