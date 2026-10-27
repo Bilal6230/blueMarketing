@@ -777,4 +777,49 @@ class JournalVoucherPostingIntegrationTest extends TestCase
         $this->assertSame(1,DB::table('journal_vouchers')->count());
         $this->assertSame(2,DB::table('ledgers')->count());
     }
+
+    public function test_typed_retry_rejects_modified_voucher_header_totals(): void
+    {
+        $this->installFinanceMetadata();
+        $payload=$this->payload();$payload['idempotency_key']='jv_replay_audit_12345678';
+        app(JournalVoucherController::class)->store($this->request($payload));
+        DB::table('journal_vouchers')->where('id',1)->update(['total_debit'=>'101.25']);
+        try {
+            app(JournalVoucherController::class)->store($this->request($payload));
+            $this->fail('Header amount mismatch should block replay.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('mismatched voucher totals',$e->getMessage());
+        }
+        $this->assertSame(1,DB::table('journal_vouchers')->count());
+    }
+
+    public function test_typed_retry_rejects_non_balanced_detail_totals(): void
+    {
+        $this->installFinanceMetadata();
+        $payload=$this->payload();$payload['idempotency_key']='jv_replay_audit_12345678';
+        app(JournalVoucherController::class)->store($this->request($payload));
+        DB::table('journal_voucher_details')->where('id',1)->update(['debit'=>'101.25']);
+        try {
+            app(JournalVoucherController::class)->store($this->request($payload));
+            $this->fail('Detail amount mismatch should block replay.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('mismatched voucher totals',$e->getMessage());
+        }
+        $this->assertSame(2,DB::table('ledgers')->count());
+    }
+
+    public function test_typed_retry_rejects_foreign_project_ledger_collision(): void
+    {
+        $this->installFinanceMetadata();
+        $payload=$this->payload();$payload['idempotency_key']='jv_replay_audit_12345678';
+        app(JournalVoucherController::class)->store($this->request($payload));
+        DB::table('ledgers')->where('id',1)->update(['project_head_subheads_id'=>33]);
+        try {
+            app(JournalVoucherController::class)->store($this->request($payload));
+            $this->fail('Foreign project ledger link should block replay.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('cross-project ledger links',$e->getMessage());
+        }
+        $this->assertSame(1,DB::table('journal_vouchers')->count());
+    }
 }

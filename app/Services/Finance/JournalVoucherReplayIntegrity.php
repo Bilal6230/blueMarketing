@@ -37,6 +37,27 @@ final class JournalVoucherReplayIntegrity
             throw new \RuntimeException('Committed JV replay has a ledger/detail count mismatch.');
         }
 
+        // Do not approve a replay whose source header was edited after commit.
+        $detailDebit = 0;
+        $detailCredit = 0;
+        foreach ($details as $detail) {
+            $detailDebit += $this->cents($detail->debit);
+            $detailCredit += $this->cents($detail->credit);
+        }
+        if ($detailDebit <= 0 || $detailDebit !== $detailCredit ||
+            $detailDebit !== $this->cents($voucher->total_debit) ||
+            $detailCredit !== $this->cents($voucher->total_credit)) {
+            throw new \RuntimeException('Committed JV replay has mismatched voucher totals.');
+        }
+
+        // Scope every persisted row to its original project. A foreign-project
+        // ledger pointing at the same numeric header is a blocker, not invisible.
+        $allLedgerCount = DB::table('ledgers')->where('type', 'JV')
+            ->where('type_id', $voucherId)->count();
+        if ($allLedgerCount !== $ledgerRows->count()) {
+            throw new \RuntimeException('Committed JV replay includes cross-project ledger links.');
+        }
+
         $expected = [];
         foreach ($details as $line) {
             $key = (int) $line->account_id.'|'.$this->cents($line->debit).'|'.$this->cents($line->credit);
