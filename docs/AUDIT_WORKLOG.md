@@ -383,3 +383,8 @@
 - User pulled `d72c8fd`, lint green; typed foundation unit suite 7 PASS/14 assertions and full suite **292 PASS / 2 FAIL / 1342 assertions**. Both RED tests still reveal historical JV/CV display collisions.
 - Committed pure `FinancialPostingFingerprint` and six unrun unit tests. It validates line amounts with integer cents, hashes canonical financial payload and scoped idempotency request keys, classifies duplicate same vs conflicting payload. No durable DB unique constraint, no controller integration, no claim of real at-most-once guarantee.
 - Phase 1 65%, rest zero, overall 13%, 0/5 formally complete. Production MySQL and master_live untouched.
+
+## 2026-10-27 — source-safe actual ledger reader fix, pending verification
+- User's last local full suite: **298 passed, 2 failed, 1350 assertions**, both known legacy DataTables JV-number collision diagnostics.
+- Replaced real LedgerController DataTables `display_voucher_number` guesswork with `LedgerVoucherDisplayService`: unknown JV ledger keeps original voucher number; typed JV/CV metadata if present and independently verified resolves its correct project-scoped header. No metadata table created, only optionally read. Updated diagnostic to test service, positive endpoint fixture to supply explicit proof, and added verified CV collision integration test.
+- **Unverified code**; no PHP local test execution by assistant. Conservative default may change displayed legacy genuine JV number; reviewed attribution rollout needed. No production MySQL write or master_live.
