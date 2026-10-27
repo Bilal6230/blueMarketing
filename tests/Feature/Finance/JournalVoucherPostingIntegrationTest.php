@@ -869,6 +869,7 @@ class JournalVoucherPostingIntegrationTest extends TestCase
             'total_credit'=>'0','created_at'=>now(),'updated_at'=>now(),
         ]);
         $request=$this->request($this->payload());
+        // Both lookup paths must reject project 8 before loading role-based view data.
         foreach (['edit','print'] as $method) {
             try {
                 app(JournalVoucherController::class)->$method(41);

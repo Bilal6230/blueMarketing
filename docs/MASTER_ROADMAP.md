@@ -571,3 +571,6 @@ Assistant must:
 
 ## 2026-10-27 — verified CV read-side and protected JV read endpoints
 - User verified CV listing 4 PASS/10 assertions. Applied selected-project scoping to actual JV edit and print endpoints and bounded both JV and sales DataTables start/length pagination. Added two SQLite-focused tests including foreign-project JV denial and explicit query-source guard. Existing update/delete 409 gates unchanged. No historical metadata writes, migrations or master_live changes. Previous 46% qualitative planning baseline verified, new changes **48% provisional** pending focused JV test.
+
+## 2026-10-27 — JV project-scoped active edit fix after 53 PASS/1 FAIL
+- Failure identified: previous replacement had modified a commented-out `edit` method rather than the active controller method; active edit still used unscoped `findOrFail` and reached unauthenticated role lookup. Fixed active edit to constrain by selected project before loading view/roles, retained print scoping. Regression expected to reject cross-project data (not just missing authentication). Focused local verification pending; no progress inflation or ledger mutation.

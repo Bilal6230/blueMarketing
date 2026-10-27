@@ -571,7 +571,7 @@ class JournalVoucherController extends Controller
 
     public function edit($id)
     {
-        $voucher = JournalVoucher::with('details')->findOrFail($id);
+        $voucher = JournalVoucher::with('details')->where('project_id', getSelectedTown())->findOrFail($id);
         $x = $this->getCommonData('Edit Journal Voucher');
         $x['voucher'] = $voucher;
 
