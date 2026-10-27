@@ -373,3 +373,8 @@
 - User locally pulled `a56335d`; audit collision case passed; full suite **285 pass, 2 fail, 1328 assertions**. Both failing tests are real JV/CV legacy ledger number mis-attribution and must remain visible.
 - Created `docs/FINANCIAL_SOURCE_IDENTITY_AND_REVERSAL_DESIGN.md`: evidence-based typed ledger attribution, legacy unknown classification, transactional JV/CV writes with durable idempotency and locking, immutable reversal, safe reader rules, comprehensive acceptance tests and staged deployment gates. The document is a proposal; NO schema changes approved or executed.
 - Phase 1 stays 65%, overall 13%, Phases 2–5 0%, 0/5 phases complete. No production MySQL changes, master_live or deployed financial mutation.
+
+## 2026-10-27 — typed source resolver + reversal planner implementation foundation
+- Last verified full suite 285 PASS / 2 known ledger collision RED, 1328 assertions; docs-only pull `7c03e02` successful.
+- Added `VerifiedLedgerSourceResolver` (explicit project/type/evidence validation, fallback original number on unknown) and `FinancialReversalPlanner` (immutable reversal data from balanced verified JV/CV lines, integer cents, never posts). Added 7 PHPUnit unit tests, unverified locally.
+- These services are not connected to actual controller or DB yet; no typed source attribution database table, idempotency, reversal posting, migrations, live changes. Keep 409 gates and both true RED tests. Progress 65% Phase 1, overall 13%, others 0%.
