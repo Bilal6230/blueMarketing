@@ -6,7 +6,7 @@ use Illuminate\Console\Command;
 
 final class AuditLegacyVoucherCases extends Command
 {
-    protected $signature = 'finance:audit-legacy-cases {project : Numeric project ID} {--limit=100 : Max ledger rows (1-1000)}';
+    protected $signature = 'finance:audit-legacy-cases {project : Numeric project ID} {--limit=100 : Max ledger rows (1-1000)} {--summary : Compact bounded project-wide classification} {--max-rows=5000 : Summary scan cap (1-10000)}';
     protected $description = 'Read-only ledger-level JV/CV source ambiguity inventory for manual review';
 
     public function handle(LegacyVoucherCollisionInventory $inspector): int
@@ -19,8 +19,17 @@ final class AuditLegacyVoucherCases extends Command
             $this->error('Positive project ID and --limit 1-1000 required.');
             return self::INVALID;
         }
+        $summary = (bool) $this->option('summary');
+        $maxRows = filter_var($this->option('max-rows'), FILTER_VALIDATE_INT,
+            ['options'=>['min_range'=>1,'max_range'=>10000]]);
+        if ($summary && $maxRows === false) {
+            $this->error('Summary --max-rows must be between 1 and 10000.');
+            return self::INVALID;
+        }
         try {
-            $result = $inspector->inspect((int) $project, (int) $limit);
+            $result = $summary
+                ? $inspector->summarize((int) $project, (int) $maxRows)
+                : $inspector->inspect((int) $project, (int) $limit);
         } catch (\DomainException $e) {
             $this->error($e->getMessage());
             return self::FAILURE;

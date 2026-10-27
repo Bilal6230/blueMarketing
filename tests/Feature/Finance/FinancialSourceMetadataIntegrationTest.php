@@ -475,4 +475,43 @@ final class FinancialSourceMetadataIntegrationTest extends TestCase
         $this->assertSame(0, DB::table('ledger_source_attributions')->count());
     }
 
+    public function test_legacy_summary_classifies_complete_project_without_inventing_provenance(): void
+    {
+        DB::table('ledgers')->insert(['id'=>2,'project_head_subheads_id'=>3,'type'=>'JV',
+            'type_id'=>999,'voucher_number'=>'7002']);
+        $report = app(\App\Services\Finance\LegacyVoucherCollisionInventory::class)->summarize(7);
+        $this->assertSame(2, $report['scanned']);
+        $this->assertFalse($report['incomplete']);
+        $this->assertSame(1, $report['categories_in_scanned_rows']['both_headers']);
+        $this->assertSame(1, $report['categories_in_scanned_rows']['neither_header']);
+        $this->assertFalse($report['source_verified']);
+    }
+
+    public function test_legacy_summary_respects_cap_and_never_claims_full_scan(): void
+    {
+        DB::table('ledgers')->insert(['id'=>2,'project_head_subheads_id'=>3,'type'=>'JV',
+            'type_id'=>999,'voucher_number'=>'7002']);
+        $report = app(\App\Services\Finance\LegacyVoucherCollisionInventory::class)->summarize(7, 1);
+        $this->assertSame(2, $report['available']);
+        $this->assertTrue($report['incomplete']);
+        $this->assertSame(1, $report['scanned']);
+    }
+
+    public function test_legacy_summary_command_uses_compact_read_only_report(): void
+    {
+        $this->artisan('finance:audit-legacy-cases',
+            ['project'=>7, '--summary'=>true, '--max-rows'=>5000])
+            ->expectsOutputToContain('"source_verified":false')->assertExitCode(1);
+        $this->assertSame(0, DB::table('ledger_source_attributions')->count());
+        $this->assertSame('7001', DB::table('ledgers')->where('id',1)->value('voucher_number'));
+    }
+
+    public function test_legacy_summary_command_rejects_invalid_cap(): void
+    {
+        $this->artisan('finance:audit-legacy-cases',
+            ['project'=>7, '--summary'=>true, '--max-rows'=>0])
+            ->expectsOutputToContain('Summary --max-rows must be between 1 and 10000.')
+            ->assertExitCode(2);
+    }
+
 }

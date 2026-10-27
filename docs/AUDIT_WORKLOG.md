@@ -450,3 +450,6 @@
 
 ## 2026-10-27 — substantial legacy evidence discovery workflow
 - Actual user read-only MySQL rollout report found 2873 unverified JV-type ledgers among 6 projects. Implemented finance:audit-legacy-cases with explicit numeric-header ambiguity classification, original ledger number, bounded review case details and fail-closed exit code. Four SQLite isolated tests; code/test/docs in one commit, pending verification. No migration or live data mutation.
+
+## 2026-10-27 — compact project-scale JV/CV ambiguity classification
+- User's previous 40/40 tests PASS; actual project 6 sample 90 jv-only / 10 neither over 100 of 1430 unverified. Implemented --summary and --max-rows with 500-row batched header reads and 5 examples per category; four tests; existing case export unchanged. No writes; code/tests/docs single commit, verification pending.
