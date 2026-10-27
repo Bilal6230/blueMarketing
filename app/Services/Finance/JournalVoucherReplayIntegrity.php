@@ -33,6 +33,14 @@ final class JournalVoucherReplayIntegrity
             ->where('p.project_id', $projectId)
             ->get(['l.id', 'l.project_head_subheads_id', 'l.amount_in', 'l.amount_out',
                 'a.project_id as attributed_project', 'a.source_kind', 'a.source_id']);
+        // Scope every persisted row to its original project. A foreign-project
+        // ledger pointing at the same numeric header is a blocker, not invisible.
+        $allLedgerCount = DB::table('ledgers')->where('type', 'JV')
+            ->where('type_id', $voucherId)->count();
+        if ($allLedgerCount !== $ledgerRows->count()) {
+            throw new \RuntimeException('Committed JV replay includes cross-project ledger links.');
+        }
+
         if ($details->count() !== $ledgerRows->count()) {
             throw new \RuntimeException('Committed JV replay has a ledger/detail count mismatch.');
         }
@@ -48,14 +56,6 @@ final class JournalVoucherReplayIntegrity
             $detailDebit !== $this->cents($voucher->total_debit) ||
             $detailCredit !== $this->cents($voucher->total_credit)) {
             throw new \RuntimeException('Committed JV replay has mismatched voucher totals.');
-        }
-
-        // Scope every persisted row to its original project. A foreign-project
-        // ledger pointing at the same numeric header is a blocker, not invisible.
-        $allLedgerCount = DB::table('ledgers')->where('type', 'JV')
-            ->where('type_id', $voucherId)->count();
-        if ($allLedgerCount !== $ledgerRows->count()) {
-            throw new \RuntimeException('Committed JV replay includes cross-project ledger links.');
         }
 
         $expected = [];

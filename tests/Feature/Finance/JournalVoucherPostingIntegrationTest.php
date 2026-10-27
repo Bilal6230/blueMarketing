@@ -822,4 +822,42 @@ class JournalVoucherPostingIntegrationTest extends TestCase
         }
         $this->assertSame(1,DB::table('journal_vouchers')->count());
     }
+
+    public function test_typed_retry_rejects_extra_foreign_project_ledger_link(): void
+    {
+        $this->installFinanceMetadata();
+        $payload=$this->payload();$payload['idempotency_key']='jv_replay_foreign_123456';
+        app(JournalVoucherController::class)->store($this->request($payload));
+        DB::table('ledgers')->insert([
+            'voucher_number'=>'FOREIGN','type'=>'JV','type_id'=>1,
+            'project_head_subheads_id'=>33,'reference'=>'foreign',
+            'amount_in'=>'1.00','amount_out'=>'0.00','detail'=>'foreign',
+            'is_active'=>1,'status'=>'0','date'=>'2026-10-26',
+            'created_at'=>now(),'updated_at'=>now(),
+        ]);
+        try {
+            app(JournalVoucherController::class)->store($this->request($payload));
+            $this->fail('Extra cross-project link must not replay.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('cross-project ledger links',$e->getMessage());
+        }
+        $this->assertSame(1,DB::table('journal_vouchers')->count());
+        $this->assertSame(3,DB::table('ledgers')->count());
+    }
+
+    public function test_typed_retry_distinguishes_missing_ledger_from_foreign_project_link(): void
+    {
+        $this->installFinanceMetadata();
+        $payload=$this->payload();$payload['idempotency_key']='jv_replay_missing_123456';
+        app(JournalVoucherController::class)->store($this->request($payload));
+        DB::table('ledgers')->where('id',1)->delete();
+        try {
+            app(JournalVoucherController::class)->store($this->request($payload));
+            $this->fail('Missing ledger must not replay.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('ledger/detail count mismatch',$e->getMessage());
+        }
+        $this->assertSame(1,DB::table('journal_vouchers')->count());
+        $this->assertSame(1,DB::table('ledgers')->count());
+    }
 }

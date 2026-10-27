@@ -517,3 +517,6 @@
 
 ## 2026-10-27 — hardened typed JV replay header/accounting consistency (new tests pending)
 - User verified 47 PASS /177 assertions in full focused JV posting suite. New replay integrity checks compare exact fixed-point debit and credit detail totals to committed JV header, confirm balance and positive amounts, and reject foreign-project ledgers linked via same numeric voucher ID before returning replay success. Three real-controller SQLite integration regressions added; no writes or auto repair. Overall 39% verified baseline from previous tests, **42% provisional** for new milestone pending local verification. Continued large batch priority; same-commit docs. This is not historical ledger ownership certification.
+
+## 2026-10-27 — replay collision regression fix, precedence and missing-ledger isolation
+- User reported 49 PASS/1 FAIL (182 assertions): foreign-project moved ledger emitted generic ledger/detail mismatch before expected foreign project blocker. Moved cross-project count validation before detail-count validation, leaving missing-ledger handling after it. Added real-store cases for extra foreign ledger link and missing ledger distinct classification, preserving previous 50-case suite. **No test PASS claimed until user reruns**; no progress increase for bug correction. No production writes or migrations.
