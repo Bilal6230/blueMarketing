@@ -725,7 +725,19 @@ class LabourController extends Controller
         $selectedProjectId = getSelectedTown();
         $amountRaw = str_replace(',', '', (string) $request->amount);
         $amount = is_numeric($amountRaw) ? (string) $amountRaw : null;
-        $ids = array_filter(explode(',', (string) $request->attendance_ids));
+        // Attendance IDs are financial source identities, not a free-form
+        // comma-separated list. Reject duplicates, invalid IDs and empties.
+        $rawAttendanceIds = explode(',', (string) $request->attendance_ids);
+        $ids = array_values(array_filter(array_map('trim', $rawAttendanceIds), fn ($id) => $id !== ''));
+        if (!$ids || count($ids) !== count($rawAttendanceIds) ||
+            count(array_unique($ids)) !== count($ids) ||
+            collect($ids)->contains(fn ($id) => !ctype_digit($id) || (int) $id <= 0)) {
+            return response()->json([
+                'success' => false,
+                'error_key' => 'invalid_attendance_ids',
+                'message' => 'Select a valid unique set of attendance records.',
+            ], 422);
+        }
 
         $log->info('labour.createVoucher.start', [
             'trace_id' => $traceId,
@@ -799,7 +811,7 @@ class LabourController extends Controller
             ]);
 
             $site = Site::find($siteId);
-            if (!$site) {
+            if (!$site || (int) $site->project_id !== (int) $selectedProjectId) {
                 $errorKey = 'invalid_site';
                 $log->warning('labour.createVoucher.warn', [
                     'trace_id' => $traceId,
@@ -884,6 +896,21 @@ class LabourController extends Controller
 
             // Header, details, ledger legs and attendance state must commit together.
             DB::beginTransaction();
+
+            // Lock and validate every attendance before financial creation.
+            // This prevents foreign-project/site or already-vouchered rows
+            // being reassigned to a different voucher.
+            $attendanceRows = LabourAttendance::query()
+                ->whereIn('id', $ids)
+                ->where('project_id', $selectedProjectId)
+                ->where('site_id', $siteId)
+                ->lockForUpdate()
+                ->get();
+            if ($attendanceRows->count() !== count($ids) ||
+                $attendanceRows->contains(fn ($row) => (string) $row->voucher_status === 'created')) {
+                throw new \DomainException('LABOUR_ATTENDANCE_FINANCIAL_SOURCE_CONFLICT');
+            }
+
             $journalVoucher = JournalVoucher::create($journalVoucherData);
             $voucherNumber = $journalVoucher->voucher_number;
             $voucherDate = $journalVoucher->date;
@@ -1033,6 +1060,8 @@ class LabourController extends Controller
             ]);
 
             LabourAttendance::whereIn('id', $ids)
+                ->where('project_id', $selectedProjectId)
+                ->where('site_id', $siteId)
                 ->update(['voucher_status' => 'created']);
             $log->info('labour.createVoucher.attendance_updated', [
                 'trace_id' => $traceId,
