@@ -1,3 +1,13 @@
+## 2026-10-28 migration-history compatibility hardening (latest)
+
+Reviewed all 55 repository migrations without MySQL access. Fixed two verified clean-schema defects: Spatie permission pivot names now come from the installed registrar instance, and the March `site_id` migration no longer performs historical description/account backfills. It adds only a nullable indexed column on the safe absent-column path and fails closed when the table is missing, the column or generated index name exists, or rollback ownership cannot be proved.
+
+Replay remains blocked for every create migration whose table exists and for the unguarded plots/landing-page alters when target columns exist. No migration is labeled already applied from schema existence. Staging history for all 55 files remains uncertain pending an exact read-only `migrations` capture and cumulative physical-schema comparison. Added an aggregate-free metadata preflight for that purpose; it exposes no business records.
+
+Focused migration regression passed: **6 tests / 26 assertions, exit 0**. Full isolated SQLite suite passed: **473 tests / 1,934 assertions, exit 0**. Production deployment remains **BLOCKED** pending the staging history/effect matrix, manual approval of any reconciliation, historical finance ownership review, backup/restore evidence, UAT and release authorization.
+
+---
+
 ## 2026-10-28 fresh staging finance reconciliation (latest)
 
 The initial 2,873 unresolved-row figure has now been freshly reproduced on `bluemarketing_l13_staging` through the verified SELECT-only audit path: projects 6/5/3/1/2/4 returned 1,430/749/692/2/0/0, total 2,873, difference 0. The aggregate exited 0 with six rows, no truncation, all identity/project/integrity/arithmetic gates passing, and six `ACCEPTABLE_FOR_MANUAL_REVIEW` statuses. Pre-run schema and integrity gates passed. Post-run schema checks passed 34/34 and integrity checks 9/9, with semantic `PASS` and wrapper `PASS`; the individual post-run MySQL exit codes were not separately printed.

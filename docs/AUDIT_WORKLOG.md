@@ -2,6 +2,16 @@
 
 **Updated:** 2026-10-28. Keep new entries dated, evidence-based and append-only where practical.
 
+## 2026-10-28 - migration-history drift and compatibility review
+
+- Inspected all 55 migration sources and existing migration audit evidence; no MySQL connection, operational SQL or migration command. Regression DDL ran only in isolated SQLite memory.
+- Fixed verified permission migration incompatibility by resolving Spatie pivot names from the installed `PermissionRegistrar` instance instead of invalid static-property access.
+- Removed the March `site_id` migration's ambiguous historical UPDATE path. The migration is schema-only and fails before mutation if `journal_vouchers` is missing, `site_id` exists, or the generated index name collides. Automatic down is disabled because drift prevents proving column ownership. No inferred historical site ownership, destructive rollback or backfill remains.
+- Added isolated SQLite coverage for permission pivot columns/indexes/foreign tables, unchanged/unattributed historical JV rows on safe site-column addition, pre-existing column, missing table, index collision, and non-destructive rollback refusal. Focused result: 6 tests / 26 assertions, exit 0. Full isolated suite: 473 tests / 1,934 assertions, exit 0.
+- Added SELECT-only `STAGING_MIGRATION_DRIFT_PREFLIGHT.sql` for exact account/database identity, migration rows, tables, targeted columns/indexes and foreign keys. It is prepared only and was not executed.
+- Classification: clean permission and absent-site-column paths are code-safe but still require staging history review; existing-table create replay and duplicate-column alters are unsafe; all staging migration-history statuses remain uncertain; history repair and historical attribution require manual approval.
+- Production deployment remains BLOCKED. No commit, push, merge, deployment, `.env`, `master_live`, vendor backup, MySQL schema/history or financial-record change.
+
 ## 2026-10-28 - fresh staging finance aggregate reconciliation
 
 - User supplied actual SELECT-only staging results: aggregate exit 0, exactly six rows, project unresolved counts 6/5/3/1/2/4 = 1,430/749/692/2/0/0, total 2,873 and baseline difference 0.

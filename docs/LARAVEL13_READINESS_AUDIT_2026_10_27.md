@@ -1,3 +1,33 @@
+## 2026-10-28 migration compatibility hardening
+
+Static review reconfirmed all 55 migration files. No MySQL connection or operational migration was executed; migration tests used only isolated SQLite memory. Schema existence remains independent from migration-history evidence: no file is classified as already applied without an exact row from the staging `migrations` table, and even a history row does not prove its schema effects remain intact.
+
+Two verified source defects were corrected. The legacy permission migration now resolves `pivotPermission` and `pivotRole` from the installed `PermissionRegistrar` instance; the installed package exposes them as public instance properties, so the previous static access would fail on a fresh migration. The March 2026 site migration is now schema-only: it adds a nullable indexed `site_id` only when `journal_vouchers` exists, the column is absent and the generated index name is unused. It performs no historical attribution. A missing table, pre-existing column or index-name collision throws before mutation and requires manual schema/history reconciliation. Automatic rollback is disabled because migration-history drift makes column ownership unprovable.
+
+The removed site backfill was unsafe because it used description text plus optional account/credit evidence, weakened matching when the site account was empty, and allowed unordered duplicate site candidates to claim rows. Neither exact text, numeric IDs nor voucher references independently prove site ownership. Any historical site attribution remains a separately approved finance process requiring source evidence and human review.
+
+Current classifications:
+
+| Scope | Classification | Reason / required gate |
+|---|---|---|
+| Permission migration on a clean absent-table schema | Safe in isolated regression | Installed registrar pivot names are resolved through the supported instance; actual staging execution still requires history/schema review |
+| Site migration with existing `journal_vouchers` and absent `site_id` | Safe schema-only path | Adds nullable column and index; performs no data backfill |
+| Site migration with missing table, pre-existing `site_id`, or generated index-name collision | Fail-closed / manual approval | Refuses to infer whether history is missing or schema was created elsewhere; checks before DDL |
+| Every `Schema::create` migration when its target table exists | Unsafe to replay | MySQL existing-table collision; schema existence is not execution-history proof |
+| `add_amount_to_plots` and both landing-page alters when any target column exists | Unsafe to replay | Unguarded duplicate-column failure; exact history and column definitions required |
+| All 55 staging execution-history statuses | Uncertain | Exact staging `migrations` rows have not been captured in this task |
+| Historical site ownership/backfill | Unsafe / manual finance approval | Repository code cannot authenticate ownership evidence |
+
+Previously verified staging evidence establishes six finance tables are InnoDB and records legacy integer/nullability differences for JV, ledger and project-account keys. Those observations prove compatibility requirements for read-only audit joins; they do not establish which migrations ran. In particular, the original ledger/JV create definitions still differ from verified legacy physical types, so replay remains prohibited.
+
+Added `docs/STAGING_MIGRATION_DRIFT_PREFLIGHT.sql`, containing only explicit SELECT statements for identity, migration history, table metadata, targeted columns, indexes and foreign keys. It returns no customer rows, voucher details, descriptions or financial amounts. Run it only through the already verified restricted audit account after separate approval; any identity mismatch, missing metadata object, SQL error or incomplete output blocks classification. Separate statements do not share a guaranteed snapshot.
+
+Isolated SQLite regression executes the real migrations and covers registrar pivot names, permission primary indexes and foreign tables, safe site-column addition, pre-existing column, missing table, generated index collision, and non-destructive rollback refusal. Focused result: **6 tests, 26 assertions, exit 0**. Full isolated suite: **473 tests, 1,934 assertions, exit 0**.
+
+**Production deployment remains BLOCKED.** Required next evidence is the read-only staging migration/schema capture, followed by a per-file history/effect matrix and manual approval for any history repair or additive schema work.
+
+---
+
 ## 2026-10-28 fresh staging finance aggregate verified
 
 This section supersedes earlier statements that the 2,873-row inventory was only a historical report. A SELECT-only staging aggregate returned exactly six rows and exit code 0: project 6 = 1,430, project 5 = 749, project 3 = 692, project 1 = 2, and projects 2/4 = 0. The fresh total is 2,873, a zero difference from the initial baseline. No scan was truncated; identity, project, integrity and arithmetic gates passed for every row, and all six statuses were `ACCEPTABLE_FOR_MANUAL_REVIEW`.
