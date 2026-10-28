@@ -5,6 +5,33 @@ Branch: `upgrade/laravel-framework`
 
 This tracker combines the earlier project-progress dashboard and the newer database `ledgers` integrity investigation. Progress figures are **planning estimates**, not verified release readiness. Never increment a number merely because a code file was inspected.
 
+## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
+
+**These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
+
+| Rank | Primary task | Estimated progress | Implemented evidence | Remaining acceptance gate |
+| --- | --- | ---: | --- | --- |
+| P0.1 | **Ledger protection:** audit and fix every live INSERT/UPDATE/DELETE/deactivate/overwrite, project scope and identity guard | **40%** | Mobile approval identity/amount/date block and project scope; existing JV/CV mutation gates; Stock duplicate/inactive guard | Every producer/mutator classified and tested, protected ledger rows cannot silently disappear |
+| P0.2 | **Voucher integrity:** propagate correct source voucher number/date for JV, CV, Stock, Labour, Booking, CR, CP, BR, PPR | **30%** | Core JV header number, Labour JV number/date, Stock existing-posting date and amount checks | Every source creates ledger rows with verified source number/date, regression tests for all families, preexisting mismatch inventory |
+| P0.3 | **Foreign-key / typed source identity:** source-aware, project-consistent relational integrity | **15%** | Existing physical `customer_ledger_id` and `charge_type_id` FKs confirmed on restored clone; typed source attribution design exists | Per-source FK/typed links, uniqueness & concurrency checks, vetted migration rehearsal; do **not** force `type_id` into one FK |
+| P0.4 | **Soft-delete / append-only reversal:** protect historical business records and posted financial events | **15%** | JV/CV destructive write gates and CR/CP/PPR deletion tests exist | Cover all applicable business tables and side effects; financial reversals/append-only protection; MySQL schema review |
+| P0.5 | **Historical recovery:** reconcile missing/inactive/overwritten JV and other ledger entries, then controlled repair | **10%** | 17,855 restored ledger rows inventory; 155 inactive; source ambiguity evidenced; Project 5 balance reproduced | Independently prove provenance per row, compare older backup/audit logs, approved dry-run, reversible repair and balance validation |
+
+### Primary delivery sequencing
+
+1. **Prevent new data loss** first: finish source-specific mutation guards, database authorization, concurrency and comprehensive regression tests.
+2. **Fix new voucher/date propagation** for every ledger-producing module. Compare source and ledger fields; never rewrite historical dates silently.
+3. **Introduce source-aware FKs/constraints** through tested, backup-first migrations on an approved disposable environment; maintain compatibility with existing overloaded `JV` rows.
+4. **Implement safe deletion/reversal** across modules without blanket soft-deletes on posted journal rows or destructive migration rollbacks.
+5. **Repair historical rows last**, after ownership evidence and explicit authorization; no balance plug or guessed `type_id`.
+
+### Latest verified testing checkpoint
+
+- User's focused `StockLedgerPostingGuardTest`: **11 passed / 11 assertions**, six conflict datasets executed.
+- User's full isolated Feature suite: **428 passed / 1,871 assertions**; working tree clean after pull at `c524251`.
+- The earlier `@dataProvider` failure is **resolved and verified**, not an open blocker.
+- These synthetic SQLite tests **do not** certify MySQL concurrency, original voucher provenance or production safety.
+
 ## Historical project-progress baseline
 
 The earlier dashboard shown in the screenshot reported the following estimates:
@@ -12,7 +39,7 @@ The earlier dashboard shown in the screenshot reported the following estimates:
 | Track | Prior reported estimate | Current evidence/status |
 | --- | ---: | --- |
 | Overall application migration | 88% | Historical estimate only; deployment is blocked |
-| Laravel 13 application | 98% | Feature suite previously passed, latest verification pending |
+| Laravel 13 application | 98% | Full isolated Feature suite 428 passed / 1,871 assertions on 2026-10-28 |
 | Migration compatibility | 82% | Schema/history and DDL provenance unresolved |
 | Financial reconciliation | 60% | Historical estimate; unverified JV/CV ownership and missing ledger rows remain |
 | Database restore & connectivity | 100% | Local restricted clone was restored and read successfully; **not** production reconciliation |
@@ -24,7 +51,7 @@ The earlier dashboard shown in the screenshot reported the following estimates:
 
 | Workstream | State | Concrete evidence and next acceptance gate |
 | --- | --- | --- |
-| Laravel 13 and isolated tests | Active / previously green | 417 Feature tests passed before Stock changes; current full suite blocked by Stock data-provider infrastructure error until rerun |
+| Laravel 13 and isolated tests | Active / previously green | 428 Feature tests passed / 1,871 assertions after Stock provider fix; additional integration and MySQL rehearsal pending |
 | Ledger write-path integrity | Partially implemented | JV and Labour number/date fixes, Mobile approval scope/field guards, web and mobile Stock fail-closed guard; source-specific integrations/concurrency unfinished |
 | Source attribution, FKs and numbering | Design / blocked | Existing ledger FKs: charge_type_id and customer_ledger_id. `type_id` is shared; typed source FK design and schema compatibility await approval |
 | Historical ledger reconciliation/recovery | Not authorized | Missing/inactive/duplicate/source mismatch inventory and independent audit evidence needed before any backfill or reversal |
@@ -36,7 +63,7 @@ The earlier dashboard shown in the screenshot reported the following estimates:
 - After Stock guard: **422 passed, 1 failed / 1,865 assertions**; failing test: `StockLedgerPostingGuardTest::test_conflicting_stock_posting_is_rejected`.
 - Root cause: PHPUnit ran method with no arguments because its docblock data provider was not registered.
 - Code fix pushed: explicit PHPUnit attribute `#[\\PHPUnit\\Framework\\Attributes\\DataProvider('conflicts')]` at commit `794fc543`.
-- **Post-fix full suite and dataset expansion not yet independently verified**. Expected six conflict datasets must run. A failing assertion after the provider fix is a new separate finding, not to be hidden.
+- **RESOLVED:** post-fix 11 focused tests / 11 assertions and 428 Feature tests / 1,871 assertions passed; all six datasets were executed.
 - No database operations, production deployment, migration or historical repair were performed.
 
 ## Working conventions
