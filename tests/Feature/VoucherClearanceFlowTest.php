@@ -701,6 +701,43 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame(1, CustomerLedger::where('transaction_type', 'PPR')->count());
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('pprVoucherDrift')]
+    public function test_ppr_replay_rejects_booking_voucher_drift_without_mutating_records(array $changes): void
+    {
+        $payload = $this->depositPayload(1);
+        $this->callDeposit($payload)->assertStatus(302);
+
+        $source = CustomerLedger::where('transaction_type', 'PPR')->firstOrFail();
+        $voucher = BookingVoucher::where('customer_ledger_id', $source->id)->firstOrFail();
+        $ledger = Ledger::where('customer_ledger_id', $source->id)->where('type', 'PPR')->firstOrFail();
+        $voucher->update($changes);
+        $before = $voucher->fresh()->getAttributes();
+        $ledgerBefore = $ledger->fresh()->getAttributes();
+
+        $this->callDeposit($payload)->assertStatus(302)->assertSessionHasErrors('msg');
+
+        $this->assertSame($before, $voucher->fresh()->getAttributes());
+        $this->assertSame($ledgerBefore, $ledger->fresh()->getAttributes());
+        $this->assertSame(1, BookingVoucher::where('customer_ledger_id', $source->id)->count());
+        $this->assertSame(1, Ledger::where('customer_ledger_id', $source->id)->count());
+    }
+
+    public static function pprVoucherDrift(): array
+    {
+        return [
+            'wrong project' => [['project_id' => 99999]],
+            'wrong customer' => [['customer_id' => 99999]],
+            'wrong plot' => [['plot_id' => 99999]],
+            'wrong type' => [['voucher_series' => 'CR']],
+            'inactive' => [['is_active' => 0]],
+            'wrong source reference' => [['slip_reference' => 'OTHER']],
+            'wrong source date' => [['receipt_date' => '2026-05-16']],
+            'wrong amount' => [['amount' => 999]],
+            'wrong ledger' => [['ledger_id' => 99999]],
+            'wrong voucher number' => [['voucher_number' => 99999]],
+        ];
+    }
+
     public function test_ppr_replay_rejects_duplicate_ledger_and_preserves_original(): void
     {
         $payload = $this->depositPayload(1);
