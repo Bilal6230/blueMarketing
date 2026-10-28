@@ -25,6 +25,14 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 4. **Implement safe deletion/reversal** across modules without blanket soft-deletes on posted journal rows or destructive migration rollbacks.
 5. **Repair historical rows last**, after ownership evidence and explicit authorization; no balance plug or guessed `type_id`.
 
+### 2026-10-28 P0.1 / P0.2 new implementation checkpoint
+
+- Implemented a **fail-closed linked customer-ledger date/activity check** in `StockLedgerPostingGuard`. Existing stock `ledgers` legs may only be considered already posted if the related `customer_ledger` entry shares the original business date and is active. Previously the guard checked its project, reference and transaction type, but not its date/activity.
+- Added two SQLite cases for wrong `customer_ledger.date` and inactive `customer_ledger.is_active`; expanded synthetic fixture columns. GitHub commits `d935b2a`, `9386532`.
+- **Not yet locally verified:** rerun the focused Stock regression and full Feature suite; latest previously verified baseline remains **428 passed / 1,871 assertions**.
+- P0.1 remains estimated **40%**, P0.2 remains **30%** until these tests pass and other writer families receive coverage. No percentage increase for unverified implementation.
+- No MySQL database, source attribution, migration, recovery or production deployment operation.
+
 ### Latest verified testing checkpoint
 
 - User's focused `StockLedgerPostingGuardTest`: **11 passed / 11 assertions**, six conflict datasets executed.
