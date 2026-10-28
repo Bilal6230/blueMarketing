@@ -642,6 +642,53 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame(1, CustomerLedger::where('transaction_type', 'PPR')->count());
     }
 
+    public function test_ppr_replay_rejects_duplicate_ledger_and_preserves_original(): void
+    {
+        $payload = $this->depositPayload(1);
+        $this->callDeposit($payload)->assertStatus(302);
+
+        $source = CustomerLedger::where('transaction_type', 'PPR')->firstOrFail();
+        $original = Ledger::where('customer_ledger_id', $source->id)->where('type', 'PPR')->firstOrFail();
+        $duplicate = $original->replicate();
+        $duplicate->voucher_number = (int) $original->voucher_number + 1000;
+        $duplicate->save();
+
+        $this->callDeposit($payload)->assertStatus(302)->assertSessionHasErrors('msg');
+
+        $this->assertSame(2, Ledger::where('type', 'PPR')->where('reference', $source->reference)->count());
+        $this->assertSame(1, CustomerLedger::where('transaction_type', 'PPR')->count());
+        $this->assertSame((int) $original->voucher_number, (int) $original->fresh()->voucher_number);
+    }
+
+    public function test_ppr_replay_rejects_inactive_source(): void
+    {
+        $payload = $this->depositPayload(1);
+        $this->callDeposit($payload)->assertStatus(302);
+
+        $source = CustomerLedger::where('transaction_type', 'PPR')->firstOrFail();
+        $source->update(['is_active' => 0]);
+
+        $this->callDeposit($payload)->assertStatus(302)->assertSessionHasErrors('msg');
+
+        $this->assertSame(0, (int) $source->fresh()->is_active);
+        $this->assertSame(1, Ledger::where('customer_ledger_id', $source->id)->where('type', 'PPR')->count());
+    }
+
+    public function test_ppr_replay_rejects_mismatched_financial_amount(): void
+    {
+        $payload = $this->depositPayload(1);
+        $this->callDeposit($payload)->assertStatus(302);
+
+        $source = CustomerLedger::where('transaction_type', 'PPR')->firstOrFail();
+        $ledger = Ledger::where('customer_ledger_id', $source->id)->where('type', 'PPR')->firstOrFail();
+        $ledger->update(['amount_in' => 999.00]);
+
+        $this->callDeposit($payload)->assertStatus(302)->assertSessionHasErrors('msg');
+
+        $this->assertSame(999.0, (float) $ledger->fresh()->amount_in);
+        $this->assertSame(1, CustomerLedger::where('transaction_type', 'PPR')->count());
+    }
+
     public function test_ppr_update_preserves_voucher_number_and_updates_compact_detail(): void
     {
         $mockUser = Mockery::mock($this->user)->makePartial();
