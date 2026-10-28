@@ -275,6 +275,42 @@ class VoucherClearanceFlowTest extends TestCase
         }
     }
 
+    public function test_cash_voucher_editor_cannot_zero_an_unrelated_jv_posting(): void
+    {
+        // Use a real synthetic posting with a valid account, then attempt the
+        // generic cash editor on a JV row. The journal's amount must survive.
+        $this->callLedgerStore($this->cashVoucherPayload([
+            'voucher' => 'CP-1',
+            'voucher_number' => 'CP-1',
+            'payment_type' => 1,
+            'amount' => '1750',
+            'reference' => 'CASH-GUARD',
+        ]));
+
+        $ledger = Ledger::where('type', 'CP')->firstOrFail();
+        $ledger->update(['type' => 'JV']);
+
+        $payload = [
+            'id' => $ledger->id,
+            'amount' => '2000',
+            'detail' => 'Attempt to rewrite JV',
+            'accounts_id' => $this->cashVoucherAccount->head_accounting_id,
+            'subaccounts_id' => $this->cashVoucherAccount->subhead_accounting_id,
+            'date' => '2026-05-18',
+            'payment_type' => 1,
+        ];
+
+        $request = Request::create('/admin/ledger/update', 'POST', $payload);
+        $request->headers->set('Accept', 'application/json');
+        $response = (new LedgerController())->update($request);
+
+        $this->assertSame(500, $response->status());
+        $ledger->refresh();
+        $this->assertSame('JV', $ledger->type);
+        $this->assertEquals(1750, $ledger->amount_out);
+        $this->assertEquals(0, $ledger->amount_in);
+    }
+
     public function test_manual_cash_out_still_creates_cp_ledger(): void
     {
         $response = $this->callLedgerStore($this->cashVoucherPayload([
