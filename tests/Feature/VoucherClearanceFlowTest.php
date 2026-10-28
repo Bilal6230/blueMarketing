@@ -636,8 +636,19 @@ class VoucherClearanceFlowTest extends TestCase
             'ledgers' => DB::table('ledgers')->count(),
             'booking_vouchers' => DB::table('booking_vouchers')->count(),
         ];
-        $this->callDeposit($this->depositPayload(1, $override))
-            ->assertStatus(302)->assertSessionHasErrors('msg');
+        if (array_key_exists('reference', $override) && trim((string) $override['reference']) === '') {
+            // Direct controller invocation bypasses Laravel's exception handler;
+            // required-field validation throws before entering the posting branch.
+            try {
+                $this->callDeposit($this->depositPayload(1, $override));
+                $this->fail('An empty PPR reference must fail request validation.');
+            } catch (\Illuminate\Validation\ValidationException $exception) {
+                $this->assertArrayHasKey('reference', $exception->errors());
+            }
+        } else {
+            $this->callDeposit($this->depositPayload(1, $override))
+                ->assertStatus(302)->assertSessionHasErrors('msg');
+        }
         foreach ($before as $table => $count) {
             $this->assertSame($count, DB::table($table)->count());
         }
