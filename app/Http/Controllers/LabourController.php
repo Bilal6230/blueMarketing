@@ -918,7 +918,7 @@ class LabourController extends Controller
             // there is no existing JV ledger row to lock. Voucher allocation must
             // occur inside this same transaction, after acquiring the project lock.
             if (!DB::table('projects')->where('id', $selectedProjectId)->lockForUpdate()->exists()) {
-                throw new \\DomainException('LABOUR_JV_PROJECT_NOT_FOUND');
+                throw new \DomainException('LABOUR_JV_PROJECT_NOT_FOUND');
             }
 
             $voucherNumber = getVocuherNumber('JV');
