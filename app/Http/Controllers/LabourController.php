@@ -950,8 +950,40 @@ class LabourController extends Controller
                 ->lockForUpdate()
                 ->get();
             if ($attendanceRows->count() !== count($ids) ||
-                $attendanceRows->contains(fn ($row) => (string) $row->voucher_status === 'created')) {
+                $attendanceRows->contains(fn ($row) =>
+                    (string) $row->voucher_status === 'created' ||
+                    (string) $row->status !== 'present' ||
+                    (string) $row->date < $startDate ||
+                    (string) $row->date > $endDate
+                )) {
                 throw new \DomainException('LABOUR_ATTENDANCE_FINANCIAL_SOURCE_CONFLICT');
+            }
+
+            // Attendance is the authoritative source of the payable amount.
+            // Never allow a forged client total to create balanced but incorrect
+            // journal legs. Compare integer minor units, not binary floats.
+            $toCents = static function ($value): ?int {
+                $value = (string) $value;
+                if (!preg_match('/^(\\d{1,12})(?:\\.(\\d{1,2}))?$/D', $value, $match)) {
+                    return null;
+                }
+                $whole = (int) $match[1];
+                if ($whole > intdiv(PHP_INT_MAX, 100)) {
+                    return null;
+                }
+                return $whole * 100 + (int) str_pad($match[2] ?? '', 2, '0');
+            };
+            $expectedCents = $toCents($amountRaw);
+            $actualCents = 0;
+            foreach ($attendanceRows as $attendance) {
+                $cents = $toCents($attendance->amount);
+                if ($cents === null || $cents <= 0 || $actualCents > PHP_INT_MAX - $cents) {
+                    throw new \DomainException('LABOUR_ATTENDANCE_AMOUNT_CONFLICT');
+                }
+                $actualCents += $cents;
+            }
+            if ($expectedCents === null || $actualCents !== $expectedCents) {
+                throw new \DomainException('LABOUR_ATTENDANCE_AMOUNT_CONFLICT');
             }
 
             $journalVoucher = JournalVoucher::create($journalVoucherData);
