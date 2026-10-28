@@ -668,6 +668,25 @@ class VoucherClearanceFlowTest extends TestCase
         ];
     }
 
+    public function test_ppr_fails_closed_when_selected_project_does_not_exist(): void
+    {
+        $before = [
+            'customer_ledger' => DB::table('customer_ledger')->count(),
+            'ledgers' => DB::table('ledgers')->count(),
+            'booking_vouchers' => DB::table('booking_vouchers')->count(),
+        ];
+        $request = Request::create('/admin/booking/plot/voucher', 'POST', $this->depositPayload(1));
+        $request->cookies->set('selected_action', '999999');
+        $request->setLaravelSession($this->app['session.store']);
+        $this->app->instance('request', $request);
+        TestResponse::fromBaseResponse(app(BookingController::class)->deposit($request))
+            ->assertStatus(302)->assertSessionHasErrors('msg');
+        foreach ($before as $table => $count) {
+            $this->assertSame($count, DB::table($table)->count());
+        }
+        $this->assertSame(0, DB::transactionLevel());
+    }
+
     public function test_duplicate_ppr_same_source_key_with_different_transaction_number_is_rejected(): void
     {
         $firstResponse = $this->callDeposit($this->depositPayload(2));
