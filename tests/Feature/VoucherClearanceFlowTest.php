@@ -58,6 +58,36 @@ class VoucherClearanceFlowTest extends TestCase
         $this->actingAs($this->user);
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidCancellationAdjustments')]
+    public function test_cancellation_rejects_invalid_adjustment_without_mutating_booking_or_finance(string $effect, string $amount): void
+    {
+        $booking = Booking::where('project_id', $this->project->id)->firstOrFail();
+        $request = Request::create('/admin/booking/cancel', 'POST', [
+            'booking_id' => $booking->id,
+            'action_type' => 'plot_purchase',
+            'cancel_effect' => $effect,
+            'deduction_amount' => $amount,
+        ]);
+        $request->cookies->set('selected_action', (string) $this->project->id);
+        $request->setLaravelSession($this->app['session.store']);
+        $this->app->instance('request', $request);
+        TestResponse::fromBaseResponse(app(BookingController::class)->cancel($request))->assertStatus(422);
+        $this->assertSame('0', (string) $booking->fresh()->cancel_status);
+        $this->assertSame(0, DB::table('customer_ledger')->count());
+        $this->assertSame(0, DB::table('ledgers')->count());
+    }
+
+    public static function invalidCancellationAdjustments(): array
+    {
+        return [
+            'none with hidden fine' => ['none', '100'],
+            'negative deduction' => ['charge_customer', '-100'],
+            'scientific profit' => ['give_profit', '1e5'],
+            'fractional cents' => ['charge_customer', '0.001'],
+            'text input' => ['give_profit', '100abc'],
+        ];
+    }
+
     public function test_paid_cancellation_rejects_existing_ledger_marker_before_booking_or_plot_mutation(): void
     {
         $booking = Booking::where('project_id', $this->project->id)->firstOrFail();
