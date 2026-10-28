@@ -116,6 +116,24 @@ class VoucherClearanceFlowTest extends TestCase
         return TestResponse::fromBaseResponse(app(BookingController::class)->cancel($request));
     }
 
+    public function test_booking_delete_unposted_source_preserves_plot_history_without_financial_rows(): void
+    {
+        $booking = Booking::where('project_id', $this->project->id)->firstOrFail();
+        $request = Request::create('/admin/booking/delete', 'POST', ['id' => $booking->id]);
+        $request->cookies->set('selected_action', (string) $this->project->id);
+        $request->setLaravelSession($this->app['session.store']);
+        $this->app->instance('request', $request);
+
+        TestResponse::fromBaseResponse(app(BookingController::class)->destroy_booking($request))
+            ->assertOk()->assertJson(['message' => 'Booking deleted successfully.']);
+        $this->assertNotNull(Booking::withTrashed()->findOrFail($booking->id)->deleted_at);
+        $this->assertSame(0, (int) $this->plot->fresh()->sold);
+        $history = json_decode((string) $this->plot->fresh()->plot_history, true);
+        $this->assertSame((int) $booking->id, (int) $history[0]['booking_id']);
+        $this->assertSame(0, DB::table('customer_ledger')->count());
+        $this->assertSame(0, DB::table('ledgers')->count());
+    }
+
     public function test_booking_delete_rejects_posted_ppr_without_hiding_booking_or_plot(): void
     {
         $this->callDeposit($this->depositPayload(1))->assertStatus(302);
