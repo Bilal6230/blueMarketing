@@ -44,4 +44,18 @@ final class ProjectVoucherAllocator
             ->max('voucher_number');
         return max($ledgerNext, $headerMax + 1);
     }
+    /**
+     * PPR has an additional persisted BookingVoucher display identifier.
+     * Preserve those numbers even when the original customer source or ledger
+     * has been removed; never reuse historical receipt identities.
+     */
+    public function nextBookingReceipt(int $projectId): int
+    {
+        $next = $this->next($projectId, 'PPR');
+        $bookingMax = (int) DB::table('booking_vouchers')
+            ->where('project_id', $projectId)
+            ->where('voucher_series', 'PPR')
+            ->max('voucher_number');
+        return max($next, $bookingMax + 1);
+    }
 }
