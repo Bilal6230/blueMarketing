@@ -739,3 +739,11 @@ All four existing documentation changes preserved. No application code changed, 
 - Corrected only `database/migrations/2025_09_25_143458_create_commision_voucher_details_table.php::down()` from dropping `journal_voucher_details` to dropping its own `commision_voucher_details` table. Original `up()` schema is unchanged.
 - Added `MigrationCompatibilityTest::test_commission_details_down_drops_only_its_own_table`, using isolated SQLite with a journal-detail sentinel and unrelated ledger sentinel. Focused result: 7 tests / 31 assertions. Full isolated result: 474 tests / 1,939 assertions. PHP lint and `git diff --check` passed.
 - Static review of other migration `down()` methods found no additional create/drop target mismatch. This source correction does not establish live staging rollback safety; no MySQL, staging, production or migration-history operation occurred. Production deployment remains BLOCKED.
+
+## 2026-10-28 - disposable MySQL rehearsal plan hardened
+
+- Expanded `STAGING_MIGRATION_REHEARSAL_PROPOSAL.md` with a unique throwaway MySQL 8.0 environment, synthetic/sanitized fixtures only, explicit identity and grants checks, `--no-defaults` isolation, backup/restore and SHA-256 gates, candidate-specific sequencing, and PASS/FAIL/STOP/RESTORE criteria.
+- Kept the 19 history-only, 13 forward-remediation, three UNKNOWN provenance and three missing ALTER queues separate. Existing collisions, cumulative dependencies, JV uniqueness drift, JSON/LONGTEXT differences and `expences`/`accounting_expenses` uncertainty remain blocking review gates.
+- No database creation, connection, import, migration, rollback, history update or credential/configuration change occurred. Vendor backup and unrelated files preserved; production deployment remains BLOCKED.
+
+- Independent review identified an important boundary: `--no-defaults` does not isolate Laravel bootstrap/configuration. Documented future safeguards now require a copied hash-pinned worktree, scrubbed environment, absent config cache, pre-bootstrap identity/grants probe, migration allowlist and host-level network isolation. These controls are not enforceable by documentation alone; provisioning remains blocked until externally evidenced.

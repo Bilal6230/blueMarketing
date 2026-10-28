@@ -27,7 +27,7 @@ Repository structural risks confirmed before execution:
 - `expences` and `accounting_expenses` are separate conventionally mapped models. Active finance code uses the latter's richer fields; the former migration creates only an ID and timestamps and performs no rename. Their relationship is unresolved and structurally incompatible as declared.
 - The legacy JV create declares a string globally unique voucher number, while prior captured staging evidence shows a numeric voucher number and a composite project/type/voucher unique index. This is a verified mismatch, not authorization to change it.
 - Several migrations use integer relationship columns where dependencies commonly use unsigned BIGINT, omit foreign keys entirely, or leave proposed keys commented. Compatibility must compare the actual declaration, not comments or model intent.
-- `create_commision_voucher_details` has a dangerous `down()` defect: it drops `journal_voucher_details`, not its own table. It must never be used for rollback; fixing application/migration code requires separate approval.
+- `create_commision_voucher_details` had a dangerous `down()` defect, which is fixed in commit `8d4949655ee10bf58222befd5d2c20e0d79af12a`. The corrected source is covered by isolated SQLite only; live rollback remains unverified and requires separate approval.
 - Stock migrations form an ordered FK dependency chain. History reconciliation cannot be decided table-by-table without verifying the complete chain and referential actions.
 
 Proposed later command, after explicit approval, using the existing masked saved-login path:
@@ -372,3 +372,11 @@ These findings verify application provenance, not migration execution. The class
 ## Commission-detail rollback correction - 2026-10-28
 
 The source defect in `2025_09_25_143458_create_commision_voucher_details_table.php` was corrected: `down()` now drops only `commision_voucher_details`, preserving the unrelated `journal_voucher_details` table. An isolated SQLite regression inserts a sentinel journal-detail row and an unrelated ledger row, runs the named migration, and verifies both remain after rollback. Focused migration coverage passed 7 tests / 31 assertions; the full isolated suite passed 474 tests / 1,939 assertions. This verifies repository behavior only; no staging or production rollback was executed, and historical staging rollback safety remains unverified.
+
+## Disposable MySQL rehearsal readiness - 2026-10-28
+
+`docs/STAGING_MIGRATION_REHEARSAL_PROPOSAL.md` now defines a non-executable MySQL 8.0 rehearsal using a uniquely named throwaway schema, synthetic or sanitized fixtures, explicit identity/grant checks, `--no-defaults` isolation, hash and backup/restore gates, candidate-specific sequencing, and deterministic PASS/FAIL/STOP/RESTORE outcomes. It must not inherit `.env`, Laravel config, staging, `bluenew` or production targets. No database has been created or connected to.
+
+The rehearsal keeps the 19 history-only candidates separate from the 13 forward-remediation candidates, the three UNKNOWN provenance tables, and the three missing ALTER migrations. Existing-table collisions, cumulative FK dependencies, JV uniqueness drift, JSON/LONGTEXT differences and `expences`/`accounting_expenses` uncertainty remain explicit gates. The commission-detail source rollback defect is fixed, but live rollback and all migration-history operations remain unapproved. Production deployment remains BLOCKED.
+
+The proposal now explicitly distinguishes MySQL client isolation from Laravel bootstrap isolation: `--no-defaults` is insufficient by itself. Any future Laravel rehearsal requires a separately copied, hash-pinned worktree, a scrubbed environment, absent config cache, an allowlisted migration process, a pre-bootstrap identity/grants probe, and host-level network isolation. These controls require independent administrator/tooling evidence and cannot be proven by repository documentation alone.

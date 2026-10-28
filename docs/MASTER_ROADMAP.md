@@ -2,7 +2,7 @@
 
 The approved seven-result-set capture passed identity and completeness gates: exit 0, 42 scoped, 41 present, `expences` absent, and terminal `REVIEW_REQUIRED`. Comparison of all 35 missing-history creates yields **19 structurally compatible, 13 incompatible and 3 unknown**. These labels describe only original schema declarations, not execution provenance or authorization to edit history.
 
-The stock dependency chain matches declared keys and FK actions, but `stock_movements.meta` is LONGTEXT plus a validity check rather than declared MySQL JSON. Release blockers remain: legacy signedness/nullability drift, JSON storage differences, absent `expences` versus separate `accounting_expenses`, JV voucher identity/index drift, unexplained cumulative fields in three unknown tables, and the commission-detail rollback targeting the wrong table.
+The stock dependency chain matches declared keys and FK actions, but `stock_movements.meta` is LONGTEXT plus a validity check rather than declared MySQL JSON. Release blockers remain: legacy signedness/nullability drift, JSON storage differences, absent `expences` versus separate `accounting_expenses`, JV voucher identity/index drift, unexplained cumulative fields in three unknown tables, and unverified live rollback behavior despite the corrected commission-detail source.
 
 Next: review a non-destructive disposition manifest. Compatible targets may become history-only candidates only after hashes, dependencies, backup/restore and rollback approval; incompatible targets require separately designed forward changes and disposable MySQL rehearsal; unknown targets require provenance evidence. No automatic history rows or migration replay. Production deployment remains **BLOCKED**.
 
@@ -14,7 +14,7 @@ Revalidation found no matrix-count correction: 55 repository files, 17 recorded 
 
 The proposed SQL reads identity and `information_schema` metadata only for 42 named tables: the 35 targets, `accounting_expenses`, and six dependencies. It captures table engine/collation, full column definitions, indexes, foreign keys, checks and fail-visible scope totals without reading business records. It never reports `PASS`: a complete expected capture ends at `REVIEW_REQUIRED`, while identity/scope failures end at `BLOCKED_*`. Execution remains unapproved.
 
-Repository evidence does not support treating `expences` as a rename of `accounting_expenses`; the active model requires fields absent from the two-column legacy migration. Other structural risks include legacy integer/unsigned-BIGINT drift, missing/commented constraints, the ordered stock FK chain, and a commission-detail rollback that targets the wrong table. Next gate is independent static review and then explicit approval for the SELECT-only capture. Production deployment remains **BLOCKED**.
+Repository evidence does not support treating `expences` as a rename of `accounting_expenses`; the active model requires fields absent from the two-column legacy migration. Other structural risks include legacy integer/unsigned-BIGINT drift, missing/commented constraints, the ordered stock FK chain, and unverified live rollback behavior for legacy migration history. Next gate is independent static review and then explicit approval for the SELECT-only capture. Production deployment remains **BLOCKED**.
 
 ---
 
@@ -726,3 +726,11 @@ Assistant must:
 - Corrected `CreateCommisionVoucherDetailsTable::down()` to target only `commision_voucher_details`; added an isolated SQLite sentinel regression proving `journal_voucher_details` and an unrelated ledger table survive.
 - Verification: focused migration suite 7 tests / 31 assertions; full isolated SQLite suite 474 tests / 1,939 assertions; PHP lint and `git diff --check` passed.
 - This removes the verified source-code defect from the proposed rollback path. It does not prove staging migration history, staging schema provenance, or safety of any live rollback. No staging/production rollback or migration was executed. Other migration hazards remain subject to separate review.
+
+## 2026-10-28 - disposable MySQL rehearsal controls
+
+- Expanded the non-executable rehearsal proposal with a uniquely named throwaway MySQL 8.0 schema, synthetic/sanitized data-only requirement, explicit host/port/database/account/grants checks, `--no-defaults` process isolation, hash/checksum and restore gates, and deterministic PASS/FAIL/STOP/RESTORE conditions.
+- The sequence treats 19 history-only candidates, 13 forward-remediation candidates, three UNKNOWN provenance targets and three missing ALTER migrations as separate review queues. It blocks CREATE replay, automatic history insertion, historical backfill, and any staging/production target inheritance.
+- The commission-detail source defect is fixed, but live rollback remains unverified and prohibited without separate disposable rehearsal approval. No database was created, imported, connected to, or modified. Production deployment remains BLOCKED.
+
+- `--no-defaults` is documented as MySQL client-only protection. A future Laravel rehearsal must use a separate hash-pinned worktree, scrubbed environment, no config cache, pre-bootstrap database identity/grants verification, migration allowlisting, and host-level network isolation. These controls require external administrator evidence and remain unapproved.
