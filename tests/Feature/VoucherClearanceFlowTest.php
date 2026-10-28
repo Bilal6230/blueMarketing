@@ -138,6 +138,52 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame(0, DB::table('ledgers')->count());
     }
 
+    public function test_extra_charge_number_skips_orphaned_typed_source(): void
+    {
+        Schema::create('charge_types', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
+        DB::table('charge_types')->insert(['id' => 1, 'name' => 'Test charge']);
+        $otherAccount = ProjectHeadSubhead::create([
+            'project_id' => $this->project->id,
+            'head_accounting_id' => 16,
+            'subhead_accounting_id' => 102,
+        ]);
+        config(["finance.extra_charge_accounts.{$this->project->id}.1" => [
+            'approved' => true,
+            'debit_account_id' => $this->bookingReceiptAccount->id,
+            'credit_account_id' => $otherAccount->id,
+        ]]);
+        CustomerLedger::create([
+            'project_id' => $this->project->id,
+            'customer_id' => $this->customer->id,
+            'plot_id' => $this->plot->id,
+            'transaction_type' => 'EC',
+            'type_id' => 21,
+            'reference' => 'ORPHAN-EC',
+            'amount_in' => 100,
+            'amount_out' => 0,
+            'date' => '2026-05-17',
+            'payment_type' => 1,
+        ]);
+
+        $this->callDeposit($this->depositPayload(1, [
+            'action' => 'extra_charge',
+            'charge_type_id' => 1,
+            'reference' => 'EC-AFTER-ORPHAN',
+        ]))->assertStatus(302)->assertSessionHasNoErrors();
+
+        $source = CustomerLedger::where('reference', 'EC-AFTER-ORPHAN')->firstOrFail();
+        $this->assertSame(22, (int) $source->type_id);
+        $legs = Ledger::where('customer_ledger_id', $source->id)->get();
+        $this->assertCount(2, $legs);
+        $this->assertEquals(1250, $legs->sum('amount_in'));
+        $this->assertEquals(1250, $legs->sum('amount_out'));
+        $this->assertSame(0, Ledger::where('reference', 'ORPHAN-EC')->count());
+    }
+
     public function test_extra_charge_cash_posts_balanced_typed_source_once(): void
     {
         Schema::create('charge_types', function (Blueprint $table) {
