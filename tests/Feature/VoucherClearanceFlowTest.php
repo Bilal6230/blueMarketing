@@ -138,6 +138,34 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame(0, DB::table('ledgers')->count());
     }
 
+    public function test_shared_journal_allocator_reserves_header_and_ledger_numbers(): void
+    {
+        DB::transaction(function () {
+            $allocator = app(\App\Services\Finance\ProjectVoucherAllocator::class);
+            $this->assertSame(1, $allocator->nextJournal($this->project->id));
+            DB::table('journal_vouchers')->insert([
+                'project_id' => $this->project->id,
+                'type' => 'JV', 'voucher_number' => 14,
+                'reference' => 'RESERVE-JV',
+                'date' => '2026-05-17',
+                'description' => 'Historical journal header',
+                'total_debit' => 100,
+                'total_credit' => 100,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+            $this->assertSame(15, $allocator->nextJournal($this->project->id));
+            Ledger::create([
+                'type' => 'JV', 'type_id' => 19,
+                'voucher_number' => 19,
+                'project_head_subheads_id' => $this->bookingReceiptAccount->id,
+                'reference' => 'SURVIVING-JV-LEDGER',
+                'amount_in' => 100, 'amount_out' => 0,
+                'date' => '2026-05-17',
+            ]);
+            $this->assertSame(20, $allocator->nextJournal($this->project->id));
+        });
+    }
+
     public function test_shared_project_allocator_preserves_sources_and_ledger_numbers(): void
     {
         $allocator = app(\App\Services\Finance\ProjectVoucherAllocator::class);
