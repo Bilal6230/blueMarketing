@@ -149,4 +149,36 @@ class MigrationCompatibilityTest extends TestCase
         $this->assertTrue(Schema::hasColumn('journal_vouchers', 'site_id'));
         $this->assertSame(91, DB::table('journal_vouchers')->value('site_id'));
     }
+
+    public function test_commission_details_down_drops_only_its_own_table(): void
+    {
+        Schema::create('commision_vouchers', function (Blueprint $table) {
+            $table->id();
+        });
+
+        Schema::create('journal_voucher_details', function (Blueprint $table) {
+            $table->id();
+            $table->string('sentinel');
+        });
+
+        Schema::create('ledgers', function (Blueprint $table) {
+            $table->id();
+            $table->string('reference')->nullable();
+        });
+
+        DB::table('journal_voucher_details')->insert(['sentinel' => 'preserve-me']);
+        DB::table('ledgers')->insert(['reference' => 'unrelated-finance-row']);
+
+        require_once base_path('database/migrations/2025_09_25_143458_create_commision_voucher_details_table.php');
+        $migration = new \CreateCommisionVoucherDetailsTable();
+        $migration->up();
+
+        $this->assertTrue(Schema::hasTable('commision_voucher_details'));
+        $migration->down();
+
+        $this->assertFalse(Schema::hasTable('commision_voucher_details'));
+        $this->assertTrue(Schema::hasTable('journal_voucher_details'));
+        $this->assertSame('preserve-me', DB::table('journal_voucher_details')->value('sentinel'));
+        $this->assertSame('unrelated-finance-row', DB::table('ledgers')->value('reference'));
+    }
 }

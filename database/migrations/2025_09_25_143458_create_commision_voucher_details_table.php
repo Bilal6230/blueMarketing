@@ -35,6 +35,6 @@ class CreateCommisionVoucherDetailsTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('journal_voucher_details');
+        Schema::dropIfExists('commision_voucher_details');
     }
 }

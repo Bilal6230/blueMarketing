@@ -733,3 +733,9 @@ All four existing documentation changes preserved. No application code changed, 
 - Verified application provenance: ledger relationship fields in `a82ed439...`, ledger voucher number in `8043f13d...`, site project scoping in `6b028f63...`, and booking-voucher delete reason write/removal in `564896aa...` / `dc9bf7e8...`.
 - No reviewed migration or Git commit establishes the DDL origin of the ledger columns/indexes/FKs, site column/index/FK, or booking-voucher extra column. Classification remains 19 COMPATIBLE, 13 INCOMPATIBLE and 3 UNKNOWN, with the UNKNOWN reason refined to verified application provenance / unknown DDL provenance.
 - Added `STAGING_MIGRATION_RECONCILIATION_MANIFEST.md`, a non-executable SHA-256-pinned proposal. It does not authorize history insertion or replay. Destructive commission-detail rollback, all 13 incompatibilities, UNKNOWN provenance and production deployment remain blocked.
+
+## 2026-10-28 - commission voucher detail rollback defect corrected
+
+- Corrected only `database/migrations/2025_09_25_143458_create_commision_voucher_details_table.php::down()` from dropping `journal_voucher_details` to dropping its own `commision_voucher_details` table. Original `up()` schema is unchanged.
+- Added `MigrationCompatibilityTest::test_commission_details_down_drops_only_its_own_table`, using isolated SQLite with a journal-detail sentinel and unrelated ledger sentinel. Focused result: 7 tests / 31 assertions. Full isolated result: 474 tests / 1,939 assertions. PHP lint and `git diff --check` passed.
+- Static review of other migration `down()` methods found no additional create/drop target mismatch. This source correction does not establish live staging rollback safety; no MySQL, staging, production or migration-history operation occurred. Production deployment remains BLOCKED.

@@ -720,3 +720,9 @@ Assistant must:
 - Structural totals remain **19 COMPATIBLE / 13 INCOMPATIBLE / 3 UNKNOWN**. The UNKNOWN targets remain blocked from replay and history insertion because their extra indexes/FKs/columns do not have complete reviewed DDL provenance.
 - Added a non-executable SHA-256-pinned manifest separating 19 history-only review candidates, 13 forward-remediation candidates and three unresolved-provenance targets. Each future disposition requires a fresh metadata capture, dependency and recovery plan, exact hash and explicit human approval.
 - Release remains blocked by all 13 incompatibilities, journal-voucher voucher/unique-key drift, UNKNOWN provenance, JSON/LONGTEXT decisions and the destructive commission-detail rollback path.
+
+## 2026-10-28 - commission-detail rollback source correction
+
+- Corrected `CreateCommisionVoucherDetailsTable::down()` to target only `commision_voucher_details`; added an isolated SQLite sentinel regression proving `journal_voucher_details` and an unrelated ledger table survive.
+- Verification: focused migration suite 7 tests / 31 assertions; full isolated SQLite suite 474 tests / 1,939 assertions; PHP lint and `git diff --check` passed.
+- This removes the verified source-code defect from the proposed rollback path. It does not prove staging migration history, staging schema provenance, or safety of any live rollback. No staging/production rollback or migration was executed. Other migration hazards remain subject to separate review.
