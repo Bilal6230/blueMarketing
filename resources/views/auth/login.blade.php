@@ -27,6 +27,7 @@
 </head>
 <body class="bg-gray-50">
     @php
+        $errors = $errors ?? new \Illuminate\Support\ViewErrorBag();
         if (!$errors->isEmpty()) {
             alert()->error('Pemberitahuan', implode('<br>', $errors->all()))->toToast()->toHtml();
         }
