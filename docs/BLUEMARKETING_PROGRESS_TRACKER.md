@@ -11,8 +11,8 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 
 | Rank | Primary task | Estimated progress | Implemented evidence | Remaining acceptance gate |
 | --- | --- | ---: | --- | --- |
-| P0.1 | **Ledger protection:** audit and fix every live INSERT/UPDATE/DELETE/deactivate/overwrite, project scope and identity guard | **68%** | Mobile approval immutability and project scope; JV/CV destructive gates; Stock/Mobile Stock duplicate, orphan, amount/date/project guards; CR/CP editor prevents noncash JV/SV/BO/BR/PPR overwrite and rejects invalid linked sources | Every producer/mutator classified and tested, protected ledger rows cannot silently disappear |
-| P0.2 | **Voucher integrity:** propagate correct source voucher number/date for JV, CV, Stock, Labour, Booking, CR, CP, BR, PPR | **35%** | Core JV header number, Labour JV number/date, Stock existing-posting date and amount checks | Every source creates ledger rows with verified source number/date, regression tests for all families, preexisting mismatch inventory |
+| P0.1 | **Ledger protection:** audit and fix every live INSERT/UPDATE/DELETE/deactivate/overwrite, project scope and identity guard | **76%** | Mobile approval immutability and project scope; JV/CV destructive gates; Stock/Mobile Stock duplicate, orphan, amount/date/project guards; CR/CP editor prevents noncash JV/SV/BO/BR/PPR overwrite and rejects invalid linked sources | Every producer/mutator classified and tested, protected ledger rows cannot silently disappear |
+| P0.2 | **Voucher integrity:** propagate correct source voucher number/date for JV, CV, Stock, Labour, Booking, CR, CP, BR, PPR | **38%** | Core JV header number, Labour JV number/date, Stock existing-posting date and amount checks | Every source creates ledger rows with verified source number/date, regression tests for all families, preexisting mismatch inventory |
 | P0.3 | **Foreign-key / typed source identity:** source-aware, project-consistent relational integrity | **15%** | Existing physical `customer_ledger_id` and `charge_type_id` FKs confirmed on restored clone; typed source attribution design exists | Per-source FK/typed links, uniqueness & concurrency checks, vetted migration rehearsal; do **not** force `type_id` into one FK |
 | P0.4 | **Soft-delete / append-only reversal:** protect historical business records and posted financial events | **15%** | JV/CV destructive write gates and CR/CP/PPR deletion tests exist | Cover all applicable business tables and side effects; financial reversals/append-only protection; MySQL schema review |
 | P0.5 | **Historical recovery:** reconcile missing/inactive/overwritten JV and other ledger entries, then controlled repair | **10%** | 17,855 restored ledger rows inventory; 155 inactive; source ambiguity evidenced; Project 5 balance reproduced | Independently prove provenance per row, compare older backup/audit logs, approved dry-run, reversible repair and balance validation |
@@ -60,6 +60,14 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - Two targeted tests added: foreign-project fallback rejection and valid same-project fallback acceptance. Commits `22c85c6` and `35679a2`.
 - Progress: P0.1 **65% → 68% implementation estimate**, based on one additionally protected source-ownership path. New tests **not yet locally verified**; mark as pending until focused test execution. P0.2 stays **35%**.
 - Remaining gates include full write-path inventory, concurrency/races, MySQL unique constraints and historical source provenance. No staging/production finance writes.
+
+### 2026-10-28 multi-path ledger protection batch
+
+- User-verified prior checkpoint: **2 focused fallback-account tests / 6 assertions PASS**, PHP lint passed, clean Git tree; earlier broader clearance tests **31 / 206 PASS**.
+- **Three code paths hardened together**: (1) report BR clearance refuses existing ledger rows with nonzero `amount_in`; (2) finance clearance refuses explicitly wrong or incomplete bank account selections, rather than silently falling back; (3) cash `LedgerController::update` refuses inactive or already-mismatched source/ledger pairs for business date and debit/credit amounts, preventing legacy inconsistency from being silently overwritten.
+- Two regression tests were added for finance clearance explicit-invalid and partial-account requests (both must preserve source status and not create BR). Commits `32e57b9`, `547435b`, `2c62efb`, `f419fcf`.
+- Progress implementation coverage P0.1 **68% → 76%** and P0.2 **35% → 38%** for the multi-path protections. **New changes remain unverified locally** until focused `VoucherClearanceFlowTest` is run; progress may be revised if tests fail. No claim of total P0.1 completion or database constraints.
+- Continue targeted testing only. No production/staging finance writes, migration, historical repair or deployment.
 
 ### Primary delivery sequencing
 
