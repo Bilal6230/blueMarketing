@@ -132,6 +132,15 @@ class LedgerController extends Controller
                 $amount_out,
                 $isCashOutPendingClearance
             ) {
+                // Coordinate manual CR/CP posting with other project-scoped
+                // financial writers, including first-time voucher creation.
+                // Project lock is acquired before any source/ledger write.
+                if (!DB::table('projects')
+                    ->where('id', $selectedProjectId)
+                    ->lockForUpdate()
+                    ->exists()) {
+                    throw new \DomainException('CASH_VOUCHER_PROJECT_NOT_FOUND');
+                }
                 if ($paymentType === 1) {
                     $t_number = $bank_id = null;
                 } else {
