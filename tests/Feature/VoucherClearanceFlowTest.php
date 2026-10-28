@@ -121,6 +121,57 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame(0, DB::table('customer_ledger')->count());
     }
 
+    public function test_extra_charge_requires_approved_mapping_without_financial_writes(): void
+    {
+        Schema::create('charge_types', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
+        DB::table('charge_types')->insert(['id' => 1, 'name' => 'Test charge']);
+        $response = $this->callDeposit($this->depositPayload(1, [
+            'action' => 'extra_charge', 'charge_type_id' => 1,
+            'reference' => 'EC-NOMAP',
+        ]));
+        $response->assertStatus(302)->assertSessionHasErrors('msg');
+        $this->assertSame(0, DB::table('customer_ledger')->count());
+        $this->assertSame(0, DB::table('ledgers')->count());
+    }
+
+    public function test_extra_charge_cash_posts_balanced_typed_source_once(): void
+    {
+        Schema::create('charge_types', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
+        DB::table('charge_types')->insert(['id' => 1, 'name' => 'Test charge']);
+        $otherAccount = ProjectHeadSubhead::create([
+            'project_id' => $this->project->id,
+            'head_accounting_id' => 16,
+            'subhead_accounting_id' => 101,
+        ]);
+        config(["finance.extra_charge_accounts.{$this->project->id}.1" => [
+            'approved' => true,
+            'debit_account_id' => $this->bookingReceiptAccount->id,
+            'credit_account_id' => $otherAccount->id,
+        ]]);
+        $payload = $this->depositPayload(1, [
+            'action' => 'extra_charge', 'charge_type_id' => 1,
+            'reference' => 'EC-BALANCED',
+        ]);
+        $this->callDeposit($payload)->assertStatus(302)->assertSessionHasNoErrors();
+        $source = CustomerLedger::where('transaction_type', 'EC')->firstOrFail();
+        $legs = Ledger::where('customer_ledger_id', $source->id)->where('type', 'EC')->get();
+        $this->assertCount(2, $legs);
+        $this->assertEquals(1250, $legs->sum('amount_in'));
+        $this->assertEquals(1250, $legs->sum('amount_out'));
+        $this->assertCount(2, $legs->pluck('project_head_subheads_id')->unique());
+        $this->callDeposit($payload)->assertSessionHasErrors('msg');
+        $this->assertSame(1, CustomerLedger::where('transaction_type', 'EC')->count());
+        $this->assertSame(2, Ledger::where('type', 'EC')->count());
+    }
+
     public function test_no_payment_cancellation_without_financial_history_posts_no_reversal(): void
     {
         Schema::table('bookings', function (Blueprint $table) {
