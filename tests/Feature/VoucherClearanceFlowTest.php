@@ -166,6 +166,35 @@ class VoucherClearanceFlowTest extends TestCase
         });
     }
 
+    public function test_shared_ppr_allocator_reserves_booking_voucher_and_orphan_source(): void
+    {
+        DB::transaction(function () {
+            $allocator = app(\App\Services\Finance\ProjectVoucherAllocator::class);
+            $this->assertSame(1, $allocator->nextBookingReceipt($this->project->id));
+            DB::table('booking_vouchers')->insert([
+                'project_id' => $this->project->id,
+                'voucher_series' => 'PPR',
+                'voucher_number' => 17,
+                'slip_reference' => 'HISTORIC-PPR',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $this->assertSame(18, $allocator->nextBookingReceipt($this->project->id));
+            CustomerLedger::create([
+                'project_id' => $this->project->id,
+                'customer_id' => $this->customer->id,
+                'plot_id' => $this->plot->id,
+                'transaction_type' => 'PPR',
+                'type_id' => 26,
+                'reference' => 'ORPHAN-PPR-SOURCE',
+                'amount_out' => 120,
+                'amount_in' => 0,
+                'date' => '2026-05-17',
+            ]);
+            $this->assertSame(27, $allocator->nextBookingReceipt($this->project->id));
+        });
+    }
+
     public function test_shared_project_allocator_preserves_sources_and_ledger_numbers(): void
     {
         $allocator = app(\App\Services\Finance\ProjectVoucherAllocator::class);
