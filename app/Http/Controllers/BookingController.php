@@ -2324,6 +2324,19 @@ class BookingController extends Controller
                         $projectId = (int) getSelectedTown();
                         $plotId = (int) $request->input('plot_id');
                         $reference = trim((string) $request->input('reference'));
+                        // The PPR amount/date are financial identity fields.
+                        // Reject malformed values before a source or ledger is created;
+                        // normalization must never silently turn a bad amount into zero.
+                        $rawAmount = str_replace(',', '', trim((string) $request->input('amount')));
+                        $receiptDate = (string) $request->input('date', '');
+                        $parsedReceiptDate = \DateTimeImmutable::createFromFormat('!Y-m-d', $receiptDate);
+                        if (!preg_match('/^\\d{1,10}(?:\\.\\d{1,2})?$/D', $rawAmount) ||
+                            (float) $rawAmount <= 0 ||
+                            !$parsedReceiptDate ||
+                            $parsedReceiptDate->format('Y-m-d') !== $receiptDate ||
+                            $reference === '') {
+                            throw new \DomainException('PPR_FINANCIAL_INPUT_INVALID');
+                        }
                         $sourceKey = implode('|', [$projectId, 'PPR', $reference, (int) $customer_id, $plotId]);
                         if ($payment_type == 1) {
                             $t_number = $bank_id = null;
