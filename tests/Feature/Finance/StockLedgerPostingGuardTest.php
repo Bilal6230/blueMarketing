@@ -206,6 +206,37 @@ class StockLedgerPostingGuardTest extends TestCase
         $this->assertTrue($this->verify());
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidStockReferences')]
+    public function test_invalid_stock_reference_is_rejected(string $reference): void
+    {
+        $this->expectException(\DomainException::class);
+        app(StockLedgerPostingGuard::class)->alreadyPosted($reference, 5, '2026-10-20', $this->legs());
+    }
+
+    public static function invalidStockReferences(): array
+    {
+        return [
+            'untyped JV' => ['JV:123'],
+            'missing id' => ['STOCK-ENTRY:'],
+            'zero id' => ['STOCK-BILL:0'],
+            'malformed id' => ['STOCK-ENTRY:123-extra'],
+        ];
+    }
+
+    public function test_malformed_stock_business_date_is_rejected(): void
+    {
+        $this->expectException(\DomainException::class);
+        app(StockLedgerPostingGuard::class)->alreadyPosted('STOCK-ENTRY:123', 5, '20/10/2026', $this->legs());
+    }
+
+    public function test_stock_amount_overflow_is_rejected(): void
+    {
+        $legs = $this->legs();
+        $legs[0]['amount_in'] = '999999999999999999999999999.99';
+        $this->expectException(\DomainException::class);
+        app(StockLedgerPostingGuard::class)->alreadyPosted('STOCK-ENTRY:123', 5, '2026-10-20', $legs);
+    }
+
     public function test_exact_two_legs_are_recognized(): void
     {
         $this->insertLegs();
