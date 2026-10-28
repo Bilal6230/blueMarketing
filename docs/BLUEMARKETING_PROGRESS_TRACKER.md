@@ -11,7 +11,7 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 
 | Rank | Primary task | Estimated progress | Implemented evidence | Remaining acceptance gate |
 | --- | --- | ---: | --- | --- |
-| P0.1 | **Ledger protection:** audit and fix every live INSERT/UPDATE/DELETE/deactivate/overwrite, project scope and identity guard | **65%** | Mobile approval immutability and project scope; JV/CV destructive gates; Stock/Mobile Stock duplicate, orphan, amount/date/project guards; CR/CP editor prevents noncash JV/SV/BO/BR/PPR overwrite and rejects invalid linked sources | Every producer/mutator classified and tested, protected ledger rows cannot silently disappear |
+| P0.1 | **Ledger protection:** audit and fix every live INSERT/UPDATE/DELETE/deactivate/overwrite, project scope and identity guard | **68%** | Mobile approval immutability and project scope; JV/CV destructive gates; Stock/Mobile Stock duplicate, orphan, amount/date/project guards; CR/CP editor prevents noncash JV/SV/BO/BR/PPR overwrite and rejects invalid linked sources | Every producer/mutator classified and tested, protected ledger rows cannot silently disappear |
 | P0.2 | **Voucher integrity:** propagate correct source voucher number/date for JV, CV, Stock, Labour, Booking, CR, CP, BR, PPR | **35%** | Core JV header number, Labour JV number/date, Stock existing-posting date and amount checks | Every source creates ledger rows with verified source number/date, regression tests for all families, preexisting mismatch inventory |
 | P0.3 | **Foreign-key / typed source identity:** source-aware, project-consistent relational integrity | **15%** | Existing physical `customer_ledger_id` and `charge_type_id` FKs confirmed on restored clone; typed source attribution design exists | Per-source FK/typed links, uniqueness & concurrency checks, vetted migration rehearsal; do **not** force `type_id` into one FK |
 | P0.4 | **Soft-delete / append-only reversal:** protect historical business records and posted financial events | **15%** | JV/CV destructive write gates and CR/CP/PPR deletion tests exist | Cover all applicable business tables and side effects; financial reversals/append-only protection; MySQL schema review |
@@ -51,6 +51,15 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - **Progress estimation** P0.1 **60% → 65%**, P0.2 **30% → 35%**: prior ReportController tests are verified and the second clearance endpoint has a concrete implementation plus focused regression cases. **New tests are not yet run locally**; 65/35 is implementation coverage estimate, not verified release readiness; adjust if tests fail.
 - Remaining: audit other live ledger source writers, direct SQL mutations, concurrency/unique constraints, actual MySQL source/date/FK compatibility, historical provenance. No production/staging writes or schema migrations.
 - **Testing cadence**: run only `tests/Feature/VoucherClearanceFlowTest.php` in this iteration; no full-suite repetition.
+
+### 2026-10-28 Bank clearance fallback-account project isolation
+
+- User verified the previous bank-clearance batch: **31 targeted Feature tests / 206 assertions PASS**, PHP lint clean and working tree clean. No need to repeat the full Feature suite.
+- **P0.1 security fix**: `Finance/VoucherController::updatePendingBankPaymentStatus` formerly trusted the existing receipt-linked ledger's account ID as a fallback if the request omitted valid accounts. A corrupted/cross-project source ledger could therefore select another project's account for a fresh `BR` posting.
+- The fallback now resolves only a `project_head_subheads` row belonging to the selected project. If the existing account is foreign, the clearance transaction fails and preserves source status and ledger state.
+- Two targeted tests added: foreign-project fallback rejection and valid same-project fallback acceptance. Commits `22c85c6` and `35679a2`.
+- Progress: P0.1 **65% → 68% implementation estimate**, based on one additionally protected source-ownership path. New tests **not yet locally verified**; mark as pending until focused test execution. P0.2 stays **35%**.
+- Remaining gates include full write-path inventory, concurrency/races, MySQL unique constraints and historical source provenance. No staging/production finance writes.
 
 ### Primary delivery sequencing
 
