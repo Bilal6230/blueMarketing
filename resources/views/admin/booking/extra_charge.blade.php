@@ -49,7 +49,7 @@
                                                                     <input type="text" value="extra_charge" name="action"
                                                                         hidden />
                                                                     <input type="text" class="form-control " name="voucher"
-                                                                        value="{{ $type }}-{{ get_new_booking_voucher($type) }}"
+                                                                        value="Assigned automatically on save"
                                                                         autocomplete="off" readonly>
 
                                                                 </div>
