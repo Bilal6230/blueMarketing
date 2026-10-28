@@ -91,6 +91,24 @@ class StockLedgerPostingGuardTest extends TestCase
         $this->assertFalse($this->verify());
     }
 
+    public function test_fresh_stock_posting_rejects_foreign_expected_account(): void
+    {
+        $legs = $this->legs();
+        $legs[1]['project_head_subheads_id'] = 21;
+
+        $this->expectException(\DomainException::class);
+        app(StockLedgerPostingGuard::class)->alreadyPosted('STOCK-ENTRY:123', 5, '2026-10-20', $legs);
+    }
+
+    public function test_fresh_stock_posting_rejects_missing_expected_account(): void
+    {
+        $legs = $this->legs();
+        $legs[1]['project_head_subheads_id'] = 99999;
+
+        $this->expectException(\DomainException::class);
+        app(StockLedgerPostingGuard::class)->alreadyPosted('STOCK-ENTRY:123', 5, '2026-10-20', $legs);
+    }
+
     public function test_exact_two_legs_are_recognized(): void
     {
         $this->insertLegs();
