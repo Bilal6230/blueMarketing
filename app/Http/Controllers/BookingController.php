@@ -2563,17 +2563,6 @@ class BookingController extends Controller
                             throw new \DomainException('EXTRA_CHARGE_INPUT_OR_PAYMENT_UNSUPPORTED');
                         }
 
-                        // An administrator must approve BOTH sides for EACH
-                        // project/charge type. No inferred/chart-of-account defaults.
-                        $mapping = config("finance.extra_charge_accounts.{$projectId}.{$chargeTypeId}");
-                        if (!is_array($mapping) || ($mapping['approved'] ?? false) !== true ||
-                            !isset($mapping['debit_account_id'], $mapping['credit_account_id']) ||
-                            (int) $mapping['debit_account_id'] <= 0 ||
-                            (int) $mapping['credit_account_id'] <= 0 ||
-                            (int) $mapping['debit_account_id'] === (int) $mapping['credit_account_id']) {
-                            throw new \DomainException('EXTRA_CHARGE_APPROVED_MAPPING_REQUIRED');
-                        }
-
                         if (!Project::query()->whereKey($projectId)->lockForUpdate()->exists()) {
                             throw new \DomainException('EXTRA_CHARGE_PROJECT_NOT_FOUND');
                         }
@@ -2584,13 +2573,6 @@ class BookingController extends Controller
                         if ($booking->count() !== 1) {
                             throw new \DomainException('EXTRA_CHARGE_BOOKING_NOT_UNIQUE');
                         }
-                        $accounts = ProjectHeadSubhead::query()->where('project_id', $projectId)
-                            ->whereIn('id', [(int) $mapping['debit_account_id'], (int) $mapping['credit_account_id']])
-                            ->lockForUpdate()->get()->keyBy('id');
-                        if ($accounts->count() !== 2) {
-                            throw new \DomainException('EXTRA_CHARGE_ACCOUNTS_NOT_IN_PROJECT');
-                        }
-
                         // Reference uniquely identifies the typed source in this
                         // project; no replay may create additional ledger legs.
                         if (CustomerLedger::query()->where('project_id', $projectId)
@@ -2598,13 +2580,18 @@ class BookingController extends Controller
                             ->lockForUpdate()->exists()) {
                             throw new \DomainException('EXTRA_CHARGE_SOURCE_ALREADY_POSTED');
                         }
+                        // Account creation is atomic with the typed charge.
+                        // A new charge creates an outstanding receivable, not
+                        // an unverified cash or bank receipt.
+                        $mapping = app(\App\Services\Finance\ExtraChargeAccounts::class)
+                            ->forProject($projectId, (int) $customer_id, $plotId);
                         $voucherNumber = app(\App\Services\Finance\ProjectVoucherAllocator::class)
                             ->next($projectId, 'EC');
                         $source = CustomerLedger::create([
                             'project_id' => $projectId, 'customer_id' => $customer_id,
                             'plot_id' => $plotId, 'transaction_type' => 'EC',
                             'type_id' => $voucherNumber, 'reference' => $reference,
-                            'date' => $date, 'payment_type' => 1,
+                            'date' => $date, 'payment_type' => null,
                             'amount_in' => $amount, 'amount_out' => 0,
                             'description' => $request->input('detail'),
                             'is_active' => 1, 'is_approve' => 0,
