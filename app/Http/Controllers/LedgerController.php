@@ -950,7 +950,11 @@ class LedgerController extends Controller
             if (!$source || (int) $source->project_id !== (int) $selectedProjectId ||
                 (string) $source->transaction_type !== (string) $ledger->type ||
                 (int) $source->is_active !== 1 ||
-                (string) $source->reference !== (string) $ledger->reference) {
+                (int) $ledger->is_active !== 1 ||
+                (string) $source->reference !== (string) $ledger->reference ||
+                substr((string) $source->date, 0, 10) !== substr((string) $ledger->date, 0, 10) ||
+                round((float) $source->amount_in, 2) !== round((float) $ledger->amount_in, 2) ||
+                round((float) $source->amount_out, 2) !== round((float) $ledger->amount_out, 2)) {
                 throw new \DomainException('CASH_VOUCHER_SOURCE_CONFLICT');
             }
 
