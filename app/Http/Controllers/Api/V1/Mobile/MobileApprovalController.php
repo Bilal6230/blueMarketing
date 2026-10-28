@@ -354,6 +354,19 @@ class MobileApprovalController extends BaseMobileController
 
         $projectId = $this->resolveApprovalProjectId($approval);
 
+        // A posted ledger belongs to a concrete project. Never authorize an
+        // orphaned ledger approval or bypass ledger ownership using a broad
+        // direct-update/super-admin permission.
+        if ($approval->table_name === 'ledgers') {
+            if ($projectId === null) {
+                throw new AuthorizationException('Ledger project ownership is missing.');
+            }
+
+            $this->ensureProjectAccess((int) $projectId, $user);
+
+            return;
+        }
+
         if ($projectId === null) {
             if (!$this->hasPrivilegedApprovalAccess($user)) {
                 throw new AuthorizationException('You do not have permission to perform this action.');
