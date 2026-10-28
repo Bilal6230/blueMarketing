@@ -983,16 +983,6 @@ class MobileStockController extends BaseMobileController
         $typeId = (int) (getLastLedgerIdByType($ledgerType) ?? 0) + 1;
 
         foreach ($legs as $leg) {
-            $alreadyPosted = Ledger::query()
-                ->where('type', $ledgerType)
-                ->where('reference', $reference)
-                ->where('project_head_subheads_id', $leg['project_head_subheads_id'])
-                ->exists();
-
-            if ($alreadyPosted) {
-                continue;
-            }
-
             Ledger::create([
                 'customer_ledger_id' => $customerLedger->id,
                 'voucher_number' => $voucherNumber,
