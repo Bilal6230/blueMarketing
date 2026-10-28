@@ -11,7 +11,7 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 
 | Rank | Primary task | Estimated progress | Implemented evidence | Remaining acceptance gate |
 | --- | --- | ---: | --- | --- |
-| P0.1 | **Ledger protection:** audit and fix every live INSERT/UPDATE/DELETE/deactivate/overwrite, project scope and identity guard | **76%** | Mobile approval immutability and project scope; JV/CV destructive gates; Stock/Mobile Stock duplicate, orphan, amount/date/project guards; CR/CP editor prevents noncash JV/SV/BO/BR/PPR overwrite and rejects invalid linked sources | Every producer/mutator classified and tested, protected ledger rows cannot silently disappear |
+| P0.1 | **Ledger protection:** audit and fix every live INSERT/UPDATE/DELETE/deactivate/overwrite, project scope and identity guard | **82%** | Mobile approval immutability and project scope; JV/CV destructive gates; Stock/Mobile Stock duplicate, orphan, amount/date/project guards; CR/CP editor prevents noncash JV/SV/BO/BR/PPR overwrite and rejects invalid linked sources | Every producer/mutator classified and tested, protected ledger rows cannot silently disappear |
 | P0.2 | **Voucher integrity:** propagate correct source voucher number/date for JV, CV, Stock, Labour, Booking, CR, CP, BR, PPR | **38%** | Core JV header number, Labour JV number/date, Stock existing-posting date and amount checks | Every source creates ledger rows with verified source number/date, regression tests for all families, preexisting mismatch inventory |
 | P0.3 | **Foreign-key / typed source identity:** source-aware, project-consistent relational integrity | **15%** | Existing physical `customer_ledger_id` and `charge_type_id` FKs confirmed on restored clone; typed source attribution design exists | Per-source FK/typed links, uniqueness & concurrency checks, vetted migration rehearsal; do **not** force `type_id` into one FK |
 | P0.4 | **Soft-delete / append-only reversal:** protect historical business records and posted financial events | **15%** | JV/CV destructive write gates and CR/CP/PPR deletion tests exist | Cover all applicable business tables and side effects; financial reversals/append-only protection; MySQL schema review |
@@ -68,6 +68,15 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - Two regression tests were added for finance clearance explicit-invalid and partial-account requests (both must preserve source status and not create BR). Commits `32e57b9`, `547435b`, `2c62efb`, `f419fcf`.
 - Progress implementation coverage P0.1 **68% → 76%** and P0.2 **35% → 38%** for the multi-path protections. **New changes remain unverified locally** until focused `VoucherClearanceFlowTest` is run; progress may be revised if tests fail. No claim of total P0.1 completion or database constraints.
 - Continue targeted testing only. No production/staging finance writes, migration, historical repair or deployment.
+
+### 2026-10-28 Stock posting completeness (Web entry / bill + Mobile entry)
+
+- User-verified last checkpoint: `VoucherClearanceFlowTest` **35 passed / 219 assertions**, and clean working tree; no full-suite rerun requested.
+- **Web Stock entry and bill plus Mobile Stock entry** previously checked `StockLedgerPostingGuard` but still independently skipped each debit/credit leg based on a loose `exists()`. Removed that partial posting skip from all three writers: when preflight permits a fresh posting, both legs are inserted as a unit by the caller's transaction. Existing incomplete/duplicate reference remains rejected by the guard. This does not prove concurrency uniqueness for competing first-time requests.
+- **Guard expanded:** both expected project-head-subhead IDs must exist in the intended project even when there are zero ledger rows; invalid amounts are also rejected before posting.
+- Added 2 new focused SQLite tests for foreign and missing expected accounts. Commits `54860c8`, `86061a3`, `8bf73dd`, `254f7c0`.
+- **Coverage estimate:** P0.1 **76% → 82%**, P0.2 stays **38%**. This is code implementation coverage, *pending fresh focused tests*. It does not certify MySQL concurrent uniqueness or historic record integrity.
+- Only run `StockLedgerPostingGuardTest.php` and syntax checks for modified sources. No migration, production mutation, historical backfill or release.
 
 ### Primary delivery sequencing
 
