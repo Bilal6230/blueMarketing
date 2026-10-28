@@ -1627,6 +1627,7 @@ class VoucherClearanceFlowTest extends TestCase
             $table->integer('create_by')->nullable();
             $table->decimal('amount', 12, 2)->default(0);
             $table->boolean('sold')->default(false);
+            $table->longText('plot_history')->nullable();
             $table->timestamps();
         });
 
