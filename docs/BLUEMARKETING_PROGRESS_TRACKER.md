@@ -52,6 +52,13 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - New PPR replay preflight refuses such mismatches before the existing sync path: ten focused mutation datasets check the prior BookingVoucher and ledger are unchanged, with one source/ledger remaining. Commits `eedc045b` and `c08fbb53`. **New tests pending local run.** This also deliberately refuses legacy inconsistent records pending independent reconciliation.
 - No progress inflation: P0.1 **93%**, P0.2 **75%**, P0.3 **15%**, P0.4 **15%**, P0.5 **10%**. The implementation improves PPR source integrity, but cross-family source typing, Extra Charge redesign, database uniqueness and MySQL concurrency remain unresolved. No production/staging write, migration or historical repair.
 
+### 2026-10-29 PPR replay verified + booking/payment instrument ownership expansion
+
+- User verified prior PPR replay checks **10 tests / 80 assertions PASS**, PHP lint clear and Git tree clean at `f298a5e5`.
+- Follow-on audit confirmed existing BookingVoucher replay checks did not include `booking_id`, payment method, bank ID, instrument number or passing date. A tampered PPR voucher with these fields could be silently overwritten by the existing sync despite financial source identity drift.
+- Added explicit equality checks for the selected booking owner and payment method/instrument fields, rejecting mismatch without write. Extended previous drift data provider with two datasets and added three bank-payment drift datasets, each asserting original voucher and ledger remain unchanged. Commits `69ae9289` and `81fd8285`; **new tests pending local verification**.
+- P0.1 **93%**, P0.2 **75%**, P0.3 **15%**, P0.4 **15%**, P0.5 **10%** pending verified broader milestone. Extra Charge writer remains disabled; no staging/production mutations or migrations.
+
 ## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
 
 **These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
