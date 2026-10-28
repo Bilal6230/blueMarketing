@@ -22,6 +22,16 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - Extra Charge remains disabled; canonical source type, accounts, date and number mapping remain unproven. No new voucher posting enabled. P0.1 **93%**, P0.2 **65% implementation estimate (not newly verified)**, P0.3 **15%**, P0.4 **15%**, P0.5 **10%**; do not infer release readiness.
 - Next: valid Labour source/attendance header-detail-ledger two-leg end-to-end regression; coordinate global JV/stock writers; MySQL concurrency rehearsal and typed Extra Charge design. No live DB writes or migrations.
 
+
+### 2026-10-29 substantial Labour JV source-integrity implementation — awaiting focused local verification
+
+- User locally confirmed previous Labour period guard **4 tests / 16 assertions PASS**, PHP lint clear, working tree clean at `01cca646`.
+- Audited live `LabourController::createVoucher` plus `getSiteVoucherList`: before this batch JV posting only checked attendance count/site/project and posted flag. A request could submit absent attendance, outside-period records, or a forged total while still creating balanced header, details and ledger legs. The voucher listing derives payable amount from `SUM(labour_attendances.amount)` for present attendance in selected period; posting now enforces this source total under lock using integer minor units.
+- Added strict source attendance date window and `status=present` checks and exact source-total equality; source conflict rolls back and returns 422 without creating financial rows. Locks, header, both detail lines, both ledger legs and attendance update remain within the same transaction.
+- New isolated regression: **valid Labour JV end-to-end** checks voucher header total, debit/credit details, two ledger legs, header voucher number/date linkage, attendance status and repeat-submission rollback; four source-conflict datasets cover wrong amount, outside-period date, absent status and already-vouchered row. Code commits `f89dc584`, `5b25bed4`, `a9e61d51`, `b2f69089`.
+- **Verification pending**: run only `test_labour_jv_` focused filter locally. If successful and no regressions, a 10-point P0.2 coverage milestone can be independently assessed and then recorded. **Do not pre-credit 10 points before local PASS.** Existing board remains P0.1 93%, P0.2 65%, P0.3 15%, P0.4 15%, P0.5 10%.
+- Remaining: other JV/Stock writers do not share a single global voucher-number allocator; DB constraint and MySQL concurrent rehearsal pending. Booking Extra Charge remains disabled pending authoritative chart-of-accounts mapping and properly typed source model. No staging/production writes or migrations.
+
 ## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
 
 **These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
