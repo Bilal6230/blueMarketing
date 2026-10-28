@@ -3342,6 +3342,19 @@ class BookingController extends Controller
             ], 422);
         }
 
+        // Do not allow permissive decimal normalization to turn malformed
+        // cancellation adjustments into valid financial postings.
+        $rawAdjustment = trim((string) $request->input('deduction_amount', ''));
+        if ($request->input('cancel_effect') === 'none' && $rawAdjustment !== '' &&
+            !in_array($rawAdjustment, ['0', '0.0', '0.00'], true)) {
+            return response()->json(['message' => 'Cancellation adjustment conflicts with effect.'], 422);
+        }
+        if ($request->input('cancel_effect') !== 'none' &&
+            $rawAdjustment !== '' &&
+            (!preg_match('/^\\d{1,10}(?:\\.\\d{1,2})?$/D', str_replace(',', '', $rawAdjustment)))) {
+            return response()->json(['message' => 'Invalid cancellation adjustment.'], 422);
+        }
+
         try {
             DB::transaction(function () use ($request, $bookingId) {
 
