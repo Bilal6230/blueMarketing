@@ -31,4 +31,17 @@ final class ProjectVoucherAllocator
             ->max('l.voucher_number');
         return max($sourceMax, $ledgerMax) + 1;
     }
+    /**
+     * JV header numbers are shared by general and labour journal writers.
+     * Journal headers remain the canonical JV sequence; ledger numbers that
+     * survived a damaged/missing header must also reserve their number.
+     */
+    public function nextJournal(int $projectId): int
+    {
+        $ledgerNext = $this->next($projectId, 'JV');
+        $headerMax = (int) DB::table('journal_vouchers')
+            ->where('project_id', $projectId)->where('type', 'JV')
+            ->max('voucher_number');
+        return max($ledgerNext, $headerMax + 1);
+    }
 }
