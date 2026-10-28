@@ -19,6 +19,11 @@ class StockLedgerPostingGuardTest extends TestCase
         }
 
         Schema::dropAllTables();
+        Schema::create('projects', function (Blueprint $table) {
+            $table->id();
+        });
+        DB::table('projects')->insert(['id' => 5]);
+
         Schema::create('project_head_subheads', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('project_id');
@@ -89,6 +94,14 @@ class StockLedgerPostingGuardTest extends TestCase
     public function test_empty_stock_posting_may_be_created(): void
     {
         $this->assertFalse($this->verify());
+    }
+
+    public function test_stock_posting_rejects_missing_project_before_financial_writes(): void
+    {
+        DB::table('projects')->where('id', 5)->delete();
+
+        $this->expectException(\DomainException::class);
+        $this->verify();
     }
 
     public function test_fresh_stock_posting_rejects_foreign_expected_account(): void
