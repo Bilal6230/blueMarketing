@@ -719,6 +719,62 @@ class VoucherClearanceFlowTest extends TestCase
         ];
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidLabourMoney')]
+    public function test_labour_voucher_rejects_noncanonical_money_before_posting(string $amount): void
+    {
+        $request = Request::create('/admin/labour/voucher/create', 'POST', [
+            'site_id' => 1,
+            'amount' => $amount,
+            'attendance_ids' => '1',
+            'detail' => '[{"name":"Test","days":1,"rate":100}]',
+        ]);
+        $request->cookies->set('selected_action', (string) $this->project->id);
+        $request->setLaravelSession($this->app['session.store']);
+        $this->app->instance('request', $request);
+        $response = $this->app->make(\App\Http\Controllers\LabourController::class)->createVoucher($request);
+        TestResponse::fromBaseResponse($response)->assertStatus(422)->assertJson(['error_key' => 'invalid_amount']);
+        $this->assertSame(0, DB::table('journal_vouchers')->count());
+        $this->assertSame(0, DB::table('ledgers')->count());
+    }
+
+    public static function invalidLabourMoney(): array
+    {
+        return [
+            'scientific' => ['1e5'],
+            'three decimals' => ['2.999'],
+            'negative' => ['-100'],
+            'overflow' => ['999999999999999999999'],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidLabourDetails')]
+    public function test_labour_voucher_rejects_malformed_detail_before_posting(string $detail): void
+    {
+        $request = Request::create('/admin/labour/voucher/create', 'POST', [
+            'site_id' => 1,
+            'amount' => '100.00',
+            'attendance_ids' => '1',
+            'detail' => $detail,
+        ]);
+        $request->cookies->set('selected_action', (string) $this->project->id);
+        $request->setLaravelSession($this->app['session.store']);
+        $this->app->instance('request', $request);
+        $response = $this->app->make(\App\Http\Controllers\LabourController::class)->createVoucher($request);
+        TestResponse::fromBaseResponse($response)->assertStatus(422)->assertJson(['error_key' => 'invalid_labour_detail']);
+        $this->assertSame(0, DB::table('journal_vouchers')->count());
+        $this->assertSame(0, DB::table('ledgers')->count());
+    }
+
+    public static function invalidLabourDetails(): array
+    {
+        return [
+            'invalid JSON' => ['not-json'],
+            'empty' => ['[]'],
+            'object' => ['{"name":"Test"}'],
+            'missing fields' => ['[{"name":"Test"}]'],
+        ];
+    }
+
     public function test_ambiguous_extra_charge_does_not_create_any_financial_rows(): void
     {
         $beforeSources = DB::table('customer_ledger')->count();
