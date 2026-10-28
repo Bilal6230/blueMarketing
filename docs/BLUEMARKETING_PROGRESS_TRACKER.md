@@ -140,6 +140,13 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - **P0.2 estimated 55% → 65%** reflecting material Labour source/posted voucher consistency plus previously verified PPR and Extra Charge controls; P0.1 remains **93%** until database-level gates. Estimate is not production readiness. No migration or production/staging writes.
 - Remaining: Labour valid end-to-end scenarios, double-submit concurrency on MySQL, source uniqueness constraints and safely rebuilding typed Extra Charge flow.
 
+### 2026-10-29 Labour voucher input integrity
+
+- User verified previous Labour attendance-identity change: **5 focused tests / 20 assertions PASS**; PHP lints clean. The `git status --short` command was interrupted after showing no lines; rerun to confirm tree.
+- **New Labour JV guards**: reject money outside canonical positive decimal precision (scientific notation, negatives, values over 12 whole digits, or more than two decimal places) instead of relying on loose `is_numeric()` and float coercion; validate that decoded labour detail is a nonempty list with each employee having usable name, days and rate, instead of allowing malformed JSON to reach narration/accounting.
+- Added **8 focused synthetic regression datasets** verifying malformed amounts/detail fail with 422 and do not create JV header/ledger rows. Commits `54c8182`, `61ed588`.
+- New tests **await local execution**. P0.1 remains 93%, P0.2 remains 55%; this batch is a safety improvement, not a proven 10% milestone. Other Labour and Booking financial integrity gates remain open. No production/staging finance writes.
+
 ### Primary delivery sequencing
 
 1. **Prevent new data loss** first: finish source-specific mutation guards, database authorization, concurrency and comprehensive regression tests.
