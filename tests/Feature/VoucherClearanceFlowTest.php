@@ -821,6 +821,119 @@ class VoucherClearanceFlowTest extends TestCase
         ];
     }
 
+    public function test_labour_jv_posts_balanced_header_details_and_ledger_then_blocks_replay(): void
+    {
+        $this->createLabourPostingFixtures();
+        $payload = $this->labourPostingPayload();
+        $first = $this->callLabourVoucher($payload);
+        $first->assertOk()->assertJson(['success' => true]);
+
+        $header = DB::table('journal_vouchers')->first();
+        $this->assertNotNull($header);
+        $details = DB::table('journal_voucher_details')->where('journal_voucher_id', $header->id)->get();
+        $legs = DB::table('ledgers')->where('type', 'JV')->where('type_id', $header->id)->get();
+        $this->assertCount(2, $details);
+        $this->assertCount(2, $legs);
+        $this->assertSame(250000, (int) round((float) $header->total_debit * 100));
+        $this->assertSame(250000, (int) round((float) $header->total_credit * 100));
+        $this->assertSame(250000, (int) round($details->sum('debit') * 100));
+        $this->assertSame(250000, (int) round($details->sum('credit') * 100));
+        $this->assertSame(250000, (int) round($legs->sum('amount_in') * 100));
+        $this->assertSame(250000, (int) round($legs->sum('amount_out') * 100));
+        foreach ($legs as $leg) {
+            $this->assertSame((int) $header->voucher_number, (int) $leg->voucher_number);
+            $this->assertSame((string) $header->date, (string) $leg->date);
+            $this->assertContains((int) $leg->project_head_subheads_id, $details->pluck('account_id')->map(fn ($id) => (int) $id)->all());
+        }
+        $this->assertSame('created', (string) DB::table('labour_attendances')->value('voucher_status'));
+
+        $replay = $this->callLabourVoucher($payload);
+        $replay->assertStatus(500)->assertJson(['success' => false]);
+        $this->assertSame(1, DB::table('journal_vouchers')->count());
+        $this->assertSame(2, DB::table('journal_voucher_details')->count());
+        $this->assertSame(2, DB::table('ledgers')->count());
+        $this->assertSame(0, DB::transactionLevel());
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('labourSourceConflicts')]
+    public function test_labour_jv_rejects_source_conflicts_without_partial_posting(array $changes): void
+    {
+        $this->createLabourPostingFixtures();
+        DB::table('labour_attendances')->where('id', 1)->update($changes);
+        $response = $this->callLabourVoucher($this->labourPostingPayload());
+        $response->assertStatus(500)->assertJson(['success' => false]);
+        $this->assertSame(0, DB::table('journal_vouchers')->count());
+        $this->assertSame(0, DB::table('journal_voucher_details')->count());
+        $this->assertSame(0, DB::table('ledgers')->count());
+        $this->assertSame(0, DB::transactionLevel());
+    }
+
+    public static function labourSourceConflicts(): array
+    {
+        return [
+            'wrong amount' => [['amount' => '2400.00']],
+            'wrong date' => [['date' => '2026-10-01']],
+            'not present' => [['status' => 'absent']],
+            'already created' => [['voucher_status' => 'created']],
+        ];
+    }
+
+    private function createLabourPostingFixtures(): void
+    {
+        Schema::create('sites', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('project_id');
+            $table->string('site_name');
+            $table->unsignedBigInteger('subhead_accounting_id')->nullable();
+            $table->timestamps();
+        });
+        Schema::create('labour_attendances', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('project_id');
+            $table->unsignedBigInteger('site_id');
+            $table->date('date');
+            $table->string('status');
+            $table->decimal('amount', 12, 2);
+            $table->string('voucher_status')->nullable();
+            $table->timestamps();
+        });
+        DB::table('head_accountings')->insert([
+            'name' => 'Labour', 'acct_type' => 0, 'is_active' => 1, 'create_by' => $this->user->id,
+        ]);
+        DB::table('subhead_accountings')->insert([
+            'name' => 'Labour Party', 'is_active' => 1, 'create_by' => $this->user->id,
+        ]);
+        DB::table('sites')->insert([
+            'id' => 1, 'project_id' => $this->project->id, 'site_name' => 'Fixture Site',
+            'subhead_accounting_id' => $this->bookingReceiptAccount->id,
+        ]);
+        DB::table('labour_attendances')->insert([
+            'id' => 1, 'project_id' => $this->project->id, 'site_id' => 1,
+            'date' => '2026-10-28', 'status' => 'present', 'amount' => '2500.00',
+            'voucher_status' => 'pending',
+        ]);
+    }
+
+    private function labourPostingPayload(): array
+    {
+        return [
+            'site_id' => 1, 'attendance_ids' => '1', 'amount' => '2500.00',
+            'detail' => '[{"name":"Fixture Labour","days":1,"rate":2500}]',
+            'start_date' => '2026-10-28', 'end_date' => '2026-10-29',
+        ];
+    }
+
+    private function callLabourVoucher(array $payload): TestResponse
+    {
+        $request = Request::create('/admin/labour/voucher/create', 'POST', $payload);
+        $request->cookies->set('selected_action', (string) $this->project->id);
+        $request->setLaravelSession($this->app['session.store']);
+        $this->app->instance('request', $request);
+        return TestResponse::fromBaseResponse(
+            app(\App\Http\Controllers\LabourController::class)->createVoucher($request)
+        );
+    }
+
     #[\PHPUnit\Framework\Attributes\DataProvider('extraChargePaymentTypes')]
     public function test_ambiguous_extra_charge_does_not_create_any_financial_rows(int $paymentType): void
     {
