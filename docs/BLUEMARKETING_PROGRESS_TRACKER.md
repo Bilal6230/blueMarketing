@@ -11,7 +11,7 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 
 | Rank | Primary task | Estimated progress | Implemented evidence | Remaining acceptance gate |
 | --- | --- | ---: | --- | --- |
-| P0.1 | **Ledger protection:** audit and fix every live INSERT/UPDATE/DELETE/deactivate/overwrite, project scope and identity guard | **82%** | Mobile approval immutability and project scope; JV/CV destructive gates; Stock/Mobile Stock duplicate, orphan, amount/date/project guards; CR/CP editor prevents noncash JV/SV/BO/BR/PPR overwrite and rejects invalid linked sources | Every producer/mutator classified and tested, protected ledger rows cannot silently disappear |
+| P0.1 | **Ledger protection:** audit and fix every live INSERT/UPDATE/DELETE/deactivate/overwrite, project scope and identity guard | **87%** | Mobile approval immutability and project scope; JV/CV destructive gates; Stock/Mobile Stock duplicate, orphan, amount/date/project guards; CR/CP editor prevents noncash JV/SV/BO/BR/PPR overwrite and rejects invalid linked sources | Every producer/mutator classified and tested, protected ledger rows cannot silently disappear |
 | P0.2 | **Voucher integrity:** propagate correct source voucher number/date for JV, CV, Stock, Labour, Booking, CR, CP, BR, PPR | **38%** | Core JV header number, Labour JV number/date, Stock existing-posting date and amount checks | Every source creates ledger rows with verified source number/date, regression tests for all families, preexisting mismatch inventory |
 | P0.3 | **Foreign-key / typed source identity:** source-aware, project-consistent relational integrity | **15%** | Existing physical `customer_ledger_id` and `charge_type_id` FKs confirmed on restored clone; typed source attribution design exists | Per-source FK/typed links, uniqueness & concurrency checks, vetted migration rehearsal; do **not** force `type_id` into one FK |
 | P0.4 | **Soft-delete / append-only reversal:** protect historical business records and posted financial events | **15%** | JV/CV destructive write gates and CR/CP/PPR deletion tests exist | Cover all applicable business tables and side effects; financial reversals/append-only protection; MySQL schema review |
@@ -77,6 +77,14 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - Added 2 new focused SQLite tests for foreign and missing expected accounts. Commits `54860c8`, `86061a3`, `8bf73dd`, `254f7c0`.
 - **Coverage estimate:** P0.1 **76% → 82%**, P0.2 stays **38%**. This is code implementation coverage, *pending fresh focused tests*. It does not certify MySQL concurrent uniqueness or historic record integrity.
 - Only run `StockLedgerPostingGuardTest.php` and syntax checks for modified sources. No migration, production mutation, historical backfill or release.
+
+### P0.1 stock first-posting concurrency control — 2026-10-28
+
+- **Verified previous stock milestone:** user ran `StockLedgerPostingGuardTest`: **20 passed / 21 assertions**, syntax checks passed for Web/Mobile controllers and guard, Git working tree clean.
+- **Implemented shared lock across all 3 stock writers**: `StockLedgerPostingGuard::alreadyPosted` now acquires a `projects` row `FOR UPDATE` for the selected project *before* checking ledger rows. Because Web Stock Entry, Web Stock Bill and Mobile Stock Entry invoke this guard inside the same transaction that inserts both legs, competing stock postings in that project serialize even when no `ledgers` record exists yet. This closes the first-posting gap not covered by `lockForUpdate` on empty `ledgers` results.
+- Added fail-closed project existence check and a new SQLite regression test; fixture includes a synthetic `projects` row. Commits `6b900ae`, `2a0b9aa`. SQLite tests verify fail-closed behavior, **not** real MySQL concurrent scheduling; staging concurrency rehearsal and database constraints remain to be verified.
+- **P0.1 coverage estimate 82% → 87%**, contingent on targeted test passing; P0.2 remains **38%**. Not a release readiness claim.
+- **Future check**: independent MySQL staging concurrent requests, other raw SQL writers, typed source linkage and per-project voucher uniqueness. No historical repair, production writes or migration.
 
 ### Primary delivery sequencing
 
