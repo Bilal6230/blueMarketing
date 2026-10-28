@@ -39,6 +39,12 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - Next Booking PPR posting writer reviewed: amount was compared through permissive `normalizeDecimalString`, where invalid characters could be discarded, and the source's business date had no exact ISO calendar-date check before new financial records. New pre-write guard rejects negative/zero/scientific/excess precision/invalid date/empty reference; seven focused regression datasets assert no source, ledger or BookingVoucher write. Commits `ad67b895`, `0487625a` and tracker commit. **PPR tests pending local verification**, no percentage claimed for this unverified patch.
 - Extra Charge remains disabled, source typing and legitimate double-entry mapping outstanding. No production/staging writes, migration or historical repair.
 
+### 2026-10-29 PPR regression correction and first-posting lock
+
+- User ran PPR invalid-input regressions: six datasets PASS and the empty-reference dataset raised `ValidationException` from Laravel's required validation before entering controller try/catch. This is a test harness expectation mismatch, **not a financial write**. Updated test to assert the exception and no financial rows (`84e383e8`). Local rerun pending.
+- Inspected PPR source creation and number allocation: existing source/ledger `lockForUpdate` cannot serialize competing first-time requests where no row exists. Added selected-project row lock inside PPR transaction before its source lookup and voucher allocation (`75b917bf`). This serializes cooperating PPR requests on one project row; it does not prove global numbering safety across unrelated writers or MySQL behavior.
+- Added fail-closed missing-project regression checking no customer source, ledger or booking voucher rows (`3ed14dee`). New tests pending. No percentage change: P0.1 **93%**, P0.2 **75%**, P0.3 **15%**, P0.4 **15%**, P0.5 **10%** until independently verified; no DB write, migration or historical repair.
+
 ## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
 
 **These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
