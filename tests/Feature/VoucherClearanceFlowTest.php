@@ -628,6 +628,35 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertNotNull(collect($response->json('data'))->firstWhere('id', $includedOne->id)['ledger_id']);
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidPprFinancialInputs')]
+    public function test_ppr_rejects_invalid_financial_inputs_without_posting(array $override): void
+    {
+        $before = [
+            'customer_ledger' => DB::table('customer_ledger')->count(),
+            'ledgers' => DB::table('ledgers')->count(),
+            'booking_vouchers' => DB::table('booking_vouchers')->count(),
+        ];
+        $this->callDeposit($this->depositPayload(1, $override))
+            ->assertStatus(302)->assertSessionHasErrors('msg');
+        foreach ($before as $table => $count) {
+            $this->assertSame($count, DB::table($table)->count());
+        }
+        $this->assertSame(0, DB::transactionLevel());
+    }
+
+    public static function invalidPprFinancialInputs(): array
+    {
+        return [
+            'negative' => [['amount' => '-100']],
+            'zero' => [['amount' => '0']],
+            'scientific' => [['amount' => '1e3']],
+            'fractional precision' => [['amount' => '100.001']],
+            'invalid date' => [['date' => '2026-02-30']],
+            'relative date' => [['date' => 'tomorrow']],
+            'empty reference' => [['reference' => '   ']],
+        ];
+    }
+
     public function test_duplicate_ppr_same_source_key_with_different_transaction_number_is_rejected(): void
     {
         $firstResponse = $this->callDeposit($this->depositPayload(2));
