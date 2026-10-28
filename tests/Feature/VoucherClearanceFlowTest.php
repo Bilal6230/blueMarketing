@@ -58,6 +58,39 @@ class VoucherClearanceFlowTest extends TestCase
         $this->actingAs($this->user);
     }
 
+    public function test_paid_cancellation_rejects_existing_ledger_marker_before_booking_or_plot_mutation(): void
+    {
+        $booking = Booking::where('project_id', $this->project->id)->firstOrFail();
+        Ledger::create([
+            'type' => 'SV',
+            'type_id' => 10,
+            'voucher_number' => 10,
+            'project_head_subheads_id' => $this->bookingReceiptAccount->id,
+            'reference' => (string) $booking->id,
+            'amount_in' => 0,
+            'amount_out' => 100,
+            'date' => '2026-05-17',
+            'detail' => 'CANCEL#' . $booking->id . ' | Original cancellation',
+            'is_active' => 1,
+        ]);
+        $bookingBefore = $booking->fresh()->getAttributes();
+        $plotBefore = $this->plot->fresh()->getAttributes();
+        $request = Request::create('/admin/booking/cancel', 'POST', [
+            'booking_id' => $booking->id,
+            'action_type' => 'plot_purchase',
+            'cancel_effect' => 'none',
+        ]);
+        $request->cookies->set('selected_action', (string) $this->project->id);
+        $request->setLaravelSession($this->app['session.store']);
+        $this->app->instance('request', $request);
+        TestResponse::fromBaseResponse(app(BookingController::class)->cancel($request))
+            ->assertStatus(409)->assertJson(['error' => 'cancellation_requires_financial_reversal']);
+        $this->assertSame($bookingBefore, $booking->fresh()->getAttributes());
+        $this->assertSame($plotBefore, $this->plot->fresh()->getAttributes());
+        $this->assertSame(1, DB::table('ledgers')->count());
+        $this->assertSame(0, DB::table('customer_ledger')->count());
+    }
+
     public function test_no_payment_cancellation_without_financial_history_posts_no_reversal(): void
     {
         Schema::table('bookings', function (Blueprint $table) {
