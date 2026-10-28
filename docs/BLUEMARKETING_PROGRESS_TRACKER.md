@@ -82,6 +82,13 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - Cancellation business logic remains guarded: no-payment booking with financial source must return conflict; real unpaid cancellation must not generate reversal postings; foreign project must be rejected. Run focused cancellation and booking deletion tests next. P0.1 **93%**, P0.2 **75%**, P0.3 **15%**, P0.4 **25%**, P0.5 **10%** (planning coverage, not production signoff).
 - No production/staging DB writes, destructive repairs or migrations.
 
+### 2026-10-29 verified no-payment cancellation + paid reversal orphan guard
+
+- User verified cancellation and deletion **8 tests / 43 assertions PASS**, both PHP lint checks clear and Git tree clean at `c4105c12`. Three cancellation tests now demonstrate zero reversal posting for genuine unpaid cancellation, reject paid-history no-payment cancellation, and reject cross-project booking; existing four posted/foreign/stranded deletion guards and unposted deletion are also verified.
+- This independently verified no-payment cancellation/reversal boundary supports estimated **P0.4 25% → 35%**, in addition to earlier independently verified deletion milestone. This is NOT proof that paid cancellation refund/reversal accounting is correct.
+- Audited paid cancellation for another serious partial-state path: if a `CANCEL#<booking-id>` ledger posting already existed while booking was not marked canceled, code previously updated booking and plot before returning early on the duplicate-marker check. New preflight detects this condition before state mutations and returns 409; regression asserts booking, plot, ledger and customer source unchanged. Commits `d3de5312`, `f6b14c91`. New test pending local verification.
+- Board: P0.1 **93%**, P0.2 **75%**, P0.3 **15%**, P0.4 **35%**, P0.5 **10%**. Full paid reversal authorization/balance, global numbering and migration-free reconciliation are remaining priorities. No production or staging DB writes.
+
 ## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
 
 **These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
