@@ -3348,7 +3348,38 @@ class BookingController extends Controller
                 $userId = Auth::id();
 
                 // Lock booking row to avoid double cancellation posting
-                $booking = Booking::where('id', $bookingId)->lockForUpdate()->firstOrFail();
+                $projectId = (int) getSelectedTown();
+                $booking = Booking::where('id', $bookingId)
+                    ->where('project_id', $projectId)
+                    ->lockForUpdate()->firstOrFail();
+
+                // No-payment cancellation must not silently hide an existing
+                // financial source; paid bookings require the reversal workflow.
+                if ($request->input('action_type') === 'payment_not_received') {
+                    $hasCustomerSource = CustomerLedger::query()
+                        ->where('project_id', $projectId)
+                        ->where('customer_id', $booking->customer_id)
+                        ->where('plot_id', $booking->plot_id)
+                        ->exists();
+                    $hasBookingVoucher = BookingVoucher::query()
+                        ->where(function ($query) use ($booking, $projectId) {
+                            $query->where('booking_id', $booking->id)
+                                ->orWhere(function ($source) use ($booking, $projectId) {
+                                    $source->where('project_id', $projectId)
+                                        ->where('customer_id', $booking->customer_id)
+                                        ->where('plot_id', $booking->plot_id);
+                                });
+                        })->exists();
+                    $hasLedger = Ledger::query()
+                        ->whereHas('projectHeadSubhead', function ($query) use ($booking, $projectId) {
+                            $query->where('project_id', $projectId)
+                                ->where('customer_id', $booking->customer_id)
+                                ->where('plot_id', $booking->plot_id);
+                        })->exists();
+                    if ($hasCustomerSource || $hasBookingVoucher || $hasLedger) {
+                        throw new \DomainException('CANCEL_NO_PAYMENT_HAS_FINANCIAL_HISTORY');
+                    }
+                }
 
                 // If already canceled, don’t repost ledgers (idempotency)
                 if ((int) $booking->cancel_status === 1) {
@@ -3403,6 +3434,12 @@ class BookingController extends Controller
                  * If payment was not received, we only cancel plot/booking and stop here.
                  * (No financial reversals)
                  */
+                // A genuine unposted/no-payment cancellation ends after booking
+                // and plot state changes; it must never emit a refund or SV.
+                if ($request->input('action_type') === 'payment_not_received') {
+                    return;
+                }
+
                 // ========= Accounting =========
 
                 // Sale amount from DB (trusted)
