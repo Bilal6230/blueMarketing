@@ -2500,105 +2500,11 @@ class BookingController extends Controller
                     break;
 
                 case 'extra_charge':
-                    $projectId = getSelectedTown();
-                    // dd($request->input());
-                    // Create entry in customer ledger
-                    // dd($request->input());
-                    $payment_type = $request->input('payment_type');
-                    if ($payment_type == 1) {
-                        $t_number = $bank_id = null;
-                    } else {
-                        $t_number = $request->input('t_number');
-                        $bank_id = $request->input('bank_id');
-                    }
-                    $plotName = Plot::where('id', $request->input('plot_id'))->value('name');
-                    $customerLedger = CustomerLedger::create([
-                        'customer_id' => $customer_id,
-                        'transaction_type' => 'null',
-                        'type_id' => get_new_typeID('null'),
-                        'reference' => $request->input('reference'),
-                        'project_id' => $projectId,
-                        'plot_id' => $request->input('plot_id'),
-                        'amount_in' => 0,
-                        'amount_out' => str_replace(',', '', $request->input('amount')),
-                        'description' => $request->input('detail'),
-                        'date' => $request->input('date'), // Assuming booking date is the transaction date
-                        'payment_type' => $request->input('payment_type'),
-                        't_number' => $t_number,
-                        'bank_id' => $bank_id,
-                        'is_active' => 1,
-                        'is_approve' => 0,
-                        'passing_date' => $request->input('passing_date'),
-                    ]);
-
-
-                    // Ensure credit account exists
-                    $extraChargeHeadAccountId = HeadAccounting::where('name', 'Extra Charges')->value('id');
-                    $extraChargeSubHeadAccountId = SubheadAccounting::where('name', 'Extra Charges')->value('id');
-                    $creditAccountId = ProjectHeadSubhead::where('project_id', $projectId)
-                        ->where('head_accounting_id', $extraChargeHeadAccountId)
-                        ->where('subhead_accounting_id', $extraChargeSubHeadAccountId)
-                        ->value('id');
-                    // dd($creditAccountId);
-                    if (!$creditAccountId) {
-                        throw new \Exception('Credit account ID not found.');
-                    }
-
-                    $plotName = Plot::where('id', $request->input('plot_id'))->value('name');
-
-                    $lastId = getLastLedgerIdByType("CR");
-
-                    $voucherNumber = getVocuherNumber('CP');
-
-                    Ledger::create([
-                        'charge_type_id' => $request->input('charge_type_id'),
-                        'customer_ledger_id' => $customerLedger->id,
-                        'voucher' => $voucherNumber,
-                        'type' => 'CR',
-                        'type_id' => $lastId + 1,
-                        'project_head_subheads_id' => $creditAccountId,
-                        'reference' => $request->input('voucher'),
-                        'amount_in' => str_replace(',', '', $request->input('amount')),
-                        'amount_out' => 0.00,
-                        'is_active' => 1,
-                        'date' => $request->input('date'), // Assuming booking date is the transaction date
-                        'detail' => '(Cash slip#' . $request->input('reference') . ') ' . $request->input('detail'),
-                        'update_by' => Auth::user()->id,
-                        'create_by' => Auth::user()->id,
-                        'status' => 0,
-                    ]);
-                    $debitAccountId = ProjectHeadSubhead::where('head_accounting_id', 16)
-                        ->where('project_id', $projectId)
-                        ->where('plot_id', $request->input('plot_id'))
-                        ->where('customer_id', $customer_id)
-                        ->value('id');
-
-                    if (!$debitAccountId) {
-                        throw new \Exception('Debit account ID not found.');
-                    }
-
-                    $voucherNumber = getVocuherNumber('CP');
-                    Ledger::create([
-                        'charge_type_id' => $request->input('charge_type_id'),
-                        'customer_ledger_id' => $customerLedger->id,
-                        'type' => 'CP',
-                        'voucher' => $voucherNumber,
-                        'type_id' => $lastId + 1,
-                        'project_head_subheads_id' => $debitAccountId,
-                        'reference' => $request->input('voucher'),
-                        'amount_in' => 0.00,
-                        'amount_out' => str_replace(',', '', $request->input('amount')),
-                        'is_active' => 1,
-                        'date' => $request->input('date'), // Assuming booking date is the transaction date
-                        'detail' => '(Cash slip#' . $request->input('reference') . ') ' . $request->input('detail'),
-                        'update_by' => Auth::user()->id,
-                        'create_by' => Auth::user()->id,
-                        'status' => 0,
-                    ]);
-
-
-                    Alert::success('Notification', 'Data <b></b> Save successfully ')->toToast()->toHtml();
-
+                    // Legacy flow combined a source typed as 'null' with CR/CP
+                    // ledger legs and mismatched voucher identifiers. Posting it
+                    // would make finance source ownership irreconcilable.
+                    // Re-enable only with a typed balanced posting workflow.
+                    throw new \DomainException('EXTRA_CHARGE_FINANCIAL_POSTING_NOT_SAFE');
 
                     break;
             }
