@@ -549,24 +549,8 @@ class JournalVoucherController extends Controller
 
     public function destroy($id)
     {
-        // Temporary Phase 1K safety gate: posted/legacy identity is ambiguous.
-        // Fail closed until append-only financial reversal and typed source mapping exist.
+        // Immutable posted accounting history: use a separately audited reversal.
         abort(409, 'This voucher action is temporarily disabled to protect accounting history.');
-
-        DB::beginTransaction();
-        try {
-            // Delete Journal Voucher and related details
-            $journalVoucher = JournalVoucher::findOrFail($id);
-            JournalVoucherDetail::where('journal_voucher_id', $id)->delete();
-            Ledger::where('type_id', $id)->whereIn('type', ['JV', 'JV'])->delete();
-            $journalVoucher->delete();
-
-            DB::commit();
-            return redirect()->route('journal.voucher.index')->with('success', 'Journal Voucher deleted successfully.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()->withErrors(['error' => $e->getMessage()]);
-        }
     }
 
     public function edit($id)
@@ -591,93 +575,11 @@ class JournalVoucherController extends Controller
 
     public function update(Request $request, $id)
     {
-        // Temporary Phase 1K safety gate: posted/legacy identity is ambiguous.
-        // Fail closed until append-only financial reversal and typed source mapping exist.
+        // Legacy JV type_id values are polymorphic and cannot be safely
+        // overwritten or deleted until source ownership is proven.
         abort(409, 'This voucher action is temporarily disabled to protect accounting history.');
-
-        $request->validate([
-            'voucher_number' => 'required|string',
-            'reference' => 'nullable|string',
-            'date' => 'required|date',
-            'description' => 'required|string',
-            'accounts' => 'required|array|min:1',
-            'sub_accounts' => 'required|array|min:1',
-            'line_description' => 'nullable|array',
-            'debit' => 'required|array|min:1',
-            'credit' => 'required|array|min:1',
-        ]);
-
-        $totalDebit = array_sum($request->debit);
-        $totalCredit = array_sum($request->credit);
-
-        if ($totalDebit !== $totalCredit) {
-            return redirect()->back()->withErrors(['Total debit and credit must be equal.']);
-        }
-
-        DB::beginTransaction();
-        try {
-            // Update Journal Voucher Record
-            $journalVoucher = JournalVoucher::findOrFail($id);
-            $journalVoucher->update([
-                'type' => 'JV',
-                'reference' => $request->reference,
-                'date' => $request->date,
-                'description' => $request->description,
-                'total_debit' => $totalDebit,
-                'total_credit' => $totalCredit,
-                'updated_by' => auth()->id(),
-            ]);
-
-            // Delete existing details and ledger entries
-            $journalVoucherDetails = JournalVoucherDetail::withTrashed()->where('journal_voucher_id', $id)->get();
-
-            $detailIds = $journalVoucherDetails->pluck('id');
-
-            Ledger::where('type', 'JV')
-                ->where(function ($q) use ($id, $detailIds) {
-                    $q->where('type_id', $id)
-                    ->orWhereIn('type_id', $detailIds);
-                })
-                ->delete();
-
-            $journalVoucherDetails->each->delete();
-
-
-            // Add updated Ledger Entries
-            foreach ($request->accounts as $index => $accountId) {
-                $JvDetails = JournalVoucherDetail::create([
-                    'journal_voucher_id' => $journalVoucher->id,
-                    'account_id' => $request->sub_accounts[$index],
-                    'debit' => $request->debit[$index] ?? 0,
-                    'credit' => $request->credit[$index] ?? 0,
-                    'description' => $request->line_description[$index] ?? '',
-                    'created_by' => auth()->id(),
-                ]);
-
-                $voucherNumber = getVocuherNumber(($request->debit[$index] ?? 0) > 0 ? 'JV' : 'JV');
-                $ledgerData = Ledger::create([
-                    'voucher_number' => $voucherNumber,
-                    'type' => ($request->debit[$index] ?? 0) > 0 ? 'JV' : 'JV',
-                    'type_id' => $id,
-                    'project_head_subheads_id' => $request->sub_accounts[$index],
-                    'reference' => $request->reference,
-                    'amount_in' => $request->debit[$index] ?? 0,
-                    'amount_out' => $request->credit[$index] ?? 0,
-                    'detail' => $request->line_description[$index] ?? '',
-                    'create_by' => auth()->id(),
-                    'is_active' => true,
-                    'status' => '0',
-                    'date' => $request->date,
-                ]);
-            }
-
-            DB::commit();
-            return redirect()->route('journal.voucher.index')->with('success', 'Journal Voucher updated successfully.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()->withErrors(['error' => $e->getMessage()]);
-        }
     }
+
 
     public function print($id)
     {
