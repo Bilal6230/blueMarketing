@@ -186,14 +186,10 @@
                                                 <div class="row">
                                                     <div class="col-sm-3">
                                                         <div class="input-group">
-                                                            <label class="fbox">Payment Type</label>
+                                                            <label class="fbox">Payment Status</label>
                                                             <div class="input-group">
-                                                                <select class="form-control select2" name="payment_type"
-                                                                    id="payment_type">
-                                                                    <option value="1">Cash</option>
-                                                                    <option value="2">Online</option>
-                                                                    <option value="3">Check</option>
-                                                                </select>
+                                                                <input type="hidden" name="payment_type" value="0">
+                                                                <input class="form-control" value="Charge now - payment can be received later" readonly>
                                                                 @error('payment_type')
                                                                     <div class="invalid-feedback">{{ $message }}</div>
                                                                 @enderror
