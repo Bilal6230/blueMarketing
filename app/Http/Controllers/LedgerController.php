@@ -1051,7 +1051,7 @@ class LedgerController extends Controller
                 'update_by' => Auth::id(),
             ]);
 
-            {
+            if ($source) {
                 $customerLedger = $source;
                 {
                     $customerLedgerPayload = [
