@@ -902,6 +902,43 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame(1, Ledger::where('type', 'BR')->count());
     }
 
+    public function test_finance_clearance_rejects_foreign_project_fallback_account(): void
+    {
+        $pending = $this->createPendingReceipt('CR', 2, $this->project->id, 1500);
+
+        $foreignAccount = ProjectHeadSubhead::create([
+            'project_id' => $this->otherProject->id,
+            'head_accounting_id' => $this->cashVoucherAccount->head_accounting_id,
+            'subhead_accounting_id' => $this->cashVoucherAccount->subhead_accounting_id,
+        ]);
+
+        Ledger::where('customer_ledger_id', $pending->id)
+            ->update(['project_head_subheads_id' => $foreignAccount->id]);
+
+        $this->callUpdatePendingBankPaymentStatus($pending->id, [
+            'passing_status' => 1,
+            'note' => 'Fallback project collision',
+            'bank_post_at' => '2026-05-20',
+        ])->assertStatus(422)->assertJson(['error_key' => 'pending_payment_invalid_state']);
+
+        $this->assertSame(0, (int) $pending->fresh()->passing_status);
+        $this->assertDatabaseMissing('ledgers', ['type' => 'BR']);
+    }
+
+    public function test_finance_clearance_accepts_valid_same_project_fallback_account(): void
+    {
+        $pending = $this->createPendingReceipt('CR', 2, $this->project->id, 1500);
+
+        $this->callUpdatePendingBankPaymentStatus($pending->id, [
+            'passing_status' => 1,
+            'note' => 'Same project fallback',
+            'bank_post_at' => '2026-05-20',
+        ])->assertOk();
+
+        $this->assertSame($this->cashVoucherAccount->id,
+            (int) Ledger::where('type', 'BR')->firstOrFail()->project_head_subheads_id);
+    }
+
     public static function pendingReceiptPaymentTypesProvider(): array
     {
         return [
