@@ -33,6 +33,15 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - P0.1 remains estimated **40%**, P0.2 remains **30%** until these tests pass and other writer families receive coverage. No percentage increase for unverified implementation.
 - No MySQL database, source attribution, migration, recovery or production deployment operation.
 
+### P0.1 one-turn implementation — stranded Stock source safeguard
+
+- Implementation: `StockLedgerPostingGuard::alreadyPosted` now checks `customer_ledger` even when **zero** stock ledger legs exist, catching duplicate source rows and cross-project, inactive or business-date-mismatched stranded source records before allowing new postings.
+- Scope: Web Stock entries/bills and Mobile Stock share this guard; it does not repair any older incomplete records.
+- GitHub implementation and five regression cases: commits `5814329`, `3110572`.
+- Baseline before these changes: user verified **430 Feature tests / 1,873 assertions**, working tree clean.
+- Post-change focused and full test execution **pending local verification**. Do not mark full P0.1 complete on the basis of this limited guard.
+- Strictly no MySQL writes, migrations, production deployment, or historical backfill.
+
 ### Latest verified testing checkpoint
 
 - User's focused `StockLedgerPostingGuardTest`: **11 passed / 11 assertions**, six conflict datasets executed.
