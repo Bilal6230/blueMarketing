@@ -220,17 +220,8 @@ class LedgerController extends Controller
                                 ->orderBy('id')
                                 ->first();
 
-                            $resolvedVoucherNumber = $voucherNumber;
-                            while (
-                                Ledger::where('type', 'CP')
-                                    ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
-                                    ->where('is_active', 1)
-                                    ->where('voucher_number', $resolvedVoucherNumber)
-                                    ->lockForUpdate()
-                                    ->exists()
-                            ) {
-                                $resolvedVoucherNumber++;
-                            }
+                            $resolvedVoucherNumber = app(\App\Services\Finance\ProjectVoucherAllocator::class)
+                                ->next((int) $selectedProjectId, 'CP');
 
                             $cashOutClearanceLedger = Ledger::create([
                                 'customer_ledger_id' => $pendingCustomerLedger->id,
@@ -346,17 +337,8 @@ class LedgerController extends Controller
                     }
                 }
 
-                $resolvedVoucherNumber = $voucherNumber;
-                while (
-                    Ledger::where('type', $effectiveVoucherType)
-                        ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
-                        ->where('is_active', 1)
-                        ->where('voucher_number', $resolvedVoucherNumber)
-                        ->lockForUpdate()
-                        ->exists()
-                ) {
-                    $resolvedVoucherNumber++;
-                }
+                $resolvedVoucherNumber = app(\App\Services\Finance\ProjectVoucherAllocator::class)
+                    ->next((int) $selectedProjectId, $effectiveVoucherType);
 
                 $lastId = getLastLedgerIdByType($effectiveVoucherType);
                 $detail = $this->buildCashVoucherDetail(
