@@ -2598,11 +2598,18 @@ class BookingController extends Controller
                             ->lockForUpdate()->exists()) {
                             throw new \DomainException('EXTRA_CHARGE_SOURCE_ALREADY_POSTED');
                         }
-                        $voucherNumber = ((int) Ledger::query()->where('type', 'EC')
+                        // Include stranded EC source numbers as well as posted legs;
+                        // never recycle a number whose source exists without legs.
+                        $maxLedgerVoucherNumber = (int) Ledger::query()->where('type', 'EC')
                             ->join('project_head_subheads as ec_accounts',
                                 'ec_accounts.id', '=', 'ledgers.project_head_subheads_id')
                             ->where('ec_accounts.project_id', $projectId)
-                            ->max('ledgers.voucher_number')) + 1;
+                            ->max('ledgers.voucher_number');
+                        $maxSourceVoucherNumber = (int) CustomerLedger::query()
+                            ->where('project_id', $projectId)
+                            ->where('transaction_type', 'EC')
+                            ->max('type_id');
+                        $voucherNumber = max($maxLedgerVoucherNumber, $maxSourceVoucherNumber) + 1;
                         $source = CustomerLedger::create([
                             'project_id' => $projectId, 'customer_id' => $customer_id,
                             'plot_id' => $plotId, 'transaction_type' => 'EC',
