@@ -30,6 +30,29 @@ class StockLedgerPostingGuard
             ->get();
 
         if ($existing->isEmpty()) {
+            // A failed earlier posting may have left a source customer-ledger
+            // row behind. Validate it before permitting a fresh ledger posting.
+            // Checking without a project filter also exposes cross-project
+            // reference collisions rather than hiding them.
+            $sources = DB::table('customer_ledger')
+                ->where('transaction_type', 'JV')
+                ->where('reference', $reference)
+                ->lockForUpdate()
+                ->get();
+
+            if ($sources->count() > 1) {
+                throw new \DomainException('STOCK_CUSTOMER_LEDGER_DUPLICATE_SOURCE');
+            }
+
+            if ($sources->count() === 1) {
+                $source = $sources->first();
+                if ((int) $source->project_id !== $projectId ||
+                    (int) $source->is_active !== 1 ||
+                    substr((string) $source->date, 0, 10) !== substr($businessDate, 0, 10)) {
+                    throw new \DomainException('STOCK_CUSTOMER_LEDGER_SOURCE_CONFLICT');
+                }
+            }
+
             return false;
         }
 
