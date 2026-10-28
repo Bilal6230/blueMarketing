@@ -5,6 +5,15 @@ Branch: `upgrade/laravel-framework`
 
 This tracker combines the earlier project-progress dashboard and the newer database `ledgers` integrity investigation. Progress figures are **planning estimates**, not verified release readiness. Never increment a number merely because a code file was inspected.
 
+
+### 2026-10-29 Labour JV lock / Booking Extra Charge safety matrix — pending local verification
+
+- Labour JV number allocation moved inside the existing transaction, after a selected-project `projects` row lock. Previously `getVocuherNumber('JV')` ran before the transaction and before attendance row locks, permitting an unprotected first-time allocation window. Header and both ledger legs still use the same persisted number/date; attendance state stays in the transaction. The row lock serializes **cooperating Labour writers in the same project only**, not stock/other JV allocators, and cannot substitute for a DB unique constraint or MySQL concurrency test.
+- Expanded the disabled Booking Extra Charge regression across cash/online/cheque payments and checks five financial tables, including JV header/detail and booking voucher. The ambiguous legacy writer stays blocked; no guessed accounting mapping, type identifier, source table or ledger entries were introduced.
+- Commits: `7363b7ae` (Labour project lock), `01539234` (Extra Charge regression).
+- **Pending user local PHP lint and focused tests**. Do not claim verified tests or increment percentages from this batch; P0.1 **93%**, P0.2 **65% estimated in current board**, P0.3 **15%**, P0.4 **15%**, P0.5 **10%**. The earlier handoff's P0.2 55% was a confirmed checkpoint, whereas 65% includes subsequent unverified Labour work.
+- Remaining: typed auditable Extra Charge source/account mapping; successful Labour JV header/detail/ledger/attendance integration test; global JV allocator coordination and MySQL concurrent posting; source-aware FK/uniqueness rehearsal. No staging/production financial write, migration or repair.
+
 ## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
 
 **These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
