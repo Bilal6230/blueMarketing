@@ -1983,6 +1983,28 @@ class VoucherClearanceFlowTest extends TestCase
         ], $overrides);
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidManualCashVoucherMoney')]
+    public function test_manual_cash_voucher_rejects_invalid_money_without_financial_rows(string $amount): void
+    {
+        $beforeLedgers = DB::table('ledgers')->count();
+        $beforeSources = DB::table('customer_ledger')->count();
+        $this->callLedgerStore($this->cashVoucherPayload(['amount' => $amount]))
+            ->assertStatus(422)->assertJson(['error_key' => 'validation_error']);
+        $this->assertSame($beforeLedgers, DB::table('ledgers')->count());
+        $this->assertSame($beforeSources, DB::table('customer_ledger')->count());
+    }
+
+    public static function invalidManualCashVoucherMoney(): array
+    {
+        return [
+            'negative' => ['-10'],
+            'zero' => ['0'],
+            'scientific' => ['1e3'],
+            'three decimals' => ['123.456'],
+            'overflow' => ['999999999999999999999'],
+        ];
+    }
+
     #[\PHPUnit\Framework\Attributes\DataProvider('invalidManualCashVoucherIdentity')]
     public function test_manual_cash_voucher_rejects_mismatched_identity_without_financial_rows(array $override): void
     {
