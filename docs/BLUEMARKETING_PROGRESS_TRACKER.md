@@ -134,6 +134,13 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - Next deliverables: get authorized project/charge-type debit and credit IDs with accounting signoff; source-aware bank/cheque EC posting and clearance; shared coordinator for legacy JV/Stock/manual writers; MySQL double-submit tests. P0.1 **93%**, P0.2 **85%**, P0.3 **15%**, P0.4 **35%**, P0.5 **10%**.
 - No live database writes, migrations, or historical repair.
 
+### 2026-10-29 EC source reconciliation audit — delivery vs blocked scope
+
+- User independently verified EC tests **3 PASS, 22 assertions** at `566952df` with clean PHP lints and Git tree. This confirms test-only mapped EC cash ledger posting and orphan-source number skipping, not real-account approval or online/cheque bank clearance.
+- Implemented **read-only** `php artisan finance:audit-ec-sources PROJECT_ID` that checks all project EC customer_ledger sources against EC ledger legs: missing/extra legs, unbalanced cents, mismatched source reference/voucher number or account project, orphan/foreign source ledger, and duplicate source voucher numbers. Emits JSON + nonzero code on anomalies; no automatic repair. Commit `3532f01b`. Isolated tests for empty project and orphan source detect/no mutation commit `48560802`. **Pending user's local lint and test output**.
+- User explicitly requested in one turn (1) production EC mapping and online/cheque clearance, (2) global JV/Stock/manual allocation and concurrency verification, (3) P0.3 source typing and safe constraints. **None of these three is fully complete.** There is no authorized real charge-type-account approval in code; inventing one is prohibited. No MySQL parallel run occurred, so claiming concurrency proven would be false. P0.3 database constraints cannot be responsibly installed until legacy key/null/duplicate audit plus rollback plan.
+- Task estimates remain P0.1 **93%**, P0.2 **85%**, P0.3 **15%**, P0.4 **35%**, P0.5 **10%**. Audit command is a P0.3/P0.5 preparatory capability, not completion. Next needed: financial owner signs off project/charge debit-credit mappings and bank clearing, shared allocator deployed across all writers with actual MySQL tests, schema-level source links after clean evidence packet. No production/staging DB writes or migrations.
+
 ## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
 
 **These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
