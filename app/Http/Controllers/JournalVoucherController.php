@@ -433,10 +433,10 @@ class JournalVoucherController extends Controller
         $post = function () use ($validated, $selectedProjectId, $totalDebitCents, $totalCreditCents, $metadataReady) {
             // Serialize numbering within this project's row (on databases supporting FOR UPDATE).
             Project::whereKey($selectedProjectId)->lockForUpdate()->firstOrFail();
-            $lastVoucherNumber = JournalVoucher::where('project_id', $selectedProjectId)
-                ->where('type', 'JV')->withTrashed()->orderByDesc('id')->value('voucher_number');
+            $nextVoucherNumber = app(\App\Services\Finance\ProjectVoucherAllocator::class)
+                ->nextJournal((int) $selectedProjectId);
             $journalVoucher = JournalVoucher::create([
-                'voucher_number' => ((int) $lastVoucherNumber) + 1,
+                'voucher_number' => $nextVoucherNumber,
                 'type' => 'JV',
                 'reference' => $validated['reference'] ?? null,
                 'date' => $validated['date'],
