@@ -734,3 +734,5 @@ Assistant must:
 - The commission-detail source defect is fixed, but live rollback remains unverified and prohibited without separate disposable rehearsal approval. No database was created, imported, connected to, or modified. Production deployment remains BLOCKED.
 
 - `--no-defaults` is documented as MySQL client-only protection. A future Laravel rehearsal must use a separate hash-pinned worktree, scrubbed environment, no config cache, pre-bootstrap database identity/grants verification, migration allowlisting, and host-level network isolation. These controls require external administrator evidence and remain unapproved.
+
+- Added `STAGING_MIGRATION_ADMIN_EVIDENCE_PACKET.md`, a blocked-by-default checklist requiring administrator evidence for host/network/DNS isolation, MySQL identity and grants, synthetic fixture provenance, separate worktree/config isolation, backup/restore, and credential/database disposal. No provisioning approval is implied.

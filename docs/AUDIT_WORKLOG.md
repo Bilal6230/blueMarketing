@@ -747,3 +747,5 @@ All four existing documentation changes preserved. No application code changed, 
 - No database creation, connection, import, migration, rollback, history update or credential/configuration change occurred. Vendor backup and unrelated files preserved; production deployment remains BLOCKED.
 
 - Independent review identified an important boundary: `--no-defaults` does not isolate Laravel bootstrap/configuration. Documented future safeguards now require a copied hash-pinned worktree, scrubbed environment, absent config cache, pre-bootstrap identity/grants probe, migration allowlist and host-level network isolation. These controls are not enforceable by documentation alone; provisioning remains blocked until externally evidenced.
+
+- Added `STAGING_MIGRATION_ADMIN_EVIDENCE_PACKET.md`, a non-executable administrator checklist with per-control evidence, provider, approver, safe verification, PASS/FAIL criteria and uncertainty. No administrator evidence has been supplied; no disposable database may be provisioned.
