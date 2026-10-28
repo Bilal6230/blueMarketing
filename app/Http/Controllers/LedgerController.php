@@ -594,24 +594,6 @@ class LedgerController extends Controller
                 $t_number = $request->input('t_number');
                 $bank_id = $request->input('bank_id');
             }
-            // This editor is a cash voucher editor, not a generic ledger editor.
-            // Never rewrite journal, stock, sale, booking or clearance postings.
-            if (!in_array($ledger->type, ['CR', 'CP'], true) || !$ledger->customer_ledger_id) {
-                throw new \DomainException('CASH_VOUCHER_SOURCE_REQUIRED');
-            }
-
-            $source = CustomerLedger::query()
-                ->whereKey($ledger->customer_ledger_id)
-                ->lockForUpdate()
-                ->first();
-
-            if (!$source || (int) $source->project_id !== (int) $selectedProjectId ||
-                (string) $source->transaction_type !== (string) $ledger->type ||
-                (int) $source->is_active !== 1 ||
-                (string) $source->reference !== (string) $ledger->reference) {
-                throw new \DomainException('CASH_VOUCHER_SOURCE_CONFLICT');
-            }
-
             $projectHeadSubhead = ProjectHeadSubhead::where('head_accounting_id', $request->accounts_id)
                 ->where('subhead_accounting_id', $request->subaccounts_id)
                 ->where('project_id', $selectedProjectId)
@@ -1018,6 +1000,24 @@ class LedgerController extends Controller
                 })
                 ->lockForUpdate()
                 ->firstOrFail();
+
+            // This editor is a cash voucher editor, not a generic ledger editor.
+            // Never rewrite journal, stock, sale, booking or clearance postings.
+            if (!in_array($ledger->type, ['CR', 'CP'], true) || !$ledger->customer_ledger_id) {
+                throw new \DomainException('CASH_VOUCHER_SOURCE_REQUIRED');
+            }
+
+            $source = CustomerLedger::query()
+                ->whereKey($ledger->customer_ledger_id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$source || (int) $source->project_id !== (int) $selectedProjectId ||
+                (string) $source->transaction_type !== (string) $ledger->type ||
+                (int) $source->is_active !== 1 ||
+                (string) $source->reference !== (string) $ledger->reference) {
+                throw new \DomainException('CASH_VOUCHER_SOURCE_CONFLICT');
+            }
 
             $projectHeadSubhead = ProjectHeadSubhead::where('head_accounting_id', $request->accounts_id)
                 ->where('subhead_accounting_id', $request->subaccounts_id)
