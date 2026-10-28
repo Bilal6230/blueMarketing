@@ -864,9 +864,10 @@ class LabourController extends Controller
                 'amount' => (string) $amountRaw,
             ]);
 
-            $lastVoucherId = getLastJvVNumber() + 1;
+            // Keep Labour JV header and both ledger legs on one voucher
+            // number. Independent allocators could previously disagree.
             $journalVoucherData = [
-                'voucher_number' => $lastVoucherId,
+                'voucher_number' => $voucherNumber,
                 'type' => 'JV',
                 'reference' => null,
                 'date' => Carbon::now()->format('Y-m-d'),
