@@ -20,6 +20,19 @@ class StockLedgerPostingGuard
             throw new \DomainException('STOCK_LEDGER_INVALID_EXPECTATION');
         }
 
+        // Serialize stock financial postings across web and mobile for the
+        // selected project. Both callers use an enclosing DB transaction;
+        // the shared project row lock remains held through both leg INSERTs.
+        // Locking only existing ledger legs cannot protect a first insert.
+        $project = DB::table('projects')
+            ->where('id', $projectId)
+            ->lockForUpdate()
+            ->first(['id']);
+
+        if (!$project) {
+            throw new \DomainException('STOCK_LEDGER_PROJECT_MISSING');
+        }
+
         // Validate BOTH expected accounts even for a first-time posting.
         // A foreign/missing account cannot become a new financial leg.
         foreach ($expectedLegs as $leg) {
