@@ -2243,11 +2243,11 @@ class BookingController extends Controller
         $x['role'] = Role::get();
         $x['users'] = User::get();
         $x['power'] = $power;
-        $x['type'] = 'PPR';
+        $x['type'] = 'EC';
         $x['class'] = 'cash-in';
         $x['bg_voucher'] = 'info-cash-in';
         $projectId = getSelectedTown();
-        $data = CustomerLedger::with('customer_list', 'plot_list')->where('transaction_type', 'null')->where('is_active', '1')->where('project_id', getSelectedTown())->get();
+        $data = CustomerLedger::with('customer_list', 'plot_list')->whereIn('transaction_type', ['null', 'EC'])->where('is_active', '1')->where('project_id', getSelectedTown())->get();
         // Query the database to get unique customers associated with the project
         $x['customers'] = Lead::join('bookings', 'leads.id', '=', 'bookings.customer_id')
             ->where('leads.project_id', $projectId)
