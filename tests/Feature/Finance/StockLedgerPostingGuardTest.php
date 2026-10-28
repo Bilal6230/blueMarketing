@@ -163,4 +163,45 @@ class StockLedgerPostingGuardTest extends TestCase
         $this->verify();
     }
 
+    public function test_fresh_stock_posting_rejects_stranded_foreign_project_source(): void
+    {
+        DB::table('customer_ledger')->where('id', 99)->update(['project_id' => 9]);
+        $this->expectException(\DomainException::class);
+        $this->verify();
+    }
+
+    public function test_fresh_stock_posting_rejects_stranded_wrong_date_source(): void
+    {
+        DB::table('customer_ledger')->where('id', 99)->update(['date' => '2026-10-19']);
+        $this->expectException(\DomainException::class);
+        $this->verify();
+    }
+
+    public function test_fresh_stock_posting_rejects_stranded_inactive_source(): void
+    {
+        DB::table('customer_ledger')->where('id', 99)->update(['is_active' => 0]);
+        $this->expectException(\DomainException::class);
+        $this->verify();
+    }
+
+    public function test_fresh_stock_posting_rejects_duplicate_customer_sources(): void
+    {
+        DB::table('customer_ledger')->insert([
+            'id' => 100,
+            'project_id' => 5,
+            'reference' => 'STOCK-ENTRY:123',
+            'transaction_type' => 'JV',
+            'date' => '2026-10-20',
+            'is_active' => 1,
+        ]);
+        $this->expectException(\DomainException::class);
+        $this->verify();
+    }
+
+    public function test_fresh_stock_posting_with_matching_existing_customer_source_can_proceed(): void
+    {
+        $this->assertFalse($this->verify());
+        $this->assertSame(0, DB::table('ledgers')->count());
+    }
+
 }
