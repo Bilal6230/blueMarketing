@@ -20,6 +20,11 @@ class StockLedgerPostingGuard
             throw new \DomainException('STOCK_LEDGER_INVALID_EXPECTATION');
         }
 
+        if (!preg_match('/^STOCK-(?:ENTRY|BILL):[1-9][0-9]*$/D', $reference) ||
+            !preg_match('/^\\d{4}-\\d{2}-\\d{2}$/D', $businessDate)) {
+            throw new \DomainException('STOCK_LEDGER_INVALID_SOURCE_IDENTITY_OR_DATE');
+        }
+
         // Serialize stock financial postings across web and mobile for the
         // selected project. Both callers use an enclosing DB transaction;
         // the shared project row lock remains held through both leg INSERTs.
@@ -199,7 +204,19 @@ class StockLedgerPostingGuard
 
         $negative = str_starts_with($text, '-');
         $parts = explode('.', ltrim($text, '-'));
-        $minor = ((int) $parts[0] * 100) + (int) str_pad($parts[1] ?? '', 2, '0');
+        // Avoid integer overflow or silent saturation of untrusted amounts.
+        $whole = ltrim($parts[0], '0');
+        $whole = $whole === '' ? '0' : $whole;
+        $cents = (int) str_pad($parts[1] ?? '', 2, '0');
+        if (strlen($whole) > strlen((string) intdiv(PHP_INT_MAX, 100)) ||
+            (strlen($whole) === strlen((string) intdiv(PHP_INT_MAX, 100)) &&
+             strcmp($whole, (string) intdiv(PHP_INT_MAX, 100)) > 0)) {
+            throw new \DomainException('STOCK_LEDGER_AMOUNT_OVERFLOW');
+        }
+        $minor = ((int) $whole * 100) + $cents;
+        if ($minor < 0) {
+            throw new \DomainException('STOCK_LEDGER_AMOUNT_OVERFLOW');
+        }
 
         return $negative ? -$minor : $minor;
     }
