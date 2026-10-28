@@ -122,6 +122,62 @@ class StockLedgerPostingGuardTest extends TestCase
         app(StockLedgerPostingGuard::class)->alreadyPosted('STOCK-ENTRY:123', 5, '2026-10-20', $legs);
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidExpectedStockLegs')]
+    public function test_invalid_expected_legs_are_rejected_before_posting(array $legs): void
+    {
+        $this->expectException(\DomainException::class);
+        app(StockLedgerPostingGuard::class)->alreadyPosted('STOCK-ENTRY:123', 5, '2026-10-20', $legs);
+    }
+
+    public static function invalidExpectedStockLegs(): array
+    {
+        return [
+            'both debits' => [[
+                ['project_head_subheads_id' => 11, 'amount_in' => '10.00', 'amount_out' => 0],
+                ['project_head_subheads_id' => 12, 'amount_in' => '10.00', 'amount_out' => 0],
+            ]],
+            'unbalanced' => [[
+                ['project_head_subheads_id' => 11, 'amount_in' => '10.00', 'amount_out' => 0],
+                ['project_head_subheads_id' => 12, 'amount_in' => 0, 'amount_out' => '9.99'],
+            ]],
+            'negative amount' => [[
+                ['project_head_subheads_id' => 11, 'amount_in' => '-10.00', 'amount_out' => 0],
+                ['project_head_subheads_id' => 12, 'amount_in' => 0, 'amount_out' => '-10.00'],
+            ]],
+            'both sides on one leg' => [[
+                ['project_head_subheads_id' => 11, 'amount_in' => '10.00', 'amount_out' => '10.00'],
+                ['project_head_subheads_id' => 12, 'amount_in' => 0, 'amount_out' => 0],
+            ]],
+            'same account' => [[
+                ['project_head_subheads_id' => 11, 'amount_in' => '10.00', 'amount_out' => 0],
+                ['project_head_subheads_id' => 11, 'amount_in' => 0, 'amount_out' => '10.00'],
+            ]],
+            'zero money' => [[
+                ['project_head_subheads_id' => 11, 'amount_in' => 0, 'amount_out' => 0],
+                ['project_head_subheads_id' => 12, 'amount_in' => 0, 'amount_out' => 0],
+            ]],
+        ];
+    }
+
+    public function test_posted_stock_replay_rejects_additional_hidden_source(): void
+    {
+        $this->insertLegs();
+        DB::table('customer_ledger')->insert([
+            'id' => 100, 'project_id' => 5, 'reference' => 'STOCK-ENTRY:123',
+            'transaction_type' => 'JV', 'date' => '2026-10-20', 'is_active' => 1,
+        ]);
+        $this->expectException(\DomainException::class);
+        $this->verify();
+    }
+
+    public function test_posted_stock_replay_rejects_missing_linked_source(): void
+    {
+        $this->insertLegs();
+        DB::table('customer_ledger')->where('id', 99)->delete();
+        $this->expectException(\DomainException::class);
+        $this->verify();
+    }
+
     public function test_exact_two_legs_are_recognized(): void
     {
         $this->insertLegs();
