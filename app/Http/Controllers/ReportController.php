@@ -244,6 +244,7 @@ class ReportController extends Controller
                         (int) $ledger->is_active !== 1 ||
                         (int) $ledger->project_head_subheads_id !== (int) $creditAccountId ||
                         substr((string) $ledger->date, 0, 10) !== substr((string) $request->bank_post_at, 0, 10) ||
+                        round((float) $ledger->amount_in, 2) !== 0.0 ||
                         round((float) $ledger->amount_out, 2) !== round((float) $amount, 2)
                     )) {
                     throw new \DomainException('BANK_CLEARANCE_EXISTING_LEDGER_CONFLICT');
