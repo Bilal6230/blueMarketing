@@ -205,6 +205,9 @@ class MobileApprovalController extends BaseMobileController
                 }
 
                 $this->assertAllowedApprovalTable($locked->table_name);
+                if ($locked->table_name === 'ledgers') {
+                    $this->ensureCanAccessApproval($locked, $user);
+                }
 
                 $locked->update([
                     'status' => 'rejected',
@@ -417,6 +420,9 @@ class MobileApprovalController extends BaseMobileController
         }
 
         $this->assertAllowedApprovalTable($locked->table_name);
+        if ($locked->table_name === 'ledgers') {
+            $this->ensureCanAccessApproval($locked, $user);
+        }
 
         $table = $locked->table_name;
         $newValues = $this->decodeApprovalValues($locked->new_values);
