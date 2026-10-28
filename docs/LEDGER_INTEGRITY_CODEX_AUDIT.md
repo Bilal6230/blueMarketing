@@ -218,3 +218,18 @@ The remaining limitation is that SQLite tests do not prove MySQL concurrency, gr
 2. Run full isolated Feature suite; capture final test and assertion count.
 3. Inspect source/ledger linkage and business date for every stock and labour writer; retain provenance ambiguity instead of inferring a foreign key.
 4. Require a separately approved disposable MySQL rehearsal before source-FK DDL, cleanup, reversible recovery or release.
+
+## 2026-10-28 PRIMARY implementation priorities — supersedes audit-only focus
+
+See [BLUEMARKETING_PROGRESS_TRACKER.md](BLUEMARKETING_PROGRESS_TRACKER.md) for the prioritized progress board, percentages and acceptance gates. The **database `ledgers` table**, not the browser ledger, is the target.
+
+1. **P0.1 Ledger protection** — find and fix every active `ledgers` insert, update, hard/soft delete, deactivation, source identity or project-scope write; prevent data loss and verify permissions/concurrency.
+2. **P0.2 Voucher integrity** — JV, CV, Stock, Labour, Booking, CR, CP, BR and PPR source number/date propagation; independently test original business dates and voucher numbers at creation; never silently alter old rows.
+3. **P0.3 Typed source foreign keys** — implement proper typed source attribution, per-source FK and project constraints after MySQL compatibility rehearsal; one `type_id` cannot be safely pointed at multiple unrelated source tables.
+4. **P0.4 Soft delete and append-only reversal** — normal business table soft deletion with schema awareness and immutable/reversed posted finance entries, not blanket deletion or silent `is_active=0`.
+5. **P0.5 Historical reconciliation / recovery** — prove missing, inactive, overwritten and colliding JV/CV/stock/other entries with independent evidence, then controlled reversible repair only after approval.
+
+**Latest verified test evidence:** the Stock data-provider annotation fix has passed locally: 11 Stock-focused tests (six conflict datasets), 428 full Feature tests / 1,871 assertions; clean working tree. Thus the former `ArgumentCountError` is resolved, not a remaining test defect.
+
+The earlier 88% application upgrade and Hand Cash calculation remain **secondary** tracking items. None of these reports authorizes deploying to production or editing a historical finance row.
+
