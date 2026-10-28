@@ -344,6 +344,27 @@ class VoucherClearanceFlowTest extends TestCase
         ];
     }
 
+    public function test_legacy_jv_edit_and_delete_remain_blocked_without_mutating_ledgers(): void
+    {
+        $before = DB::table('ledgers')->count();
+        $controller = $this->app->make(\App\Http\Controllers\JournalVoucherController::class);
+
+        foreach (['update', 'destroy'] as $method) {
+            try {
+                if ($method === 'update') {
+                    $controller->update(Request::create('/journal-voucher/999', 'PUT'), 999);
+                } else {
+                    $controller->destroy(999);
+                }
+                $this->fail('Legacy JV mutation must fail closed.');
+            } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+                $this->assertSame(409, $e->getStatusCode());
+            }
+        }
+
+        $this->assertSame($before, DB::table('ledgers')->count());
+    }
+
     public function test_manual_cash_out_still_creates_cp_ledger(): void
     {
         $response = $this->callLedgerStore($this->cashVoucherPayload([
