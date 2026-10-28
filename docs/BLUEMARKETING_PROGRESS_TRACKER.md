@@ -14,6 +14,14 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - **Pending user local PHP lint and focused tests**. Do not claim verified tests or increment percentages from this batch; P0.1 **93%**, P0.2 **65% estimated in current board**, P0.3 **15%**, P0.4 **15%**, P0.5 **10%**. The earlier handoff's P0.2 55% was a confirmed checkpoint, whereas 65% includes subsequent unverified Labour work.
 - Remaining: typed auditable Extra Charge source/account mapping; successful Labour JV header/detail/ledger/attendance integration test; global JV allocator coordination and MySQL concurrent posting; source-aware FK/uniqueness rehearsal. No staging/production financial write, migration or repair.
 
+
+### 2026-10-29 locally verified safety checkpoint and Labour period validation
+
+- User verified previous batch: Booking Extra Charge disabled financial writer **3 tests / 27 assertions PASS** across cash, online and cheque; Labour invalid-input regressions **13 tests / 52 assertions PASS**; both PHP lint checks passed, Git tree clean at `3c245557`. This does **not** yet verify a successful Labour JV or real MySQL concurrency.
+- Labour JV writer now validates exact ISO calendar business period and rejects missing/relative/invalid or reversed start/end dates before voucher inserts; previously `Carbon::parse` normalized relative date values or could throw. New isolated SQLite regression has four invalid-period datasets. Commits `46b57db8`, `1fe157b9`; local execution pending.
+- Extra Charge remains disabled; canonical source type, accounts, date and number mapping remain unproven. No new voucher posting enabled. P0.1 **93%**, P0.2 **65% implementation estimate (not newly verified)**, P0.3 **15%**, P0.4 **15%**, P0.5 **10%**; do not infer release readiness.
+- Next: valid Labour source/attendance header-detail-ledger two-leg end-to-end regression; coordinate global JV/stock writers; MySQL concurrency rehearsal and typed Extra Charge design. No live DB writes or migrations.
+
 ## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
 
 **These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
