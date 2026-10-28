@@ -433,6 +433,10 @@ class MobileApprovalController extends BaseMobileController
                 DB::table($table)->where('id', $locked->record_id)->update($safeValues);
             }
         } else {
+            if ($table === 'ledgers') {
+                $this->assertSafeLedgerApprovalValues($newValues);
+            }
+
             $safeValues = $this->getSafeUpdateValues($table, $newValues);
 
             if (empty($safeValues)) {
@@ -504,7 +508,7 @@ class MobileApprovalController extends BaseMobileController
             'deleted_at',
         ];
 
-        return collect($newValues)
+        $values = collect($newValues)
             ->reject(function ($value, $field) use ($blocked) {
                 $field = (string) $field;
 
@@ -515,6 +519,25 @@ class MobileApprovalController extends BaseMobileController
                 return $this->isSensitiveApprovalField($field);
             })
             ->all();
+
+        if ($table === 'ledgers') {
+            return collect($values)->only(['detail'])->all();
+        }
+
+        return $values;
+    }
+
+    protected function assertSafeLedgerApprovalValues(array $newValues): void
+    {
+        $forbidden = [
+            'type', 'type_id', 'voucher_number', 'reference',
+            'customer_ledger_id', 'project_head_subheads_id', 'is_active',
+            'status', 'amount_in', 'amount_out', 'date', 'delete_reason',
+        ];
+
+        if (array_intersect($forbidden, array_keys($newValues)) !== []) {
+            throw new \DomainException('ledger_identity_or_financial_mutation_forbidden');
+        }
     }
 
     protected function sanitizeApprovalValues(array $values): array

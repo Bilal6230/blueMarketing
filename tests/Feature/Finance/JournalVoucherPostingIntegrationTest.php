@@ -90,6 +90,14 @@ class JournalVoucherPostingIntegrationTest extends TestCase
         $this->assertEquals(100.25, DB::table('journal_vouchers')->value('total_credit'));
         $this->assertEquals(100.25, DB::table('ledgers')->sum('amount_in'));
         $this->assertEquals(100.25, DB::table('ledgers')->sum('amount_out'));
+
+        $header = DB::table('journal_vouchers')->first();
+        $this->assertSame('2026-10-26', (string) $header->date);
+        $this->assertSame(
+            [(string) $header->voucher_number],
+            DB::table('ledgers')->pluck('voucher_number')->map(fn ($number) => (string) $number)->unique()->values()->all()
+        );
+        $this->assertSame(0, DB::table('ledgers')->where('date', '<>', $header->date)->count());
     }
 
     public function test_cross_project_account_is_rejected_without_any_posting(): void

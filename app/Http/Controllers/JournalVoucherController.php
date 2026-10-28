@@ -462,7 +462,7 @@ class JournalVoucherController extends Controller
                     'created_by' => auth()->id(),
                 ]);
                 $ledger = Ledger::create([
-                    'voucher_number' => getVocuherNumber('JV'),
+                    'voucher_number' => $journalVoucher->voucher_number,
                     'type' => 'JV',
                     'type_id' => $journalVoucher->id,
                     'project_head_subheads_id' => $validated['sub_accounts'][$index],
