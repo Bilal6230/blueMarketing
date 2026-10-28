@@ -20,6 +20,15 @@ class MobileLedgerApprovalIntegrityTest extends TestCase
         }
 
         Schema::dropAllTables();
+        Schema::create('projects', function (Blueprint $table): void {
+            $table->id();
+            $table->string('project');
+            $table->boolean('is_active')->default(true);
+        });
+        DB::table('projects')->insert([
+            ['id' => 7, 'project' => 'Primary', 'is_active' => 1],
+            ['id' => 8, 'project' => 'Other', 'is_active' => 1],
+        ]);
         Schema::create('project_head_subheads', function (Blueprint $table): void {
             $table->id();
             $table->unsignedBigInteger('project_id');
@@ -115,4 +124,42 @@ class MobileLedgerApprovalIntegrityTest extends TestCase
         DB::table('ledgers')->where('id', 1)->update(['project_head_subheads_id' => 22]);
         $this->assertSame(8, $method->invoke($controller, $approval));
     }
+    public function test_ledger_approval_does_not_bypass_project_ownership_for_privileged_access(): void
+    {
+        $controller = new class extends MobileApprovalController {
+            protected function hasPrivilegedApprovalAccess(\App\Models\User $user): bool
+            {
+                return true;
+            }
+        };
+
+        $method = new \ReflectionMethod($controller, 'ensureCanAccessApproval');
+        $method->setAccessible(true);
+
+        $user = new \App\Models\User();
+        $user->project_id = 7;
+        $user->setRelation('roles', collect());
+
+        $approval = new PendingUpdate(['table_name' => 'ledgers', 'record_id' => 1]);
+        $method->invoke($controller, $approval, $user);
+
+        DB::table('ledgers')->where('id', 1)->update(['project_head_subheads_id' => 22]);
+
+        try {
+            $method->invoke($controller, $approval, $user);
+            $this->fail('Privileged approval bypassed foreign project ownership.');
+        } catch (\Illuminate\Auth\Access\AuthorizationException $exception) {
+            $this->assertNotEmpty($exception->getMessage());
+        }
+
+        DB::table('ledgers')->where('id', 1)->update(['project_head_subheads_id' => 999]);
+
+        try {
+            $method->invoke($controller, $approval, $user);
+            $this->fail('Privileged approval accepted orphaned project attribution.');
+        } catch (\Illuminate\Auth\Access\AuthorizationException $exception) {
+            $this->assertNotEmpty($exception->getMessage());
+        }
+    }
+
 }
