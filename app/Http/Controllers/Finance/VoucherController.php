@@ -900,7 +900,15 @@ class VoucherController extends Controller
                     }
 
                     if (!$creditAccountId) {
-                        $creditAccountId = optional(optional($lockedLedger->ledger)->projectHeadSubhead)->id;
+                        // A legacy receipt-linked account is not trusted unless it
+                        // belongs to the currently selected project.
+                        $fallbackAccountId = optional(optional($lockedLedger->ledger)->projectHeadSubhead)->id;
+                        if ($fallbackAccountId) {
+                            $creditAccountId = ProjectHeadSubhead::query()
+                                ->whereKey($fallbackAccountId)
+                                ->where('project_id', $selectedProjectId)
+                                ->value('id');
+                        }
                     }
 
                     if (!$creditAccountId) {
