@@ -2544,12 +2544,94 @@ class BookingController extends Controller
                     break;
 
                 case 'extra_charge':
-                    // Legacy flow combined a source typed as 'null' with CR/CP
-                    // ledger legs and mismatched voucher identifiers. Posting it
-                    // would make finance source ownership irreconcilable.
-                    // Re-enable only with a typed balanced posting workflow.
-                    throw new \DomainException('EXTRA_CHARGE_FINANCIAL_POSTING_NOT_SAFE');
+                    // Only explicitly approved project + charge type mappings may
+                    // post. Legacy "null" sources are not reused or mutated.
+                    DB::transaction(function () use ($request, $customer_id) {
+                        $projectId = (int) getSelectedTown();
+                        $chargeTypeId = (int) $request->input('charge_type_id');
+                        $plotId = (int) $request->input('plot_id');
+                        $reference = trim((string) $request->input('reference'));
+                        $amount = str_replace(',', '', trim((string) $request->input('amount')));
+                        $date = (string) $request->input('date', '');
+                        $parsedDate = \DateTimeImmutable::createFromFormat('!Y-m-d', $date);
+                        if (!preg_match('/^\d{1,10}(?:\.\d{1,2})?$/D', $amount) ||
+                            (float) $amount <= 0 || !$parsedDate ||
+                            $parsedDate->format('Y-m-d') !== $date ||
+                            $reference === '' || !in_array((int) $request->input('payment_type'), [1], true) ||
+                            trim((string) $request->input('detail')) === '' ||
+                            !ChargeType::whereKey($chargeTypeId)->exists()) {
+                            throw new \DomainException('EXTRA_CHARGE_INPUT_OR_PAYMENT_UNSUPPORTED');
+                        }
 
+                        // An administrator must approve BOTH sides for EACH
+                        // project/charge type. No inferred/chart-of-account defaults.
+                        $mapping = config("finance.extra_charge_accounts.{$projectId}.{$chargeTypeId}");
+                        if (!is_array($mapping) || ($mapping['approved'] ?? false) !== true ||
+                            !isset($mapping['debit_account_id'], $mapping['credit_account_id']) ||
+                            (int) $mapping['debit_account_id'] <= 0 ||
+                            (int) $mapping['credit_account_id'] <= 0 ||
+                            (int) $mapping['debit_account_id'] === (int) $mapping['credit_account_id']) {
+                            throw new \DomainException('EXTRA_CHARGE_APPROVED_MAPPING_REQUIRED');
+                        }
+
+                        if (!Project::query()->whereKey($projectId)->lockForUpdate()->exists()) {
+                            throw new \DomainException('EXTRA_CHARGE_PROJECT_NOT_FOUND');
+                        }
+                        $booking = Booking::query()->where('project_id', $projectId)
+                            ->where('customer_id', $customer_id)->where('plot_id', $plotId)
+                            ->where('status', 'active')->where('cancel_status', '0')
+                            ->lockForUpdate()->get();
+                        if ($booking->count() !== 1) {
+                            throw new \DomainException('EXTRA_CHARGE_BOOKING_NOT_UNIQUE');
+                        }
+                        $accounts = ProjectHeadSubhead::query()->where('project_id', $projectId)
+                            ->whereIn('id', [(int) $mapping['debit_account_id'], (int) $mapping['credit_account_id']])
+                            ->lockForUpdate()->get()->keyBy('id');
+                        if ($accounts->count() !== 2) {
+                            throw new \DomainException('EXTRA_CHARGE_ACCOUNTS_NOT_IN_PROJECT');
+                        }
+
+                        // Reference uniquely identifies the typed source in this
+                        // project; no replay may create additional ledger legs.
+                        if (CustomerLedger::query()->where('project_id', $projectId)
+                            ->where('transaction_type', 'EC')->where('reference', $reference)
+                            ->lockForUpdate()->exists()) {
+                            throw new \DomainException('EXTRA_CHARGE_SOURCE_ALREADY_POSTED');
+                        }
+                        $voucherNumber = ((int) Ledger::query()->where('type', 'EC')
+                            ->join('project_head_subheads as ec_accounts',
+                                'ec_accounts.id', '=', 'ledgers.project_head_subheads_id')
+                            ->where('ec_accounts.project_id', $projectId)
+                            ->max('ledgers.voucher_number')) + 1;
+                        $source = CustomerLedger::create([
+                            'project_id' => $projectId, 'customer_id' => $customer_id,
+                            'plot_id' => $plotId, 'transaction_type' => 'EC',
+                            'type_id' => $voucherNumber, 'reference' => $reference,
+                            'date' => $date, 'payment_type' => 1,
+                            'amount_in' => $amount, 'amount_out' => 0,
+                            'description' => $request->input('detail'),
+                            'is_active' => 1, 'is_approve' => 0,
+                        ]);
+                        $detail = 'EC | ChargeType:' . $chargeTypeId .
+                            ' | Booking:' . $booking->first()->id .
+                            ' | ' . trim((string) $request->input('detail'));
+                        foreach ([
+                            [(int) $mapping['debit_account_id'], '0.00', $amount],
+                            [(int) $mapping['credit_account_id'], $amount, '0.00'],
+                        ] as [$accountId, $in, $out]) {
+                            Ledger::create([
+                                'customer_ledger_id' => $source->id,
+                                'type' => 'EC', 'type_id' => $voucherNumber,
+                                'voucher_number' => $voucherNumber,
+                                'project_head_subheads_id' => $accountId,
+                                'reference' => $reference,
+                                'amount_in' => $in, 'amount_out' => $out,
+                                'date' => $date, 'detail' => $detail,
+                                'is_active' => 1, 'status' => 0,
+                                'create_by' => Auth::id(), 'update_by' => Auth::id(),
+                            ]);
+                        }
+                    });
                     break;
             }
         } catch (\Throwable $e) {
