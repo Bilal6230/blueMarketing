@@ -98,6 +98,10 @@ class StockLedgerPostingGuard
                 }
             }
 
+            if ($sources->count() === 1) {
+                $this->assertSourceAmount($sources->first(), $debit);
+            }
+
             return false;
         }
 
@@ -134,6 +138,8 @@ class StockLedgerPostingGuard
             throw new \DomainException('STOCK_LEDGER_SOURCE_CONFLICT');
         }
 
+        $this->assertSourceAmount($customerLedger, $debit);
+
         // A linked customer-ledger record cannot silently disagree with the stock
         // posting's business date or be marked inactive.
         if (substr((string) $customerLedger->date, 0, 10) !== substr($businessDate, 0, 10) ||
@@ -169,6 +175,19 @@ class StockLedgerPostingGuard
         }
 
         return $unused === [];
+    }
+
+    private function assertSourceAmount(object $source, int $expectedMinor): void
+    {
+        $sourceIn = $this->minorUnits($source->amount_in ?? 0);
+        $sourceOut = $this->minorUnits($source->amount_out ?? 0);
+        // Stock IN is stored on the source out-side; Stock OUT on the
+        // source in-side. Exactly one source amount must match the journal.
+        if ($sourceIn < 0 || $sourceOut < 0 ||
+            !(($sourceIn === $expectedMinor && $sourceOut === 0) ||
+              ($sourceOut === $expectedMinor && $sourceIn === 0))) {
+            throw new \DomainException('STOCK_CUSTOMER_LEDGER_AMOUNT_CONFLICT');
+        }
     }
 
     private function minorUnits($value): int
