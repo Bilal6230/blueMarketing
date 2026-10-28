@@ -3087,6 +3087,10 @@ class BookingController extends Controller
 
     private function allocateNextBookingVoucherNumber(int $projectId, string $voucherSeries = 'PPR'): int
     {
+        if ($voucherSeries === 'PPR') {
+            return app(\App\Services\Finance\ProjectVoucherAllocator::class)
+                ->nextBookingReceipt($projectId);
+        }
         return $this->resolveNextBookingVoucherNumber($projectId, $voucherSeries, true);
     }
 
