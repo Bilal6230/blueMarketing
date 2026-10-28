@@ -775,12 +775,13 @@ class VoucherClearanceFlowTest extends TestCase
         ];
     }
 
-    public function test_ambiguous_extra_charge_does_not_create_any_financial_rows(): void
+    #[\\PHPUnit\\Framework\\Attributes\\DataProvider('extraChargePaymentTypes')]
+    public function test_ambiguous_extra_charge_does_not_create_any_financial_rows(int $paymentType): void
     {
-        $beforeSources = DB::table('customer_ledger')->count();
-        $beforeLedgers = DB::table('ledgers')->count();
+        $tables = ['customer_ledger', 'ledgers', 'journal_vouchers', 'journal_voucher_details', 'booking_vouchers'];
+        $before = collect($tables)->mapWithKeys(fn ($table) => [$table => DB::table($table)->count()])->all();
 
-        $response = $this->callDeposit($this->depositPayload(1, [
+        $response = $this->callDeposit($this->depositPayload($paymentType, [
             'action' => 'extra_charge',
             'reference' => 'EXTRA-001',
             'voucher' => 'CR-999',
@@ -788,8 +789,15 @@ class VoucherClearanceFlowTest extends TestCase
         ]));
 
         $response->assertStatus(302)->assertSessionHasErrors('msg');
-        $this->assertSame($beforeSources, DB::table('customer_ledger')->count());
-        $this->assertSame($beforeLedgers, DB::table('ledgers')->count());
+        foreach ($before as $table => $count) {
+            $this->assertSame($count, DB::table($table)->count(), "Unexpected extra-charge write in {$table}.");
+        }
+        $this->assertSame(0, DB::transactionLevel());
+    }
+
+    public static function extraChargePaymentTypes(): array
+    {
+        return ['cash' => [1], 'online' => [2], 'cheque' => [3]];
     }
 
     public function test_ppr_update_preserves_voucher_number_and_updates_compact_detail(): void
