@@ -11,11 +11,21 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 
 | Rank | Primary task | Estimated progress | Implemented evidence | Remaining acceptance gate |
 | --- | --- | ---: | --- | --- |
-| P0.1 | **Ledger protection:** audit and fix every live INSERT/UPDATE/DELETE/deactivate/overwrite, project scope and identity guard | **40%** | Mobile approval identity/amount/date block and project scope; existing JV/CV mutation gates; Stock duplicate/inactive guard | Every producer/mutator classified and tested, protected ledger rows cannot silently disappear |
+| P0.1 | **Ledger protection:** audit and fix every live INSERT/UPDATE/DELETE/deactivate/overwrite, project scope and identity guard | **50%** | Mobile approval immutability and project scope; JV/CV destructive gates; Stock/Mobile Stock duplicate, orphan, amount/date/project guards; CR/CP editor prevents noncash JV/SV/BO/BR/PPR overwrite and rejects invalid linked sources | Every producer/mutator classified and tested, protected ledger rows cannot silently disappear |
 | P0.2 | **Voucher integrity:** propagate correct source voucher number/date for JV, CV, Stock, Labour, Booking, CR, CP, BR, PPR | **30%** | Core JV header number, Labour JV number/date, Stock existing-posting date and amount checks | Every source creates ledger rows with verified source number/date, regression tests for all families, preexisting mismatch inventory |
 | P0.3 | **Foreign-key / typed source identity:** source-aware, project-consistent relational integrity | **15%** | Existing physical `customer_ledger_id` and `charge_type_id` FKs confirmed on restored clone; typed source attribution design exists | Per-source FK/typed links, uniqueness & concurrency checks, vetted migration rehearsal; do **not** force `type_id` into one FK |
 | P0.4 | **Soft-delete / append-only reversal:** protect historical business records and posted financial events | **15%** | JV/CV destructive write gates and CR/CP/PPR deletion tests exist | Cover all applicable business tables and side effects; financial reversals/append-only protection; MySQL schema review |
 | P0.5 | **Historical recovery:** reconcile missing/inactive/overwritten JV and other ledger entries, then controlled repair | **10%** | 17,855 restored ledger rows inventory; 155 inactive; source ambiguity evidenced; Project 5 balance reproduced | Independently prove provenance per row, compare older backup/audit logs, approved dry-run, reversible repair and balance validation |
+
+### Testing cadence and evidence-based progress rules (2026-10-28)
+
+- **Default: run only targeted tests affected by each changed application path**, including neighboring regression tests where dependencies overlap. Do not repeatedly request `php artisan test --testsuite=Feature` after each small fix.
+- **Run the full Feature suite only** for architectural/shared infrastructure changes, schema migrations, substantive cross-module behavior changes, pre-release gates, or a regression that cannot be isolated.
+- If a new regression test is added, execute that test and the closely related existing test file/filter. Preserve the previous full-suite baseline without falsely claiming it covers newly changed code.
+- **Latest user-verified baseline:** 436 Feature tests / 1,883 assertions, including JV-overwrite guard; clean Git working tree and PHP lint. This supersedes the older 417/428/430/435 baselines.
+- P0.1 coverage **40% → 50%** (planning estimate): Stock/Mobile Stock idempotency and source consistency plus CR/CP cash editor source/type immutability now have locally passing regression tests. The remaining 50% reflects unreviewed write paths, concurrency and database-level enforcement, full delete/deactivation audit and source ownership gaps.
+- Increment progress **when an independently checkable implementation milestone passes**, not on code inspection alone. Record what is implemented, what tests passed, and what is still unverified for every increment; never call percentages release readiness.
+- Continue delivering source implementation via GitHub, Codex as independent inspector only; one consolidated commands block for the user, not repetitive commands.
 
 ### Primary delivery sequencing
 
@@ -30,7 +40,7 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - Implemented a **fail-closed linked customer-ledger date/activity check** in `StockLedgerPostingGuard`. Existing stock `ledgers` legs may only be considered already posted if the related `customer_ledger` entry shares the original business date and is active. Previously the guard checked its project, reference and transaction type, but not its date/activity.
 - Added two SQLite cases for wrong `customer_ledger.date` and inactive `customer_ledger.is_active`; expanded synthetic fixture columns. GitHub commits `d935b2a`, `9386532`.
 - **Not yet locally verified:** rerun the focused Stock regression and full Feature suite; latest previously verified baseline remains **428 passed / 1,871 assertions**.
-- P0.1 remains estimated **40%**, P0.2 remains **30%** until these tests pass and other writer families receive coverage. No percentage increase for unverified implementation.
+- At this checkpoint P0.1 was estimated **40%**. The newer 2026-10-28 test-confirmed checkpoint above supersedes it with **50%**; P0.2 remains **30%**.
 - No MySQL database, source attribution, migration, recovery or production deployment operation.
 
 ### P0.1 one-turn implementation — stranded Stock source safeguard
