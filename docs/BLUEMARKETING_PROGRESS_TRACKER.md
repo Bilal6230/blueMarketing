@@ -67,6 +67,14 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - Focused regressions cover posted PPR, foreign-project lookup, inactive stranded customer source and orphan ledger; commits `7579048d`, `c269bc40`, `397c8fec`. These tests remain **pending local execution**, do not claim PASS. This path still needs schema/real-data reconciliation and normal-unposted deletion coverage before treating it as complete.
 - P0.1 **93%**, P0.2 **75%**, P0.3 **15%**, P0.4 **15%** (candidate increase subject to focused verification), P0.5 **10%**. No live DB writes, migration or historical repairs.
 
+### 2026-10-29 verified booking deletion + cancellation no-payment reversal protection
+
+- User verified booking deletion guard: **4 tests / 17 assertions PASS**, both PHP lint checks clear and Git tree clean at `fa3c7182`. It protects posted/stranded booking financial history, including an orphan ledger and a foreign-project delete.
+- Broader review exposed another material P0.4 issue: `BookingController::cancel` accepted any project booking ID and its `payment_not_received` branch *continued into the accounting reversal writer* despite a comment promising no postings. A zero-payment cancellation could generate CR customer source and sale reversal rows; a booking with received payments could be canceled without reviewing those sources.
+- Cancellation now scopes booking to selected project, preserves already-canceled idempotency, fails closed with HTTP 409 when any customer source/booking voucher/linked ledger history exists on no-payment action, and returns after updating booking/plot for genuinely unposted no-payment cancellations—before reversal/account allocation.
+- Focused isolated regressions cover paid booking conflict (no state/finance mutations), foreign-project rejection, and success/idempotency for unposted no-payment cancellation (no customer ledger or general ledger rows). Code commits `5f2e7fcd`, `99be0a16`, test commits `7906802b`, `07a17d84`, `046633da`. **New focused tests pending local execution**; if verified, candidate +10 points P0.4 milestone to record next.
+- Current board until verified: P0.1 **93%**, P0.2 **75%**, P0.3 **15%**, P0.4 **15%**, P0.5 **10%**. Full cancellation refund/reversal accounting, MySQL concurrency and legacy cleanup remain unresolved. No production/staging DB writes/migrations.
+
 ## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
 
 **These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
