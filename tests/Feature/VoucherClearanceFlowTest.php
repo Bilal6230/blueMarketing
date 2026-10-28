@@ -689,6 +689,23 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame(1, CustomerLedger::where('transaction_type', 'PPR')->count());
     }
 
+    public function test_ambiguous_extra_charge_does_not_create_any_financial_rows(): void
+    {
+        $beforeSources = DB::table('customer_ledger')->count();
+        $beforeLedgers = DB::table('ledgers')->count();
+
+        $response = $this->callDeposit($this->depositPayload(1, [
+            'action' => 'extra_charge',
+            'reference' => 'EXTRA-001',
+            'voucher' => 'CR-999',
+            'charge_type_id' => 1,
+        ]));
+
+        $response->assertStatus(302)->assertSessionHasErrors('msg');
+        $this->assertSame($beforeSources, DB::table('customer_ledger')->count());
+        $this->assertSame($beforeLedgers, DB::table('ledgers')->count());
+    }
+
     public function test_ppr_update_preserves_voucher_number_and_updates_compact_detail(): void
     {
         $mockUser = Mockery::mock($this->user)->makePartial();
