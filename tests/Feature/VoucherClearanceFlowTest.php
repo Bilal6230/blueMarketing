@@ -58,6 +58,71 @@ class VoucherClearanceFlowTest extends TestCase
         $this->actingAs($this->user);
     }
 
+    public function test_booking_delete_rejects_posted_ppr_without_hiding_booking_or_plot(): void
+    {
+        $this->callDeposit($this->depositPayload(1))->assertStatus(302);
+        $booking = Booking::where('project_id', $this->project->id)->firstOrFail();
+        $plotSold = (int) $this->plot->fresh()->sold;
+        $sourceCount = DB::table('customer_ledger')->count();
+        $ledgerCount = DB::table('ledgers')->count();
+
+        $request = Request::create('/admin/booking/delete', 'POST', ['id' => $booking->id]);
+        $request->cookies->set('selected_action', (string) $this->project->id);
+        $request->setLaravelSession($this->app['session.store']);
+        $this->app->instance('request', $request);
+        TestResponse::fromBaseResponse(app(BookingController::class)->destroy_booking($request))
+            ->assertStatus(409)->assertJson(['error' => 'booking_has_financial_history']);
+
+        $this->assertNull($booking->fresh()->deleted_at);
+        $this->assertSame($plotSold, (int) $this->plot->fresh()->sold);
+        $this->assertSame($sourceCount, DB::table('customer_ledger')->count());
+        $this->assertSame($ledgerCount, DB::table('ledgers')->count());
+    }
+
+    public function test_booking_delete_rejects_foreign_project_booking(): void
+    {
+        $booking = Booking::where('project_id', $this->project->id)->firstOrFail();
+        $request = Request::create('/admin/booking/delete', 'POST', ['id' => $booking->id]);
+        $request->cookies->set('selected_action', (string) $this->otherProject->id);
+        $request->setLaravelSession($this->app['session.store']);
+        $this->app->instance('request', $request);
+
+        try {
+            app(BookingController::class)->destroy_booking($request);
+            $this->fail('Foreign project booking must not be deleted.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
+            $this->assertNotNull($exception);
+        }
+        $this->assertNull($booking->fresh()->deleted_at);
+    }
+
+    public function test_booking_delete_rejects_stranded_customer_financial_source(): void
+    {
+        $booking = Booking::where('project_id', $this->project->id)->firstOrFail();
+        CustomerLedger::create([
+            'customer_id' => $booking->customer_id,
+            'project_id' => $booking->project_id,
+            'plot_id' => $booking->plot_id,
+            'transaction_type' => 'PPR',
+            'type_id' => 5,
+            'reference' => 'STRANDED-RECEIPT',
+            'amount_out' => 500,
+            'amount_in' => 0,
+            'date' => '2026-05-17',
+            'payment_type' => 1,
+            'is_active' => 0,
+        ]);
+        $request = Request::create('/admin/booking/delete', 'POST', ['id' => $booking->id]);
+        $request->cookies->set('selected_action', (string) $this->project->id);
+        $request->setLaravelSession($this->app['session.store']);
+        $this->app->instance('request', $request);
+
+        TestResponse::fromBaseResponse(app(BookingController::class)->destroy_booking($request))
+            ->assertStatus(409)->assertJson(['error' => 'booking_has_financial_history']);
+        $this->assertNull($booking->fresh()->deleted_at);
+        $this->assertSame(1, CustomerLedger::where('reference', 'STRANDED-RECEIPT')->count());
+    }
+
     public function test_ppr_cash_received_payment_creates_customer_ledger_ledger_and_booking_voucher(): void
     {
         $response = $this->callDeposit($this->depositPayload(1));
