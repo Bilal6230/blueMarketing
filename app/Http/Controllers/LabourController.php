@@ -766,7 +766,10 @@ class LabourController extends Controller
                 ], 422);
             }
 
-            if (!is_numeric($amountRaw) || (float) $amountRaw <= 0) {
+            // Money must be canonical positive decimal input; PHP is_numeric()
+            // also accepts scientific notation and values beyond DECIMAL range.
+            if (!preg_match('/^\d{1,12}(?:\.\d{1,2})?$/D', $amountRaw) ||
+                (float) $amountRaw <= 0) {
                 $errorKey = 'invalid_amount';
                 $log->warning('labour.createVoucher.warn', [
                     'trace_id' => $traceId,
@@ -800,7 +803,20 @@ class LabourController extends Controller
                 ], 422);
             }
 
-            $labours = json_decode($request->detail, true);
+            $labours = json_decode((string) $request->detail, true);
+            if (!is_array($labours) || !array_is_list($labours) || !$labours ||
+                collect($labours)->contains(fn ($labour) =>
+                    !is_array($labour) ||
+                    !isset($labour['name'], $labour['days'], $labour['rate']) ||
+                    !is_string($labour['name']) || trim($labour['name']) === '' ||
+                    !is_numeric($labour['days']) || !is_numeric($labour['rate'])
+                )) {
+                return response()->json([
+                    'success' => false,
+                    'error_key' => 'invalid_labour_detail',
+                    'message' => 'Labour voucher detail must contain valid labour entries.',
+                ], 422);
+            }
             $log->info('labour.createVoucher.input_parsing_done', [
                 'trace_id' => $traceId,
                 'auth_user_id' => $authUserId,
