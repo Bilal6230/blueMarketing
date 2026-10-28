@@ -104,6 +104,13 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - **Remaining financial writers:** inspected manual CR/CP store and Booking receipt writers; manual source linkage, bank clearance variants, and other JV/stock allocation surfaces need full contract tests and MySQL concurrency rehearsal before completion. Do not classify audit alone as implementation.
 - P0.1 **93%**, P0.2 **75%**, P0.3 **15%**, P0.4 **35%**, P0.5 **10%** unchanged pending verified completion. P0.2 cannot truthfully be marked 100% in this turn; next stage requires approved typed Extra Charge accounting map, coordinated allocator design and all-writers proof. No live financial DB writes, destructive migrations or repairs.
 
+### 2026-10-29 manual CR/CP canonical amount follow-up and next task breakdown
+
+- User verified previous **3 tests / 15 assertions PASS** for mismatch/zero manual voucher identities; both PHP lints clean and Git tree clean at `6e61ce39`.
+- Further CR/CP writer review identified `is_numeric` and float-conversion accepting scientific notation and excess precision in voucher money before clearance and general-ledger operations. Added strict positive canonical 0–2 decimal and bounded magnitude validation in `LedgerController::store` (`b084820e`), and five isolated no-financial-write regression datasets (`f56dbb75`). Local verification pending.
+- **Next priority P0.2 (75%)**: secure authoritative Extra Charge source-to-account mapping and implement typed balanced posting, shared global voucher allocation for all JV/stock/CR/CP writers, bank-clearance contract tests and per-writer inventory. **P0.1 (93%)**: MySQL concurrency/unique identity and independent invariant checks. **P0.3 (15%)**: typed FK/discriminator, legacy key audit and constraints. **P0.4 (35%)**: paid refund/reversal balanced source-aware posting and replay tests. **P0.5 (10%)**: historical mismatch evidence classification, staging rehearsal, approval-gated repair.
+- Progress not increased by an unverified guard; no live financial DB writes/migrations.
+
 ## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
 
 **These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
