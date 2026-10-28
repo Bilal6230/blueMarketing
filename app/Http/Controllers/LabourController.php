@@ -882,6 +882,8 @@ class LabourController extends Controller
             }
 
             $journalVoucher = JournalVoucher::create($journalVoucherData);
+            $voucherNumber = $journalVoucher->voucher_number;
+            $voucherDate = $journalVoucher->date;
             $log->info('labour.createVoucher.journal_voucher_created', [
                 'trace_id' => $traceId,
                 'auth_user_id' => $authUserId,
@@ -963,7 +965,7 @@ class LabourController extends Controller
                 'create_by' => $authUserId,
                 'is_active' => true,
                 'status' => '0',
-                'date' => Carbon::now()->format('Y-m-d'),
+                'date' => $voucherDate,
             ]);
             $log->info('labour.createVoucher.to_ledger_created', [
                 'trace_id' => $traceId,
@@ -1001,7 +1003,7 @@ class LabourController extends Controller
                 'create_by' => $authUserId,
                 'is_active' => true,
                 'status' => '0',
-                'date' => Carbon::now()->format('Y-m-d'),
+                'date' => $voucherDate,
             ]);
             $log->info('labour.createVoucher.from_ledger_created', [
                 'trace_id' => $traceId,
