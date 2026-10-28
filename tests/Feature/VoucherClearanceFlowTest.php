@@ -166,6 +166,28 @@ class VoucherClearanceFlowTest extends TestCase
         });
     }
 
+    public function test_project_voucher_audit_reports_orphan_cr_source_read_only(): void
+    {
+        $source = CustomerLedger::create([
+            'project_id' => $this->project->id,
+            'customer_id' => $this->customer->id,
+            'plot_id' => $this->plot->id,
+            'transaction_type' => 'CR',
+            'type_id' => 99,
+            'reference' => 'AUDIT-CR-ORPHAN',
+            'amount_in' => 100,
+            'amount_out' => 0,
+            'date' => '2026-05-17',
+        ]);
+        $status = \Illuminate\Support\Facades\Artisan::call('finance:audit-project-vouchers', [
+            'project' => $this->project->id,
+        ]);
+        $this->assertSame(1, $status);
+        $this->assertStringContainsString('source_without_ledger', \Illuminate\Support\Facades\Artisan::output());
+        $this->assertNotNull($source->fresh());
+        $this->assertSame(0, DB::table('ledgers')->count());
+    }
+
     public function test_shared_ppr_allocator_reserves_booking_voucher_and_orphan_source(): void
     {
         DB::transaction(function () {
