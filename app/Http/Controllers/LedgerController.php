@@ -37,7 +37,7 @@ class LedgerController extends Controller
                 'required',
                 function ($attribute, $value, $fail) {
                     $clean = str_replace(',', '', (string) $value);
-                    if (!is_numeric($clean) || (float) $clean <= 0) {
+                    if (!preg_match('/^\\d{1,10}(?:\\.\\d{1,2})?$/D', $clean) || (float) $clean <= 0) {
                         $fail('Amount must be a valid number greater than zero.');
                     }
                 }
