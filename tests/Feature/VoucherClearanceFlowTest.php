@@ -123,6 +123,31 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame(1, CustomerLedger::where('reference', 'STRANDED-RECEIPT')->count());
     }
 
+    public function test_booking_delete_rejects_stranded_ledger_without_customer_source(): void
+    {
+        $booking = Booking::where('project_id', $this->project->id)->firstOrFail();
+        Ledger::create([
+            'type' => 'PPR',
+            'type_id' => 77,
+            'voucher_number' => 77,
+            'project_head_subheads_id' => $this->bookingReceiptAccount->id,
+            'reference' => 'ORPHAN-LEDGER',
+            'amount_in' => 120,
+            'amount_out' => 0,
+            'date' => '2026-05-17',
+            'is_active' => 0,
+        ]);
+        $request = Request::create('/admin/booking/delete', 'POST', ['id' => $booking->id]);
+        $request->cookies->set('selected_action', (string) $this->project->id);
+        $request->setLaravelSession($this->app['session.store']);
+        $this->app->instance('request', $request);
+
+        TestResponse::fromBaseResponse(app(BookingController::class)->destroy_booking($request))
+            ->assertStatus(409)->assertJson(['error' => 'booking_has_financial_history']);
+        $this->assertNull($booking->fresh()->deleted_at);
+        $this->assertSame(1, DB::table('ledgers')->where('reference', 'ORPHAN-LEDGER')->count());
+    }
+
     public function test_ppr_cash_received_payment_creates_customer_ledger_ledger_and_booking_voucher(): void
     {
         $response = $this->callDeposit($this->depositPayload(1));
