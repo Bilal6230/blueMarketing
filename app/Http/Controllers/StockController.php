@@ -1322,7 +1322,8 @@ class StockController extends Controller
             ]);
         }
 
-        $voucherNumber = getVocuherNumber($ledgerType);
+        $voucherNumber = app(\App\Services\Finance\ProjectVoucherAllocator::class)
+            ->next($projectId, $ledgerType);
         $typeId = (int) (getLastLedgerIdByType($ledgerType) ?? 0) + 1;
         $userId = auth()->id();
 
@@ -1472,7 +1473,8 @@ class StockController extends Controller
             ]);
         }
 
-        $voucherNumber = getVocuherNumber($ledgerType);
+        $voucherNumber = app(\App\Services\Finance\ProjectVoucherAllocator::class)
+            ->next($projectId, $ledgerType);
         $typeId = (int) (getLastLedgerIdByType($ledgerType) ?? 0) + 1;
         $userId = auth()->id();
 
