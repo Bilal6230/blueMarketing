@@ -1292,16 +1292,12 @@ class StockController extends Controller
             ],
         ];
 
-        $existingLegCount = Ledger::query()
-            ->where('type', $ledgerType)
-            ->where('reference', $reference)
-            ->count();
-
-        if ($existingLegCount >= 2) {
+        $projectId = (int) getSelectedTown();
+        if (app(\App\Services\Finance\StockLedgerPostingGuard::class)
+            ->alreadyPosted($reference, $projectId, $entryDate, $legs)) {
             return;
         }
 
-        $projectId = (int) getSelectedTown();
         $customerLedger = CustomerLedger::query()
             ->where('transaction_type', $ledgerType)
             ->where('reference', $reference)
@@ -1425,43 +1421,6 @@ class StockController extends Controller
         $ledgerType = 'JV';
         $amount = $this->minorToLedgerAmount($totalMinor);
 
-        $existingLegCount = Ledger::query()
-            ->where('type', $ledgerType)
-            ->where('reference', $reference)
-            ->count();
-
-        if ($existingLegCount >= 2) {
-            return;
-        }
-
-        $customerLedger = CustomerLedger::query()
-            ->where('transaction_type', $ledgerType)
-            ->where('reference', $reference)
-            ->where('project_id', $projectId)
-            ->first();
-
-        if (!$customerLedger) {
-            $customerLedger = CustomerLedger::create([
-                'transaction_type' => $ledgerType,
-                'type_id' => get_new_typeID($ledgerType),
-                'reference' => $reference,
-                'project_id' => $projectId,
-                'customer_id' => null,
-                'plot_id' => null,
-                'amount_in' => $billType === 'sale' ? $amount : 0,
-                'amount_out' => $billType === 'purchase' ? $amount : 0,
-                'description' => $detail,
-                'date' => $billDate,
-                'payment_type' => 1,
-                'is_active' => 1,
-                'is_approve' => 0,
-            ]);
-        }
-
-        $voucherNumber = getVocuherNumber($ledgerType);
-        $typeId = (int) (getLastLedgerIdByType($ledgerType) ?? 0) + 1;
-        $userId = auth()->id();
-
         if ($billType === 'purchase') {
             $legs = [
                 [
@@ -1493,6 +1452,39 @@ class StockController extends Controller
                 ],
             ];
         }
+
+        if (app(\App\Services\Finance\StockLedgerPostingGuard::class)
+            ->alreadyPosted($reference, $projectId, $billDate, $legs)) {
+            return;
+        }
+
+        $customerLedger = CustomerLedger::query()
+            ->where('transaction_type', $ledgerType)
+            ->where('reference', $reference)
+            ->where('project_id', $projectId)
+            ->first();
+
+        if (!$customerLedger) {
+            $customerLedger = CustomerLedger::create([
+                'transaction_type' => $ledgerType,
+                'type_id' => get_new_typeID($ledgerType),
+                'reference' => $reference,
+                'project_id' => $projectId,
+                'customer_id' => null,
+                'plot_id' => null,
+                'amount_in' => $billType === 'sale' ? $amount : 0,
+                'amount_out' => $billType === 'purchase' ? $amount : 0,
+                'description' => $detail,
+                'date' => $billDate,
+                'payment_type' => 1,
+                'is_active' => 1,
+                'is_approve' => 0,
+            ]);
+        }
+
+        $voucherNumber = getVocuherNumber($ledgerType);
+        $typeId = (int) (getLastLedgerIdByType($ledgerType) ?? 0) + 1;
+        $userId = auth()->id();
 
         foreach ($legs as $leg) {
             $alreadyPosted = Ledger::query()
