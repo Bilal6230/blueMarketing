@@ -184,7 +184,14 @@ class ReportController extends Controller
             if ((int) $result->passing_status !== 0) {
                 throw new \RuntimeException('This payment has already been processed.');
             }
-            $amount = $result->amount_out;
+            // CR stores the incoming receipt in amount_in, while PPR can
+            // store the payable amount in amount_out. Never post a zero BR.
+            $amount = (float) $result->amount_out > 0
+                ? $result->amount_out
+                : $result->amount_in;
+            if ((float) $amount <= 0) {
+                throw new \DomainException('BANK_CLEARANCE_INVALID_AMOUNT');
+            }
             $check_slip = $result->transaction_type . '-' . $result->reference;
 
             if ($request->passing_status == 1) {
