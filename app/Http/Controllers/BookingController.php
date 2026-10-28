@@ -3386,6 +3386,17 @@ class BookingController extends Controller
                     }
                 }
 
+                // A pre-existing cancellation posting with an unmarked booking is
+                // a reconciliation conflict. Never change booking/plot state and
+                // then return early while leaving the source ledger ambiguous.
+                if ($request->input('action_type') !== 'payment_not_received' &&
+                    Ledger::query()
+                        ->where('reference', $booking->id)
+                        ->where('detail', 'like', 'CANCEL#' . $booking->id . '%')
+                        ->exists()) {
+                    throw new \DomainException('CANCEL_PRIOR_POSTING_CONFLICT');
+                }
+
                 // Lock plot row too (consistent state)
                 $plot = Plot::where('id', $booking->plot_id)->lockForUpdate()->first();
 
@@ -3589,7 +3600,10 @@ class BookingController extends Controller
 
             return response()->json(['message' => 'Booking canceled successfully.']);
         } catch (\Throwable $e) {
-            if ($e instanceof \DomainException && $e->getMessage() === 'CANCEL_NO_PAYMENT_HAS_FINANCIAL_HISTORY') {
+            if ($e instanceof \DomainException && in_array($e->getMessage(), [
+                'CANCEL_NO_PAYMENT_HAS_FINANCIAL_HISTORY',
+                'CANCEL_PRIOR_POSTING_CONFLICT',
+            ], true)) {
                 return response()->json([
                     'error' => 'cancellation_requires_financial_reversal',
                     'message' => 'This booking has financial history and requires a reviewed reversal.',
