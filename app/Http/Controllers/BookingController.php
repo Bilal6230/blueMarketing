@@ -2431,9 +2431,14 @@ class BookingController extends Controller
                             (int) $existingBookingVoucher->plot_id !== $plotId ||
                             (string) $existingBookingVoucher->voucher_series !== 'PPR' ||
                             (int) $existingBookingVoucher->is_active !== 1 ||
+                            (int) $existingBookingVoucher->booking_id !== (int) $bookingId ||
+                            (int) $existingBookingVoucher->payment_type !== (int) $request->input('payment_type') ||
                             (string) $existingBookingVoucher->slip_reference !== $reference ||
                             (string) $existingBookingVoucher->receipt_date !== $receiptDate ||
-                            round((float) $existingBookingVoucher->amount, 2) !== round((float) $rawAmount, 2)
+                            round((float) $existingBookingVoucher->amount, 2) !== round((float) $rawAmount, 2) ||
+                            (string) ($existingBookingVoucher->t_number ?? '') !== (string) ($t_number ?? '') ||
+                            (string) ($existingBookingVoucher->bank_id ?? '') !== (string) ($bank_id ?? '') ||
+                            (string) ($existingBookingVoucher->passing_date ?? '') !== (string) ($request->input('passing_date') ?? '')
                         )) {
                             throw new \DomainException('PPR_BOOKING_VOUCHER_SOURCE_CONFLICT');
                         }
