@@ -121,7 +121,7 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame(0, DB::table('customer_ledger')->count());
     }
 
-    public function test_extra_charge_requires_approved_mapping_without_financial_writes(): void
+    public function test_extra_charge_rejects_unsupported_immediate_bank_payment_without_financial_writes(): void
     {
         Schema::create('charge_types', function (Blueprint $table) {
             $table->id();
@@ -131,11 +131,44 @@ class VoucherClearanceFlowTest extends TestCase
         DB::table('charge_types')->insert(['id' => 1, 'name' => 'Test charge']);
         $response = $this->callDeposit($this->depositPayload(1, [
             'action' => 'extra_charge', 'charge_type_id' => 1,
-            'reference' => 'EC-NOMAP',
+            'reference' => 'EC-NOMAP', 'payment_type' => 2,
         ]));
         $response->assertStatus(302)->assertSessionHasErrors('msg');
         $this->assertSame(0, DB::table('customer_ledger')->count());
         $this->assertSame(0, DB::table('ledgers')->count());
+    }
+
+    public function test_extra_charge_auto_creates_project_accounts_and_reuses_income_account(): void
+    {
+        Schema::create('charge_types', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
+        DB::table('charge_types')->insert(['id' => 1, 'name' => 'Test charge']);
+        $this->callDeposit($this->depositPayload(1, [
+            'action' => 'extra_charge', 'charge_type_id' => 1,
+            'reference' => 'AUTO-EC-1',
+        ]))->assertSessionHasNoErrors();
+        $first = CustomerLedger::where('reference', 'AUTO-EC-1')->firstOrFail();
+        $this->assertNull($first->payment_type);
+        $legs = Ledger::where('customer_ledger_id', $first->id)->get();
+        $this->assertCount(2, $legs);
+        $this->assertEquals(1250, $legs->sum('amount_in'));
+        $this->assertEquals(1250, $legs->sum('amount_out'));
+        $this->assertSame(1, DB::table('head_accountings')->where('name', 'Extra Charge')->count());
+        $this->assertSame(2, DB::table('subhead_accountings')->whereIn('name', [
+            'Extra Charge Income', 'Extra Charge Receivable',
+        ])->count());
+        $this->callDeposit($this->depositPayload(1, [
+            'action' => 'extra_charge', 'charge_type_id' => 1,
+            'reference' => 'AUTO-EC-2',
+        ]))->assertSessionHasNoErrors();
+        $this->assertSame(1, DB::table('head_accountings')->where('name', 'Extra Charge')->count());
+        $this->assertSame(2, DB::table('subhead_accountings')->whereIn('name', [
+            'Extra Charge Income', 'Extra Charge Receivable',
+        ])->count());
+        $this->assertSame(2, CustomerLedger::where('transaction_type', 'EC')->count());
     }
 
     public function test_shared_journal_allocator_reserves_header_and_ledger_numbers(): void
