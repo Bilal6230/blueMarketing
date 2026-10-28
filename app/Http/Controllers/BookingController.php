@@ -3254,41 +3254,72 @@ class BookingController extends Controller
 
     public function destroy_booking(Request $request)
     {
-        $booking = Booking::findOrFail($request->id);
+        $projectId = (int) getSelectedTown();
 
-        // Get the plot linked to this booking
-        $plot = Plot::find($booking->plot_id);
+        return DB::transaction(function () use ($request, $projectId) {
+            $booking = Booking::query()
+                ->where('project_id', $projectId)
+                ->lockForUpdate()
+                ->findOrFail($request->id);
 
-        if ($plot) {
-            // Save current booking data to plot_history
-            $history = json_decode($plot->plot_history, true) ?? []; // Get existing history or empty array
-            $history[] = [
-                'booking_id' => $booking->id,
-                'customer_id' => $booking->customer_id,
-                'plot_id' => $booking->plot_id,
-                'plot_size' => $booking->plot_size,
-                'plot_rate' => $booking->plot_rate,
-                'total_price' => $booking->total_price,
-                'broker_id' => $booking->broker_id,
-                'booking_date' => $booking->booking_date,
-                'name' => $booking->customer->first_name . ' ' . $booking->customer->last_name,
-                'father_name' => $booking->customer->father_name,
-                'cnic' => $booking->customer->nic_number,
-                'phone_number' => $booking->customer->phone_number,
-                'deleted_at' => now(),
-            ];
+            // Booking cancellation has a separate audited workflow. Never
+            // soft-delete a booking whose receipt/source history exists:
+            // this would hide ownership without reversing any finance rows.
+            $linkedCustomerLedgerExists = CustomerLedger::query()
+                ->where('project_id', $projectId)
+                ->where('customer_id', $booking->customer_id)
+                ->where('plot_id', $booking->plot_id)
+                ->exists();
+            $linkedBookingVoucherExists = BookingVoucher::query()
+                ->where(function ($query) use ($booking, $projectId) {
+                    $query->where('booking_id', $booking->id)
+                        ->orWhere(function ($sourceQuery) use ($booking, $projectId) {
+                            $sourceQuery->where('project_id', $projectId)
+                                ->where('customer_id', $booking->customer_id)
+                                ->where('plot_id', $booking->plot_id);
+                        });
+                })
+                ->exists();
+            $linkedLedgerExists = Ledger::query()
+                ->whereHas('projectHeadSubhead', function ($query) use ($booking, $projectId) {
+                    $query->where('project_id', $projectId)
+                        ->where('customer_id', $booking->customer_id)
+                        ->where('plot_id', $booking->plot_id);
+                })
+                ->exists();
 
-            // Save updated history back to plot
-            $plot->update([
-                'sold' => 0, // Reset sold status
-                'plot_history' => json_encode($history),
-            ]);
-        }
+            if ($linkedCustomerLedgerExists || $linkedBookingVoucherExists || $linkedLedgerExists) {
+                return response()->json([
+                    'error' => 'booking_has_financial_history',
+                    'message' => 'A booking with financial history cannot be deleted.',
+                ], 409);
+            }
 
-        // Perform soft delete on booking
-        $booking->delete();
+            $plot = Plot::query()
+                ->where('project_id', $projectId)
+                ->lockForUpdate()
+                ->find($booking->plot_id);
 
-        return response()->json(['message' => 'Booking deleted successfully.']);
+            if ($plot) {
+                $history = json_decode($plot->plot_history, true) ?? [];
+                $history[] = [
+                    'booking_id' => $booking->id,
+                    'customer_id' => $booking->customer_id,
+                    'plot_id' => $booking->plot_id,
+                    'plot_size' => $booking->plot_size,
+                    'plot_rate' => $booking->plot_rate,
+                    'total_price' => $booking->total_price,
+                    'broker_id' => $booking->broker_id,
+                    'booking_date' => $booking->booking_date,
+                    'name' => optional($booking->customer)->first_name . ' ' . optional($booking->customer)->last_name,
+                    'deleted_at' => now(),
+                ];
+                $plot->update(['sold' => 0, 'plot_history' => json_encode($history)]);
+            }
+
+            $booking->delete();
+            return response()->json(['message' => 'Booking deleted successfully.']);
+        });
     }
 
     public function cancel(Request $request)
