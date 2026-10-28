@@ -75,6 +75,13 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - Focused isolated regressions cover paid booking conflict (no state/finance mutations), foreign-project rejection, and success/idempotency for unposted no-payment cancellation (no customer ledger or general ledger rows). Code commits `5f2e7fcd`, `99be0a16`, test commits `7906802b`, `07a17d84`, `046633da`. **New focused tests pending local execution**; if verified, candidate +10 points P0.4 milestone to record next.
 - Current board until verified: P0.1 **93%**, P0.2 **75%**, P0.3 **15%**, P0.4 **15%**, P0.5 **10%**. Full cancellation refund/reversal accounting, MySQL concurrency and legacy cleanup remain unresolved. No production/staging DB writes/migrations.
 
+### 2026-10-29 verified deletion milestone and cancellation fixture correction
+
+- User confirmed **4/4 booking deletion tests, 17 assertions PASS** on `fa3c7182`, with PHP lint and working tree clean. The posted-history deletion protection is a verified structural P0.4 milestone, therefore advance **P0.4 15% → 25% (implementation estimate)** independently from the later cancellation test outcome. Remaining reversal flows are NOT verified.
+- User cancellation run at `793e458a` failed on the first success fixture with HTTP 500; the two following cases were not executed because `--stop-on-failure`. Inspected isolated SQLite fixture against cancellation's plot-history write: test `plots` schema lacked the `plot_history` column used by the controller. Added it (`bcc2ce87`) and added a separate **successful unposted booking deletion** regression that confirms soft-delete, plot history, and zero finance rows (`5da3b0d0`). The error body was not provided, so this is the most concrete fixture mismatch found, **pending local rerun**, not yet a confirmed complete fix.
+- Cancellation business logic remains guarded: no-payment booking with financial source must return conflict; real unpaid cancellation must not generate reversal postings; foreign project must be rejected. Run focused cancellation and booking deletion tests next. P0.1 **93%**, P0.2 **75%**, P0.3 **15%**, P0.4 **25%**, P0.5 **10%** (planning coverage, not production signoff).
+- No production/staging DB writes, destructive repairs or migrations.
+
 ## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
 
 **These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
