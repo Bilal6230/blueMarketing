@@ -203,5 +203,18 @@ Regression coverage was added in isolated SQLite tests. The posting integration 
 
 The remaining limitation is that SQLite tests do not prove MySQL concurrency, grants, triggers, stored routines, or historical provenance. Cross-project approval behavior remains dependent on the existing authorization and project-scope guards and requires a separately authorized integration exercise before any real-data use.
 
+## 2026-10-28 implementation and verification continuation
 
+- Phase 1 was committed and locally verified: mobile ledger approval mutability restricted to detail, and fresh Journal Voucher ledger legs use the persisted header voucher number.
+- A separate project-ownership guard now applies to `ledgers` approval actions even for privileged approval users, and is checked again within approve/reject transactions. The user's focused local run passed **17 tests / 73 assertions**.
+- Labour Journal Voucher posting now copies both voucher number and business date from the persisted header; a database transaction surrounds header, details, ledger legs and attendance-status update. The user verified PHP syntax and **417 Feature tests / 1,860 assertions** before the stock changes.
+- Stock web entry/bill and mobile stock writers now call `StockLedgerPostingGuard` before treating a duplicate reference as already posted. Existing postings with partial, excess, inactive, cross-project, wrong-account, amount/date or inconsistent identity legs fail closed. This is *not* a historical repair and does not establish a source FK.
+- User's post-stock full Feature run: **422 passed, 1 failed / 1,865 assertions**. The single failure was test infrastructure, not a failed financial guard assertion: PHPUnit did not register the old docblock `@dataProvider conflicts`, causing `ArgumentCountError` with zero supplied arguments. Replaced it with `#[\\PHPUnit\\Framework\\Attributes\\DataProvider('conflicts')]` in `StockLedgerPostingGuardTest.php` (commit `794fc543`). **Post-fix tests still require local execution**; do not report the full suite as passing until verified.
+- No production/staging/clone database write, migration, source attribution/backfill or financial record repair was performed. Historical JV ownership, legacy voucher dates/numbers, stock source-specific FK design, concurrency uniqueness and deletion policy remain blocked.
 
+### Next test gates
+
+1. Run isolated `StockLedgerPostingGuardTest` to confirm the six conflict datasets execute under the installed PHPUnit version.
+2. Run full isolated Feature suite; capture final test and assertion count.
+3. Inspect source/ledger linkage and business date for every stock and labour writer; retain provenance ambiguity instead of inferring a foreign key.
+4. Require a separately approved disposable MySQL rehearsal before source-FK DDL, cleanup, reversible recovery or release.
