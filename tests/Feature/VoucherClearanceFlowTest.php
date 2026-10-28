@@ -689,6 +689,36 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame(1, CustomerLedger::where('transaction_type', 'PPR')->count());
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidLabourAttendanceIds')]
+    public function test_labour_voucher_rejects_invalid_attendance_identity_before_posting(string $attendanceIds): void
+    {
+        $request = Request::create('/admin/labour/voucher/create', 'POST', [
+            'site_id' => 1,
+            'amount' => '2500.00',
+            'attendance_ids' => $attendanceIds,
+        ]);
+        $request->cookies->set('selected_action', (string) $this->project->id);
+        $request->setLaravelSession($this->app['session.store']);
+        $this->app->instance('request', $request);
+
+        $response = $this->app->make(\App\Http\Controllers\LabourController::class)->createVoucher($request);
+        TestResponse::fromBaseResponse($response)->assertStatus(422)
+            ->assertJson(['error_key' => 'invalid_attendance_ids']);
+        $this->assertSame(0, DB::table('journal_vouchers')->count());
+        $this->assertSame(0, DB::table('ledgers')->count());
+    }
+
+    public static function invalidLabourAttendanceIds(): array
+    {
+        return [
+            'empty' => [''],
+            'duplicate' => ['1,1'],
+            'noninteger' => ['1,abc'],
+            'zero' => ['0'],
+            'trailing separator' => ['1,'],
+        ];
+    }
+
     public function test_ambiguous_extra_charge_does_not_create_any_financial_rows(): void
     {
         $beforeSources = DB::table('customer_ledger')->count();
