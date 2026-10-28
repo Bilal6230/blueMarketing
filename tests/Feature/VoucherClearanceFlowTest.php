@@ -1983,6 +1983,32 @@ class VoucherClearanceFlowTest extends TestCase
         ], $overrides);
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('manualCashSourceReplayTypes')]
+    public function test_manual_cash_voucher_replay_preserves_single_financial_source(string $series): void
+    {
+        $payload = $this->cashVoucherPayload([
+            'voucher' => $series . '-1',
+            'voucher_number' => $series . '-1',
+            'reference' => 'REPLAY-' . $series,
+            'payment_type' => 1,
+        ]);
+        $first = $this->callLedgerStore($payload);
+        $first->assertOk()->assertJson(['status' => 'success']);
+        $beforeSource = DB::table('customer_ledger')->get()->toArray();
+        $beforeLedgers = DB::table('ledgers')->get()->toArray();
+
+        $second = $this->callLedgerStore($payload);
+        $this->assertNotSame('success', $second->json('status'));
+        $this->assertEquals($beforeSource, DB::table('customer_ledger')->get()->toArray());
+        $this->assertEquals($beforeLedgers, DB::table('ledgers')->get()->toArray());
+        $this->assertSame(0, DB::transactionLevel());
+    }
+
+    public static function manualCashSourceReplayTypes(): array
+    {
+        return ['cash receipt' => ['CR'], 'cash payment' => ['CP']];
+    }
+
     #[\PHPUnit\Framework\Attributes\DataProvider('invalidManualCashVoucherMoney')]
     public function test_manual_cash_voucher_rejects_invalid_money_without_financial_rows(string $amount): void
     {
