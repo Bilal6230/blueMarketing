@@ -2337,6 +2337,11 @@ class BookingController extends Controller
                             $reference === '') {
                             throw new \DomainException('PPR_FINANCIAL_INPUT_INVALID');
                         }
+                        // Serialize first-time PPR allocations within the project.
+                        // Locks on missing PPR source rows alone do not prevent a race.
+                        if (!Project::query()->whereKey($projectId)->lockForUpdate()->exists()) {
+                            throw new \DomainException('PPR_PROJECT_NOT_FOUND');
+                        }
                         $sourceKey = implode('|', [$projectId, 'PPR', $reference, (int) $customer_id, $plotId]);
                         if ($payment_type == 1) {
                             $t_number = $bank_id = null;
