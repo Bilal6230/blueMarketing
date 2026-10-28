@@ -822,6 +822,86 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame($this->user->id, $history[0]['updated_by']);
     }
 
+    public function test_finance_clearance_pass_requires_business_date(): void
+    {
+        $pending = $this->createPendingReceipt('CR', 2, $this->project->id, 1500);
+
+        $this->callUpdatePendingBankPaymentStatus($pending->id, [
+            'passing_status' => 1,
+            'note' => 'Missing passed date',
+            'accounts_id' => $this->cashVoucherAccount->head_accounting_id,
+            'subaccounts_id' => $this->cashVoucherAccount->subhead_accounting_id,
+        ])->assertStatus(422)->assertJson(['error_key' => 'pending_payment_invalid_state']);
+
+        $this->assertSame(0, (int) $pending->fresh()->passing_status);
+        $this->assertDatabaseMissing('ledgers', ['type' => 'BR']);
+    }
+
+    public function test_finance_clearance_rejects_inactive_source_without_mutating(): void
+    {
+        $pending = $this->createPendingReceipt('CR', 2, $this->project->id, 1500);
+        $pending->update(['is_active' => 0]);
+
+        $this->callUpdatePendingBankPaymentStatus($pending->id, [
+            'passing_status' => 1,
+            'note' => 'Inactive source',
+            'bank_post_at' => '2026-05-20',
+            'accounts_id' => $this->cashVoucherAccount->head_accounting_id,
+            'subaccounts_id' => $this->cashVoucherAccount->subhead_accounting_id,
+        ])->assertStatus(422)->assertJson(['error_key' => 'pending_payment_invalid_state']);
+
+        $this->assertSame(0, (int) $pending->fresh()->passing_status);
+        $this->assertDatabaseMissing('ledgers', ['type' => 'BR']);
+    }
+
+    public function test_finance_clearance_posts_positive_br_for_cr_receipt(): void
+    {
+        $pending = $this->createPendingReceipt('CR', 2, $this->project->id, 1500);
+
+        $this->callUpdatePendingBankPaymentStatus($pending->id, [
+            'passing_status' => 1,
+            'note' => 'Passed payment',
+            'bank_post_at' => '2026-05-20',
+            'accounts_id' => $this->cashVoucherAccount->head_accounting_id,
+            'subaccounts_id' => $this->cashVoucherAccount->subhead_accounting_id,
+        ])->assertOk()->assertJson(['status' => 'success']);
+
+        $br = Ledger::where('type', 'BR')->firstOrFail();
+        $this->assertSame($pending->id, (int) $br->customer_ledger_id);
+        $this->assertSame(1500.0, (float) $br->amount_out);
+        $this->assertSame(0.0, (float) $br->amount_in);
+        $this->assertSame('2026-05-20', substr((string) $br->date, 0, 10));
+    }
+
+    public function test_finance_clearance_rejects_foreign_br_reference_collision(): void
+    {
+        $pending = $this->createPendingReceipt('CR', 2, $this->project->id, 1500);
+        $other = $this->createPendingReceipt('PPR', 2, $this->project->id, 600);
+        Ledger::create([
+            'customer_ledger_id' => $other->id,
+            'type' => 'BR',
+            'type_id' => 999,
+            'voucher_number' => 999,
+            'project_head_subheads_id' => $this->cashVoucherAccount->id,
+            'reference' => 'BANK_CLEARANCE#' . $pending->id,
+            'amount_in' => 0,
+            'amount_out' => 1500,
+            'is_active' => 1,
+            'date' => '2026-05-20',
+        ]);
+
+        $this->callUpdatePendingBankPaymentStatus($pending->id, [
+            'passing_status' => 1,
+            'note' => 'Collision',
+            'bank_post_at' => '2026-05-20',
+            'accounts_id' => $this->cashVoucherAccount->head_accounting_id,
+            'subaccounts_id' => $this->cashVoucherAccount->subhead_accounting_id,
+        ])->assertStatus(422)->assertJson(['error_key' => 'pending_payment_invalid_state']);
+
+        $this->assertSame(0, (int) $pending->fresh()->passing_status);
+        $this->assertSame(1, Ledger::where('type', 'BR')->count());
+    }
+
     public static function pendingReceiptPaymentTypesProvider(): array
     {
         return [
