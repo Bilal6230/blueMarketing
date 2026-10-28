@@ -141,6 +141,13 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - User explicitly requested in one turn (1) production EC mapping and online/cheque clearance, (2) global JV/Stock/manual allocation and concurrency verification, (3) P0.3 source typing and safe constraints. **None of these three is fully complete.** There is no authorized real charge-type-account approval in code; inventing one is prohibited. No MySQL parallel run occurred, so claiming concurrency proven would be false. P0.3 database constraints cannot be responsibly installed until legacy key/null/duplicate audit plus rollback plan.
 - Task estimates remain P0.1 **93%**, P0.2 **85%**, P0.3 **15%**, P0.4 **35%**, P0.5 **10%**. Audit command is a P0.3/P0.5 preparatory capability, not completion. Next needed: financial owner signs off project/charge debit-credit mappings and bank clearing, shared allocator deployed across all writers with actual MySQL tests, schema-level source links after clean evidence packet. No production/staging DB writes or migrations.
 
+### 2026-10-29 substantial shared voucher allocation integration — Stock and EC
+
+- User verified read-only EC audit regressions **2 PASS / 8 assertions** at `0fb4ec51`; clean lint/status. User requested major financial implementation, not tracker-only changes.
+- Added real `App\\Services\\Finance\\ProjectVoucherAllocator` with mandatory transaction, durable project-row lock, per-project voucher-series scope and max of historical `customer_ledger.type_id` AND `ledgers.voucher_number` (including orphan/deactivated sources). Allocator now used by both Stock entry and Stock bill financial posting paths and Booking Extra Charge EC posting. Commits `2398fbb9`, `636d2950`, `aae0ac3b`; integrated regression `9e6f3869`. **New tests pending local verification**.
+- This is concrete multi-writer integration, but **not** full global voucher coordination: Labour/general JV use distinct header semantics, legacy other writers remain, no real MySQL parallel test or DB uniqueness constraint. EC production bank/cheque, real finance-approved debit/credit mapping and P0.3 source typing remain blockers.
+- Do not inflate completion; board P0.1 **93%**, P0.2 **85%**, P0.3 **15%**, P0.4 **35%**, P0.5 **10%** pending full major acceptance. No prod/staging financial writes or migrations.
+
 ## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
 
 **These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
