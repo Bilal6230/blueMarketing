@@ -881,6 +881,8 @@ class LabourController extends Controller
                 $journalVoucherData['site_id'] = $siteId;
             }
 
+            // Header, details, ledger legs and attendance state must commit together.
+            DB::beginTransaction();
             $journalVoucher = JournalVoucher::create($journalVoucherData);
             $voucherNumber = $journalVoucher->voucher_number;
             $voucherDate = $journalVoucher->date;
@@ -908,6 +910,7 @@ class LabourController extends Controller
                     'selectedProjectId' => $selectedProjectId,
                     'error_key' => $errorKey,
                 ]);
+                DB::rollBack();
                 return response()->json([
                     'success' => false,
                     'error_key' => $errorKey,
@@ -924,6 +927,7 @@ class LabourController extends Controller
                     'selectedProjectId' => $selectedProjectId,
                     'error_key' => $errorKey,
                 ]);
+                DB::rollBack();
                 return response()->json([
                     'success' => false,
                     'error_key' => $errorKey,
@@ -1024,6 +1028,8 @@ class LabourController extends Controller
                 'attendance_ids_count' => count($ids),
             ]);
 
+            DB::commit();
+
             $log->info('labour.createVoucher.success', [
                 'trace_id' => $traceId,
                 'auth_user_id' => $authUserId,
@@ -1045,6 +1051,9 @@ class LabourController extends Controller
                 'trace_id' => $traceId,
             ]);
         } catch (\Throwable $e) {
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
             $errorKey = 'labour_voucher_failed';
             $log->error('labour.createVoucher.error', [
                 'trace_id' => $traceId,
