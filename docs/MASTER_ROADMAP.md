@@ -1,3 +1,35 @@
+## 2026-10-28 structural compatibility capture verified (latest)
+
+The approved seven-result-set capture passed identity and completeness gates: exit 0, 42 scoped, 41 present, `expences` absent, and terminal `REVIEW_REQUIRED`. Comparison of all 35 missing-history creates yields **19 structurally compatible, 13 incompatible and 3 unknown**. These labels describe only original schema declarations, not execution provenance or authorization to edit history.
+
+The stock dependency chain matches declared keys and FK actions, but `stock_movements.meta` is LONGTEXT plus a validity check rather than declared MySQL JSON. Release blockers remain: legacy signedness/nullability drift, JSON storage differences, absent `expences` versus separate `accounting_expenses`, JV voucher identity/index drift, unexplained cumulative fields in three unknown tables, and the commission-detail rollback targeting the wrong table.
+
+Next: review a non-destructive disposition manifest. Compatible targets may become history-only candidates only after hashes, dependencies, backup/restore and rollback approval; incompatible targets require separately designed forward changes and disposable MySQL rehearsal; unknown targets require provenance evidence. No automatic history rows or migration replay. Production deployment remains **BLOCKED**.
+
+---
+
+## 2026-10-28 structural compatibility preflight prepared (latest)
+
+Revalidation found no matrix-count correction: 55 repository files, 17 recorded rows in batches 14/1/1/1, 38 missing rows, 35 missing creates, 34 create collisions, one absent `expences` target, three absent ALTER effects, and no orphans. The new structural manifest records the exact original declarations for all 35 creates and keeps runtime, cumulative and historical effects `UNKNOWN` until supported.
+
+The proposed SQL reads identity and `information_schema` metadata only for 42 named tables: the 35 targets, `accounting_expenses`, and six dependencies. It captures table engine/collation, full column definitions, indexes, foreign keys, checks and fail-visible scope totals without reading business records. It never reports `PASS`: a complete expected capture ends at `REVIEW_REQUIRED`, while identity/scope failures end at `BLOCKED_*`. Execution remains unapproved.
+
+Repository evidence does not support treating `expences` as a rename of `accounting_expenses`; the active model requires fields absent from the two-column legacy migration. Other structural risks include legacy integer/unsigned-BIGINT drift, missing/commented constraints, the ordered stock FK chain, and a commission-detail rollback that targets the wrong table. Next gate is independent static review and then explicit approval for the SELECT-only capture. Production deployment remains **BLOCKED**.
+
+---
+
+## 2026-10-28 verified staging migration-history drift (latest)
+
+The approved read-only staging capture verified the exact database/account gate and exit code 0. Repository comparison now establishes **55 migration files, 17 recorded rows, 38 missing rows and no orphan history rows**. Of the missing rows, 34 create targets already exist and would collide on replay, the exact `expences` target is absent while `accounting_expenses` exists with unknown provenance, and three ALTER effects are absent (`journal_vouchers.site_id`, `plots.amount`, and the two landing-builder fields).
+
+Targeted permission, landing-draft and finance-identity effects are consistent with their recorded migrations. Most other objects have only table-presence evidence, so their cumulative columns, keys and dependencies still require SELECT-only structural capture. Existing objects do not prove that missing migrations ran, and missing effects do not authorize execution.
+
+Next gate: collect the remaining cumulative structural metadata and the `expences`/`accounting_expenses` application mapping, then review a per-file reconciliation manifest. Keep history-only reconciliation separate from schema work; require explicit approval, backup/restore evidence, disposable MySQL rehearsal and rollback planning for each. Do not replay any existing-table create migration or insert migration-history rows automatically. Production deployment remains **BLOCKED**.
+
+See the exact 55-row matrix and dispositions in [the readiness audit](LARAVEL13_READINESS_AUDIT_2026_10_27.md).
+
+---
+
 ## 2026-10-28 migration-history compatibility hardening (latest)
 
 Reviewed all 55 repository migrations without MySQL access. Fixed two verified clean-schema defects: Spatie permission pivot names now come from the installed registrar instance, and the March `site_id` migration no longer performs historical description/account backfills. It adds only a nullable indexed column on the safe absent-column path and fails closed when the table is missing, the column or generated index name exists, or rollback ownership cannot be proved.
@@ -681,3 +713,10 @@ Assistant must:
 
 ## 2026-10-27 — full application PHPUnit acceptance gate, not selective suite only
 - User locally verified MysqlStagingDatabaseIdentityTest 4 PASS/6 assertions plus FinancialSourceMetadataIntegrationTest 70 PASS/195 assertions (74 PASS/201); GitHub CI run 40482713836 passed. Added an explicit **full `php artisan test`** CI gate under isolated PHP 8.3 + SQLite :memory: to identify regressions in all registered Unit and Feature classes, beyond the individually enumerated finance/booking/CRM/attendance flows. New full-suite CI status pending: do NOT claim full application test success unless the run passes. Live MySQL staging, manual UI acceptance, financial historical ownership and production signoff remain release blockers. No production credentials, schema mutations or `master_live` changes. Qualitative verified 79% baseline, no increase pending full-suite acceptance.
+
+## 2026-10-28 - UNKNOWN structural provenance and reconciliation controls
+
+- Git history verifies application use, but not DDL execution provenance, for ledger `customer_ledger_id`/`charge_type_id`/`voucher_number`, site `project_id`, and booking-voucher `delete_reason`. Relevant CREATE/ALTER definitions in a local SQL artifact corroborate physical metadata only; no data rows were inspected.
+- Structural totals remain **19 COMPATIBLE / 13 INCOMPATIBLE / 3 UNKNOWN**. The UNKNOWN targets remain blocked from replay and history insertion because their extra indexes/FKs/columns do not have complete reviewed DDL provenance.
+- Added a non-executable SHA-256-pinned manifest separating 19 history-only review candidates, 13 forward-remediation candidates and three unresolved-provenance targets. Each future disposition requires a fresh metadata capture, dependency and recovery plan, exact hash and explicit human approval.
+- Release remains blocked by all 13 incompatibilities, journal-voucher voucher/unique-key drift, UNKNOWN provenance, JSON/LONGTEXT decisions and the destructive commission-detail rollback path.

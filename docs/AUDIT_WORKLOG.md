@@ -2,6 +2,33 @@
 
 **Updated:** 2026-10-28. Keep new entries dated, evidence-based and append-only where practical.
 
+## 2026-10-28 - structural compatibility capture verified
+
+- Read the exact named PowerShell capture in full. MySQL exit 0; all seven result sets; exact staging database/restricted account/port; identity gate 1; terminal 42/41/1 with all scope gates 1 and `REVIEW_REQUIRED`. Codex did not connect to MySQL.
+- Compared all 35 missing-history create declarations with captured tables, columns, types, signedness, nullability, defaults, indexes, unique constraints and FKs. Result: 19 COMPATIBLE, 13 INCOMPATIBLE, 3 UNKNOWN. All present scoped tables are InnoDB/`utf8mb4_unicode_ci`; these were not specified by migrations.
+- Confirmed all stock FK relationships/actions match; eight stock tables are compatible, while `stock_movements` has a JSON/LONGTEXT type mismatch. Confirmed project/account signedness and width drift, multiple nullability/default/action mismatches, and three tables with unexplained additive structure.
+- Kept `expences` absent and distinct from the richer `accounting_expenses`; no rename/equivalence claimed. Recorded JV signed INT/composite uniqueness versus migration VARCHAR/global uniqueness as a separate blocker.
+- Kept `create_commision_voucher_details::down()` targeting `journal_voucher_details` as a separate destructive rollback blocker; no migration code changed.
+- Updated the structural manifest with exact per-target evidence and a non-destructive disposition. No SQL execution, migration, schema/data/history write, application change, commit, push, merge or deployment. Production deployment remains BLOCKED.
+
+## 2026-10-28 - structural compatibility assessment prepared
+
+- Independently revalidated the 55-row matrix and captured history: 17 exact recorded names with batch distribution 14/1/1/1, 38 missing, 35 missing creates, three missing alters and no orphans. All 35 create migration classes were inspected; no count correction was needed.
+- Added `STAGING_MIGRATION_STRUCTURAL_EXPECTATIONS.md` with normalized original column, default, index, unique and active-FK expectations. No inspected create migration specifies an engine, charset or table collation; runtime/cumulative effects remain `UNKNOWN` where repository declarations cannot decide them.
+- Added `STAGING_MIGRATION_STRUCTURAL_PREFLIGHT.sql`, limited to connection identity and `information_schema` metadata for 42 explicitly named targets/dependencies. It contains no business-table reads, values, DML, DDL, transaction/session changes, routines, dynamic SQL or exports. Final validation now reports only `REVIEW_REQUIRED` or a specific `BLOCKED_*` status and checks the expected 41-present/one-absent scope. It was not executed.
+- Repository code treats `Expence` and `AccountingExpense` as separate conventional tables. Active finance paths use richer `accounting_expenses` fields, while the absent `expences` migration declares only ID/timestamps and no rename; provenance remains unresolved and equivalence is rejected.
+- Confirmed structural/rollback risks: legacy JV voucher type/unique-key drift, mixed relationship key types, omitted/commented constraints, ordered stock foreign-key dependencies, and the commission-voucher-detail `down()` method dropping `journal_voucher_details`. No application or migration code was changed.
+- Documented the masked saved-login manual command for later approval and fail-closed interpretation. No MySQL connection, SQL execution, schema/history modification, commit, push, merge or deployment occurred. Production deployment remains BLOCKED.
+
+## 2026-10-28 - verified staging migration-history reconciliation
+
+- Read the complete approved PowerShell capture as metadata evidence. It reports exit code 0, database `bluemarketing_l13_staging`, account `blue_l13_audit@127.0.0.1`, port 3306, `REPEATABLE-READ`, `identity_gate_passed=1`, and six complete result sets. Codex made no database connection.
+- Compared all 55 repository migration filenames with the 17 exact staging history names and batches: 14 in batch 1, landing create in batch 2, landing drafts in batch 3, and finance identity in batch 4. Result: 38 missing history rows and no orphan history entries.
+- Identified 34 missing-history create targets that physically exist and would collide on replay. The missing `create_expences` target is physically absent, while `accounting_expenses` exists; their provenance and application mapping remain unknown. Table presence is not migration-execution proof.
+- Verified three missing ALTER effects: `journal_vouchers.site_id` and its index are absent, `plots.amount` is absent, and `landing_pages.section_order` plus `project_overrides` are absent. Permission pivots/indexes/foreign keys, landing draft fields and finance identity tables/indexes match the targeted captured effects of their recorded migrations. No recorded targeted mismatch was observed; most full cumulative table definitions remain uncaptured.
+- Added the exact 55-row history/effect/disposition matrix to the readiness audit. Proposed only a non-destructive plan: finish SELECT-only cumulative metadata, establish dependency/application mappings, separate history-only reconciliation from schema changes, rehearse approved additive work on disposable MySQL, and require explicit approval plus rollback/restore evidence. No history rows were inferred, inserted or proposed for automatic insertion.
+- Production deployment remains BLOCKED. No migration, SQL execution, database write, application-data access, commit, push, merge or deployment occurred.
+
 ## 2026-10-28 - migration-history drift and compatibility review
 
 - Inspected all 55 migration sources and existing migration audit evidence; no MySQL connection, operational SQL or migration command. Regression DDL ran only in isolated SQLite memory.
@@ -698,3 +725,11 @@ $LASTEXITCODE
 Do not use --force. Return the aggregate table and exit code, or sanitized error; no password. Accept results only when all six identity_gate_passed/project_exists values are 1, every incomplete value is 0, scanned equals current_unresolved and both category families sum to scanned. Empty populations yield NULL in population metadata columns (no grouped row), not missing-header findings. An error or failed gate is not a zero inventory. Compare current_unresolved to reported project 6/5/3/1/2/4 counts 1430/749/692/2/0/0, then sum six results against 2873. Do not add category counts to population counts. Require a stable snapshot and transactional tables for a coherent statement snapshot; engine/snapshot consistency remains unverified. CLI exit success alone does not certify identity gates, grants, evidence or release readiness.
 
 All four existing documentation changes preserved. No application code changed, so SQLite suite not rerun. Production deployment BLOCKED pending genuine query results, independent finance evidence/reconciliation, schema/history review and existing release gates. No commit/push or protected-resource changes.
+
+## 2026-10-28 - historical provenance review for three UNKNOWN migration targets
+
+- No database connection, SQL execution, migration, application-code edit or history mutation.
+- Reviewed the three CREATE migrations, models/controllers/services, full Git history and only relevant CREATE/ALTER definitions from the local historical SQL artifact. No INSERT statement, customer record, financial value or credential was read or published.
+- Verified application provenance: ledger relationship fields in `a82ed439...`, ledger voucher number in `8043f13d...`, site project scoping in `6b028f63...`, and booking-voucher delete reason write/removal in `564896aa...` / `dc9bf7e8...`.
+- No reviewed migration or Git commit establishes the DDL origin of the ledger columns/indexes/FKs, site column/index/FK, or booking-voucher extra column. Classification remains 19 COMPATIBLE, 13 INCOMPATIBLE and 3 UNKNOWN, with the UNKNOWN reason refined to verified application provenance / unknown DDL provenance.
+- Added `STAGING_MIGRATION_RECONCILIATION_MANIFEST.md`, a non-executable SHA-256-pinned proposal. It does not authorize history insertion or replay. Destructive commission-detail rollback, all 13 incompatibilities, UNKNOWN provenance and production deployment remain blocked.

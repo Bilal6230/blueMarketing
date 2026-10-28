@@ -1,3 +1,130 @@
+## 2026-10-28 verified structural compatibility results
+
+The approved structural preflight completed with exit code 0 and all seven result sets. Identity was exact: database `bluemarketing_l13_staging`, authenticated account `blue_l13_audit@127.0.0.1`, port 3306 and identity gate 1. Terminal validation returned 42 scoped, 41 present, one absent (`expences`), all four gates 1, and `REVIEW_REQUIRED`.
+
+The exact 35-target comparison is recorded in [the structural expectation manifest](STAGING_MIGRATION_STRUCTURAL_EXPECTATIONS.md): **19 COMPATIBLE, 13 INCOMPATIBLE and 3 UNKNOWN**. Compatibility means the original declared structure was observed; it is not execution-provenance evidence and does not authorize a history row. Every present scoped table is InnoDB/`utf8mb4_unicode_ci`; migrations did not specify those attributes.
+
+Verified blockers include unsigned/signed and width drift in project/account relationships; required/nullable drift in project heads, bookings, customer ledger, dasticash, draft ledgers, labours and labour attendance; physical LONGTEXT versus declared JSON in pending updates and booking audit; and unexplained additive fields/FKs in ledgers, sites, labour ledgers and booking vouchers. `expences` is absent while the distinct active `accounting_expenses` schema is present; no rename/equivalence evidence exists.
+
+The JV create is incompatible: staging has signed INT `voucher_number` and UNIQUE `(project_id,type,voucher_number)`, whereas the migration declares VARCHAR plus global UNIQUE `voucher_number`. This is a separate compatibility blocker. The commission-detail `down()` method still drops `journal_voucher_details`; it remains a separate destructive rollback blocker and was not modified.
+
+The nine-table stock FK dependency chain matches its unsigned BIGINT relationships and delete actions. Eight stock tables are compatible; `stock_movements` is incompatible because its declared JSON column is physical LONGTEXT plus `json_valid`, not MySQL JSON. This does not prove migration execution or approve history repair.
+
+Next gate: independently review the classification and prepare a hash-pinned, approval-only reconciliation manifest separating compatible history candidates, unknown-provenance research and forward schema remediation. No migration replay, history write or schema change is authorized. **Production deployment remains BLOCKED.**
+
+---
+
+## 2026-10-28 structural compatibility assessment prepared
+
+The verified 55-row matrix was independently rechecked against the complete staging capture and repository filenames: 55 files, 17 exact history names, batches 14/1/1/1 for batches 1/2/3/4, 38 missing rows, 35 missing-history creates, three missing-history alters, and no orphan history entries. The 35 create migrations resolve to 34 physically present targets plus absent `expences`; no count correction was required.
+
+Added [the structural expectation manifest](STAGING_MIGRATION_STRUCTURAL_EXPECTATIONS.md), which maps all 35 create declarations to columns, types, nullability, defaults, indexes, unique constraints and active foreign keys. No migration explicitly sets a table engine, charset or collation, so those are captured facts requiring explicit compatibility review rather than repository expectations. Laravel/runtime-derived names and historical cumulative changes are classified `UNKNOWN` unless independently resolved.
+
+Added [the SELECT-only structural preflight](STAGING_MIGRATION_STRUCTURAL_PREFLIGHT.sql). It has seven result sets: identity, 42-table scope coverage, columns, indexes, foreign keys, checks, and final coverage/gate totals. Scope includes all 35 create targets, `accounting_expenses`, and six relevant dependency tables. It reads only identity functions and `information_schema`; it returns no business rows, amounts, voucher details or customer data. An identity mismatch suppresses result-set 2-6 metadata and ends with `BLOCKED_IDENTITY`. The terminal status can only be `REVIEW_REQUIRED` or `BLOCKED_*`, never `PASS`. Any identity gate other than 1, scope count other than 42, unexpected `expences` presence, missing one of the other 41 scope tables, missing/reordered result set, SQL error, or incomplete metadata is rejected.
+
+Repository structural risks confirmed before execution:
+
+- `expences` and `accounting_expenses` are separate conventionally mapped models. Active finance code uses the latter's richer fields; the former migration creates only an ID and timestamps and performs no rename. Their relationship is unresolved and structurally incompatible as declared.
+- The legacy JV create declares a string globally unique voucher number, while prior captured staging evidence shows a numeric voucher number and a composite project/type/voucher unique index. This is a verified mismatch, not authorization to change it.
+- Several migrations use integer relationship columns where dependencies commonly use unsigned BIGINT, omit foreign keys entirely, or leave proposed keys commented. Compatibility must compare the actual declaration, not comments or model intent.
+- `create_commision_voucher_details` has a dangerous `down()` defect: it drops `journal_voucher_details`, not its own table. It must never be used for rollback; fixing application/migration code requires separate approval.
+- Stock migrations form an ordered FK dependency chain. History reconciliation cannot be decided table-by-table without verifying the complete chain and referential actions.
+
+Proposed later command, after explicit approval, using the existing masked saved-login path:
+
+```powershell
+$mysql = 'C:\laragon\bin\mysql\mysql-8.0.30-winx64\bin\mysql.exe'
+& $mysql --login-path=blue_l13_audit --protocol=TCP --host=127.0.0.1 --port=3306 --database=bluemarketing_l13_staging --connect-timeout=5 --batch --raw --execute="source C:/laragon/www/blueMarketing/docs/STAGING_MIGRATION_STRUCTURAL_PREFLIGHT.sql"
+Write-Host "EXIT CODE: $LASTEXITCODE"
+```
+
+Do not run it until separately approved. A zero process exit is necessary but insufficient; all seven result sets and semantic gates must also be validated against the exact schemas in the structural expectation manifest. Expected terminal counts are 42 scoped, 41 present and 1 absent (`expences`), all four gates equal 1, and status `REVIEW_REQUIRED`. That status authorizes only offline comparison. No schema/history change is proposed. **Production deployment remains BLOCKED.**
+
+---
+
+## 2026-10-28 verified staging migration-history reconciliation
+
+The approved SELECT-only capture completed with exit code 0. It selected `bluemarketing_l13_staging`, authenticated as `blue_l13_audit@127.0.0.1` on port 3306, reported `REPEATABLE-READ`, and returned `identity_gate_passed=1`. All six result sets are present. This is physical metadata and migration-history evidence from the captured staging snapshot; it does not establish how an unrecorded object was created.
+
+Repository/history reconciliation is exact: **55 repository migration files, 17 staging history rows, 38 missing history rows, and 0 orphan history rows**. Batch 1 contains 14 recorded migrations, batch 2 contains the landing-page create migration, batch 3 contains the landing draft migration, and batch 4 contains the finance identity migration.
+
+The 38 missing rows divide into 35 `Schema::create` files and three ALTER files. Thirty-four missing-history create targets already exist and would collide if their original migrations were replayed. The exact `expences` target is absent, while an `accounting_expenses` table exists; that naming/provenance relationship is unverified, so the create migration is not a safe candidate. The three missing ALTER effects are also absent: `journal_vouchers.site_id` and its index, `plots.amount`, and both landing-builder JSON fields. No recorded targeted effect mismatch was observed in the captured fields, but the capture does not contain complete cumulative definitions for most tables.
+
+### Exact 55-file history/effect matrix
+
+`Present; detail unknown` means the target table was observed but the capture did not prove every column, index, foreign key, default, or later cumulative dependency. It is physical evidence only.
+
+| # | Repository migration | Staging history | Captured targeted physical effect | Disposition |
+|---:|---|---|---|---|
+| 1 | `2014_10_12_000000_create_users_table.php` | Recorded, batch 1 | `users` present; detail unknown | Leave history; obtain cumulative schema evidence |
+| 2 | `2014_10_12_100000_create_password_resets_table.php` | Recorded, batch 1 | `password_resets` present; detail unknown | Leave history; obtain cumulative schema evidence |
+| 3 | `2019_08_19_000000_create_failed_jobs_table.php` | Recorded, batch 1 | `failed_jobs` present; detail unknown | Leave history; obtain cumulative schema evidence |
+| 4 | `2019_12_14_000001_create_personal_access_tokens_table.php` | Recorded, batch 1 | `personal_access_tokens` present; detail unknown | Leave history; obtain cumulative schema evidence |
+| 5 | `2022_03_19_102456_create_permission_tables.php` | Recorded, batch 1 | Five permission tables, targeted pivot keys, indexes, and four cascading foreign keys present | Targeted effects consistent; no replay |
+| 6 | `2022_03_29_105225_create_settings_table.php` | Recorded, batch 1 | `settings` present; detail unknown | Leave history; obtain cumulative schema evidence |
+| 7 | `2022_10_22_145548_create_leads_table.php` | Recorded, batch 1 | `leads` present; detail unknown | Leave history; obtain cumulative schema evidence |
+| 8 | `2022_10_22_150000_create_project_head_subheads_table.php` | Missing | `project_head_subheads` present; detail unknown | Create collision; do not replay |
+| 9 | `2022_10_22_164312_create_zones_table.php` | Recorded, batch 1 | `zones` present; detail unknown | Leave history; obtain cumulative schema evidence |
+| 10 | `2022_10_22_164343_create_areas_table.php` | Recorded, batch 1 | `areas` present; detail unknown | Leave history; obtain cumulative schema evidence |
+| 11 | `2022_10_22_195724_create_projects_table.php` | Recorded, batch 1 | `projects` present; detail unknown | Leave history; obtain cumulative schema evidence |
+| 12 | `2022_10_23_041047_create_project_zones_table.php` | Recorded, batch 1 | `project_zones` present; detail unknown | Leave history; obtain cumulative schema evidence |
+| 13 | `2022_10_23_140316_create_plots_table.php` | Recorded, batch 1 | `plots` present with targeted `id` and `unit`; full create effect unknown | Leave history; `amount` is a separate absent ALTER effect |
+| 14 | `2022_10_23_155559_create_facings_table.php` | Recorded, batch 1 | `facings` present; detail unknown | Leave history; obtain cumulative schema evidence |
+| 15 | `2022_10_23_160843_create_roads_table.php` | Recorded, batch 1 | `roads` present; detail unknown | Leave history; obtain cumulative schema evidence |
+| 16 | `2022_10_27_230651_create_lead_user_table.php` | Missing | `lead_user` present; detail unknown | Create collision; do not replay |
+| 17 | `2022_10_29_180639_create_works_table.php` | Missing | `works` present; detail unknown | Create collision; do not replay |
+| 18 | `2022_11_15_135624_create_expences_table.php` | Missing | Exact `expences` table absent; `accounting_expenses` present | Provenance/name mapping unknown; do not run |
+| 19 | `2024_01_14_150839_create_ledgers_table.php` | Missing | `ledgers` present; detail unknown | Create collision; do not replay |
+| 20 | `2024_04_20_165837_create_bookings_table.php` | Missing | `bookings` present; detail unknown | Create collision; do not replay |
+| 21 | `2024_04_20_172252_create_installments_table.php` | Missing | `installments` present; detail unknown | Create collision; do not replay |
+| 22 | `2024_04_20_173235_create_booking_details_table.php` | Missing | `booking_details` present; detail unknown | Create collision; do not replay |
+| 23 | `2024_04_25_221615_create_customer_ledger_table.php` | Missing | `customer_ledger` present; detail unknown | Create collision; do not replay |
+| 24 | `2025_01_27_142048_create_journal_vouchers_table.php` | Missing | `journal_vouchers` present; selected legacy columns/index captured | Create collision; do not replay |
+| 25 | `2025_01_27_143458_create_journal_voucher_details_table.php` | Missing | `journal_voucher_details` present; detail unknown | Create collision; do not replay |
+| 26 | `2025_08_01_055838_create_dasticash_table.php` | Missing | `dasticash` present; detail unknown | Create collision; do not replay |
+| 27 | `2025_08_08_101553_create_draft_ledgers_table.php` | Missing | `draft_ledgers` present; detail unknown | Create collision; do not replay |
+| 28 | `2025_08_08_112841_create_labours_table.php` | Missing | `labours` present; detail unknown | Create collision; do not replay |
+| 29 | `2025_08_08_163402_create_stocks_table.php` | Missing | `stocks` present; detail unknown | Create collision; do not replay |
+| 30 | `2025_08_14_123002_create_hold_plots_table.php` | Missing | `hold_plots` present; detail unknown | Create collision; do not replay |
+| 31 | `2025_09_23_235842_create_charge_types_table.php` | Missing | `charge_types` present; detail unknown | Create collision; do not replay |
+| 32 | `2025_09_24_020119_create_pending_updates_table.php` | Missing | `pending_updates` present; detail unknown | Create collision; do not replay |
+| 33 | `2025_09_25_142048_create_commision_vouchers_table.php` | Missing | `commision_vouchers` present; detail unknown | Create collision; do not replay |
+| 34 | `2025_09_25_143458_create_commision_voucher_details_table.php` | Missing | `commision_voucher_details` present; detail unknown | Create collision; do not replay |
+| 35 | `2025_11_13_025816_create_sites_table.php` | Missing | `sites` present; detail unknown | Create collision; do not replay |
+| 36 | `2025_11_13_050518_create_labour_attendances_table.php` | Missing | `labour_attendances` present; detail unknown | Create collision; do not replay |
+| 37 | `2025_12_01_031728_create_labour_ledgers_table.php` | Missing | `labour_ledgers` present; detail unknown | Create collision; do not replay |
+| 38 | `2026_01_08_000000_create_account_types_table.php` | Missing | `account_types` present; detail unknown | Create collision; do not replay |
+| 39 | `2026_01_21_043816_create_stock_items_table.php` | Missing | `stock_items` present; detail unknown | Create collision; do not replay |
+| 40 | `2026_01_21_043844_create_stock_parties_table.php` | Missing | `stock_parties` present; detail unknown | Create collision; do not replay |
+| 41 | `2026_01_21_043857_create_stock_entries_table.php` | Missing | `stock_entries` present; detail unknown | Create collision; do not replay |
+| 42 | `2026_01_21_043911_create_stock_entry_lines_table.php` | Missing | `stock_entry_lines` present; detail unknown | Create collision; do not replay |
+| 43 | `2026_01_21_043924_create_stock_bills_table.php` | Missing | `stock_bills` present; detail unknown | Create collision; do not replay |
+| 44 | `2026_01_21_043937_create_stock_bill_lines_table.php` | Missing | `stock_bill_lines` present; detail unknown | Create collision; do not replay |
+| 45 | `2026_01_21_043949_create_stock_movements_table.php` | Missing | `stock_movements` present; detail unknown | Create collision; do not replay |
+| 46 | `2026_01_21_044002_create_stock_item_balances_table.php` | Missing | `stock_item_balances` present; detail unknown | Create collision; do not replay |
+| 47 | `2026_01_21_044017_create_stock_counters_table.php` | Missing | `stock_counters` present; detail unknown | Create collision; do not replay |
+| 48 | `2026_03_31_000001_add_site_id_to_journal_vouchers_table.php` | Missing | `journal_vouchers.site_id` and generated site index absent | Additive effect absent; approval/rehearsal required |
+| 49 | `2026_04_20_180000_create_booking_vouchers_table.php` | Missing | `booking_vouchers` present; detail unknown | Create collision; do not replay |
+| 50 | `2026_05_02_000001_add_amount_to_plots_table.php` | Missing | `plots.amount` absent | Additive effect absent; default/data impact review required |
+| 51 | `2026_09_08_000001_create_booking_edit_audits_table.php` | Missing | `booking_edit_audits` present; detail unknown | Create collision; do not replay |
+| 52 | `2026_10_24_000001_create_landing_pages_table.php` | Recorded, batch 2 | `landing_pages` present; full base definition not captured | Leave history; obtain cumulative schema evidence |
+| 53 | `2026_10_24_000002_add_drafts_to_landing_pages_table.php` | Recorded, batch 3 | `draft_payload` JSON nullable and `published_at` timestamp nullable present | Targeted effects consistent; no replay |
+| 54 | `2026_10_24_000003_add_landing_builder_fields.php` | Missing | `section_order` and `project_overrides` absent | Additive effect absent; remains explicitly deferred |
+| 55 | `2026_10_27_000001_create_financial_source_identity_tables.php` | Recorded, batch 4 | Both identity tables and required targeted indexes present | Targeted effects consistent; no replay |
+
+### Reconciliation decision gates
+
+1. Capture SELECT-only cumulative column, index, foreign-key, engine and collation metadata for every collision target, plus the application/model mapping between `expences` and `accounting_expenses`. Capture only structural and aggregate impact evidence.
+2. Compare each physical object with the cumulative repository schema. Do not use table existence or a history row as proof of execution provenance.
+3. For a missing history row whose cumulative physical effect is proven equivalent, prepare a separately reviewed history-reconciliation manifest with filename, file hash, evidence, proposed batch treatment, exact rollback of the history-only write, backup/restore evidence and post-checks. Do not replay its migration and do not insert history automatically.
+4. Treat every schema change separately from history reconciliation. Rehearse any approved additive migration on a disposable MySQL copy with representative legacy schema and data-volume characteristics. The `site_id` path must remain schema-only; `plots.amount` needs default/backfill impact review; landing builder fields remain deferred.
+5. Resolve mismatches with an explicit forward corrective migration after dependency and data compatibility review. Never run a legacy `Schema::create` migration against an existing target.
+6. Require explicit approval for every history write or schema change, a tested rollback/restore plan, and fresh post-change read-only verification.
+
+Unknown execution provenance remains the central blocker. No migration-history rows should be manufactured from this matrix. **Production deployment remains BLOCKED.**
+
+---
+
 ## 2026-10-28 migration compatibility hardening
 
 Static review reconfirmed all 55 migration files. No MySQL connection or operational migration was executed; migration tests used only isolated SQLite memory. Schema existence remains independent from migration-history evidence: no file is classified as already applied without an exact row from the staging `migrations` table, and even a history row does not prove its schema effects remain intact.
@@ -229,3 +356,15 @@ The following lists source operations, not staging execution status. A–D class
 | 2026_10_24_000002_add_drafts_to_landing_pages_table | ALTER: landing_pages | Unverified |
 | 2026_10_24_000003_add_landing_builder_fields | ALTER: landing_pages | Unverified |
 | 2026_10_27_000001_create_financial_source_identity_tables | CREATE: ledger_source_attributions, financial_posting_requests | Unverified |
+
+## UNKNOWN-table provenance review - 2026-10-28
+
+The three structural UNKNOWN results were traced through current migrations/models/controllers, full Git history and relevant DDL definitions in a local historical SQL artifact. The artifact was never executed; inspection was restricted to the relevant CREATE/ALTER statements, with no INSERT rows or business values read.
+
+- `ledgers`: application dependence on `customer_ledger_id` and `charge_type_id` is verified by commit `a82ed439430d96ac3e0615157f2399cc468c032e` (2025-09-24), and `voucher_number` by `8043f13d0d60f3a336454f40c998ccdb27e45287` (2025-10-25). The DDL artifact independently shows the three columns, two indexes and two SET NULL/UPDATE CASCADE FKs. No reviewed migration or commit supplies their DDL provenance.
+- `sites`: commit `6b028f63d2f79ad238b0f265624b1350e88e6890` (2026-01-02) verifies the first reviewed application writes and project-scoped reads using `project_id`. The artifact shows the column, index and SET NULL/UPDATE CASCADE FK; their DDL provenance remains absent from reviewed history.
+- `booking_vouchers`: commit `564896aa312df5071aaf158df38a9051e89e4471` (2026-06-12) verifies a historical `forceFill` write to `delete_reason`; `dc9bf7e8e3e464cc9d743cc3ec5b5325782807e6` (2026-06-16) removes that write in favor of soft deletion. The artifact shows only the nullable extra column. Current model/controller behavior does not depend on it, and its DDL origin is unknown.
+
+These findings verify application provenance, not migration execution. The classifications remain **19 COMPATIBLE, 13 INCOMPATIBLE and 3 UNKNOWN**; the UNKNOWN rows are qualified as *verified application provenance with unknown DDL provenance*. The 13 incompatibilities, journal-voucher voucher-number/unique-key drift and destructive commission-detail rollback remain blockers.
+
+`docs/STAGING_MIGRATION_RECONCILIATION_MANIFEST.md` pins all 35 current CREATE files by SHA-256 and separates 19 possible history-only review candidates, 13 forward-remediation candidates and three unresolved-provenance targets. It is intentionally non-executable. Every disposition requires a fresh capture, exact hash, dependency and recovery evidence, plus explicit human approval. No history row is approved for insertion and no CREATE is approved for replay.
