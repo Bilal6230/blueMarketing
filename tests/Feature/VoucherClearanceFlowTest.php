@@ -735,6 +735,37 @@ class VoucherClearanceFlowTest extends TestCase
             'wrong amount' => [['amount' => 999]],
             'wrong ledger' => [['ledger_id' => 99999]],
             'wrong voucher number' => [['voucher_number' => 99999]],
+            'wrong booking owner' => [['booking_id' => 99999]],
+            'wrong payment method' => [['payment_type' => 3]],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('pprBankInstrumentDrift')]
+    public function test_ppr_bank_replay_rejects_payment_instrument_drift(array $changes): void
+    {
+        $payload = $this->depositPayload(2);
+        $this->callDeposit($payload)->assertStatus(302);
+        $source = CustomerLedger::where('transaction_type', 'PPR')->firstOrFail();
+        $voucher = BookingVoucher::where('customer_ledger_id', $source->id)->firstOrFail();
+        $ledger = Ledger::where('customer_ledger_id', $source->id)->firstOrFail();
+        $voucher->update($changes);
+        $before = $voucher->fresh()->getAttributes();
+        $ledgerBefore = $ledger->fresh()->getAttributes();
+
+        $this->callDeposit($payload)->assertStatus(302)->assertSessionHasErrors('msg');
+
+        $this->assertSame($before, $voucher->fresh()->getAttributes());
+        $this->assertSame($ledgerBefore, $ledger->fresh()->getAttributes());
+        $this->assertSame(1, BookingVoucher::where('customer_ledger_id', $source->id)->count());
+        $this->assertSame(1, Ledger::where('customer_ledger_id', $source->id)->count());
+    }
+
+    public static function pprBankInstrumentDrift(): array
+    {
+        return [
+            'bank account' => [['bank_id' => 999]],
+            'transaction number' => [['t_number' => 'OTHER-TXN']],
+            'passing date' => [['passing_date' => '2026-05-20']],
         ];
     }
 
