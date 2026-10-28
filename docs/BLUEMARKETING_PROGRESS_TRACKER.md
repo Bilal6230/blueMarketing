@@ -59,6 +59,14 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - Added explicit equality checks for the selected booking owner and payment method/instrument fields, rejecting mismatch without write. Extended previous drift data provider with two datasets and added three bank-payment drift datasets, each asserting original voucher and ledger remain unchanged. Commits `69ae9289` and `81fd8285`; **new tests pending local verification**.
 - P0.1 **93%**, P0.2 **75%**, P0.3 **15%**, P0.4 **15%**, P0.5 **10%** pending verified broader milestone. Extra Charge writer remains disabled; no staging/production mutations or migrations.
 
+### 2026-10-29 booking deletion posted-history protection — new milestone pending local test
+
+- User confirmed prior PPR replay expansion **15 tests / 120 assertions PASS**, both PHP lints clear, Git tree clean at `c82f5595`.
+- Broader Booking writer inspection identified a **separate destructive loophole** in `BookingController::destroy_booking`: it soft-deleted any booking and marked the plot unsold without checking existing `customer_ledger`, `booking_vouchers` or `ledgers`. Posted financial source ownership could disappear from booking views while financial postings survived. This is a P0.4 structural safety issue, not another narrow PPR field guard.
+- Replaced with project-scoped transaction and booking/plot locks. For any matching financial history, including inactive/stranded customer sources or orphan ledger legs, return HTTP 409 without deleting booking or mutating plot. Foreign-project booking lookup fails closed. Unposted deletion still uses the existing soft-delete/history path.
+- Focused regressions cover posted PPR, foreign-project lookup, inactive stranded customer source and orphan ledger; commits `7579048d`, `c269bc40`, `397c8fec`. These tests remain **pending local execution**, do not claim PASS. This path still needs schema/real-data reconciliation and normal-unposted deletion coverage before treating it as complete.
+- P0.1 **93%**, P0.2 **75%**, P0.3 **15%**, P0.4 **15%** (candidate increase subject to focused verification), P0.5 **10%**. No live DB writes, migration or historical repairs.
+
 ## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
 
 **These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
