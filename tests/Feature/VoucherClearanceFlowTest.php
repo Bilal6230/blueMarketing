@@ -939,6 +939,29 @@ class VoucherClearanceFlowTest extends TestCase
             (int) Ledger::where('type', 'BR')->firstOrFail()->project_head_subheads_id);
     }
 
+    public function test_finance_clearance_rejects_invalid_explicit_account_without_fallback(): void
+    {
+        $pending = $this->createPendingReceipt('CR', 2, $this->project->id, 1500);
+        $this->callUpdatePendingBankPaymentStatus($pending->id, [
+            'passing_status' => 1, 'note' => 'Invalid account',
+            'bank_post_at' => '2026-05-20',
+            'accounts_id' => 999999, 'subaccounts_id' => 999999,
+        ])->assertStatus(422)->assertJson(['error_key' => 'pending_payment_invalid_state']);
+        $this->assertSame(0, (int) $pending->fresh()->passing_status);
+        $this->assertDatabaseMissing('ledgers', ['type' => 'BR']);
+    }
+
+    public function test_finance_clearance_rejects_partial_explicit_account_without_fallback(): void
+    {
+        $pending = $this->createPendingReceipt('CR', 2, $this->project->id, 1500);
+        $this->callUpdatePendingBankPaymentStatus($pending->id, [
+            'passing_status' => 1, 'note' => 'Partial account',
+            'bank_post_at' => '2026-05-20',
+            'accounts_id' => $this->cashVoucherAccount->head_accounting_id,
+        ])->assertStatus(422)->assertJson(['error_key' => 'pending_payment_invalid_state']);
+        $this->assertSame(0, (int) $pending->fresh()->passing_status);
+    }
+
     public static function pendingReceiptPaymentTypesProvider(): array
     {
         return [
