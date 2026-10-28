@@ -1172,6 +1172,20 @@ class LabourController extends Controller
             if (DB::transactionLevel() > 0) {
                 DB::rollBack();
             }
+            // Source conflicts are expected validation failures, not a server
+            // exception. Keep the internal source identity out of the response.
+            if ($e instanceof \DomainException && in_array($e->getMessage(), [
+                'LABOUR_ATTENDANCE_FINANCIAL_SOURCE_CONFLICT',
+                'LABOUR_ATTENDANCE_AMOUNT_CONFLICT',
+                'LABOUR_JV_ACCOUNT_PROJECT_OR_BALANCE_CONFLICT',
+                'LABOUR_JV_PROJECT_NOT_FOUND',
+            ], true)) {
+                return response()->json([
+                    'success' => false,
+                    'error_key' => 'labour_financial_source_conflict',
+                    'message' => 'Selected attendance cannot be posted as this voucher.',
+                ], 422);
+            }
             $errorKey = 'labour_voucher_failed';
             $log->error('labour.createVoucher.error', [
                 'trace_id' => $traceId,
