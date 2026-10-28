@@ -875,6 +875,14 @@ class VoucherController extends Controller
                     ->lockForUpdate()
                     ->firstOrFail();
 
+                if ((int) $lockedLedger->is_active !== 1) {
+                    throw new \RuntimeException('Inactive payment cannot be cleared.');
+                }
+
+                if ((int) $validated['passing_status'] === 1 && empty($validated['bank_post_at'])) {
+                    throw new \RuntimeException('Passing date is required for bank clearance.');
+                }
+
                 if ((int) $lockedLedger->passing_status !== 0) {
                     throw new \RuntimeException('This payment is already processed.');
                 }
@@ -924,12 +932,35 @@ class VoucherController extends Controller
 
                 if ($status === 1) {
                     $clearanceReference = 'BANK_CLEARANCE#' . $lockedLedger->id;
-                    $alreadyPosted = Ledger::where('customer_ledger_id', $lockedLedger->id)
+                    $amount = (float) $lockedLedger->amount_out > 0
+                        ? $lockedLedger->amount_out
+                        : $lockedLedger->amount_in;
+
+                    if ((float) $amount <= 0) {
+                        throw new \RuntimeException('Cannot clear a zero or negative payment.');
+                    }
+
+                    // All matching reference rows must belong to this source and
+                    // agree on business date, amount, account and active state.
+                    $existingClearance = Ledger::query()
                         ->where('type', 'BR')
                         ->where('reference', $clearanceReference)
-                        ->exists();
+                        ->lockForUpdate()
+                        ->get();
 
-                    if (!$alreadyPosted) {
+                    if ($existingClearance->count() > 1 ||
+                        $existingClearance->contains(fn ($entry) =>
+                            (int) $entry->customer_ledger_id !== (int) $lockedLedger->id ||
+                            (int) $entry->is_active !== 1 ||
+                            (int) $entry->project_head_subheads_id !== (int) $creditAccountId ||
+                            substr((string) $entry->date, 0, 10) !== substr((string) $validated['bank_post_at'], 0, 10) ||
+                            round((float) $entry->amount_in, 2) !== 0.0 ||
+                            round((float) $entry->amount_out, 2) !== round((float) $amount, 2)
+                        )) {
+                        throw new \RuntimeException('Existing bank clearance posting conflicts with this payment.');
+                    }
+
+                    if ($existingClearance->isEmpty()) {
                         $voucherNumber = getVocuherNumber('BR');
                         $lastId = getLastLedgerIdByType('BR');
 
@@ -941,9 +972,9 @@ class VoucherController extends Controller
                             'project_head_subheads_id' => $creditAccountId,
                             'reference' => $clearanceReference,
                             'amount_in' => 0.00,
-                            'amount_out' => $lockedLedger->amount_out,
+                            'amount_out' => $amount,
                             'is_active' => 1,
-                            'date' => $validated['bank_post_at'] ?? now()->toDateString(),
+                            'date' => $validated['bank_post_at'],
                             'detail' => $note,
                             'update_by' => Auth::id(),
                             'create_by' => Auth::id(),
