@@ -35,6 +35,14 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - **VERIFIED:** focused `VoucherDeleteProtectionTest` completed **12 passed / 54 assertions** on 2026-10-28; PHP lint passed, Git tree clean. Latest full Feature suite remains **436 passed / 1,883 assertions** before this change (not rerun by design).
 - P0.1 implementation estimate: **60%**, verified by user's targeted test run: **12 passed / 54 assertions**, including five new JV/SV/BO/BR/PPR cases. Remaining gaps: other producers' mutation routes, raw SQL, triggers/grants, concurrent writes and application-wide deletion policies. No MySQL writes, migrations or historical repairs.
 
+### 2026-10-28 P0.1/P0.2 combined implementation — Bank clearance
+
+- Identified a live `ReportController::bank_posting_check()` path that previously permitted source types beyond active pending CR/PPR bank/check receipts, accepted a passed clearance without explicit business date, and treated any matching BR ledger as already posted without cross-project/source, activity, date, account or amount validation.
+- Implemented transaction-scoped checks for active CR/PPR sources and bank/check payment types, required `bank_post_at` when passing, and validated all matching BR reference legs for consistency before idempotent reuse. Conflicting/duplicate BR ledger rows now trigger rollback rather than silently accepting a mismatched posting.
+- Corrected BR amount selection: CR receipts may carry value in `amount_in`; use positive `amount_out` when present, otherwise `amount_in`, and reject zero/negative resolved amounts. This guards against zero-value BR ledger postings.
+- Added two targeted regression datasets checking rejected cash and wrong-source bank clearance attempts do not change the source status or create a BR entry. Commits `04c4323`, `fba678d`, `3df5d78`.
+- **Pending targeted verification:** `VoucherClearanceFlowTest`. Retain P0.1 **60%** and P0.2 **30%** until passing tests; no full-suite rerun required. No production or staging data change, migration, or historical repair.
+
 ### Primary delivery sequencing
 
 1. **Prevent new data loss** first: finish source-specific mutation guards, database authorization, concurrency and comprehensive regression tests.
