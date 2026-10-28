@@ -830,7 +830,7 @@ class LedgerController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if (in_array((string) $ledger->type, ['CR', 'CP'], true)) {
+            if (true) { // All posted ledger types are immutable; use reversal workflow.
                 DB::rollBack();
 
                 if ($expectsJson) {
