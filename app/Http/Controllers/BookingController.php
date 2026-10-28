@@ -2423,6 +2423,20 @@ class BookingController extends Controller
                         $existingBookingVoucher = BookingVoucher::where('customer_ledger_id', $customerLedger->id)
                             ->lockForUpdate()
                             ->first();
+                        // An existing voucher is financial evidence, not a mutable
+                        // display cache. Refuse to silently repair mismatched links.
+                        if ($existingBookingVoucher && (
+                            (int) $existingBookingVoucher->project_id !== $projectId ||
+                            (int) $existingBookingVoucher->customer_id !== (int) $customer_id ||
+                            (int) $existingBookingVoucher->plot_id !== $plotId ||
+                            (string) $existingBookingVoucher->voucher_series !== 'PPR' ||
+                            (int) $existingBookingVoucher->is_active !== 1 ||
+                            (string) $existingBookingVoucher->slip_reference !== $reference ||
+                            (string) $existingBookingVoucher->receipt_date !== $receiptDate ||
+                            round((float) $existingBookingVoucher->amount, 2) !== round((float) $rawAmount, 2)
+                        )) {
+                            throw new \DomainException('PPR_BOOKING_VOUCHER_SOURCE_CONFLICT');
+                        }
                         $displayVoucherNumber = (int) ($existingBookingVoucher?->voucher_number ?: 0);
                         if ($displayVoucherNumber <= 0) {
                             $displayVoucherNumber = $this->allocateNextBookingVoucherNumber($projectId, 'PPR');
@@ -2467,6 +2481,13 @@ class BookingController extends Controller
                             round((float) $ledger->amount_in, 2) !== round((float) str_replace(',', '', $request->input('amount')), 2) ||
                             round((float) $ledger->amount_out, 2) !== 0.0)) {
                             throw new \RuntimeException('Existing PPR ledger does not match its source voucher.');
+                        }
+
+                        if ($existingBookingVoucher && (
+                            (int) $existingBookingVoucher->ledger_id !== (int) ($ledger?->id ?? 0) ||
+                            (int) $existingBookingVoucher->voucher_number !== (int) ($ledger?->voucher_number ?? 0)
+                        )) {
+                            throw new \DomainException('PPR_BOOKING_VOUCHER_LEDGER_CONFLICT');
                         }
 
                         $customer = Lead::find($customer_id);
