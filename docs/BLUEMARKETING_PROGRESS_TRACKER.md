@@ -27,6 +27,14 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - Increment progress **when an independently checkable implementation milestone passes**, not on code inspection alone. Record what is implemented, what tests passed, and what is still unverified for every increment; never call percentages release readiness.
 - Continue delivering source implementation via GitHub, Codex as independent inspector only; one consolidated commands block for the user, not repetitive commands.
 
+### P0.1 — Posted ledger deactivation loophole closed in code (verification pending)
+
+- Discovered active `LedgerController::destroy()` historically rejected **only** `CR/CP`, but other posted types `JV/SV/BO/BR/PPR` could be changed to `is_active=0` and could have related `customer_ledger` records deactivated; nonprivileged users could submit pending delete requests. This makes records disappear from active ledgers without physically deleting them.
+- Replaced this action with a **fail-closed guard for every posted `ledgers` row**, retaining selected-project 404 and 422 `voucher_posted_to_ledger` behavior. Removed unreachable deactivation and deletion-approval branches. `draftDestroy()` remains separate and unchanged. Application code commits `31947f8`, `db9ec63`.
+- Added five SQLite datasets checking `JV, SV, BO, BR, PPR` cannot be deactivated and no pending deletion is created, plus existing CR/CP coverage. Commit `7b626be`.
+- **Pending:** run the focused `VoucherDeleteProtectionTest`. Latest independently verified suite remains **436 passed / 1,883 assertions** before this change. Do not claim new tests passed yet.
+- P0.1 implementation estimate: **50% → 60% after the new targeted regression passes**. Retain 50% until then. Remaining gaps: other producers' mutation routes, raw SQL, triggers/grants, concurrent writes and application-wide deletion policies. No MySQL writes, migrations or historical repairs.
+
 ### Primary delivery sequencing
 
 1. **Prevent new data loss** first: finish source-specific mutation guards, database authorization, concurrency and comprehensive regression tests.
