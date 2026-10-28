@@ -2398,6 +2398,10 @@ class BookingController extends Controller
                             'passing_date' => $request->input('passing_date'),
                             'passing_status' => $isPendingBankPayment ? 0 : null,
                         ]);
+                        if ($duplicateLedger && (int) $duplicateLedger->is_active !== 1) {
+                            throw new \RuntimeException('Inactive PPR payment cannot be reused.');
+                        }
+
                         $existingBookingVoucher = BookingVoucher::where('customer_ledger_id', $customerLedger->id)
                             ->lockForUpdate()
                             ->first();
@@ -2426,9 +2430,26 @@ class BookingController extends Controller
                         $voucherNumber = $displayVoucherNumber;
                         $lastId = getLastLedgerIdByType($ledgerType);
 
-                        $ledger = Ledger::where('customer_ledger_id', $customerLedger->id)
-                            ->where('type', $ledgerType)
-                            ->first();
+                        // All ledger rows for the same PPR reference must be
+                        // considered: a foreign or duplicated row cannot be
+                        // hidden by looking up only the selected customer ledger.
+                        $matchingPprLedgers = Ledger::query()
+                            ->where('type', 'PPR')
+                            ->where('reference', $reference)
+                            ->lockForUpdate()
+                            ->get();
+                        if ($matchingPprLedgers->count() > 1) {
+                            throw new \RuntimeException('Duplicate PPR ledger postings require reconciliation.');
+                        }
+                        $ledger = $matchingPprLedgers->first();
+                        if ($ledger && ((int) $ledger->customer_ledger_id !== (int) $customerLedger->id ||
+                            (int) $ledger->project_head_subheads_id !== (int) $creditAccountId ||
+                            (int) $ledger->is_active !== 1 ||
+                            substr((string) $ledger->date, 0, 10) !== substr((string) $request->input('date'), 0, 10) ||
+                            round((float) $ledger->amount_in, 2) !== round((float) str_replace(',', '', $request->input('amount')), 2) ||
+                            round((float) $ledger->amount_out, 2) !== 0.0)) {
+                            throw new \RuntimeException('Existing PPR ledger does not match its source voucher.');
+                        }
 
                         $customer = Lead::find($customer_id);
                         $plot = Plot::find($plotId);
