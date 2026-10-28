@@ -12,7 +12,7 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 | Rank | Primary task | Estimated progress | Implemented evidence | Remaining acceptance gate |
 | --- | --- | ---: | --- | --- |
 | P0.1 | **Ledger protection:** audit and fix every live INSERT/UPDATE/DELETE/deactivate/overwrite, project scope and identity guard | **93%** | Mobile approval immutability and project scope; JV/CV destructive gates; Stock/Mobile Stock duplicate, orphan, amount/date/project guards; CR/CP editor prevents noncash JV/SV/BO/BR/PPR overwrite and rejects invalid linked sources | Every producer/mutator classified and tested, protected ledger rows cannot silently disappear |
-| P0.2 | **Voucher integrity:** propagate correct source voucher number/date for JV, CV, Stock, Labour, Booking, CR, CP, BR, PPR | **38%** | Core JV header number, Labour JV number/date, Stock existing-posting date and amount checks | Every source creates ledger rows with verified source number/date, regression tests for all families, preexisting mismatch inventory |
+| P0.2 | **Voucher integrity:** propagate correct source voucher number/date for JV, CV, Stock, Labour, Booking, CR, CP, BR, PPR | **48%** | Core JV header number, Labour JV number/date, Stock existing-posting date and amount checks | Every source creates ledger rows with verified source number/date, regression tests for all families, preexisting mismatch inventory |
 | P0.3 | **Foreign-key / typed source identity:** source-aware, project-consistent relational integrity | **15%** | Existing physical `customer_ledger_id` and `charge_type_id` FKs confirmed on restored clone; typed source attribution design exists | Per-source FK/typed links, uniqueness & concurrency checks, vetted migration rehearsal; do **not** force `type_id` into one FK |
 | P0.4 | **Soft-delete / append-only reversal:** protect historical business records and posted financial events | **15%** | JV/CV destructive write gates and CR/CP/PPR deletion tests exist | Cover all applicable business tables and side effects; financial reversals/append-only protection; MySQL schema review |
 | P0.5 | **Historical recovery:** reconcile missing/inactive/overwritten JV and other ledger entries, then controlled repair | **10%** | 17,855 restored ledger rows inventory; 155 inactive; source ambiguity evidenced; Project 5 balance reproduced | Independently prove provenance per row, compare older backup/audit logs, approved dry-run, reversible repair and balance validation |
@@ -112,6 +112,15 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - Added focused regression checking both mutation endpoints still return 409 and ledger row count stays constant. Commits `4ea88b6`, `3854ea5`. This test remains **pending local execution**.
 - **P0.1 remains at 93%**: removing latent dangerous code does not close DB-level cross-writer guarantees, and the user asked for evidence-based progress rather than cosmetic percentage changes. P0.2 remains 38%. Production/staging DB unchanged.
 - Next acceptance gates: broader customer/booking/labour writer review, MySQL concurrency checks and source-typed DB constraints.
+
+### 2026-10-29 Booking PPR + Labour JV active writer batch
+
+- **Verified last checkpoint**: legacy JV blocked-mutator regression **1 passed / 3 assertions**, PHP lints clean, Git worktree clean.
+- **Booking PPR live writer** (`BookingController`): previously selected just the first `PPR` ledger linked to a customer source, then updated ledger narrative/date even when the amount, activity, account or source owner was inconsistent. Now gathers *all* `PPR` ledger rows sharing a reference with row locks; rejects duplicates, foreign-linked sources, inactive ledger, wrong account, wrong date, amount drift or nonzero credit; rejects reuse of inactive PPR customer sources. This prevents silent repair/hijack of existing posted entries, preserving them for independent reconciliation.
+- **Labour JV live writer** (`LabourController::createVoucher`): inside existing transaction, before posting two journal legs, now requires two distinct project-owned account IDs. Rejects cross-project and self-cancelling JV account mappings, rolling back voucher header/details if invalid.
+- **3 new focused PPR replay regressions** in `VoucherClearanceFlowTest`: duplicate reference ledger, inactive source, and financial amount drift; all assert no repair/overwrite. Commits `921f00e`, `9bbdd00`, `d746dbb`.
+- **Implementation coverage**: P0.1 remains **93%** (final DB/other-writer inventory gates still open); P0.2 **38% → 48% estimated** for PPR source-ledger identity and Labour JV account mapping checks, **not yet verified locally**. No real staging/production data changed; no migration or historical repair.
+- Run only focused `VoucherClearanceFlowTest` with PPR filter first and lint both touched controllers. Do not rerun the full suite.
 
 ### Primary delivery sequencing
 
