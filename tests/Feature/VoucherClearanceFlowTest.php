@@ -138,6 +138,43 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame(0, DB::table('ledgers')->count());
     }
 
+    public function test_shared_project_allocator_preserves_sources_and_ledger_numbers(): void
+    {
+        $allocator = app(\App\Services\Finance\ProjectVoucherAllocator::class);
+        try {
+            $allocator->next($this->project->id, 'EC');
+            $this->fail('Allocation outside a transaction must fail.');
+        } catch (\DomainException $exception) {
+            $this->assertSame('VOUCHER_ALLOCATION_REQUIRES_TRANSACTION', $exception->getMessage());
+        }
+
+        DB::transaction(function () use ($allocator) {
+            $this->assertSame(1, $allocator->next($this->project->id, 'EC'));
+            CustomerLedger::create([
+                'project_id' => $this->project->id,
+                'customer_id' => $this->customer->id,
+                'plot_id' => $this->plot->id,
+                'transaction_type' => 'EC',
+                'type_id' => 19,
+                'reference' => 'ALLOCATOR-ORPHAN',
+                'amount_in' => 120,
+                'amount_out' => 0,
+                'date' => '2026-05-17',
+            ]);
+            $this->assertSame(20, $allocator->next($this->project->id, 'EC'));
+            Ledger::create([
+                'type' => 'EC', 'type_id' => 25,
+                'voucher_number' => 25,
+                'project_head_subheads_id' => $this->bookingReceiptAccount->id,
+                'reference' => 'ALLOCATOR-LEDGER',
+                'amount_in' => 120, 'amount_out' => 0,
+                'date' => '2026-05-17',
+            ]);
+            $this->assertSame(26, $allocator->next($this->project->id, 'EC'));
+            $this->assertSame(1, $allocator->next($this->project->id, 'CP'));
+        });
+    }
+
     public function test_ec_audit_command_reports_clean_empty_project_without_writes(): void
     {
         $status = \Illuminate\Support\Facades\Artisan::call('finance:audit-ec-sources', [
