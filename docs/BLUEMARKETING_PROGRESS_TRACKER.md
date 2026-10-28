@@ -11,7 +11,7 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 
 | Rank | Primary task | Estimated progress | Implemented evidence | Remaining acceptance gate |
 | --- | --- | ---: | --- | --- |
-| P0.1 | **Ledger protection:** audit and fix every live INSERT/UPDATE/DELETE/deactivate/overwrite, project scope and identity guard | **87%** | Mobile approval immutability and project scope; JV/CV destructive gates; Stock/Mobile Stock duplicate, orphan, amount/date/project guards; CR/CP editor prevents noncash JV/SV/BO/BR/PPR overwrite and rejects invalid linked sources | Every producer/mutator classified and tested, protected ledger rows cannot silently disappear |
+| P0.1 | **Ledger protection:** audit and fix every live INSERT/UPDATE/DELETE/deactivate/overwrite, project scope and identity guard | **93%** | Mobile approval immutability and project scope; JV/CV destructive gates; Stock/Mobile Stock duplicate, orphan, amount/date/project guards; CR/CP editor prevents noncash JV/SV/BO/BR/PPR overwrite and rejects invalid linked sources | Every producer/mutator classified and tested, protected ledger rows cannot silently disappear |
 | P0.2 | **Voucher integrity:** propagate correct source voucher number/date for JV, CV, Stock, Labour, Booking, CR, CP, BR, PPR | **38%** | Core JV header number, Labour JV number/date, Stock existing-posting date and amount checks | Every source creates ledger rows with verified source number/date, regression tests for all families, preexisting mismatch inventory |
 | P0.3 | **Foreign-key / typed source identity:** source-aware, project-consistent relational integrity | **15%** | Existing physical `customer_ledger_id` and `charge_type_id` FKs confirmed on restored clone; typed source attribution design exists | Per-source FK/typed links, uniqueness & concurrency checks, vetted migration rehearsal; do **not** force `type_id` into one FK |
 | P0.4 | **Soft-delete / append-only reversal:** protect historical business records and posted financial events | **15%** | JV/CV destructive write gates and CR/CP/PPR deletion tests exist | Cover all applicable business tables and side effects; financial reversals/append-only protection; MySQL schema review |
@@ -85,6 +85,17 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - Added fail-closed project existence check and a new SQLite regression test; fixture includes a synthetic `projects` row. Commits `6b900ae`, `2a0b9aa`. SQLite tests verify fail-closed behavior, **not** real MySQL concurrent scheduling; staging concurrency rehearsal and database constraints remain to be verified.
 - **P0.1 coverage estimate 82% → 87%**, contingent on targeted test passing; P0.2 remains **38%**. Not a release readiness claim.
 - **Future check**: independent MySQL staging concurrent requests, other raw SQL writers, typed source linkage and per-project voucher uniqueness. No historical repair, production writes or migration.
+
+### P0.1 Stock financial-source consistency batch (2026-10-29)
+
+- **Last verified local checkpoint:** Stock posting guard **21 passed / 22 assertions**, clean PHP syntax and Git worktree. No need to rerun unrelated feature tests.
+- **New fail-closed protections** in `StockLedgerPostingGuard` shared by Web Stock Entry, Web Stock Bill and Mobile Stock Entry:
+  1. A posting must contain exactly two positive, individually one-sided debit/credit legs, with equal value and **distinct project-owned accounts**. Zero amounts, negative amounts, same-account cancellation and mixed debit/credit legs are blocked.
+  2. Already-posted stock references now require **exactly one matching customer source row** globally; an extra duplicate source or missing linked source invalidates replay rather than silently classifying it as safely posted.
+  3. Fresh and already-posted stock sources must carry exactly one positive debit/credit-side amount equal to the expected ledger journal total. This prevents source amount drift or mismatched stranded source reuse. The Stock IN and OUT direction conventions are both accepted.
+- **11 added targeted test cases**, including six debit/credit invalid expectation datasets, two hidden/missing source cases, and three source-amount scenarios. Commits `6851534`, `a50d130`, `c2cd148`, `2236c32`.
+- **P0.1 estimated implementation coverage 87% → 93%** for tested-in-principle protective invariants; *new tests still need local execution*. This is not database-level durability assurance. Remaining: global writer inventory, MySQL concurrent test, database constraints and source-type migration design. P0.2 stays **38%**.
+- Historical rows, production MySQL and staging were **not** modified. Any legacy source inconsistencies will be reported and blocked, not silently repaired.
 
 ### Primary delivery sequencing
 
