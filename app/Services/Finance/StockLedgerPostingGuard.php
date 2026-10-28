@@ -45,6 +45,26 @@ class StockLedgerPostingGuard
             $this->minorUnits($leg['amount_out'] ?? null);
         }
 
+        // The two stock legs must be balanced, positive and on distinct accounts.
+        // Without this, a malformed caller could post a balanced-looking JV with
+        // negative debit/credit values or both legs on one account.
+        $debit = 0;
+        $credit = 0;
+        $accountIds = [];
+        foreach ($expectedLegs as $leg) {
+            $in = $this->minorUnits($leg['amount_in'] ?? 0);
+            $out = $this->minorUnits($leg['amount_out'] ?? 0);
+            if ($in < 0 || $out < 0 || ($in > 0) === ($out > 0)) {
+                throw new \DomainException('STOCK_LEDGER_INVALID_DEBIT_CREDIT');
+            }
+            $debit += $in;
+            $credit += $out;
+            $accountIds[] = (int) $leg['project_head_subheads_id'];
+        }
+        if ($debit <= 0 || $debit !== $credit || count(array_unique($accountIds)) !== 2) {
+            throw new \DomainException('STOCK_LEDGER_UNBALANCED_OR_SAME_ACCOUNT');
+        }
+
         // Lock matching postings within the caller's source transaction.
         // Never scope the lookup to the project: a foreign-project collision
         // must be detected rather than hidden.
@@ -92,6 +112,19 @@ class StockLedgerPostingGuard
         if ($voucherNumbers->count() !== 1 || $sourceIds->count() !== 1 ||
             $customerLedgerIds->count() !== 1 || $customerLedgerIds->first() === null) {
             throw new \DomainException('STOCK_LEDGER_IDENTITY_CONFLICT');
+        }
+
+        // Check every source sharing the stock reference, not just the one
+        // linked by existing legs. Hidden duplicate sources make ownership
+        // ambiguous even when the two visible legs are otherwise correct.
+        $matchingSources = DB::table('customer_ledger')
+            ->where('transaction_type', 'JV')
+            ->where('reference', $reference)
+            ->lockForUpdate()
+            ->get();
+        if ($matchingSources->count() !== 1 ||
+            (int) $matchingSources->first()->id !== (int) $customerLedgerIds->first()) {
+            throw new \DomainException('STOCK_LEDGER_DUPLICATE_OR_MISSING_SOURCE');
         }
 
         $customerLedger = DB::table('customer_ledger')->where('id', $customerLedgerIds->first())->first();
