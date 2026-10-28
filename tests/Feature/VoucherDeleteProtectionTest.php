@@ -82,6 +82,32 @@ class VoucherDeleteProtectionTest extends TestCase
         $this->assertSame(1, (int) $customerLedger->fresh()->is_active);
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('otherPostedLedgerTypes')]
+    public function test_all_other_posted_ledger_types_cannot_be_deactivated(string $type): void
+    {
+        $customerLedger = $this->createCustomerLedger($this->project->id, $type);
+        $ledger = $this->createLedger($customerLedger->id, $this->project->id, $type);
+
+        $this->callLedgerDestroy($ledger->id)
+            ->assertStatus(422)
+            ->assertJson(['error_key' => 'voucher_posted_to_ledger']);
+
+        $this->assertSame(1, (int) $ledger->fresh()->is_active);
+        $this->assertSame(1, (int) $customerLedger->fresh()->is_active);
+        $this->assertDatabaseCount('pending_updates', 0);
+    }
+
+    public static function otherPostedLedgerTypes(): array
+    {
+        return [
+            'JV' => ['JV'],
+            'SV' => ['SV'],
+            'BO' => ['BO'],
+            'BR' => ['BR'],
+            'PPR' => ['PPR'],
+        ];
+    }
+
     public function test_ppr_with_booking_voucher_ledger_id_cannot_be_deleted(): void
     {
         $customerLedger = $this->createCustomerLedger($this->project->id, 'PPR');
