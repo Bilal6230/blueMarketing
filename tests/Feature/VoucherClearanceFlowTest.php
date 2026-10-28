@@ -58,6 +58,43 @@ class VoucherClearanceFlowTest extends TestCase
         $this->actingAs($this->user);
     }
 
+    public function test_no_payment_cancellation_blocks_posted_financial_history_without_state_change(): void
+    {
+        $this->callDeposit($this->depositPayload(1))->assertStatus(302);
+        $booking = Booking::where('project_id', $this->project->id)->firstOrFail();
+        $beforePlot = $this->plot->fresh()->getAttributes();
+        $sourceCount = DB::table('customer_ledger')->count();
+        $ledgerCount = DB::table('ledgers')->count();
+        $response = $this->callBookingCancel($booking->id);
+        $response->assertStatus(409)->assertJson(['error' => 'cancellation_requires_financial_reversal']);
+        $this->assertSame('0', (string) $booking->fresh()->cancel_status);
+        $this->assertSame($beforePlot, $this->plot->fresh()->getAttributes());
+        $this->assertSame($sourceCount, DB::table('customer_ledger')->count());
+        $this->assertSame($ledgerCount, DB::table('ledgers')->count());
+    }
+
+    public function test_no_payment_cancellation_rejects_foreign_project_booking(): void
+    {
+        $booking = Booking::where('project_id', $this->project->id)->firstOrFail();
+        $this->callBookingCancel($booking->id, $this->otherProject->id)
+            ->assertStatus(500)->assertJson(['message' => 'Cancellation failed']);
+        $this->assertSame('0', (string) $booking->fresh()->cancel_status);
+        $this->assertSame(0, DB::table('ledgers')->count());
+    }
+
+    private function callBookingCancel(int $bookingId, ?int $projectId = null): TestResponse
+    {
+        $request = Request::create('/admin/booking/cancel', 'POST', [
+            'booking_id' => $bookingId,
+            'action_type' => 'payment_not_received',
+            'cancel_effect' => 'none',
+        ]);
+        $request->cookies->set('selected_action', (string) ($projectId ?? $this->project->id));
+        $request->setLaravelSession($this->app['session.store']);
+        $this->app->instance('request', $request);
+        return TestResponse::fromBaseResponse(app(BookingController::class)->cancel($request));
+    }
+
     public function test_booking_delete_rejects_posted_ppr_without_hiding_booking_or_plot(): void
     {
         $this->callDeposit($this->depositPayload(1))->assertStatus(302);
