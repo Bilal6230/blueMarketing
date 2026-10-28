@@ -848,7 +848,7 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame('created', (string) DB::table('labour_attendances')->value('voucher_status'));
 
         $replay = $this->callLabourVoucher($payload);
-        $replay->assertStatus(500)->assertJson(['success' => false]);
+        $replay->assertStatus(422)->assertJson(['success' => false, 'error_key' => 'labour_financial_source_conflict']);
         $this->assertSame(1, DB::table('journal_vouchers')->count());
         $this->assertSame(2, DB::table('journal_voucher_details')->count());
         $this->assertSame(2, DB::table('ledgers')->count());
@@ -861,7 +861,7 @@ class VoucherClearanceFlowTest extends TestCase
         $this->createLabourPostingFixtures();
         DB::table('labour_attendances')->where('id', 1)->update($changes);
         $response = $this->callLabourVoucher($this->labourPostingPayload());
-        $response->assertStatus(500)->assertJson(['success' => false]);
+        $response->assertStatus(422)->assertJson(['success' => false, 'error_key' => 'labour_financial_source_conflict']);
         $this->assertSame(0, DB::table('journal_vouchers')->count());
         $this->assertSame(0, DB::table('journal_voucher_details')->count());
         $this->assertSame(0, DB::table('ledgers')->count());
