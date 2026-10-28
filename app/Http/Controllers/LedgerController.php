@@ -1051,10 +1051,8 @@ class LedgerController extends Controller
                 'update_by' => Auth::id(),
             ]);
 
-            if ($source) {
-                $customerLedger = $source;
-                {
-                    $customerLedgerPayload = [
+            $customerLedger = $source;
+            $customerLedgerPayload = [
                         'project_id' => $selectedProjectId,
                         'customer_id' => $projectHeadSubhead->customer_id,
                         'plot_id' => $projectHeadSubhead->plot_id,
@@ -1089,8 +1087,6 @@ class LedgerController extends Controller
                     }
 
                     $customerLedger->update($customerLedgerPayload);
-                }
-            }
 
             DB::commit();
 
