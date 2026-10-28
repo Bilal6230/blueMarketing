@@ -105,6 +105,14 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - Commits `2bf124c`, `5a27e20`. **New targeted tests pending local verification**; full suite not needed.
 - **P0.1 stays 93%** until remaining writer inventory/DB concurrency guarantees are delivered; P0.2 stays 38%. Do not increase milestones merely for narrowly scoped checks. Production MySQL and historical financial rows remain untouched.
 
+### 2026-10-29 verified Stock checkpoint and JV dead-code removal
+
+- User-verified `StockLedgerPostingGuardTest`: **38 tests / 40 assertions PASS**; syntax checks clean; Git working tree clean. This confirms the preceding source-identity/overflow patch.
+- Reviewed `JournalVoucherController::destroy` and `update`: both already started with unconditional HTTP 409 but contained extensive **unreachable code** that would physically delete or overwrite historical `ledgers` by ambiguous polymorphic `type_id` if the gate were accidentally bypassed. Removed the unreachable destructive code, retained explicit 409 fail-closed behavior and left the JV edit view/read unchanged.
+- Added focused regression checking both mutation endpoints still return 409 and ledger row count stays constant. Commits `4ea88b6`, `3854ea5`. This test remains **pending local execution**.
+- **P0.1 remains at 93%**: removing latent dangerous code does not close DB-level cross-writer guarantees, and the user asked for evidence-based progress rather than cosmetic percentage changes. P0.2 remains 38%. Production/staging DB unchanged.
+- Next acceptance gates: broader customer/booking/labour writer review, MySQL concurrency checks and source-typed DB constraints.
+
 ### Primary delivery sequencing
 
 1. **Prevent new data loss** first: finish source-specific mutation guards, database authorization, concurrency and comprehensive regression tests.
