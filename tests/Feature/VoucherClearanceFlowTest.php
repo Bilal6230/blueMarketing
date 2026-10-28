@@ -775,7 +775,7 @@ class VoucherClearanceFlowTest extends TestCase
         ];
     }
 
-    #[\\PHPUnit\\Framework\\Attributes\\DataProvider('extraChargePaymentTypes')]
+    #[\PHPUnit\Framework\Attributes\DataProvider('extraChargePaymentTypes')]
     public function test_ambiguous_extra_charge_does_not_create_any_financial_rows(int $paymentType): void
     {
         $tables = ['customer_ledger', 'ledgers', 'journal_vouchers', 'journal_voucher_details', 'booking_vouchers'];
