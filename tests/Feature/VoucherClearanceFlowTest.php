@@ -58,6 +58,28 @@ class VoucherClearanceFlowTest extends TestCase
         $this->actingAs($this->user);
     }
 
+    public function test_no_payment_cancellation_without_financial_history_posts_no_reversal(): void
+    {
+        Schema::table('bookings', function (Blueprint $table) {
+            $table->string('cancel_type')->nullable();
+            $table->string('cancel_effect')->nullable();
+            $table->decimal('cancel_sale_amount', 12, 2)->nullable();
+            $table->decimal('cancel_adjustment_amount', 12, 2)->nullable();
+            $table->decimal('cancel_net_amount', 12, 2)->nullable();
+            $table->timestamp('cancel_posted_at')->nullable();
+        });
+        $booking = Booking::where('project_id', $this->project->id)->firstOrFail();
+        $this->callBookingCancel($booking->id)
+            ->assertOk()->assertJson(['message' => 'Booking canceled successfully.']);
+        $this->assertSame('1', (string) $booking->fresh()->cancel_status);
+        $this->assertSame(0, (int) $this->plot->fresh()->sold);
+        $this->assertSame(0, DB::table('customer_ledger')->count());
+        $this->assertSame(0, DB::table('ledgers')->count());
+        $this->assertSame(0, DB::table('sales_vouchers')->count());
+        $this->callBookingCancel($booking->id)->assertOk();
+        $this->assertSame(0, DB::table('ledgers')->count());
+    }
+
     public function test_no_payment_cancellation_blocks_posted_financial_history_without_state_change(): void
     {
         $this->callDeposit($this->depositPayload(1))->assertStatus(302);
