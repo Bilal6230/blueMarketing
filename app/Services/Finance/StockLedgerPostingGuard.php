@@ -53,6 +53,13 @@ class StockLedgerPostingGuard
             throw new \DomainException('STOCK_LEDGER_SOURCE_CONFLICT');
         }
 
+        // A linked customer-ledger record cannot silently disagree with the stock
+        // posting's business date or be marked inactive.
+        if (substr((string) $customerLedger->date, 0, 10) !== substr($businessDate, 0, 10) ||
+            (int) $customerLedger->is_active !== 1) {
+            throw new \DomainException('STOCK_CUSTOMER_LEDGER_DATE_OR_STATUS_CONFLICT');
+        }
+
         $unused = array_values($expectedLegs);
         foreach ($existing as $ledger) {
             $owner = DB::table('project_head_subheads')
