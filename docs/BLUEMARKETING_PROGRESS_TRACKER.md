@@ -12,7 +12,7 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 | Rank | Primary task | Estimated progress | Implemented evidence | Remaining acceptance gate |
 | --- | --- | ---: | --- | --- |
 | P0.1 | **Ledger protection:** audit and fix every live INSERT/UPDATE/DELETE/deactivate/overwrite, project scope and identity guard | **93%** | Mobile approval immutability and project scope; JV/CV destructive gates; Stock/Mobile Stock duplicate, orphan, amount/date/project guards; CR/CP editor prevents noncash JV/SV/BO/BR/PPR overwrite and rejects invalid linked sources | Every producer/mutator classified and tested, protected ledger rows cannot silently disappear |
-| P0.2 | **Voucher integrity:** propagate correct source voucher number/date for JV, CV, Stock, Labour, Booking, CR, CP, BR, PPR | **55%** | Core JV header number, Labour JV number/date, Stock existing-posting date and amount checks | Every source creates ledger rows with verified source number/date, regression tests for all families, preexisting mismatch inventory |
+| P0.2 | **Voucher integrity:** propagate correct source voucher number/date for JV, CV, Stock, Labour, Booking, CR, CP, BR, PPR | **65%** | Core JV header number, Labour JV number/date, Stock existing-posting date and amount checks | Every source creates ledger rows with verified source number/date, regression tests for all families, preexisting mismatch inventory |
 | P0.3 | **Foreign-key / typed source identity:** source-aware, project-consistent relational integrity | **15%** | Existing physical `customer_ledger_id` and `charge_type_id` FKs confirmed on restored clone; typed source attribution design exists | Per-source FK/typed links, uniqueness & concurrency checks, vetted migration rehearsal; do **not** force `type_id` into one FK |
 | P0.4 | **Soft-delete / append-only reversal:** protect historical business records and posted financial events | **15%** | JV/CV destructive write gates and CR/CP/PPR deletion tests exist | Cover all applicable business tables and side effects; financial reversals/append-only protection; MySQL schema review |
 | P0.5 | **Historical recovery:** reconcile missing/inactive/overwritten JV and other ledger entries, then controlled repair | **10%** | 17,855 restored ledger rows inventory; 155 inactive; source ambiguity evidenced; Project 5 balance reproduced | Independently prove provenance per row, compare older backup/audit logs, approved dry-run, reversible repair and balance validation |
@@ -130,6 +130,15 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - Added targeted Booking regression checking extra-charge attempt redirects with error and preserves both financial table counts. Commits `999ed70`, `2a4520c`, `1ea2e02`.
 - **P0.2 coverage estimated 48% → 55%** as a major broken voucher numbering/typing writer was blocked and Labour JV number alignment corrected. This is an implementation estimate, **new code/tests not yet verified locally**. P0.1 stays 93%; no production/staging data edits. Remaining: typed extra charge redesign, booking/Labour integration cases, overall voucher uniqueness and source typing.
 - Only run focused extra-charge regression and relevant Labour tests; full suite not needed.
+
+### 2026-10-29 Labour financial-source lock and double-vouchering protection
+
+- User verified prior Extra Charge fail-closed regression: **1 PASS / 5 assertions**; changed controllers linted and Git status clean.
+- **LabourController::createVoucher** now validates unique positive comma-separated attendance IDs before making any writes; rejects empty, duplicate, malformed and zero IDs. Existing site must belong to selected project.
+- In the existing JV transaction, selected attendance rows are locked and counted against supplied IDs; every source row must belong to selected project and site and must not already have `voucher_status=created`. A mismatch rolls back before JV header/detail/ledger creation. Attendance update is additionally scoped by project and site, rather than ID only.
+- Five synthetic feature test cases added for malformed and repeated attendance identities, all asserting no JV/ledger records. Commits `770a2a0`, `49afba4`. Local execution pending; no claims of verified results.
+- **P0.2 estimated 55% → 65%** reflecting material Labour source/posted voucher consistency plus previously verified PPR and Extra Charge controls; P0.1 remains **93%** until database-level gates. Estimate is not production readiness. No migration or production/staging writes.
+- Remaining: Labour valid end-to-end scenarios, double-submit concurrency on MySQL, source uniqueness constraints and safely rebuilding typed Extra Charge flow.
 
 ### Primary delivery sequencing
 
