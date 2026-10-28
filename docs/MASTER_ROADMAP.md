@@ -1,3 +1,29 @@
+## 2026-10-28 fresh staging finance reconciliation (latest)
+
+The initial 2,873 unresolved-row figure has now been freshly reproduced on `bluemarketing_l13_staging` through the verified SELECT-only audit path: projects 6/5/3/1/2/4 returned 1,430/749/692/2/0/0, total 2,873, difference 0. The aggregate exited 0 with six rows, no truncation, all identity/project/integrity/arithmetic gates passing, and six `ACCEPTABLE_FOR_MANUAL_REVIEW` statuses. Pre-run schema and integrity gates passed. Post-run schema checks passed 34/34 and integrity checks 9/9, with semantic `PASS` and wrapper `PASS`; the individual post-run MySQL exit codes were not separately printed.
+
+This verifies the snapshot's aggregate unresolved population, not financial ownership. Apparently attributed and invalid-metadata counts were zero; independently verified ownership is `NULL`, `source_verified=0`, and `deployment_approved=0`. Per-project category evidence and limitations are in [the reconciliation report](HISTORICAL_JV_RECONCILIATION_2026_10_27.md). Manual finance review order is project 6, then 5, 3 and 1, starting with missing headers/references before candidate disagreements and matching-reference hints. Matching references never certify ownership, and disagreements alone are not confirmed errors.
+
+Remaining release gates include authenticated source documents, project/account/detail/amount reconciliation, independent finance decisions and signoff, exact migration/history disposition, backup/restore evidence, UAT and explicit release approval. **Production deployment remains BLOCKED; no phase completion or progress increase is claimed.**
+
+---
+
+## 2026-10-27 staging verification continuation: authentication blocked (latest)
+
+Current process staging password presence verified without disclosure. Reviewed standalone connection pinned to `127.0.0.1:3306` / `bluemarketing_l13_staging` / `blue_l13_stage`, exclusively using `BLUE_L13_STAGE_PASSWORD`; no Laravel or `.env` configuration used. MySQL rejected authentication with error **1045** before identity/grant queries. Actual database identity and privileges remain unverified; stopped before finance inventory. Previous 2873 unresolved rows remain reported evidence only (projects 6/5/3/1/2/4: 1430/749/692/2/0/0); fresh counts/deltas and metadata/reference categories unknown. Matching IDs/references do not prove ownership.
+
+Branch/HEAD verified `upgrade/laravel-framework` / `f7e7336cd57d7a693505788b27bcbd05ba3d9470`; existing four documentation changes preserved. No code changes/tests, data/schema writes, migrations, alternate account access, protected-resource changes or commit/push/merge/deployment. Next gate: intended restricted account authenticates, then verify database/user/hostname/grants before bounded finance reads. Finance evidence review, concurrency, backup/restore, UAT and release signoff remain open. **Production deployment BLOCKED; no progress increase.** See the reconciliation report for exact limitations.
+
+## 2026-10-27 current authorized staging audit preparation
+
+HEAD verified f7e7336cd57d7a693505788b27bcbd05ba3d9470 on upgrade/laravel-framework; prior tooling is committed/pushed and this commit's CI success is user-confirmed. Read-only staging access is now authorized, superseding earlier prohibitions below. Authenticated inspection remains blocked solely on secure restricted credential availability: four conventional process password variables and the previous PowerShell password variable are absent. No secret values printed, private files searched, or MySQL connections attempted.
+
+Six existing audit command help executions passed (exit 0) under SQLite-only process settings. Source inspection confirms general evidence commands lack target/account enforcement; staging preflight verifies environment/host/database but not restricted account/grants or read-only transaction. The reconciliation report now records same-connection identity/privilege/snapshot gates, aggregate-only command sequence and one process-scoped credential handoff. Raw packets contain voucher references; conflict/coverage commands require real review artifacts and do not exhaustively detect metadata anomalies.
+
+Focused isolated SQLite verification: 88 tests / 365 assertions, exit 0. No application changes; full suite not rerun (previous 467/1908 remains historical). Reported 2873 rows and 60 tables have not been freshly verified; no new ownership, category counts or discrepancies asserted. Next: securely hand off BLUE_L13_STAGE_PASSWORD to the agent process, verify the restricted staging connection, then run existing bounded aggregate reports. Deployment BLOCKED; remaining schema/history, finance reconciliation, disposable concurrency, backup/restore, UAT and release gates unchanged. Only documentation updated; no commit/push or protected-resource changes. See HISTORICAL_JV_RECONCILIATION_2026_10_27.md for the execution procedure.
+
+---
+
 # Latest evidence-audit verification — 2026-10-27
 
 **Deployment BLOCKED.** Baseline 14560873feac8e2f3ff5f25aa3afa6622ddc88d3 on upgrade/laravel-framework; baseline CI run 40498082989 verified successful. The following new changes remain uncommitted; earlier snapshots below are historical.

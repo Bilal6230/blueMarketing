@@ -1,3 +1,23 @@
+## 2026-10-28 fresh staging finance aggregate verified
+
+This section supersedes earlier statements that the 2,873-row inventory was only a historical report. A SELECT-only staging aggregate returned exactly six rows and exit code 0: project 6 = 1,430, project 5 = 749, project 3 = 692, project 1 = 2, and projects 2/4 = 0. The fresh total is 2,873, a zero difference from the initial baseline. No scan was truncated; identity, project, integrity and arithmetic gates passed for every row, and all six statuses were `ACCEPTABLE_FOR_MANUAL_REVIEW`.
+
+Schema and integrity preflights passed before execution. Post-audit verification reported 34/34 schema checks and 9/9 integrity checks passing, with every `passed=1`, both semantic statuses `PASS`, and wrapper validation `PASS`. Separate post-audit MySQL exit codes were not printed and remain undocumented.
+
+Observed categories are recorded in [the historical reconciliation report](HISTORICAL_JV_RECONCILIATION_2026_10_27.md). They are evidence triage, not ownership conclusions: 0 rows were apparently attributed, 0 invalid-metadata rows were observed, independently verified ownership remains `NULL`/not assessed, and source verification and deployment approval remain false. Matching references do not certify ownership; disagreements do not by themselves prove financial errors. Manual review priority is projects 6, 5, 3 and 1. No application code changed and no tests were required for this documentation-only update. **Production deployment remains BLOCKED.**
+
+---
+
+## 2026-10-27 current authorized staging audit preparation
+
+HEAD verified f7e7336cd57d7a693505788b27bcbd05ba3d9470 on upgrade/laravel-framework; prior tooling is committed/pushed and this commit's CI success is user-confirmed. Read-only staging access is now authorized, superseding earlier prohibitions below. Authenticated inspection remains blocked solely on secure restricted credential availability: four conventional process password variables and the previous PowerShell password variable are absent. No secret values printed, private files searched, or MySQL connections attempted.
+
+Six existing audit command help executions passed (exit 0) under SQLite-only process settings. Source inspection confirms general evidence commands lack target/account enforcement; staging preflight verifies environment/host/database but not restricted account/grants or read-only transaction. The reconciliation report now records same-connection identity/privilege/snapshot gates, aggregate-only command sequence and one process-scoped credential handoff. Raw packets contain voucher references; conflict/coverage commands require real review artifacts and do not exhaustively detect metadata anomalies.
+
+Focused isolated SQLite verification: 88 tests / 365 assertions, exit 0. No application changes; full suite not rerun (previous 467/1908 remains historical). Reported 2873 rows and 60 tables have not been freshly verified; no new ownership, category counts or discrepancies asserted. Next: securely hand off BLUE_L13_STAGE_PASSWORD to the agent process, verify the restricted staging connection, then run existing bounded aggregate reports. Deployment BLOCKED; remaining schema/history, finance reconciliation, disposable concurrency, backup/restore, UAT and release gates unchanged. Only documentation updated; no commit/push or protected-resource changes. See HISTORICAL_JV_RECONCILIATION_2026_10_27.md for the execution procedure.
+
+---
+
 # Laravel 13 continuation audit — 2026-10-27
 
 ## Latest resumed evidence-audit status

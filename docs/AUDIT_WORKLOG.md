@@ -1,6 +1,15 @@
 # Read-only Audit Worklog & Decision Register
 
-**Updated:** 2026-10-26. Keep new entries dated, evidence-based and append-only where practical.
+**Updated:** 2026-10-28. Keep new entries dated, evidence-based and append-only where practical.
+
+## 2026-10-28 - fresh staging finance aggregate reconciliation
+
+- User supplied actual SELECT-only staging results: aggregate exit 0, exactly six rows, project unresolved counts 6/5/3/1/2/4 = 1,430/749/692/2/0/0, total 2,873 and baseline difference 0.
+- All project identity/existence/integrity/arithmetic gates passed; no truncation; all statuses `ACCEPTABLE_FOR_MANUAL_REVIEW`. Apparently attributed rows and invalid-metadata rows were 0. Ownership count remains `NULL`/not assessed; source verification and deployment approval remain false.
+- Pre-audit schema and data-integrity preflights passed. Post-audit schema preflight passed 34/34 and data-integrity preflight 9/9; every row reported `passed=1`, both semantic statuses were `PASS`, and the wrapper printed `PASS`. Individual post-audit MySQL exit codes were not separately printed, which limits process-level exit-code evidence but does not erase the complete semantic output.
+- Recorded the supplied per-project categories in `HISTORICAL_JV_RECONCILIATION_2026_10_27.md` without calculating portfolio category totals. Numeric reference disagreements remain candidate mismatches, not confirmed errors; matching IDs/references remain hints, not ownership proof.
+- Manual review order: project 6, project 5, project 3, project 1; prioritize missing headers and missing references, then disagreements and matching-reference candidates. Projects 2 and 4 remain in completeness checks despite zero observed rows.
+- Documentation-only update. No SQL executed by Codex, database connection, application code change, test run, commit, push, merge or deployment. Existing SQL audit files and vendor backup preserved. Production deployment remains BLOCKED pending source authentication, ownership judgment, financial reconciliation and all existing release gates.
 
 ## 2026-10-26 — Documentation and scope established
 - User requested comprehensive schema/migrations/FK/soft-delete and data-integrity audit, plus user activity tracking and new-device/IP/location-based OTP verification.
@@ -634,3 +643,48 @@ Files: app/Console/Commands/AuditLegacyVoucherCases.php; app/Services/Finance/Le
 Remaining blockers: reported 2873 rows are not freshly scanned; original documents, detail/amount reconciliation and independent finance judgment unavailable. Prior project-6 evidence was 1420 JV-only candidates and ten absent numeric headers, not proof of ownership. No credentials retrieved, staging inspection attempted or production accessed. Next: user reviews code/report; separately authorize read-only staging access and securely provide restricted credentials before independent session identity verification and project scans in order 6,5,3,1,2,4. No commit/push/merge/migration/deployment. Deployment BLOCKED; no percentage increased.
 
 Final resumed full command: php vendor/phpunit/phpunit/phpunit --no-progress --display-phpunit-deprecations — 467 tests / 1908 assertions, exit 0, no warnings (56.078 seconds). Focused result: 113 / 412, exit 0. Ready for user review; nothing staged or committed.
+
+## 2026-10-27 staging verification continuation: authentication blocked
+
+Verified process-only `BLUE_L13_STAGE_PASSWORD` is nonempty without exposing its value. Inspected standalone PDO procedure before connecting: pinned `127.0.0.1:3306`, `bluemarketing_l13_staging`, `blue_l13_stage`; credential exclusively from that process variable; no Laravel bootstrap or `.env`. Connection failed with MySQL error **1045 (access denied)**. Raw exception text suppressed; no identity or grant queries executed, no finance reads attempted, no alternate credentials tried. Actual database identity/account/grants remain unverified; Step 2 failed and Step 3 was not run. The prior 2873 unresolved rows (6:1430, 5:749, 3:692, 1:2, 2:0, 4:0) remain historical reports; fresh counts, deltas and categories unknown.
+
+Confirmed branch/HEAD `upgrade/laravel-framework` / `f7e7336cd57d7a693505788b27bcbd05ba3d9470`. Preserved four existing documentation modifications; updated reconciliation, this worklog and roadmap only. No application code change or test execution, no MySQL writes/tests/migrations/backfills, protected-resource changes, commit/push/merge/deployment. Reauthentication with the intended restricted account and repeated identity/grant verification are required before inventory. Historical ownership and all prior release gates remain unresolved. **Production deployment BLOCKED.**
+
+## 2026-10-27 current authorized staging audit preparation
+
+HEAD verified f7e7336cd57d7a693505788b27bcbd05ba3d9470 on upgrade/laravel-framework; prior tooling is committed/pushed and this commit's CI success is user-confirmed. Read-only staging access is now authorized, superseding earlier prohibitions below. Authenticated inspection remains blocked solely on secure restricted credential availability: four conventional process password variables and the previous PowerShell password variable are absent. No secret values printed, private files searched, or MySQL connections attempted.
+
+Six existing audit command help executions passed (exit 0) under SQLite-only process settings. Source inspection confirms general evidence commands lack target/account enforcement; staging preflight verifies environment/host/database but not restricted account/grants or read-only transaction. The reconciliation report now records same-connection identity/privilege/snapshot gates, aggregate-only command sequence and one process-scoped credential handoff. Raw packets contain voucher references; conflict/coverage commands require real review artifacts and do not exhaustively detect metadata anomalies.
+
+Focused isolated SQLite verification: 88 tests / 365 assertions, exit 0. No application changes; full suite not rerun (previous 467/1908 remains historical). Reported 2873 rows and 60 tables have not been freshly verified; no new ownership, category counts or discrepancies asserted. Next: securely hand off BLUE_L13_STAGE_PASSWORD to the agent process, verify the restricted staging connection, then run existing bounded aggregate reports. Deployment BLOCKED; remaining schema/history, finance reconciliation, disposable concurrency, backup/restore, UAT and release gates unchanged. Only documentation updated; no commit/push or protected-resource changes. See HISTORICAL_JV_RECONCILIATION_2026_10_27.md for the execution procedure.
+
+---
+
+## 2026-10-27 dedicated SELECT-only audit account: manual execution pending
+
+## 2026-10-28 staging aggregate audit hardening (not executed)
+
+Created `docs/STAGING_FINANCE_SCHEMA_PREFLIGHT.sql`, `docs/STAGING_FINANCE_DATA_INTEGRITY_PREFLIGHT.sql` and `docs/STAGING_FINANCE_AUDIT_EXECUTION.md`; hardened `docs/STAGING_FINANCE_AGGREGATE_AUDIT.sql`. Static review covers SELECT-only structure, staging-qualified business tables, `information_schema` metadata checks, duplicate/orphan gates, explicit truncation and arithmetic validation. Schema and data checks are separate so missing schema returns a clear BLOCKED result before any statement references the absent business object. Repository migration history does not establish two audit-required columns (`ledgers.voucher_number`, `journal_vouchers.project_id`), so the preflight verifies actual staging schema and blocks missing/unexpected definitions. No MySQL connection, SQL execution, application code change, test run, commit or push. Existing documentation changes and vendor backup preserved. Production deployment remains BLOCKED.
+
+Final independent static review added explicit stop instructions after identity, schema, integrity and aggregate failures; clarified that apparently-valid attribution metadata is not ownership proof; and gated every SQL statement on `READ-COMMITTED` or `REPEATABLE-READ`. This closes the prior unverified-isolation assumption but does not create a shared snapshot across separate CLI connections.
+
+Actual schema preflight then exited 0 with semantic `BLOCKED` on five legacy types/nullability rules. Reviewed migrations, models and committed evidence services. Updated only audit SQL expectations for the observed legacy integer definitions and stronger non-null project-account link. Fixed mixed numeric/string reference coercion by explicit CHAR normalization followed by binary comparison, preserving the service's `(string)` and strict-equality intent. Nullable JV project headers remain excluded from project candidates and are separately counted. No database connection or SQL execution in this correction task; no application logic changed.
+
+Because signed legacy `ledgers.type_id` and `journal_vouchers.project_id` are compared with unsigned identifiers, both the standalone integrity preflight and aggregate integrity gate now reject negative values before any candidate classification. This prevents signed/unsigned coercion from creating a false numeric match.
+
+The user reports successful CLI authentication as blue_l13_audit@127.0.0.1, with global USAGE and SELECT only on bluemarketing_l13_staging. This supersedes the prior blue_l13_stage recovery path; neither that account nor root is to be used. BLUE_L13_AUDIT_PASSWORD is absent in this agent process (presence only checked). No new MySQL connection or finance query executed. No fresh counts or discrepancies asserted.
+
+Prepared docs/STAGING_FINANCE_AGGREGATE_AUDIT.sql: one MySQL 8 SELECT statement with CTEs, staging-qualified business tables, exact database/account/port identity gate, six expected projects, full population counts, and triage capped at 5000 unresolved rows per project. MAX_EXECUTION_TIME requests a 60-second bound; this is not a claim that counting scans at most 5000 records. Missing schema causes failure. No Laravel bootstrap, SET, USE, temporary tables, transaction control or writes. Static inspection only; MySQL syntax/runtime and live classification results remain unverified.
+
+Reuse of rules: project-account JV ledger scope; apparent attribution requires matching project/type_id, allowed source kind and evidence kind. Existing invalid metadata cannot exclude a row by itself. Metadata anomaly counts cover the full six-project candidate scope, including invalid rows alongside apparent attribution and multiple attribution rows. These are anomaly indicators, not exhaustive conflict proof. Triage follows both headers, neither header, blank reference, exact binary reference match, otherwise candidate disagreement. Blank-reference detection matches PHP trim byte semantics. No names, reference values, amounts or per-ledger output. Independent evidence is not assessed; verified ownership count remains NULL. No alternative voucher-reference search, detail reconciliation or orphan-outside-project-scope inventory is claimed.
+
+Manual PowerShell execution from C:\laragon\www\blueMarketing (enter the dedicated audit password only at the masked prompt):
+
+```powershell
+& 'C:\laragon\bin\mysql\mysql-8.0.30-winx64\bin\mysql.exe' --no-defaults --protocol=TCP --host=127.0.0.1 --port=3306 --user=blue_l13_audit --database=bluemarketing_l13_staging --password --connect-timeout=5 --batch --raw --execute="source C:/laragon/www/blueMarketing/docs/STAGING_FINANCE_AGGREGATE_AUDIT.sql"
+$LASTEXITCODE
+```
+
+Do not use --force. Return the aggregate table and exit code, or sanitized error; no password. Accept results only when all six identity_gate_passed/project_exists values are 1, every incomplete value is 0, scanned equals current_unresolved and both category families sum to scanned. Empty populations yield NULL in population metadata columns (no grouped row), not missing-header findings. An error or failed gate is not a zero inventory. Compare current_unresolved to reported project 6/5/3/1/2/4 counts 1430/749/692/2/0/0, then sum six results against 2873. Do not add category counts to population counts. Require a stable snapshot and transactional tables for a coherent statement snapshot; engine/snapshot consistency remains unverified. CLI exit success alone does not certify identity gates, grants, evidence or release readiness.
+
+All four existing documentation changes preserved. No application code changed, so SQLite suite not rerun. Production deployment BLOCKED pending genuine query results, independent finance evidence/reconciliation, schema/history review and existing release gates. No commit/push or protected-resource changes.
