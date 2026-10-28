@@ -87,6 +87,16 @@ class LedgerController extends Controller
             ], 422);
         }
 
+        // Client-entered voucher labels cannot be trusted as independent
+        // financial identities: both controls must agree and be positive.
+        if ($voucherValue !== $voucherNumberValue ||
+            !preg_match('/^(CR|CP)-[1-9][0-9]*$/D', $voucherValue)) {
+            return response()->json([
+                'status' => 'error',
+                'error_key' => 'invalid_voucher_number',
+                'message' => 'Voucher numbers do not match. Please refresh and try again.',
+            ], 422);
+        }
         $effectiveVoucherType = $voucherPrefix;
         $voucherNumber = (int) ($voucherNumberParts[1] ?? 0);
         $cleanAmount = (float) str_replace(',', '', (string) $request->input('amount'));
