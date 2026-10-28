@@ -2557,7 +2557,7 @@ class BookingController extends Controller
                         if (!preg_match('/^\d{1,10}(?:\.\d{1,2})?$/D', $amount) ||
                             (float) $amount <= 0 || !$parsedDate ||
                             $parsedDate->format('Y-m-d') !== $date ||
-                            $reference === '' || !in_array((int) $request->input('payment_type'), [1], true) ||
+                            $reference === '' || !in_array((int) $request->input('payment_type'), [0, 1], true) ||
                             trim((string) $request->input('detail')) === '' ||
                             !ChargeType::whereKey($chargeTypeId)->exists()) {
                             throw new \DomainException('EXTRA_CHARGE_INPUT_OR_PAYMENT_UNSUPPORTED');
