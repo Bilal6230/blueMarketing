@@ -942,6 +942,19 @@ class LabourController extends Controller
                 'selectedProjectId' => $selectedProjectId,
             ]);
 
+            // Both JV legs must be active accounts owned by the same
+            // project as the voucher. Never post cross-project or same-account
+            // self-cancelling labour journals.
+            $postingAccounts = [$headSubheadId, $project_head_subheads_id];
+            if ((int) $headSubheadId === (int) $project_head_subheads_id ||
+                \App\Models\ProjectHeadSubhead::query()
+                    ->where('project_id', $selectedProjectId)
+                    ->whereIn('id', $postingAccounts)
+                    ->distinct()
+                    ->count('id') !== 2) {
+                throw new \DomainException('LABOUR_JV_ACCOUNT_PROJECT_OR_BALANCE_CONFLICT');
+            }
+
             JournalVoucherDetail::create([
                 'journal_voucher_id' => $journalVoucher->id,
                 'account_id' => $headSubheadId,
