@@ -950,12 +950,8 @@ class MobileStockController extends BaseMobileController
             ],
         ];
 
-        $existingLegCount = Ledger::query()
-            ->where('type', $ledgerType)
-            ->where('reference', $reference)
-            ->count();
-
-        if ($existingLegCount >= 2) {
+        if (app(\App\Services\Finance\StockLedgerPostingGuard::class)
+            ->alreadyPosted($reference, $projectId, $entryDate, $legs)) {
             return;
         }
 
