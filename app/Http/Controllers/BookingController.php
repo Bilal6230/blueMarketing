@@ -3353,6 +3353,11 @@ class BookingController extends Controller
                     ->where('project_id', $projectId)
                     ->lockForUpdate()->firstOrFail();
 
+                // If already canceled, don’t repost ledgers (idempotency)
+                if ((int) $booking->cancel_status === 1) {
+                    return;
+                }
+
                 // No-payment cancellation must not silently hide an existing
                 // financial source; paid bookings require the reversal workflow.
                 if ($request->input('action_type') === 'payment_not_received') {
@@ -3379,11 +3384,6 @@ class BookingController extends Controller
                     if ($hasCustomerSource || $hasBookingVoucher || $hasLedger) {
                         throw new \DomainException('CANCEL_NO_PAYMENT_HAS_FINANCIAL_HISTORY');
                     }
-                }
-
-                // If already canceled, don’t repost ledgers (idempotency)
-                if ((int) $booking->cancel_status === 1) {
-                    return;
                 }
 
                 // Lock plot row too (consistent state)
@@ -3589,6 +3589,12 @@ class BookingController extends Controller
 
             return response()->json(['message' => 'Booking canceled successfully.']);
         } catch (\Throwable $e) {
+            if ($e instanceof \DomainException && $e->getMessage() === 'CANCEL_NO_PAYMENT_HAS_FINANCIAL_HISTORY') {
+                return response()->json([
+                    'error' => 'cancellation_requires_financial_reversal',
+                    'message' => 'This booking has financial history and requires a reviewed reversal.',
+                ], 409);
+            }
             Log::error('Booking cancel failed', [
                 'booking_id' => $bookingId,
                 'error' => $e->getMessage(),
