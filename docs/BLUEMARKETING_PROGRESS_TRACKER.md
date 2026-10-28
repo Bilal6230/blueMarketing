@@ -97,6 +97,14 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - **P0.1 estimated implementation coverage 87% → 93%** for tested-in-principle protective invariants; *new tests still need local execution*. This is not database-level durability assurance. Remaining: global writer inventory, MySQL concurrent test, database constraints and source-type migration design. P0.2 stays **38%**.
 - Historical rows, production MySQL and staging were **not** modified. Any legacy source inconsistencies will be reported and blocked, not silently repaired.
 
+### 2026-10-29 Stock identity and numeric safety checkpoint
+
+- **User-verified:** Stock guard baseline **32 tests / 34 assertions PASS**, PHP syntax clear and Git tree clean. Previous Stock-source integrity batch is verified.
+- Implemented explicit Stock reference namespace validation (`STOCK-ENTRY:<id>` and `STOCK-BILL:<id>` with positive integer IDs) and ISO business date shape validation *before touching source postings*. Prevents arbitrary `JV` reference aliases from being classified as Stock.
+- Hardened minor-unit money parsing to fail on values above PHP integer capacity instead of risking silent saturation/overflow. New regressions include four malformed references, malformed date and overflowing amount.
+- Commits `2bf124c`, `5a27e20`. **New targeted tests pending local verification**; full suite not needed.
+- **P0.1 stays 93%** until remaining writer inventory/DB concurrency guarantees are delivered; P0.2 stays 38%. Do not increase milestones merely for narrowly scoped checks. Production MySQL and historical financial rows remain untouched.
+
 ### Primary delivery sequencing
 
 1. **Prevent new data loss** first: finish source-specific mutation guards, database authorization, concurrency and comprehensive regression tests.
