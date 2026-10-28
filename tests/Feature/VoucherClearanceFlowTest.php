@@ -311,6 +311,39 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertEquals(0, $ledger->amount_in);
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidBankClearanceSources')]
+    public function test_bank_clearance_does_not_mutate_an_invalid_source(string $type, int $paymentType): void
+    {
+        $receipt = $this->createPendingReceipt($type, $paymentType, $this->project->id, 1500);
+        $before = DB::table('ledgers')->count();
+
+        $request = Request::create('/admin/reports/bank-posting-check', 'POST', [
+            'id' => $receipt->id,
+            'passing_status' => 1,
+            'note' => 'Attempted clearance',
+            'accounts_id' => $this->cashVoucherAccount->head_accounting_id,
+            'subaccounts_id' => $this->cashVoucherAccount->subhead_accounting_id,
+            'bank_post_at' => '2026-05-20',
+        ]);
+        $request->cookies->set('selected_action', (string) $this->project->id);
+        $request->setLaravelSession($this->app['session.store']);
+        $this->app->instance('request', $request);
+
+        $this->app->make(\App\Http\Controllers\ReportController::class)->bank_posting_check($request);
+
+        $this->assertSame(0, (int) $receipt->fresh()->passing_status);
+        $this->assertSame($before, DB::table('ledgers')->count());
+        $this->assertDatabaseMissing('ledgers', ['type' => 'BR']);
+    }
+
+    public static function invalidBankClearanceSources(): array
+    {
+        return [
+            'cash receipt' => ['CR', 1],
+            'other source' => ['CP', 2],
+        ];
+    }
+
     public function test_manual_cash_out_still_creates_cp_ledger(): void
     {
         $response = $this->callLedgerStore($this->cashVoucherPayload([
