@@ -28,6 +28,8 @@ class StockLedgerPostingGuardTest extends TestCase
             $table->unsignedBigInteger('project_id');
             $table->string('reference');
             $table->string('transaction_type');
+            $table->date('date');
+            $table->boolean('is_active')->default(true);
         });
         Schema::create('ledgers', function (Blueprint $table) {
             $table->id();
@@ -50,6 +52,7 @@ class StockLedgerPostingGuardTest extends TestCase
         ]);
         DB::table('customer_ledger')->insert([
             'id' => 99, 'project_id' => 5, 'reference' => 'STOCK-ENTRY:123', 'transaction_type' => 'JV',
+            'date' => '2026-10-20', 'is_active' => 1,
         ]);
     }
 
@@ -144,4 +147,20 @@ class StockLedgerPostingGuardTest extends TestCase
         $this->expectException(\DomainException::class);
         $this->verify();
     }
+    public function test_customer_ledger_date_mismatch_is_rejected(): void
+    {
+        $this->insertLegs();
+        DB::table('customer_ledger')->where('id', 99)->update(['date' => '2026-10-19']);
+        $this->expectException(\DomainException::class);
+        $this->verify();
+    }
+
+    public function test_inactive_customer_ledger_is_rejected(): void
+    {
+        $this->insertLegs();
+        DB::table('customer_ledger')->where('id', 99)->update(['is_active' => 0]);
+        $this->expectException(\DomainException::class);
+        $this->verify();
+    }
+
 }
