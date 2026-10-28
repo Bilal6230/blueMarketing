@@ -138,6 +138,35 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame(0, DB::table('ledgers')->count());
     }
 
+    public function test_ec_audit_command_reports_clean_empty_project_without_writes(): void
+    {
+        $status = \Illuminate\Support\Facades\Artisan::call('finance:audit-ec-sources', [
+            'project' => $this->project->id,
+        ]);
+        $this->assertSame(0, $status);
+        $this->assertStringContainsString('"read_only":true', \Illuminate\Support\Facades\Artisan::output());
+        $this->assertSame(0, DB::table('customer_ledger')->count());
+        $this->assertSame(0, DB::table('ledgers')->count());
+    }
+
+    public function test_ec_audit_command_detects_orphan_source_without_repair(): void
+    {
+        $source = CustomerLedger::create([
+            'project_id' => $this->project->id, 'customer_id' => $this->customer->id,
+            'plot_id' => $this->plot->id, 'transaction_type' => 'EC',
+            'type_id' => 14, 'reference' => 'EC-ORPHAN-AUDIT',
+            'amount_in' => 100, 'amount_out' => 0,
+            'payment_type' => 1, 'date' => '2026-05-17',
+        ]);
+        $status = \Illuminate\Support\Facades\Artisan::call('finance:audit-ec-sources', [
+            'project' => $this->project->id,
+        ]);
+        $this->assertSame(1, $status);
+        $this->assertStringContainsString('leg_count_not_two', \Illuminate\Support\Facades\Artisan::output());
+        $this->assertNotNull($source->fresh());
+        $this->assertSame(0, DB::table('ledgers')->count());
+    }
+
     public function test_extra_charge_number_skips_orphaned_typed_source(): void
     {
         Schema::create('charge_types', function (Blueprint $table) {
