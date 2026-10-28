@@ -775,6 +775,52 @@ class VoucherClearanceFlowTest extends TestCase
         ];
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidLabourPeriods')]
+    public function test_labour_voucher_rejects_invalid_business_period_before_posting(string $startDate, string $endDate): void
+    {
+        Schema::create('sites', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('project_id');
+            $table->string('site_name');
+            $table->unsignedBigInteger('subhead_accounting_id')->nullable();
+            $table->timestamps();
+        });
+        DB::table('sites')->insert([
+            'id' => 1,
+            'project_id' => $this->project->id,
+            'site_name' => 'Test Site',
+            'subhead_accounting_id' => $this->bookingReceiptAccount->id,
+        ]);
+
+        $request = Request::create('/admin/labour/voucher/create', 'POST', [
+            'site_id' => 1,
+            'amount' => '2500.00',
+            'attendance_ids' => '1',
+            'detail' => '[{"name":"Test","days":1,"rate":100}]',
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+        ]);
+        $request->cookies->set('selected_action', (string) $this->project->id);
+        $request->setLaravelSession($this->app['session.store']);
+        $this->app->instance('request', $request);
+
+        $response = app(\App\Http\Controllers\LabourController::class)->createVoucher($request);
+        TestResponse::fromBaseResponse($response)->assertStatus(422)
+            ->assertJson(['error_key' => 'invalid_labour_period']);
+        $this->assertSame(0, DB::table('journal_vouchers')->count());
+        $this->assertSame(0, DB::table('ledgers')->count());
+    }
+
+    public static function invalidLabourPeriods(): array
+    {
+        return [
+            'missing start' => ['', '2026-10-29'],
+            'relative start' => ['tomorrow', '2026-10-29'],
+            'invalid calendar day' => ['2026-02-30', '2026-03-01'],
+            'reversed range' => ['2026-10-30', '2026-10-29'],
+        ];
+    }
+
     #[\PHPUnit\Framework\Attributes\DataProvider('extraChargePaymentTypes')]
     public function test_ambiguous_extra_charge_does_not_create_any_financial_rows(int $paymentType): void
     {
