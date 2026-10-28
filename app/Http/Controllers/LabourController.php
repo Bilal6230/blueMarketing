@@ -873,8 +873,25 @@ class LabourController extends Controller
                     . ' (' . $labour['days'] . ' days'
                     . ', wage: ' . $labour['rate'] . ')';
             })->implode(', ');
-            $start = Carbon::parse($request->start_date)->format('d M Y');
-            $end   = Carbon::parse($request->end_date)->format('d M Y');
+            // Reject invalid or reversed business periods before any voucher write.
+            // Carbon::parse() accepts relative dates and silently normalizes some
+            // malformed values, which is unsuitable for a financial source.
+            $startDate = (string) $request->input('start_date', '');
+            $endDate = (string) $request->input('end_date', '');
+            $startParsed = \DateTimeImmutable::createFromFormat('!Y-m-d', $startDate);
+            $endParsed = \DateTimeImmutable::createFromFormat('!Y-m-d', $endDate);
+            if (!$startParsed || !$endParsed ||
+                $startParsed->format('Y-m-d') !== $startDate ||
+                $endParsed->format('Y-m-d') !== $endDate ||
+                $startParsed > $endParsed) {
+                return response()->json([
+                    'success' => false,
+                    'error_key' => 'invalid_labour_period',
+                    'message' => 'Select a valid labour date range.',
+                ], 422);
+            }
+            $start = $startParsed->format('d M Y');
+            $end = $endParsed->format('d M Y');
 
             $site = Site::find($request->site_id);
             $siteName = $site?->site_name ?? 'Unknown Site';
