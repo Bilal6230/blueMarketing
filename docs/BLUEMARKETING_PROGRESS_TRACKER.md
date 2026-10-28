@@ -42,6 +42,14 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - Post-change focused and full test execution **pending local verification**. Do not mark full P0.1 complete on the basis of this limited guard.
 - Strictly no MySQL writes, migrations, production deployment, or historical backfill.
 
+### 2026-10-28 P0.1 cash-ledger editor safety batch
+
+- **Critical bug addressed in source:** the generic `LedgerController::update()` previously computed both debit/credit amounts as **zero** for `JV`, `SV`, `BO`, `BR`, `PPR` etc., while changing the account/date/detail. This could silently destroy posting meaning if a non-cash ledger row reached the cash editor.
+- **Implementation:** hard gate inside the locked update transaction restricts the editor to `CR` or `CP` ledger rows that have a linked active `CustomerLedger` with matching project, transaction type and reference. Any missing/foreign/inactive/wrong-type source fails closed. Existing source synchronization remains transactional. No historical rows are modified.
+- **Regression:** isolated test added in `VoucherClearanceFlowTest` verifying a synthetic `JV` ledger cannot be zeroed via this editor.
+- **Latest previously verified run:** **435 Feature tests / 1,879 assertions**, clean Git status, before this batch. **Post-batch tests NOT YET VERIFIED locally**, so no progress percentage increase or release readiness claim.
+- **Follow-on:** Audit CR/CP reference evolution and authenticated route responses; fail-closed may intentionally reject legacy inconsistent cash rows pending separate reconciliation. Preserve immutability and do not auto-align historical references.
+
 ### Latest verified testing checkpoint
 
 - User's focused `StockLedgerPostingGuardTest`: **11 passed / 11 assertions**, six conflict datasets executed.
