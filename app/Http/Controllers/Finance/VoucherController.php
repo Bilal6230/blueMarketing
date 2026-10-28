@@ -892,11 +892,19 @@ class VoucherController extends Controller
                     $accountsId = $validated['accounts_id'] ?? null;
                     $subaccountsId = $validated['subaccounts_id'] ?? null;
 
-                    if ($accountsId && $subaccountsId) {
+                    if ($accountsId || $subaccountsId) {
+                        // Invalid explicitly supplied accounts must fail closed.
+                        // Never silently fall back to another source account.
+                        if (!$accountsId || !$subaccountsId) {
+                            throw new \RuntimeException('Both account fields are required.');
+                        }
                         $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', $accountsId)
                             ->where('subhead_accounting_id', $subaccountsId)
                             ->where('project_id', $selectedProjectId)
                             ->value('id');
+                        if (!$creditAccountId) {
+                            throw new \RuntimeException('Selected bank clearance account is not valid for this project.');
+                        }
                     }
 
                     if (!$creditAccountId) {
