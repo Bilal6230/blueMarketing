@@ -45,6 +45,13 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - Inspected PPR source creation and number allocation: existing source/ledger `lockForUpdate` cannot serialize competing first-time requests where no row exists. Added selected-project row lock inside PPR transaction before its source lookup and voucher allocation (`75b917bf`). This serializes cooperating PPR requests on one project row; it does not prove global numbering safety across unrelated writers or MySQL behavior.
 - Added fail-closed missing-project regression checking no customer source, ledger or booking voucher rows (`3ed14dee`). New tests pending. No percentage change: P0.1 **93%**, P0.2 **75%**, P0.3 **15%**, P0.4 **15%**, P0.5 **10%** until independently verified; no DB write, migration or historical repair.
 
+### 2026-10-29 PPR BookingVoucher replay source/ledger evidence guards
+
+- Previous PPR checkpoint **8 focused tests / 54 assertions PASS**, controller and test PHP lint clear, clean Git tree at `9386b6a2`.
+- Audit found `syncBookingVoucherRecord` uses `updateOrCreate`, and a PPR replay could silently overwrite an existing BookingVoucher whose project/customer/plot, series, active status, slip reference, receipt date, amount, linked ledger ID or persisted voucher number had drifted. These are source ownership and financial identity facts, not repairable display metadata.
+- New PPR replay preflight refuses such mismatches before the existing sync path: ten focused mutation datasets check the prior BookingVoucher and ledger are unchanged, with one source/ledger remaining. Commits `eedc045b` and `c08fbb53`. **New tests pending local run.** This also deliberately refuses legacy inconsistent records pending independent reconciliation.
+- No progress inflation: P0.1 **93%**, P0.2 **75%**, P0.3 **15%**, P0.4 **15%**, P0.5 **10%**. The implementation improves PPR source integrity, but cross-family source typing, Extra Charge redesign, database uniqueness and MySQL concurrency remain unresolved. No production/staging write, migration or historical repair.
+
 ## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
 
 **These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
