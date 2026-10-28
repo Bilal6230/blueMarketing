@@ -33,6 +33,8 @@ class StockLedgerPostingGuardTest extends TestCase
             $table->unsignedBigInteger('project_id');
             $table->string('reference');
             $table->string('transaction_type');
+            $table->decimal('amount_in', 15, 2)->default(0);
+            $table->decimal('amount_out', 15, 2)->default(0);
             $table->date('date');
             $table->boolean('is_active')->default(true);
         });
@@ -57,7 +59,7 @@ class StockLedgerPostingGuardTest extends TestCase
         ]);
         DB::table('customer_ledger')->insert([
             'id' => 99, 'project_id' => 5, 'reference' => 'STOCK-ENTRY:123', 'transaction_type' => 'JV',
-            'date' => '2026-10-20', 'is_active' => 1,
+            'date' => '2026-10-20', 'is_active' => 1, 'amount_in' => '10.00', 'amount_out' => 0,
         ]);
     }
 
@@ -164,7 +166,7 @@ class StockLedgerPostingGuardTest extends TestCase
         $this->insertLegs();
         DB::table('customer_ledger')->insert([
             'id' => 100, 'project_id' => 5, 'reference' => 'STOCK-ENTRY:123',
-            'transaction_type' => 'JV', 'date' => '2026-10-20', 'is_active' => 1,
+            'transaction_type' => 'JV', 'date' => '2026-10-20', 'is_active' => 1, 'amount_in' => '10.00', 'amount_out' => 0,
         ]);
         $this->expectException(\DomainException::class);
         $this->verify();
@@ -176,6 +178,32 @@ class StockLedgerPostingGuardTest extends TestCase
         DB::table('customer_ledger')->where('id', 99)->delete();
         $this->expectException(\DomainException::class);
         $this->verify();
+    }
+
+    public function test_fresh_stock_rejects_stranded_source_amount_mismatch(): void
+    {
+        DB::table('customer_ledger')->where('id', 99)->update(['amount_in' => '11.00']);
+
+        $this->expectException(\DomainException::class);
+        $this->verify();
+    }
+
+    public function test_posted_stock_rejects_source_amount_mismatch(): void
+    {
+        $this->insertLegs();
+        DB::table('customer_ledger')->where('id', 99)->update(['amount_in' => '9.00']);
+
+        $this->expectException(\DomainException::class);
+        $this->verify();
+    }
+
+    public function test_stock_source_out_side_amount_matches_for_stock_in(): void
+    {
+        DB::table('customer_ledger')->where('id', 99)->update(['amount_in' => 0, 'amount_out' => '10.00']);
+
+        $this->assertFalse($this->verify());
+        $this->insertLegs();
+        $this->assertTrue($this->verify());
     }
 
     public function test_exact_two_legs_are_recognized(): void
@@ -221,7 +249,7 @@ class StockLedgerPostingGuardTest extends TestCase
             'reference' => 'STOCK-ENTRY:123', 'voucher_number' => '100',
             'customer_ledger_id' => 99, 'project_head_subheads_id' => 11,
             'amount_in' => '10.00', 'amount_out' => '0.00',
-            'date' => '2026-10-20', 'is_active' => 1,
+            'date' => '2026-10-20', 'is_active' => 1, 'amount_in' => '10.00', 'amount_out' => 0,
         ]);
         $this->expectException(\DomainException::class);
         $this->verify();
