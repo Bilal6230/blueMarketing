@@ -94,7 +94,7 @@ class StockLedgerPostingGuardTest extends TestCase
         $this->assertTrue($this->verify());
     }
 
-    /** @dataProvider conflicts */
+    #[\PHPUnit\Framework\Attributes\DataProvider('conflicts')]
     public function test_conflicting_stock_posting_is_rejected(string $column, mixed $value): void
     {
         $this->insertLegs();
