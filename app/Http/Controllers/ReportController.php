@@ -168,6 +168,19 @@ class ReportController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            // Only an active, pending bank/check receipt may enter clearance.
+            // A cash receipt or unrelated source must never create BR postings.
+            if ((int) $result->is_active !== 1 ||
+                !in_array((string) $result->transaction_type, ['CR', 'PPR'], true) ||
+                !in_array((int) $result->payment_type, [2, 3], true)) {
+                throw new \DomainException('BANK_CLEARANCE_INVALID_SOURCE');
+            }
+
+            if ((int) $request->passing_status === 1 &&
+                !$request->filled('bank_post_at')) {
+                throw new \DomainException('BANK_CLEARANCE_DATE_REQUIRED');
+            }
+
             if ((int) $result->passing_status !== 0) {
                 throw new \RuntimeException('This payment has already been processed.');
             }
@@ -210,10 +223,26 @@ class ReportController extends Controller
             // Create Ledger entry only if passing_status == 1
             if ($request->passing_status == 1) {
                 $clearanceReference = 'BANK_CLEARANCE#' . $result->id;
-                $alreadyPosted = Ledger::where('customer_ledger_id', $result->id)
+                // A matching reference linked to another source or an
+                // inactive/duplicate posting is a conflict, not idempotency.
+                $existingClearance = Ledger::query()
                     ->where('type', 'BR')
                     ->where('reference', $clearanceReference)
-                    ->exists();
+                    ->lockForUpdate()
+                    ->get();
+
+                if ($existingClearance->count() > 1 ||
+                    $existingClearance->contains(fn ($ledger) =>
+                        (int) $ledger->customer_ledger_id !== (int) $result->id ||
+                        (int) $ledger->is_active !== 1 ||
+                        (int) $ledger->project_head_subheads_id !== (int) $creditAccountId ||
+                        substr((string) $ledger->date, 0, 10) !== substr((string) $request->bank_post_at, 0, 10) ||
+                        round((float) $ledger->amount_out, 2) !== round((float) $amount, 2)
+                    )) {
+                    throw new \DomainException('BANK_CLEARANCE_EXISTING_LEDGER_CONFLICT');
+                }
+
+                $alreadyPosted = $existingClearance->isNotEmpty();
 
                 if (!$alreadyPosted) {
                     $voucherNumber = getVocuherNumber('BR');
