@@ -882,13 +882,14 @@ class LabourController extends Controller
             $labourAccountDesc = "Labour payable for {$labourNames} ({$start} - {$end})";
             $siteAccountDesc = "Labour expense charged to Site: {$siteName}";
 
-            $voucherNumber = getVocuherNumber('JV');
+            // Voucher number is allocated only after the project lock below.
+            $voucherNumber = null;
             $log->info('labour.createVoucher.voucher_number_computed', [
                 'trace_id' => $traceId,
                 'auth_user_id' => $authUserId,
                 'site_id' => $siteId,
                 'selectedProjectId' => $selectedProjectId,
-                'voucher_number' => $voucherNumber,
+                'voucher_number' => 'pending_project_lock',
                 'amount' => (string) $amountRaw,
             ]);
 
@@ -913,6 +914,15 @@ class LabourController extends Controller
             // Header, details, ledger legs and attendance state must commit together.
             DB::beginTransaction();
 
+            // Serialize first-time labour vouchers in this project, including when
+            // there is no existing JV ledger row to lock. Voucher allocation must
+            // occur inside this same transaction, after acquiring the project lock.
+            if (!DB::table('projects')->where('id', $selectedProjectId)->lockForUpdate()->exists()) {
+                throw new \\DomainException('LABOUR_JV_PROJECT_NOT_FOUND');
+            }
+
+            $voucherNumber = getVocuherNumber('JV');
+            $journalVoucherData['voucher_number'] = $voucherNumber;
             // Lock and validate every attendance before financial creation.
             // This prevents foreign-project/site or already-vouchered rows
             // being reassigned to a different voucher.
