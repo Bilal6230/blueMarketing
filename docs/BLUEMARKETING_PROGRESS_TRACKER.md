@@ -148,6 +148,13 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - This is concrete multi-writer integration, but **not** full global voucher coordination: Labour/general JV use distinct header semantics, legacy other writers remain, no real MySQL parallel test or DB uniqueness constraint. EC production bank/cheque, real finance-approved debit/credit mapping and P0.3 source typing remain blockers.
 - Do not inflate completion; board P0.1 **93%**, P0.2 **85%**, P0.3 **15%**, P0.4 **35%**, P0.5 **10%** pending full major acceptance. No prod/staging financial writes or migrations.
 
+### 2026-10-29 P02-1 through P02-6 coordinated writer implementation and hard blockers
+
+- General JV headers and Labour JV headers now share `ProjectVoucherAllocator::nextJournal(project)`, reserving both journal_vouchers headers and surviving JV general-ledger / customer source numbers inside existing project-row transactions. Implemented commits `b801ebbb`, `307f279c`, `9719dcdf`.
+- Manual CR/CP new voucher and pending-payment CP clearance now allocate from `ProjectVoucherAllocator::next(project,type)` instead of duplicating ledger-only loops; Stock Entry, Stock Bill and EC already use `next`. Implementation `dbf2d86f`; JV header/ledger reservation regression `8f4fba21`, **tests pending local verification**.
+- **Not completed, do not report as done:** P02-2 PPR retains separate gap-reusing booking voucher sequence and other legacy financial writers are not fully enumerated; P02-3 actual EC debit/credit account IDs require authorization and remain unconfigured; P02-4 EC online/cheque has no proven source-linked bank-clearance accounting map and is intentionally unsupported; P02-5 comprehensive CR/CP/PPR/EC/Stock/JV reconciliation beyond existing targeted read-only audits not delivered; P02-6 real parallel MySQL posting/unique indexes not tested or implemented. Legacy DB reconciliation plus business-approved rollout necessary.
+- No staging/prod database writes, approvals, migrations or destructive historical changes. Current **planning estimates** P0.1 93%, P0.2 85%, P0.3 15%, P0.4 35%, P0.5 10%; do not increase solely for unverified code.
+
 ## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
 
 **These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
