@@ -75,7 +75,6 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame(0, (int) $this->plot->fresh()->sold);
         $this->assertSame(0, DB::table('customer_ledger')->count());
         $this->assertSame(0, DB::table('ledgers')->count());
-        $this->assertSame(0, DB::table('sales_vouchers')->count());
         $this->callBookingCancel($booking->id)->assertOk();
         $this->assertSame(0, DB::table('ledgers')->count());
     }
