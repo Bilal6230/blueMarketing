@@ -938,7 +938,8 @@ class LabourController extends Controller
                 throw new \DomainException('LABOUR_JV_PROJECT_NOT_FOUND');
             }
 
-            $voucherNumber = getVocuherNumber('JV');
+            $voucherNumber = app(\App\Services\Finance\ProjectVoucherAllocator::class)
+                ->nextJournal((int) $selectedProjectId);
             $journalVoucherData['voucher_number'] = $voucherNumber;
             // Lock and validate every attendance before financial creation.
             // This prevents foreign-project/site or already-vouchered rows
