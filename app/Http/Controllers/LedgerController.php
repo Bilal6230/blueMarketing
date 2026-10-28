@@ -282,6 +282,21 @@ class LedgerController extends Controller
                 $bankName = $bank_id ? getBankNameById($bank_id) : null;
                 $isPendingCashInBankPayment = in_array($paymentType, [2, 3], true) && $effectiveVoucherType === 'CR';
 
+                // A cash voucher's project, series, account ownership and slip
+                // reference form its submission identity. A retry must never
+                // create another source row or ledger leg.
+                $sourceReference = trim((string) $request->input('reference'));
+                if ($sourceReference !== '' && CustomerLedger::query()
+                    ->where('project_id', $selectedProjectId)
+                    ->where('transaction_type', $effectiveVoucherType)
+                    ->where('reference', $sourceReference)
+                    ->where('customer_id', $customerID)
+                    ->where('plot_id', $plotID)
+                    ->lockForUpdate()
+                    ->exists()) {
+                    throw new \DomainException('DUPLICATE_CASH_VOUCHER_SOURCE');
+                }
+
                 $customerLedger = CustomerLedger::create([
                     'transaction_type' => $effectiveVoucherType,
                     'type_id' => get_new_typeID($effectiveVoucherType),
