@@ -235,6 +235,13 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - This is a regression-test fix. Ledger account auto-provision and settlement posting code unchanged in these commits. **Awaiting user local rerun**; do not claim the entire suite passed after changes. Previous verified baseline: 8 PASS / 77 assertions before auto-account test additions. Keep P0.2 estimate 90% until verification.
 - Next required action: `php artisan test --filter="test_extra_charge_" --stop-on-failure` on pulled branch. No live financial writes.
 
+### 2026-10-29 confirmed Extra Charge auto-account regression acceptance
+
+- User pulled `4745625e` and verified `php artisan test --filter="test_extra_charge_" --stop-on-failure`: **8 PASS, 80 assertions, 1.67s**. This validates dedicated EC project account auto-provisioning and bank/cheque pending-cleared/rejected lifecycle in isolated SQLite feature tests; the earlier joined-account-ID test regression is resolved.
+- No bank/cash project account ID needs manually entering for this new EC workflow. Account IDs are allocated/reused under the Extra Charge head at posting time, with no use of project 1 unrelated account `72`.
+- P0.2 planning estimate **90% → 92%** on verified acceptance; this is not production finance certification. P0.1 93%, P0.3 15%, P0.4 35%, P0.5 10% unchanged. Next major work is mixed pending/cash reservations, MySQL concurrency and bank reconciliation; no production financial edits.
+- User's latest `git status --short` showed no output, so working tree clean.
+
 ## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
 
 **These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
