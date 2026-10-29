@@ -202,6 +202,15 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - Commit `a1c34de2` isolates prior flashed errors in the test before issuing the final Rs 850 payment. This is an **unverified test isolation fix**, not proof that the final payment saved. The subsequent source-count and balance assertions must pass on user's local focused rerun to confirm actual posting. No live data or existing financial rows altered.
 - P0.2 remains 88% until new verification. **Next:** run focused test, then full `test_extra_charge_` suite; if balances fail inspect actual source records before changing accounting algorithm.
 
+### 2026-10-29 verified ECP settlement acceptance checkpoint
+
+- User pulled `52e712d3` and ran `php artisan test --filter="test_extra_charge_" --stop-on-failure`: **6 PASS / 53 assertions / 1.59s**, including deferred partial then full cash posting, duplicate and overpayment refusal, missing cash mapping refusal, automatic EC accounts, typed number reservation, and original EC balanced source posting.
+- The earlier apparent second-payment failure was stale flashed validation errors after deliberately rejected overpayment, not proven ledger arithmetic corruption; test now clears prior session errors before final-payment assertion. All six cases are locally verified in their existing SQLite test harness. No MySQL race or production finance acceptance is implied.
+- Cash settlement feature implementation is now **verified in focused tests**. Still blocked in deployment unless `finance.extra_charge_cash_accounts[PROJECT_ID]` is set to an independently approved real cash project account ID; no guessed ID. Online/cheque pending-clearance, reversals, audit of legacy writers, and MySQL concurrency remain open.
+- P0.2 engineering progress estimate advances from **88% to 90%** on verified settlement completion. This is an internal planning estimate, not a release safety score. Other baselines unchanged: P0.1 93%, P0.3 15%, P0.4 35%, P0.5 10%. Do not claim requested 10-point boost without corresponding work and verification.
+- User local `.env_old` remains untracked; do not commit or expose credentials.
+- Next implementation priority: bank/cheque ECP pending source and idempotent clearance, with concrete bank account approval and reconciliation tests; no direct production changes.
+
 ## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
 
 **These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
