@@ -2571,6 +2571,13 @@ class BookingController extends Controller
 
                     break;
 
+                case 'extra_charge_clearance':
+                    DB::transaction(function () use ($request) {
+                        app(\App\Services\Finance\ExtraChargeBankSettlement::class)
+                            ->resolve($request, (int) getSelectedTown());
+                    });
+                    break;
+
                 case 'extra_charge_payment':
                     DB::transaction(function () use ($request, $customer_id) {
                         $projectId = (int) getSelectedTown();
@@ -2585,7 +2592,7 @@ class BookingController extends Controller
                             !preg_match('/^\d{1,10}(?:\.\d{1,2})?$/D', $amount) ||
                             (float) $amount <= 0 || !$parsedDate ||
                             $parsedDate->format('Y-m-d') !== $date ||
-                            (int) $request->input('payment_type') !== 1) {
+                            !in_array((int) $request->input('payment_type'), [1, 2, 3], true)) {
                             throw new \DomainException('EC_PAYMENT_INVALID_OR_UNSUPPORTED');
                         }
 
@@ -2606,6 +2613,11 @@ class BookingController extends Controller
                         }
                         $mapping = app(\App\Services\Finance\ExtraChargeAccounts::class)
                             ->forProject($projectId, (int) $customer_id, $plotId);
+                        if (in_array((int) $request->input('payment_type'), [2, 3], true)) {
+                            app(\App\Services\Finance\ExtraChargeBankSettlement::class)
+                                ->recordPending($request, $charge, $projectId, $mapping, $amount, $reference, $date);
+                            return;
+                        }
                         $cashId = (int) config("finance.extra_charge_cash_accounts.{$projectId}", 0);
                         $cashAccount = $cashId ? ProjectHeadSubhead::query()
                             ->where('project_id', $projectId)->whereKey($cashId)
