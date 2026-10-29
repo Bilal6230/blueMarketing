@@ -2591,7 +2591,7 @@ class BookingController extends Controller
                         $date = (string) $request->input('date', '');
                         $parsedDate = \DateTimeImmutable::createFromFormat('!Y-m-d', $date);
                         if ($projectId <= 0 || $chargeId <= 0 || $reference === '' ||
-                            strlen($reference) > 100 ||
+                            strlen($reference) > 100 || str_contains($reference, '#') ||
                             !preg_match('/^\d{1,10}(?:\.\d{1,2})?$/D', $amount) ||
                             (float) $amount <= 0 || !$parsedDate ||
                             $parsedDate->format('Y-m-d') !== $date ||
