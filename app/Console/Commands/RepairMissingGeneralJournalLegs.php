@@ -51,10 +51,14 @@ final class RepairMissingGeneralJournalLegs extends Command
                 $reasons = [];
                 if ($details->count() < 2) $reasons[] = 'insufficient_details';
                 $debit = 0; $credit = 0; $missing = [];
+                $detailSignatures = [];
                 foreach ($details as $d) {
                     $in = (int) round((float) $d->debit * 100);
                     $out = (int) round((float) $d->credit * 100);
                     $debit += $in; $credit += $out;
+                    $sig = $d->account_id . ':' . $in . ':' . $out;
+                    if (isset($detailSignatures[$sig])) $reasons[] = 'duplicate_detail_signature_ambiguous';
+                    $detailSignatures[$sig] = true;
                     if ($d->account_project === null || (int) $d->account_project !== (int) $h->project_id)
                         $reasons[] = 'account_project_mismatch';
                     if (($in <= 0 && $out <= 0) || ($in > 0 && $out > 0))
