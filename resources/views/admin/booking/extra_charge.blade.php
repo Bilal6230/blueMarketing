@@ -336,6 +336,8 @@
                                                 <th style="width: 5px">Ref</th>
                                                 <th>Detail</th>
                                                 <th>Amount</th>
+                                                <th>Received</th>
+                                                <th>Pending</th>
                                                 <th>Outstanding</th>
                                                 <th>Cash Payment</th>
                                                 <th>Type</th>
@@ -377,13 +379,27 @@
                                                     </td>
                                                     <td>
                                                         @if ($i->transaction_type === 'EC')
+                                                            {{ Setting::roundformatAmount($i->received_amount) }}
+                                                        @else
+                                                            -
+                                                        @endif
+                                                    </td>
+                                                    <td>
+                                                        @if ($i->transaction_type === 'EC')
+                                                            {{ Setting::roundformatAmount($i->pending_amount) }}
+                                                        @else
+                                                            -
+                                                        @endif
+                                                    </td>
+                                                    <td>
+                                                        @if ($i->transaction_type === 'EC')
                                                             {{ Setting::roundformatAmount($i->outstanding_amount) }}
                                                         @else
                                                             Legacy - verify source
                                                         @endif
                                                     </td>
                                                     <td>
-                                                        @if ($i->transaction_type === 'EC' && $i->outstanding_amount > 0 && $ecCashReady)
+                                                        @if ($i->transaction_type === 'EC' && $i->available_amount > 0 && $ecCashReady)
                                                             @can('create plot')
                                                                 <form method="POST" action="{{ route('booking.customer.deposit') }}">
                                                                     @csrf
@@ -394,17 +410,17 @@
                                                                     <input type="hidden" name="payment_type" value="1">
                                                                     <input type="date" name="date" class="form-control form-control-sm" required>
                                                                     <input type="text" name="reference" class="form-control form-control-sm" placeholder="Payment slip reference" maxlength="100" required>
-                                                                    <input type="number" name="amount" class="form-control form-control-sm" min="0.01" step="0.01" max="{{ $i->outstanding_amount }}" required>
+                                                                    <input type="number" name="amount" class="form-control form-control-sm" min="0.01" step="0.01" max="{{ $i->available_amount }}" required>
                                                                     <input type="hidden" name="detail" value="Extra Charge cash payment">
                                                                     <button type="submit" class="btn btn-sm btn-primary mt-1">Receive Cash</button>
                                                                 </form>
                                                             @endcan
-                                                        @elseif ($i->transaction_type === 'EC' && $i->outstanding_amount > 0)
+                                                        @elseif ($i->transaction_type === 'EC' && $i->available_amount > 0)
                                                             <small>Approved project cash account required</small>
                                                         @elseif ($i->transaction_type === 'EC')
                                                             <small>Paid</small>
                                                         @endif
-                                                        @if ($i->transaction_type === 'EC' && $i->outstanding_amount > 0)
+                                                        @if ($i->transaction_type === 'EC' && $i->available_amount > 0)
                                                             @can('create plot')
                                                                 <details class="mt-2">
                                                                     <summary>Receive Online / Cheque (pending)</summary>
@@ -423,7 +439,7 @@
                                                                         <input type="number" name="bank_id" min="1" required placeholder="Bank ID" class="form-control form-control-sm">
                                                                         <input type="text" name="t_number" required maxlength="100" placeholder="Transaction / cheque number" class="form-control form-control-sm">
                                                                         <input type="text" name="reference" required maxlength="100" placeholder="Unique slip reference" class="form-control form-control-sm">
-                                                                        <input type="number" name="amount" min="0.01" step="0.01" max="{{ $i->outstanding_amount }}" required class="form-control form-control-sm">
+                                                                        <input type="number" name="amount" min="0.01" step="0.01" max="{{ $i->available_amount }}" required class="form-control form-control-sm">
                                                                         <input type="hidden" name="detail" value="Extra Charge bank pending receipt">
                                                                         <button type="submit" class="btn btn-sm btn-secondary mt-1">Record Pending</button>
                                                                     </form>
