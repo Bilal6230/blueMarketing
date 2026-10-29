@@ -27,15 +27,22 @@ final class ExtraChargeBankSettlement
 
     private function assertSourceLegs(CustomerLedger $payment): void
     {
+        // Read *all* linked legs. A rogue different-type leg must not hide
+        // behind an otherwise balanced ECP pair.
         $legs = Ledger::query()->where('customer_ledger_id', $payment->id)
-            ->where('type', 'ECP')->lockForUpdate()->get();
+            ->lockForUpdate()->get();
         $amount = $this->cents($payment->amount_in);
         if ($amount <= 0 || $legs->count() !== 2 ||
             $this->cents($legs->sum('amount_in')) !== $amount ||
             $this->cents($legs->sum('amount_out')) !== $amount ||
             $legs->contains(fn ($leg) =>
+                (string) $leg->type !== 'ECP' ||
+                (int) $leg->type_id !== (int) $payment->type_id ||
+                (int) $leg->voucher_number !== (int) $payment->type_id ||
                 (string) $leg->reference !== (string) $payment->reference ||
-                (int) $leg->is_active !== 1)) {
+                (int) $leg->is_active !== 1 ||
+                !ProjectHeadSubhead::where('id', $leg->project_head_subheads_id)
+                    ->where('project_id', $payment->project_id)->exists())) {
             throw new \DomainException('ECP_SETTLED_LEDGER_MISMATCH');
         }
     }
@@ -66,8 +73,7 @@ final class ExtraChargeBankSettlement
                 $this->assertSourceLegs($payment);
                 $paid += $this->cents($payment->amount_in);
             } elseif (in_array($kind, [2, 3], true) && (int) $status === 0) {
-                if (Ledger::where('customer_ledger_id', $payment->id)
-                    ->where('type', 'ECP')->exists()) {
+                if (Ledger::where('customer_ledger_id', $payment->id)->exists()) {
                     throw new \DomainException('ECP_PENDING_HAS_LEDGER');
                 }
                 $pending += $this->cents($payment->amount_in);
@@ -163,7 +169,7 @@ final class ExtraChargeBankSettlement
             throw new \DomainException('ECP_CLEARANCE_CHARGE_MISMATCH');
         }
         if (Ledger::where('customer_ledger_id', $payment->id)
-            ->where('type', 'ECP')->lockForUpdate()->exists()) {
+            ->lockForUpdate()->exists()) {
             throw new \DomainException('ECP_CLEARANCE_EARLY_OR_DUPLICATE_LEDGER');
         }
         if ($status === 2) {
