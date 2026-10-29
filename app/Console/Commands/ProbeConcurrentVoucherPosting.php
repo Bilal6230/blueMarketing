@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 /** Runs only on disposable MySQL with synthetic minimal financial tables. */
 final class ProbeConcurrentVoucherPosting extends Command
 {
-    protected $signature = 'finance:probe-concurrent-voucher {project=1} {--seconds=3}';
+    protected $signature = 'finance:probe-concurrent-voucher {project=1} {--seconds=3} {--results}';
     protected $description = 'MySQL isolated simultaneous voucher allocation and source/ledger insert probe';
 
     public function handle(): int
@@ -31,6 +31,16 @@ final class ProbeConcurrentVoucherPosting extends Command
             (int) $db->table('finance_concurrency_fixture')->where('id', 1)->value('approved') !== 1) {
             $this->error('Synthetic concurrency fixture not prepared.');
             return self::FAILURE;
+        }
+        if ($this->option('results')) {
+            $sourceNumbers = $db->table('customer_ledger')->where('project_id', (int) $project)
+                ->where('transaction_type', 'CR')->orderBy('type_id')->pluck('type_id')->map(fn ($n) => (int) $n)->all();
+            $ledgerNumbers = $db->table('ledgers')->where('type', 'CR')
+                ->orderBy('voucher_number')->pluck('voucher_number')->map(fn ($n) => (int) $n)->all();
+            $passed = $sourceNumbers === [1, 2] && $ledgerNumbers === [1, 2];
+            $this->line(json_encode(['source_numbers' => $sourceNumbers,
+                'ledger_numbers' => $ledgerNumbers, 'passed' => $passed], JSON_THROW_ON_ERROR));
+            return $passed ? self::SUCCESS : self::FAILURE;
         }
         $began = microtime(true);
         $number = $db->transaction(function () use ($project, $seconds, $db) {
