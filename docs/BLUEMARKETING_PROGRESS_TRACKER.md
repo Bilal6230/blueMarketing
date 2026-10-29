@@ -228,6 +228,13 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - Account creation does NOT create a real external bank account, validate external banking instruments or certify the chart-of-accounts asset classification. Treasury transfer and financial statement treatment require finance review before production. This change is **pending user's local tests**, not an accepted completed production feature. Last verified preceding baseline: 8 focused EC tests PASS / 77 assertions; do not claim these new tests already pass.
 - P0.2 remains **90% verified baseline** until rerun, then reassess. Next implementation: MySQL concurrency, mixed cash/pending safeguards, reporting and bank external reconciliation. No live database records changed.
 
+### 2026-10-29 Auto-account regression failure: joined ID collision corrected
+
+- User pulled `660f1c6a` and ran focused Extra Charge tests: bank clearance regression failed on `tests/Feature/VoucherClearanceFlowTest.php:193` when asserting the linked ECP ledger uses the auto-created project bank account; PHP lint checks passed. This was not a reported exception in the settlement controller.
+- Root cause of failed assertion: `SELECT *` over `project_head_subheads p`, `head_accountings h`, and `subhead_accountings s` returns repeated `id` columns; the resulting PHP row's `id` did not reliably equal `p.id`. The test compared the wrong ID despite bank auto-account existence and two ledger legs. Updated bank test to explicitly select `p.id AS account_id` (`e2a9c5b0`); updated matching cash auto-account test and removed obsolete manual cash/bank mapping fixtures (`b35d6f14`).
+- This is a regression-test fix. Ledger account auto-provision and settlement posting code unchanged in these commits. **Awaiting user local rerun**; do not claim the entire suite passed after changes. Previous verified baseline: 8 PASS / 77 assertions before auto-account test additions. Keep P0.2 estimate 90% until verification.
+- Next required action: `php artisan test --filter="test_extra_charge_" --stop-on-failure` on pulled branch. No live financial writes.
+
 ## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
 
 **These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
