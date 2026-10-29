@@ -453,7 +453,7 @@ class JournalVoucherController extends Controller
                 $creditParts = explode('.', (string) $validated['credit'][$index]);
                 $debit = $debitParts[0] . '.' . str_pad($debitParts[1] ?? '', 2, '0');
                 $credit = $creditParts[0] . '.' . str_pad($creditParts[1] ?? '', 2, '0');
-                JournalVoucherDetail::create([
+                $journalDetail = JournalVoucherDetail::create([
                     'journal_voucher_id' => $journalVoucher->id,
                     'account_id' => $validated['sub_accounts'][$index],
                     'debit' => $debit,
@@ -465,6 +465,7 @@ class JournalVoucherController extends Controller
                     'voucher_number' => $journalVoucher->voucher_number,
                     'type' => 'JV',
                     'type_id' => $journalVoucher->id,
+                    'journal_voucher_detail_id' => \Illuminate\Support\Facades\Schema::hasColumn('ledgers', 'journal_voucher_detail_id') ? $journalDetail->id : null,
                     'project_head_subheads_id' => $validated['sub_accounts'][$index],
                     'reference' => $validated['reference'] ?? null,
                     'amount_in' => $debit,
