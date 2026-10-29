@@ -23,10 +23,12 @@ final class ExtraChargeBankSettlement
             ->where('transaction_type', 'ECP')
             ->where('reference', 'like', 'EC_PAYMENT#' . $chargeId . '#%')
             ->lockForUpdate()->get()
-            ->filter(fn ($row) => preg_match(
-                '/^EC_PAYMENT#' . $chargeId . '#[^#]+$/D',
-                (string) $row->reference
-            ) === 1);
+            ->each(function ($row) use ($chargeId) {
+                if (preg_match('/^EC_PAYMENT#' . $chargeId . '#[^#]+$/D',
+                    (string) $row->reference) !== 1) {
+                    throw new \DomainException('ECP_MALFORMED_SOURCE_REFERENCE');
+                }
+            });
     }
 
     private function assertSourceLegs(CustomerLedger $payment): void
