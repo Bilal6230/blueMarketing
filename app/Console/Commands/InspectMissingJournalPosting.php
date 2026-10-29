@@ -46,6 +46,7 @@ final class InspectMissingJournalPosting extends Command
             ->join('project_head_subheads as a','a.id','=','l.project_head_subheads_id')
             ->where('l.type','JV')->where('a.project_id',$header->project_id)
             ->where('l.voucher_number',$header->voucher_number)
+            ->where('l.type', 'JV')
             ->count();
         $collidingLegs = DB::table('ledgers as l')
             ->join('project_head_subheads as a', 'a.id', '=', 'l.project_head_subheads_id')
