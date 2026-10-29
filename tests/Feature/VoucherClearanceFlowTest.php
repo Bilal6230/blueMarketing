@@ -605,14 +605,14 @@ class VoucherClearanceFlowTest extends TestCase
 
     public function test_project_audit_flags_rejected_ecp_with_foreign_series_ledger(): void
     {
-        $source = CustomerDB::table('ledgers')->insert([
+        $source = CustomerLedger::create([
             'project_id' => $this->project->id, 'customer_id' => $this->customer->id,
             'plot_id' => $this->plot->id, 'transaction_type' => 'ECP',
             'type_id' => 7, 'reference' => 'EC_PAYMENT#123#BAD',
             'amount_in' => 75, 'payment_type' => 3, 'passing_status' => 2,
             'date' => '2026-05-17', 'is_active' => 1,
         ]);
-        Ledger::create([
+        DB::table('ledgers')->insert([
             'customer_ledger_id' => $source->id, 'type' => 'CR',
             'type_id' => 55, 'voucher_number' => 55,
             'project_head_subheads_id' => $this->bookingReceiptAccount->id,
@@ -1444,8 +1444,8 @@ class VoucherClearanceFlowTest extends TestCase
         ]);
 
         $response = $this->callLedgerStore($this->cashVoucherPayload([
-            'voucher' => 'CP-252',
-            'voucher_number' => 'CP-252',
+            'voucher' => 'CP-1',
+            'voucher_number' => 'CP-1',
             'payment_type' => 2,
             'amount' => '1800',
             't_number' => 'CLR-1800',
@@ -1458,7 +1458,7 @@ class VoucherClearanceFlowTest extends TestCase
 
         $response->assertOk()
             ->assertJson([
-                'voucher_display' => 'CP-252',
+                'voucher_display' => 'CP-1',
             ]);
 
         $clearanceLedger = Ledger::where('customer_ledger_id', $pending->id)
