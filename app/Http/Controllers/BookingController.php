@@ -2637,45 +2637,10 @@ class BookingController extends Controller
                             ->lockForUpdate()->exists()) {
                             throw new \DomainException('EC_PAYMENT_ALREADY_POSTED');
                         }
-                        $priorPayments = CustomerLedger::query()
-                            ->where('project_id', $projectId)
-                            ->where('transaction_type', 'ECP')
-                            ->where('is_active', 1)
-                            ->where('reference', 'like', 'EC_PAYMENT#' . $charge->id . '#%')
-                            ->lockForUpdate()->get();
-                        $receivedCents = 0;
-                        foreach ($priorPayments as $priorPayment) {
-                            if ((int) $priorPayment->passing_status === 2) {
-                                continue; // Rejected payments do not reserve balance.
-                            }
-                            $priorCents = (int) round((float) $priorPayment->amount_in * 100);
-                            if (in_array((int) $priorPayment->payment_type, [2, 3], true) &&
-                                (int) $priorPayment->passing_status === 0) {
-                                if (Ledger::where('customer_ledger_id', $priorPayment->id)
-                                    ->where('type', 'ECP')->exists()) {
-                                    throw new \DomainException('EC_PAYMENT_PENDING_LEDGER_CONFLICT');
-                                }
-                                $receivedCents += $priorCents;
-                                continue;
-                            }
-                            $priorLegs = Ledger::query()
-                                ->where('customer_ledger_id', $priorPayment->id)
-                                ->where('type', 'ECP')
-                                ->lockForUpdate()->get();
-                            if ($priorCents <= 0 || $priorLegs->count() !== 2 ||
-                                (int) round((float) $priorLegs->sum('amount_in') * 100) !== $priorCents ||
-                                (int) round((float) $priorLegs->sum('amount_out') * 100) !== $priorCents ||
-                                $priorLegs->contains(fn ($leg) =>
-                                    (string) $leg->reference !== (string) $priorPayment->reference ||
-                                    (int) $leg->is_active !== 1)) {
-                                throw new \DomainException('EC_PAYMENT_PRIOR_LEDGER_MISMATCH');
-                            }
-                            $receivedCents += $priorCents;
-                        }
-                        $chargeCents = (int) round((float) $charge->amount_in * 100);
-                        $paymentCents = (int) round((float) $amount * 100);
-                        if ($receivedCents + $paymentCents > $chargeCents) {
-                            throw new \DomainException('EC_PAYMENT_EXCEEDS_OUTSTANDING');
+                        $balance = app(\App\Services\Finance\ExtraChargeBankSettlement::class)
+                            ->balances($charge);
+                        if ((int) round((float) $amount * 100) > $balance['available_cents']) {
+                            throw new \DomainException('EC_PAYMENT_EXCEEDS_AVAILABLE');
                         }
                         $number = app(\App\Services\Finance\ProjectVoucherAllocator::class)
                             ->next($projectId, 'ECP');
