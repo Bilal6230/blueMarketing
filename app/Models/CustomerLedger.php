@@ -40,6 +40,23 @@ class CustomerLedger extends Model
         'check_history' => 'array', // Automatically cast JSON to array
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (self $source): void {
+            if (in_array((string) $source->transaction_type,
+                \App\Services\Finance\FinancialSourceOwnership::FAMILIES, true) &&
+                (int) $source->project_id > 0 &&
+                (int) $source->type_id > 0 &&
+                trim((string) $source->reference) !== '') {
+                app(\App\Services\Finance\FinancialSourceOwnership::class)
+                    ->assertUnique((int) $source->project_id,
+                        (string) $source->transaction_type,
+                        (int) $source->type_id,
+                        (string) $source->reference);
+            }
+        });
+    }
+
     public function addCheckHistory(array $checkDetails)
     {
         // Get the existing history or initialize an empty array
