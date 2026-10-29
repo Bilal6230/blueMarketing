@@ -40,6 +40,58 @@ final class ExtraChargeBankSettlement
         }
     }
 
+    /**
+     * One authoritative balance contract for cash, pending instruments,
+     * clearance and reporting. Project lock must be held on writes.
+     * Rejected receipts release reservation, but keep their source identity.
+     */
+    public function balances(CustomerLedger $charge): array
+    {
+        $due = $this->cents($charge->amount_in);
+        $paid = 0;
+        $pending = 0;
+        foreach ($this->linked((int) $charge->project_id, (int) $charge->id) as $payment) {
+            if ((int) $payment->is_active !== 1 ||
+                (int) $payment->customer_id !== (int) $charge->customer_id ||
+                (int) $payment->plot_id !== (int) $charge->plot_id ||
+                $this->cents($payment->amount_in) <= 0) {
+                throw new \DomainException('ECP_BALANCE_SOURCE_CONFLICT');
+            }
+            $status = $payment->passing_status;
+            $kind = (int) $payment->payment_type;
+            if ($kind === 1 && ($status === null || (int) $status === 0)) {
+                $this->assertSourceLegs($payment);
+                $paid += $this->cents($payment->amount_in);
+            } elseif (in_array($kind, [2, 3], true) && (int) $status === 1) {
+                $this->assertSourceLegs($payment);
+                $paid += $this->cents($payment->amount_in);
+            } elseif (in_array($kind, [2, 3], true) && (int) $status === 0) {
+                if (Ledger::where('customer_ledger_id', $payment->id)
+                    ->where('type', 'ECP')->exists()) {
+                    throw new \DomainException('ECP_PENDING_HAS_LEDGER');
+                }
+                $pending += $this->cents($payment->amount_in);
+            } elseif (in_array($kind, [2, 3], true) && (int) $status === 2) {
+                if (Ledger::where('customer_ledger_id', $payment->id)
+                    ->where('type', 'ECP')->exists()) {
+                    throw new \DomainException('ECP_REJECTED_HAS_LEDGER');
+                }
+            } else {
+                throw new \DomainException('ECP_BALANCE_STATUS_CONFLICT');
+            }
+        }
+        if ($paid + $pending > $due) {
+            throw new \DomainException('ECP_BALANCE_OVERBOOKED');
+        }
+        return [
+            'charged_cents' => $due,
+            'paid_cents' => $paid,
+            'pending_cents' => $pending,
+            'outstanding_cents' => $due - $paid,
+            'available_cents' => $due - $paid - $pending,
+        ];
+    }
+
     public function recordPending(
         Request $request, CustomerLedger $charge, int $projectId,
         array $mapping, string $amount, string $reference, string $date
@@ -56,36 +108,14 @@ final class ExtraChargeBankSettlement
         }
         // The caller holds the selected project row lock; do not allow a
         // different customer's receipt to reserve this charge's balance.
-        $payments = $this->linked($projectId, $charge->id);
         $identity = 'EC_PAYMENT#' . $charge->id . '#' . $reference;
-        $reserved = 0;
-        foreach ($payments as $payment) {
-            if ($payment->reference === $identity) {
-                throw new \DomainException('ECP_DUPLICATE_REFERENCE');
-            }
-            if ((int) $payment->is_active !== 1) {
-                throw new \DomainException('ECP_INACTIVE_SOURCE_CONFLICT');
-            }
-            if ((int) $payment->customer_id !== (int) $charge->customer_id ||
-                (int) $payment->plot_id !== (int) $charge->plot_id) {
-                throw new \DomainException('ECP_SOURCE_OWNER_CONFLICT');
-            }
-            if ((int) $payment->payment_type === 1 ||
-                (int) $payment->passing_status === 1) {
-                $this->assertSourceLegs($payment);
-                $reserved += $this->cents($payment->amount_in);
-            } elseif (in_array((int) $payment->payment_type, [2, 3], true) &&
-                (int) $payment->passing_status === 0) {
-                if (Ledger::where('customer_ledger_id', $payment->id)
-                    ->where('type', 'ECP')->exists()) {
-                    throw new \DomainException('ECP_PENDING_HAS_LEDGER');
-                }
-                $reserved += $this->cents($payment->amount_in);
-            } elseif ((int) $payment->passing_status !== 2) {
-                throw new \DomainException('ECP_INVALID_PREVIOUS_STATUS');
-            }
+        if (CustomerLedger::query()->where('project_id', $projectId)
+            ->where('transaction_type', 'ECP')->where('reference', $identity)
+            ->lockForUpdate()->exists()) {
+            throw new \DomainException('ECP_DUPLICATE_REFERENCE');
         }
-        if ($this->cents($amount) + $reserved > $this->cents($charge->amount_in)) {
+        $balance = $this->balances($charge);
+        if ($this->cents($amount) > $balance['available_cents']) {
             throw new \DomainException('ECP_RESERVED_EXCEEDS_CHARGE');
         }
         $number = app(ProjectVoucherAllocator::class)->next($projectId, 'ECP');
