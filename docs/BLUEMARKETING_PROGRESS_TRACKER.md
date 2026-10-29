@@ -1,3 +1,9 @@
+### 2026-10-29 verified two-process MySQL synthetic financial posting
+
+- User shared read-only MySQL 8.4.3 evidence from disposable `bluemarketing_finance_lock_test`: source IDs 1,2 (CR numbers 1,2), ledger IDs 1,2 with same voucher numbers, matching source IDs and exact `SYNTHETIC-CR-1/2` references; duplicate project/type/number query returned zero rows. Independent process logs: number 1 in 4.109s, number 2 in 7.941s, both `synthetic_only=true`; Git clean. This verifies **ProjectVoucherAllocator + synthetic customer source and ledger writes under two concurrent transactions**.
+- MySQL unique/FK rehearsal also previously PASS 5/5; application tables not modified by that rehearsal. P0.1 engineering estimate **96% -> 98%**. Not yet complete: live-schema compatibility and all real writer paths (including raw SQL), historical provenance, source FKs and migration acceptance. Never label 100% or production certified based solely on synthetic fixtures.
+- User has finished the synthetic concurrency manual test; no need to rerun it or reset its tables.
+
 ### 2026-10-29 concurrent financial allocator/posting probe implementation
 
 - New `finance:probe-concurrent-voucher` command on explicit isolated MySQL database (`9f3476a5`): two separate processes can call the **real ProjectVoucherAllocator::next(project, CR)** inside separate transactions, sleep under the project lock, and insert synthetic customer_ledger/ledger voucher rows. `--results` checks that two sources and both legs hold unique [1,2] numbers (`fa08cfec`). This is beyond earlier project-lock-only probe. It requires a deliberately prepared synthetic minimal schema and is not yet verified locally.
