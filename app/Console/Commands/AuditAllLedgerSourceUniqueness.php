@@ -58,12 +58,26 @@ final class AuditAllLedgerSourceUniqueness extends Command
             ->groupBy('transaction_type')->orderBy('transaction_type')->get();
         // A reference may be a reused receipt/slip identifier, so this does
         // not itself establish a duplicate accounting voucher.
+        // Blank historical references are not inherently invalid voucher
+        // identities: legacy CR/CP commonly never stored a slip reference.
+        $numberIdentityMissing = (clone $base)->where(function ($q) {
+            $q->whereNull('project_id')->orWhereNull('type_id')->orWhere('type_id', '<=', 0);
+        })->count();
+        $missingReferences = (clone $base)->where(function ($q) {
+            $q->whereNull('reference')->orWhere('reference', '');
+        })->count();
+        $numberKeyReady = $positiveDuplicateGroups === 0 && $numberIdentityMissing === 0;
+        // References are business slip values and not eligible for blanket UNIQUE.
         $ok = $numberGroups === 0 && $referenceGroups === 0 && $incomplete === 0;
         $this->line(json_encode([
             'finance_source_count'=>(clone $base)->count(),
             'duplicate_number_group_count'=>$numberGroups,
             'duplicate_reference_group_count'=>$referenceGroups,
             'incomplete_identity_count'=>$incomplete,
+            'missing_number_or_project_count'=>$numberIdentityMissing,
+            'blank_reference_count'=>$missingReferences,
+            'positive_number_unique_index_ready'=>$numberKeyReady,
+            'reference_unique_index_recommended'=>false,
             'positive_number_duplicate_group_count'=>$positiveDuplicateGroups,
             'positive_number_examples'=>$positiveExamples->toArray(),
             'by_type'=>$byType->toArray(),
