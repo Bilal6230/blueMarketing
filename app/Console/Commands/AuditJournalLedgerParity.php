@@ -32,7 +32,7 @@ final class AuditJournalLedgerParity extends Command
             'missing_legs' => 0, 'extra_legs' => 0,
             'missing_debit_cents' => 0, 'missing_credit_cents' => 0,
             'extra_debit_cents' => 0, 'extra_credit_cents' => 0,
-            'examples' => [], 'same_type_id_other_project_or_number' => []
+            'examples' => [], 'same_type_id_other_project' => []
         ];
         $headers = DB::table('journal_vouchers')
             ->where('type', 'JV')->whereNull('deleted_at')
@@ -47,33 +47,35 @@ final class AuditJournalLedgerParity extends Command
                 ->join('project_head_subheads as a', 'a.id', '=', 'l.project_head_subheads_id')
                 ->where('a.project_id', $h->project_id)
                 ->where('l.type', 'JV')->where('l.type_id', $h->id)
-                ->where('l.voucher_number', $h->voucher_number)
-                ->orderBy('l.id')
-                ->get(['l.id','l.project_head_subheads_id','l.amount_in','l.amount_out','l.is_active','l.date','l.created_at']);
+                    ->orderBy('l.id')
+                ->get(['l.id','l.voucher_number','l.project_head_subheads_id','l.amount_in','l.amount_out','l.is_active','l.date','l.created_at']);
             if ($id !== null) {
                 $other = DB::table('ledgers as l')
                     ->leftJoin('project_head_subheads as a', 'a.id', '=', 'l.project_head_subheads_id')
                     ->where('l.type', 'JV')->where('l.type_id', $h->id)
                     ->where(function ($q) use ($h) {
                         $q->where('a.project_id', '<>', $h->project_id)
-                          ->orWhereNull('a.project_id')
-                          ->orWhere('l.voucher_number', '<>', $h->voucher_number);
+                          ->orWhereNull('a.project_id');
                     })->orderBy('l.id')->limit(100)
                     ->get(['l.id', 'l.voucher_number', 'a.project_id',
                         'l.project_head_subheads_id','l.amount_in','l.amount_out',
                         'l.date','l.created_at','l.detail','l.reference']);
-                $result['same_type_id_other_project_or_number'] = $other->toArray();
+                $result['same_type_id_other_project'] = $other->toArray();
             }
             $keys = [];
             foreach ($ledger as $row) {
                 $key = $this->key($row->project_head_subheads_id, $row->amount_in, $row->amount_out);
                 $keys[$key][] = $row;
             }
-            $missing = []; $extra = [];
+            $missing = []; $extra = []; $voucherNumberDifferences = [];
             foreach ($details as $d) {
                 $key = $this->key($d->account_id, $d->debit, $d->credit);
                 if (!empty($keys[$key])) {
-                    array_shift($keys[$key]);
+                    $matchedRow = array_shift($keys[$key]);
+                    if ((string)$matchedRow->voucher_number !== (string)$h->voucher_number) {
+                        $voucherNumberDifferences[] = ['ledger_id' => $matchedRow->id,
+                            'ledger_voucher_number' => $matchedRow->voucher_number];
+                    }
                 } else {
                     $missing[] = ['detail_id' => $d->id, 'account_id' => $d->account_id,
                         'debit' => $d->debit, 'credit' => $d->credit];
@@ -96,15 +98,16 @@ final class AuditJournalLedgerParity extends Command
             if (!$missing && !$extra) $result['balanced_headers']++;
             $result['missing_legs'] += count($missing);
             $result['extra_legs'] += count($extra);
-            if (($missing || $extra) && count($result['examples']) < $limit) {
+            if (($missing || $extra || ($id !== null && $voucherNumberDifferences)) && count($result['examples']) < $limit) {
                 $result['examples'][] = ['jv_id' => $h->id,
                     'project_id' => $h->project_id, 'voucher_number' => $h->voucher_number,
                     'detail_count' => $details->count(), 'ledger_count' => $ledger->count(),
-                    'missing' => $missing, 'extra' => $extra];
+                    'missing' => $missing, 'extra' => $extra,
+                    'voucher_number_differences' => $voucherNumberDifferences];
             }
         }
-        // Further cross-project or different-number rows with the same polymorphic type_id
-        // are NOT classified as journal-owned extras: they may belong to stock/labour.
+        // Cross-project rows with the same polymorphic type_id are NOT classified
+        // as journal-owned extras: they may belong to stock/labour.
         $this->line(json_encode($result, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE));
         return self::SUCCESS;
     }
