@@ -1,3 +1,9 @@
+### 2026-10-29 physical JV provenance constraint acceptance test implemented
+
+- Created `tests/Feature/JournalDetailProvenanceMigrationTest.php` (`904a6623`): disposable in-memory SQLite schema; applies the new nullable unique `journal_voucher_detail_id` migration; verifies multiple legacy NULLs remain valid, duplicate exact-detail posting rejected and nonexistent detail ID rejected by FK. **Test file committed but not executed on user's Windows PHP/MySQL or in this tool runtime**; do not call it PASS until the feature test runs.
+- Source balance restoration is **not yet done**. Real snapshot's 84 missing JV headers all compete with existing same-project `JV` displayed numbers; provenance is not proved by `type_id` or number. `JournalVoucherRecoveryPlan` deliberately blocks these cases; avoid inventing financial postings/approving uncertain cash adjustments. Do not apply migration on user database until tested on isolated restored clone with explicit approval.
+- Stronger new-write protection implemented in code; historical 84 JV balance deltas and 101 CR number collisions require owner-reviewed evidence packet for accurate reconciliation. Continue using uploaded dump for investigation rather than asking repeated local audits.
+
 ### 2026-10-29 direct implementation after full SQL dump (no user commands)
 
 - Added read-only bulk JV recovery evidence command `finance:jv-recovery-evidence` (`71a9d175`): enumerates missing general JV headers, detail evidence, exact account-level debit/credit impacts, competing same-series ledger rows, flags unresolved historical provenance and never writes. This is for finance approval and restoration planning.
