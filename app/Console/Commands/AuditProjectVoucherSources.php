@@ -38,6 +38,23 @@ final class AuditProjectVoucherSources extends Command
         $bySource = $ledgerRows->filter(fn ($l) => $l->customer_ledger_id !== null)
             ->groupBy('customer_ledger_id');
         $issues = [];
+        // Duplicate typed source identities must be surfaced before adding
+        // any physical uniqueness constraint; legacy data is left untouched.
+        foreach ($sources->whereIn('transaction_type', ['CR', 'CP', 'PPR', 'EC', 'ECP'])
+            ->groupBy(fn ($row) => $row->transaction_type . ':' . $row->type_id) as $group) {
+            if ($group->count() > 1) {
+                $issues[] = ['source_ids' => $group->pluck('id')->values()->all(),
+                    'reason' => 'duplicate_project_source_number'];
+            }
+        }
+        foreach ($sources->whereIn('transaction_type', ['CR', 'CP', 'PPR', 'EC', 'ECP'])
+            ->filter(fn ($row) => trim((string) $row->reference) !== '')
+            ->groupBy(fn ($row) => $row->transaction_type . ':' . $row->reference) as $group) {
+            if ($group->count() > 1) {
+                $issues[] = ['source_ids' => $group->pluck('id')->values()->all(),
+                    'reason' => 'duplicate_project_source_reference'];
+            }
+        }
         foreach ($sources as $source) {
             $legs = $bySource->get($source->id, collect());
             $ecFamily = in_array($source->transaction_type, ['EC', 'ECP'], true);
