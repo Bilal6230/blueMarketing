@@ -1,3 +1,9 @@
+### 2026-10-29 verified all-project collision classification
+
+- User verified refined MySQL audit syntax/clean working tree: 5,377 sources (CP 2,795 / CR 937 / PPR 1,645); **101 positive voucher-number duplicate groups** (not zero-number artifacts), **49 duplicate reference groups** (PPR reuse), 3,771 incomplete by previous broad rule. By type blank references: CP 2,795, CR 937, PPR 39. CP/CR historical blank references are common; do **not** label all as broken voucher identities. CR has 1 missing/zero number; no EC/ECP sources in this snapshot.
+- Fixed audit classification (`8d622e18`): separate missing project/zero number from blank business slip references, report explicit positive-number UNIQUE index readiness and avoid recommending blanket reference UNIQUE. Read-only, local rerun pending.
+- **P0.1 remains 98% implementation estimate and cannot be certified 100% on this historical database**: 101 existing positive-number source collisions block conventional (project,transaction_type,type_id) UNIQUE creation. Do not auto-renumber/merge historical ledger sources. Source ownership and reversible recovery require independent evidence/approval under P0.5; new source consistency guards remain in application layer.
+
 ### 2026-10-29 real all-project legacy uniqueness evidence — physical index blocked
 
 - User ran `finance:audit-all-source-uniqueness` on configured MySQL: **5,377** finance sources, **101** duplicate project/type/number groups, **49** duplicate project/type/reference groups, **3,771** incomplete identity rows; `candidate_unique_index_ready=false`, no data changed and PHP syntax clean. This is a confirmed **physical UNIQUE index blocker**. Sample number collisions include project 3 and 5 CR; PPR reference reuse in project 2 suggests references may be slip IDs, not guaranteed unique voucher keys. Do not automatically deduplicate, renumber, delete, or apply production indexes.
