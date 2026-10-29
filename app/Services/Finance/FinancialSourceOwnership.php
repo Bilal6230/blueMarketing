@@ -28,8 +28,14 @@ final class FinancialSourceOwnership
         }
         $source = CustomerLedger::query()->whereKey($sourceId)->first();
         $account = ProjectHeadSubhead::query()->whereKey($accountId)->first();
+        // CP clearance deliberately points to its originating CR/PPR
+        // receipt. Preserve this established cross-series relationship only
+        // for a canonical, source-ID-bound clearance reference.
+        $isReceiptClearance = $type === 'CP' && $source &&
+            in_array((string) $source->transaction_type, ['CR', 'PPR'], true) &&
+            (string) ($leg['reference'] ?? '') === 'CASH_OUT_CLEARANCE#' . $sourceId;
         if (!$source || !$account ||
-            (string) $source->transaction_type !== $type ||
+            (!$isReceiptClearance && (string) $source->transaction_type !== $type) ||
             (int) $source->project_id !== (int) $account->project_id ||
             (int) $source->is_active !== 1) {
             throw new \DomainException('FINANCE_SOURCE_OWNER_MISMATCH');
