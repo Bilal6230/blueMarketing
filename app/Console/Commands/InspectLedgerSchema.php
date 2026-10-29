@@ -37,10 +37,25 @@ final class InspectLedgerSchema extends Command
                 $missing = true;
             }
         }
+        $indexes = [];
+        if (DB::connection()->getDriverName() === 'mysql') {
+            foreach (array_keys($tables) as $table) {
+                if (!$results[$table]['exists']) {
+                    continue;
+                }
+                $rows = DB::select('SHOW INDEX FROM ' . $table);
+                $indexes[$table] = collect($rows)->groupBy('Key_name')
+                    ->map(fn ($group) => [
+                        'unique' => (int) $group->first()->Non_unique === 0,
+                        'columns' => $group->sortBy('Seq_in_index')->pluck('Column_name')->all(),
+                    ])->all();
+            }
+        }
         $driver = DB::connection()->getDriverName();
         $this->line(json_encode([
             'database_driver' => $driver,
             'schema' => $results,
+            'existing_indexes' => $indexes,
             'minimum_shape_compatible' => !$missing,
             'source_type_id_is_polymorphic' => true,
             'cp_clearance_can_reference_cr_or_ppr' => true,
