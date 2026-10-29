@@ -17,7 +17,7 @@ final class AuditProjectVoucherSources extends Command
             $this->error('Positive project ID required.');
             return self::INVALID;
         }
-        $types = ['CR', 'CP', 'PPR', 'EC', 'JV', 'SV', 'BR'];
+        $types = ['CR', 'CP', 'PPR', 'EC', 'ECP', 'JV', 'SV', 'BR'];
         $sources = DB::table('customer_ledger')
             ->where('project_id', $project)->whereIn('transaction_type', $types)
             ->select('id', 'transaction_type', 'reference', 'type_id', 'amount_in', 'amount_out')
@@ -54,14 +54,14 @@ final class AuditProjectVoucherSources extends Command
                         'reason' => 'source_ledger_identity_mismatch'];
                 }
             }
-            // EC is the only current typed source with an explicitly balanced
-            // two-leg contract; other voucher families have distinct semantics.
-            if ($source->transaction_type === 'EC') {
+            // EC and its source-linked cash settlements are explicitly
+            // balanced two-leg postings. Other families have distinct contracts.
+            if (in_array($source->transaction_type, ['EC', 'ECP'], true)) {
                 $incoming = $legs->sum(fn ($l) => (int) round((float) $l->amount_in * 100));
                 $outgoing = $legs->sum(fn ($l) => (int) round((float) $l->amount_out * 100));
                 if ($legs->count() !== 2 || $incoming !== $outgoing ||
                     $incoming !== (int) round((float) $source->amount_in * 100)) {
-                    $issues[] = ['source_id' => $source->id, 'reason' => 'ec_legs_unbalanced'];
+                    $issues[] = ['source_id' => $source->id, 'reason' => 'ec_or_ecp_legs_unbalanced'];
                 }
             }
         }
