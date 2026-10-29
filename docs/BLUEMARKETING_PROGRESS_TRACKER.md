@@ -170,6 +170,15 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - Updated feature tests (`d03e73ac`): automatic first-time creation, account reuse, two balanced legs and no paid status, and unsupported bank mode no-write. **Pending local lint and feature tests**; do not claim verified milestone or raise P0.2 85% yet.
 - **Still pending:** ChargeType creation/input when table empty; dedicated later-payment/partial-payment settlement source and UI, bank/cheque clearance/rejection, confirmed financial reporting balances, real MySQL concurrency and approved account classification validation. No database migration or live writes.
 
+### 2026-10-29 ledger data-loss risk status checkpoint (documentation, not a code fix)
+
+- Reviewed original eight-module Ledger Data Loss Risk Summary and user-confirmed focused tests through `59a3833d` (latest Extra Charge **4 tests / 33 assertions PASS**, clean PHP lints). The eight named risk areas are JV, Labour JV, Stock Entry/Bill, CR/CP, Booking/PPR, Extra Charge, Bank/Cheque Clearance and Paid Booking Cancellation/Refund.
+- Risk-area **planning estimates, not production-safety metrics**: JV 80%, Labour JV 80%, Stock 70%, CR/CP 80%, Booking/PPR 80%, Extra Charge 60%, Bank/Cheque Clearance 60%, Paid Cancellation/Refund 35%. These estimates distinguish implemented mitigations from unresolved full-lifecycle exposure; do not treat any module as fully certified.
+- Existing P0 workstream estimates retained: P0.1 **93%**, P0.2 **88%**, P0.3 **15%**, P0.4 **35%**, P0.5 **10%**. No verified new functional changes in this documentation-only checkpoint; percentages should not be incremented solely for audit/report work.
+- Next turn order: (1) implement Extra Charge source-linked full/partial later-payment settlement and pending bank/cheque lifecycle; (2) bank-clearance duplicate/status safeguards; (3) remaining ledger writer edit/delete/source inventory and unified contracts; (4) isolated MySQL parallel posting tests; (5) paid booking reversal and rollback; (6) historical reconciliation with approval-gated recovery. No direct production/staging repair.
+- Existing account auto-provisioning handles basic Extra Charge income and receivable: actual later-payment cash/bank account policy remains an explicit approval boundary. MySQL parallel execution requires an isolated test DB and user-run commands; successful SQLite feature tests do not establish parallel MySQL safety.
+- Downloadable two-page status document is available in this conversation as `BlueMarketing_Ledger_Risk_Progress_Updated_2026-10-29.pdf`; no changes to financial data.
+
 ## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
 
 **These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
