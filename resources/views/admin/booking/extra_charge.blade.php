@@ -336,6 +336,8 @@
                                                 <th style="width: 5px">Ref</th>
                                                 <th>Detail</th>
                                                 <th>Amount</th>
+                                                <th>Outstanding</th>
+                                                <th>Cash Payment</th>
                                                 <th>Type</th>
                                                 <th>Approve</th>
 
@@ -371,7 +373,37 @@
                                                         {{ $i->description }}
                                                     </td>
                                                     <td>
-                                                        {{ Setting::roundformatAmount($i->amount_out) }}
+                                                        {{ Setting::roundformatAmount($i->transaction_type === 'EC' ? $i->amount_in : $i->amount_out) }}
+                                                    </td>
+                                                    <td>
+                                                        @if ($i->transaction_type === 'EC')
+                                                            {{ Setting::roundformatAmount($i->outstanding_amount) }}
+                                                        @else
+                                                            Legacy - verify source
+                                                        @endif
+                                                    </td>
+                                                    <td>
+                                                        @if ($i->transaction_type === 'EC' && $i->outstanding_amount > 0 && $ecCashReady)
+                                                            @can('create plot')
+                                                                <form method="POST" action="{{ route('booking.customer.deposit') }}">
+                                                                    @csrf
+                                                                    <input type="hidden" name="action" value="extra_charge_payment">
+                                                                    <input type="hidden" name="customer_id" value="{{ $i->customer_id }}">
+                                                                    <input type="hidden" name="plot_id" value="{{ $i->plot_id }}">
+                                                                    <input type="hidden" name="extra_charge_id" value="{{ $i->id }}">
+                                                                    <input type="hidden" name="payment_type" value="1">
+                                                                    <input type="date" name="date" class="form-control form-control-sm" required>
+                                                                    <input type="text" name="reference" class="form-control form-control-sm" placeholder="Payment slip reference" maxlength="100" required>
+                                                                    <input type="number" name="amount" class="form-control form-control-sm" min="0.01" step="0.01" max="{{ $i->outstanding_amount }}" required>
+                                                                    <input type="hidden" name="detail" value="Extra Charge cash payment">
+                                                                    <button type="submit" class="btn btn-sm btn-primary mt-1">Receive Cash</button>
+                                                                </form>
+                                                            @endcan
+                                                        @elseif ($i->transaction_type === 'EC' && $i->outstanding_amount > 0)
+                                                            <small>Approved project cash account required</small>
+                                                        @elseif ($i->transaction_type === 'EC')
+                                                            <small>Paid</small>
+                                                        @endif
                                                     </td>
 
                                                     <td>
