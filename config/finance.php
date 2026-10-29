@@ -18,4 +18,8 @@ return [
      * instrument/clearance workflow is audited and implemented.
      */
     'extra_charge_accounts' => [],
+
+    // Approved existing project cash account, indexed by project ID.
+    // No default or inferred cash account: settlement remains blocked until configured.
+    'extra_charge_cash_accounts' => [],
 ];
