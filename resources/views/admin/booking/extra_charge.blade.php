@@ -404,6 +404,32 @@
                                                         @elseif ($i->transaction_type === 'EC')
                                                             <small>Paid</small>
                                                         @endif
+                                                        @if ($i->transaction_type === 'EC' && $i->outstanding_amount > 0)
+                                                            @can('create plot')
+                                                                <details class="mt-2">
+                                                                    <summary>Receive Online / Cheque (pending)</summary>
+                                                                    <form method="POST" action="{{ route('booking.customer.deposit') }}">
+                                                                        @csrf
+                                                                        <input type="hidden" name="action" value="extra_charge_payment">
+                                                                        <input type="hidden" name="customer_id" value="{{ $i->customer_id }}">
+                                                                        <input type="hidden" name="plot_id" value="{{ $i->plot_id }}">
+                                                                        <input type="hidden" name="extra_charge_id" value="{{ $i->id }}">
+                                                                        <select name="payment_type" required class="form-control form-control-sm">
+                                                                            <option value="2">Online</option>
+                                                                            <option value="3">Cheque</option>
+                                                                        </select>
+                                                                        <input type="date" name="date" required class="form-control form-control-sm">
+                                                                        <input type="date" name="passing_date" required class="form-control form-control-sm">
+                                                                        <input type="number" name="bank_id" min="1" required placeholder="Bank ID" class="form-control form-control-sm">
+                                                                        <input type="text" name="t_number" required maxlength="100" placeholder="Transaction / cheque number" class="form-control form-control-sm">
+                                                                        <input type="text" name="reference" required maxlength="100" placeholder="Unique slip reference" class="form-control form-control-sm">
+                                                                        <input type="number" name="amount" min="0.01" step="0.01" max="{{ $i->outstanding_amount }}" required class="form-control form-control-sm">
+                                                                        <input type="hidden" name="detail" value="Extra Charge bank pending receipt">
+                                                                        <button type="submit" class="btn btn-sm btn-secondary mt-1">Record Pending</button>
+                                                                    </form>
+                                                                </details>
+                                                            @endcan
+                                                        @endif
                                                     </td>
 
                                                     <td>
@@ -474,6 +500,37 @@
                                     </table>
                                 </div>
                             @endcan
+
+                            @if ($ecPendingPayments->isNotEmpty())
+                                <div class="card-body">
+                                    <h5>Extra Charge Online / Cheque Pending Clearance</h5>
+                                    @foreach ($ecPendingPayments as $pending)
+                                        <div class="border rounded p-2 mb-2">
+                                            <strong>{{ $pending->reference }}</strong> — Rs. {{ Setting::roundformatAmount($pending->amount_in) }}
+                                            @can('can approve')
+                                                <form method="POST" action="{{ route('booking.customer.deposit') }}" class="mt-2">
+                                                    @csrf
+                                                    <input type="hidden" name="action" value="extra_charge_clearance">
+                                                    <input type="hidden" name="extra_charge_payment_id" value="{{ $pending->id }}">
+                                                    <input type="hidden" name="customer_id" value="0">
+                                                    <input type="hidden" name="plot_id" value="0">
+                                                    <input type="hidden" name="amount" value="{{ $pending->amount_in }}">
+                                                    <input type="hidden" name="reference" value="{{ $pending->reference }}">
+                                                    <input type="hidden" name="payment_type" value="{{ $pending->payment_type }}">
+                                                    <input type="hidden" name="detail" value="Extra Charge clearance decision">
+                                                    <input type="date" name="bank_post_at" class="form-control form-control-sm">
+                                                    <input type="text" name="note" maxlength="255" placeholder="Decision note" class="form-control form-control-sm">
+                                                    <button type="submit" name="passing_status" value="1" class="btn btn-sm btn-success" @if (!$ecBankReady) disabled @endif>Clear</button>
+                                                    <button type="submit" name="passing_status" value="2" class="btn btn-sm btn-danger">Reject</button>
+                                                </form>
+                                                @unless ($ecBankReady)
+                                                    <small>Approve project bank account in finance config to enable clearance</small>
+                                                @endunless
+                                            @endcan
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
 
                             <!-- /.card-body -->
                         </div>
