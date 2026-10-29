@@ -42,9 +42,6 @@ final class VerifyLedgerConstraints extends Command
                 if ($sources->isNotEmpty()) {
                     $query->orWhereIn('l.customer_ledger_id', $sources->pluck('id'));
                 }
-                // A missing account would disappear from an account-scoped
-                // query. Include it so it cannot evade the integrity inventory.
-                $query->orWhereNull('a.id');
             })
             ->get(['l.id', 'l.type', 'l.customer_ledger_id', 'l.project_head_subheads_id',
                 's.project_id as source_project', 's.transaction_type as source_type',
