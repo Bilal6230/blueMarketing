@@ -2295,14 +2295,10 @@ class BookingController extends Controller
             return in_array((int) $payment->payment_type, [2, 3], true) &&
                 (int) $payment->passing_status === 0;
         });
-        $x['ecBankReady'] = (bool) ProjectHeadSubhead::query()
-            ->where('project_id', $projectId)
-            ->whereKey((int) config("finance.extra_charge_bank_accounts.{$projectId}", 0))
-            ->exists();
-        $x['ecCashReady'] = (bool) ProjectHeadSubhead::query()
-            ->where('project_id', $projectId)
-            ->whereKey((int) config("finance.extra_charge_cash_accounts.{$projectId}", 0))
-            ->exists();
+        // Dedicated Extra Charge settlement accounts are created atomically
+        // when posting, rather than configured with guessed chart IDs.
+        $x['ecBankReady'] = true;
+        $x['ecCashReady'] = true;
 
         $chargeTypes = ChargeType::get();
         $x['chargeTypes'] = $chargeTypes;
@@ -2626,12 +2622,10 @@ class BookingController extends Controller
                                 ->recordPending($request, $charge, $projectId, $mapping, $amount, $reference, $date);
                             return;
                         }
-                        $cashId = (int) config("finance.extra_charge_cash_accounts.{$projectId}", 0);
-                        $cashAccount = $cashId ? ProjectHeadSubhead::query()
-                            ->where('project_id', $projectId)->whereKey($cashId)
-                            ->lockForUpdate()->first() : null;
-                        if (!$cashAccount || in_array($cashId, array_values($mapping), true)) {
-                            throw new \DomainException('EC_PAYMENT_CASH_ACCOUNT_NOT_APPROVED');
+                        $cashId = app(\App\Services\Finance\ExtraChargeAccounts::class)
+                            ->settlementAccount($projectId, 'Cash');
+                        if (in_array($cashId, array_values($mapping), true)) {
+                            throw new \DomainException('EC_PAYMENT_CASH_ACCOUNT_CONFLICT');
                         }
 
                         // Each payment keeps a stable source identity. Never
