@@ -15,6 +15,42 @@ final class ExtraChargeAccounts
      * project transaction. Mirrors Stock's project_head_subheads creation
      * pattern, but never guesses a customer bank/cash account.
      */
+    /**
+     * Dedicated Extra Charge settlement subheads are provisioned using the
+     * same project-lock/firstOrCreate pattern as charge income and receivable.
+     * No unrelated cash/commission or bank account is ever repurposed.
+     */
+    public function settlementAccount(int $projectId, string $kind): int
+    {
+        if (!in_array($kind, ['Cash', 'Bank'], true) ||
+            DB::transactionLevel() < 1 ||
+            !DB::table('projects')->where('id', $projectId)->lockForUpdate()->exists()) {
+            throw new \DomainException('EC_SETTLEMENT_ACCOUNT_SCOPE_INVALID');
+        }
+        $head = HeadAccounting::where('name', 'Extra Charge')->orderBy('id')->first();
+        if (!$head) {
+            $head = HeadAccounting::create([
+                'name' => 'Extra Charge', 'is_active' => 1,
+                'acct_type' => 0, 'create_by' => Auth::id(),
+            ]);
+        }
+        $name = 'Extra Charge ' . $kind;
+        $subhead = SubheadAccounting::where('name', $name)->orderBy('id')->first();
+        if (!$subhead) {
+            $subhead = SubheadAccounting::create([
+                'name' => $name, 'is_active' => 1,
+                'create_by' => Auth::id(),
+            ]);
+        }
+        return (int) ProjectHeadSubhead::firstOrCreate([
+            'project_id' => $projectId,
+            'head_accounting_id' => $head->id,
+            'subhead_accounting_id' => $subhead->id,
+            'plot_id' => null,
+            'customer_id' => null,
+        ])->id;
+    }
+
     public function forProject(int $projectId, int $customerId, int $plotId): array
     {
         if (DB::transactionLevel() < 1 ||
