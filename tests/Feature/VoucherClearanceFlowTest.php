@@ -286,7 +286,7 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertEquals(1250, $charge->fresh()->amount_in);
     }
 
-    public function test_extra_charge_deferred_payment_rejects_missing_cash_mapping(): void
+    public function test_extra_charge_deferred_payment_auto_creates_cash_account_without_manual_mapping(): void
     {
         Schema::create('charge_types', function (Blueprint $table) {
             $table->id();
@@ -296,16 +296,25 @@ class VoucherClearanceFlowTest extends TestCase
         DB::table('charge_types')->insert(['id' => 1, 'name' => 'Test charge']);
         $this->callDeposit($this->depositPayload(1, [
             'action' => 'extra_charge', 'charge_type_id' => 1,
-            'reference' => 'EC-NOCASH',
+            'reference' => 'EC-AUTO-CASH',
         ]))->assertSessionHasNoErrors();
         $charge = CustomerLedger::where('transaction_type', 'EC')->firstOrFail();
         $this->callDeposit($this->depositPayload(1, [
             'action' => 'extra_charge_payment',
             'extra_charge_id' => $charge->id,
-            'reference' => 'EC-CASH-NOT-APPROVED',
-        ]))->assertSessionHasErrors('msg');
-        $this->assertSame(0, CustomerLedger::where('transaction_type', 'ECP')->count());
-        $this->assertSame(0, Ledger::where('type', 'ECP')->count());
+            'reference' => 'EC-AUTO-CASH-RECEIPT',
+        ]))->assertSessionHasNoErrors();
+        $this->assertSame(1, CustomerLedger::where('transaction_type', 'ECP')->count());
+        $this->assertSame(2, Ledger::where('type', 'ECP')->count());
+        $cash = DB::table('project_head_subheads as p')
+            ->join('head_accountings as h', 'h.id', '=', 'p.head_accounting_id')
+            ->join('subhead_accountings as s', 's.id', '=', 'p.subhead_accounting_id')
+            ->where('p.project_id', $this->project->id)
+            ->where('h.name', 'Extra Charge')->where('s.name', 'Extra Charge Cash')
+            ->first();
+        $this->assertNotNull($cash);
+        $this->assertSame(1, Ledger::where('type', 'ECP')
+            ->where('project_head_subheads_id', $cash->id)->count());
     }
 
     public function test_extra_charge_auto_creates_project_accounts_and_reuses_income_account(): void
