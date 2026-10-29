@@ -79,9 +79,35 @@ final class AuditAllLedgerSourceUniqueness extends Command
                     ->havingRaw('COUNT(*) > 1'), 'collisions'
             )->groupBy('project_id', 'transaction_type')
             ->orderBy('project_id')->orderBy('transaction_type')->get();
+        // Source type_id can be a historical source identifier, not the
+        // ledger's displayed voucher_number. Keep the two collision classes
+        // independent; never auto-renumber posted financial history.
+        $ledgerNumberCollisions = DB::table('ledgers as l')
+            ->join('project_head_subheads as a', 'a.id', '=', 'l.project_head_subheads_id')
+            ->whereNotNull('l.customer_ledger_id')
+            ->whereNotNull('l.voucher_number')
+            ->whereIn('l.type', $families)
+            ->select('a.project_id', 'l.type', 'l.voucher_number')
+            ->selectRaw('COUNT(DISTINCT l.customer_ledger_id) AS linked_sources')
+            ->groupBy('a.project_id', 'l.type', 'l.voucher_number')
+            ->havingRaw('COUNT(DISTINCT l.customer_ledger_id) > 1')
+            ->limit(20)->get();
+        $ledgerNumberCollisionCount = DB::query()->fromSub(
+            DB::table('ledgers as l')
+                ->join('project_head_subheads as a', 'a.id', '=', 'l.project_head_subheads_id')
+                ->whereNotNull('l.customer_ledger_id')
+                ->whereNotNull('l.voucher_number')
+                ->whereIn('l.type', $families)
+                ->select('a.project_id', 'l.type', 'l.voucher_number')
+                ->groupBy('a.project_id', 'l.type', 'l.voucher_number')
+                ->havingRaw('COUNT(DISTINCT l.customer_ledger_id) > 1'), 'linked_ledger_collisions'
+        )->count();
         $ok = $numberGroups === 0 && $referenceGroups === 0 && $incomplete === 0;
         $this->line(json_encode([
             'finance_source_count'=>(clone $base)->count(),
+            'linked_ledger_voucher_collision_group_count'=>$ledgerNumberCollisionCount,
+            'linked_ledger_voucher_collision_examples'=>$ledgerNumberCollisions->toArray(),
+            'source_type_id_may_differ_from_ledger_voucher_number'=>true,
             'duplicate_number_group_count'=>$numberGroups,
             'duplicate_reference_group_count'=>$referenceGroups,
             'incomplete_identity_count'=>$incomplete,
