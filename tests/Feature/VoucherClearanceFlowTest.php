@@ -183,6 +183,15 @@ class VoucherClearanceFlowTest extends TestCase
         $this->callDeposit($clear)->assertSessionHasNoErrors();
         $this->assertSame(1, (int) $pending->fresh()->passing_status);
         $this->assertSame(2, Ledger::where('customer_ledger_id', $pending->id)->count());
+        $autoBank = DB::table('project_head_subheads as p')
+            ->join('head_accountings as h', 'h.id', '=', 'p.head_accounting_id')
+            ->join('subhead_accountings as s', 's.id', '=', 'p.subhead_accounting_id')
+            ->where('p.project_id', $this->project->id)
+            ->where('h.name', 'Extra Charge')->where('s.name', 'Extra Charge Bank')
+            ->first();
+        $this->assertNotNull($autoBank);
+        $this->assertSame(1, Ledger::where('customer_ledger_id', $pending->id)
+            ->where('project_head_subheads_id', $autoBank->id)->count());
         $this->assertEquals(500, Ledger::where('customer_ledger_id', $pending->id)->sum('amount_in'));
         $this->assertEquals(500, Ledger::where('customer_ledger_id', $pending->id)->sum('amount_out'));
         $this->callDeposit($clear)->assertSessionHasErrors('msg');
