@@ -474,6 +474,66 @@ class VoucherClearanceFlowTest extends TestCase
         });
     }
 
+    public function test_project_audit_accepts_pending_ecp_without_ledger(): void
+    {
+        $charge = CustomerLedger::create([
+            'project_id' => $this->project->id, 'customer_id' => $this->customer->id,
+            'plot_id' => $this->plot->id, 'transaction_type' => 'EC',
+            'type_id' => 1, 'reference' => 'AUDIT-EC-1',
+            'amount_in' => 100, 'amount_out' => 0, 'date' => '2026-05-17',
+            'is_active' => 1,
+        ]);
+        foreach ([[$this->bookingReceiptAccount->id, 100, 0],
+                  [$this->cashVoucherAccount->id, 0, 100]] as [$account, $in, $out]) {
+            Ledger::create([
+                'customer_ledger_id' => $charge->id, 'type' => 'EC',
+                'type_id' => 1, 'voucher_number' => 1,
+                'project_head_subheads_id' => $account, 'reference' => 'AUDIT-EC-1',
+                'amount_in' => $in, 'amount_out' => $out,
+                'date' => '2026-05-17', 'is_active' => 1,
+            ]);
+        }
+        CustomerLedger::create([
+            'project_id' => $this->project->id, 'customer_id' => $this->customer->id,
+            'plot_id' => $this->plot->id, 'transaction_type' => 'ECP',
+            'type_id' => 1, 'reference' => 'EC_PAYMENT#' . $charge->id . '#PENDING',
+            'amount_in' => 25, 'payment_type' => 2, 'passing_status' => 0,
+            'date' => '2026-05-17', 'is_active' => 1,
+        ]);
+        $code = \Illuminate\Support\Facades\Artisan::call('finance:audit-project-vouchers', [
+            'project' => $this->project->id,
+        ]);
+        $this->assertSame(0, $code);
+        $this->assertStringNotContainsString('source_without_ledger',
+            \Illuminate\Support\Facades\Artisan::output());
+    }
+
+    public function test_project_audit_flags_rejected_ecp_with_foreign_series_ledger(): void
+    {
+        $source = CustomerLedger::create([
+            'project_id' => $this->project->id, 'customer_id' => $this->customer->id,
+            'plot_id' => $this->plot->id, 'transaction_type' => 'ECP',
+            'type_id' => 7, 'reference' => 'EC_PAYMENT#123#BAD',
+            'amount_in' => 75, 'payment_type' => 3, 'passing_status' => 2,
+            'date' => '2026-05-17', 'is_active' => 1,
+        ]);
+        Ledger::create([
+            'customer_ledger_id' => $source->id, 'type' => 'CR',
+            'type_id' => 55, 'voucher_number' => 55,
+            'project_head_subheads_id' => $this->bookingReceiptAccount->id,
+            'reference' => 'WRONG', 'amount_in' => 75, 'amount_out' => 0,
+            'date' => '2026-05-17', 'is_active' => 1,
+        ]);
+        $code = \Illuminate\Support\Facades\Artisan::call('finance:audit-project-vouchers', [
+            'project' => $this->project->id,
+        ]);
+        $this->assertSame(1, $code);
+        $output = \Illuminate\Support\Facades\Artisan::output();
+        $this->assertStringContainsString('pending_or_rejected_ecp_has_ledger', $output);
+        $this->assertStringContainsString('ecp_wrong_or_missing_charge', $output);
+        $this->assertStringContainsString('source_ledger_identity_mismatch', $output);
+    }
+
     public function test_project_voucher_audit_reports_orphan_cr_source_read_only(): void
     {
         $source = CustomerLedger::create([
