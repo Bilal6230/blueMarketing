@@ -1,3 +1,9 @@
+### 2026-10-29 verified refined all-project audit and collision distribution follow-on
+
+- User confirmed local audit: 5,377 financial sources, 101 **positive-number** duplicate groups, 1 missing number/project, 3,771 blank references, 49 repeated PPR references; PHP lint clear, git clean. The real historical number collisions prohibit blanket UNIQUE creation without ownership reconciliation.
+- Added nonmutating project/type collision distribution output to all-project audit (`16025769`, corrected grouped-query build `7e779edc`); local verification pending. This is for impact scoping only, not an index migration or automated repair.
+- P0.1 **98% estimated**, not production approved; remaining evidence/compatibility is genuinely blocked by 101 historical collisions, not missing command executions.
+
 ### 2026-10-29 verified all-project collision classification
 
 - User verified refined MySQL audit syntax/clean working tree: 5,377 sources (CP 2,795 / CR 937 / PPR 1,645); **101 positive voucher-number duplicate groups** (not zero-number artifacts), **49 duplicate reference groups** (PPR reuse), 3,771 incomplete by previous broad rule. By type blank references: CP 2,795, CR 937, PPR 39. CP/CR historical blank references are common; do **not** label all as broken voucher identities. CR has 1 missing/zero number; no EC/ECP sources in this snapshot.
