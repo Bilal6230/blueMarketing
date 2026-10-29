@@ -2629,9 +2629,23 @@ class BookingController extends Controller
                             ->where('is_active', 1)
                             ->where('reference', 'like', 'EC_PAYMENT#' . $charge->id . '#%')
                             ->lockForUpdate()->get();
-                        $receivedCents = $priorPayments->sum(function ($row) {
-                            return (int) round((float) $row->amount_in * 100);
-                        });
+                        $receivedCents = 0;
+                        foreach ($priorPayments as $priorPayment) {
+                            $priorCents = (int) round((float) $priorPayment->amount_in * 100);
+                            $priorLegs = Ledger::query()
+                                ->where('customer_ledger_id', $priorPayment->id)
+                                ->where('type', 'ECP')
+                                ->lockForUpdate()->get();
+                            if ($priorCents <= 0 || $priorLegs->count() !== 2 ||
+                                (int) round((float) $priorLegs->sum('amount_in') * 100) !== $priorCents ||
+                                (int) round((float) $priorLegs->sum('amount_out') * 100) !== $priorCents ||
+                                $priorLegs->contains(fn ($leg) =>
+                                    (string) $leg->reference !== (string) $priorPayment->reference ||
+                                    (int) $leg->is_active !== 1)) {
+                                throw new \DomainException('EC_PAYMENT_PRIOR_LEDGER_MISMATCH');
+                            }
+                            $receivedCents += $priorCents;
+                        }
                         $chargeCents = (int) round((float) $charge->amount_in * 100);
                         $paymentCents = (int) round((float) $amount * 100);
                         if ($receivedCents + $paymentCents > $chargeCents) {
