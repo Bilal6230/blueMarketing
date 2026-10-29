@@ -220,6 +220,14 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - Important controls still pending: isolated MySQL concurrency acceptance, finance-approved project bank account ID, bank ID lookups/real bank selector and production user permission check; no production financial data was modified.
 - P0.2 **90% verified baseline retained** pending local acceptance; update on verified functional test results rather than arbitrary 10-point increase.
 
+### 2026-10-29 substantive correction: Extra Charge settlement accounts AUTO-CREATED
+
+- User reiterated that **Extra Charge is its own Head Account** (like Project Sale), and missing project accounts must be automatically created using existing ERP pattern rather than manually asking for IDs. Previous assistant repeated this question incorrectly. Project 1 read-only search had found only account 72 `Gondal Avenue Recovery / G A Cash (GA Commission)`, which must NOT be reused for EC settlement.
+- Updated `ExtraChargeAccounts::settlementAccount(projectId, 'Cash'|'Bank')` (`5d7ee3e8`) to resolve/create `Extra Charge` head, `Extra Charge Cash` and `Extra Charge Bank` subheads and scoped `project_head_subheads` mapping inside a database transaction under a project lock, using the existing first-or-create pattern. Existing `Extra Charge Receivable` and `Extra Charge Income` remain untouched.
+- `BookingController` now posts deferred cash ECP into project auto-created `Extra Charge Cash` (`32ce3026`); `ExtraChargeBankSettlement` posts cleared online/cheque ECP into project auto-created `Extra Charge Bank` (`191d7f0a`). Both remain balanced against customer/plot receivable and never pick unrelated accounts by name. Removed obsolete manual finance ID mapping configuration (`447fa046`); adjusted cash acceptance test and bank settlement assertions (`ac85359f`, `c6a88847`).
+- Account creation does NOT create a real external bank account, validate external banking instruments or certify the chart-of-accounts asset classification. Treasury transfer and financial statement treatment require finance review before production. This change is **pending user's local tests**, not an accepted completed production feature. Last verified preceding baseline: 8 focused EC tests PASS / 77 assertions; do not claim these new tests already pass.
+- P0.2 remains **90% verified baseline** until rerun, then reassess. Next implementation: MySQL concurrency, mixed cash/pending safeguards, reporting and bank external reconciliation. No live database records changed.
+
 ## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
 
 **These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
