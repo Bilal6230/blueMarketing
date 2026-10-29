@@ -517,6 +517,36 @@ class VoucherClearanceFlowTest extends TestCase
         }
     }
 
+    public function test_finance_source_contract_accepts_canonical_cp_receipt_clearance_only(): void
+    {
+        $receipt = CustomerLedger::create([
+            'project_id' => $this->project->id,
+            'customer_id' => $this->customer->id,
+            'plot_id' => $this->plot->id,
+            'transaction_type' => 'CR',
+            'type_id' => 77, 'reference' => 'CR-ORIGINAL-77',
+            'amount_in' => 250, 'amount_out' => 0,
+            'date' => '2026-05-17', 'is_active' => 1,
+        ]);
+        $base = [
+            'customer_ledger_id' => $receipt->id, 'type' => 'CP',
+            'type_id' => 3, 'voucher_number' => 3,
+            'project_head_subheads_id' => $this->cashVoucherAccount->id,
+            'reference' => 'CASH_OUT_CLEARANCE#' . $receipt->id,
+            'amount_in' => 0, 'amount_out' => 250,
+            'date' => '2026-05-17', 'is_active' => 1,
+        ];
+        $created = Ledger::create($base);
+        $this->assertNotNull($created->id);
+        try {
+            Ledger::create(array_merge($base, ['reference' => 'UNRELATED-CP']));
+            $this->fail('Noncanonical CP source attachment must be blocked');
+        } catch (\DomainException $e) {
+            $this->assertSame('FINANCE_SOURCE_OWNER_MISMATCH', $e->getMessage());
+        }
+        $this->assertSame(1, Ledger::where('customer_ledger_id', $receipt->id)->count());
+    }
+
     public function test_project_audit_detects_duplicate_source_identities_read_only(): void
     {
         foreach ([1, 2] as $n) {
