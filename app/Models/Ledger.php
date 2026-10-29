@@ -28,6 +28,20 @@ class Ledger extends Model
         'voucher_number'
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (self $ledger): void {
+            // Enforce ownership on every new explicitly source-linked CR, CP,
+            // PPR, EC, ECP ledger leg. Historical writes remain untouched.
+            if (in_array((string) $ledger->type,
+                \App\Services\Finance\FinancialSourceOwnership::FAMILIES, true) &&
+                $ledger->customer_ledger_id !== null) {
+                app(\App\Services\Finance\FinancialSourceOwnership::class)
+                    ->assertLinked($ledger->getAttributes());
+            }
+        });
+    }
+
     public function projectHeadSubhead()
     {
         return $this->belongsTo(ProjectHeadSubhead::class, 'project_head_subheads_id');
