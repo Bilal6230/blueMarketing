@@ -1,3 +1,9 @@
+### 2026-10-29 real MySQL index and Project 1 source preflight verified
+
+- User pulled `e6513c4`, lint clear and Git clean. Live configured MySQL schema inventory: `journal_vouchers` has UNIQUE `unique_project_type_voucher(project_id,type,voucher_number)`; `customer_ledger` has only PRIMARY and nonunique customer FK index, and `ledgers` only PRIMARY plus nonunique linked-source/charge indexes. Required finance columns all present. `finance:preflight-ledger-constraints 1` scanned 2 sources and 4780 ledger legs with zero reported issues. This is NOT whole-database assurance; that preflight includes several historical ledger families and does not establish uniqueness for other projects.
+- Added `finance:audit-all-source-uniqueness` (`f25998fd`), an **all-project aggregate-only** MySQL/SQLite-compatible read-only inventory for duplicate number and reference groups and missing/invalid identities in CR/CP/PPR/EC/ECP. Returns counts and up to 100 collision examples, no ledger mutations or index creation; acceptance pending local execution.
+- P0.1 **98% estimated** pending all-project collision evidence, historically compatible source-aware constraints and verified raw write-path handling; never imply schema/index readiness merely from Project 1 clean scan.
+
 ### 2026-10-29 verified local MySQL schema shape + index inspection follow-on
 
 - User pulled `4251c97`, `InspectLedgerSchema.php` syntax PASS and Git clean. Real configured MySQL returned all required columns present for `ledgers`, `customer_ledger`, `project_head_subheads`, `projects`, `journal_vouchers`: `minimum_shape_compatible=true`, but `safe_to_automatically_add_strict_source_fk=false` and `indexes_and_historical_collisions_verified=false`. This is **minimum shape** only, not unique/FK or historical integrity certification.
