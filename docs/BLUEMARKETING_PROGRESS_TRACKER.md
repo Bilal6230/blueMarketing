@@ -1,3 +1,10 @@
+### 2026-10-29 uploaded full SQL dump direct analysis — source numbers != posted voucher numbers
+
+- User supplied `bluenew.sql` MySQL 8.4.3 export. Offline parser read 5,580 `customer_ledger`, 17,855 `ledgers`, 561 project accounts, 991 JV headers, 5,147 JV details without restoring or mutating the dump. Source-number collision groups: Project 3 CR 6, Project 5 CR 91, Project 6 CR 4 (202 involved source rows; 2 have no linked ledger, 7 inactive). **98 of 101 groups have distinct posted ledger voucher numbers**, so historical `customer_ledger.type_id` should not be assumed equal to ledger voucher. Example Project 5 source number 1: source IDs 1621/2692 map to ledger voucher 474/594.
+- Overall no linked-ledger orphaned customer-source rows (0), missing project account records (0), cross-project source/account links (0) in this dump. Distinct linked customer-source collisions on actual ledger voucher numbers also exist (16 groups across CR and CP/project); these need case-by-case historical provenance, NOT automatic mutation. No inferred balance repair or renumbering.
+- Extended read-only all-project audit to separately count posted ledger voucher number groups with multiple linked sources and show sample groups (`8024d5c`). This is substantive code correction prompted by actual dump evidence; user local test pending.
+- Keep P0.1 at **98% implementation estimate**: historical source-level uniqueness not deployable; even posted voucher number has collisions; do not claim database-level constraints or 100% finance certified.
+
 ### 2026-10-29 verified refined all-project audit and collision distribution follow-on
 
 - User confirmed local audit: 5,377 financial sources, 101 **positive-number** duplicate groups, 1 missing number/project, 3,771 blank references, 49 repeated PPR references; PHP lint clear, git clean. The real historical number collisions prohibit blanket UNIQUE creation without ownership reconciliation.
