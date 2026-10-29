@@ -138,6 +138,59 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame(0, DB::table('ledgers')->count());
     }
 
+    public function test_extra_charge_rejects_source_reference_delimiter_injection(): void
+    {
+        Schema::create('charge_types', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
+        DB::table('charge_types')->insert(['id' => 1, 'name' => 'Test charge']);
+        $this->callDeposit($this->depositPayload(1, [
+            'action' => 'extra_charge', 'charge_type_id' => 1,
+            'reference' => 'EC-SECURE-SOURCE',
+        ]))->assertSessionHasNoErrors();
+        $charge = CustomerLedger::where('transaction_type', 'EC')->firstOrFail();
+        $this->callDeposit($this->depositPayload(1, [
+            'action' => 'extra_charge_payment', 'extra_charge_id' => $charge->id,
+            'reference' => 'INVALID#SPLIT',
+        ]))->assertSessionHasErrors('msg');
+        $this->assertSame(0, CustomerLedger::where('transaction_type', 'ECP')->count());
+    }
+
+    public function test_extra_charge_refuses_foreign_series_ledger_attached_to_settled_payment(): void
+    {
+        Schema::create('charge_types', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
+        DB::table('charge_types')->insert(['id' => 1, 'name' => 'Test charge']);
+        $this->callDeposit($this->depositPayload(1, [
+            'action' => 'extra_charge', 'charge_type_id' => 1,
+            'reference' => 'EC-STRICT-LEDGER',
+        ]))->assertSessionHasNoErrors();
+        $charge = CustomerLedger::where('transaction_type', 'EC')->firstOrFail();
+        $this->callDeposit($this->depositPayload(1, [
+            'action' => 'extra_charge_payment', 'extra_charge_id' => $charge->id,
+            'reference' => 'EC-FIRST-RECEIPT', 'amount' => '400',
+        ]))->assertSessionHasNoErrors();
+        $payment = CustomerLedger::where('transaction_type', 'ECP')->firstOrFail();
+        Ledger::create([
+            'customer_ledger_id' => $payment->id, 'type' => 'CR',
+            'type_id' => 900, 'voucher_number' => 900,
+            'project_head_subheads_id' => $this->bookingReceiptAccount->id,
+            'reference' => 'FOREIGN-SERIES',
+            'amount_in' => '0.00', 'amount_out' => '0.00',
+            'date' => '2026-05-17', 'is_active' => 1,
+        ]);
+        $this->callDeposit($this->depositPayload(1, [
+            'action' => 'extra_charge_payment', 'extra_charge_id' => $charge->id,
+            'reference' => 'EC-SECOND-RECEIPT', 'amount' => '100',
+        ]))->assertSessionHasErrors('msg');
+        $this->assertSame(1, CustomerLedger::where('transaction_type', 'ECP')->count());
+    }
+
     public function test_extra_charge_mixed_cash_pending_rejected_and_cleared_balances(): void
     {
         Schema::create('charge_types', function (Blueprint $table) {
