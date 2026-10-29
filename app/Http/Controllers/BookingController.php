@@ -2266,7 +2266,35 @@ class BookingController extends Controller
             $item['status'] = $pending ? ucfirst($pending->status) : 'Approved';
             return $item;
         });
+        // A payment source remains separate and immutable; outstanding is
+        // derived from the typed charge and all active linked cash payments.
+        $payments = CustomerLedger::query()
+            ->where('project_id', $projectId)
+            ->where('transaction_type', 'ECP')
+            ->where('is_active', 1)
+            ->get(['reference', 'amount_in']);
+        $paidCents = [];
+        foreach ($payments as $payment) {
+            if (preg_match('/^EC_PAYMENT#([1-9][0-9]*)#/', (string) $payment->reference, $match)) {
+                $id = (int) $match[1];
+                $paidCents[$id] = ($paidCents[$id] ?? 0) +
+                    (int) round((float) $payment->amount_in * 100);
+            }
+        }
+        $data = $data->map(function ($item) use ($paidCents) {
+            if ($item->transaction_type === 'EC') {
+                $dueCents = (int) round((float) $item->amount_in * 100);
+                $item->outstanding_amount = max(0, $dueCents - ($paidCents[$item->id] ?? 0)) / 100;
+            } else {
+                $item->outstanding_amount = null;
+            }
+            return $item;
+        });
         $x['data'] = $data;
+        $x['ecCashReady'] = (bool) ProjectHeadSubhead::query()
+            ->where('project_id', $projectId)
+            ->whereKey((int) config("finance.extra_charge_cash_accounts.{$projectId}", 0))
+            ->exists();
 
         $chargeTypes = ChargeType::get();
         $x['chargeTypes'] = $chargeTypes;
