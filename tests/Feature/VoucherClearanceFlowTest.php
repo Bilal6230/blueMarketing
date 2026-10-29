@@ -167,12 +167,6 @@ class VoucherClearanceFlowTest extends TestCase
         ]))->assertSessionHasErrors('msg');
         $this->assertSame(1, CustomerLedger::where('transaction_type', 'ECP')->count());
 
-        $bankAccount = ProjectHeadSubhead::create([
-            'project_id' => $this->project->id,
-            'head_accounting_id' => 55,
-            'subhead_accounting_id' => 155,
-        ]);
-        config(["finance.extra_charge_bank_accounts.{$this->project->id}" => $bankAccount->id]);
         $clear = $this->depositPayload(2, [
             'action' => 'extra_charge_clearance',
             'extra_charge_payment_id' => $pending->id,
@@ -188,10 +182,11 @@ class VoucherClearanceFlowTest extends TestCase
             ->join('subhead_accountings as s', 's.id', '=', 'p.subhead_accounting_id')
             ->where('p.project_id', $this->project->id)
             ->where('h.name', 'Extra Charge')->where('s.name', 'Extra Charge Bank')
+            ->select('p.id as account_id')
             ->first();
         $this->assertNotNull($autoBank);
         $this->assertSame(1, Ledger::where('customer_ledger_id', $pending->id)
-            ->where('project_head_subheads_id', $autoBank->id)->count());
+            ->where('project_head_subheads_id', $autoBank->account_id)->count());
         $this->assertEquals(500, Ledger::where('customer_ledger_id', $pending->id)->sum('amount_in'));
         $this->assertEquals(500, Ledger::where('customer_ledger_id', $pending->id)->sum('amount_out'));
         $this->callDeposit($clear)->assertSessionHasErrors('msg');
