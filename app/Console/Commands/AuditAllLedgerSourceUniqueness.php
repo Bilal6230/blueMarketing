@@ -70,7 +70,7 @@ final class AuditAllLedgerSourceUniqueness extends Command
         // References are business slip values and not eligible for blanket UNIQUE.
         // Report collision distribution without changing any historical row.
         // A reference is not necessarily a unique receipt identity.
-        $collisionDistribution = (clone $positive)
+        $collisionDistribution = DB::query()
             ->select('project_id', 'transaction_type')
             ->selectRaw('COUNT(*) AS colliding_groups')
             ->fromSub(
