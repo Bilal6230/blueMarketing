@@ -125,10 +125,25 @@ final class RepairMissingGeneralJournalLegs extends Command
                     ];
                     if ($hasDetailFk) $values['journal_voucher_detail_id'] = $d->id;
                     DB::table('ledgers')->insert($values);
+                    // Verify the inserted financial effect before transaction commit.
+                    // Any discrepancy rolls back the entire batch.
+                    $posted = DB::table('ledgers')
+                        ->where('type', 'JV')->where('type_id', $h->id)
+                        ->where('voucher_number', $h->voucher_number)
+                        ->where('project_head_subheads_id', $d->account_id)
+                        ->where('amount_in', $d->debit)->where('amount_out', $d->credit);
+                    if ($hasDetailFk) {
+                        $posted->where('journal_voucher_detail_id', $d->id);
+                    }
+                    if ($posted->count() !== 1) {
+                        throw new \\RuntimeException('JV ledger verification failed: rolled back journal '.$h->id.' detail '.$d->id);
+                    }
                     $summary['inserted_legs']++;
                 }
             }
         }, 3);
+        $summary['transaction_committed'] = $apply;
+        $summary['existing_ledger_rows_deleted_or_deactivated'] = 0;
         $this->line(json_encode($summary, JSON_THROW_ON_ERROR));
         return self::SUCCESS;
     }
