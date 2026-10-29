@@ -2273,20 +2273,19 @@ class BookingController extends Controller
             ->where('transaction_type', 'ECP')
             ->where('is_active', 1)
             ->get(['id', 'reference', 'amount_in', 'payment_type', 'passing_status']);
-        $paidCents = [];
-        foreach ($payments as $payment) {
-            if (preg_match('/^EC_PAYMENT#([1-9][0-9]*)#/', (string) $payment->reference, $match)) {
-                $id = (int) $match[1];
-                $paidCents[$id] = ($paidCents[$id] ?? 0) +
-                    (int) round((float) $payment->amount_in * 100);
-            }
-        }
-        $data = $data->map(function ($item) use ($paidCents) {
+        $settlement = app(\App\Services\Finance\ExtraChargeBankSettlement::class);
+        $data = $data->map(function ($item) use ($settlement) {
             if ($item->transaction_type === 'EC') {
-                $dueCents = (int) round((float) $item->amount_in * 100);
-                $item->outstanding_amount = max(0, $dueCents - ($paidCents[$item->id] ?? 0)) / 100;
+                $balance = $settlement->balances($item);
+                $item->received_amount = $balance['paid_cents'] / 100;
+                $item->pending_amount = $balance['pending_cents'] / 100;
+                $item->outstanding_amount = $balance['outstanding_cents'] / 100;
+                $item->available_amount = $balance['available_cents'] / 100;
             } else {
+                $item->received_amount = null;
+                $item->pending_amount = null;
                 $item->outstanding_amount = null;
+                $item->available_amount = null;
             }
             return $item;
         });
