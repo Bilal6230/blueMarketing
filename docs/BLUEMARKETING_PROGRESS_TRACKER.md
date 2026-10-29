@@ -196,6 +196,12 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - Untracked local `.env_old` appeared. It has not been touched/committed. It may contain secrets; never add it to Git.
 - P0.2 remains **88% provisional**, cash partial/full settlement **not verified** until reproducer passes.
 
+### 2026-10-29 follow-up: ECP second-installment failure triage and regression isolation
+
+- User's focused test at `bcfb6ed0` reports `DomainException: EC_PAYMENT_EXCEEDS_OUTSTANDING` **in the session error bag** on line 181 after deliberately testing Rs 851 overpayment rejection against Rs 1250 with Rs 400 already paid. The error is consistent with the *expected preceding rejection*; the test made several redirect requests in one method and did not clear Laravel's flashed `errors` session state before asserting final success.
+- Commit `a1c34de2` isolates prior flashed errors in the test before issuing the final Rs 850 payment. This is an **unverified test isolation fix**, not proof that the final payment saved. The subsequent source-count and balance assertions must pass on user's local focused rerun to confirm actual posting. No live data or existing financial rows altered.
+- P0.2 remains 88% until new verification. **Next:** run focused test, then full `test_extra_charge_` suite; if balances fail inspect actual source records before changing accounting algorithm.
+
 ## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
 
 **These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
