@@ -2763,6 +2763,13 @@ class BookingController extends Controller
                 'message' => $e->getMessage(),
             ]);
 
+            // Keep finance error details private in production; expose the
+            // exact failure during automated tests so settlement regressions
+            // cannot be hidden behind the generic UI error message.
+            if (app()->environment('testing')) {
+                return back()->withErrors(['msg' => get_class($e) . ': ' . $e->getMessage()])->withInput();
+            }
+
             return back()->withErrors(['msg' => 'Unable to save the voucher right now. Please try again.'])->withInput();
         }
         return back();
