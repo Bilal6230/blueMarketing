@@ -72,7 +72,23 @@ final class RepairMissingGeneralJournalLegs extends Command
                         ->where('l.amount_in', $d->debit)->where('l.amount_out', $d->credit)
                         ->count();
                     if ($matches > 1) $reasons[] = 'duplicate_existing_exact_leg';
-                    if ($matches === 0) $missing[] = $d;
+                    if ($matches === 0) {
+                        // Legacy postings can use a different displayed voucher number.
+                        // Never insert a second identical financial leg merely because
+                        // its voucher number differs from the JV header number.
+                        $legacyMatches = DB::table('ledgers as l')
+                            ->join('project_head_subheads as a', 'a.id', '=', 'l.project_head_subheads_id')
+                            ->where('a.project_id', $h->project_id)
+                            ->where('l.type', 'JV')->where('l.type_id', $h->id)
+                            ->where('l.project_head_subheads_id', $d->account_id)
+                            ->where('l.amount_in', $d->debit)->where('l.amount_out', $d->credit)
+                            ->count();
+                        if ($legacyMatches > 0) {
+                            $reasons[] = 'legacy_voucher_number_match_requires_reconciliation';
+                        } else {
+                            $missing[] = $d;
+                        }
+                    }
                     if ($hasDetailFk && DB::table('ledgers')->where('journal_voucher_detail_id', $d->id)->exists()
                         && $matches === 0) $reasons[] = 'detail_provenance_collision';
                 }
