@@ -520,7 +520,7 @@ class VoucherClearanceFlowTest extends TestCase
     public function test_project_audit_detects_duplicate_source_identities_read_only(): void
     {
         foreach ([1, 2] as $n) {
-            CustomerLedger::create([
+            DB::table('customer_ledger')->insert([
                 'project_id' => $this->project->id, 'customer_id' => $this->customer->id,
                 'plot_id' => $this->plot->id, 'transaction_type' => 'CP',
                 'type_id' => 42, 'reference' => 'DUPLICATE-CP-42',
