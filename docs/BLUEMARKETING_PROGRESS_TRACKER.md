@@ -1,3 +1,9 @@
+### 2026-10-29 JV 9 specific conflict and bulk triage command
+
+- User verified JV 9 on MySQL: project 3, pending, two balanced Rs 10,000 lines, zero JV ledger rows keyed by header 9, but displayed JV voucher number 9 also appears in ledger row 5593 with type_id=1, account 167, Rs 1,334 debit. This is not a proven posting for header 9 and must be attributed to the actual stock/labour/general source before any recovery.
+- Added `finance:inspect-all-missing-jvs` (`33b1f8e`), read-only batch inventory of absent general JV header-ledger sets including detail-side sums, ownership, same-project same-series voucher collisions and per-case manual review flags. No historical writes or automatic authorization. Await local execution of batch command; no production migration applied.
+- Current status: recovery code architecture and provenance FK committed but historical reconciliation not executed. Do not certify P0.1 100%.
+
 ### 2026-10-29 JV #9 recovery preflight results
 
 - User pulled and linted JV recovery/FK changes successfully, Git clean. Read-only `finance:inspect-missing-jv 9` on configured MySQL: project 3, voucher 9, pending header, 2 details, debit and credit each PKR 10,000, accounts/lines valid, 0 JV rows keyed by header ID, but 1 same-project voucher-number ledger row; `candidate_for_manual_recovery_review=false`. **No repair authorized**.
