@@ -629,6 +629,63 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertStringContainsString('source_ledger_identity_mismatch', $output);
     }
 
+    public function test_ledger_constraint_preflight_read_only_detects_duplicate_source(): void
+    {
+        foreach ([1, 2] as $index) {
+            DB::table('customer_ledger')->insert([
+                'project_id' => $this->project->id,
+                'customer_id' => $this->customer->id,
+                'plot_id' => $this->plot->id,
+                'transaction_type' => 'CR', 'type_id' => 88,
+                'reference' => 'CONFLICT-CR-88',
+                'amount_in' => 100, 'amount_out' => 0,
+                'date' => '2026-05-17', 'is_active' => 1,
+            ]);
+        }
+        $before = DB::table('customer_ledger')->count();
+        $status = \Illuminate\Support\Facades\Artisan::call('finance:preflight-ledger-constraints', [
+            'project' => $this->project->id,
+        ]);
+        $this->assertSame(1, $status);
+        $json = json_decode(\Illuminate\Support\Facades\Artisan::output(), true);
+        $this->assertTrue($json['read_only']);
+        $this->assertFalse($json['constraint_applied']);
+        $this->assertContains('source_duplicate_number', array_column($json['issues'], 'reason'));
+        $this->assertContains('source_duplicate_reference', array_column($json['issues'], 'reason'));
+        $this->assertSame($before, DB::table('customer_ledger')->count());
+    }
+
+    public function test_ledger_constraint_preflight_reports_cross_project_link_without_writes(): void
+    {
+        $source = CustomerLedger::create([
+            'project_id' => $this->project->id,
+            'customer_id' => $this->customer->id,
+            'plot_id' => $this->plot->id,
+            'transaction_type' => 'CR', 'type_id' => 71,
+            'reference' => 'CROSS-ACCOUNT-CR-71', 'amount_in' => 200,
+            'amount_out' => 0, 'date' => '2026-05-17', 'is_active' => 1,
+        ]);
+        $foreignAccount = ProjectHeadSubhead::create([
+            'project_id' => $this->otherProject->id,
+            'head_accounting_id' => 16, 'subhead_accounting_id' => 20,
+        ]);
+        DB::table('ledgers')->insert([
+            'customer_ledger_id' => $source->id, 'type' => 'CR',
+            'type_id' => 71, 'voucher_number' => 71,
+            'project_head_subheads_id' => $foreignAccount->id,
+            'reference' => 'CROSS-ACCOUNT-CR-71', 'amount_in' => 200,
+            'amount_out' => 0, 'date' => '2026-05-17', 'is_active' => 1,
+        ]);
+        $status = \Illuminate\Support\Facades\Artisan::call('finance:preflight-ledger-constraints', [
+            'project' => $this->project->id,
+        ]);
+        $this->assertSame(1, $status);
+        $json = json_decode(\Illuminate\Support\Facades\Artisan::output(), true);
+        $this->assertContains('ledger_foreign_account', array_column($json['issues'], 'reason'));
+        $this->assertContains('ledger_cross_project_source', array_column($json['issues'], 'reason'));
+        $this->assertSame(1, DB::table('ledgers')->count());
+    }
+
     public function test_project_voucher_audit_reports_orphan_cr_source_read_only(): void
     {
         $source = CustomerLedger::create([
