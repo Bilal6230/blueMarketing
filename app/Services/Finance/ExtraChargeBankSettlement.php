@@ -22,7 +22,11 @@ final class ExtraChargeBankSettlement
             ->where('project_id', $projectId)
             ->where('transaction_type', 'ECP')
             ->where('reference', 'like', 'EC_PAYMENT#' . $chargeId . '#%')
-            ->lockForUpdate()->get();
+            ->lockForUpdate()->get()
+            ->filter(fn ($row) => preg_match(
+                '/^EC_PAYMENT#' . $chargeId . '#[^#]+$/D',
+                (string) $row->reference
+            ) === 1);
     }
 
     private function assertSourceLegs(CustomerLedger $payment): void
