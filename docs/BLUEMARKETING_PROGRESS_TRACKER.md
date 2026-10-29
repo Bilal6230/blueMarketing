@@ -1,3 +1,9 @@
+### 2026-10-29 concurrent financial allocator/posting probe implementation
+
+- New `finance:probe-concurrent-voucher` command on explicit isolated MySQL database (`9f3476a5`): two separate processes can call the **real ProjectVoucherAllocator::next(project, CR)** inside separate transactions, sleep under the project lock, and insert synthetic customer_ledger/ledger voucher rows. `--results` checks that two sources and both legs hold unique [1,2] numbers (`fa08cfec`). This is beyond earlier project-lock-only probe. It requires a deliberately prepared synthetic minimal schema and is not yet verified locally.
+- MySQL constraint rehearsal already verified by user: all five rejection cases true and exit 0 on disposable MySQL 8.4.3; original regression 135 tests/830 assertions PASS. Actual schema FKs and legacy collisions remain unverified; synthetic unique/FK proof does not authorize altering historical tables.
+- P0.1 **96% remains the last locally verified engineering estimate** until actual concurrent posting results arrive. No source/ledger DDL on production/staging/client clone.
+
 ### 2026-10-29 verified isolated MySQL uniqueness/FK rehearsal
 
 - User pulled `7f78ce0`, PHP lint passed for `RehearseLedgerConstraints.php`, `git status --short` empty.
