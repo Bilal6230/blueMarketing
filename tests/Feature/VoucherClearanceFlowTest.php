@@ -176,7 +176,7 @@ class VoucherClearanceFlowTest extends TestCase
             'reference' => 'EC-FIRST-RECEIPT', 'amount' => '400',
         ]))->assertSessionHasNoErrors();
         $payment = CustomerLedger::where('transaction_type', 'ECP')->firstOrFail();
-        Ledger::create([
+        DB::table('ledgers')->insert([
             'customer_ledger_id' => $payment->id, 'type' => 'CR',
             'type_id' => 900, 'voucher_number' => 900,
             'project_head_subheads_id' => $this->bookingReceiptAccount->id,
@@ -474,6 +474,71 @@ class VoucherClearanceFlowTest extends TestCase
         });
     }
 
+    public function test_finance_source_contract_rejects_cross_project_and_wrong_series_before_posting(): void
+    {
+        $source = CustomerLedger::create([
+            'project_id' => $this->project->id, 'customer_id' => $this->customer->id,
+            'plot_id' => $this->plot->id, 'transaction_type' => 'CR',
+            'type_id' => 12, 'reference' => 'OWNERSHIP-CR-12',
+            'amount_in' => 100, 'amount_out' => 0,
+            'date' => '2026-05-17', 'is_active' => 1,
+        ]);
+        $foreign = ProjectHeadSubhead::create([
+            'project_id' => $this->otherProject->id,
+            'head_accounting_id' => 16, 'subhead_accounting_id' => 20,
+        ]);
+        $contract = app(\App\Services\Finance\FinancialSourceOwnership::class);
+        $leg = [
+            'customer_ledger_id' => $source->id, 'type' => 'CR',
+            'type_id' => 12, 'voucher_number' => 12,
+            'project_head_subheads_id' => $foreign->id,
+            'reference' => 'OWNERSHIP-CR-12', 'amount_in' => 100,
+            'amount_out' => 0, 'date' => '2026-05-17', 'is_active' => 1,
+        ];
+        try {
+            Ledger::create($leg);
+            $this->fail('Cross-project linked posting should be rejected');
+        } catch (\DomainException $e) {
+            $this->assertSame('FINANCE_SOURCE_OWNER_MISMATCH', $e->getMessage());
+        }
+        $this->assertSame(0, Ledger::where('customer_ledger_id', $source->id)->count());
+        $contract->assertUnique($this->project->id, 'CR', 13, 'NEW-CR-13');
+        try {
+            $contract->assertUnique($this->project->id, 'CR', 12, 'NEW-CR-13');
+            $this->fail('Reused voucher number should be rejected');
+        } catch (\DomainException $e) {
+            $this->assertSame('FINANCE_SOURCE_DUPLICATE', $e->getMessage());
+        }
+        try {
+            $contract->assertUnique($this->project->id, 'CR', 13, 'OWNERSHIP-CR-12');
+            $this->fail('Reused reference should be rejected');
+        } catch (\DomainException $e) {
+            $this->assertSame('FINANCE_SOURCE_DUPLICATE', $e->getMessage());
+        }
+    }
+
+    public function test_project_audit_detects_duplicate_source_identities_read_only(): void
+    {
+        foreach ([1, 2] as $n) {
+            CustomerLedger::create([
+                'project_id' => $this->project->id, 'customer_id' => $this->customer->id,
+                'plot_id' => $this->plot->id, 'transaction_type' => 'CP',
+                'type_id' => 42, 'reference' => 'DUPLICATE-CP-42',
+                'amount_in' => 0, 'amount_out' => 100,
+                'date' => '2026-05-17', 'is_active' => 1,
+            ]);
+        }
+        $before = CustomerLedger::where('transaction_type', 'CP')->count();
+        $code = \Illuminate\Support\Facades\Artisan::call('finance:audit-project-vouchers', [
+            'project' => $this->project->id,
+        ]);
+        $this->assertSame(1, $code);
+        $output = \Illuminate\Support\Facades\Artisan::output();
+        $this->assertStringContainsString('duplicate_project_source_number', $output);
+        $this->assertStringContainsString('duplicate_project_source_reference', $output);
+        $this->assertSame($before, CustomerLedger::where('transaction_type', 'CP')->count());
+    }
+
     public function test_project_audit_accepts_pending_ecp_without_ledger(): void
     {
         $charge = CustomerLedger::create([
@@ -510,7 +575,7 @@ class VoucherClearanceFlowTest extends TestCase
 
     public function test_project_audit_flags_rejected_ecp_with_foreign_series_ledger(): void
     {
-        $source = CustomerLedger::create([
+        $source = CustomerDB::table('ledgers')->insert([
             'project_id' => $this->project->id, 'customer_id' => $this->customer->id,
             'plot_id' => $this->plot->id, 'transaction_type' => 'ECP',
             'type_id' => 7, 'reference' => 'EC_PAYMENT#123#BAD',
