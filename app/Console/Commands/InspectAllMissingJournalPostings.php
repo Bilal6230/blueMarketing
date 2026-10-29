@@ -43,6 +43,11 @@ final class InspectAllMissingJournalPostings extends Command
                 ->where('a.project_id', $header->project_id)->where('l.type', 'JV')
                 ->where('l.voucher_number', $header->voucher_number)
                 ->get(['l.id', 'l.type_id']);
+            $sameNumberHeader = DB::table('journal_vouchers')
+                ->where('project_id', $header->project_id)
+                ->where('type', 'JV')
+                ->where('voucher_number', $header->voucher_number)
+                ->whereNull('deleted_at')->count();
             $results[] = [
                 'jv_id' => (int) $header->id,
                 'project_id' => (int) $header->project_id,
@@ -55,6 +60,8 @@ final class InspectAllMissingJournalPostings extends Command
                 'account_project_valid' => $accountValid,
                 'same_series_number_collision' => $collisions->isNotEmpty(),
                 'colliding_ledger_ids' => $collisions->pluck('id')->all(),
+                'colliding_ledger_type_ids' => $collisions->pluck('type_id')->unique()->values()->all(),
+                'header_number_reused' => $sameNumberHeader > 1,
                 'manual_review_required' => true,
             ];
         }
@@ -68,6 +75,7 @@ final class InspectAllMissingJournalPostings extends Command
                 $records->filter(fn ($r) => $r['balanced'] && $r['account_project_valid'] &&
                     !$r['same_series_number_collision'] && $r['detail_count'] >= 2)->count(),
             'with_same_series_number_collision' => $records->where('same_series_number_collision', true)->count(),
+            'with_reused_jv_header_number' => $records->where('header_number_reused', true)->count(),
             'cases' => $results,
             'automatically_authorized_to_repair' => false,
             'read_only' => true,
