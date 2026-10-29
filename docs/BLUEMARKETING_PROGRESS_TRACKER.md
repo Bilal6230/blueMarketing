@@ -1,3 +1,9 @@
+### 2026-10-29 verified isolated MySQL uniqueness/FK rehearsal
+
+- User pulled `7f78ce0`, PHP lint passed for `RehearseLedgerConstraints.php`, `git status --short` empty.
+- On MySQL 8.4.3 isolated `bluemarketing_finance_lock_test`, `finance:rehearse-ledger-constraints` returned exit 0, `all_passed=true`, all five true: duplicate number/reference, orphan source, foreign account, foreign source rejection; `application_tables_modified=false`. Rehearsal uses disposable synthetic tables, **not actual production schema**.
+- P0.1 engineering coverage estimate **95% -> 96%** for real MySQL composite-index/FK proof; **not 100%**. Remaining: finance-schema compatibility including legitimate CP receipt clearance and overloaded JV sources, enforceability against raw SQL, MySQL simultaneous real writer posting with unique-number checks, and remaining write-path acceptance. No live database migration or history repair authorized.
+
 ### 2026-10-29 P0.1 MySQL lock verified + real constraint DDL rehearsal implementation
 
 - User ran two **actual independent MySQL 8.4.3 processes** on disposable `bluemarketing_finance_lock_test` project ID 1: elapsed **4.024s** and **7.726s**, combined **8.76s** and explicit JSON check `PASS: MySQL project lock serialization verified`. This proves tested cooperating project-row locks serialize, not concurrent end-to-end financial posting.
