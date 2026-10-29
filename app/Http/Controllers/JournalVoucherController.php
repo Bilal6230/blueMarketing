@@ -461,11 +461,10 @@ class JournalVoucherController extends Controller
                     'description' => $validated['line_description'][$index] ?? '',
                     'created_by' => auth()->id(),
                 ]);
-                $ledger = Ledger::create([
+                $ledgerAttributes = [
                     'voucher_number' => $journalVoucher->voucher_number,
                     'type' => 'JV',
                     'type_id' => $journalVoucher->id,
-                    'journal_voucher_detail_id' => \Illuminate\Support\Facades\Schema::hasColumn('ledgers', 'journal_voucher_detail_id') ? $journalDetail->id : null,
                     'project_head_subheads_id' => $validated['sub_accounts'][$index],
                     'reference' => $validated['reference'] ?? null,
                     'amount_in' => $debit,
@@ -475,7 +474,11 @@ class JournalVoucherController extends Controller
                     'is_active' => true,
                     'status' => '0',
                     'date' => $validated['date'],
-                ]);
+                ];
+                if (\Illuminate\Support\Facades\Schema::hasColumn('ledgers', 'journal_voucher_detail_id')) {
+                    $ledgerAttributes['journal_voucher_detail_id'] = $journalDetail->id;
+                }
+                $ledger = Ledger::create($ledgerAttributes);
                 if ($metadataReady) {
                     app(\App\Services\Finance\LedgerSourceAttributionWriter::class)
                         ->recordNewPosting((int) $ledger->id, (int) $selectedProjectId,
