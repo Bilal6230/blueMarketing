@@ -138,6 +138,102 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame(0, DB::table('ledgers')->count());
     }
 
+    public function test_extra_charge_online_pending_clearance_and_replay_protection(): void
+    {
+        Schema::create('charge_types', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
+        DB::table('charge_types')->insert(['id' => 1, 'name' => 'Test charge']);
+        $this->callDeposit($this->depositPayload(1, [
+            'action' => 'extra_charge', 'charge_type_id' => 1,
+            'reference' => 'EC-BANK-DUE',
+        ]))->assertSessionHasNoErrors();
+        $charge = CustomerLedger::where('transaction_type', 'EC')->firstOrFail();
+        $bankPayload = $this->depositPayload(2, [
+            'action' => 'extra_charge_payment',
+            'extra_charge_id' => $charge->id,
+            'reference' => 'EC-BANK-RECEIPT',
+            'amount' => '500',
+        ]);
+        $this->callDeposit($bankPayload)->assertSessionHasNoErrors();
+        $pending = CustomerLedger::where('transaction_type', 'ECP')->firstOrFail();
+        $this->assertSame(0, (int) $pending->passing_status);
+        $this->assertSame(0, Ledger::where('customer_ledger_id', $pending->id)->count());
+        $this->callDeposit($bankPayload)->assertSessionHasErrors('msg');
+        $this->callDeposit(array_merge($bankPayload, [
+            'reference' => 'EC-BANK-OVER', 'amount' => '751',
+        ]))->assertSessionHasErrors('msg');
+        $this->assertSame(1, CustomerLedger::where('transaction_type', 'ECP')->count());
+
+        $bankAccount = ProjectHeadSubhead::create([
+            'project_id' => $this->project->id,
+            'head_accounting_id' => 55,
+            'subhead_accounting_id' => 155,
+        ]);
+        config(["finance.extra_charge_bank_accounts.{$this->project->id}" => $bankAccount->id]);
+        $clear = $this->depositPayload(2, [
+            'action' => 'extra_charge_clearance',
+            'extra_charge_payment_id' => $pending->id,
+            'passing_status' => 1,
+            'bank_post_at' => '2026-05-20',
+        ]);
+        $this->app['session.store']->forget('errors');
+        $this->callDeposit($clear)->assertSessionHasNoErrors();
+        $this->assertSame(1, (int) $pending->fresh()->passing_status);
+        $this->assertSame(2, Ledger::where('customer_ledger_id', $pending->id)->count());
+        $this->assertEquals(500, Ledger::where('customer_ledger_id', $pending->id)->sum('amount_in'));
+        $this->assertEquals(500, Ledger::where('customer_ledger_id', $pending->id)->sum('amount_out'));
+        $this->callDeposit($clear)->assertSessionHasErrors('msg');
+        $this->assertSame(2, Ledger::where('customer_ledger_id', $pending->id)->count());
+    }
+
+    public function test_extra_charge_cheque_rejection_releases_reserved_amount(): void
+    {
+        Schema::create('charge_types', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
+        DB::table('charge_types')->insert(['id' => 1, 'name' => 'Test charge']);
+        $this->callDeposit($this->depositPayload(1, [
+            'action' => 'extra_charge', 'charge_type_id' => 1,
+            'reference' => 'EC-CHEQUE-DUE',
+        ]))->assertSessionHasNoErrors();
+        $charge = CustomerLedger::where('transaction_type', 'EC')->firstOrFail();
+        $bankPayload = $this->depositPayload(3, [
+            'action' => 'extra_charge_payment',
+            'extra_charge_id' => $charge->id,
+            'reference' => 'EC-CHEQUE-PENDING',
+            'amount' => '1250',
+        ]);
+        $this->callDeposit($bankPayload)->assertSessionHasNoErrors();
+        $pending = CustomerLedger::where('transaction_type', 'ECP')->firstOrFail();
+        $this->callDeposit($this->depositPayload(3, [
+            'action' => 'extra_charge_clearance',
+            'extra_charge_payment_id' => $pending->id,
+            'passing_status' => 2,
+            'note' => 'Cheque returned',
+        ]))->assertSessionHasNoErrors();
+        $this->assertSame(2, (int) $pending->fresh()->passing_status);
+        $this->assertSame(0, Ledger::where('type', 'ECP')->count());
+
+        $cashAccount = ProjectHeadSubhead::create([
+            'project_id' => $this->project->id,
+            'head_accounting_id' => 77,
+            'subhead_accounting_id' => 177,
+        ]);
+        config(["finance.extra_charge_cash_accounts.{$this->project->id}" => $cashAccount->id]);
+        $this->callDeposit($this->depositPayload(1, [
+            'action' => 'extra_charge_payment',
+            'extra_charge_id' => $charge->id,
+            'reference' => 'EC-CHEQUE-REPLACED',
+            'amount' => '1250',
+        ]))->assertSessionHasNoErrors();
+        $this->assertSame(2, Ledger::where('type', 'ECP')->count());
+    }
+
     public function test_extra_charge_deferred_cash_partial_full_and_overpayment_are_atomic(): void
     {
         Schema::create('charge_types', function (Blueprint $table) {
