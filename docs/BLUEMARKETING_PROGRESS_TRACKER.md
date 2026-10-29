@@ -242,6 +242,14 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - P0.2 planning estimate **90% → 92%** on verified acceptance; this is not production finance certification. P0.1 93%, P0.3 15%, P0.4 35%, P0.5 10% unchanged. Next major work is mixed pending/cash reservations, MySQL concurrency and bank reconciliation; no production financial edits.
 - User's latest `git status --short` showed no output, so working tree clean.
 
+### 2026-10-29 major mixed-payment accounting hardening (pending local acceptance)
+
+- User confirmed prior EC suite **8 PASS / 80 assertions**, requested larger functional deliverables per turn and NO separate tracker-only turns. This implementation batch changes production code in Finance service, Booking controller, Extra Charge UI and regression tests together with this tracker.
+- New shared read-only balance contract in `ExtraChargeBankSettlement::balances` (`4d3b19f0`) partitions each source-linked EC receipt into **paid**, **pending**, **outstanding**, **available** using integer cents. It checks source owner, active status, payment state, expected two balanced ledger legs for cleared/cash receipts, zero legs for pending/rejected, and refuses overbooked/corrupt evidence. Pending reservation now uses this contract.
+- Cash payment path also uses the same authoritative available amount rather than its own divergent sum (`bdacc255`). Mixed pending bank + cash can no longer consume the same reserved balance; rejected cheque releases reservation, but old source remains linked. Outstanding UI derives actual settled paid amount separately from pending (`8a575ed7`); page adds Received/Pending columns and caps new payment forms by **available** amount rather than outstanding (`a2c9ac34`).
+- New mixed partial cash + pending online + attempted overpayment + rejection + final cash settlement regression added (`e80b4cda`). New changes **not tested on user's Laragon yet**, do not claim acceptance or increase percentages merely because code merged. Tests are SQLite feature tests and do not establish MySQL parallel isolation.
+- P0.2 retains **92% verified baseline** until acceptance. Request `php artisan test --filter="test_extra_charge_" --stop-on-failure` and lint in local Laragon. Next: reconciliation of real external bank account instruments, isolated MySQL race harness, audit and reversal flows; never infer production-safe ledger changes.
+
 ## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
 
 **These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
