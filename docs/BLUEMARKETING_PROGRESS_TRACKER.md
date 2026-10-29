@@ -250,6 +250,13 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - New mixed partial cash + pending online + attempted overpayment + rejection + final cash settlement regression added (`e80b4cda`). New changes **not tested on user's Laragon yet**, do not claim acceptance or increase percentages merely because code merged. Tests are SQLite feature tests and do not establish MySQL parallel isolation.
 - P0.2 retains **92% verified baseline** until acceptance. Request `php artisan test --filter="test_extra_charge_" --stop-on-failure` and lint in local Laragon. Next: reconciliation of real external bank account instruments, isolated MySQL race harness, audit and reversal flows; never infer production-safe ledger changes.
 
+### 2026-10-29 verified mixed Extra Charge cash/online/cheque acceptance
+
+- User pulled `52e709f8`, verified PHP lint for `ExtraChargeBankSettlement.php` and `BookingController.php`, then ran `php artisan test --filter="test_extra_charge_" --stop-on-failure`: **9 tests PASS, 97 assertions, 1.97 seconds**. `git status --short` was empty.
+- Verified regression coverage includes mixed cash + pending/rejected online settlement, available/outstanding calculations, deferred partial/full cash, pending bank and cheque clearance/rejection, duplicate and overbooking rejection, typed voucher numbers and automatic dedicated EC project account creation. These are focused SQLite tests; MySQL concurrent lock behavior and production ledger reconciliation remain unverified.
+- P0.2 engineering estimate moves **92% → 94%** for successfully verified combined reconciliation and posting contract. No artificial +10% jump. P0.1 93%, P0.3 15%, P0.4 35%, P0.5 10% unchanged. Prioritize substantial P0.3 source ownership and P0.4 controlled reversals next, alongside isolated MySQL concurrency tests.
+- No production/staging financial data has been modified by this review.
+
 ## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
 
 **These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
