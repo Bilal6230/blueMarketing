@@ -175,6 +175,10 @@ class VoucherClearanceFlowTest extends TestCase
         ]))->assertSessionHasErrors('msg');
         $this->assertSame(1, CustomerLedger::where('transaction_type', 'ECP')->count());
 
+        // These are multiple HTTP requests in one test. Laravel keeps
+        // previously flashed validation errors until session aging, so an
+        // earlier intentional rejection must not pollute a later success.
+        $this->app['session.store']->forget('errors');
         $this->callDeposit(array_merge($base, [
             'reference' => 'EC-PAY-2',
             'amount' => '850',
