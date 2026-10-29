@@ -2643,7 +2643,19 @@ class BookingController extends Controller
                             ->lockForUpdate()->get();
                         $receivedCents = 0;
                         foreach ($priorPayments as $priorPayment) {
+                            if ((int) $priorPayment->passing_status === 2) {
+                                continue; // Rejected payments do not reserve balance.
+                            }
                             $priorCents = (int) round((float) $priorPayment->amount_in * 100);
+                            if (in_array((int) $priorPayment->payment_type, [2, 3], true) &&
+                                (int) $priorPayment->passing_status === 0) {
+                                if (Ledger::where('customer_ledger_id', $priorPayment->id)
+                                    ->where('type', 'ECP')->exists()) {
+                                    throw new \DomainException('EC_PAYMENT_PENDING_LEDGER_CONFLICT');
+                                }
+                                $receivedCents += $priorCents;
+                                continue;
+                            }
                             $priorLegs = Ledger::query()
                                 ->where('customer_ledger_id', $priorPayment->id)
                                 ->where('type', 'ECP')
