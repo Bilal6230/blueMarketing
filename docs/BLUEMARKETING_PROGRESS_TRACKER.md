@@ -1,3 +1,11 @@
+### 2026-10-29 branch audit continuation — verified stock/labour JV identity collision
+
+- New documentation: `docs/LEDGER_SOURCE_IDENTITY_REPOSITORY_AUDIT_2026_10_29.md` (partial VERIFIED matrix; NOT complete whole-tree audit).
+- Verified current StockController::postEntryLedger and bill posting both set ledger type JV but type_id=getLastLedgerIdByType('JV')+1, unlike real JV header ID; references encode STOCK-ENTRY:{id} and STOCK-BILL:{id}, with customer_ledger_id. Thus type+type_id alone is not a reliable JV header FK even in current code.
+- Verified LabourController::createVoucher creates JV detail rows and two JV ledgers but inspected inserts omit journal_voucher_detail_id. Labour payment CP has independently generated type_id and customer_ledger_id.
+- Current LedgerController report calls LedgerVoucherDisplayService, which now falls back to raw ledger number absent trusted typed attribution; do not describe historic unconditional JV header resolution as still active. Current LedgerSourceAttributionWriter only supports journal_voucher/commission_voucher and requires header-based type_id, so stock needs source-specific redesign.
+- No finance code, tests, DB, migration or live/staging data changed. Full inventory and tests remain pending. Financial integrity not certified.
+
 ### 2026-10-29 handoff — resume comprehensive ledgers.type/type_id/reference write-path inventory
 
 - User's CURRENT request: inspect **the entire BlueMarketing project** and map every `ledgers` CREATE/UPDATE/DELETE writer and the precise meaning of `type`, `type_id`, and `reference` for **every voucher family** (JV, CV, CR/CP, PPR, EC/ECP, stock, labour, booking etc.). Explain source-table keys, whether reference is identity or business slip/freeform, project scope, risk of collision, and exact code file/method. This whole-project inventory is **NOT complete yet**, despite prior targeted audits; next chat must complete it, not claim completion or jump to modifications.
