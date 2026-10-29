@@ -138,6 +138,57 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame(0, DB::table('ledgers')->count());
     }
 
+    public function test_extra_charge_mixed_cash_pending_rejected_and_cleared_balances(): void
+    {
+        Schema::create('charge_types', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
+        DB::table('charge_types')->insert(['id' => 1, 'name' => 'Test charge']);
+        $this->callDeposit($this->depositPayload(1, [
+            'action' => 'extra_charge', 'charge_type_id' => 1, 'reference' => 'EC-MIX-DUE',
+        ]))->assertSessionHasNoErrors();
+        $charge = CustomerLedger::where('transaction_type', 'EC')->firstOrFail();
+        $cash = $this->depositPayload(1, [
+            'action' => 'extra_charge_payment', 'extra_charge_id' => $charge->id,
+            'reference' => 'EC-MIX-CASH', 'amount' => '400',
+        ]);
+        $this->callDeposit($cash)->assertSessionHasNoErrors();
+        $bank = $this->depositPayload(2, [
+            'action' => 'extra_charge_payment', 'extra_charge_id' => $charge->id,
+            'reference' => 'EC-MIX-PENDING', 'amount' => '600',
+        ]);
+        $this->callDeposit($bank)->assertSessionHasNoErrors();
+        $balance = app(\App\Services\Finance\ExtraChargeBankSettlement::class)->balances($charge);
+        $this->assertSame(40000, $balance['paid_cents']);
+        $this->assertSame(60000, $balance['pending_cents']);
+        $this->assertSame(85000, $balance['outstanding_cents']);
+        $this->assertSame(25000, $balance['available_cents']);
+        $this->callDeposit(array_merge($cash, [
+            'reference' => 'EC-MIX-OVER', 'amount' => '251',
+        ]))->assertSessionHasErrors('msg');
+        $this->assertSame(2, CustomerLedger::where('transaction_type', 'ECP')->count());
+        $pending = CustomerLedger::where('transaction_type', 'ECP')
+            ->where('payment_type', 2)->firstOrFail();
+        $this->app['session.store']->forget('errors');
+        $this->callDeposit($this->depositPayload(2, [
+            'action' => 'extra_charge_clearance',
+            'extra_charge_payment_id' => $pending->id,
+            'passing_status' => 2, 'note' => 'Bank returned',
+        ]))->assertSessionHasNoErrors();
+        $balance = app(\App\Services\Finance\ExtraChargeBankSettlement::class)->balances($charge);
+        $this->assertSame(0, $balance['pending_cents']);
+        $this->assertSame(85000, $balance['available_cents']);
+        $this->callDeposit(array_merge($cash, [
+            'reference' => 'EC-MIX-FINAL', 'amount' => '850',
+        ]))->assertSessionHasNoErrors();
+        $balance = app(\App\Services\Finance\ExtraChargeBankSettlement::class)->balances($charge);
+        $this->assertSame(125000, $balance['paid_cents']);
+        $this->assertSame(0, $balance['outstanding_cents']);
+        $this->assertSame(0, $balance['available_cents']);
+    }
+
     public function test_extra_charge_online_pending_clearance_and_replay_protection(): void
     {
         Schema::create('charge_types', function (Blueprint $table) {
