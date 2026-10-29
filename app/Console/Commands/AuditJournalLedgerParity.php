@@ -32,7 +32,7 @@ final class AuditJournalLedgerParity extends Command
             'missing_legs' => 0, 'extra_legs' => 0,
             'missing_debit_cents' => 0, 'missing_credit_cents' => 0,
             'extra_debit_cents' => 0, 'extra_credit_cents' => 0,
-            'examples' => []
+            'examples' => [], 'same_type_id_other_project_or_number' => []
         ];
         $headers = DB::table('journal_vouchers')
             ->where('type', 'JV')->whereNull('deleted_at')
@@ -50,6 +50,20 @@ final class AuditJournalLedgerParity extends Command
                 ->where('l.voucher_number', $h->voucher_number)
                 ->orderBy('l.id')
                 ->get(['l.id','l.project_head_subheads_id','l.amount_in','l.amount_out','l.is_active','l.date','l.created_at']);
+            if ($id !== null) {
+                $other = DB::table('ledgers as l')
+                    ->leftJoin('project_head_subheads as a', 'a.id', '=', 'l.project_head_subheads_id')
+                    ->where('l.type', 'JV')->where('l.type_id', $h->id)
+                    ->where(function ($q) use ($h) {
+                        $q->where('a.project_id', '<>', $h->project_id)
+                          ->orWhereNull('a.project_id')
+                          ->orWhere('l.voucher_number', '<>', $h->voucher_number);
+                    })->orderBy('l.id')->limit(100)
+                    ->get(['l.id', 'l.voucher_number', 'a.project_id',
+                        'l.project_head_subheads_id','l.amount_in','l.amount_out',
+                        'l.date','l.created_at','l.detail','l.reference']);
+                $result['same_type_id_other_project_or_number'] = $other->toArray();
+            }
             $keys = [];
             foreach ($ledger as $row) {
                 $key = $this->key($row->project_head_subheads_id, $row->amount_in, $row->amount_out);
