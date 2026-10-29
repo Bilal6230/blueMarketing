@@ -408,7 +408,7 @@
 
                                                     <td>
                                                         <span
-                                                            class="badge {{ getPaymentTypeDetails($i->payment_type)['badge'] }}"
+                                                            class="badge {{ $i->transaction_type === 'EC' ? 'badge-warning' : getPaymentTypeDetails($i->payment_type)['badge'] }}"
                                                             style="width: 80%">
                                                             {{ $i->transaction_type === 'EC' ? 'Outstanding Charge' : getPaymentTypeDetails($i->payment_type)['name'] }}
                                                         </span>
