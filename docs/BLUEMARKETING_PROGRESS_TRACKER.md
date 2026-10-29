@@ -1,3 +1,10 @@
+### 2026-10-29 implementation: safe JV provenance and recovery evidence
+
+- Uploaded `bluenew.sql` offline investigation: 84 active JV headers (272 nondeleted detail rows) with no JV ledger legs; total missing side debits = credits = PKR 4,941,032.00; project 3=11, 5=10, 6=63. This is a **reconciliation candidate**, not authorization to backfill. `docs/JV_DUMP_RECOVERY_ASSESSMENT.md` committed earlier.
+- Added per-header read-only `finance:inspect-missing-jv <id>` command (`60f1257`) checking balanced details, same-project accounts, any JV type_id polymorphic conflicts, and same-project voucher-number legs. Returns a review packet with explicit `automatically_safe_to_post=false`. No writes.
+- New nullable `ledgers.journal_voucher_detail_id` FK migration (`73b9229`), new ledger model fillable attribute (`b36294a`), and active `JournalVoucherController::store` writes exact persisted detail ID to new JV ledger leg when column exists (`873f275`). Migration does NOT backfill historical rows and is NOT applied merely by merging code. Needs test on disposable restored database, backup/restore and migration approval before deployment.
+- P0.1 still **98% estimated** pending isolated migration + feature tests, historical accounting reconciliation, and approved idempotent repair. Do NOT issue blanket ledger inserts, unknown balance adjustments, production `migrate`, or historical renumbering.
+
 ### 2026-10-29 uploaded full SQL dump direct analysis — source numbers != posted voucher numbers
 
 - User supplied `bluenew.sql` MySQL 8.4.3 export. Offline parser read 5,580 `customer_ledger`, 17,855 `ledgers`, 561 project accounts, 991 JV headers, 5,147 JV details without restoring or mutating the dump. Source-number collision groups: Project 3 CR 6, Project 5 CR 91, Project 6 CR 4 (202 involved source rows; 2 have no linked ledger, 7 inactive). **98 of 101 groups have distinct posted ledger voucher numbers**, so historical `customer_ledger.type_id` should not be assumed equal to ledger voucher. Example Project 5 source number 1: source IDs 1621/2692 map to ledger voucher 474/594.
