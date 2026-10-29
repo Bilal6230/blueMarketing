@@ -34,7 +34,7 @@ final class RepairMissingGeneralJournalLegs extends Command
         $hasDetailFk = Schema::hasColumn('ledgers', 'journal_voucher_detail_id');
         $apply = (bool) $this->option('apply');
         $summary = ['database' => $name, 'mode' => $apply ? 'apply' : 'dry_run',
-            'eligible_headers' => 0, 'insertable_legs' => 0, 'blocked_headers' => [],
+            'eligible_headers' => 0, 'eligible_jv_ids' => [], 'insertable_legs' => 0, 'blocked_headers' => [],
             'inserted_legs' => 0, 'debit_cents' => 0, 'credit_cents' => 0];
 
         // One transaction across all headers: on any error DB rolls back all work.
@@ -106,6 +106,7 @@ final class RepairMissingGeneralJournalLegs extends Command
                 }
                 if (!$missing) continue;
                 $summary['eligible_headers']++;
+                $summary['eligible_jv_ids'][] = (int) $h->id;
                 $summary['insertable_legs'] += count($missing);
                 foreach ($missing as $d) {
                     $summary['debit_cents'] += (int) round((float) $d->debit * 100);
