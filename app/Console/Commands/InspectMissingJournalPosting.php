@@ -47,6 +47,11 @@ final class InspectMissingJournalPosting extends Command
             ->where('l.type','JV')->where('a.project_id',$header->project_id)
             ->where('l.voucher_number',$header->voucher_number)
             ->count();
+        $collidingLegs = DB::table('ledgers as l')
+            ->join('project_head_subheads as a', 'a.id', '=', 'l.project_head_subheads_id')
+            ->where('l.type', 'JV')->where('a.project_id', $header->project_id)
+            ->where('l.voucher_number', $header->voucher_number)
+            ->get(['l.id', 'l.type_id', 'l.project_head_subheads_id', 'l.amount_in', 'l.amount_out']);
         $candidate = (string) $header->type === 'JV' && $header->deleted_at === null &&
             $details->count() >= 2 && $debit > 0 && $debit === $credit &&
             $validLines && $accountsValid && $potentialLegs->isEmpty() && $potentialCollision === 0;
@@ -61,6 +66,7 @@ final class InspectMissingJournalPosting extends Command
             'accounts_valid' => $accountsValid, 'lines_valid' => $validLines,
             'polymorphic_jv_legs_with_same_type_id' => $potentialLegs->count(),
             'same_project_voucher_number_ledger_legs' => $potentialCollision,
+            'same_project_jv_number_collision_legs' => $collidingLegs->toArray(),
             'candidate_for_manual_recovery_review' => $candidate,
             'automatically_safe_to_post' => false,
             'details' => $details->map(fn ($r) => [
