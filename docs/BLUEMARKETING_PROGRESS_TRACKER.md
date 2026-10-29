@@ -189,6 +189,13 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - **User manual blocker:** finance owner must identify and approve one `project_head_subheads.id` for cash receipts *for each applicable project*. Do not pick an account by an approximate name or automatically create an actual cash asset account. Add the ID to `config/finance.php` once approved, then test in isolated DB. No production/staging data edited.
 - P0.2's previous verified planning estimate **88% retained until new settlement passes local acceptance**; 10-point increase cannot truthfully be asserted yet. P0.1 93%, P0.3 15%, P0.4 35%, P0.5 10%. **Next:** verify settlement, enable approved cash account, implement pending online/cheque and rejection/clearance, MySQL concurrency, paid reversal.
 
+### 2026-10-29 local settlement test FAILURE — investigation open
+
+- User pulled `8b0e055e`; four PHP lint checks passed; first deferred-payment test failed on second/final cash installment (400 then 850 against charge 1250) after duplicate-replay and 851 overpayment rejection. Local result **1 passed, 1 failed, 4 pending (15 assertions)** with `--stop-on-failure`. The failing redirect returned generic `msg`, so the original exception **is not yet known**; do not label this fixed or increase P0.2 progress.
+- Commit `84848deb` allows the controller to return exception class/message **only under Laravel testing environment**, preserving generic production errors; rerun focused test to reveal exact code path and fix it in following implementation. This is diagnosis, not settlement fix.
+- Untracked local `.env_old` appeared. It has not been touched/committed. It may contain secrets; never add it to Git.
+- P0.2 remains **88% provisional**, cash partial/full settlement **not verified** until reproducer passes.
+
 ## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
 
 **These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
