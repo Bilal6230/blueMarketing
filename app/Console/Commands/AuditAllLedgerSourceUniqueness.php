@@ -68,6 +68,17 @@ final class AuditAllLedgerSourceUniqueness extends Command
         })->count();
         $numberKeyReady = $positiveDuplicateGroups === 0 && $numberIdentityMissing === 0;
         // References are business slip values and not eligible for blanket UNIQUE.
+        // Report collision distribution without changing any historical row.
+        // A reference is not necessarily a unique receipt identity.
+        $collisionDistribution = (clone $positive)
+            ->select('project_id', 'transaction_type')
+            ->selectRaw('COUNT(*) AS colliding_groups')
+            ->fromSub(
+                (clone $positive)->select('project_id', 'transaction_type', 'type_id')
+                    ->groupBy('project_id', 'transaction_type', 'type_id')
+                    ->havingRaw('COUNT(*) > 1'), 'collisions'
+            )->groupBy('project_id', 'transaction_type')
+            ->orderBy('project_id')->orderBy('transaction_type')->get();
         $ok = $numberGroups === 0 && $referenceGroups === 0 && $incomplete === 0;
         $this->line(json_encode([
             'finance_source_count'=>(clone $base)->count(),
@@ -80,6 +91,7 @@ final class AuditAllLedgerSourceUniqueness extends Command
             'reference_unique_index_recommended'=>false,
             'positive_number_duplicate_group_count'=>$positiveDuplicateGroups,
             'positive_number_examples'=>$positiveExamples->toArray(),
+            'positive_number_collision_distribution'=>$collisionDistribution->toArray(),
             'by_type'=>$byType->toArray(),
             'number_examples'=>$numberConflicts->take(10)->values()->toArray(),
             'reference_examples'=>$referenceConflicts->take(10)->values()->toArray(),
