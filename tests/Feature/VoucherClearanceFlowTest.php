@@ -223,12 +223,6 @@ class VoucherClearanceFlowTest extends TestCase
         $this->assertSame(2, (int) $pending->fresh()->passing_status);
         $this->assertSame(0, Ledger::where('type', 'ECP')->count());
 
-        $cashAccount = ProjectHeadSubhead::create([
-            'project_id' => $this->project->id,
-            'head_accounting_id' => 77,
-            'subhead_accounting_id' => 177,
-        ]);
-        config(["finance.extra_charge_cash_accounts.{$this->project->id}" => $cashAccount->id]);
         $this->callDeposit($this->depositPayload(1, [
             'action' => 'extra_charge_payment',
             'extra_charge_id' => $charge->id,
@@ -252,13 +246,6 @@ class VoucherClearanceFlowTest extends TestCase
         ]))->assertSessionHasNoErrors();
         $charge = CustomerLedger::where('transaction_type', 'EC')->firstOrFail();
 
-        // Test-only explicit project cash account. No production inference.
-        $cashAccount = ProjectHeadSubhead::create([
-            'project_id' => $this->project->id,
-            'head_accounting_id' => 41,
-            'subhead_accounting_id' => 111,
-        ]);
-        config(["finance.extra_charge_cash_accounts.{$this->project->id}" => $cashAccount->id]);
         $base = $this->depositPayload(1, [
             'action' => 'extra_charge_payment',
             'extra_charge_id' => $charge->id,
@@ -315,10 +302,11 @@ class VoucherClearanceFlowTest extends TestCase
             ->join('subhead_accountings as s', 's.id', '=', 'p.subhead_accounting_id')
             ->where('p.project_id', $this->project->id)
             ->where('h.name', 'Extra Charge')->where('s.name', 'Extra Charge Cash')
+            ->select('p.id as account_id')
             ->first();
         $this->assertNotNull($cash);
         $this->assertSame(1, Ledger::where('type', 'ECP')
-            ->where('project_head_subheads_id', $cash->id)->count());
+            ->where('project_head_subheads_id', $cash->account_id)->count());
     }
 
     public function test_extra_charge_auto_creates_project_accounts_and_reuses_income_account(): void
