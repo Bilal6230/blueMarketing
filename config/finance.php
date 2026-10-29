@@ -22,4 +22,7 @@ return [
     // Approved existing project cash account, indexed by project ID.
     // No default or inferred cash account: settlement remains blocked until configured.
     'extra_charge_cash_accounts' => [],
+
+    // Approved project bank/clearing asset, never inferred from legacy account names.
+    'extra_charge_bank_accounts' => [],
 ];
