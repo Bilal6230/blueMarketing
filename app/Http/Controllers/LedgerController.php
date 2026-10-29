@@ -288,9 +288,14 @@ class LedgerController extends Controller
                     throw new \DomainException('DUPLICATE_CASH_VOUCHER_SOURCE');
                 }
 
+                // Reserve once BEFORE inserting the source: allocating after
+                // source creation incorrectly skips the just-created number.
+                $resolvedVoucherNumber = app(\App\Services\Finance\ProjectVoucherAllocator::class)
+                    ->next((int) $selectedProjectId, $effectiveVoucherType);
+
                 $customerLedger = CustomerLedger::create([
                     'transaction_type' => $effectiveVoucherType,
-                    'type_id' => get_new_typeID($effectiveVoucherType),
+                    'type_id' => $resolvedVoucherNumber,
                     'reference' => $request->input('reference'),
                     'project_id' => $selectedProjectId ?? null,
                     'customer_id' => $customerID ?? null,
@@ -337,10 +342,7 @@ class LedgerController extends Controller
                     }
                 }
 
-                $resolvedVoucherNumber = app(\App\Services\Finance\ProjectVoucherAllocator::class)
-                    ->next((int) $selectedProjectId, $effectiveVoucherType);
 
-                $lastId = getLastLedgerIdByType($effectiveVoucherType);
                 $detail = $this->buildCashVoucherDetail(
                     $effectiveVoucherType,
                     $paymentType,
@@ -356,7 +358,7 @@ class LedgerController extends Controller
                     'customer_ledger_id' => $customerLedger->id,
                     'voucher_number' => $resolvedVoucherNumber,
                     'type' => $effectiveVoucherType,
-                    'type_id' => $lastId + 1,
+                    'type_id' => $resolvedVoucherNumber,
                     'project_head_subheads_id' => $projectHeadSubhead->id,
                     'reference' => $request->reference,
                     'amount_in' => $amount_in,
