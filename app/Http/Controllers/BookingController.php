@@ -2543,6 +2543,102 @@ class BookingController extends Controller
 
                     break;
 
+                case 'extra_charge_payment':
+                    DB::transaction(function () use ($request, $customer_id) {
+                        $projectId = (int) getSelectedTown();
+                        $chargeId = (int) $request->input('extra_charge_id');
+                        $plotId = (int) $request->input('plot_id');
+                        $reference = trim((string) $request->input('reference'));
+                        $amount = str_replace(',', '', trim((string) $request->input('amount')));
+                        $date = (string) $request->input('date', '');
+                        $parsedDate = \DateTimeImmutable::createFromFormat('!Y-m-d', $date);
+                        if ($projectId <= 0 || $chargeId <= 0 || $reference === '' ||
+                            strlen($reference) > 100 ||
+                            !preg_match('/^\d{1,10}(?:\.\d{1,2})?$/D', $amount) ||
+                            (float) $amount <= 0 || !$parsedDate ||
+                            $parsedDate->format('Y-m-d') !== $date ||
+                            (int) $request->input('payment_type') !== 1) {
+                            throw new \DomainException('EC_PAYMENT_INVALID_OR_UNSUPPORTED');
+                        }
+
+                        // Serialize charge creation and all cooperating settlements
+                        // for this project, including concurrent first-time payments.
+                        if (!Project::query()->whereKey($projectId)->lockForUpdate()->exists()) {
+                            throw new \DomainException('EC_PAYMENT_PROJECT_NOT_FOUND');
+                        }
+                        $charge = CustomerLedger::query()
+                            ->where('project_id', $projectId)
+                            ->where('customer_id', $customer_id)
+                            ->where('plot_id', $plotId)
+                            ->where('transaction_type', 'EC')
+                            ->where('is_active', 1)
+                            ->whereKey($chargeId)->lockForUpdate()->first();
+                        if (!$charge || $charge->amount_out > 0) {
+                            throw new \DomainException('EC_PAYMENT_CHARGE_NOT_FOUND');
+                        }
+                        $mapping = app(\App\Services\Finance\ExtraChargeAccounts::class)
+                            ->forProject($projectId, (int) $customer_id, $plotId);
+                        $cashId = (int) config("finance.extra_charge_cash_accounts.{$projectId}", 0);
+                        $cashAccount = $cashId ? ProjectHeadSubhead::query()
+                            ->where('project_id', $projectId)->whereKey($cashId)
+                            ->lockForUpdate()->first() : null;
+                        if (!$cashAccount || in_array($cashId, array_values($mapping), true)) {
+                            throw new \DomainException('EC_PAYMENT_CASH_ACCOUNT_NOT_APPROVED');
+                        }
+
+                        // Each payment keeps a stable source identity. Never
+                        // mutate the original charge or overwrite its ledger legs.
+                        $sourceReference = 'EC_PAYMENT#' . $charge->id . '#' . $reference;
+                        if (CustomerLedger::query()->where('project_id', $projectId)
+                            ->where('transaction_type', 'ECP')
+                            ->where('reference', $sourceReference)
+                            ->lockForUpdate()->exists()) {
+                            throw new \DomainException('EC_PAYMENT_ALREADY_POSTED');
+                        }
+                        $priorPayments = CustomerLedger::query()
+                            ->where('project_id', $projectId)
+                            ->where('transaction_type', 'ECP')
+                            ->where('is_active', 1)
+                            ->where('reference', 'like', 'EC_PAYMENT#' . $charge->id . '#%')
+                            ->lockForUpdate()->get();
+                        $receivedCents = $priorPayments->sum(function ($row) {
+                            return (int) round((float) $row->amount_in * 100);
+                        });
+                        $chargeCents = (int) round((float) $charge->amount_in * 100);
+                        $paymentCents = (int) round((float) $amount * 100);
+                        if ($receivedCents + $paymentCents > $chargeCents) {
+                            throw new \DomainException('EC_PAYMENT_EXCEEDS_OUTSTANDING');
+                        }
+                        $number = app(\App\Services\Finance\ProjectVoucherAllocator::class)
+                            ->next($projectId, 'ECP');
+                        $payment = CustomerLedger::create([
+                            'project_id' => $projectId, 'customer_id' => $customer_id,
+                            'plot_id' => $plotId, 'transaction_type' => 'ECP',
+                            'type_id' => $number, 'reference' => $sourceReference,
+                            'date' => $date, 'payment_type' => 1,
+                            'amount_in' => $amount, 'amount_out' => 0,
+                            'description' => 'Extra Charge payment for EC source #' . $charge->id,
+                            'is_active' => 1, 'is_approve' => 0,
+                        ]);
+                        foreach ([
+                            [$cashId, $amount, '0.00'],
+                            [(int) $mapping['debit_account_id'], '0.00', $amount],
+                        ] as [$accountId, $in, $out]) {
+                            Ledger::create([
+                                'customer_ledger_id' => $payment->id,
+                                'type' => 'ECP', 'type_id' => $number,
+                                'voucher_number' => $number,
+                                'project_head_subheads_id' => $accountId,
+                                'reference' => $sourceReference,
+                                'amount_in' => $in, 'amount_out' => $out,
+                                'date' => $date, 'detail' => 'EC payment #' . $charge->id,
+                                'is_active' => 1, 'status' => 0,
+                                'create_by' => Auth::id(), 'update_by' => Auth::id(),
+                            ]);
+                        }
+                    });
+                    break;
+
                 case 'extra_charge':
                     // Only explicitly approved project + charge type mappings may
                     // post. Legacy "null" sources are not reused or mutated.
