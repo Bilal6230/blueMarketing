@@ -37,14 +37,39 @@ final class AuditAllLedgerSourceUniqueness extends Command
                 ->whereNotNull('reference')->where('reference','!=','')
                 ->groupBy('project_id','transaction_type','reference')->havingRaw('COUNT(*) > 1'),
             'dupes')->count();
+        // Distinguish legacy empty/zero-number rows from positive-number
+        // collisions that block a real voucher sequence UNIQUE index.
+        $positive = (clone $base)->whereNotNull('project_id')
+            ->whereNotNull('type_id')->where('type_id', '>', 0);
+        $positiveDuplicateGroups = DB::query()->fromSub(
+            (clone $positive)->select('project_id', 'transaction_type', 'type_id')
+                ->groupBy('project_id', 'transaction_type', 'type_id')
+                ->havingRaw('COUNT(*) > 1'), 'positive_duplicates')->count();
+        $positiveExamples = (clone $positive)
+            ->select('project_id', 'transaction_type', 'type_id')
+            ->selectRaw('COUNT(*) AS total')
+            ->groupBy('project_id', 'transaction_type', 'type_id')
+            ->havingRaw('COUNT(*) > 1')->orderBy('project_id')
+            ->limit(20)->get();
+        $byType = (clone $base)->select('transaction_type')
+            ->selectRaw('COUNT(*) AS total')
+            ->selectRaw('SUM(CASE WHEN type_id IS NULL OR type_id <= 0 THEN 1 ELSE 0 END) AS missing_or_zero_number')
+            ->selectRaw("SUM(CASE WHEN reference IS NULL OR reference = '' THEN 1 ELSE 0 END) AS missing_reference")
+            ->groupBy('transaction_type')->orderBy('transaction_type')->get();
+        // A reference may be a reused receipt/slip identifier, so this does
+        // not itself establish a duplicate accounting voucher.
         $ok = $numberGroups === 0 && $referenceGroups === 0 && $incomplete === 0;
         $this->line(json_encode([
             'finance_source_count'=>(clone $base)->count(),
             'duplicate_number_group_count'=>$numberGroups,
             'duplicate_reference_group_count'=>$referenceGroups,
             'incomplete_identity_count'=>$incomplete,
-            'number_examples'=>$numberConflicts->toArray(),
-            'reference_examples'=>$referenceConflicts->toArray(),
+            'positive_number_duplicate_group_count'=>$positiveDuplicateGroups,
+            'positive_number_examples'=>$positiveExamples->toArray(),
+            'by_type'=>$byType->toArray(),
+            'number_examples'=>$numberConflicts->take(10)->values()->toArray(),
+            'reference_examples'=>$referenceConflicts->take(10)->values()->toArray(),
+            'reference_may_be_nonunique_business_slip'=>true,
             'candidate_unique_index_ready'=>$ok,
             'index_applied'=>false,'read_only'=>true,
         ],JSON_THROW_ON_ERROR));
