@@ -1,3 +1,8 @@
+### 2026-10-29 verified local MySQL schema shape + index inspection follow-on
+
+- User pulled `4251c97`, `InspectLedgerSchema.php` syntax PASS and Git clean. Real configured MySQL returned all required columns present for `ledgers`, `customer_ledger`, `project_head_subheads`, `projects`, `journal_vouchers`: `minimum_shape_compatible=true`, but `safe_to_automatically_add_strict_source_fk=false` and `indexes_and_historical_collisions_verified=false`. This is **minimum shape** only, not unique/FK or historical integrity certification.
+- Extended read-only schema inspector to list actual MySQL indexes and constituent columns (`694fca88`); await local execution. Do not advance P0.1 beyond **98% engineering estimate** until physical/index and historical collision acceptance. This new inspection makes no application writes or schema changes.
+
 ### 2026-10-29 P0.1 final compatibility inspection implementation
 
 - New read-only `finance:inspect-ledger-schema` command (`f02c53c4`) reports actual finance schema required-table/column compatibility and explicitly refuses to infer source FK safety from an overloaded polymorphic `type_id`; records valid CR/PPR-linked CP receipt clearance relationship. Does not mutate financial rows, create schema constraints or guess ledger ownership. Run on authorized local disposable BlueMarketing schema or via approved read-only database access; never run PHPUnit against financial clone.
