@@ -1,3 +1,10 @@
+### 2026-10-29 P0.1 MySQL lock verified + real constraint DDL rehearsal implementation
+
+- User ran two **actual independent MySQL 8.4.3 processes** on disposable `bluemarketing_finance_lock_test` project ID 1: elapsed **4.024s** and **7.726s**, combined **8.76s** and explicit JSON check `PASS: MySQL project lock serialization verified`. This proves tested cooperating project-row locks serialize, not concurrent end-to-end financial posting.
+- User independently verified **135 feature tests / 830 assertions PASS** and two new constraint-preflight tests **2 / 10 PASS**, syntax clean. The earlier PowerShell summary "FAIL" was a blank `Start-Process.ExitCode` reporting issue; JSON timing verification confirmed lock serialization.
+- Added `finance:rehearse-ledger-constraints` (`46a2dcd`): only runs under explicit test-DB safeguards, uses **three disposable synthetic tables** for composite unique source number/reference, project-aware source/account FKs, and five deliberate negative inserts. It returns per-check JSON and drops rehearsal tables. **No DDL on real application tables**. Command awaits user's local MySQL run before evidence can be credited.
+- P0.1 implementation estimate **93% -> 95%** on completed real MySQL row-lock verification; remaining 5 points include physical production-schema compatibility/constraint integration, actual simultaneous financial posting and all writer-path acceptance. 95% is not finance release approval. No automatic real-data FK or uniqueness migration until read-only historical preflight and finance-approved design.
+
 # BlueMarketing — Combined Development & Financial Integrity Tracker
 
 Updated: 2026-10-28 (Asia/Karachi)
