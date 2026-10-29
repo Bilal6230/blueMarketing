@@ -141,15 +141,10 @@ final class ExtraChargeBankSettlement
                 'note' => 'Bank payment rejected: ' . trim((string) $request->input('note'))]);
             return;
         }
-        $approvedAccount = (int) config("finance.extra_charge_bank_accounts.{$projectId}", 0);
-        $bank = $approvedAccount ? ProjectHeadSubhead::query()
-            ->where('project_id', $projectId)->whereKey($approvedAccount)
-            ->lockForUpdate()->first() : null;
-        if (!$bank) {
-            throw new \DomainException('ECP_BANK_ACCOUNT_NOT_APPROVED');
-        }
         $mapping = app(ExtraChargeAccounts::class)->forProject(
             $projectId, (int) $charge->customer_id, (int) $charge->plot_id);
+        $approvedAccount = app(ExtraChargeAccounts::class)
+            ->settlementAccount($projectId, 'Bank');
         if (in_array($approvedAccount, array_values($mapping), true)) {
             throw new \DomainException('ECP_BANK_ACCOUNT_CONFLICT');
         }
