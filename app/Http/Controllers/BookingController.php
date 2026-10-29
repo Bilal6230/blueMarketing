@@ -2272,7 +2272,7 @@ class BookingController extends Controller
             ->where('project_id', $projectId)
             ->where('transaction_type', 'ECP')
             ->where('is_active', 1)
-            ->get(['reference', 'amount_in']);
+            ->get(['id', 'reference', 'amount_in', 'payment_type', 'passing_status']);
         $paidCents = [];
         foreach ($payments as $payment) {
             if (preg_match('/^EC_PAYMENT#([1-9][0-9]*)#/', (string) $payment->reference, $match)) {
@@ -2291,6 +2291,14 @@ class BookingController extends Controller
             return $item;
         });
         $x['data'] = $data;
+        $x['ecPendingPayments'] = $payments->filter(function ($payment) {
+            return in_array((int) $payment->payment_type, [2, 3], true) &&
+                (int) $payment->passing_status === 0;
+        });
+        $x['ecBankReady'] = (bool) ProjectHeadSubhead::query()
+            ->where('project_id', $projectId)
+            ->whereKey((int) config("finance.extra_charge_bank_accounts.{$projectId}", 0))
+            ->exists();
         $x['ecCashReady'] = (bool) ProjectHeadSubhead::query()
             ->where('project_id', $projectId)
             ->whereKey((int) config("finance.extra_charge_cash_accounts.{$projectId}", 0))
