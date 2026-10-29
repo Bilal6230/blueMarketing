@@ -20,31 +20,38 @@ final class AuditProjectVoucherSources extends Command
         $types = ['CR', 'CP', 'PPR', 'EC', 'ECP', 'JV', 'SV', 'BR'];
         $sources = DB::table('customer_ledger')
             ->where('project_id', $project)->whereIn('transaction_type', $types)
-            ->select('id', 'transaction_type', 'reference', 'type_id', 'amount_in', 'amount_out')
+            ->select('id', 'customer_id', 'plot_id', 'transaction_type', 'reference', 'type_id', 'amount_in', 'amount_out', 'payment_type', 'passing_status', 'is_active')
             ->orderBy('id')->get();
         $sourceIds = $sources->pluck('id')->all();
         $ledgerRows = DB::table('ledgers as l')
             ->leftJoin('project_head_subheads as a', 'a.id', '=', 'l.project_head_subheads_id')
-            ->whereIn('l.type', $types)
             ->where(function ($q) use ($project, $sourceIds) {
                 $q->where('a.project_id', $project);
                 if ($sourceIds) {
                     $q->orWhereIn('l.customer_ledger_id', $sourceIds);
                 }
             })
-            ->select('l.id', 'l.customer_ledger_id', 'l.type', 'l.reference',
+            ->select('l.id', 'l.customer_ledger_id', 'l.type', 'l.type_id', 'l.reference',
                 'l.voucher_number', 'l.project_head_subheads_id',
-                'a.project_id as account_project_id', 'l.amount_in', 'l.amount_out')
+                'a.project_id as account_project_id', 'l.amount_in', 'l.amount_out', 'l.is_active')
             ->orderBy('l.id')->get();
         $bySource = $ledgerRows->filter(fn ($l) => $l->customer_ledger_id !== null)
             ->groupBy('customer_ledger_id');
         $issues = [];
         foreach ($sources as $source) {
             $legs = $bySource->get($source->id, collect());
-            if ($legs->isEmpty()) {
+            $ecFamily = in_array($source->transaction_type, ['EC', 'ECP'], true);
+            $pendingBank = $source->transaction_type === 'ECP' &&
+                in_array((int) $source->payment_type, [2, 3], true) &&
+                (int) $source->passing_status !== 1;
+            if ($legs->isEmpty() && !$pendingBank) {
                 $issues[] = ['source_id' => $source->id, 'type' => $source->transaction_type,
                     'reason' => 'source_without_ledger'];
                 continue;
+            }
+            if ($pendingBank && $legs->isNotEmpty()) {
+                $issues[] = ['source_id' => $source->id,
+                    'reason' => 'pending_or_rejected_ecp_has_ledger'];
             }
             foreach ($legs as $leg) {
                 if ((string) $leg->type !== (string) $source->transaction_type ||
@@ -53,10 +60,15 @@ final class AuditProjectVoucherSources extends Command
                     $issues[] = ['source_id' => $source->id, 'ledger_id' => $leg->id,
                         'reason' => 'source_ledger_identity_mismatch'];
                 }
+                if ($ecFamily && (
+                    (int) $leg->type_id !== (int) $source->type_id ||
+                    (int) $leg->voucher_number !== (int) $source->type_id ||
+                    (int) $leg->is_active !== 1)) {
+                    $issues[] = ['source_id' => $source->id, 'ledger_id' => $leg->id,
+                        'reason' => 'ec_series_or_active_state_mismatch'];
+                }
             }
-            // EC and its source-linked cash settlements are explicitly
-            // balanced two-leg postings. Other families have distinct contracts.
-            if (in_array($source->transaction_type, ['EC', 'ECP'], true)) {
+            if ($ecFamily && !$pendingBank) {
                 $incoming = $legs->sum(fn ($l) => (int) round((float) $l->amount_in * 100));
                 $outgoing = $legs->sum(fn ($l) => (int) round((float) $l->amount_out * 100));
                 if ($legs->count() !== 2 || $incoming !== $outgoing ||
@@ -64,8 +76,26 @@ final class AuditProjectVoucherSources extends Command
                     $issues[] = ['source_id' => $source->id, 'reason' => 'ec_or_ecp_legs_unbalanced'];
                 }
             }
+            if ($source->transaction_type === 'ECP') {
+                if (!preg_match('/^EC_PAYMENT#([1-9][0-9]*)#[^#]+$/D', (string) $source->reference, $match)) {
+                    $issues[] = ['source_id' => $source->id, 'reason' => 'ecp_invalid_source_reference'];
+                } else {
+                    $charge = $sources->first(fn ($row) =>
+                        (int) $row->id === (int) $match[1] &&
+                        $row->transaction_type === 'EC');
+                    if (!$charge ||
+                        (int) $charge->customer_id !== (int) $source->customer_id ||
+                        (int) $charge->plot_id !== (int) $source->plot_id ||
+                        (int) $charge->is_active !== 1) {
+                        $issues[] = ['source_id' => $source->id, 'reason' => 'ecp_wrong_or_missing_charge'];
+                    }
+                }
+            }
         }
         foreach ($ledgerRows as $leg) {
+            if ($leg->customer_ledger_id === null && in_array($leg->type, ['EC', 'ECP'], true)) {
+                $issues[] = ['ledger_id' => $leg->id, 'reason' => 'typed_ec_ledger_without_source_id'];
+            }
             if ($leg->customer_ledger_id !== null &&
                 !$sources->contains('id', $leg->customer_ledger_id)) {
                 $issues[] = ['ledger_id' => $leg->id, 'reason' => 'orphan_or_foreign_customer_source'];
