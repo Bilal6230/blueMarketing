@@ -1,3 +1,9 @@
+### 2026-10-29 JV #9 recovery preflight results
+
+- User pulled and linted JV recovery/FK changes successfully, Git clean. Read-only `finance:inspect-missing-jv 9` on configured MySQL: project 3, voucher 9, pending header, 2 details, debit and credit each PKR 10,000, accounts/lines valid, 0 JV rows keyed by header ID, but 1 same-project voucher-number ledger row; `candidate_for_manual_recovery_review=false`. **No repair authorized**.
+- Added series-scoped collision evidence in inspector (`11dcec6`, `a30cd7c`): return existing `JV` ledger IDs, polymorphic type IDs/accounts/amounts sharing displayed voucher; excludes unrelated voucher series. Read-only. Pending local or offline verification. Do not insert missing JV legs on a mere header/detail match.
+- Migration remains unexecuted. No financial data changed. P0.1 estimate unchanged 98%.
+
 ### 2026-10-29 implementation: safe JV provenance and recovery evidence
 
 - Uploaded `bluenew.sql` offline investigation: 84 active JV headers (272 nondeleted detail rows) with no JV ledger legs; total missing side debits = credits = PKR 4,941,032.00; project 3=11, 5=10, 6=63. This is a **reconciliation candidate**, not authorization to backfill. `docs/JV_DUMP_RECOVERY_ASSESSMENT.md` committed earlier.
