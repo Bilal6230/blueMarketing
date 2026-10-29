@@ -136,7 +136,7 @@ final class RepairMissingGeneralJournalLegs extends Command
                         $posted->where('journal_voucher_detail_id', $d->id);
                     }
                     if ($posted->count() !== 1) {
-                        throw new \\RuntimeException('JV ledger verification failed: rolled back journal '.$h->id.' detail '.$d->id);
+                        throw new \RuntimeException('JV ledger verification failed: rolled back journal '.$h->id.' detail '.$d->id);
                     }
                     $summary['inserted_legs']++;
                 }
