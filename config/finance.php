@@ -2,27 +2,19 @@
 
 return [
     /*
-     * Explicitly reviewed by the finance owner BEFORE enabling a charge.
-     * Format:
-     * 'extra_charge_accounts' => [
-     *     PROJECT_ID => [
-     *         CHARGE_TYPE_ID => [
-     *             'approved' => true,
-     *             'debit_account_id' => PROJECT_HEAD_SUBHEAD_ID,
-     *             'credit_account_id' => PROJECT_HEAD_SUBHEAD_ID,
-     *         ],
-     *     ],
-     * ],
+     * Extra Charge project accounts are resolved automatically inside the
+     * selected project's posting transaction:
+     *   Extra Charge / Extra Charge Income
+     *   Extra Charge / Extra Charge Receivable (customer/plot scoped)
+     *   Extra Charge / Extra Charge Cash
+     *   Extra Charge / Extra Charge Bank
      *
-     * No default account inference. Cash mode only until the EC bank
-     * instrument/clearance workflow is audited and implemented.
+     * No manual IDs are required. Existing project accounts with these exact
+     * names are reused. Other project cash/commission or bank heads are never
+     * silently repurposed by this Extra Charge workflow.
+     *
+     * IMPORTANT: These are dedicated bookkeeping subheads; actual external
+     * bank instrument identifiers and treasury transfer/reconciliation remain
+     * separate from ledger account auto-provisioning.
      */
-    'extra_charge_accounts' => [],
-
-    // Approved existing project cash account, indexed by project ID.
-    // No default or inferred cash account: settlement remains blocked until configured.
-    'extra_charge_cash_accounts' => [],
-
-    // Approved project bank/clearing asset, never inferred from legacy account names.
-    'extra_charge_bank_accounts' => [],
 ];
