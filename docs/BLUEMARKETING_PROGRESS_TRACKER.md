@@ -257,6 +257,15 @@ This tracker combines the earlier project-progress dashboard and the newer datab
 - P0.2 engineering estimate moves **92% → 94%** for successfully verified combined reconciliation and posting contract. No artificial +10% jump. P0.1 93%, P0.3 15%, P0.4 35%, P0.5 10% unchanged. Prioritize substantial P0.3 source ownership and P0.4 controlled reversals next, alongside isolated MySQL concurrency tests.
 - No production/staging financial data has been modified by this review.
 
+### 2026-10-29 Batch 1 — EC/ECP strict source ownership and ledger anti-corruption (new code, pending local test)
+
+- **Implementation shipped in this turn (not tracker-only):** `ExtraChargeBankSettlement::assertSourceLegs` now reads **all** ledger legs linked to an ECP source instead of only type=ECP and validates exact two legs, balanced cents, source reference, active state, `type='ECP'`, matching persisted `type_id` and `voucher_number`, and correct project ownership for each project_head_subheads ID (`1553f428`). Thus unrelated/forged zero-value or mis-series legs do not bypass a seemingly balanced ECP posting.
+- `ExtraChargeBankSettlement::linked` checks strict source identity syntax `EC_PAYMENT#chargeId#slipRef` and **fails closed** for malformed/multiple-delimiter references instead of silently excluding them (`00fccf2d`, `208cf115`); `BookingController` refuses `#` delimiter injection in new payment slip references (`0910f489`). Pending/rejected source checks refuse any accidentally linked general-ledger row, not only `type='ECP'`.
+- New isolated feature regressions cover delimiter injection and refusal to post a second settlement when an unrelated `CR` ledger leg is attached to the first ECP receipt (`c3699ccc`).
+- **Verification gate:** user previously verified **9 tests PASS / 97 assertions** at `52e709f8`. Above code and tests are **not yet locally run**; do NOT claim new batch fully verified or artificially increase the percentage by 10 points. P0.1 93%, P0.2 94%, P0.3 15%, P0.4 35%, P0.5 10% retained pending acceptance. This batch makes concrete source-ownership improvements contributing to P0.3 but does not implement physical typed foreign keys.
+- **Next independent 10-point-sized batch:** P0.3 typed-source reference migration plan + legacy row collision audit, test-DB-only constraints and writers; P0.4 source-linked reversal and locked deletion; MySQL real concurrency. Never run production migration prior to evidence/approval. User requested no separate tracking-only turns; update this file in every implementation batch.
+- Run `php artisan test --filter="test_extra_charge_" --stop-on-failure` after pulling. No real financial data changed by this code review.
+
 ## P0 — PRIMARY DELIVERY ROADMAP: DATABASE `ledgers` INTEGRITY
 
 **These five workstreams supersede the Laravel upgrade, demo, Hand Cash investigation, and generic testing as active priorities.** The older project baseline below is *secondary*, not a release gate. Progress figures below are approximate implementation/validation coverage, **not** historical financial correctness, and must not be treated as certified completion.
