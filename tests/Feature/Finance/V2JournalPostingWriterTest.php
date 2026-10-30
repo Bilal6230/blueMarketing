@@ -173,6 +173,7 @@ class V2JournalPostingWriterTest extends TestCase
         $mine = $reader->lines(1, '2026-10-01', '2026-10-31');
         $this->assertCount(2, $mine);
         $this->assertSame('journal', $mine[0]['source_kind']);
+        $this->assertSame(51, $mine[0]['source_id']);
         $this->assertSame(51, (int) $mine[0]['voucher_number']);
         $this->assertArrayNotHasKey('type_id', $mine[0]);
         $this->assertSame([], $reader->lines(2));
@@ -193,6 +194,15 @@ class V2JournalPostingWriterTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
         (new V2PostingReportReader())->lines(1, '2026-11-01', '2026-10-01');
+    }
+
+    public function test_v2_report_rejects_claim_without_its_typed_source_record(): void
+    {
+        (new V2JournalPostingWriter())->post(1, 51, 'JV-REPORT-REQUEST-0003');
+        DB::table('finance_posting_journal_sources')->delete();
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('V2_REPORT_MISSING_TYPED_SOURCE_LINK');
+        (new V2PostingReportReader())->lines(1);
     }
 
 }
