@@ -7,6 +7,7 @@ param(
     [Parameter(Mandatory = $true)][string]$SourceSql,
     [Parameter(Mandatory = $true)][string]$StageDir,
     [switch]$Apply,
+    [switch]$ResumePrepared,
     [switch]$PreserveLegacyZeroDate,
     [string]$Database = 'bluemarketing_v2_local_rehearsal',
     [string]$ConfirmEmptyDatabase = ''
@@ -126,18 +127,38 @@ try {
     $env:DB_URL = ''
     $env:DATABASE_URL = ''
     Write-Host 'STAGE 2 — ISOLATED LOCAL DB ONLY. No old database is selected.' -ForegroundColor Yellow
-    Run-Checked 'php' @(
-        'tools/database_v2/check_local_v2_target.php',
-        ('--expected-name=' + $Database), '--require-empty'
-    )
-    Run-Checked 'php' @(
-        'artisan', 'migrate', '--path=database/v2_migrations',
-        '--force', '--no-interaction'
-    )
-    Run-Checked 'php' @(
-        'artisan', 'db:seed', '--class=V2LegacyBanksSeeder',
-        '--force', '--no-interaction'
-    )
+    if ($ResumePrepared) {
+        Write-Host 'RECOVERY MODE: SQL staging preflight followed by READ-ONLY V2 prepared-schema verification.' -ForegroundColor Cyan
+        # Stage already migrated and bank-seeded; NEVER run migrations,
+        # db:seed or any schema reset again on this recovery path.
+        Run-Checked 'php' @(
+            'tools/database_v2/import_staged_mysql.php',
+            ('--dir=' + $staging),
+            ('--expected-sha256=' + $expectedSha),
+            ('--expected-rows=' + $expectedRows),
+            ('--source-evidence=' + (Join-Path $staging 'source_fingerprints.json')),
+            '--preserve-legacy-zero-date'
+        )
+        Run-Checked 'php' @(
+            'tools/database_v2/check_local_v2_target.php',
+            ('--expected-name=' + $Database),
+            ('--require-prepared'),
+            ('--manifest=' + (Join-Path $staging 'manifest.json'))
+        )
+    } else {
+        Run-Checked 'php' @(
+            'tools/database_v2/check_local_v2_target.php',
+            ('--expected-name=' + $Database), '--require-empty'
+        )
+        Run-Checked 'php' @(
+            'artisan', 'migrate', '--path=database/v2_migrations',
+            '--force', '--no-interaction'
+        )
+        Run-Checked 'php' @(
+            'artisan', 'db:seed', '--class=V2LegacyBanksSeeder',
+            '--force', '--no-interaction'
+        )
+    }
     Run-Checked 'php' @(
         'tools/database_v2/import_staged_mysql.php',
         ('--dir=' + $staging),
