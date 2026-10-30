@@ -31,8 +31,21 @@ $foreign = (int) $db->selectOne(
      WHERE TABLE_SCHEMA=DATABASE() AND REFERENCED_TABLE_NAME IS NOT NULL"
 )->n;
 
-if ($tables !== 69 || $foreign < 108) {
+if ($tables !== 70 || $foreign < 116) {
     throw new RuntimeException("Unexpected V2 topology: {$tables} tables / {$foreign} FK columns");
+}
+
+$sourceClaims = (int) $db->selectOne(
+    "SELECT COUNT(*) AS n FROM information_schema.TABLES
+     WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='finance_posting_source_claims'"
+)->n;
+$sourceChecks = (int) $db->selectOne(
+    "SELECT COUNT(*) AS n FROM information_schema.TABLE_CONSTRAINTS
+     WHERE CONSTRAINT_SCHEMA=DATABASE() AND CONSTRAINT_TYPE='CHECK'
+       AND TABLE_NAME LIKE 'finance_posting_%_sources'"
+)->n;
+if ($sourceClaims !== 1 || $sourceChecks < 7) {
+    throw new RuntimeException("V2 cross-family canonical source claims not DB-enforced: {$sourceChecks} family CHECKs");
 }
 
 foreach ([
@@ -163,5 +176,5 @@ if ((int) DB::table('ledgers')->count() !== $original) {
 }
 
 echo "SUCCESS: disposable V2 MySQL 8.4; {$tables} tables; {$foreign} FKs; "
-    . "correct broker/bank/account identity; 27 seeded banks; "
+    .  "source-claim exclusivity CHECKs; correct broker/bank/account identity; 27 seeded banks; "
     . "legacy migration-history isolated; rejected invalid ledger write; rollback intact.\n";
