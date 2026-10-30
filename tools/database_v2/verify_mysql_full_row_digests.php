@@ -185,7 +185,9 @@ foreach ($tables as $sourceTable => $columns) {
     }
 }
 if ($total !== 120165 || $failures !== []) {
-    fwrite(STDERR, 'V2_FULL_ROW_PARITY_FAILED: '
+    fwrite(STDERR,
+        ($verifyUtc ? 'V2_FULL_ROW_UTC_SEMANTIC_PARITY_FAILED: '
+            : 'V2_FULL_ROW_PARITY_FAILED: ')
         . count($failures) . '/57 differing tables, total rows=' . $total . PHP_EOL);
     foreach ($failures as $name) {
         fwrite(STDERR, 'TABLE_DIFF: ' . $name . PHP_EOL);
@@ -196,3 +198,8 @@ if ($total !== 120165 || $failures !== []) {
 echo ($verifyUtc ? "V2_FULL_ROW_UTC_SEMANTIC_PARITY_PASS" : "V2_FULL_ROW_PARITY_PASS") . ": 57/57 tables, 120165/120165 rows, "
     . "all original columns compared, including duplicate identical rows.\n";
 echo "LIMITATION: does not prove JV typed source attribution or new V2 derived-column policy.\n";
+if ($verifyUtc) {
+    echo "V2_UTC_NOTE: full-column parity was evaluated using source's explicit +00:00 export timezone; "
+        . "no DB rows or server settings were modified.\n";
+}
+
