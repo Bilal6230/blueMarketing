@@ -13,6 +13,7 @@
  */
 declare(strict_types=1);
 
+use App\Services\Finance\V2HistoricalImportTargetGuard;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -205,6 +206,15 @@ if (!$synthetic && !$preserveZeroDate) {
     blocked('Source contains one zero TIMESTAMP: require explicit --preserve-legacy-zero-date and private --source-evidence; no silent repair');
 }
 
+// Validate connection CONFIG before accessing MySQL or its business schema.
+$connectionName = (string) config('database.default');
+$connectionConfig = config('database.connections.' . $connectionName);
+if (!is_array($connectionConfig)) {
+    blocked('DATABASE_CONNECTION_CONFIGURATION_MISSING');
+}
+V2HistoricalImportTargetGuard::assertAllowed(
+    $connectionConfig, (string) config('app.env'), $synthetic
+);
 $connection = DB::connection();
 $database = (string) $connection->getDatabaseName();
 $env = (string) config('app.env');
