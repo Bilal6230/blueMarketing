@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api\V1\Mobile;
 
+use App\Services\Finance\FinancialPendingChangeGuard;
+
 use App\Http\Controllers\Api\V1\Mobile\Concerns\ResolvesMobileProjectAccess;
 use App\Models\CustomerLedger;
 use App\Models\DraftLedger;
@@ -429,6 +431,12 @@ class MobileApprovalController extends BaseMobileController
 
         if (!is_array($newValues)) {
             throw new \DomainException('validation_error');
+        }
+
+        // Mobile approval writes through Query Builder (no Eloquent events).
+        // Reuse the same fail-closed posted-finance policy as the web route.
+        if (in_array($table, ['ledgers', 'customer_ledger', 'draft_ledgers'], true)) {
+            app(FinancialPendingChangeGuard::class)->assertAllowed($table, $newValues);
         }
 
         $recordExists = DB::table($table)->where('id', $locked->record_id)->exists();
