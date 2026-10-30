@@ -257,11 +257,20 @@ return new class extends Migration
                 }
             });
         }
+
+        // Preserve all 14 old Laravel migration-history rows as BUSINESS
+        // EVIDENCE, never overwrite V2's own framework migrations table.
+        Schema::create('legacy_migration_history', function (Blueprint $table): void {
+            $table->id();
+            $table->string('migration', 255);
+            $table->integer('batch');
+        });
     }
 
     public function down(): void
     {
         $this->guard();
+        Schema::dropIfExists('legacy_migration_history');
         [$definitions, $constraints] = $this->specifications();
         foreach (array_reverse($this->creationOrder($definitions, $this->foreignKeys($constraints))) as $name) {
             Schema::dropIfExists($name);
