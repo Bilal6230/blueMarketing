@@ -215,3 +215,31 @@ jobs:
           php artisan migrate --path=database/v2_migrations --force --no-interaction
           php artisan db:seed --class=V2LegacyBanksSeeder --force --no-interaction
           php tools/database_v2/verify_mysql_schema.php
+      - name: Rehearse BAD historical FK import then prove full transaction rollback
+        run: |
+          python3 tools/database_v2/tests/build_synthetic_mysql_import.py --out=/tmp/v2bad --invalid-fk
+          php -l tools/database_v2/import_staged_mysql.php
+          php tools/database_v2/import_staged_mysql.php --dir=/tmp/v2bad --expected-sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --expected-rows=3
+          if php tools/database_v2/import_staged_mysql.php --dir=/tmp/v2bad --expected-sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --expected-rows=3 --ci-synthetic --apply; then
+            echo "ERROR: invalid FK unexpectedly imported"
+            exit 1
+          fi
+          php -r '
+          require "vendor/autoload.php"; $a=require "bootstrap/app.php"; $a->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+          if (Illuminate\Support\Facades\DB::table("projects")->count()!==0) { throw new RuntimeException("Rollback leaked project row"); }
+          if (Illuminate\Support\Facades\DB::table("legacy_migration_history")->count()!==0) { throw new RuntimeException("Rollback leaked history row"); }
+          '
+
+      - name: Rehearse SUCCESSFUL fake 57-table V2 import with timestamps, PK and historical migration archive
+        run: |
+          python3 tools/database_v2/tests/build_synthetic_mysql_import.py --out=/tmp/v2good
+          php tools/database_v2/import_staged_mysql.php --dir=/tmp/v2good --expected-sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --expected-rows=2 --ci-synthetic --apply
+          php -r '
+          require "vendor/autoload.php"; $a=require "bootstrap/app.php"; $a->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+          $db=Illuminate\Support\Facades\DB::connection();
+          $p=$db->table("projects")->where("id",99999)->first();
+          if (!$p || $p->created_at!=="2020-02-03 04:05:06" || $p->updated_at!=="2020-04-05 06:07:08" || $p->address!=="synthetic; address") { throw new RuntimeException("Original synthetic IDs/timestamps/text were not preserved"); }
+          if ((int)$db->table("legacy_migration_history")->where("id",42)->count()!==1 || (int)$db->table("migrations")->count()!==3) { throw new RuntimeException("Legacy migration history was not safely archived"); }
+          echo "V2 synthetic historical import PASS: 57 tables, 2 source rows, exact ID/timestamps, FK rollback".PHP_EOL;
+          '
+
