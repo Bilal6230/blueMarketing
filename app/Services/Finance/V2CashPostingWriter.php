@@ -25,7 +25,14 @@ final class V2CashPostingWriter
         return intdiv($cents, 100) . '.' . str_pad((string) ($cents % 100), 2, '0', STR_PAD_LEFT);
     }
 
-    public function post(int $projectId, int $sourceId, string $requestKey, array $allocation, ?int $actorId = null): int
+    public function post(
+        int $projectId,
+        int $sourceId,
+        string $requestKey,
+        array $allocation,
+        ?int $actorId = null,
+        ?string $expectedSeries = null
+    ): int
     {
         V2IsolatedConnectionGuard::assertAllowed();
         foreach (['projects', 'customer_ledger', 'project_head_subheads',
@@ -41,7 +48,7 @@ final class V2CashPostingWriter
             throw new \DomainException('V2_CASH_INVALID_POSTING_INPUT');
         }
 
-        return DB::transaction(function () use ($projectId, $sourceId, $requestKey, $allocation, $actorId): int {
+        return DB::transaction(function () use ($projectId, $sourceId, $requestKey, $allocation, $actorId, $expectedSeries): int {
             if (!DB::table('projects')->where('id', $projectId)->lockForUpdate()->exists()) {
                 throw new \DomainException('V2_CASH_PROJECT_NOT_FOUND');
             }
@@ -49,7 +56,12 @@ final class V2CashPostingWriter
                 ->where('id', $sourceId)->where('project_id', $projectId)
                 ->lockForUpdate()->first();
             if (!$source || (int) ($source->is_active ?? 1) !== 1 ||
-                !in_array((string) $source->transaction_type, ['CR', 'CP'], true)) {
+                !in_array((string) $source->transaction_type, ['CR', 'CP', 'PPR', 'EC', 'ECP'], true)
+                || ($expectedSeries === null
+                    ? !in_array((string) $source->transaction_type, ['CR', 'CP'], true)
+                    : (string) $source->transaction_type !== $expectedSeries)
+                || (in_array((string) $source->transaction_type, ['PPR', 'EC', 'ECP'], true)
+                    && (int) ($source->is_approve ?? 0) !== 1)) {
                 throw new \DomainException('V2_CASH_SOURCE_NOT_ACTIVE');
             }
 
@@ -99,6 +111,11 @@ final class V2CashPostingWriter
                 throw new \DomainException('V2_CASH_UNBALANCED_OR_SOURCE_MISMATCH');
             }
 
+            // Legacy type_id is a polymorphic voucher reference, NOT a real
+            // voucher sequence for PPR/EC/ECP. Never cast it as identity.
+            $batchNumber = in_array((string) $source->transaction_type, ['CR', 'CP'], true)
+                ? $source->type_id : null;
+
             $fingerprint = hash('sha256', json_encode([
                 'project' => $projectId,
                 'source_id' => $sourceId,
@@ -122,7 +139,7 @@ final class V2CashPostingWriter
                     ->where('source_kind', 'cash')->exists();
                 if (!$claim || !$canonicalClaim ||
                     (string) $existing->voucher_series !== (string) $source->transaction_type ||
-                    (string) $existing->voucher_number !== (string) $source->type_id ||
+                    (string) $existing->voucher_number !== (string) $batchNumber ||
                     (string) $existing->effective_date !== (string) $source->date ||
                     $existing->reversal_of_batch_id !== null ||
                     !hash_equals((string) $existing->payload_sha256, $fingerprint)) {
@@ -153,7 +170,7 @@ final class V2CashPostingWriter
             $batchId = DB::table('finance_posting_batches')->insertGetId([
                 'project_id' => $projectId,
                 'voucher_series' => (string) $source->transaction_type,
-                'voucher_number' => $source->type_id,
+                'voucher_number' => $batchNumber,
                 'request_key' => $requestKey,
                 'payload_sha256' => $fingerprint,
                 'effective_date' => $source->date,
