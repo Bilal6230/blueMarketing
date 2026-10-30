@@ -24,13 +24,13 @@ class V2ImportPlannerTests(unittest.TestCase):
         self.cols, self.original_fks, self.extra_fks, _ = v2.verified_schema()
         statements = []
         for table in self.cols:
-            # Some legacy tables (password_resets, permission pivots,
-            # stock_counters) genuinely have no `id` column.
+            # Password resets, permission pivots and stock counters do not
+            # have an `id` column; source metadata chooses their real key.
             fixture_column = 'id' if 'id' in self.cols[table] else next(iter(self.cols[table]))
             statements.append(
-                'CREATE TABLE `' + table + '` (\\n'
-                '  `' + fixture_column + '` bigint unsigned NOT NULL\\n'
-                ') ENGINE=InnoDB;\\n'
+                'CREATE TABLE `' + table + '` (\n'
+                '  `' + fixture_column + '` bigint unsigned NOT NULL\n'
+                ') ENGINE=InnoDB;\n'
             )
             if table == 'journal_vouchers':
                 statements.append(
@@ -43,7 +43,9 @@ class V2ImportPlannerTests(unittest.TestCase):
                     "(1, 'original_migration_name', 2);\n"
                 )
             else:
-                statements.append('INSERT INTO `' + table + '` (`id`) VALUES\n(1);\n')
+                statements.append(
+                    'INSERT INTO `' + table + '` (`' + fixture_column + '`) VALUES\n(1);\n'
+                )
         self.file.write_text('\n'.join(statements), encoding='utf-8')
         self.sha = hashlib.sha256(self.file.read_bytes()).hexdigest()
 
