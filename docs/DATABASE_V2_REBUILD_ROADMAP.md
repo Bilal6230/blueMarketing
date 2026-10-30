@@ -4,28 +4,35 @@
 **Repository branch for planning:** `upgrade/laravel-framework`  
 **Source evidence:** user-uploaded `u429032065_dev.sql` (private; do NOT commit raw SQL or personal/financial rows)  
 **Target:** isolated Database V2, new migration baseline, faithful historical import, verified application refactor and reconciliation.  
-**Current state:** PLAN + FIRST READ-ONLY SNAPSHOT CHECK; no V2 schema or application migration created.
+**Current state (2026-10-30):** 57-table schema dictionary + 46 proposed true-source FKs implemented, full isolated V2 Laravel migration baseline and typed finance pilot, successful disposable MySQL 8.4 migration/rollback, checksum-guarded historical import staging tool; historical data import, complete application refactor and production acceptance remain PENDING.
 
 ## Live progress bar (acceptance-gate based)
 
-**Overall: 1 / 24 gates = 4%**  
-`[█░░░░░░░░░░░░░░░░░░░]` **4%**
+**Overall: 6 / 24 gates = 25%**  
+`[█████░░░░░░░░░░░░░░░]` **25%**
 
 The percentage counts **verified completion gates**, not lines of code, elapsed time, engineering quality, or production readiness. Each of six phases has four equally weighted gates. Update this meter and the last verified evidence with every substantive completed milestone. Do not mark a gate done on code creation alone when tests/approval are required.
 
 | Phase | Workstream | Gates passed | Progress | Status |
 |---|---|---:|---:|---|
-| 1 | Legacy SQL + repository dependency audit | **1 / 4** | **25%** | IN PROGRESS |
-| 2 | Database V2 schema / migration design | 0 / 4 | 0% | NOT STARTED |
-| 3 | Clean schema creation and constraint rehearsal | 0 / 4 | 0% | NOT STARTED |
+| 1 | Legacy SQL + repository dependency audit | **2 / 4** | **50%** | IN PROGRESS |
+| 2 | Database V2 schema / migration design | **1 / 4** | **25%** | IN PROGRESS |
+| 3 | Clean schema creation and constraint rehearsal | **3 / 4** | **75%** | IN PROGRESS |
 | 4 | Faithful old-to-new data transfer | 0 / 4 | 0% | NOT STARTED |
 | 5 | Full Laravel application refactor | 0 / 4 | 0% | NOT STARTED |
 | 6 | Tests, financial parity and controlled cutover | 0 / 4 | 0% | NOT STARTED |
 
+### 2026-10-30 accepted-gate evidence (newest)
+
+- **P1.G2 accepted:** complete source DDL/PK/unique/FK metadata, 54 candidate disposition (46 real FK links + 8 business/polymorphic), 3 source-project mismatch families recorded without guess-based deletions.
+- **P2.G1 accepted:** full 56-source-entity normalized Laravel schema (+ banks + legacy migration archive), verified in MySQL 8.4; tenant ownership exceptions deliberately documented, not silently coerced.
+- **P3.G1/P3.G2/P3.G3 accepted:** V2-only explicit migration directory under existing upgrade branch; fresh disposable MySQL `bluemarketing_v2_ci` migration, 27-bank seeding, physical FK/unique/width/restrict checks, complete rollback and migration re-run. GitHub Actions: <https://github.com/Bilal6230/blueMarketing/actions/runs/41092458939> (V2 MySQL job SUCCESS; unrelated old finance regression FAILED).
+- **Engineering sub-milestones M1–M5 delivered:** [five-milestone execution document](DATABASE_V2_FIVE_MILESTONE_EXECUTION_2026_10_30.md). No production or V1 database touched, historical 120,165-row import not executed. Overall acceptance **25%**, not 100% because code + schema tests do not prove full reconciliation or entire app refactor.
+
 ## Phase 1 — Audit the legacy database AND actual code
 
 - [x] **P1.G1** Identify uploaded SQL snapshot; enumerate schema, counts, actual FKs, soft-delete fields, key-type risks and initial orphan checks. Evidence: [snapshot assessment](DATABASE_V2_LEGACY_SNAPSHOT_AUDIT_2026_10_30.md). **Completed 2026-10-30 (read-only).**
-- [ ] **P1.G2** Exhaustive 57-table relationship dictionary: actual FK, inferred application join, cardinality, nullable policy, key type, project ownership, delete semantics, expected parent, and orphan/duplicate evidence.
+- [x] **P1.G2** Exhaustive 57-table physical relationship dictionary: 40 original FKs, 46 verified parent-source candidates, 8 deliberately unlinked identifiers, account width, cardinality/nullability/index data and project-exception evidence. **Completed 2026-10-30;** [relationship and tenant acceptance evidence](DATABASE_V2_57_TABLE_RELATIONSHIP_AND_TENANT_ACCEPTANCE_2026_10_30.md). Application authorization/business exceptions require separate P1.G3–G4.
 - [ ] **P1.G3** Exhaustive repository audit of ALL CRUD/ledger writers and readers: models, controllers, services, commands, jobs, observers, APIs, views, helpers, SQL, imports, bookings, stock, labour, CR/CP/PPR/EC/ECP/JV/CV. Check explicitly against the named branch, not default-branch search.
 - [ ] **P1.G4** Evidence-based owner-reviewed architecture issue register and signed-off mapping from each legacy column and source family to V2. Unknown historical ownership stays UNKNOWN.
 
@@ -33,7 +40,7 @@ The percentage counts **verified completion gates**, not lines of code, elapsed 
 
 ## Phase 2 — Design schema and import mappings
 
-- [ ] **P2.G1** Define entities, PK/FK cardinalities, project tenancy, required and optional links, indexes, decimal precision, status enums and normalized timestamp rules.
+- [x] **P2.G1** Define full V2 physical schema entities, PK/FK widths/cardinality, nullable/project-link exceptions, original indexes/uniques, DECIMAL/status enums, original timestamp fields, and typed source pilot. **Completed 2026-10-30, verified on disposable MySQL 8.4.** Owner policy choices and full application mapping remain P2.G2–G4.
 - [ ] **P2.G2** Design ledger posting identity: immutable balanced posting batches, per-line ledger FKs, independently verified typed source relationships (actual DB-enforced source FK where possible), reversal and idempotency policy; distinguish journal, commission, stock, labour, booking, cash source families.
 - [ ] **P2.G3** Decide delete/void policy *per table* (SoftDeletes on appropriate masters, restrictive FK deletes for audited finance, dedicated reversal/correction entries); devise backward compatibility for old IDs/URLs/reports.
 - [ ] **P2.G4** Review/approve the 57-table V1→V2 column map, database migration ordering, rejected-source quarantine, test plan, and exact constraint policy. Treat MariaDB 11.8.9 export vs MySQL 8.4.3 target compatibility explicitly.
@@ -42,9 +49,9 @@ The percentage counts **verified completion gates**, not lines of code, elapsed 
 
 ## Phase 3 — Build clean migrations in an isolated environment
 
-- [ ] **P3.G1** Create V2 migration set on a dedicated feature branch, leaving existing deployed migrations/history untouched.
-- [ ] **P3.G2** Rehearse fresh `migrate:fresh` only on a disposable V2 test database (NEVER on legacy/production).
-- [ ] **P3.G3** Run MySQL 8.4 constraint/unique/key-width verification and rollback tests, including parent-child and history-preserving delete cases.
+- [x] **P3.G1** Create isolated opt-in V2-only migration set in `database/v2_migrations` on the existing `upgrade/laravel-framework` development branch, leaving default deployed `database/migrations` and all V1 migration history untouched. **Completed 2026-10-30.** (No separate feature branch was created.)
+- [x] **P3.G2** Rehearse full fresh V2 migration set with `migrate --path=database/v2_migrations` against an **empty, disposable MySQL 8.4** database `bluemarketing_v2_ci` (NOT `migrate:fresh` against any existing database). **Completed 2026-10-30, GitHub Actions job passed.**
+- [x] **P3.G3** Verify 69 tables / at least 108 physical FK columns, correct broker/bank/ledger account link, BIGINT width, journal unique index, bank PK duplicate rejection, rejected invalid ledger account, restrictive parent delete and historical timestamp/money literals; perform complete V2 rollback + clean schema re-application in disposable MySQL 8.4. **Completed 2026-10-30, isolated CI MySQL job passed.**
 - [ ] **P3.G4** Verify Laravel models, relationships, casts, unique constraints and migrations against clean schema and test database.
 
 **Acceptance:** independent fresh database migration passes without disabling FK checks to conceal inconsistent relationships.
@@ -97,7 +104,7 @@ The percentage counts **verified completion gates**, not lines of code, elapsed 
 
 With each verified milestone: (a) update checkbox, (b) recalculate `completed / 24` and phase bars, (c) add dated evidence and the exact branch/commit, (d) update `BLUEMARKETING_PROGRESS_TRACKER.md`, (e) record open blockers and manual decisions. If verification fails, **do not** increment progress.
 
-**Last update:** 2026-10-30, P1.G1 verified from uploaded SQL only. All remaining gates pending.
+**Last update:** 2026-10-30. **6/24 = 25% accepted gates**; five linked engineering delivery milestones summarized in [execution report](DATABASE_V2_FIVE_MILESTONE_EXECUTION_2026_10_30.md). Historical row import not run; remaining 18/24 gates pending.
 
 ## 2026-10-30 implementation tranche: 4 substantial sub-milestones delivered (acceptance gates still open)
 
