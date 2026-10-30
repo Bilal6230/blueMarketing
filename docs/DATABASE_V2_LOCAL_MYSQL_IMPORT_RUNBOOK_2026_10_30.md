@@ -2,6 +2,14 @@
 
 **Status:** Ready for **owner-operated isolated rehearsal**, not live/staging deployment. Source is the original private `u429032065_dev.sql`, SHA-256 `bbc45fe7f0b6cdab1a188d2437e973e2bb56d442a29585ab328bd062e89335ed`, **57 tables / 120,165 source rows**. **Never upload this SQL dump, generated staging SQL, credentials, customer data or local `.env` to GitHub.**
 
+> **2026-10-30 source-date fingerprint correction:** If an earlier Stage 1 printed
+> `strict_mysql_zero_date_fields: {}` followed by a zero-date warning,
+> **STOP before Stage 2**. The historical date detector needed a Python regex
+> correction; existing 57 private SQL segments are fine. Follow
+> [safe fingerprint-only refresh](DATABASE_V2_STAGE1_ZERO_DATE_FINGERPRINT_FIX_2026_10_30.md)
+> and confirm **`{"leads":{"follow_up":1}}`** before creating/migrating any V2 database.
+> Current PowerShell script refuses stale source evidence BEFORE DB connection.
+
 ## Prerequisites
 
 - Current Git branch `upgrade/laravel-framework`; clean git status; Composer dependencies installed; PHP 8.2+ with `pdo_mysql` and `bcmath`; Python 3 (`py -3` or `python`); Laragon MySQL/MariaDB available on localhost.
