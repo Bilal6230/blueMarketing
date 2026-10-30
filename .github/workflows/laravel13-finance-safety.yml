@@ -102,6 +102,7 @@ jobs:
           php -l tools/database_v2/verify_imported_mysql_financial.php
           php -l tools/database_v2/check_local_v2_target.php
           php -l tools/database_v2/verify_mysql_full_row_digests.php
+          php -l tools/database_v2/test_mysql_timestamp_timezone_disposable.php
           php -l tools/database_v2/verify_mysql_stock_columns.php
           php -l tools/database_v2/restore_stock_enum_case.php
           php -l tools/database_v2/audit_local_jv_candidate_parity.php
@@ -248,6 +249,7 @@ jobs:
           php -l tools/database_v2/verify_mysql_schema.php
           php tools/database_v2/verify_mysql_schema.php
           php tools/database_v2/verify_mysql_v2_model_schema.php
+          php tools/database_v2/test_mysql_timestamp_timezone_disposable.php
 
       - name: Rehearse complete isolated MySQL V2 rollback and clean re-run
         run: |
