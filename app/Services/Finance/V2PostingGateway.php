@@ -36,6 +36,90 @@ final class V2PostingGateway
         );
     }
 
+    public function postCommission(
+        int $projectId,
+        int $commissionVoucherId,
+        string $idempotencyKey,
+        ?int $actorId = null
+    ): int {
+        return (new V2CommissionPostingWriter())->post(
+            $projectId, $commissionVoucherId, $idempotencyKey, $actorId
+        );
+    }
+
+    /**
+     * PPR / EC / ECP are sourced ONLY from their actual customer_ledger PK.
+     * An explicit expected series is mandatory; never infer type_id identity.
+     */
+    public function postCustomerVoucher(
+        int $projectId,
+        int $customerLedgerId,
+        string $series,
+        string $idempotencyKey,
+        array $approvedAccountLegs,
+        ?int $actorId = null
+    ): int {
+        if (!in_array($series, ['PPR', 'EC', 'ECP'], true)) {
+            throw new \DomainException('V2_CUSTOMER_VOUCHER_SERIES_NOT_SUPPORTED');
+        }
+        return (new V2CashPostingWriter())->post(
+            $projectId, $customerLedgerId, $idempotencyKey,
+            $approvedAccountLegs, $actorId, $series
+        );
+    }
+
+    public function postBooking(
+        int $projectId,
+        int $bookingVoucherId,
+        string $idempotencyKey,
+        array $approvedAccountLegs,
+        ?int $actorId = null
+    ): int {
+        return (new V2ApprovedSourcePostingWriter())->post(
+            $projectId, 'booking', $bookingVoucherId,
+            $idempotencyKey, $approvedAccountLegs, $actorId
+        );
+    }
+
+    public function postLabour(
+        int $projectId,
+        int $labourLedgerId,
+        string $idempotencyKey,
+        array $approvedAccountLegs,
+        ?int $actorId = null
+    ): int {
+        return (new V2ApprovedSourcePostingWriter())->post(
+            $projectId, 'labour', $labourLedgerId,
+            $idempotencyKey, $approvedAccountLegs, $actorId
+        );
+    }
+
+    public function postStockEntry(
+        int $projectId,
+        int $stockEntryId,
+        string $idempotencyKey,
+        array $approvedAccountLegs,
+        ?int $actorId = null
+    ): int {
+        return (new V2ApprovedSourcePostingWriter())->post(
+            $projectId, 'stock_entry', $stockEntryId,
+            $idempotencyKey, $approvedAccountLegs, $actorId
+        );
+    }
+
+    public function postStockBill(
+        int $projectId,
+        int $stockBillId,
+        string $idempotencyKey,
+        array $approvedAccountLegs,
+        ?int $actorId = null
+    ): int {
+        return (new V2ApprovedSourcePostingWriter())->post(
+            $projectId, 'stock_bill', $stockBillId,
+            $idempotencyKey, $approvedAccountLegs, $actorId
+        );
+    }
+
     public function reversePostedBatch(
         int $projectId,
         int $originalBatchId,
