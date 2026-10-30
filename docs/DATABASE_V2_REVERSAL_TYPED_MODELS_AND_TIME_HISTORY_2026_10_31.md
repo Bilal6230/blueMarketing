@@ -14,7 +14,7 @@
 - Uses a request fingerprint bound to original batch metadata, lines, reason and effective date; verifies persisted reversed legs on retries; a second different key is rejected.
 - Does **not** create another typed source claim (those are unique to the original source). The report reader resolves the reversal's typed source through `reversal_of_batch_id`, and marks reversal rows explicitly.
 
-**Regression:** six new behavioural tests appended to `V2JournalPostingWriterTest.php`: exact typed source and financial line checks, request idempotency and duplicate reversal protection, tamper rejection, reversal-of-reversal rejection, no write on unbalanced origin, and missing typed source rejection.
+**Regression:** seven new behavioural tests appended to `V2JournalPostingWriterTest.php`: exact typed source and financial line checks, request idempotency and duplicate reversal protection, tamper rejection, reversal-of-reversal rejection, no write on unbalanced origin, and missing typed source rejection.
 
 **Still required for P5.G1:** actual CI/regression PASS, MySQL concurrency/race test, all-family central API/approval wiring, owner-approved reversal policy. V1 endpoints remain unchanged.
 
@@ -40,3 +40,5 @@ Previous `git diff --cached --check` reported only four extra blank EOF lines in
 ## Formal gate policy
 
 **8/24 = 33.3% accepted** remains accurate at code delivery. All Phase 3/4/5 acceptance targets retain OPEN status until independent acceptance proof above. No V1, staging, client, source SQL, or live DB was modified. No history repair, inferred source claim, or deployment performed.
+
+**Additional safeguard:** V2 reporting now verifies every reversal has the exact inverse multiset of original account/debit/credit legs, including when the date filter hides the original; a balanced-but-not-inverse tamper regression is included.
