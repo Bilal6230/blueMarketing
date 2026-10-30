@@ -1,7 +1,7 @@
 # BlueMarketing V2 — Reversal, typed models and temporal-history evidence checkpoint
 
-**Branch:** `upgrade/laravel-framework`  
-**Date:** 2026-10-31  
+**Branch:** `upgrade/laravel-framework`
+**Date:** 2026-10-31
 **Status:** Real implementation committed; new regression + real MySQL checks require owner/CI verification. NO deployment.
 
 ## 1. Immutable transactional V2 posting reversal (P5.G1 implementation)
