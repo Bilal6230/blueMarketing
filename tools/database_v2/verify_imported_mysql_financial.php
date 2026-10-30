@@ -29,7 +29,7 @@ set_exception_handler(static function (Throwable $e): void {
     exit(2);
 });
 
-$args = getopt('', ['manifest:', 'source-evidence:', 'expected-sha256:', 'expected-rows:', 'verify-source-utc']);
+$args = getopt('', ['manifest:', 'source-evidence:', 'expected-sha256:', 'expected-rows:', 'verify-source-utc', 'ci-synthetic']);
 $manifestPath = $args['manifest'] ?? '';
 $evidencePath = $args['source-evidence'] ?? '';
 $expectedSha = strtolower((string) ($args['expected-sha256'] ?? ''));
@@ -54,6 +54,10 @@ if (($manifest['source_sha256'] ?? '') !== $expectedSha ||
 }
 
 $verifyUtc = array_key_exists('verify-source-utc', $args);
+$syntheticUtc = array_key_exists('ci-synthetic', $args);
+if ($syntheticUtc && !$verifyUtc) {
+    throw new DomainException('V2_SYNTHETIC_UTC_MODE_REQUIRED');
+}
 if ($verifyUtc) {
     // Validate a separately named local candidate before connecting to MySQL.
     $config = config('database.connections.' . config('database.default'));
@@ -61,7 +65,7 @@ if ($verifyUtc) {
         throw new DomainException('V2_UTC_FINANCIAL_DATABASE_CONFIG_MISSING');
     }
     V2HistoricalImportTargetGuard::assertAllowed(
-        $config, (string) config('app.env'), false
+        $config, (string) config('app.env'), $syntheticUtc
     );
 }
 $db = DB::connection();
