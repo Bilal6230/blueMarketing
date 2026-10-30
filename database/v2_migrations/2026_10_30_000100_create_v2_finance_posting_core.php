@@ -24,6 +24,16 @@ return new class extends Migration
         'finance_posting_labour_sources' => ['labour_ledger_id', 'labour_ledgers'],
     ];
 
+    private const SOURCE_KINDS = [
+        'finance_posting_journal_sources' => 'journal',
+        'finance_posting_commission_sources' => 'commission',
+        'finance_posting_stock_entry_sources' => 'stock_entry',
+        'finance_posting_stock_bill_sources' => 'stock_bill',
+        'finance_posting_cash_sources' => 'cash',
+        'finance_posting_booking_sources' => 'booking',
+        'finance_posting_labour_sources' => 'labour',
+    ];
+
     private function assertIsolatedV2(): void
     {
         $connection = DB::connection();
@@ -58,7 +68,7 @@ return new class extends Migration
             }
         }
 
-        foreach (array_merge(['finance_posting_batches', 'finance_posting_lines', 'finance_journal_line_sources'], array_keys(self::SOURCE_TABLES)) as $table) {
+        foreach (array_merge(['finance_posting_batches', 'finance_posting_lines', 'finance_posting_source_claims', 'finance_journal_line_sources'], array_keys(self::SOURCE_TABLES)) as $table) {
             if (Schema::hasTable($table)) {
                 throw new RuntimeException('V2 table exists already; no partial overwrite: ' . $table);
             }
@@ -99,13 +109,31 @@ return new class extends Migration
             $table->index(['posting_batch_id', 'project_head_subhead_id'], 'v2_posting_line_account_index');
         });
 
+        // One canonical claim per batch. Composite FKs require every typed
+        // source table to agree with the claimed family (no type_id collisions).
+        Schema::create('finance_posting_source_claims', function (Blueprint $table) {
+            $table->foreignId('posting_batch_id')->primary()
+                ->constrained('finance_posting_batches')->restrictOnDelete();
+            $table->string('source_kind', 24);
+            $table->unique(['posting_batch_id', 'source_kind'], 'v2_claim_batch_kind_unique');
+        });
+
         foreach (self::SOURCE_TABLES as $tableName => [$sourceColumn, $sourceTable]) {
-            Schema::create($tableName, function (Blueprint $table) use ($sourceColumn, $sourceTable) {
-                $table->foreignId('posting_batch_id')->primary()
-                    ->constrained('finance_posting_batches')->restrictOnDelete();
+            $kind = self::SOURCE_KINDS[$tableName];
+            Schema::create($tableName, function (Blueprint $table) use ($sourceColumn, $sourceTable, $kind, $tableName) {
+                $table->unsignedBigInteger('posting_batch_id')->primary();
+                $table->string('source_kind', 24)->default($kind);
+                $table->foreign(['posting_batch_id', 'source_kind'], 'v2_' . $tableName . '_claim_fk')
+                    ->references(['posting_batch_id', 'source_kind'])
+                    ->on('finance_posting_source_claims')->restrictOnDelete();
                 $table->foreignId($sourceColumn)->constrained($sourceTable)->restrictOnDelete();
                 $table->unique($sourceColumn);
             });
+            if (DB::connection()->getDriverName() === 'mysql') {
+                // Even direct SQL cannot spoof source_kind for another family.
+                $check = 'v2_' . $tableName . '_kind_ck';
+                DB::statement("ALTER TABLE `{$tableName}` ADD CONSTRAINT `{$check}` CHECK (`source_kind` = '{$kind}')");
+            }
         }
 
         Schema::create('finance_journal_line_sources', function (Blueprint $table) {
@@ -129,6 +157,7 @@ return new class extends Migration
         foreach (array_reverse(array_keys(self::SOURCE_TABLES)) as $name) {
             Schema::dropIfExists($name);
         }
+        Schema::dropIfExists('finance_posting_source_claims');
         Schema::dropIfExists('finance_posting_lines');
         Schema::dropIfExists('finance_posting_batches');
     }
