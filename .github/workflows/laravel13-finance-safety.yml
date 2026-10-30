@@ -195,16 +195,17 @@ jobs:
           php artisan migrate --path=database/v2_migrations --force --no-interaction
           php artisan migrate:status --path=database/v2_migrations --no-interaction
 
-      - name: Validate all V2 entity tables, new FKs and framework migration history
+      - name: Seed exact legacy 27-bank V2 lookup on disposable database
+        run: php artisan db:seed --class=V2LegacyBanksSeeder --force --no-interaction
+
+      - name: Verify exact V2 FK/identity/integrity constraints in MySQL 8.4
         run: |
-          php -r '
-          require "vendor/autoload.php";
-          $app=require "bootstrap/app.php"; $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
-          $db=Illuminate\Support\Facades\DB::connection();
-          $name=$db->getDatabaseName();
-          if ($name!=="bluemarketing_v2_ci") { throw new RuntimeException("Wrong database"); }
-          $count=(int) $db->selectOne("SELECT COUNT(*) n FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE()") ->n;
-          $fk=(int) $db->selectOne("SELECT COUNT(*) n FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA=DATABASE() AND REFERENCED_TABLE_NAME IS NOT NULL")->n;
-          if ($count<69 || $fk<75) { throw new RuntimeException("V2 baseline incomplete: ".$count." tables / ".$fk." FKs"); }
-          echo "V2 MySQL 8.4 schema passes: ".$count." tables / ".$fk." FK columns".PHP_EOL;
-          '
+          php -l tools/database_v2/verify_mysql_schema.php
+          php tools/database_v2/verify_mysql_schema.php
+
+      - name: Rehearse complete isolated MySQL V2 rollback and clean re-run
+        run: |
+          php artisan migrate:rollback --path=database/v2_migrations --force --no-interaction
+          php artisan migrate --path=database/v2_migrations --force --no-interaction
+          php artisan db:seed --class=V2LegacyBanksSeeder --force --no-interaction
+          php tools/database_v2/verify_mysql_schema.php
