@@ -42,3 +42,13 @@ Expected complete success **only if all 57 source tables agree when read at UTC*
 P4.G3 **remains OPEN** until UTC instant digest PASS, source audit-history preservation and any zero-timestamp exception review are explicitly accepted. P4.G4 and P6.G2 additionally need authoritative source ownership and financial-leg reconciliation. P3.G4 still requires legacy model exceptions; P5.G1 still requires concurrency and API workflow approval.
 
 Formal project acceptance remains **8/24 (33.3%)**. No original, staging, live or client database modified.
+
+## Future isolated import bug prevention (code implemented, CI pending)
+
+Inspection of `tools/database_v2/import_staged_mysql.php` showed that its historic APPLY path set session `sql_mode` but **did not explicitly set the source dump's UTC timezone**. For TIMESTAMP columns, that can import the correct-looking wall-clock strings as incorrect UTC instants if the current MySQL session is in Pakistan time.
+
+The importer now pins `SET SESSION time_zone='+00:00'` **before** its data-insert transaction, verifies the session variable, restores the previous session zone in `finally`, and still preserves the original source IDs, source zero TIMESTAMP and existing rollback semantics. The explicit source SHA is already required for private historical APPLY.
+
+The isolated CI `--ci-simulated-timezone` test runs **only with synthetic source and `bluemarketing_v2_ci` on APP_ENV=testing**; it first simulates a local +05:00 session, executes importer with source UTC, checks restoration, then verifies actual `projects.created_at/updated_at` TIMESTAMP values while rendering at UTC. This is a new *future-import protection*, not a retroactive repair of the existing local rehearsal.
+
+**No live/staging/V1 or already-imported local V2 rows were modified by this code change.** An existing historical import cannot be silently fixed by changing importer code; rerun the read-only UTC digest comparison first and seek explicit approval if it shows a mismatch.
