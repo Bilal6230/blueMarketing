@@ -281,6 +281,7 @@ jobs:
           php -l tools/database_v2/import_staged_mysql.php
           php -l app/Services/Finance/V2HistoricalImportTargetGuard.php
           php -l tests/Unit/Finance/V2HistoricalImportTargetGuardTest.php
+          pwsh -NoProfile -Command '$tokens=$null; $errors=$null; [System.Management.Automation.Language.Parser]::ParseFile("tools/database_v2/verify_new_utc_rehearsal.ps1",[ref]$tokens,[ref]$errors) | Out-Null; if ($errors.Count) { $errors | ForEach-Object { Write-Error $_.Message }; exit 1 }'
           if php tools/database_v2/import_staged_mysql.php --dir=/tmp/v2bad --expected-sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --expected-rows=3; then
             echo "ERROR: synthetic fixture accepted without CI-only authorization"
             exit 1
