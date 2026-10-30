@@ -795,3 +795,10 @@ The earlier dashboard shown in the screenshot reported the following estimates:
 - Prior offline 2026-10-30 source audit had 988 JV headers, 914 candidate matches, 74 mismatches, eight zero-active-detail headers and eight header/detail amount discrepancies. The new audit excludes `journal_vouchers.deleted_at IS NOT NULL`, likely a different population; the cause of the exact 8-header difference **is not yet proven**. Do not describe discrepancies as resolved or mutate historical data.
 - Commit `15d25837` adds aggregate-only `all_jv_headers_including_deleted`, `soft_deleted_jv_headers_excluded` and partition invariants to the local read-only auditor. Requires operator rerun to confirm exact population boundary and examine the old eight separately if needed.
 - Formal gates stay 8/24=33%, P4.G4 and P6.G2 blocked, production blocked.
+
+
+### 2026-10-31 — JV population boundary independently confirmed by owner
+
+- Owner pulled `faff8d2f`, PHP lint PASS, clean Git tree; exact local MySQL read-only auditor returned `headers=980`, `candidate_exact=914`, `candidate_mismatch=66`, `no_active_details=0`, `header_detail_amount_mismatch=0`, `active_details_without_project_candidate=64`, `all_jv_headers_including_deleted=988`, `soft_deleted_jv_headers_excluded=8`.
+- **988 = 980 active + 8 soft-deleted**; the header-population difference is now proven. Prior offline `74` candidate mismatches vs `66` current active mismatches differs numerically by 8; whether each excluded header contributed to the previous mismatch set still requires matched-definition verification. Earlier eight header/detail-total discrepancies are not declared resolved: earlier and current audit populations differ.
+- Numeric `ledgers.type_id` plus account/amount/project can establish a *candidate multiset*, never authoritative typed source ownership. Do not restore, relink, insert, reclassify or delete original financial rows. P4.G4/P6.G2 remain OPEN; accepted gates still **8/24 = 33%**. Deployment BLOCKED.
