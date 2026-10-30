@@ -101,8 +101,8 @@ final class V2ProjectTrialBalanceReader
         }
         $report = [];
         foreach ($accounts as $account) {
-            $opening = $account['opening_debit'] - $account['opening_credit'];
-            $periodNet = $account['period_debit'] - $account['period_credit'];
+            $opening = $this->add($account['opening_debit'], -$account['opening_credit']);
+            $periodNet = $this->add($account['period_debit'], -$account['period_credit']);
             $closing = $this->add($opening, $periodNet);
             $report[] = [
                 'account_id' => $account['account_id'],
@@ -113,8 +113,8 @@ final class V2ProjectTrialBalanceReader
             ];
         }
         usort($report, static fn ($a, $b): int => $a['account_id'] <=> $b['account_id']);
-        $openingDiff = $totals['opening_debit'] - $totals['opening_credit'];
-        $periodDiff = $totals['period_debit'] - $totals['period_credit'];
+        $openingDiff = $this->add($totals['opening_debit'], -$totals['opening_credit']);
+        $periodDiff = $this->add($totals['period_debit'], -$totals['period_credit']);
         if ($openingDiff !== 0 || $periodDiff !== 0) {
             throw new \DomainException('V2_TRIAL_BALANCE_GLOBAL_IMBALANCE');
         }
