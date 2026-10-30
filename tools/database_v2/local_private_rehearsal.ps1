@@ -116,7 +116,12 @@ try {
     }
     # Prevent a guessed/partial target. Require fresh database and exact
     # second explicit confirmation; never create or delete a database.
-    if ($Database -cnotmatch '^bluemarketing_v2_local_[a-z0-9_]+
+    if ($Database -cnotmatch '^bluemarketing_v2_local_[a-z0-9_]+$' -or
+        $Database -ceq 'bluemarketing_v2_local_rehearsal' -or
+        $Database -match '(?i:prod|stag|live|dev|client)' -or
+        $ConfirmEmptyDatabase -cne $Database) {
+        throw 'TARGET_NOT_CONFIRMED: exact -Database and -ConfirmEmptyDatabase names must match a NEW isolated V2 LOCAL database'
+    }
     if (!(Test-Path -LiteralPath (Join-Path $staging 'manifest.json') -PathType Leaf) -or
         !(Test-Path -LiteralPath (Join-Path $staging 'source_fingerprints.json') -PathType Leaf)) {
         throw 'PRIVATE_STAGING_MISSING: run Stage 1 FIRST, before any MySQL operations'
