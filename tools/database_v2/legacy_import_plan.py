@@ -12,10 +12,10 @@ import pathlib
 import re
 import sys
 
-CREATE = re.compile(r"CREATE TABLE `([^`]+)` \\((.*?)\\n\\) ENGINE=", re.S)
-ALTER = re.compile(r"ALTER TABLE `([^`]+)`\\s+(.*?);", re.S)
-FK = re.compile(r"ADD CONSTRAINT `[^`]+` FOREIGN KEY \\(`[^`]+`\\) REFERENCES `([^`]+)`", re.S)
-INSERT = re.compile(r"INSERT INTO `([^`]+)`\\s*\\(([^)]*)\\) VALUES\\s*\\n(.*?);(?=\\s*\\n|$)", re.S)
+CREATE = re.compile(r"CREATE TABLE `([^`]+)` \((.*?)\n\) ENGINE=", re.S)
+ALTER = re.compile(r"ALTER TABLE `([^`]+)`\s+(.*?);", re.S)
+FK = re.compile(r"ADD CONSTRAINT `[^`]+` FOREIGN KEY \(`[^`]+`\) REFERENCES `([^`]+)`", re.S)
+INSERT = re.compile(r"INSERT INTO `([^`]+)`\s*\(([^)]*)\) VALUES\s*\n(.*?);(?=\s*\n|$)", re.S)
 
 
 def count_rows(sql_values: str) -> int:
@@ -96,7 +96,7 @@ def inspect(path: pathlib.Path) -> tuple[dict, dict[str, list[str]]]:
         "table_import_order": order,
         "tables": [
             {"name": name, "rows": counts[name], "insert_statements": len(chunks[name]),
-             "data_sql_sha256": hashlib.sha256(("\\n".join(chunks[name]) + "\\n").encode("utf-8")).hexdigest()}
+             "data_sql_sha256": hashlib.sha256(("\n".join(chunks[name]) + "\n").encode("utf-8")).hexdigest()}
             for name in order
         ],
         "limitations": [
@@ -133,10 +133,10 @@ def main() -> int:
         out.mkdir(parents=True, exist_ok=True)
         for table in manifest["table_import_order"]:
             (out / (table + ".sql")).write_text(
-                "-- Sensitive legacy DATA ONLY; verify isolated staging target before import.\\n" +
-                ("\\n".join(chunks[table]) + "\\n" if chunks[table] else ""),
+                "-- Sensitive legacy DATA ONLY; verify isolated staging target before import.\n" +
+                ("\n".join(chunks[table]) + "\n" if chunks[table] else ""),
                 encoding="utf-8")
-        (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\\n", encoding="utf-8")
+        (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
         print("Wrote sensitive data-only staging files to explicit directory (no database changes).")
     print(json.dumps({k: manifest[k] for k in ("source_sha256", "table_count", "declared_fk_count", "total_insert_rows", "table_import_order")}, indent=2))
     return 0
