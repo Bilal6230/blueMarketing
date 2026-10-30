@@ -3,6 +3,7 @@
 namespace Tests\Feature\Finance;
 
 use App\Services\Finance\V2JournalPostingWriter;
+use App\Services\Finance\V2PostingReportReader;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -163,6 +164,35 @@ class V2JournalPostingWriterTest extends TestCase
             $this->assertSame('V2_REPLAY_LEDGER_TAMPERED', $e->getMessage());
         }
         $this->assertDatabaseCount('finance_posting_batches', 1);
+    }
+
+    public function test_v2_report_is_typed_date_filtered_and_project_scoped(): void
+    {
+        (new V2JournalPostingWriter())->post(1, 51, 'JV-REPORT-REQUEST-0001');
+        $reader = new V2PostingReportReader();
+        $mine = $reader->lines(1, '2026-10-01', '2026-10-31');
+        $this->assertCount(2, $mine);
+        $this->assertSame('journal', $mine[0]['source_kind']);
+        $this->assertSame(51, (int) $mine[0]['voucher_number']);
+        $this->assertArrayNotHasKey('type_id', $mine[0]);
+        $this->assertSame([], $reader->lines(2));
+        $this->assertSame([], $reader->lines(1, '2026-11-01', '2026-11-30'));
+    }
+
+    public function test_v2_report_refuses_cross_project_account_ledger_tamper(): void
+    {
+        (new V2JournalPostingWriter())->post(1, 51, 'JV-REPORT-REQUEST-0002');
+        DB::table('finance_posting_lines')->where('project_head_subhead_id', 101)
+            ->update(['project_head_subhead_id' => 201]);
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('V2_REPORT_SOURCE_OR_PROJECT_INTEGRITY_FAILURE');
+        (new V2PostingReportReader())->lines(1);
+    }
+
+    public function test_v2_report_refuses_invalid_date_interval(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        (new V2PostingReportReader())->lines(1, '2026-11-01', '2026-10-01');
     }
 
 }
