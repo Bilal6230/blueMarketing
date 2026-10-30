@@ -19,6 +19,16 @@ TABLES = ("stock_entries", "stock_movements", "stock_parties")
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 
+def column_fingerprints(rows: list[dict], columns: dict[str, str]) -> dict[str, str]:
+    if any(set(row) != set(columns) for row in rows):
+        raise ValueError("SOURCE_STOCK_ROW_COLUMNS_MISMATCH")
+    digests = {}
+    for column, definition in columns.items():
+        hashes = [row_hash([canon(record[column], definition)]) for record in rows]
+        digests[column] = table_hash(hashes)
+    return digests
+
+
 def inspect_columns(source: pathlib.Path) -> dict:
     metadata, _, _, sha = verified_schema()
     manifest, chunks = inspect(source)
@@ -31,12 +41,9 @@ def inspect_columns(source: pathlib.Path) -> dict:
         columns = metadata[table]
         rows = source_rows(chunks[table], table)
         reference = next(x["rows"] for x in manifest["tables"] if x["name"] == table)
-        if len(rows) != reference or any(set(row) != set(columns) for row in rows):
-            raise ValueError("SOURCE_STOCK_ROW_COLUMNS_MISMATCH")
-        digests = {}
-        for column, definition in columns.items():
-            hashes = [row_hash([canon(record[column], definition)]) for record in rows]
-            digests[column] = table_hash(hashes)
+        if len(rows) != reference:
+            raise ValueError("SOURCE_STOCK_ROW_COUNT_MISMATCH")
+        digests = column_fingerprints(rows, columns)
         result[table] = {"rows": len(rows), "columns": digests}
     return {
         "kind": "v2-private-stock-column-parity-v1",
