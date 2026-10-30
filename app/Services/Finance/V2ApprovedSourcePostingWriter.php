@@ -107,6 +107,19 @@ final class V2ApprovedSourcePostingWriter
                         ->where('project_id', $projectId)->exists()) {
                     throw new \DomainException('V2_BOOKING_CROSS_PROJECT_SOURCE');
                 }
+                if ($source->customer_ledger_id !== null
+                    && DB::table('finance_posting_cash_sources')
+                        ->where('customer_ledger_id', $source->customer_ledger_id)->exists()) {
+                    throw new \DomainException('V2_BOOKING_LINKED_CASH_ALREADY_POSTED');
+                }
+                if ($source->ledger_id !== null
+                    && !DB::table('ledgers as original_ledger')
+                        ->join('project_head_subheads as linked_account',
+                            'linked_account.id', '=', 'original_ledger.project_head_subheads_id')
+                        ->where('original_ledger.id', $source->ledger_id)
+                        ->where('linked_account.project_id', $projectId)->exists()) {
+                    throw new \DomainException('V2_BOOKING_LINKED_LEDGER_CROSS_PROJECT');
+                }
             } elseif ($kind === 'labour') {
                 if ((int) $source->project_id !== $projectId
                     || !DB::table('labours')->where('id', $source->labour_id)
