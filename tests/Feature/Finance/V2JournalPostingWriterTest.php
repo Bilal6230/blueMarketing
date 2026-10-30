@@ -5,6 +5,7 @@ namespace Tests\Feature\Finance;
 use App\Services\Finance\V2JournalPostingWriter;
 use App\Services\Finance\V2PostingReversalWriter;
 use App\Services\Finance\V2PostingReportReader;
+use App\Services\Finance\V2PostingGateway;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -388,6 +389,52 @@ class V2JournalPostingWriterTest extends TestCase
         }
         $this->assertDatabaseCount('finance_posting_batches', 1);
         $this->assertDatabaseCount('finance_posting_lines', 2);
+    }
+
+    public function test_v2_gateway_exposes_one_typed_posting_reversal_and_reporting_boundary(): void
+    {
+        $gateway = new V2PostingGateway();
+        $original = $gateway->postJournal(1, 51, 'JV-GATEWAY-ORIGINAL-0001');
+        $this->assertSame($original, $gateway->postJournal(1, 51, 'JV-GATEWAY-ORIGINAL-0001'));
+        $reversed = $gateway->reversePostedBatch(
+            1, $original, 'JV-GATEWAY-REVERSE-0001', '2026-10-31', 'Correction'
+        );
+        $this->assertNotSame($original, $reversed);
+        $this->assertCount(4, $gateway->postingLines(1));
+        $this->assertSame([], $gateway->postingLines(2));
+        $this->assertDatabaseCount('finance_posting_source_claims', 1);
+        $this->assertDatabaseCount('finance_posting_journal_sources', 1);
+    }
+
+    public function test_v2_trial_balance_includes_opening_period_and_immutable_reversal(): void
+    {
+        $gateway = new V2PostingGateway();
+        $original = $gateway->postJournal(1, 51, 'JV-TRIAL-BALANCE-ORIGINAL-01');
+        $before = $gateway->trialBalance(1, '2026-10-30', '2026-10-30');
+        $this->assertSame('typed_v2_postings_only', $before['scope']);
+        $this->assertSame('125.50', $before['total_period_debit']);
+        $this->assertSame('125.50', $before['total_period_credit']);
+        $this->assertSame('125.50', $before['accounts'][0]['closing_balance']);
+        $this->assertSame('-125.50', $before['accounts'][1]['closing_balance']);
+
+        $gateway->reversePostedBatch(
+            1, $original, 'JV-TRIAL-BALANCE-REVERSE-01', '2026-10-31', 'Correction'
+        );
+        $after = $gateway->trialBalance(1, '2026-10-31', '2026-10-31');
+        $this->assertTrue($after['balanced']);
+        $this->assertSame('125.50', $after['total_period_debit']);
+        $this->assertSame('125.50', $after['total_period_credit']);
+        $this->assertSame('125.50', $after['accounts'][0]['opening_balance']);
+        $this->assertSame('-125.50', $after['accounts'][1]['opening_balance']);
+        $this->assertSame('0.00', $after['accounts'][0]['closing_balance']);
+        $this->assertSame('0.00', $after['accounts'][1]['closing_balance']);
+        $this->assertSame([], $gateway->trialBalance(2)['accounts']);
+    }
+
+    public function test_v2_trial_balance_rejects_invalid_interval_without_posting(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        (new V2PostingGateway())->trialBalance(1, '2026-11-01', '2026-10-30');
     }
 
 }
