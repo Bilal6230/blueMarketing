@@ -86,7 +86,7 @@ final class V2PostingReportReader
         if ($through !== null) {
             $q->where('batch.effective_date', '<=', $through);
         }
-        return $q->orderBy('batch.effective_date')
+        $lines = $q->orderBy('batch.effective_date')
             ->orderBy('batch.id')->orderBy('line.id')
             ->get([
                 'line.id as posting_line_id',
@@ -99,5 +99,45 @@ final class V2PostingReportReader
                 'batch.voucher_number',
                 'claim.source_kind',
             ])->map(static fn ($line): array => (array) $line)->all();
+
+        // A source-claim without its actual typed FK child is not sufficient
+        // to provide a voucher URL or audited balance. Verify every batch in
+        // seven bulk queries (not N+1), then expose the REAL source PK.
+        $tables = [
+            'journal' => ['finance_posting_journal_sources', 'journal_voucher_id'],
+            'commission' => ['finance_posting_commission_sources', 'commision_voucher_id'],
+            'stock_entry' => ['finance_posting_stock_entry_sources', 'stock_entry_id'],
+            'stock_bill' => ['finance_posting_stock_bill_sources', 'stock_bill_id'],
+            'cash' => ['finance_posting_cash_sources', 'customer_ledger_id'],
+            'booking' => ['finance_posting_booking_sources', 'booking_voucher_id'],
+            'labour' => ['finance_posting_labour_sources', 'labour_ledger_id'],
+        ];
+        $wanted = [];
+        foreach ($lines as $line) {
+            $kind = (string) $line['source_kind'];
+            if (!isset($tables[$kind])) {
+                throw new \DomainException('V2_REPORT_UNKNOWN_SOURCE_KIND');
+            }
+            $wanted[$kind][(int) $line['posting_batch_id']] = true;
+        }
+        $actual = [];
+        foreach ($wanted as $kind => $batchIds) {
+            [$table, $idColumn] = $tables[$kind];
+            $fetched = DB::table($table)
+                ->whereIn('posting_batch_id', array_keys($batchIds))
+                ->pluck($idColumn, 'posting_batch_id')
+                ->all();
+            if (count($fetched) !== count($batchIds)) {
+                throw new \DomainException('V2_REPORT_MISSING_TYPED_SOURCE_LINK');
+            }
+            foreach ($fetched as $batchId => $sourceId) {
+                $actual[(int) $batchId] = (int) $sourceId;
+            }
+        }
+        foreach ($lines as &$line) {
+            $line['source_id'] = $actual[(int) $line['posting_batch_id']];
+        }
+        unset($line);
+        return $lines;
     }
 }
