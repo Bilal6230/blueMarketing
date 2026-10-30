@@ -1,0 +1,569 @@
+{
+  "source_sha256": "bbc45fe7f0b6cdab1a188d2437e973e2bb56d442a29585ab328bd062e89335ed",
+  "part": 3,
+  "tables": [
+    {
+      "table": "pending_updates",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "table_name",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "record_id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "old_values",
+          "longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL"
+        ],
+        [
+          "new_values",
+          "longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL"
+        ],
+        [
+          "status",
+          "enum('pending','approved','rejected') NOT NULL DEFAULT 'pending'"
+        ],
+        [
+          "submitted_by",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "approved_by",
+          "bigint(20) UNSIGNED DEFAULT NULL"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "permissions",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "name",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "guard_name",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "personal_access_tokens",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "tokenable_type",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "tokenable_id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "name",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "token",
+          "varchar(64) NOT NULL"
+        ],
+        [
+          "abilities",
+          "text DEFAULT NULL"
+        ],
+        [
+          "last_used_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "expires_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "deleted_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "plots",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "name",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "type",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "size",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "unit",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "description",
+          "longtext DEFAULT NULL"
+        ],
+        [
+          "is_corner",
+          "int(11) NOT NULL DEFAULT 0"
+        ],
+        [
+          "project_id",
+          "int(11) NOT NULL DEFAULT 1"
+        ],
+        [
+          "road_id",
+          "int(11) NOT NULL"
+        ],
+        [
+          "facing_id",
+          "int(11) NOT NULL"
+        ],
+        [
+          "is_active",
+          "int(11) NOT NULL"
+        ],
+        [
+          "sold",
+          "int(11) DEFAULT 0"
+        ],
+        [
+          "plot_history",
+          "longtext DEFAULT NULL"
+        ],
+        [
+          "create_by",
+          "int(11) NOT NULL"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "projects",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "project",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "address",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "logo",
+          "text DEFAULT NULL"
+        ],
+        [
+          "is_active",
+          "int(11) NOT NULL"
+        ],
+        [
+          "create_by",
+          "int(11) NOT NULL"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "project_head_subheads",
+      "columns": [
+        [
+          "id",
+          "int(10) UNSIGNED NOT NULL"
+        ],
+        [
+          "project_id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "head_accounting_id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "subhead_accounting_id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "plot_id",
+          "bigint(20) DEFAULT NULL"
+        ],
+        [
+          "customer_id",
+          "bigint(20) DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "project_zones",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "project_id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "zone_id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "punches",
+      "columns": [
+        [
+          "id",
+          "int(11) NOT NULL"
+        ],
+        [
+          "user_id",
+          "int(11) DEFAULT NULL"
+        ],
+        [
+          "project_id",
+          "int(11) DEFAULT NULL"
+        ],
+        [
+          "punch_in",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "punch_out",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "post_by",
+          "int(11) DEFAULT NULL"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "roads",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "name",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "is_active",
+          "int(11) NOT NULL"
+        ],
+        [
+          "create_by",
+          "int(11) NOT NULL"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "roles",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "name",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "guard_name",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "role_has_permissions",
+      "columns": [
+        [
+          "permission_id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "role_id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "settings",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "key",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "value",
+          "text NOT NULL"
+        ],
+        [
+          "name",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "type",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "ext",
+          "varchar(255) DEFAULT NULL"
+        ],
+        [
+          "category",
+          "enum('information','contact','payment','email','api') DEFAULT 'information'"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "sites",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "project_id",
+          "bigint(20) UNSIGNED DEFAULT NULL"
+        ],
+        [
+          "head_accounting_id",
+          "bigint(20) UNSIGNED DEFAULT NULL"
+        ],
+        [
+          "subhead_accounting_id",
+          "bigint(20) UNSIGNED DEFAULT NULL"
+        ],
+        [
+          "site_name",
+          "varchar(255) DEFAULT NULL"
+        ],
+        [
+          "site_address",
+          "varchar(255) DEFAULT NULL"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "stocks",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "stock_name",
+          "varchar(255) DEFAULT NULL"
+        ],
+        [
+          "total_remaining",
+          "int(11) NOT NULL DEFAULT 0"
+        ],
+        [
+          "quantity",
+          "int(11) NOT NULL DEFAULT 0"
+        ],
+        [
+          "type",
+          "enum('purchase','sale') NOT NULL"
+        ],
+        [
+          "total_used",
+          "int(11) NOT NULL DEFAULT 0"
+        ],
+        [
+          "project_id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "stock_bills",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "bill_no",
+          "varchar(30) NOT NULL"
+        ],
+        [
+          "bill_date",
+          "date NOT NULL"
+        ],
+        [
+          "type",
+          "enum('purchase','sale') NOT NULL"
+        ],
+        [
+          "party_id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "entry_id",
+          "bigint(20) UNSIGNED DEFAULT NULL"
+        ],
+        [
+          "total_minor",
+          "bigint(20) UNSIGNED NOT NULL DEFAULT 0"
+        ],
+        [
+          "created_by",
+          "bigint(20) UNSIGNED DEFAULT NULL"
+        ],
+        [
+          "updated_by",
+          "bigint(20) UNSIGNED DEFAULT NULL"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "deleted_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    }
+  ]
+}
