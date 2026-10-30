@@ -90,9 +90,12 @@ jobs:
           php -l tools/database_v2/verify_imported_mysql_financial.php
           php -l tools/database_v2/check_local_v2_target.php
           php -l tools/database_v2/verify_mysql_full_row_digests.php
+          php -l tools/database_v2/verify_mysql_stock_columns.php
+          php tools/database_v2/verify_mysql_stock_columns.php --selftest
           php tools/database_v2/verify_mysql_full_row_digests.php --selftest
           python3 -m py_compile tools/database_v2/financial_source_fingerprints.py
           python3 -m py_compile tools/database_v2/full_row_digests.py
+          python3 -m py_compile tools/database_v2/stock_column_diagnostics.py
           pwsh -NoProfile -Command '$tokens=$null; $errors=$null; [System.Management.Automation.Language.Parser]::ParseFile("tools/database_v2/local_private_rehearsal.ps1",[ref]$tokens,[ref]$errors) | Out-Null; if ($errors.Count) { $errors | ForEach-Object { Write-Error $_.Message }; exit 1 }'
           php -l tests/Feature/Finance/V2JournalPostingWriterTest.php
           python3 -m py_compile tools/database_v2/legacy_import_plan.py tools/database_v2/v2_import_plan.py
