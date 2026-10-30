@@ -116,9 +116,7 @@ try {
     }
     # Prevent a guessed/partial target. Require fresh database and exact
     # second explicit confirmation; never create or delete a database.
-    if ($Database -notmatch '^bluemarketing_v2_local_[a-z0-9_]+
-        throw 'TARGET_NOT_CONFIRMED: exact -Database and -ConfirmEmptyDatabase names must match a new V2 LOCAL database'
-    }
+    if ($Database -cnotmatch '^bluemarketing_v2_local_[a-z0-9_]+
     if (!(Test-Path -LiteralPath (Join-Path $staging 'manifest.json') -PathType Leaf) -or
         !(Test-Path -LiteralPath (Join-Path $staging 'source_fingerprints.json') -PathType Leaf)) {
         throw 'PRIVATE_STAGING_MISSING: run Stage 1 FIRST, before any MySQL operations'
@@ -208,78 +206,4 @@ try {
 } finally {
     Pop-Location
 }
- -or
-        $Database -ceq 'bluemarketing_v2_local_rehearsal' -or
-        $Database -match '(?i:prod|stag|live|dev|client)' -or
-        $ConfirmEmptyDatabase -cne $Database) {
-        throw 'TARGET_NOT_CONFIRMED: exact -Database and -ConfirmEmptyDatabase names must match a new V2 LOCAL database'
-    }
-    if (!(Test-Path -LiteralPath (Join-Path $staging 'manifest.json') -PathType Leaf) -or
-        !(Test-Path -LiteralPath (Join-Path $staging 'source_fingerprints.json') -PathType Leaf)) {
-        throw 'PRIVATE_STAGING_MISSING: run Stage 1 FIRST, before any MySQL operations'
-    }
 
-    # Validate all private source exception evidence BEFORE the first DB
-    # connection or migration; a stale {} fingerprint is NOT approved.
-    Assert-SourceZeroDateEvidence (Join-Path $staging 'source_fingerprints.json')
-
-    $env:APP_ENV = 'local'
-    $env:DB_CONNECTION = 'mysql'
-    $env:DB_DATABASE = $Database
-    $env:DB_HOST = '127.0.0.1'
-    $env:DB_URL = ''
-    $env:DATABASE_URL = ''
-    Write-Host 'STAGE 2 — ISOLATED LOCAL DB ONLY. No old database is selected.' -ForegroundColor Yellow
-    if ($ResumePrepared) {
-        Write-Host 'RECOVERY MODE: SQL staging preflight followed by READ-ONLY V2 prepared-schema verification.' -ForegroundColor Cyan
-        # Stage already migrated and bank-seeded; NEVER run migrations,
-        # db:seed or any schema reset again on this recovery path.
-        Run-Checked 'php' @(
-            'tools/database_v2/import_staged_mysql.php',
-            ('--dir=' + $staging),
-            ('--expected-sha256=' + $expectedSha),
-            ('--expected-rows=' + $expectedRows),
-            ('--source-evidence=' + (Join-Path $staging 'source_fingerprints.json')),
-            '--preserve-legacy-zero-date'
-        )
-        Run-Checked 'php' @(
-            'tools/database_v2/check_local_v2_target.php',
-            ('--expected-name=' + $Database),
-            ('--require-prepared'),
-            ('--manifest=' + (Join-Path $staging 'manifest.json'))
-        )
-    } else {
-        Run-Checked 'php' @(
-            'tools/database_v2/check_local_v2_target.php',
-            ('--expected-name=' + $Database), '--require-empty'
-        )
-        Run-Checked 'php' @(
-            'artisan', 'migrate', '--path=database/v2_migrations',
-            '--force', '--no-interaction'
-        )
-        Run-Checked 'php' @(
-            'artisan', 'db:seed', '--class=V2LegacyBanksSeeder',
-            '--force', '--no-interaction'
-        )
-    }
-    Run-Checked 'php' @(
-        'tools/database_v2/import_staged_mysql.php',
-        ('--dir=' + $staging),
-        ('--expected-sha256=' + $expectedSha),
-        ('--expected-rows=' + $expectedRows),
-        ('--source-evidence=' + (Join-Path $staging 'source_fingerprints.json')),
-        '--preserve-legacy-zero-date',
-        '--apply'
-    )
-    Run-Checked 'php' @(
-        'tools/database_v2/verify_imported_mysql_financial.php',
-        ('--manifest=' + (Join-Path $staging 'manifest.json')),
-        ('--source-evidence=' + (Join-Path $staging 'source_fingerprints.json')),
-        ('--expected-sha256=' + $expectedSha),
-        ('--expected-rows=' + $expectedRows)
-    )
-    Write-Host 'V2_LOCAL_IMPORT_AND_AGGREGATE_PARITY_PASS — source DB untouched.' -ForegroundColor Green
-    Write-Host 'Do not use this isolated rehearsal database as production.'
-} finally {
-    Pop-Location
-}
