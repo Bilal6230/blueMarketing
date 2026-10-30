@@ -308,4 +308,3 @@ jobs:
           if ($ids!==[0,1]) { throw new RuntimeException("Historical source auto-increment primary IDs 0 and 1 changed"); }
           echo "V2 synthetic historical import PASS: 57 tables, 2 source rows, exact ID/timestamps, FK rollback".PHP_EOL;
           '
-
