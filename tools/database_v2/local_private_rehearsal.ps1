@@ -20,6 +20,23 @@ $repo = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $source = [System.IO.Path]::GetFullPath($SourceSql)
 $staging = [System.IO.Path]::GetFullPath($StageDir)
 
+function Assert-SourceZeroDateEvidence([string]$EvidencePath) {
+    if (!(Test-Path -LiteralPath $EvidencePath -PathType Leaf)) {
+        throw 'SOURCE_EVIDENCE_MISSING: financial source fingerprint file is absent'
+    }
+    $evidence = Get-Content -LiteralPath $EvidencePath -Raw | ConvertFrom-Json
+    if ($evidence.source_sha256 -ne $expectedSha -or [int]$evidence.source_rows -ne 120165) {
+        throw 'SOURCE_EVIDENCE_MISMATCH: SHA256 or row count is not verified'
+    }
+    $exceptions = $evidence.mysql8_zero_date_exceptions
+    if ($null -eq $exceptions -or
+        (@($exceptions.PSObject.Properties.Name) -join ',') -cne 'leads' -or
+        (@($exceptions.leads.PSObject.Properties.Name) -join ',') -cne 'follow_up' -or
+        [int]$exceptions.leads.follow_up -ne 1) {
+        throw 'ZERO_DATE_EVIDENCE_INVALID: expected exactly one leads.follow_up zero TIMESTAMP; refresh fingerprints before any import'
+    }
+}
+
 function Run-Checked([string]$Command, [string[]]$Arguments) {
     & $Command @Arguments
     if ($LASTEXITCODE -ne 0) {
@@ -74,6 +91,7 @@ try {
             '--expected-rows', $expectedRows,
             '--out', (Join-Path $staging 'source_fingerprints.json')
         ))
+        Assert-SourceZeroDateEvidence (Join-Path $staging 'source_fingerprints.json')
         Write-Warning 'STRICT MYSQL EXCEPTION: one historical leads.follow_up TIMESTAMP is 0000-00-00 00:00:00.'
         Write-Warning 'No original value will be silently changed; local apply requires -PreserveLegacyZeroDate.'
         Write-Host 'STAGING_COMPLETE: no database connection, migrations or import executed.' -ForegroundColor Green
@@ -96,6 +114,10 @@ try {
         !(Test-Path -LiteralPath (Join-Path $staging 'source_fingerprints.json') -PathType Leaf)) {
         throw 'PRIVATE_STAGING_MISSING: run Stage 1 FIRST, before any MySQL operations'
     }
+
+    # Validate all private source exception evidence BEFORE the first DB
+    # connection or migration; a stale {} fingerprint is NOT approved.
+    Assert-SourceZeroDateEvidence (Join-Path $staging 'source_fingerprints.json')
 
     $env:APP_ENV = 'local'
     $env:DB_CONNECTION = 'mysql'
