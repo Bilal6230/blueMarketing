@@ -802,3 +802,12 @@ The earlier dashboard shown in the screenshot reported the following estimates:
 - Owner pulled `faff8d2f`, PHP lint PASS, clean Git tree; exact local MySQL read-only auditor returned `headers=980`, `candidate_exact=914`, `candidate_mismatch=66`, `no_active_details=0`, `header_detail_amount_mismatch=0`, `active_details_without_project_candidate=64`, `all_jv_headers_including_deleted=988`, `soft_deleted_jv_headers_excluded=8`.
 - **988 = 980 active + 8 soft-deleted**; the header-population difference is now proven. Prior offline `74` candidate mismatches vs `66` current active mismatches differs numerically by 8; whether each excluded header contributed to the previous mismatch set still requires matched-definition verification. Earlier eight header/detail-total discrepancies are not declared resolved: earlier and current audit populations differ.
 - Numeric `ledgers.type_id` plus account/amount/project can establish a *candidate multiset*, never authoritative typed source ownership. Do not restore, relink, insert, reclassify or delete original financial rows. P4.G4/P6.G2 remain OPEN; accepted gates still **8/24 = 33%**. Deployment BLOCKED.
+
+
+### 2026-10-31 — Actual implementation: JV exception partitions + deleted-header reconciliation
+
+- New implementation commit `6f585b1d` extends isolated read-only `tools/database_v2/audit_local_jv_candidate_parity.php`: mutually exclusive active mismatch categories (missing candidate, partial/extra candidate legs, no active detail, null project) and an independent pass over all eight deleted headers (candidate match, no active details and header/detail total discrepancies).
+- Existing 988 = 980 active + 8 deleted, 914 exact active candidate matches and 66 active candidate mismatches were previously operator-verified at `faff8d2f`. **New category counts are NOT YET verified** until operator executes updated script; no expected values fabricated. Source details for deleted headers now included in internal read-only comparison but only aggregate counts are printed.
+- Explicit invariants require active mismatch categories sum to 66 (or the current measured mismatch total) and deleted candidate partitions sum to deleted header count. Source attribution from numeric `type_id` remains unverified; do not post/reassign historical finance rows.
+- Gate disposition unchanged: 8/24 = 33%; P4.G4/P6.G2 pending detailed finance evidence, ownership and independently approved exception decisions. No production/staging/V1 database touched; CI/local tests for new code pending.
+
