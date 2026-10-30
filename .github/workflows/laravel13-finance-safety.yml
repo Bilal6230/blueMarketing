@@ -114,6 +114,7 @@ jobs:
           python3 -m py_compile tools/database_v2/full_row_digests.py
           python3 -m py_compile tools/database_v2/stock_column_diagnostics.py
           pwsh -NoProfile -Command '$tokens=$null; $errors=$null; [System.Management.Automation.Language.Parser]::ParseFile("tools/database_v2/local_private_rehearsal.ps1",[ref]$tokens,[ref]$errors) | Out-Null; if ($errors.Count) { $errors | ForEach-Object { Write-Error $_.Message }; exit 1 }'
+          pwsh -NoProfile -Command '$tokens=$null; $errors=$null; [System.Management.Automation.Language.Parser]::ParseFile("tools/database_v2/check_source_utc_semantics.ps1",[ref]$tokens,[ref]$errors) | Out-Null; if ($errors.Count) { $errors | ForEach-Object { Write-Error $_.Message }; exit 1 }'
           php -l tests/Feature/Finance/V2JournalPostingWriterTest.php
           python3 -m py_compile tools/database_v2/legacy_import_plan.py tools/database_v2/v2_import_plan.py
           python3 -m unittest discover -s tools/database_v2/tests -p 'test_*.py' -v
