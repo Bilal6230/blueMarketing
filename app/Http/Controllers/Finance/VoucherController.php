@@ -11,6 +11,7 @@ use App\Models\Ledger;
 use App\Models\AccountType;
 use App\Models\Project;
 use App\Models\DraftLedger;
+use App\Services\Finance\FinancialPendingChangeGuard;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\HeadAccounting;
@@ -146,6 +147,14 @@ class VoucherController extends Controller
             }
 
             $pendingNewChanges = $this->decodePendingUpdatePayload($pending->new_values);
+            try {
+                app(FinancialPendingChangeGuard::class)->assertAllowed(
+                    (string) $pending->table_name, $pendingNewChanges
+                );
+            } catch (\DomainException $e) {
+                abort(409, 'Posted financial changes require reversal; only safe narrative updates are approvable.');
+            }
+
             $record = $model->newQuery()
                 ->whereKey($pending->record_id)
                 ->lockForUpdate()
@@ -293,6 +302,18 @@ class VoucherController extends Controller
     {
         if (!in_array($request->table, $this->allowedPendingUpdateTables, true)) {
             abort(400, 'Invalid table name.');
+        }
+
+        // Legacy generic approval must never bypass the posted-finance
+        // permission/locking/field-guard path using DB::table()->update().
+        if (in_array($request->table, $this->financePendingUpdateTables, true)) {
+            $pending = PendingUpdate::query()
+                ->where('record_id', $id)
+                ->where('table_name', $request->table)
+                ->where('status', 'pending')
+                ->firstOrFail();
+
+            return $this->approveFinancePending($pending->id, $request);
         }
 
         // Fetch pending update record
