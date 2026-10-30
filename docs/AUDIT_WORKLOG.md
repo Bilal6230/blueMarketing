@@ -1,3 +1,9 @@
+## 2026-10-31 — Full source-row audit localized three stock schema discrepancies; data remains isolated
+
+- Owner full original-column SHA multiset comparison returned `V2_FULL_ROW_PARITY_FAILED: 3/57 differing tables, total rows=120165`, precisely `stock_entries`, `stock_movements`, `stock_parties`. The original snapshot has respectively 1, 2 and 3 records in these tables, i.e. 6 records in audit scope. **54 of 57 table source row SHA checks passed;** all 57 count/ID/date bounds and all 34 numeric aggregate columns previously PASS. This is NOT evidence of lost records or a complete financial reconciliation.
+- New source-side `stock_column_diagnostics.py` builds private per-column digests under original dump SHA; new read-only `verify_mysql_stock_columns.php` localizes only differences by `table.column` without printing any actual customer/stock values or IDs. Added cross-language PHP self-test and Python synthetic duplicate/NULL/DECIMAL column tests; [runbook](DATABASE_V2_STOCK_FULL_ROW_PARITY_DIAGNOSTIC_2026_10_31.md).
+- Never re-import or modify the isolated historical MySQL DB while diagnosis pending. P4.G3 and P6.G1 still open; formal progress **8/24 = 33%**.
+
 ## 2026-10-30 — User completed REAL local 120,165-row MySQL V2 import + 57-table/34-money aggregate verification
 
 - **Owner terminal verified** `V2_IMPORT_APPLIED_TO_ISOLATED_DB_ONLY: 120165 source rows preserved`, using local `bluemarketing_v2_local_rehearsal` **MySQL 8.0.30**, `-Apply -ResumePrepared -PreserveLegacyZeroDate`, exact source SHA `bbc45fe7f0b6cdab1a188d2437e973e2bb56d442a29585ab328bd062e89335ed`. Earlier source checksum and prepared 70-table/116-FK, 3 migration/27 bank check PASS. No V1 user/dev/staging/live database was selected.
