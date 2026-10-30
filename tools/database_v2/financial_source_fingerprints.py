@@ -65,7 +65,7 @@ def source_evidence(path: Path, checksum: str, row_count: int = 120165) -> dict:
             totals[field] = {"non_null": non_null, "sum": format(total, "f")}
         zero_dates = {}
         for name, definition in meta.items():
-            if not re.match(r'^(?:date|datetime|timestamp)\\b', definition, re.I):
+            if not re.match(r'^(?:date|datetime|timestamp)\b', definition, re.I):
                 continue
             count = sum(1 for row in rows if row.get(name) is not None
                         and str(row[name]).startswith('0000-00-00'))
