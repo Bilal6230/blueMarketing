@@ -1,3 +1,12 @@
+## 2026-10-30 — Database V2 app-wide scan, source-safe pilot and CI evidence
+
+- GitHub exact upgrade branch direct-token scan of **189** app PHP sources with **96** code hits, zero missing file reads; twelve `APP_LEDGER_SCAN_XX.md` documents and consolidated `DATABASE_V2_LEDGER_WRITER_MATRIX_2026_10_30.md`. Not a full raw SQL/indirect alias or route reachability proof. Confirmed active JV/CV/Stock/Labour/CR/CP/PPR/SV/BR/EC/ECP pathways and `LedgerController::update` posted cash mutation; dynamic `Finance/VoucherController::approveAdmin` and `MobileApprovalController::applyPendingUpdate` query-builder updates bypass model events. Mobile path forbids financial identity fields; no claim it is unrestricted. Historical CV store/update remains blocked by 409.
+- Implemented isolated V2 migrations for banks, posting batches/lines, seven source-specific actual-FK associations, JV detail link, and 27-bank immutable-id seeder; source table ID width preflight rejects V1 `project_head_subheads.id` INT. No full 57-table greenfield baseline yet.
+- Implemented new V2 only `V2JournalPostingWriter`: persisted JV details exact FK, single balanced source, same-project accounts, transaction, request-key replay and posted-ledger integrity; no existing controllers wired to V2.
+- Implemented checksum-gated `legacy_import_plan.py` and synthetic tests; no historical data output committed. Independent real dump read-only audit: 57 tables / 40 FKs / 396 inserts / 120,165 rows. Import planner emits staging SQL only with explicit hash and outside repository, never executes data.
+- VERIFIED GitHub Actions run `41088160648` V2 standalone step **SUCCESS** (PHP lint, synthetic Python tests and SQLite finance schema/JV posting tests). The older finance-safety regression step **FAILURE** in same run, so overall CI is red and cannot be described as green. MySQL 8.4 and migration against full 57-table V2 schema NOT run. No production, staging, V1 local DB, application financial writer or migration history touched.
+- Gate progress still 1/24 = 4% pending 54-field complete semantic mapping, exact indirect writer and V2 full baseline, non-mutating historical reconciliation and approved isolated MySQL integration acceptance.
+
 # Read-only Audit Worklog & Decision Register
 
 **Updated:** 2026-10-30. Keep new entries dated, evidence-based and append-only where practical.
