@@ -109,3 +109,10 @@ With each verified milestone: (a) update checkbox, (b) recalculate `completed / 
 **Progress policy unchanged:** 1/24 (4%) accepted gates until full gate acceptance is independently evidenced; implementation sub-milestones above are valuable work but not deployment certification. No database connection or SQL writes were performed by ChatGPT and no finance posting/controller path was changed.
 
 **Next priorities:** inspect CI V2 step results and fix, complete 54-column semantic dictionary and query-builder/route scan, build 57-table clean V2 baseline, enforce exact one source per posting, prove balanced/project tenant-safe batch service, rehearse MariaDB→MySQL 8.4 staging and lossless import on isolated database only. Current migration files are intentionally explicit-path only; never run `php artisan migrate:fresh` on an existing DB.
+
+
+### CI-verified follow-on: isolated V2 journal writer
+
+- New `app/Services/Finance/V2JournalPostingWriter.php`: atomic, strict same-project and account checks, persisted active-detail-to-posting-line mapping, balanced cents/header, request-key idempotency, and replay ledger integrity. Its V2 database-name gate and absence from production routes prevent this pilot from posting to V1. Tests include mutation rollback, duplicate-source uniqueness and tampered replay.
+- New feature tests `tests/Feature/Finance/V2JournalPostingWriterTest.php`. **Verified isolated CI step SUCCESS** in GitHub Actions run [41088160648](https://github.com/Bilal6230/blueMarketing/actions/runs/41088160648), alongside V2 migration/seed tests and Python synthetic planner tests. **Overall CI FAIL** at unrelated existing finance suite. Do not claim entire application or MySQL 8.4 certified.
+- Four implemented sub-milestones recorded above; **formal gate bar unchanged at 1/24 = 4%** because complete 57-table clean V2 baseline, full semantic raw/dynamic source inventory and historical import have not yet passed acceptance.
