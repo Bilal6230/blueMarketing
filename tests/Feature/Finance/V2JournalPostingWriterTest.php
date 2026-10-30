@@ -373,4 +373,21 @@ class V2JournalPostingWriterTest extends TestCase
         (new V2PostingReportReader())->lines(1, '2026-10-31', '2026-10-31');
     }
 
+    public function test_v2_reversal_cannot_predate_original_posting(): void
+    {
+        $original = (new V2JournalPostingWriter())->post(
+            1, 51, 'JV-REVERSAL-CHRONOLOGY-01'
+        );
+        try {
+            (new V2PostingReversalWriter())->reverse(
+                1, $original, 'JV-REVERSAL-CHRONOLOGY-02', '2026-10-29', 'Correction'
+            );
+            $this->fail('Backdated reversal was accepted');
+        } catch (\DomainException $e) {
+            $this->assertSame('V2_REVERSAL_DATE_BEFORE_ORIGINAL', $e->getMessage());
+        }
+        $this->assertDatabaseCount('finance_posting_batches', 1);
+        $this->assertDatabaseCount('finance_posting_lines', 2);
+    }
+
 }
