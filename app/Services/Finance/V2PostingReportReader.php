@@ -13,12 +13,7 @@ final class V2PostingReportReader
 {
     private function guard(): void
     {
-        $connection = DB::connection();
-        $database = (string) $connection->getDatabaseName();
-        if (!str_starts_with($database, 'bluemarketing_v2_') &&
-            !($connection->getDriverName() === 'sqlite' && $database === ':memory:')) {
-            throw new \RuntimeException('V2 reports refused outside isolated V2 database.');
-        }
+        V2IsolatedConnectionGuard::assertAllowed();
         foreach (['finance_posting_batches', 'finance_posting_lines',
                   'finance_posting_source_claims', 'project_head_subheads'] as $table) {
             if (!Schema::hasTable($table)) {
@@ -37,6 +32,15 @@ final class V2PostingReportReader
             throw new \InvalidArgumentException('V2 report requires ISO date YYYY-MM-DD.');
         }
         return $date;
+    }
+
+    private function amountCents(mixed $amount): int
+    {
+        $value = (string) $amount;
+        if (!preg_match('/^(0|[1-9][0-9]{0,15})(?:\.([0-9]{1,2}))?$/D', $value, $m)) {
+            throw new \DomainException('V2_REPORT_INVALID_MONEY');
+        }
+        return (int) $m[1] * 100 + (int) str_pad($m[2] ?? '', 2, '0');
     }
 
     /**
@@ -72,6 +76,12 @@ final class V2PostingReportReader
         if ($inconsistent) {
             throw new \DomainException('V2_REPORT_SOURCE_OR_PROJECT_INTEGRITY_FAILURE');
         }
+        $emptyBatch = DB::table('finance_posting_batches as batch')
+            ->leftJoin('finance_posting_lines as pl', 'pl.posting_batch_id', '=', 'batch.id')
+            ->where('batch.project_id', $projectId)->whereNull('pl.id')->exists();
+        if ($emptyBatch) {
+            throw new \DomainException('V2_REPORT_EMPTY_POSTING_BATCH');
+        }
         $q = DB::table('finance_posting_lines as line')
             ->join('finance_posting_batches as batch', 'batch.id', '=', 'line.posting_batch_id')
             ->join('finance_posting_source_claims as claim',
@@ -99,6 +109,24 @@ final class V2PostingReportReader
                 'batch.voucher_number',
                 'claim.source_kind',
             ])->map(static fn ($line): array => (array) $line)->all();
+
+        $totals = [];
+        foreach ($lines as $line) {
+            $debit = $this->amountCents($line['debit']);
+            $credit = $this->amountCents($line['credit']);
+            if (($debit > 0) === ($credit > 0)) {
+                throw new \DomainException('V2_REPORT_INVALID_POSTING_LINE');
+            }
+            $batchId = (int) $line['posting_batch_id'];
+            $totals[$batchId] ??= ['debit' => 0, 'credit' => 0];
+            $totals[$batchId]['debit'] += $debit;
+            $totals[$batchId]['credit'] += $credit;
+        }
+        foreach ($totals as $total) {
+            if ($total['debit'] < 1 || $total['debit'] !== $total['credit']) {
+                throw new \DomainException('V2_REPORT_UNBALANCED_POSTING_BATCH');
+            }
+        }
 
         // A source-claim without its actual typed FK child is not sufficient
         // to provide a voucher URL or audited balance. Verify every batch in

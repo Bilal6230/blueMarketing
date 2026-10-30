@@ -184,4 +184,15 @@ class V2CashPostingWriterTest extends TestCase
         $this->assertDatabaseCount('finance_posting_batches', 1);
     }
 
+    public function test_cash_replay_rejects_tampered_effective_date(): void
+    {
+        $writer = new V2CashPostingWriter();
+        $id = $writer->post(1, 42, 'CASH-HARDEN-DATE-0001', $this->crLegs());
+        DB::table('finance_posting_batches')->where('id', $id)
+            ->update(['effective_date' => '2026-10-31']);
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('V2_CASH_IDEMPOTENCY_CONFLICT');
+        $writer->post(1, 42, 'CASH-HARDEN-DATE-0001', $this->crLegs());
+    }
+
 }

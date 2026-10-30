@@ -205,4 +205,58 @@ class V2JournalPostingWriterTest extends TestCase
         (new V2PostingReportReader())->lines(1);
     }
 
+    public function test_jv_replay_rejects_unlinked_extra_posting_line(): void
+    {
+        $writer = new V2JournalPostingWriter();
+        $id = $writer->post(1, 51, 'JV-HARDEN-UNLINKED-001');
+        DB::table('finance_posting_lines')->insert([
+            'posting_batch_id' => $id, 'project_head_subhead_id' => 101,
+            'debit' => '1.00', 'credit' => '0.00',
+        ]);
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('V2_REPLAY_DETAILS_MISSING');
+        $writer->post(1, 51, 'JV-HARDEN-UNLINKED-001');
+    }
+
+    public function test_jv_replay_refuses_changed_batch_series(): void
+    {
+        $writer = new V2JournalPostingWriter();
+        $id = $writer->post(1, 51, 'JV-HARDEN-SERIES-0001');
+        DB::table('finance_posting_batches')->where('id', $id)->update(['voucher_series' => 'SV']);
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('V2_IDEMPOTENCY_CONFLICT');
+        $writer->post(1, 51, 'JV-HARDEN-SERIES-0001');
+    }
+
+    public function test_jv_replay_rejects_posted_narrative_tampering(): void
+    {
+        $writer = new V2JournalPostingWriter();
+        $id = $writer->post(1, 51, 'JV-HARDEN-NARRATIVE01');
+        DB::table('finance_posting_lines')->where('posting_batch_id', $id)
+            ->where('project_head_subhead_id', 101)->update(['description' => 'altered']);
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('V2_REPLAY_LEDGER_TAMPERED');
+        $writer->post(1, 51, 'JV-HARDEN-NARRATIVE01');
+    }
+
+    public function test_v2_report_rejects_unbalanced_persisted_batch(): void
+    {
+        (new V2JournalPostingWriter())->post(1, 51, 'JV-HARDEN-REPORT-0001');
+        DB::table('finance_posting_lines')->where('project_head_subhead_id', 101)
+            ->update(['debit' => '126.50']);
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('V2_REPORT_UNBALANCED_POSTING_BATCH');
+        (new V2PostingReportReader())->lines(1);
+    }
+
+    public function test_v2_report_rejects_posting_batch_without_lines(): void
+    {
+        DB::table('finance_posting_batches')->insert([
+            'project_id' => 1, 'voucher_series' => 'JV', 'effective_date' => '2026-10-30',
+        ]);
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('V2_REPORT_EMPTY_POSTING_BATCH');
+        (new V2PostingReportReader())->lines(1);
+    }
+
 }

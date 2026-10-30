@@ -918,3 +918,24 @@ All four existing documentation changes preserved. No application code changed, 
 - Replay now checks the canonical `finance_posting_source_claims.source_kind='cash'` and persisted voucher series matches the source's CR/CP type, in addition to prior source identity, SHA and leg multiset checks. This makes corrupted batch metadata fail closed, not silently replay.
 - Regression added for 5 malformed account ID variations and mutated persisted batch series in `tests/Feature/Finance/V2CashPostingWriterTest.php`. Code commits `ca5cb80c`, `3f1da895`, `4fec605a`. **New tests not yet operator-run/CI-confirmed PASS**; do not increase formal gates on implementation alone.
 - Baseline operator result remains 13 tests / 58 assertions PASS at `f5c27a16`, with clean working tree. P5.G1 still open: reversal, full concurrency and all-family services not implemented/accepted. Overall 8/24 (33%), deployment blocked. Production/V1/staging not touched.
+
+
+### 2026-10-31 — V2 pilot financial hardening code pack (pending operator test)
+
+- Strict V2-only connection guard, JV replay metadata/detail/narrative protection, cash replay persisted identity protection, read-only report balance/empty-batch checks, and dedicated regressions/CI wiring authored as a guarded local patch.
+- Source files are only written by owner explicitly applying the package on clean `upgrade/laravel-framework` at `abe55741`. GitHub direct write was unavailable, so no remote commit or CI success is claimed.
+- Operator must run isolated PHPUnit and check diff; formal phase gates remain **8/24 (33%)**. Outstanding JV typed attribution, derived column policy, reversal, concurrency, UAT, approval and deployment blockers unchanged.
+
+### 2026-10-31 — V2 finance hardening operator regression PASS
+Evidence ID: V2_HARDENING_32_87_LOCAL_PASS
+
+- 32 focused Laravel tests PASS / 87 assertions.
+- 6 isolated connection guard tests PASS.
+- JV posting, idempotent replay, extra-leg detection, narrative verification and report integrity PASS.
+- Cash CR/CP posting and replay integrity tests PASS.
+- Model/schema compatibility tests PASS.
+- PHP lint and git diff --check PASS.
+- Executed against SQLite :memory: under APP_ENV=testing.
+- Formal gates remain 8/24 until full acceptance requirements are satisfied.
+- No V1, staging or live database writes authorized.
+

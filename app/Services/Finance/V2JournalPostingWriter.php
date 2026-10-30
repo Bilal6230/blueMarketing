@@ -27,12 +27,7 @@ final class V2JournalPostingWriter
 
     private function assertIsolated(): void
     {
-        $connection = DB::connection();
-        $name = (string) $connection->getDatabaseName();
-        if (!str_starts_with($name, 'bluemarketing_v2_') &&
-            !($connection->getDriverName() === 'sqlite' && $name === ':memory:')) {
-            throw new \RuntimeException('V2 posting refused outside isolated database.');
-        }
+        V2IsolatedConnectionGuard::assertAllowed();
         foreach (['finance_posting_batches', 'finance_posting_lines',
                   'finance_posting_source_claims', 'finance_posting_journal_sources', 'finance_journal_line_sources'] as $table) {
             if (!Schema::hasTable($table)) {
@@ -110,8 +105,19 @@ final class V2JournalPostingWriter
                 $claim = DB::table('finance_posting_journal_sources')
                     ->where('posting_batch_id', $existing->id)
                     ->where('journal_voucher_id', $journalId)->exists();
-                if (!$claim || !hash_equals((string) $existing->payload_sha256, $payloadHash)) {
+                $kindMatches = DB::table('finance_posting_source_claims')
+                    ->where('posting_batch_id', $existing->id)
+                    ->where('source_kind', 'journal')->exists();
+                if (!$claim || !$kindMatches || (string) $existing->voucher_series !== 'JV'
+                    || (string) $existing->voucher_number !== (string) $header->voucher_number
+                    || (string) $existing->effective_date !== (string) $header->date
+                    || $existing->reversal_of_batch_id !== null
+                    || !hash_equals((string) $existing->payload_sha256, $payloadHash)) {
                     throw new \DomainException('V2_IDEMPOTENCY_CONFLICT');
+                }
+                if ((int) DB::table('finance_posting_lines')
+                    ->where('posting_batch_id', $existing->id)->count() !== count($lines)) {
+                    throw new \DomainException('V2_REPLAY_DETAILS_MISSING');
                 }
                 // A replay must re-verify the actual posted amounts/account
                 // and exact source IDs, not just the presence of two links.
@@ -119,7 +125,7 @@ final class V2JournalPostingWriter
                     ->join('finance_posting_lines as line', 'line.id', '=', 'src.posting_line_id')
                     ->where('line.posting_batch_id', $existing->id)
                     ->get(['src.journal_voucher_detail_id', 'line.project_head_subhead_id',
-                        'line.debit', 'line.credit']);
+                        'line.debit', 'line.credit', 'line.description']);
                 if ($posted->count() !== count($lines)) {
                     throw new \DomainException('V2_REPLAY_DETAILS_MISSING');
                 }
@@ -132,7 +138,8 @@ final class V2JournalPostingWriter
                     $expected = $expectedByDetail[$detailId] ?? null;
                     if (!$expected || (int) $posting->project_head_subhead_id !== $expected['account_id'] ||
                         $this->cents($posting->debit) !== $this->cents($expected['debit']) ||
-                        $this->cents($posting->credit) !== $this->cents($expected['credit'])) {
+                        $this->cents($posting->credit) !== $this->cents($expected['credit']) ||
+                        ($posting->description ?? null) !== ($expected['description'] ?? null)) {
                         throw new \DomainException('V2_REPLAY_LEDGER_TAMPERED');
                     }
                 }

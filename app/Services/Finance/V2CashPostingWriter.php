@@ -27,12 +27,7 @@ final class V2CashPostingWriter
 
     public function post(int $projectId, int $sourceId, string $requestKey, array $allocation, ?int $actorId = null): int
     {
-        $db = DB::connection();
-        $name = (string) $db->getDatabaseName();
-        if (!str_starts_with($name, 'bluemarketing_v2_') &&
-            !($db->getDriverName() === 'sqlite' && $name === ':memory:')) {
-            throw new \RuntimeException('V2 cash posting refused outside isolated database.');
-        }
+        V2IsolatedConnectionGuard::assertAllowed();
         foreach (['projects', 'customer_ledger', 'project_head_subheads',
                   'finance_posting_batches', 'finance_posting_source_claims',
                   'finance_posting_cash_sources', 'finance_posting_lines'] as $table) {
@@ -127,6 +122,9 @@ final class V2CashPostingWriter
                     ->where('source_kind', 'cash')->exists();
                 if (!$claim || !$canonicalClaim ||
                     (string) $existing->voucher_series !== (string) $source->transaction_type ||
+                    (string) $existing->voucher_number !== (string) $source->type_id ||
+                    (string) $existing->effective_date !== (string) $source->date ||
+                    $existing->reversal_of_batch_id !== null ||
                     !hash_equals((string) $existing->payload_sha256, $fingerprint)) {
                     throw new \DomainException('V2_CASH_IDEMPOTENCY_CONFLICT');
                 }
