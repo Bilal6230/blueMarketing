@@ -21,6 +21,7 @@ def main() -> None:
     parser.add_argument("--out", type=pathlib.Path, required=True)
     parser.add_argument("--invalid-fk", action="store_true")
     parser.add_argument("--windows-newlines", action="store_true", help="Simulate Python text-mode CRLF output")
+    parser.add_argument("--zero-id", action="store_true", help="Include historical account type IDs 0 and 1")
     a = parser.parse_args()
     target = a.out.resolve()
     if target.exists() and any(target.iterdir()):
@@ -48,6 +49,13 @@ def main() -> None:
             "VALUES (42, 'synthetic_old_migration', 3)"
         ],
     }
+    if a.zero_id:
+        # Real source account_types has original PKs 0 and 1. Without
+        # NO_AUTO_VALUE_ON_ZERO both inserts would collide on MySQL.
+        statements["account_types"] = [
+            "INSERT INTO `account_types` (`id`, `name`, `status`) "
+            "VALUES (0, 'CI_ZERO_ACCOUNT', 1), (1, 'CI_ONE_ACCOUNT', 1)"
+        ]
     if a.invalid_fk:
         statements["sites"] = [
             "INSERT INTO `sites` (`id`, `project_id`, `subhead_accounting_id`, `site_name`) "
@@ -68,7 +76,7 @@ def main() -> None:
         metadata.append({
             "source_table": "migrations" if name == "legacy_migration_history" else name,
             "target_table": name,
-            "rows": len(queries),
+            "rows": 2 if name == "account_types" and a.zero_id else len(queries),
             "insert_statements": len(queries),
             "content_sha256": hashlib.sha256(body.encode()).hexdigest(),
         })
@@ -87,9 +95,12 @@ def main() -> None:
     expected = {}
     for table, source_columns in cols.items():
         name = "legacy_migration_history" if table == "migrations" else table
-        count = len(statements.get(name, []))
+        count = (2 if table == "account_types" and a.zero_id
+                 else len(statements.get(name, [])))
         has_id = "id" in source_columns
         synthetic_id = 99999 if table == "projects" else 42 if table == "migrations" else None
+        id_min = 0 if table == "account_types" and a.zero_id else synthetic_id
+        id_max = 1 if table == "account_types" and a.zero_id else synthetic_id
         dates = {}
         for column in ("created_at", "updated_at", "deleted_at"):
             if column not in source_columns:
@@ -105,8 +116,8 @@ def main() -> None:
         expected[table] = {
             "rows": count,
             "id_non_null": count if has_id else None,
-            "id_min": synthetic_id if count and has_id else None,
-            "id_max": synthetic_id if count and has_id else None,
+            "id_min": id_min if count and has_id else None,
+            "id_max": id_max if count and has_id else None,
             "timestamps": dates,
             "numeric_totals": {},
         }
