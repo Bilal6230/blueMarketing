@@ -84,6 +84,12 @@ jobs:
           php -l app/Services/Finance/V2JournalPostingWriter.php
           php -l app/Services/Finance/V2PostingReportReader.php
           php -l app/Services/Finance/FinancialPendingChangeGuard.php
+          php -l app/Services/Finance/V2PostingReversalWriter.php
+          php -l app/Models/V2/FinancePostingBatch.php
+          php -l app/Models/V2/FinancePostingLine.php
+          php -l app/Models/V2/FinancePostingSourceClaim.php
+          php -l tests/Feature/DatabaseV2PostingModelTest.php
+          php -l tools/database_v2/audit_local_temporal_history.php
           php -l app/Services/Finance/V2IsolatedConnectionGuard.php
           php -l tests/Feature/Finance/V2IsolatedConnectionGuardTest.php
           php -l app/Services/Finance/V2CashPostingWriter.php
@@ -107,7 +113,7 @@ jobs:
           php -l tests/Feature/Finance/V2JournalPostingWriterTest.php
           python3 -m py_compile tools/database_v2/legacy_import_plan.py tools/database_v2/v2_import_plan.py
           python3 -m unittest discover -s tools/database_v2/tests -p 'test_*.py' -v
-          php artisan test tests/Feature/Finance/V2IsolatedConnectionGuardTest.php tests/Feature/DatabaseV2ModelSchemaContractTest.php tests/Feature/DatabaseV2SourceEnumFidelityTest.php tests/Feature/DatabaseV2FullLegacyBaselineTest.php tests/Feature/DatabaseV2IsolatedFinanceSchemaTest.php tests/Feature/Finance/V2JournalPostingWriterTest.php tests/Feature/Finance/V2CashPostingWriterTest.php
+          php artisan test tests/Feature/DatabaseV2PostingModelTest.php tests/Feature/Finance/V2IsolatedConnectionGuardTest.php tests/Feature/DatabaseV2ModelSchemaContractTest.php tests/Feature/DatabaseV2SourceEnumFidelityTest.php tests/Feature/DatabaseV2FullLegacyBaselineTest.php tests/Feature/DatabaseV2IsolatedFinanceSchemaTest.php tests/Feature/Finance/V2JournalPostingWriterTest.php tests/Feature/Finance/V2CashPostingWriterTest.php
           php artisan test tests/Feature/FinanceApprovalWorkflowTest.php tests/Unit/Finance/FinancialPendingChangeGuardTest.php
 
 
