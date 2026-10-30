@@ -219,7 +219,10 @@ jobs:
         run: |
           python3 tools/database_v2/tests/build_synthetic_mysql_import.py --out=/tmp/v2bad --invalid-fk
           php -l tools/database_v2/import_staged_mysql.php
-          php tools/database_v2/import_staged_mysql.php --dir=/tmp/v2bad --expected-sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --expected-rows=3
+          if php tools/database_v2/import_staged_mysql.php --dir=/tmp/v2bad --expected-sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --expected-rows=3; then
+            echo "ERROR: synthetic fixture accepted without CI-only authorization"
+            exit 1
+          fi
           if php tools/database_v2/import_staged_mysql.php --dir=/tmp/v2bad --expected-sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --expected-rows=3 --ci-synthetic --apply; then
             echo "ERROR: invalid FK unexpectedly imported"
             exit 1
