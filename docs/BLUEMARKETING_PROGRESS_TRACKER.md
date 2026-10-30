@@ -1,3 +1,11 @@
+### 2026-10-30 Database V2 — verified bank/site source semantics and schema blueprint
+
+- **Added** `docs/DATABASE_V2_SCHEMA_BLUEPRINT_2026_10_30.md`: proper dedicated banks lookup, correctly renamed site project-account FK, proposed immutable posting batches+lines and separate typed source-FK link tables, dependency-aware import order and explicit approval gates. Design only, NO migrations/run.
+- **Proved bank IDs with code + dump:** `AppHelper::getPakistanBanks()` explicitly defines 27 IDs 1–27; uploaded dev dump has 1,345 `customer_ledger.bank_id` values and 46 `booking_vouchers.bank_id` values, **all 1,391 match** the current code list, zero unknown. `bank_id` is NOT project_head_subheads FK; preserve original numeric IDs to `banks` reference table on V2.
+- **Proved misleading site field with code + dump:** `LabourController::siteStore` saves form sub-account into `sites.subhead_accounting_id`; `createVoucher` reads it as `project_head_subheads.id`, not `subhead_accountings.id`. **All 7/7 sites** match project account parent, **0 project mismatches**. Previous claimed '2 missing subhead_accounting parents' came from a FALSE inferred target and is corrected. V2 rename `sites.project_head_subhead_id`, align key width, FK correct parent.
+- **FK check nuance:** all 40 FK constraints have zero unmatched values; **28** have non-null exported child references and **12** have no non-null child rows. Earlier preliminary 30/10 evidence coverage was incorrect; do not claim empty FK constraints were exercised.
+- This is genuine P1.G2 progress, but full **54** unconstrained candidate code relationship map and all code writer paths remain unfinished, so **1/24 gates = 4%** until acceptance. All source data and live/staging databases unchanged.
+
 ### 2026-10-30 Database V2 P1.G2 substantial inspection — 57-table relationship matrix (GATE STILL OPEN)
 
 - Inspected uploaded `u429032065_dev.sql` offline, SHA-256 `bbc45fe7f0b6cdab1a188d2437e973e2bb56d442a29585ab328bd062e89335ed` and verified 57 tables, **120,165** rows, **40 declared FK relationships with zero missing parent IDs**, and **54** remaining unlinked `*_id` candidate columns (corrected preliminary **56**). The candidates include polymorphic/business values, not 54 missing foreign keys. No private dump values committed.
