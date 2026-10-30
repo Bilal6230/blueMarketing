@@ -88,6 +88,32 @@ if ((int) DB::table('banks')->count() !== 27 ||
     throw new RuntimeException('Source bank ID mapping not populated correctly.');
 }
 
+// Verify a meaningful composite unique source key exists physically in MySQL.
+$journalUnique = (int) $db->selectOne(
+    "SELECT COUNT(*) AS n FROM (
+       SELECT INDEX_NAME FROM information_schema.STATISTICS
+       WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='journal_vouchers'
+         AND NON_UNIQUE=0
+       GROUP BY INDEX_NAME
+       HAVING GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX SEPARATOR ',')
+              = 'project_id,type,voucher_number'
+    ) AS exact_unique"
+)->n;
+if ($journalUnique !== 1) {
+    throw new RuntimeException('Missing project/type/scoped journal voucher uniqueness.');
+}
+
+// The seeded source-bank primary key must reject duplicates physically.
+DB::beginTransaction();
+try {
+    DB::table('banks')->insert(['id' => 1, 'display_name' => 'Duplicate bank ID']);
+    throw new RuntimeException('Duplicate bank identity unexpectedly accepted.');
+} catch (\Illuminate\Database\QueryException $e) {
+    // Database UNIQUE/PK constraint correctly blocked the duplicate.
+} finally {
+    DB::rollBack();
+}
+
 // Rejected FK insert must cause NO persistent ledger changes.
 $original = (int) DB::table('ledgers')->count();
 DB::beginTransaction();
