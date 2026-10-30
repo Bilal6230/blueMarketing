@@ -6,6 +6,8 @@
 **Target:** isolated Database V2, new migration baseline, faithful historical import, verified application refactor and reconciliation.  
 **Current state (2026-10-30):** 57-table schema dictionary, isolated 70-table V2 schema, 116 physical FK-column references, and typed finance pilot verified. **Owner successfully imported all 120,165 private historical rows into isolated local MySQL 8.0.30**, with 57/57 table counts, original ID/timestamp boundaries and 34 source numeric aggregate totals passing. Full original-column row digests, 74 JV source exception reviews, V2 application refactor, financial parity and production UAT remain PENDING.
 
+**LATEST SAFETY STATUS (2026-10-31): P4.G3 BLOCKED — 41/57 original tables match under +05:00 rendering but fail source UTC instant parity. Retain existing V2 rehearsal unchanged; corrected fresh UTC importer and isolated target guard are implemented.**
+
 ## Live progress bar (acceptance-gate based)
 
 **Overall: 8 / 24 gates = 33%**  
@@ -308,3 +310,11 @@ Evidence ID: V2_HARDENING_32_87_LOCAL_PASS
 - Original pinned 57-table schema metadata cross-check: all 41 differing tables have a source `TIMESTAMP` column (102 TIMESTAMP columns across these tables); zero timestamp-free tables in mismatch list. Other 16 tables match at UTC; further column-level proof needed.
 - Code fix: `verify_mysql_full_row_digests.php` EOF whitespace removed; added `diagnose_mysql_source_timezone_parity.php` with exact local target and source SHA guards, two-session (`+00:00`/`+05:00`) 57-table digest classification, read-only consistent transaction, no row contents/IDs; CI lints and runs selftest.
 - Source/target historical repair NOT performed or authorized. P4.G3/P4.G4/P6 remain blocked; P5 regression pilot still 45 PASS. See [UTC incident and safe diagnostic](DATABASE_V2_UTC_PARITY_EXCEPTION_2026_10_31.md). **Formal acceptance remains 8/24 (33.3%)**; Phase 4 1/4 (25%).
+
+### 2026-10-31 — UTC source mismatch mechanism confirmed; future isolated import guards + candidate acceptance runner
+
+**Owner-verified at `6efaace6`:** pinned source digest, local V2 rehearsal unchanged and clean; `diagnose_mysql_source_timezone_parity.php --selftest` PASS, **41/57 `SOURCE_MATCHES_PLUS05_ONLY`**, **16/57 `SOURCE_MATCHES_BOTH_SESSIONS`**, **0 UTC-only**, **0 neither**. This is table-level parity evidence that original UTC-imported TIMESTAMP instants in the old V2 rehearsal differ from the source; it does **not** count changed rows. Earlier finance pilot **45 tests / 159 assertions PASS**; no new tests claimed yet.
+
+**New real code:** `V2HistoricalImportTargetGuard` integrated into `import_staged_mysql.php` before MySQL access; rejects remote hosts, DB URLs, replica configs, unix sockets, prod/staging/dev/client names, environment mismatch and synthetic-real target crossover. PHPUnit regression covers **18 forbidden configurations**. The earlier importer pins source `+00:00` session on *future new imports*; existing clone is **not mutated**. New `verify_new_utc_rehearsal.ps1` is read-only and accepts only a **separately named** local V2 candidate, verifies original SHA and source UTC header, 57/57 full-row UTC digests and 57-table financial aggregates with no migrations/import; CI lints PHP, runs guard regressions and parses PowerShell.
+
+**Formal gates:** 8/24 = 33.3% unchanged. Phase 4 P4.G3 is **BLOCKED** until new independently authorized, isolated import demonstrates source-UTC 57/57 and historical exceptions are signed off. P4.G4 and Phase 6 need source ownership/account parity and UAT. Operator must *not* write current rehearsal, V1, dev, staging or live; no database creation or import was performed this turn. New code needs independent operator/CI execution.
