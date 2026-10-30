@@ -838,3 +838,12 @@ All four existing documentation changes preserved. No application code changed, 
 - Independent review identified an important boundary: `--no-defaults` does not isolate Laravel bootstrap/configuration. Documented future safeguards now require a copied hash-pinned worktree, scrubbed environment, absent config cache, pre-bootstrap identity/grants probe, migration allowlist and host-level network isolation. These controls are not enforceable by documentation alone; provisioning remains blocked until externally evidenced.
 
 - Added `STAGING_MIGRATION_ADMIN_EVIDENCE_PACKET.md`, a non-executable administrator checklist with per-control evidence, provider, approver, safe verification, PASS/FAIL criteria and uncertainty. No administrator evidence has been supplied; no disposable database may be provisioned.
+
+
+### 2026-10-31 — Owner-verified five-sub-milestone local V2 parity checkpoint
+
+- Source: owner terminal on `upgrade/laravel-framework` at `fe16de2d`, exact target `bluemarketing_v2_local_rehearsal` (local MySQL 8.0.30). `git status --short` was clean before documentation changes.
+- Three stock ENUM definitions restored with `V2_ENUM_CASE_REPAIR_PASS` and preserved ordinals; original-column multiset verifier now `V2_FULL_ROW_PARITY_PASS: 57/57 tables, 120165/120165 rows`, including identical duplicate rows. Previous 54/57 remains *historical/pre-repair*, not current status.
+- Independent `V2_FINANCIAL_PARITY_PASS`: 57/57 tables, 120165 records, ID/timestamp bounds and 34 numeric aggregate columns match; initial missing-arguments abort was an invocation error, not failed data parity.
+- Five sub-milestones documented: ENUM restoration, original-column parity, aggregate parity, prior JV exception register classification, safe gate/next-work handoff. [Evidence and limits](DATABASE_V2_FIVE_MILESTONE_PARITY_CHECKPOINT_2026_10_31.md). **No claim that five formal phase gates passed.**
+- **Acceptance remains 8/24 = 33%** until independent P4.G3 timezone/audit-history review and P4.G4/P6 JV source, project/account/financial-leg reconciliation. 74 candidate-mismatching JV headers and eight total mismatches are unresolved, not automatically remediated. No V1/staging/live edits or deployment; assistant did not run local SQL or CI.
