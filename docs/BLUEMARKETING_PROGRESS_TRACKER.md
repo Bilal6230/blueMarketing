@@ -787,3 +787,11 @@ The earlier dashboard shown in the screenshot reported the following estimates:
 - Operator pulled `b2f9f40a`, confirmed clean tree and both new PHP syntax checks PASS. Isolated `DatabaseV2SourceEnumFidelityTest`, `DatabaseV2FullLegacyBaselineTest`, `DatabaseV2IsolatedFinanceSchemaTest`: **10 tests / 51 assertions PASS** (SQLite memory only).
 - First operator run of isolated local MySQL JV candidate audit stopped with `V2_JV_CANDIDATE_AUDIT_REFUSED: TypeError`; **NO audit counts accepted**. Root cause in script: passing uninitialized nested PHP multiset bucket by typed `array &` to `addLeg`, where the missing offset resolves to null. Commit `c9e22c74` initializes both detail and ledger candidate buckets before reference writes. No DB mutation, financial correction or reclassification.
 - Corrected audit must be pulled and rerun by operator, and its aggregate output reviewed before claiming P4.G4 or P6.G2 advancement. Formal phase gate remains **8/24 = 33%** until accepted evidence. Deployment blocked.
+
+
+### 2026-10-31 — Local JV candidate audit executed; population discrepancy under investigation
+
+- Operator pulled `cab73ead`, PHP lint PASS, clean tree, and ran exact local V2 READ-ONLY aggregate audit: `headers=980`, `candidate_exact=914`, `candidate_mismatch=66`, `no_active_details=0`, `header_detail_amount_mismatch=0`, `active_details_without_project_candidate=64`. This is **candidate matching only**, not verified typed source ownership.
+- Prior offline 2026-10-30 source audit had 988 JV headers, 914 candidate matches, 74 mismatches, eight zero-active-detail headers and eight header/detail amount discrepancies. The new audit excludes `journal_vouchers.deleted_at IS NOT NULL`, likely a different population; the cause of the exact 8-header difference **is not yet proven**. Do not describe discrepancies as resolved or mutate historical data.
+- Commit `15d25837` adds aggregate-only `all_jv_headers_including_deleted`, `soft_deleted_jv_headers_excluded` and partition invariants to the local read-only auditor. Requires operator rerun to confirm exact population boundary and examine the old eight separately if needed.
+- Formal gates stay 8/24=33%, P4.G4 and P6.G2 blocked, production blocked.
