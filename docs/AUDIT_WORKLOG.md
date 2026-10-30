@@ -1,3 +1,10 @@
+## 2026-10-31 — Confirmed exact V2 ENUM-case schema defect; no local DB write
+
+- Owner's 3-table stock-column SHA diagnosis identified exactly three drifted columns: `stock_entries.flow` (source ENUM IN/OUT), `stock_movements.direction` (IN/OUT), `stock_parties.type` (Supplier/Consumer/Site). Other 39 stock columns MATCH. First full-row comparison still 54/57 PASS with all 120165 counts/34 money aggregates matching.
+- Code root cause `$sqlType = strtolower((string) strtok($definition, ' '));` in isolated V2 original baseline lowercased the **ENUM literals themselves**. Fixed to preserve literal argument case while lowercasing only matched SQL type name. Future greenfield data import will not silently lowercase these 3 source values.
+- Added MySQL 8.4 CI checks for actual original `COLUMN_TYPE` casing and disposable TEMP enum labels/ordinal-preservation ALTER. Added `tools/database_v2/restore_stock_enum_case.php`: default READ-ONLY local exact DB preflight and backed-up, explicit `--apply` script that restores only the three ENUM schema definitions, confirms stock data counts and ordinal histograms, performs no UPDATE of historic rows, and emits no private customer data. MySQL ALTER implicit DDL commits require BACKUP before apply; no automation directly connects to owner DB.
+- [Exact owner backup and read-only preview instructions](DATABASE_V2_STOCK_ENUM_CASE_REPAIR_2026_10_31.md). No owner MySQL 8.0.30 fix executed yet; P4.G3/P6.G1 remain OPEN and formal 8/24=33% unchanged.
+
 ## 2026-10-31 — Full source-row audit localized three stock schema discrepancies; data remains isolated
 
 - Owner full original-column SHA multiset comparison returned `V2_FULL_ROW_PARITY_FAILED: 3/57 differing tables, total rows=120165`, precisely `stock_entries`, `stock_movements`, `stock_parties`. The original snapshot has respectively 1, 2 and 3 records in these tables, i.e. 6 records in audit scope. **54 of 57 table source row SHA checks passed;** all 57 count/ID/date bounds and all 34 numeric aggregate columns previously PASS. This is NOT evidence of lost records or a complete financial reconciliation.
