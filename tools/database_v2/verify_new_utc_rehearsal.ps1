@@ -50,6 +50,13 @@ try {
     $env:DB_URL = ''
     $env:DATABASE_URL = ''
 
+    # Read-only target identity proof. Never migrate or overwrite.
+    php ./tools/database_v2/check_local_v2_target.php `
+        "--expected-name=$Database"
+    if ($LASTEXITCODE -ne 0) {
+        throw 'V2_NEW_UTC_REHEARSAL_TARGET_IDENTITY_FAILED'
+    }
+
     php ./tools/database_v2/verify_mysql_full_row_digests.php `
         "--source-evidence=$rowEvidencePath" --verify-source-utc
     if ($LASTEXITCODE -ne 0) {
@@ -59,7 +66,7 @@ try {
     php ./tools/database_v2/verify_imported_mysql_financial.php `
         "--manifest=$manifestPath" `
         "--source-evidence=$financePath" `
-        "--expected-sha256=$sha" --expected-rows=120165
+        "--expected-sha256=$sha" --expected-rows=120165 --verify-source-utc
     if ($LASTEXITCODE -ne 0) {
         throw 'V2_NEW_UTC_REHEARSAL_FINANCIAL_PARITY_FAILED'
     }
