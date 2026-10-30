@@ -28,7 +28,8 @@ final class V2HistoricalImportTargetGuard
             || ($synthetic
                 ? ($environment !== 'testing' || $database !== 'bluemarketing_v2_ci')
                 : ($environment !== 'local'
-                    || !preg_match('/^bluemarketing_v2_local_[a-z0-9_]+$/D', $database)))
+                    || !preg_match('/^bluemarketing_v2_local_[a-z0-9_]+$/D', $database)
+                    || preg_match('/(?:live|prod|stag|dev|client)/i', $database)))
         ) {
             throw new \DomainException('V2_IMPORT_REQUIRES_EXACT_ISOLATED_LOCAL_TARGET');
         }
