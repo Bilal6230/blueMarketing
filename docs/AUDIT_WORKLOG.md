@@ -11,6 +11,15 @@
 
 **Updated:** 2026-10-30. Keep new entries dated, evidence-based and append-only where practical.
 
+## 2026-10-30 — V2 five connected milestones and 25% acceptance gates
+
+- Full private MariaDB dev dump (SHA256 `bbc45fe7f0b6cdab1a188d2437e973e2bb56d442a29585ab328bd062e89335ed`) schema-only extraction: all 57 table column declarations, all 133 ALTER blocks, 40 original FK declarations; metadata committed under `database/v2_schema/`, **no private INSERT rows**. 54 unlinked IDs classified into 46 real FK candidates and 8 polymorphic/business identifiers. `Booking::broker()` parent corrected from assumed leads to actual `subhead_accountings`; 163/163 non-null historical links found. Sites and bank wrong-parent assumptions corrected.
+- Independently scanned cross-project data links, without treating them as invalid: leads.area_id 7,976/13,391, leads.follow_id 8,022/13,391, punches.user_id 20/30 different parent project IDs; user/project membership and shared master policy still require owner confirmation. Document `DATABASE_V2_57_TABLE_RELATIONSHIP_AND_TENANT_ACCEPTANCE_2026_10_30.md`.
+- Added complete isolated Laravel Schema baseline `database/v2_migrations/2026_10_30_000020_create_v2_legacy_domain_baseline.php` (56 app tables + old Laravel history archive) alongside V2 banks + typed finance core. Original `database/migrations` and all deployed migrations untouched. V2 financial reversal design is still a pilot; no legacy app controller is switched.
+- Added `tools/database_v2/v2_import_plan.py` checksum-locked 57-table/86-FK data-only staging plan; historical migration rows target `legacy_migration_history`, original dated and financial values remain source literals. New synthetic tests check source column absence of `id`, timestamps and FK-first ordering. **No full historical MySQL import performed;** raw dump remains private.
+- GitHub Actions isolated **MySQL 8.4 job SUCCESS** at <https://github.com/Bilal6230/blueMarketing/actions/runs/41092687968>: 69 V2 schema tables / >=108 physical FK columns, 27 stable bank IDs, correctly scoped journal uniqueness, invalid account posting rejected, bank delete blocked, synthetic historical timestamps/amount preserved, rollback+schema reapplication. Independent V2 SQLite/Python job step SUCCESS. The overall existing finance-safety job FAILS a separate older finance regression; no false green certification.
+- **Formal tracker** `DATABASE_V2_REBUILD_ROADMAP.md` updated 1/24 -> **6/24 = 25%** (P1.G1/G2, P2.G1, P3.G1/G2/G3). Full app writer/reader audit, owner approval, real 120,165-row import, finance parity, reports and production cutover gates stay OPEN. No live/staging/local user DB modified.
+
 ## 2026-10-30 — V2 57-table relationship audit and typed identity design
 
 - Offline parsed uploaded MariaDB `u429032065_dev.sql`; exact dump SHA-256 `bbc45fe7f0b6cdab1a188d2437e973e2bb56d442a29585ab328bd062e89335ed`. Verified 57 CREATE TABLEs, 120,165 exported rows, 40 FK constraints (28 with non-null child references; 12 with none), zero missing declared FK parent IDs in snapshot, 54 unlinked `*_id` naming candidates (not automatically FK targets).
