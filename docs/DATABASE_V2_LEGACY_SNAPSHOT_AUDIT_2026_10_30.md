@@ -171,3 +171,10 @@ This is an **automated naming-based inventory, not confirmed 56 missing FKs**. S
 - A naive cross-domain `bank_id -> project_head_subheads.id` suggestion observed 9 booking voucher and 254 customer ledger numerically unmatched IDs. **That assumed parent table is not correct**: `AppHelper::getBankNameById()` reads IDs from `getPakistanBanks()`. V2 needs a banks lookup preserving valid legacy IDs after code-list verification, not a project-account FK. The unmatched counts must **not** be reported as actual bank orphans.
 - `sites.subhead_accounting_id`: two non-NULL stored IDs do not match `subhead_accountings.id`. Do not add an FK without investigating original semantics and approved mapping.
 - The new `docs/DATABASE_V2_RELATIONSHIP_MATRIX_2026_10_30.md` includes the entire 57-table census and grouped FK candidate/compatibility design. No schema changes.
+
+## 2026-10-30 final code-verified identity corrections
+
+- Actual SQL FK coverage: **28** declared relationships have at least one non-null child value; **12** declared relationships have none; all 40 have zero missing exported parent IDs where checkable.
+- **`sites.subhead_accounting_id` is a misleading legacy name, NOT a link to `subhead_accountings.id`.** Current `LabourController::createVoucher` and JV detail filters use it as `project_head_subheads.id`. Rechecked against actual parent: **7/7 match and zero cross-project mismatches**. The earlier claimed two site subhead orphans were caused by a *false guessed parent* and are withdrawn. Proposed V2 `sites.project_head_subhead_id` FK to project account PK after matching unsigned key types.
+- Current `AppHelper::getPakistanBanks()` defines 27 lookup IDs; all **1,391** exported non-null bank IDs (1,345 customer_ledger; 46 booking_vouchers) are in 1–27, zero unmatched. **Do not** foreign-key `bank_id` to project accounts. Proposed V2 `banks` lookup preserving ID-to-name mapping.
+- See `DATABASE_V2_SCHEMA_BLUEPRINT_2026_10_30.md` for proposal; schema, data and code remain unmodified.
