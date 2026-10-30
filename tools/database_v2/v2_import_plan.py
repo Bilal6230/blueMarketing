@@ -152,9 +152,13 @@ def main() -> int:
         # Distinct files in strict dependency order. NO DDL or FK disabling.
         for idx, table in enumerate(plan["import_order"], start=1):
             sql = "\n".join(files[table]) + "\n"
-            (directory / f"{idx:02d}_{table}.sql").write_text(
-                SENSITIVE_COMMENT + sql, encoding="utf-8"
-            )
+            # Keep source line endings byte-for-byte independent of the
+            # Windows host's text-mode newline translation. SHA256 is
+            # computed on exactly this canonical text, not host CRLF output.
+            with (directory / f"{idx:02d}_{table}.sql").open(
+                "w", encoding="utf-8", newline="\n"
+            ) as staged:
+                staged.write(SENSITIVE_COMMENT + sql)
         (directory / "manifest.json").write_text(
             json.dumps(plan, indent=2) + "\n", encoding="utf-8"
         )
