@@ -35,6 +35,26 @@ if ($tables !== 70 || $foreign < 116) {
     throw new RuntimeException("Unexpected V2 topology: {$tables} tables / {$foreign} FK columns");
 }
 
+// Source ENUM labels are CASE-SENSITIVE business values. MariaDB V1 had
+// uppercase IN/OUT and mixed-case Supplier/Consumer/Site; never lowercase
+// the quoted enum type arguments when rebuilding the V2 schema.
+foreach ([
+    'stock_entries' => ['flow' => "enum('IN','OUT')"],
+    'stock_movements' => ['direction' => "enum('IN','OUT')"],
+    'stock_parties' => ['type' => "enum('Supplier','Consumer','Site')"],
+] as $table => $columns) {
+    foreach ($columns as $column => $originalEnum) {
+        $actual = $db->selectOne(
+            "SELECT COLUMN_TYPE AS t FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME=?",
+            [$table, $column]
+        );
+        if (!$actual || (string) $actual->t !== $originalEnum) {
+            throw new RuntimeException("SOURCE_ENUM_CASE_MISMATCH: {$table}.{$column}");
+        }
+    }
+}
+
 $sourceClaims = (int) $db->selectOne(
     "SELECT COUNT(*) AS n FROM information_schema.TABLES
      WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='finance_posting_source_claims'"
