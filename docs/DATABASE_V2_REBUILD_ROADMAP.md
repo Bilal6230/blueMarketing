@@ -181,3 +181,10 @@ With each verified milestone: (a) update checkbox, (b) recalculate `completed / 
 - CI now includes new test file in PHP lint and isolated PHPUnit invocation; new `tools/database_v2/audit_local_jv_candidate_parity.php` is included in CI syntax lint. **CI and user-local tests not yet reported PASS; changes are implemented, not accepted gates.**
 - Added guarded **read-only** local V2 aggregate JV candidate audit. It requires exact `bluemarketing_v2_local_rehearsal`, localhost, local APP_ENV, FK checks on and zero typed source claims; compares active JV details vs same-project JV-typed ledger candidate multisets and checks header/detail totals with integer cents, outputs only aggregate categories. Numeric `type_id` is **NOT** declared ownership; do not auto-post, modify or reassign any record.
 - New development changes: `cb9109a0` (ENUM regression), `66eb6c5c` (CI test integration), `e4279141` (read-only JV candidate auditor), `19fbf2d7` (auditor CI lint). **Acceptance stays 8/24 (33%)** pending actual CI and local run plus per-gate review. V1/staging/live and existing isolated V2 data were not connected or changed by the assistant.
+
+
+### 2026-10-31 — User local regression PASS; JV audit typed-bucket defect corrected
+
+- Operator pulled `b2f9f40a`, confirmed clean tree and both new PHP syntax checks PASS. Isolated `DatabaseV2SourceEnumFidelityTest`, `DatabaseV2FullLegacyBaselineTest`, `DatabaseV2IsolatedFinanceSchemaTest`: **10 tests / 51 assertions PASS** (SQLite memory only).
+- First operator run of isolated local MySQL JV candidate audit stopped with `V2_JV_CANDIDATE_AUDIT_REFUSED: TypeError`; **NO audit counts accepted**. Root cause in script: passing uninitialized nested PHP multiset bucket by typed `array &` to `addLeg`, where the missing offset resolves to null. Commit `c9e22c74` initializes both detail and ledger candidate buckets before reference writes. No DB mutation, financial correction or reclassification.
+- Corrected audit must be pulled and rerun by operator, and its aggregate output reviewed before claiming P4.G4 or P6.G2 advancement. Formal phase gate remains **8/24 = 33%** until accepted evidence. Deployment blocked.
