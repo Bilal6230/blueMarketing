@@ -224,17 +224,22 @@ foreach ($order as $name) {
         blocked('All 57 V2 import target tables must exist AND be empty: ' . $name);
     }
 }
-// The source contains one zero TIMESTAMP. On a NEW isolated database only,
-// permit MySQL to retain that ORIGINAL value by changing this connection's
-// session SQL_MODE temporarily. Never alter GLOBAL or persistent server mode.
-// The exceptional row is later isolated for owner review before cutover.
-$previousSqlMode = null;
-if ($preserveZeroDate) {
-    $previousSqlMode = (string) $connection->selectOne('SELECT @@SESSION.sql_mode AS m')->m;
-    $modes = array_filter(explode(',', $previousSqlMode), static fn ($m) =>
-        !in_array($m, ['NO_ZERO_DATE', 'NO_ZERO_IN_DATE'], true));
-    $connection->statement('SET SESSION sql_mode = ?', [implode(',', $modes)]);
+// The source phpMyAdmin dump explicitly declared NO_AUTO_VALUE_ON_ZERO.
+// account_types has BOTH original primary keys 0 and 1: without this mode
+// MySQL substitutes an AUTO_INCREMENT-generated 1 for the explicit zero,
+// causing duplicate keys or silently changing historic primary identities.
+// Preserve this ORIGINAL source identity exclusively in this SESSION.
+// The one source zero TIMESTAMP additionally needs its own explicit consent;
+// never change GLOBAL/PERSIST sql_mode.
+$previousSqlMode = (string) $connection->selectOne('SELECT @@SESSION.sql_mode AS m')->m;
+$modes = array_values(array_filter(explode(',', $previousSqlMode),
+    static fn ($m) => $m !== '' &&
+        (!$preserveZeroDate || !in_array($m, ['NO_ZERO_DATE', 'NO_ZERO_IN_DATE'], true))
+));
+if (!in_array('NO_AUTO_VALUE_ON_ZERO', $modes, true)) {
+    $modes[] = 'NO_AUTO_VALUE_ON_ZERO';
 }
+$connection->statement('SET SESSION sql_mode = ?', [implode(',', $modes)]);
 $connection->beginTransaction();
 try {
     foreach ($order as $name) {
@@ -284,6 +289,15 @@ try {
         $connection->table('sites')->where('id', $site->id)->update([
             'project_head_subhead_id' => $account->id,
         ]);
+    }
+    if (!$synthetic) {
+        // This V1 key is non-negotiable: preserve it before committing any
+        // other private historical data. Still inside the same transaction.
+        $accountIds = $connection->table('account_types')
+            ->whereIn('id', [0, 1])->orderBy('id')->pluck('id')->all();
+        if (array_map('intval', $accountIds) !== [0, 1]) {
+            blocked('Historic account_types primary keys 0 and 1 were not preserved');
+        }
     }
     if ($preserveZeroDate) {
         $zeroCount = (int) $connection->table('leads')
