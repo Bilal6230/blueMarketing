@@ -54,6 +54,18 @@ final class V2FinancePilotController extends Controller
         ]);
     }
 
+    public function summary(Request $request, int $projectId, V2PostingGateway $gateway): JsonResponse
+    {
+        $this->project($request, $projectId, false);
+        $data = $request->validate([
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'through' => ['nullable', 'date_format:Y-m-d'],
+        ]);
+        return response()->json($gateway->postingSummary(
+            $projectId, $data['from'] ?? null, $data['through'] ?? null
+        ));
+    }
+
     public function trialBalance(Request $request, int $projectId, V2PostingGateway $gateway): JsonResponse
     {
         $this->project($request, $projectId, false);
