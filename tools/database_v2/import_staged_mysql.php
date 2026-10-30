@@ -77,7 +77,10 @@ function parseInsertStatements(string $sql, string $table): array
     return $statements;
 }
 
-$options = getopt('', ['dir:', 'expected-sha256:', 'expected-rows:', 'apply', 'ci-synthetic']);
+$options = getopt('', [
+    'dir:', 'expected-sha256:', 'expected-rows:', 'apply', 'ci-synthetic',
+    'source-evidence:', 'preserve-legacy-zero-date',
+]);
 $dir = isset($options['dir']) ? realpath((string) $options['dir']) : false;
 $sha = strtolower((string) ($options['expected-sha256'] ?? ''));
 $expectedRows = filter_var($options['expected-rows'] ?? null, FILTER_VALIDATE_INT);
@@ -91,6 +94,24 @@ if ($dir === $root || str_starts_with($dir, $root . DIRECTORY_SEPARATOR)) {
 }
 
 $synthetic = array_key_exists('ci-synthetic', $options);
+$preserveZeroDate = array_key_exists('preserve-legacy-zero-date', $options);
+if ($preserveZeroDate) {
+    if ($synthetic) {
+        blocked('Legacy zero-date override cannot be used with synthetic CI fixtures');
+    }
+    $evidenceFile = (string) ($options['source-evidence'] ?? '');
+    if (!is_file($evidenceFile)) {
+        blocked('Exact source financial evidence required for legacy zero-date preservation');
+    }
+    $evidence = json_decode((string) file_get_contents($evidenceFile), true, 512, JSON_THROW_ON_ERROR);
+    if (($evidence['source_sha256'] ?? '') !== $sha ||
+        ($evidence['mysql8_zero_date_exceptions'] ?? null) !== [
+            'leads' => ['follow_up' => 1],
+        ]) {
+        blocked('Unexpected historic zero dates; only one source leads.follow_up exception is approved for rehearsal');
+    }
+}
+
 if (!$synthetic && ($sha !== 'bbc45fe7f0b6cdab1a188d2437e973e2bb56d442a29585ab328bd062e89335ed' ||
     $expectedRows !== 120165)) {
     blocked('Historical source fingerprint/row count differs from approved 2026-10-30 snapshot');
@@ -155,6 +176,10 @@ if (!array_key_exists('apply', $options)) {
     exit(0);
 }
 
+if (!$synthetic && !$preserveZeroDate) {
+    blocked('Source contains one zero TIMESTAMP: require explicit --preserve-legacy-zero-date and private --source-evidence; no silent repair');
+}
+
 $connection = DB::connection();
 $database = (string) $connection->getDatabaseName();
 $env = (string) config('app.env');
@@ -177,6 +202,17 @@ foreach ($order as $name) {
     if (!Schema::hasTable($name) || (int) $connection->table($name)->count() !== 0) {
         blocked('All 57 V2 import target tables must exist AND be empty: ' . $name);
     }
+}
+// The source contains one zero TIMESTAMP. On a NEW isolated database only,
+// permit MySQL to retain that ORIGINAL value by changing this connection's
+// session SQL_MODE temporarily. Never alter GLOBAL or persistent server mode.
+// The exceptional row is later isolated for owner review before cutover.
+$previousSqlMode = null;
+if ($preserveZeroDate) {
+    $previousSqlMode = (string) $connection->selectOne('SELECT @@SESSION.sql_mode AS m')->m;
+    $modes = array_filter(explode(',', $previousSqlMode), static fn ($m) =>
+        !in_array($m, ['NO_ZERO_DATE', 'NO_ZERO_IN_DATE'], true));
+    $connection->statement('SET SESSION sql_mode = ?', [implode(',', $modes)]);
 }
 $connection->beginTransaction();
 try {
@@ -203,10 +239,21 @@ try {
             'project_head_subhead_id' => $account->id,
         ]);
     }
+    if ($preserveZeroDate) {
+        $zeroCount = (int) $connection->table('leads')
+            ->where('follow_up', '0000-00-00 00:00:00')->count();
+        if ($zeroCount !== 1) {
+            blocked('Original zero TIMESTAMP not preserved exactly; rollback source import');
+        }
+    }
     $connection->commit();
 } catch (Throwable $e) {
     $connection->rollBack();
     throw $e;
+} finally {
+    if ($previousSqlMode !== null) {
+        $connection->statement('SET SESSION sql_mode = ?', [$previousSqlMode]);
+    }
 }
 
 echo 'V2_IMPORT_APPLIED_TO_ISOLATED_DB_ONLY: ' . $plannedRows . ' source rows preserved; '
