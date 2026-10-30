@@ -3,6 +3,7 @@
 namespace Tests\Feature\Finance;
 
 use App\Services\Finance\V2CashPostingWriter;
+use App\Services\Finance\V2PostingReversalWriter;
 use App\Services\Finance\V2PostingReportReader;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
@@ -193,6 +194,69 @@ class V2CashPostingWriterTest extends TestCase
         $this->expectException(\DomainException::class);
         $this->expectExceptionMessage('V2_CASH_IDEMPOTENCY_CONFLICT');
         $writer->post(1, 42, 'CASH-HARDEN-DATE-0001', $this->crLegs());
+    }
+
+    public function test_cash_receipt_reversal_preserves_original_and_typed_source_identity(): void
+    {
+        $batch = (new V2CashPostingWriter())->post(1, 42, 'CASH-REVERSAL-ORIGINAL-01', $this->crLegs());
+        $reversal = (new V2PostingReversalWriter())->reverse(
+            1, $batch, 'CASH-REVERSAL-REQUEST-01', '2026-10-31', 'Approved correction'
+        );
+        $this->assertDatabaseCount('finance_posting_batches', 2);
+        $this->assertDatabaseCount('finance_posting_lines', 4);
+        $this->assertDatabaseCount('finance_posting_cash_sources', 1);
+        $this->assertDatabaseCount('finance_posting_source_claims', 1);
+        $rows = (new V2PostingReportReader())->lines(1, '2026-10-31', '2026-10-31');
+        $this->assertCount(2, $rows);
+        $this->assertTrue($rows[0]['is_reversal']);
+        $this->assertSame('cash', $rows[0]['source_kind']);
+        $this->assertSame(42, $rows[0]['source_id']);
+        $this->assertSame($batch, (int) $rows[0]['reversal_of_batch_id']);
+        $this->assertSame('250.00', (string) DB::table('finance_posting_lines')
+            ->where('posting_batch_id', $batch)->where('project_head_subhead_id', 101)
+            ->value('debit'));
+        $this->assertSame('250.00', (string) DB::table('finance_posting_lines')
+            ->where('posting_batch_id', $reversal)->where('project_head_subhead_id', 101)
+            ->value('credit'));
+    }
+
+    public function test_cash_payment_reversal_replay_and_duplicate_source_reversal_are_guarded(): void
+    {
+        $legs = [
+            ['account_id' => 102, 'debit' => '80.00', 'credit' => '0.00'],
+            ['account_id' => 101, 'debit' => '0.00', 'credit' => '80.00'],
+        ];
+        $batch = (new V2CashPostingWriter())->post(
+            1, 43, 'CASH-REVERSAL-ORIGINAL-02', $legs
+        );
+        $writer = new V2PostingReversalWriter();
+        $id = $writer->reverse(1, $batch, 'CASH-REVERSAL-REQUEST-02', '2026-10-31', 'Correction');
+        $this->assertSame($id, $writer->reverse(
+            1, $batch, 'CASH-REVERSAL-REQUEST-02', '2026-10-31', 'Correction'
+        ));
+        try {
+            $writer->reverse(1, $batch, 'CASH-REVERSAL-REQUEST-03', '2026-10-31', 'Correction');
+            $this->fail('A second reversal was accepted');
+        } catch (\DomainException $e) {
+            $this->assertSame('V2_REVERSAL_ALREADY_EXISTS', $e->getMessage());
+        }
+        $this->assertDatabaseCount('finance_posting_batches', 2);
+    }
+
+    public function test_cash_reversal_wrong_project_refuses_without_mutation(): void
+    {
+        $batch = (new V2CashPostingWriter())->post(
+            1, 42, 'CASH-REVERSAL-ORIGINAL-04', $this->crLegs()
+        );
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('V2_REVERSAL_ORIGINAL_NOT_POSTED');
+        try {
+            (new V2PostingReversalWriter())->reverse(
+                2, $batch, 'CASH-REVERSAL-REQUEST-04', '2026-10-31', 'Correction'
+            );
+        } finally {
+            $this->assertDatabaseCount('finance_posting_batches', 1);
+        }
     }
 
 }
