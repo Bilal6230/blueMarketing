@@ -264,4 +264,3 @@ Evidence ID: V2_HARDENING_32_87_LOCAL_PASS
 - Executed against SQLite :memory: under APP_ENV=testing.
 - Formal gates remain 8/24 until full acceptance requirements are satisfied.
 - No V1, staging or live database writes authorized.
-
