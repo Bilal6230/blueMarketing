@@ -24,10 +24,13 @@ class V2ImportPlannerTests(unittest.TestCase):
         self.cols, self.original_fks, self.extra_fks, _ = v2.verified_schema()
         statements = []
         for table in self.cols:
+            # Some legacy tables (password_resets, permission pivots,
+            # stock_counters) genuinely have no `id` column.
+            fixture_column = 'id' if 'id' in self.cols[table] else next(iter(self.cols[table]))
             statements.append(
-                'CREATE TABLE `' + table + '` (\n'
-                '  `id` bigint unsigned NOT NULL\n'
-                ') ENGINE=InnoDB;\n'
+                'CREATE TABLE `' + table + '` (\\n'
+                '  `' + fixture_column + '` bigint unsigned NOT NULL\\n'
+                ') ENGINE=InnoDB;\\n'
             )
             if table == 'journal_vouchers':
                 statements.append(
