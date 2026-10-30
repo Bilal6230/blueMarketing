@@ -835,3 +835,11 @@ The earlier dashboard shown in the screenshot reported the following estimates:
 - New implementation `66deb764`: `V2ModelSchemaContract::inspectRelationships()` inspects six real financial Eloquent relationships (JV→details, detail→JV/account, Ledger→account/customer source, account→ledgers) against physically generated V2 columns in isolated SQLite memory or named isolated V2 MySQL only. Does not invoke posting or query customer rows. Previously detected legacy fillable drift (`journal_vouchers.site_id`, `ledgers.journal_voucher_detail_id`) is still a policy blocker, not silently patched.
 - New integration regression `5e3f1fa1`: constructs clean V2 bank+legacy baseline and asserts all six relationship FK/PK contracts are present. Existing CI already runs this test file. **New test execution is pending operator/CI; do not mark P3.G4 PASS yet.**
 - Acceptance remains **8/24 (33%)**. P3.G4 still needs full model/cast coverage and real MySQL validation. No historical source rows edited; V1/staging/production and deployment untouched.
+
+
+### 2026-10-31 — V2 cash writer security/integrity correction (actual functional code)
+
+- Real business service changed: `V2CashPostingWriter::post()` now refuses malformed, decimal, signed, or lossy-coercion account identifiers instead of casting arbitrary input with `(int)` before the same-project lookup. This prevents e.g. `101junk` being silently treated as account 101. Invalid input is rejected before any posting batch is persisted.
+- Replay now checks the canonical `finance_posting_source_claims.source_kind='cash'` and persisted voucher series matches the source's CR/CP type, in addition to prior source identity, SHA and leg multiset checks. This makes corrupted batch metadata fail closed, not silently replay.
+- Regression added for 5 malformed account ID variations and mutated persisted batch series in `tests/Feature/Finance/V2CashPostingWriterTest.php`. Code commits `ca5cb80c`, `3f1da895`, `4fec605a`. **New tests not yet operator-run/CI-confirmed PASS**; do not increase formal gates on implementation alone.
+- Baseline operator result remains 13 tests / 58 assertions PASS at `f5c27a16`, with clean working tree. P5.G1 still open: reversal, full concurrency and all-family services not implemented/accepted. Overall 8/24 (33%), deployment blocked. Production/V1/staging not touched.
