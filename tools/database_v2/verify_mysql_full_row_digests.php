@@ -6,7 +6,9 @@
  * php tools/database_v2/verify_mysql_full_row_digests.php
  *   --source-evidence=C:/PRIVATE/staging/source_full_row_digests.json
  *
- * Can also run --selftest without a database to check cross-language SHA.\n * --verify-source-utc: source export must first pass its SHA+UTC-header proof;\n * compare historical TIMESTAMP instants under a session-only +00:00 zone.
+ * Can also run --selftest without a database to check cross-language SHA.
+ * --verify-source-utc: source export must first pass SHA+UTC-header proof;
+ * compare historical TIMESTAMP instants under a session-only +00:00 zone.
  */
 declare(strict_types=1);
 
@@ -202,4 +204,3 @@ if ($verifyUtc) {
     echo "V2_UTC_NOTE: full-column parity was evaluated using source's explicit +00:00 export timezone; "
         . "no DB rows or server settings were modified.\n";
 }
-
