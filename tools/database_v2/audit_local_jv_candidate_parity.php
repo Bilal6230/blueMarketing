@@ -59,12 +59,14 @@ try {
     $allJvHeaders = (int) $db->table('journal_vouchers')->where('type', 'JV')->count();
     $softDeletedJvHeaders = (int) $db->table('journal_vouchers')
         ->where('type', 'JV')->whereNotNull('deleted_at')->count();
+    $deletedHeaders = $db->table('journal_vouchers')->where('type', 'JV')
+        ->whereNotNull('deleted_at')->get(['id', 'project_id', 'total_debit', 'total_credit']);
     $headers = $db->table('journal_vouchers')
         ->where('type', 'JV')->whereNull('deleted_at')
         ->get(['id', 'project_id', 'total_debit', 'total_credit']);
     $details = $db->table('journal_voucher_details as d')
         ->join('journal_vouchers as j', 'j.id', '=', 'd.journal_voucher_id')
-        ->where('j.type', 'JV')->whereNull('j.deleted_at')->whereNull('d.deleted_at')
+        ->where('j.type', 'JV')->whereNull('d.deleted_at')
         ->get(['d.journal_voucher_id', 'd.account_id', 'd.debit', 'd.credit']);
     $legs = $db->table('ledgers as l')
         ->join('project_head_subheads as p', 'p.id', '=', 'l.project_head_subheads_id')
@@ -93,7 +95,12 @@ try {
     }
     $result = ['headers' => 0, 'candidate_exact' => 0, 'candidate_mismatch' => 0,
         'no_active_details' => 0, 'header_detail_amount_mismatch' => 0,
-        'active_details_without_project_candidate' => 0];
+        'active_details_without_project_candidate' => 0,
+        'mismatch_no_candidate' => 0, 'mismatch_partial_or_extra_candidate' => 0,
+        'mismatch_no_active_details' => 0, 'mismatch_project_null' => 0,
+        'deleted_headers_exact_candidates' => 0, 'deleted_headers_mismatched_candidates' => 0,
+        'deleted_headers_without_active_details' => 0,
+        'deleted_headers_header_detail_amount_mismatch' => 0];
     foreach ($headers as $header) {
         $result['headers']++;
         $id = (string) $header->id;
@@ -111,12 +118,48 @@ try {
         }
         ksort($d['legs']);
         ksort($c);
-        $result[$d['legs'] === $c ? 'candidate_exact' : 'candidate_mismatch']++;
+        if ($d['legs'] === $c) {
+            $result['candidate_exact']++;
+        } else {
+            $result['candidate_mismatch']++;
+            if ($d['count'] === 0) {
+                $result['mismatch_no_active_details']++;
+            } elseif ($header->project_id === null) {
+                $result['mismatch_project_null']++;
+            } elseif ($c === []) {
+                $result['mismatch_no_candidate']++;
+            } else {
+                $result['mismatch_partial_or_extra_candidate']++;
+            }
+        }
+    }
+    foreach ($deletedHeaders as $header) {
+        $id = (string) $header->id;
+        $d = $byHeader[$id] ?? ['legs' => [], 'debit' => 0, 'credit' => 0, 'count' => 0];
+        $index = $id . ':' . (string) $header->project_id;
+        $candidateLegs = $header->project_id === null ? [] : ($candidate[$index] ?? []);
+        if ($d['count'] === 0) {
+            $result['deleted_headers_without_active_details']++;
+        }
+        if ($d['debit'] !== cents((string) $header->total_debit)
+            || $d['credit'] !== cents((string) $header->total_credit)) {
+            $result['deleted_headers_header_detail_amount_mismatch']++;
+        }
+        ksort($d['legs']);
+        ksort($candidateLegs);
+        $result[$d['legs'] === $candidateLegs
+            ? 'deleted_headers_exact_candidates'
+            : 'deleted_headers_mismatched_candidates']++;
     }
     $result['all_jv_headers_including_deleted'] = $allJvHeaders;
     $result['soft_deleted_jv_headers_excluded'] = $softDeletedJvHeaders;
     if ($result['headers'] + $softDeletedJvHeaders !== $allJvHeaders
-        || $result['candidate_exact'] + $result['candidate_mismatch'] !== $result['headers']) {
+        || $result['candidate_exact'] + $result['candidate_mismatch'] !== $result['headers']
+        || $result['mismatch_no_candidate'] + $result['mismatch_partial_or_extra_candidate']
+            + $result['mismatch_no_active_details'] + $result['mismatch_project_null']
+            !== $result['candidate_mismatch']
+        || $result['deleted_headers_exact_candidates']
+            + $result['deleted_headers_mismatched_candidates'] !== $softDeletedJvHeaders) {
         throw new RuntimeException('JV audit aggregate partition invariant failed');
     }
     $db->commit();
