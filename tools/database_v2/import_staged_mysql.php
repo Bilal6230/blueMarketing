@@ -231,6 +231,10 @@ foreach ($order as $name) {
 // Preserve this ORIGINAL source identity exclusively in this SESSION.
 // The one source zero TIMESTAMP additionally needs its own explicit consent;
 // never change GLOBAL/PERSIST sql_mode.
+// The pinned historical dump explicitly declares +00:00. Matching SQL
+// strings under a Pakistan session is not equivalent to preserving stored
+// TIMESTAMP instants. Future isolated imports MUST use the source timezone.
+$previousTimeZone = (string) $connection->selectOne('SELECT @@SESSION.time_zone AS tz')->tz;
 $previousSqlMode = (string) $connection->selectOne('SELECT @@SESSION.sql_mode AS m')->m;
 $modes = array_values(array_filter(explode(',', $previousSqlMode),
     static fn ($m) => $m !== '' &&
@@ -239,9 +243,17 @@ $modes = array_values(array_filter(explode(',', $previousSqlMode),
 if (!in_array('NO_AUTO_VALUE_ON_ZERO', $modes, true)) {
     $modes[] = 'NO_AUTO_VALUE_ON_ZERO';
 }
-$connection->statement('SET SESSION sql_mode = ?', [implode(',', $modes)]);
-$connection->beginTransaction();
+$transactionStarted = false;
 try {
+    $connection->statement('SET SESSION sql_mode = ?', [implode(',', $modes)]);
+    // Only importer connection, never SET GLOBAL or persisted DB setting.
+    $connection->statement("SET SESSION time_zone = '+00:00'");
+    $actualTimeZone = (string) $connection->selectOne('SELECT @@SESSION.time_zone AS tz')->tz;
+    if ($actualTimeZone !== '+00:00') {
+        blocked('IMPORT_SOURCE_UTC_SESSION_NOT_APPLIED');
+    }
+    $connection->beginTransaction();
+    $transactionStarted = true;
     foreach ($order as $name) {
         foreach ($files[$name] as $offset => $query) {
             try {
@@ -307,14 +319,17 @@ try {
         }
     }
     $connection->commit();
+    $transactionStarted = false;
 } catch (Throwable $e) {
-    $connection->rollBack();
+    if ($transactionStarted) {
+        $connection->rollBack();
+    }
     throw $e;
 } finally {
-    if ($previousSqlMode !== null) {
-        $connection->statement('SET SESSION sql_mode = ?', [$previousSqlMode]);
-    }
+    $connection->statement('SET SESSION time_zone = ?', [$previousTimeZone]);
+    $connection->statement('SET SESSION sql_mode = ?', [$previousSqlMode]);
 }
 
+echo "V2_IMPORT_SOURCE_UTC_SESSION_VERIFIED: +00:00 (restored to previous zone after import)\n";
 echo 'V2_IMPORT_APPLIED_TO_ISOLATED_DB_ONLY: ' . $plannedRows . ' source rows preserved; '
     . 'site verified derived column filled. Financial source claims remain UNATTRIBUTED.\n';
