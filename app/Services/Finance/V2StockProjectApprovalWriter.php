@@ -21,6 +21,14 @@ final class V2StockProjectApprovalWriter
         string $evidenceReference
     ): void {
         V2IsolatedConnectionGuard::assertAllowed();
+        // Legacy AuthServiceProvider globally grants every Gate ability to
+        // superadmin. A missing/false pilot WRITE flag MUST still refuse an
+        // approval, even when a read-only pilot has registered the ability.
+        if (!in_array((string) config('app.env'), ['local', 'testing'], true)
+            || !config('finance.v2_pilot_api_enabled', false)
+            || !config('finance.v2_pilot_write_enabled', false)) {
+            throw new \DomainException('V2_STOCK_APPROVAL_WRITE_FLAG_REQUIRED');
+        }
         // The global legacy superadmin Gate::before must NOT implicitly
         // activate an as-yet-undefined V2 finance authorization ability.
         if (!Gate::has('approve-v2-stock-finance')) {
