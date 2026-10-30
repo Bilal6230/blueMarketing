@@ -43,3 +43,9 @@
 - Finish per-candidate 54 relationship field mapping and project/account uniqueness, find any historical malformed values.
 - Produce reviewed full **57-table greenfield baseline**, code-specific typed claim exclusivity rule, staged full historical import mapping and MySQL 8.4 verification. The V2 pilot migration and tests exist but have not been executed in a Laravel runtime here.
 - No direct SQL, schema changes, deployment or historical correction authorized. Prior 98% P0.1 engineering estimate remains **not certified**.
+
+## 2026-10-30 verified isolated pilot writer and CI
+
+- `app/Services/Finance/V2JournalPostingWriter.php::post` now implements **isolated V2-only** JV multi-leg posting (not called by production routes): project locking, exact `journal_voucher_details.id`, project-account FK verification, positive-side and balanced header totals, `finance_posting_journal_sources` physical header FK, `finance_journal_line_sources` exact leg links, SHA256 request-key replay, and stored amount/account integrity validation on retry. No retroactive historical attribution or posting.
+- `tests/Feature/Finance/V2JournalPostingWriterTest.php` provides six SQLite synthetic tests including tampered replay; separate migration/seed tests and Python import planner tests are wired to the GitHub Actions isolated V2 step. That V2 step **PASSED** on run [41088160648](https://github.com/Bilal6230/blueMarketing/actions/runs/41088160648), full overall CI remains red due older separate finance suite. No MySQL acceptance or production deployment.
+- Cross-family exact-one source ownership across the **seven parallel source tables** is not DB-enforced; the pilot writer attaches exactly one Journal header through a single selected path, but generic V2 services must enforce cross-family exclusive ownership before cutover. Old `SV` sales journal header is a `journal_vouchers.type='SV'`, separate from JV header kind.
