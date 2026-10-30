@@ -36,16 +36,17 @@ class DatabaseV2FullLegacyBaselineTest extends TestCase
         $baseline->up();
 
         // The 57 old tables include the old Laravel migration-history table.
-        // New V2 creates 56 historical app entities plus the new banks lookup.
+        // New V2 creates 56 app entities, banks and legacy_migration_history archive.
         $all = DB::select("SELECT name FROM sqlite_master WHERE type='table'");
         $names = array_map(static fn ($x) => $x->name, $all);
-        $this->assertCount(57, array_filter($names, fn ($name) => $name !== 'sqlite_sequence'));
+        $this->assertCount(58, array_filter($names, fn ($name) => $name !== 'sqlite_sequence'));
         $this->assertTrue(Schema::hasTable('ledgers'));
         $this->assertTrue(Schema::hasColumn('sites', 'project_head_subhead_id'));
         $this->assertTrue(Schema::hasColumn('pending_updates', 'remarks'));
         $this->assertTrue(Schema::hasColumn('labours', 'deleted_at'));
         $this->assertFalse(Schema::hasColumn('ledgers', 'deleted_at'));
         $this->assertFalse(Schema::hasTable('migrations'));
+        $this->assertTrue(Schema::hasTable('legacy_migration_history'));
 
         $ledgersFks = DB::select("PRAGMA foreign_key_list('ledgers')");
         $targets = array_map(static fn ($x) => $x->table, $ledgersFks);
