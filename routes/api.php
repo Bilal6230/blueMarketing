@@ -123,3 +123,28 @@ Route::prefix('v1/mobile')->group(function () {
 Route::get('/test', function () {
     return "API is working!";
 });
+
+/*
+|--------------------------------------------------------------------------
+| V2 finance pilot endpoints — DISABLED BY DEFAULT
+|--------------------------------------------------------------------------
+| No V1 route is replaced. Routes only register on local/testing when the
+| operator explicitly opts in. Each request independently requires Sanctum,
+| a finance Gate, project membership and the V2 isolated DB connection guard.
+| Posting additionally requires a separate OFF-by-default write flag.
+*/
+if (in_array(config('app.env'), ['local', 'testing'], true)
+    && config('finance.v2_pilot_api_enabled', false)) {
+    Route::middleware(['auth:sanctum', 'throttle:30,1'])
+        ->prefix('v2/finance/projects/{projectId}')
+        ->where(['projectId' => '[0-9]+'])
+        ->group(function (): void {
+            $controller = \App\Http\Controllers\Api\V2\V2FinancePilotController::class;
+            Route::get('postings', [$controller, 'lines']);
+            Route::get('trial-balance', [$controller, 'trialBalance']);
+            Route::get('accounts/{accountId}/statement', [$controller, 'accountStatement'])
+                ->whereNumber('accountId');
+            Route::post('postings', [$controller, 'post']);
+            Route::post('reversals', [$controller, 'reverse']);
+        });
+}
