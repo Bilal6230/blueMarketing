@@ -174,6 +174,7 @@ if (count($tables) !== 57) {
 // Both scans see one REPEATABLE READ snapshot; timezone alters *rendering*
 // of TIMESTAMP columns on the verifier connection, never source data.
 $db->statement('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+$db->statement('SET TRANSACTION READ ONLY');
 $previousTimeZone = (string) $db->selectOne('SELECT @@SESSION.time_zone AS zone')->zone;
 $observed = [];
 $counts = [
