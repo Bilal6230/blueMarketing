@@ -1,0 +1,873 @@
+{
+  "source_sha256": "bbc45fe7f0b6cdab1a188d2437e973e2bb56d442a29585ab328bd062e89335ed",
+  "part": 1,
+  "tables": [
+    {
+      "table": "accounting_expenses",
+      "columns": [
+        [
+          "id",
+          "int(10) UNSIGNED NOT NULL"
+        ],
+        [
+          "project_head_subheads_id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "price",
+          "decimal(10,2) UNSIGNED NOT NULL"
+        ],
+        [
+          "detail",
+          "varchar(250) NOT NULL DEFAULT 'no details'"
+        ],
+        [
+          "cash_in",
+          "int(11) NOT NULL DEFAULT 0"
+        ],
+        [
+          "create_by",
+          "int(11) NOT NULL"
+        ],
+        [
+          "is_active",
+          "int(11) NOT NULL DEFAULT 1"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "account_types",
+      "columns": [
+        [
+          "id",
+          "tinyint(3) UNSIGNED NOT NULL"
+        ],
+        [
+          "name",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "status",
+          "tinyint(1) NOT NULL DEFAULT 1"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "areas",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "name",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "project_id",
+          "int(11) NOT NULL DEFAULT 1"
+        ],
+        [
+          "is_active",
+          "int(11) NOT NULL"
+        ],
+        [
+          "create_by",
+          "int(11) NOT NULL"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "bookings",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "project_id",
+          "int(11) NOT NULL"
+        ],
+        [
+          "customer_id",
+          "int(11) NOT NULL"
+        ],
+        [
+          "plot_id",
+          "int(11) NOT NULL"
+        ],
+        [
+          "plot_type",
+          "tinyint(4) NOT NULL DEFAULT 0"
+        ],
+        [
+          "plot_size",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "plot_rate",
+          "decimal(10,2) NOT NULL"
+        ],
+        [
+          "is_corner",
+          "int(11) NOT NULL DEFAULT 0"
+        ],
+        [
+          "is_park",
+          "int(11) NOT NULL DEFAULT 0"
+        ],
+        [
+          "park_facing",
+          "decimal(10,2) NOT NULL"
+        ],
+        [
+          "carner_price",
+          "decimal(10,2) NOT NULL"
+        ],
+        [
+          "dicount_value",
+          "decimal(10,2) NOT NULL"
+        ],
+        [
+          "total_price",
+          "decimal(10,2) NOT NULL"
+        ],
+        [
+          "broker_id",
+          "int(11) DEFAULT NULL"
+        ],
+        [
+          "booking_date",
+          "timestamp NOT NULL"
+        ],
+        [
+          "profile_image",
+          "varchar(255) DEFAULT NULL"
+        ],
+        [
+          "status",
+          "enum('active','inactive') NOT NULL DEFAULT 'active'"
+        ],
+        [
+          "user_id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "cancel_status",
+          "enum('0','1') DEFAULT '0'"
+        ],
+        [
+          "cancel_type",
+          "enum('payment_not_received','plot_purchase','resale','') DEFAULT NULL"
+        ],
+        [
+          "reason",
+          "longtext DEFAULT NULL"
+        ],
+        [
+          "cancel_effect",
+          "varchar(255) DEFAULT NULL"
+        ],
+        [
+          "cancel_sale_amount",
+          "decimal(10,2) NOT NULL DEFAULT 0.00"
+        ],
+        [
+          "cancel_adjustment_amount",
+          "decimal(10,2) NOT NULL DEFAULT 0.00"
+        ],
+        [
+          "cancel_net_amount",
+          "decimal(10,2) NOT NULL DEFAULT 0.00"
+        ],
+        [
+          "cancel_posted_at",
+          "date DEFAULT NULL"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "deleted_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "booking_details",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "booking_id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "installment_details",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "amount",
+          "decimal(10,2) NOT NULL"
+        ],
+        [
+          "due_date",
+          "date NOT NULL"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "booking_edit_audits",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "booking_id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "project_id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "user_id",
+          "bigint(20) UNSIGNED DEFAULT NULL"
+        ],
+        [
+          "operation",
+          "varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL"
+        ],
+        [
+          "reason",
+          "text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL"
+        ],
+        [
+          "old_values",
+          "longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL"
+        ],
+        [
+          "new_values",
+          "longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL"
+        ],
+        [
+          "old_total",
+          "decimal(10,2) DEFAULT NULL"
+        ],
+        [
+          "new_total",
+          "decimal(10,2) DEFAULT NULL"
+        ],
+        [
+          "delta",
+          "decimal(10,2) DEFAULT NULL"
+        ],
+        [
+          "old_accounting_principal",
+          "decimal(10,2) DEFAULT NULL"
+        ],
+        [
+          "delta_from_accounting",
+          "decimal(10,2) DEFAULT NULL"
+        ],
+        [
+          "journal_voucher_id",
+          "bigint(20) UNSIGNED DEFAULT NULL"
+        ],
+        [
+          "request_key",
+          "varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "booking_vouchers",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "booking_id",
+          "bigint(20) UNSIGNED DEFAULT NULL"
+        ],
+        [
+          "customer_ledger_id",
+          "bigint(20) UNSIGNED DEFAULT NULL"
+        ],
+        [
+          "ledger_id",
+          "bigint(20) UNSIGNED DEFAULT NULL"
+        ],
+        [
+          "project_id",
+          "bigint(20) UNSIGNED DEFAULT NULL"
+        ],
+        [
+          "customer_id",
+          "bigint(20) UNSIGNED DEFAULT NULL"
+        ],
+        [
+          "plot_id",
+          "bigint(20) UNSIGNED DEFAULT NULL"
+        ],
+        [
+          "voucher_series",
+          "varchar(20) NOT NULL"
+        ],
+        [
+          "voucher_number",
+          "int(10) UNSIGNED DEFAULT NULL"
+        ],
+        [
+          "slip_reference",
+          "varchar(255) DEFAULT NULL"
+        ],
+        [
+          "payment_type",
+          "tinyint(3) UNSIGNED DEFAULT NULL"
+        ],
+        [
+          "amount",
+          "decimal(12,2) NOT NULL DEFAULT 0.00"
+        ],
+        [
+          "receipt_date",
+          "date DEFAULT NULL"
+        ],
+        [
+          "description",
+          "text DEFAULT NULL"
+        ],
+        [
+          "bank_id",
+          "bigint(20) UNSIGNED DEFAULT NULL"
+        ],
+        [
+          "t_number",
+          "varchar(255) DEFAULT NULL"
+        ],
+        [
+          "passing_date",
+          "date DEFAULT NULL"
+        ],
+        [
+          "is_active",
+          "tinyint(1) NOT NULL DEFAULT 1"
+        ],
+        [
+          "delete_reason",
+          "text DEFAULT NULL"
+        ],
+        [
+          "is_approve",
+          "tinyint(1) NOT NULL DEFAULT 0"
+        ],
+        [
+          "create_by",
+          "bigint(20) UNSIGNED DEFAULT NULL"
+        ],
+        [
+          "update_by",
+          "bigint(20) UNSIGNED DEFAULT NULL"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "charge_types",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "name",
+          "varchar(255) DEFAULT NULL"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "commision_vouchers",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "voucher_number",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "project_id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "reference",
+          "varchar(255) DEFAULT NULL"
+        ],
+        [
+          "description",
+          "text DEFAULT NULL"
+        ],
+        [
+          "date",
+          "date NOT NULL"
+        ],
+        [
+          "total_debit",
+          "decimal(15,2) NOT NULL"
+        ],
+        [
+          "total_credit",
+          "decimal(15,2) NOT NULL"
+        ],
+        [
+          "created_by",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "updated_by",
+          "bigint(20) UNSIGNED DEFAULT NULL"
+        ],
+        [
+          "status",
+          "enum('pending','approved','rejected') NOT NULL DEFAULT 'pending'"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "deleted_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "commision_voucher_details",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "commision_voucher_id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "account_id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "debit",
+          "decimal(15,2) NOT NULL DEFAULT 0.00"
+        ],
+        [
+          "credit",
+          "decimal(15,2) NOT NULL DEFAULT 0.00"
+        ],
+        [
+          "description",
+          "text DEFAULT NULL"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "deleted_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "customer_ledger",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "date",
+          "date NOT NULL"
+        ],
+        [
+          "reference",
+          "varchar(250) DEFAULT NULL"
+        ],
+        [
+          "type_id",
+          "bigint(20) DEFAULT NULL"
+        ],
+        [
+          "customer_id",
+          "bigint(20) UNSIGNED DEFAULT NULL"
+        ],
+        [
+          "project_id",
+          "bigint(20) DEFAULT NULL"
+        ],
+        [
+          "plot_id",
+          "bigint(20) DEFAULT NULL"
+        ],
+        [
+          "payment_type",
+          "bigint(20) DEFAULT NULL"
+        ],
+        [
+          "t_number",
+          "varchar(250) DEFAULT NULL"
+        ],
+        [
+          "bank_id",
+          "bigint(20) DEFAULT NULL"
+        ],
+        [
+          "passing_date",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "passing_status",
+          "bigint(20) DEFAULT 0"
+        ],
+        [
+          "check_history",
+          "longtext DEFAULT NULL"
+        ],
+        [
+          "transaction_type",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "amount_in",
+          "decimal(10,2) NOT NULL"
+        ],
+        [
+          "amount_out",
+          "decimal(10,2) NOT NULL"
+        ],
+        [
+          "description",
+          "longtext DEFAULT NULL"
+        ],
+        [
+          "is_active",
+          "bigint(20) DEFAULT NULL"
+        ],
+        [
+          "is_approve",
+          "bigint(20) DEFAULT NULL"
+        ],
+        [
+          "note",
+          "text DEFAULT NULL"
+        ],
+        [
+          "delete_reason",
+          "varchar(255) DEFAULT NULL"
+        ],
+        [
+          "bank_post_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "dasticash",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "name",
+          "varchar(255) DEFAULT NULL"
+        ],
+        [
+          "amount",
+          "varchar(255) DEFAULT NULL"
+        ],
+        [
+          "description",
+          "text DEFAULT NULL"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "project_id",
+          "bigint(20) UNSIGNED DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "draft_ledgers",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "date",
+          "date NOT NULL"
+        ],
+        [
+          "reference",
+          "varchar(250) DEFAULT NULL"
+        ],
+        [
+          "type_id",
+          "bigint(20) DEFAULT NULL"
+        ],
+        [
+          "customer_id",
+          "bigint(20) UNSIGNED DEFAULT NULL"
+        ],
+        [
+          "project_id",
+          "bigint(20) DEFAULT NULL"
+        ],
+        [
+          "plot_id",
+          "bigint(20) DEFAULT NULL"
+        ],
+        [
+          "payment_type",
+          "bigint(20) DEFAULT NULL"
+        ],
+        [
+          "t_number",
+          "varchar(250) DEFAULT NULL"
+        ],
+        [
+          "bank_id",
+          "bigint(20) DEFAULT NULL"
+        ],
+        [
+          "passing_date",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "passing_status",
+          "bigint(20) NOT NULL DEFAULT 0"
+        ],
+        [
+          "check_history",
+          "longtext DEFAULT NULL"
+        ],
+        [
+          "transaction_type",
+          "varchar(255) DEFAULT NULL"
+        ],
+        [
+          "amount_in",
+          "decimal(10,2) DEFAULT NULL"
+        ],
+        [
+          "amount_out",
+          "decimal(10,2) DEFAULT NULL"
+        ],
+        [
+          "description",
+          "varchar(255) DEFAULT NULL"
+        ],
+        [
+          "is_active",
+          "bigint(20) DEFAULT NULL"
+        ],
+        [
+          "is_approve",
+          "bigint(20) DEFAULT NULL"
+        ],
+        [
+          "note",
+          "text DEFAULT NULL"
+        ],
+        [
+          "bank_post_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "type",
+          "varchar(255) DEFAULT NULL"
+        ],
+        [
+          "project_head_subheads_id",
+          "bigint(20) UNSIGNED DEFAULT NULL"
+        ],
+        [
+          "detail",
+          "text DEFAULT NULL"
+        ],
+        [
+          "create_by",
+          "int(11) DEFAULT NULL"
+        ],
+        [
+          "update_by",
+          "int(11) DEFAULT NULL"
+        ],
+        [
+          "status",
+          "varchar(255) DEFAULT NULL"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "facings",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "name",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "is_active",
+          "int(11) NOT NULL"
+        ],
+        [
+          "create_by",
+          "int(11) NOT NULL"
+        ],
+        [
+          "created_at",
+          "timestamp NULL DEFAULT NULL"
+        ],
+        [
+          "updated_at",
+          "timestamp NULL DEFAULT NULL"
+        ]
+      ]
+    },
+    {
+      "table": "failed_jobs",
+      "columns": [
+        [
+          "id",
+          "bigint(20) UNSIGNED NOT NULL"
+        ],
+        [
+          "uuid",
+          "varchar(255) NOT NULL"
+        ],
+        [
+          "connection",
+          "text NOT NULL"
+        ],
+        [
+          "queue",
+          "text NOT NULL"
+        ],
+        [
+          "payload",
+          "longtext NOT NULL"
+        ],
+        [
+          "exception",
+          "longtext NOT NULL"
+        ],
+        [
+          "failed_at",
+          "timestamp NOT NULL DEFAULT current_timestamp()"
+        ]
+      ]
+    }
+  ]
+}
