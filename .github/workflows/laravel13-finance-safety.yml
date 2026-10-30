@@ -7,6 +7,10 @@ on:
     branches: [upgrade/laravel-framework]
   workflow_dispatch:
 
+concurrency:
+  group: laravel-finance-safety-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
