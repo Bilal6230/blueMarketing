@@ -31,8 +31,8 @@ class FinancialFingerprintTests(V2ImportPlannerTests):
 
     def test_sql_zero_timestamp_is_identified_in_real_column_not_lost(self):
         raw = self.file.read_text(encoding='utf-8')
-        original = 'INSERT INTO \`leads\` (\`id\`) VALUES\n(1);'
-        replacement = ("INSERT INTO \`leads\` (\`id\`, \`follow_up\`) VALUES\n"
+        original = 'INSERT INTO `leads` (`id`) VALUES\n(1);'
+        replacement = ("INSERT INTO `leads` (`id`, `follow_up`) VALUES\n"
                        "(1, '0000-00-00 00:00:00');")
         self.assertIn(original, raw)
         self.file.write_text(raw.replace(original, replacement), encoding='utf-8')
