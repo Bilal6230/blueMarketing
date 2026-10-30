@@ -20,6 +20,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=pathlib.Path, required=True)
     parser.add_argument("--invalid-fk", action="store_true")
+    parser.add_argument("--windows-newlines", action="store_true", help="Simulate Python text-mode CRLF output")
     a = parser.parse_args()
     target = a.out.resolve()
     if target.exists() and any(target.iterdir()):
@@ -58,7 +59,12 @@ def main() -> None:
     for ix, name in enumerate(actual_names, 1):
         queries = statements.get(name, [])
         body = "\n".join(q + ";" for q in queries) + "\n"
-        (target / f"{ix:02d}_{name}.sql").write_text(HEADER + body, encoding="utf-8")
+        # Write bytes deliberately so CI on Linux can reproduce Windows-only
+        # CRLF transformation without changing the canonical SHA manifest.
+        raw = (HEADER + body).encode("utf-8")
+        if a.windows_newlines:
+            raw = raw.replace(b"\n", b"\r\n")
+        (target / f"{ix:02d}_{name}.sql").write_bytes(raw)
         metadata.append({
             "source_table": "migrations" if name == "legacy_migration_history" else name,
             "target_table": name,
