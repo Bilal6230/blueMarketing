@@ -40,6 +40,7 @@ final class V2HistoricalImportTargetGuardTest extends TestCase
     {
         $base = $this->localConfig();
         $cases = [
+            'old timestamp shifted rehearsal' => [array_replace($base, ['database' => 'bluemarketing_v2_local_rehearsal']), 'local', false],
             'remote host' => [array_replace($base, ['host' => 'db.internal.example']), 'local', false],
             'host array' => [array_replace($base, ['host' => ['127.0.0.1', 'db.internal']]), 'local', false],
             'replica read' => [array_replace($base, ['read' => ['host' => 'db.remote']]), 'local', false],
