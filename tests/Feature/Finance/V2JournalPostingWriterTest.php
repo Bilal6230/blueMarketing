@@ -3,6 +3,7 @@
 namespace Tests\Feature\Finance;
 
 use App\Services\Finance\V2JournalPostingWriter;
+use App\Services\Finance\V2PostingReversalWriter;
 use App\Services\Finance\V2PostingReportReader;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
@@ -256,6 +257,104 @@ class V2JournalPostingWriterTest extends TestCase
         ]);
         $this->expectException(\DomainException::class);
         $this->expectExceptionMessage('V2_REPORT_EMPTY_POSTING_BATCH');
+        (new V2PostingReportReader())->lines(1);
+    }
+
+    public function test_v2_reversal_is_immutable_balanced_and_reported_with_original_typed_source(): void
+    {
+        $original = (new V2JournalPostingWriter())->post(1, 51, 'JV-REVERSAL-ORIGINAL-01');
+        $reversal = (new V2PostingReversalWriter())->reverse(
+            1, $original, 'JV-REVERSAL-REQUEST-01', '2026-10-31', 'Approved correction'
+        );
+        $this->assertNotSame($original, $reversal);
+        $this->assertSame($original, (int) DB::table('finance_posting_batches')
+            ->where('id', $reversal)->value('reversal_of_batch_id'));
+        $this->assertDatabaseCount('finance_posting_lines', 4);
+        $this->assertDatabaseCount('finance_posting_source_claims', 1);
+        $this->assertDatabaseCount('finance_posting_journal_sources', 1);
+        $this->assertDatabaseCount('finance_journal_line_sources', 2);
+
+        $rows = (new V2PostingReportReader())->lines(1);
+        $this->assertCount(4, $rows);
+        $opposites = array_values(array_filter($rows, fn ($row) => $row['is_reversal']));
+        $this->assertCount(2, $opposites);
+        $this->assertSame(51, $opposites[0]['source_id']);
+        $this->assertSame('journal', $opposites[0]['source_kind']);
+        $this->assertSame($original, (int) $opposites[0]['reversal_of_batch_id']);
+        $this->assertCount(2, (new V2PostingReportReader())->lines(1, '2026-10-31', '2026-10-31'));
+        $this->assertEqualsWithDelta(0, (float) DB::table('finance_posting_lines')->sum('debit')
+            - (float) DB::table('finance_posting_lines')->sum('credit'), 0.001);
+        $this->assertSame('125.5', (string) DB::table('finance_posting_lines')
+            ->where('posting_batch_id', $original)->sum('debit'));
+    }
+
+    public function test_v2_reversal_idempotent_replay_and_different_key_are_protected(): void
+    {
+        $original = (new V2JournalPostingWriter())->post(1, 51, 'JV-REVERSAL-ORIGINAL-02');
+        $writer = new V2PostingReversalWriter();
+        $id = $writer->reverse(1, $original, 'JV-REVERSAL-REQUEST-02', '2026-10-31', 'Correction');
+        $this->assertSame($id, $writer->reverse(
+            1, $original, 'JV-REVERSAL-REQUEST-02', '2026-10-31', 'Correction'
+        ));
+        try {
+            $writer->reverse(1, $original, 'JV-REVERSAL-REQUEST-03', '2026-10-31', 'Correction');
+            $this->fail('Second reversal must be rejected');
+        } catch (\DomainException $e) {
+            $this->assertSame('V2_REVERSAL_ALREADY_EXISTS', $e->getMessage());
+        }
+        $this->assertDatabaseCount('finance_posting_batches', 2);
+    }
+
+    public function test_v2_reversal_refuses_tampering_with_existing_reversal_lines(): void
+    {
+        $original = (new V2JournalPostingWriter())->post(1, 51, 'JV-REVERSAL-ORIGINAL-04');
+        $writer = new V2PostingReversalWriter();
+        $reversal = $writer->reverse(1, $original, 'JV-REVERSAL-REQUEST-04', '2026-10-31', 'Correction');
+        DB::table('finance_posting_lines')->where('posting_batch_id', $reversal)
+            ->where('project_head_subhead_id', 101)->update(['credit' => '126.50']);
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('V2_REVERSAL_REPLAY_TAMPERED');
+        $writer->reverse(1, $original, 'JV-REVERSAL-REQUEST-04', '2026-10-31', 'Correction');
+    }
+
+    public function test_v2_reversal_refuses_reversal_of_reversal_and_invalid_origin(): void
+    {
+        $original = (new V2JournalPostingWriter())->post(1, 51, 'JV-REVERSAL-ORIGINAL-05');
+        $reversal = (new V2PostingReversalWriter())->reverse(
+            1, $original, 'JV-REVERSAL-REQUEST-05', '2026-10-31', 'Correction'
+        );
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('V2_REVERSAL_ORIGINAL_NOT_POSTED');
+        (new V2PostingReversalWriter())->reverse(
+            1, $reversal, 'JV-REVERSAL-REQUEST-06', '2026-10-31', 'Correction'
+        );
+    }
+
+    public function test_v2_reversal_rejects_unbalanced_origin_without_mutation(): void
+    {
+        $original = (new V2JournalPostingWriter())->post(1, 51, 'JV-REVERSAL-ORIGINAL-07');
+        DB::table('finance_posting_lines')->where('posting_batch_id', $original)
+            ->where('project_head_subhead_id', 101)->update(['debit' => '126.50']);
+        try {
+            (new V2PostingReversalWriter())->reverse(
+                1, $original, 'JV-REVERSAL-REQUEST-07', '2026-10-31', 'Correction'
+            );
+            $this->fail('Unbalanced origin was reversed');
+        } catch (\DomainException $e) {
+            $this->assertSame('V2_REVERSAL_ORIGINAL_UNBALANCED', $e->getMessage());
+        }
+        $this->assertDatabaseCount('finance_posting_batches', 1);
+    }
+
+    public function test_v2_report_rejects_reversal_with_missing_original_source(): void
+    {
+        $original = (new V2JournalPostingWriter())->post(1, 51, 'JV-REVERSAL-ORIGINAL-08');
+        (new V2PostingReversalWriter())->reverse(
+            1, $original, 'JV-REVERSAL-REQUEST-08', '2026-10-31', 'Correction'
+        );
+        DB::table('finance_posting_journal_sources')->where('posting_batch_id', $original)->delete();
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('V2_REPORT_MISSING_TYPED_SOURCE_LINK');
         (new V2PostingReportReader())->lines(1);
     }
 
