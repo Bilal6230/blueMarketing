@@ -1,3 +1,11 @@
+### 2026-10-30 — **ACTUAL** 120,165-row local V2 MySQL import PASS; next full-row verification
+
+**Owner terminal evidence, 2026-10-30:** import is **no longer pending**. Target `bluemarketing_v2_local_rehearsal`, local **MySQL 8.0.30**, source SHA `bbc45fe7f0b6cdab1a188d2437e973e2bb56d442a29585ab328bd062e89335ed`: V2 source staging checks PASS; prepared 70-table/116-FK schema/3 migrations/27 banks PASS; **`V2_IMPORT_APPLIED_TO_ISOLATED_DB_ONLY: 120165 source rows preserved`**; **`V2_FINANCIAL_PARITY_PASS: 57/57 historical tables, 120165 records, original ID/timestamp bounds, 34 numeric financial source aggregates match`**; final **`V2_LOCAL_IMPORT_AND_AGGREGATE_PARITY_PASS`**. No pre-existing V1/staging/live database touched. Typed finance source claims remain unpopulated until evidence-backed JV attribution.
+
+**Next repeatable checks added:** `full_row_digests.py` computes digest of every source row's **all original columns** without storing personal rows in GitHub. `verify_mysql_full_row_digests.php` independently scans imported MySQL tables read-only, normalizes integer/DECIMAL storage formatting, and verifies SHA256 **per-row multisets** with duplicate sensitivity, reporting only mismatching table names. Cross-language SHA Python/PHP tests added in CI. See [real MySQL success and local read-only full-row command](DATABASE_V2_REAL_MYSQL_IMPORT_SUCCESS_2026_10_30.md). This further verification has **NOT** yet been run on owner's local MySQL.
+
+**Formal acceptance remains 8/24 = 33% until the strict all-original-column row comparison passes** and historical timestamp/source exceptions are reviewed. The old notes below saying actual MySQL source import is pending are **superseded** by this verified terminal evidence. App-wide writer/refactor and financial document reconciliation remain pending; never deploy this rehearsal database as production.
+
 ### 2026-10-30 — Five further milestones delivered; LOCAL MySQL owner handoff required
 
 **Canonical accepted progress remains 8/24 = 33%.** This code delivery does not count unresolved P4 historical MySQL parity or P5 full application migration as accepted gates. [Five-milestone details](DATABASE_V2_MULTI_MILESTONE_EXECUTION_2026_10_30_LOCAL_IMPORT.md). [Private local Windows runbook](DATABASE_V2_LOCAL_MYSQL_IMPORT_RUNBOOK_2026_10_30.md).
