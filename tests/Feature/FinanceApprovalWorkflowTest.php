@@ -283,6 +283,81 @@ class FinanceApprovalWorkflowTest extends TestCase
         $this->assertStringContainsString('Finance Change Approvals', $html);
     }
 
+    public function test_posted_ledger_amount_and_source_changes_are_blocked_by_approval(): void
+    {
+        foreach ([
+            ['amount_in' => '99999.00'],
+            ['type_id' => 12345],
+            ['project_head_subheads_id' => 9999],
+            ['date' => '2026-10-30'],
+            ['detail' => 'Narrative', 'amount_out' => 999],
+            ['is_active' => 0],
+        ] as $changes) {
+            $pending = PendingUpdate::create([
+                'table_name' => 'ledgers',
+                'record_id' => 1,
+                'old_values' => ['detail' => 'Ledger 1'],
+                'new_values' => $changes,
+                'status' => 'pending',
+                'submitted_by' => $this->admin->id,
+            ]);
+
+            $exception = $this->callFinanceApprove($pending->id, true, true);
+            $this->assertInstanceOf(HttpExceptionInterface::class, $exception);
+            $this->assertSame(409, $exception->getStatusCode());
+            $this->assertSame('pending', $pending->fresh()->status);
+            $this->assertSame('Ledger 1', DB::table('ledgers')->where('id', 1)->value('detail'));
+        }
+    }
+
+    public function test_posted_customer_ledger_amount_update_is_blocked_but_description_is_approvable(): void
+    {
+        $invalid = PendingUpdate::create([
+            'table_name' => 'customer_ledger', 'record_id' => 3,
+            'old_values' => ['description' => 'Customer Ledger 3'],
+            'new_values' => ['description' => 'Approved', 'amount_in' => 500],
+            'status' => 'pending', 'submitted_by' => $this->admin->id,
+        ]);
+        $blocked = $this->callFinanceApprove($invalid->id, true, true);
+        $this->assertInstanceOf(HttpExceptionInterface::class, $blocked);
+        $this->assertSame(409, $blocked->getStatusCode());
+        $this->assertSame('pending', $invalid->fresh()->status);
+
+        $safe = PendingUpdate::create([
+            'table_name' => 'customer_ledger', 'record_id' => 3,
+            'old_values' => ['description' => 'Customer Ledger 3'],
+            'new_values' => ['description' => 'Approved descriptive note'],
+            'status' => 'pending', 'submitted_by' => $this->admin->id,
+        ]);
+        $response = $this->callFinanceApprove($safe->id, true, true);
+        $this->assertSame(302, $response->getStatusCode());
+        $this->assertSame('Approved descriptive note', DB::table('customer_ledger')->where('id', 3)->value('description'));
+    }
+
+    public function test_legacy_generic_finance_approval_delegates_to_safe_finance_path(): void
+    {
+        $pending = PendingUpdate::create([
+            'table_name' => 'ledgers', 'record_id' => 1,
+            'old_values' => ['detail' => 'Ledger 1'],
+            'new_values' => ['type_id' => 991],
+            'status' => 'pending', 'submitted_by' => $this->admin->id,
+        ]);
+        $request = Request::create('/admin/approve/1', 'POST', ['table' => 'ledgers']);
+        $session = app('session.store');
+        $session->start();
+        $session->setPreviousUrl('/admin/approvals/finance');
+        $request->setLaravelSession($session);
+        $this->app->instance('request', $request);
+        Auth::setUser($this->makeFinanceUser(true, true));
+        try {
+            app(VoucherController::class)->approve(1, $request);
+            $this->fail('Legacy generic route must not bypass financial guard');
+        } catch (HttpExceptionInterface $e) {
+            $this->assertSame(409, $e->getStatusCode());
+        }
+        $this->assertSame('pending', $pending->fresh()->status);
+    }
+
     protected function createSchema(): void
     {
         Schema::dropAllTables();
