@@ -141,6 +141,7 @@ if (in_array(config('app.env'), ['local', 'testing'], true)
         ->group(function (): void {
             $controller = \App\Http\Controllers\Api\V2\V2FinancePilotController::class;
             Route::get('postings', [$controller, 'lines']);
+            Route::get('summary', [$controller, 'summary']);
             Route::get('trial-balance', [$controller, 'trialBalance']);
             Route::get('accounts/{accountId}/statement', [$controller, 'accountStatement'])
                 ->whereNumber('accountId');
