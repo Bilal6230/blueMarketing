@@ -51,3 +51,7 @@ Tool classifies 57 original tables as `SOURCE_MATCHES_BOTH_SESSIONS`, `SOURCE_MA
 ## Formal acceptance
 
 P4.G3 and P4.G4 remain BLOCKED; P6 financial/cutover gates remain BLOCKED. Phase 4 1/4=25%, entire Database V2 8/24=33.3%. No production cutover.
+
+## Independent schema cross-check of operator's mismatch list
+
+The 41 reported `TABLE_DIFF` table names were cross-checked against all four pinned `database/v2_schema/legacy_columns_*.json` files. **41/41 mismatching tables have at least one original TIMESTAMP field; zero UTC-mismatching tables are timestamp-free.** Those 41 tables collectively define **102 original TIMESTAMP columns**. The 16 original source tables that matched under UTC include some timestamp columns; presence alone does not prove a changed stored value. This strongly supports timezone dependence but does not establish precise affected-row count or exclude additional differences. A two-session source digest classification is required.
