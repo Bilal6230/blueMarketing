@@ -21,6 +21,11 @@ final class V2StockProjectApprovalWriter
         string $evidenceReference
     ): void {
         V2IsolatedConnectionGuard::assertAllowed();
+        // The global legacy superadmin Gate::before must NOT implicitly
+        // activate an as-yet-undefined V2 finance authorization ability.
+        if (!Gate::has('approve-v2-stock-finance')) {
+            throw new \DomainException('V2_STOCK_APPROVAL_POLICY_NOT_REGISTERED');
+        }
         Gate::authorize('approve-v2-stock-finance');
         $actor = Auth::id();
         if (!is_int($actor) && !(is_string($actor) && ctype_digit($actor))) {
