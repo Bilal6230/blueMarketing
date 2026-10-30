@@ -938,3 +938,11 @@ Evidence ID: V2_HARDENING_32_87_LOCAL_PASS
 - Executed against SQLite :memory: under APP_ENV=testing.
 - Formal gates remain 8/24 until full acceptance requirements are satisfied.
 - No V1, staging or live database writes authorized.
+
+### 2026-10-31 — Three substantive V2 acceptance-target implementations (operator tests pending)
+
+- **Git whitespace error fixed:** removed blank lines at EOF in four previously committed Markdown files; prior a0bc6c97 Git push succeeded. The LF→CRLF warnings were not build failures.
+- **P5.G1 implementation:** transactional immutable `V2PostingReversalWriter`, exact `reversal_of_batch_id` FK, original typed-source proof, balanced opposite posting legs, source/metadata fingerprinted idempotency and tamper checks. V2 report reads reversal source *through original batch*, with is_reversal; six behavioural regression cases written. No V1 controller integration or history updates.
+- **P3.G4 implementation:** three schema-aligned V2-only Eloquent posting models, seven relationship contracts and DECIMAL/date casts; isolated full-schema PHPUnit test; actual disposable MySQL `verify_mysql_v2_model_schema.php` checks model FK, money scale and unique indexes. Legacy fillable-only source columns require explicit compatibility decision, not automated schema changes.
+- **P4.G3 implementation:** isolated MySQL READ-ONLY `audit_local_temporal_history.php` inventories original dated columns and archived 14 legacy migration history rows, reports aggregate and MySQL TZ metadata. The original snapshot export-session timezone is **not yet authenticated**. Existing source full-row digest PASS remains separate from historical timezone interpretation.
+- CI lints new PHP tools/models/reversal, runs new SQLite regression, and checks model contracts against disposable MySQL 8.4. **New suite and MySQL audit have NOT yet been executed/confirmed by operator.** Roadmap acceptance remains **8/24 = 33%**; P3.G4, P4.G3, P5.G1 are still open. See [detailed checkpoint](DATABASE_V2_REVERSAL_TYPED_MODELS_AND_TIME_HISTORY_2026_10_31.md). No V1/staging/live DB change or deployment.
