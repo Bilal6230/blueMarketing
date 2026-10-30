@@ -142,6 +142,10 @@ if (in_array(config('app.env'), ['local', 'testing'], true)
             Route::get('postings', [$controller, 'lines'])->whereNumber('projectId');
             Route::get('summary', [$controller, 'summary'])->whereNumber('projectId');
             Route::get('trial-balance', [$controller, 'trialBalance'])->whereNumber('projectId');
+            Route::get('trial-balance/export', [$controller, 'exportTrialBalance'])
+                ->whereNumber('projectId');
+            Route::get('accounts/{accountId}/statement/export', [$controller, 'exportAccountStatement'])
+                ->whereNumber('projectId')->whereNumber('accountId');
             Route::get('accounts/{accountId}/statement', [$controller, 'accountStatement'])
                 ->whereNumber('projectId')->whereNumber('accountId');
             Route::post('postings', [$controller, 'post'])->whereNumber('projectId');
