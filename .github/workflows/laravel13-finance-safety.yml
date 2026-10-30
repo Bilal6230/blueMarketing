@@ -199,8 +199,8 @@ jobs:
         run: |
           php -r '
           require "vendor/autoload.php";
-          $app=require "bootstrap/app.php"; $app->make(Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap();
-          $db=Illuminate\\Support\\Facades\\DB::connection();
+          $app=require "bootstrap/app.php"; $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+          $db=Illuminate\Support\Facades\DB::connection();
           $name=$db->getDatabaseName();
           if ($name!=="bluemarketing_v2_ci") { throw new RuntimeException("Wrong database"); }
           $count=(int) $db->selectOne("SELECT COUNT(*) n FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE()") ->n;
