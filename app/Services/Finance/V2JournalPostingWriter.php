@@ -121,7 +121,7 @@ final class V2JournalPostingWriter
                     ->get(['src.journal_voucher_detail_id', 'line.project_head_subhead_id',
                         'line.debit', 'line.credit']);
                 if ($posted->count() !== count($lines)) {
-                    throw new \\DomainException('V2_REPLAY_DETAILS_MISSING');
+                    throw new \DomainException('V2_REPLAY_DETAILS_MISSING');
                 }
                 $expectedByDetail = [];
                 foreach ($lines as $line) {
@@ -133,7 +133,7 @@ final class V2JournalPostingWriter
                     if (!$expected || (int) $posting->project_head_subhead_id !== $expected['account_id'] ||
                         $this->cents($posting->debit) !== $this->cents($expected['debit']) ||
                         $this->cents($posting->credit) !== $this->cents($expected['credit'])) {
-                        throw new \\DomainException('V2_REPLAY_LEDGER_TAMPERED');
+                        throw new \DomainException('V2_REPLAY_LEDGER_TAMPERED');
                     }
                 }
                 return (int) $existing->id;
