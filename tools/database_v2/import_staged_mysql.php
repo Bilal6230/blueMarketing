@@ -238,10 +238,35 @@ if ($preserveZeroDate) {
 $connection->beginTransaction();
 try {
     foreach ($order as $name) {
-        foreach ($files[$name] as $query) {
-            $connection->unprepared($query);
+        foreach ($files[$name] as $offset => $query) {
+            try {
+                $connection->unprepared($query);
+            } catch (\Illuminate\Database\QueryException $e) {
+                // QueryException->getMessage() can contain full private SQL
+                // with individual customer rows. NEVER log or expose it.
+                // SQLSTATE and numeric driver error are safe diagnostics.
+                $info = $e->errorInfo ?? [];
+                $state = (string) ($info[0] ?? $e->getCode());
+                $errno = (int) ($info[1] ?? 0);
+                if (!preg_match('/^[A-Z0-9]{5}$/D', $state)) {
+                    $state = 'UNKNOWN';
+                }
+                throw new RuntimeException(
+                    'V2_IMPORT_REFUSED: SQL_INSERT_FAILED table=' . $name
+                    . ' statement=' . ($offset + 1)
+                    . ' sqlstate=' . $state
+                    . ' mysql_errno=' . $errno, 0, $e
+                );
+            }
         }
-        $got = (int) $connection->table($name)->count();
+        try {
+            $got = (int) $connection->table($name)->count();
+        } catch (\Illuminate\Database\QueryException $e) {
+            throw new RuntimeException(
+                'V2_IMPORT_REFUSED: SQL_COUNT_FAILED table=' . $name,
+                0, $e
+            );
+        }
         if ($got !== (int) $byTable[$name]['rows']) {
             blocked('Imported row count mismatch in ' . $name . ': ' . $got);
         }
