@@ -65,13 +65,31 @@ final class V2PostingReportReader
             ->join('finance_posting_batches as batch', 'batch.id', '=', 'line.posting_batch_id')
             ->leftJoin('finance_posting_source_claims as claim',
                 'claim.posting_batch_id', '=', 'batch.id')
+            ->leftJoin('finance_posting_batches as original',
+                'original.id', '=', 'batch.reversal_of_batch_id')
+            ->leftJoin('finance_posting_source_claims as original_claim',
+                'original_claim.posting_batch_id', '=', 'original.id')
             ->leftJoin('project_head_subheads as account',
                 'account.id', '=', 'line.project_head_subhead_id')
             ->where('batch.project_id', $projectId)
             ->where(function ($query) use ($projectId) {
-                $query->whereNull('claim.posting_batch_id')
-                    ->orWhereNull('account.id')
-                    ->orWhere('account.project_id', '!=', $projectId);
+                $query->whereNull('account.id')
+                    ->orWhere('account.project_id', '!=', $projectId)
+                    ->orWhere(function ($normal) {
+                        $normal->whereNull('batch.reversal_of_batch_id')
+                            ->whereNull('claim.posting_batch_id');
+                    })
+                    ->orWhere(function ($reversal) use ($projectId) {
+                        $reversal->whereNotNull('batch.reversal_of_batch_id')
+                            ->where(function ($invalid) use ($projectId) {
+                                $invalid->whereNull('original.id')
+                                    ->orWhereNull('original_claim.posting_batch_id')
+                                    ->orWhereNotNull('claim.posting_batch_id')
+                                    ->orWhereNotNull('original.reversal_of_batch_id')
+                                    ->orWhere('original.project_id', '!=', $projectId)
+                                    ->orWhere('batch.voucher_series', '!=', 'REV');
+                            });
+                    });
             })->exists();
         if ($inconsistent) {
             throw new \DomainException('V2_REPORT_SOURCE_OR_PROJECT_INTEGRITY_FAILURE');
@@ -84,8 +102,12 @@ final class V2PostingReportReader
         }
         $q = DB::table('finance_posting_lines as line')
             ->join('finance_posting_batches as batch', 'batch.id', '=', 'line.posting_batch_id')
-            ->join('finance_posting_source_claims as claim',
+            ->leftJoin('finance_posting_source_claims as claim',
                 'claim.posting_batch_id', '=', 'batch.id')
+            ->leftJoin('finance_posting_batches as original',
+                'original.id', '=', 'batch.reversal_of_batch_id')
+            ->leftJoin('finance_posting_source_claims as original_claim',
+                'original_claim.posting_batch_id', '=', 'original.id')
             ->join('project_head_subheads as account',
                 'account.id', '=', 'line.project_head_subhead_id')
             ->where('batch.project_id', $projectId)
@@ -107,8 +129,20 @@ final class V2PostingReportReader
                 'batch.effective_date',
                 'batch.voucher_series',
                 'batch.voucher_number',
-                'claim.source_kind',
-            ])->map(static fn ($line): array => (array) $line)->all();
+                'batch.reversal_of_batch_id',
+                'claim.source_kind as direct_source_kind',
+                'original_claim.source_kind as inherited_source_kind',
+            ])->map(static function ($row): array {
+                $line = (array) $row;
+                $reversedId = $line['reversal_of_batch_id'];
+                $line['is_reversal'] = $reversedId !== null;
+                $line['source_kind'] = $line['is_reversal']
+                    ? $line['inherited_source_kind'] : $line['direct_source_kind'];
+                $line['source_batch_id'] = $line['is_reversal']
+                    ? (int) $reversedId : (int) $line['posting_batch_id'];
+                unset($line['direct_source_kind'], $line['inherited_source_kind']);
+                return $line;
+            })->all();
 
         $totals = [];
         foreach ($lines as $line) {
@@ -146,7 +180,7 @@ final class V2PostingReportReader
             if (!isset($tables[$kind])) {
                 throw new \DomainException('V2_REPORT_UNKNOWN_SOURCE_KIND');
             }
-            $wanted[$kind][(int) $line['posting_batch_id']] = true;
+            $wanted[$kind][(int) $line['source_batch_id']] = true;
         }
         $actual = [];
         foreach ($wanted as $kind => $batchIds) {
@@ -163,7 +197,8 @@ final class V2PostingReportReader
             }
         }
         foreach ($lines as &$line) {
-            $line['source_id'] = $actual[(int) $line['posting_batch_id']];
+            $line['source_id'] = $actual[(int) $line['source_batch_id']];
+            unset($line['source_batch_id']);
         }
         unset($line);
         return $lines;
