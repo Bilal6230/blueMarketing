@@ -1,0 +1,151 @@
+<?php
+
+namespace Tests\Feature\Finance;
+
+use App\Services\Finance\V2JournalPostingWriter;
+use Illuminate\Database\QueryException;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Tests\TestCase;
+
+class V2JournalPostingWriterTest extends TestCase
+{
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config()->set('database.default', 'sqlite');
+        config()->set('database.connections.sqlite.database', ':memory:');
+        config()->set('database.connections.sqlite.foreign_key_constraints', true);
+        DB::purge('sqlite');
+        DB::setDefaultConnection('sqlite');
+        DB::statement('PRAGMA foreign_keys = ON');
+
+        foreach ([
+            'projects', 'users', 'commision_vouchers', 'stock_entries',
+            'stock_bills', 'customer_ledger', 'booking_vouchers', 'labour_ledgers',
+        ] as $name) {
+            Schema::create($name, function (Blueprint $table): void { $table->id(); });
+        }
+        Schema::create('project_head_subheads', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('project_id');
+        });
+        Schema::create('journal_vouchers', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('project_id');
+            $table->string('type');
+            $table->unsignedBigInteger('voucher_number');
+            $table->date('date');
+            $table->decimal('total_debit', 15, 2);
+            $table->decimal('total_credit', 15, 2);
+            $table->timestamp('deleted_at')->nullable();
+        });
+        Schema::create('journal_voucher_details', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('journal_voucher_id');
+            $table->unsignedBigInteger('account_id');
+            $table->decimal('debit', 15, 2);
+            $table->decimal('credit', 15, 2);
+            $table->text('description')->nullable();
+            $table->timestamp('deleted_at')->nullable();
+        });
+        $migration = require base_path('database/v2_migrations/2026_10_30_000100_create_v2_finance_posting_core.php');
+        $migration->up();
+
+        DB::table('projects')->insert([['id' => 1], ['id' => 2]]);
+        DB::table('project_head_subheads')->insert([
+            ['id' => 101, 'project_id' => 1],
+            ['id' => 102, 'project_id' => 1],
+            ['id' => 201, 'project_id' => 2],
+        ]);
+        $this->makeJournal(51, 101, 102);
+    }
+
+    protected function tearDown(): void
+    {
+        DB::disconnect('sqlite');
+        parent::tearDown();
+    }
+
+    private function makeJournal(int $headerId, int $debitAccount, int $creditAccount): void
+    {
+        DB::table('journal_vouchers')->insert([
+            'id' => $headerId, 'project_id' => 1, 'type' => 'JV',
+            'voucher_number' => $headerId, 'date' => '2026-10-30',
+            'total_debit' => '125.50', 'total_credit' => '125.50',
+        ]);
+        DB::table('journal_voucher_details')->insert([
+            ['id' => $headerId * 10 + 1, 'journal_voucher_id' => $headerId,
+             'account_id' => $debitAccount, 'debit' => '125.50', 'credit' => 0,
+             'description' => 'Exact debit detail'],
+            ['id' => $headerId * 10 + 2, 'journal_voucher_id' => $headerId,
+             'account_id' => $creditAccount, 'debit' => 0, 'credit' => '125.50',
+             'description' => 'Exact credit detail'],
+        ]);
+    }
+
+    public function test_jv_posts_exact_detail_links_once_and_replays_safely(): void
+    {
+        $writer = new V2JournalPostingWriter();
+        $id = $writer->post(1, 51, 'JV-TEST-REQUEST-0001');
+        $this->assertSame($id, $writer->post(1, 51, 'JV-TEST-REQUEST-0001'));
+        $this->assertDatabaseCount('finance_posting_batches', 1);
+        $this->assertDatabaseCount('finance_posting_lines', 2);
+        $this->assertDatabaseCount('finance_journal_line_sources', 2);
+        $this->assertSame('125.5', (string) DB::table('finance_posting_lines')->sum('debit'));
+        $this->assertSame('125.5', (string) DB::table('finance_posting_lines')->sum('credit'));
+    }
+
+    public function test_wrong_project_account_rolls_back_everything(): void
+    {
+        DB::table('journal_voucher_details')->where('id', 512)->update(['account_id' => 201]);
+        try {
+            (new V2JournalPostingWriter())->post(1, 51, 'JV-TEST-REQUEST-0002');
+            $this->fail('Expected project mismatch');
+        } catch (\DomainException $e) {
+            $this->assertSame('V2_JV_ACCOUNT_PROJECT_MISMATCH', $e->getMessage());
+        }
+        $this->assertDatabaseCount('finance_posting_batches', 0);
+        $this->assertDatabaseCount('finance_posting_lines', 0);
+    }
+
+    public function test_unbalanced_detail_refuses_posting_without_mutation(): void
+    {
+        DB::table('journal_voucher_details')->where('id', 512)->update(['credit' => 120]);
+        $this->expectException(\DomainException::class);
+        try {
+            (new V2JournalPostingWriter())->post(1, 51, 'JV-TEST-REQUEST-0003');
+        } finally {
+            $this->assertDatabaseCount('finance_posting_batches', 0);
+        }
+    }
+
+    public function test_reused_request_key_for_other_header_is_rejected(): void
+    {
+        $this->makeJournal(52, 101, 102);
+        $writer = new V2JournalPostingWriter();
+        $writer->post(1, 51, 'JV-TEST-REQUEST-0004');
+        try {
+            $writer->post(1, 52, 'JV-TEST-REQUEST-0004');
+            $this->fail('Expected idempotency conflict');
+        } catch (\DomainException $e) {
+            $this->assertSame('V2_IDEMPOTENCY_CONFLICT', $e->getMessage());
+        }
+        $this->assertDatabaseCount('finance_posting_batches', 1);
+    }
+
+    public function test_same_header_with_different_request_key_is_rejected_by_unique_source_fk(): void
+    {
+        $writer = new V2JournalPostingWriter();
+        $writer->post(1, 51, 'JV-TEST-REQUEST-0005');
+        try {
+            $writer->post(1, 51, 'JV-TEST-REQUEST-0006');
+            $this->fail('Expected physical source uniqueness rejection');
+        } catch (QueryException $e) {
+            $this->assertNotEmpty($e->getMessage());
+        }
+        $this->assertDatabaseCount('finance_posting_batches', 1);
+        $this->assertDatabaseCount('finance_posting_lines', 2);
+    }
+}
