@@ -114,6 +114,14 @@ jobs:
             tests/Feature/VoucherDeleteProtectionTest.php \
             tests/Feature/LoginRecaptchaTest.php
 
+      - name: Database V2 isolated schema lint and import planner regression
+        run: |
+          find database/v2_migrations -name '*.php' -print0 | xargs -0 -n1 php -l
+          php -l database/seeders/V2LegacyBanksSeeder.php
+          php -l tests/Feature/DatabaseV2IsolatedFinanceSchemaTest.php
+          python3 -m unittest discover -s tools/database_v2/tests -p 'test_*.py' -v
+          php artisan test tests/Feature/DatabaseV2IsolatedFinanceSchemaTest.php
+
       - name: Full Laravel 13 PHPUnit application regression gate (SQLite in memory)
         run: |
           php artisan test
