@@ -827,3 +827,11 @@ The earlier dashboard shown in the screenshot reported the following estimates:
 - Added `tests/Feature/DatabaseV2ModelSchemaContractTest.php`: full 56-business-table V2 baseline on isolated SQLite memory, assertion that historical `journal_vouchers.site_id` and `ledgers.journal_voucher_detail_id` are legacy-model fillable fields not in imported V2 baseline, plus checks that detail/account model fillables have no schema drift and refusal against non-memory SQLite targets. These discrepancies are **discovered design blockers**, not authority to silently add V2 columns or rewrite historical data.
 - GitHub Actions isolated finance-safety workflow now lints both new PHP files and executes the targeted test class with pre-existing V2 schema suites. Commits `d8d5026b`, `4e81b166`, `b9dc4a25`.
 - **New tests have not yet been executed by the user or CI-confirmed**; P3.G4 remains open pending real MySQL model/relationship/cast integration checks and explicit policy on the two legacy fillable-only fields. Accepted gates still 8/24=33%. Production blocked.
+
+
+### 2026-10-31 — P3.G4 substantive relationship contract implementation
+
+- Owner verified previous isolated tests **12 PASS / 57 assertions** at `31400658`, PHP lint clean, Git tree clean.
+- New implementation `66deb764`: `V2ModelSchemaContract::inspectRelationships()` inspects six real financial Eloquent relationships (JV→details, detail→JV/account, Ledger→account/customer source, account→ledgers) against physically generated V2 columns in isolated SQLite memory or named isolated V2 MySQL only. Does not invoke posting or query customer rows. Previously detected legacy fillable drift (`journal_vouchers.site_id`, `ledgers.journal_voucher_detail_id`) is still a policy blocker, not silently patched.
+- New integration regression `5e3f1fa1`: constructs clean V2 bank+legacy baseline and asserts all six relationship FK/PK contracts are present. Existing CI already runs this test file. **New test execution is pending operator/CI; do not mark P3.G4 PASS yet.**
+- Acceptance remains **8/24 (33%)**. P3.G4 still needs full model/cast coverage and real MySQL validation. No historical source rows edited; V1/staging/production and deployment untouched.
