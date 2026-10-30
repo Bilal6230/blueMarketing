@@ -38,6 +38,14 @@ class DatabaseV2ModelSchemaContractTest extends TestCase
         $this->assertArrayNotHasKey('project_head_subheads', $findings);
     }
 
+    public function test_financial_model_relationship_fks_exist_in_isolated_v2_baseline(): void
+    {
+        (require base_path('database/v2_migrations/2026_10_30_000010_create_v2_bank_lookup.php'))->up();
+        (require base_path('database/v2_migrations/2026_10_30_000020_create_v2_legacy_domain_baseline.php'))->up();
+
+        $this->assertSame([], (new V2ModelSchemaContract())->inspectRelationships());
+    }
+
     public function test_contract_refuses_non_v2_sqlite_file_database_without_reading_data(): void
     {
         config()->set('database.connections.sqlite.database', '/tmp/not-a-v2-database.sqlite');
