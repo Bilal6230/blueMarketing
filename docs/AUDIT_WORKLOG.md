@@ -2,6 +2,15 @@
 
 **Updated:** 2026-10-30. Keep new entries dated, evidence-based and append-only where practical.
 
+## 2026-10-30 — V2 57-table relationship audit and typed identity design
+
+- Offline parsed uploaded MariaDB `u429032065_dev.sql`; exact dump SHA-256 `bbc45fe7f0b6cdab1a188d2437e973e2bb56d442a29585ab328bd062e89335ed`. Verified 57 CREATE TABLEs, 120,165 exported rows, 40 FK constraints (28 with non-null child references; 12 with none), zero missing declared FK parent IDs in snapshot, 54 unlinked `*_id` naming candidates (not automatically FK targets).
+- Added `DATABASE_V2_RELATIONSHIP_MATRIX_2026_10_30.md`: full table census, current FK map, candidate relationship groups, key-width drift, exact active code-path findings. Corrected initial 56 `_id` heuristic to 54.
+- Verified `AppHelper::getPakistanBanks()` uses code-list IDs 1–27. User snapshot: 1,345 customer_ledger + 46 booking_vouchers bank IDs, all 1,391 valid current code IDs. False assumption `bank_id -> project_head_subheads.id` withdrawn; V2 model proposes real `banks` table preserving IDs.
+- Verified `sites.subhead_accounting_id` is actually used as `project_head_subheads.id` by `LabourController::createVoucher` and detail filters. Source dataset matches 7/7 values, 0 project mismatches. Earlier two apparent wrong subhead IDs were compared against the wrong parent table. Design rename to `sites.project_head_subhead_id` with actual FK after datatype alignment.
+- Verified `LedgerController::update` can edit posted CR/CP rows under source/project checks, while destroy is blocked, and booking PPR deposit can update ledger metadata. Added `DATABASE_V2_SCHEMA_BLUEPRINT_2026_10_30.md` for immutable typed posting batches/lines, bank and site FKs and non-destructive import ordering. No migration/SQL/schema changes, tests or deployment.
+- P1.G2 still IN PROGRESS pending full 54-field code/cardinality/project/tenant analysis; acceptance progress unchanged 1/24 = 4%. No dump customer rows/credentials committed.
+
 ## 2026-10-30 — Database V2 rebuild roadmap and initial SQL baseline
 
 - Received user-uploaded 18 MB `u429032065_dev.sql`, an October 30 MariaDB 11.8.9 dev export. Inspected **offline/read-only**; no MySQL/MariaDB execution or connection. SQL data is private and was not committed.
