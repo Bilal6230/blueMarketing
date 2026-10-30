@@ -72,8 +72,10 @@ jobs:
           find database/v2_migrations -name '*.php' -print0 | xargs -0 -n1 php -l
           php -l database/seeders/V2LegacyBanksSeeder.php
           php -l tests/Feature/DatabaseV2IsolatedFinanceSchemaTest.php
+          php -l app/Services/Finance/V2JournalPostingWriter.php
+          php -l tests/Feature/Finance/V2JournalPostingWriterTest.php
           python3 -m unittest discover -s tools/database_v2/tests -p 'test_*.py' -v
-          php artisan test tests/Feature/DatabaseV2IsolatedFinanceSchemaTest.php
+          php artisan test tests/Feature/DatabaseV2IsolatedFinanceSchemaTest.php tests/Feature/Finance/V2JournalPostingWriterTest.php
 
 
       - name: End-to-end finance safety regression suite (SQLite in memory)
