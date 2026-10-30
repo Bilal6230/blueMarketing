@@ -7,6 +7,7 @@ param(
     [Parameter(Mandatory = $true)][string]$SourceSql,
     [Parameter(Mandatory = $true)][string]$StageDir,
     [switch]$Apply,
+    [switch]$PreserveLegacyZeroDate,
     [string]$Database = 'bluemarketing_v2_local_rehearsal',
     [string]$ConfirmEmptyDatabase = ''
 )
@@ -73,13 +74,18 @@ try {
             '--expected-rows', $expectedRows,
             '--out', (Join-Path $staging 'source_fingerprints.json')
         ))
+        Write-Warning 'STRICT MYSQL EXCEPTION: one historical leads.follow_up TIMESTAMP is 0000-00-00 00:00:00.'
+        Write-Warning 'No original value will be silently changed; local apply requires -PreserveLegacyZeroDate.'
         Write-Host 'STAGING_COMPLETE: no database connection, migrations or import executed.' -ForegroundColor Green
         Write-Host ('PRIVATE_STAGE: ' + $staging)
         Write-Host 'NEXT: create an EMPTY NEW bluemarketing_v2_local_rehearsal DB in local phpMyAdmin only.'
-        Write-Host 'Then re-run with -Apply -ConfirmEmptyDatabase bluemarketing_v2_local_rehearsal.'
+        Write-Host 'Then re-run with -Apply -PreserveLegacyZeroDate -ConfirmEmptyDatabase bluemarketing_v2_local_rehearsal.'
         return
     }
 
+    if (!$PreserveLegacyZeroDate) {
+        throw 'LEGACY_ZERO_DATE_REVIEW_REQUIRED: add explicit -PreserveLegacyZeroDate; one source TIMESTAMP is 0000-00-00 00:00:00'
+    }
     # Prevent a guessed/partial target. Require fresh database and exact
     # second explicit confirmation; never create or delete a database.
     if ($Database -notmatch '^bluemarketing_v2_local_[a-z0-9_]+$' -or
@@ -115,6 +121,8 @@ try {
         ('--dir=' + $staging),
         ('--expected-sha256=' + $expectedSha),
         ('--expected-rows=' + $expectedRows),
+        ('--source-evidence=' + (Join-Path $staging 'source_fingerprints.json')),
+        '--preserve-legacy-zero-date',
         '--apply'
     )
     Run-Checked 'php' @(
