@@ -41,3 +41,11 @@ Open owner/business decisions: actual transaction_type availability and approval
 **8/24 (33.3%) accepted unchanged.** P5.G1 central API/transaction work substantially implemented but MySQL concurrency, authorization and full workflow acceptance pending. P5.G2 voucher families' pilot posting logic authored but historical ownership reconciliation and production rollout pending. P5.G3 pilot reporting/export API authored; legacy booking/stock/labour controllers, views and all workflows are NOT refactored. P5.G4 full regression pending. P4.G3 remains blocked due source UTC instant mismatch (41/57 affected original source table digests on earlier local rehearsal).
 
 NO production, V1, staging, live, original SQL or affected local V2 rehearsal DB mutation. No tests or migrations were manually executed in this implementation turn.
+
+## Additional reporting and authorization delivered in same code batch
+
+- `V2VoucherRegisterReader` resolves exact typed source voucher display identifiers: original textual CV number and physical stock slip/bill references, never ledger.type_id. Exposed by `V2PostingGateway::voucherRegister` and local-only GET voucher-register API.
+- New finance and stock approval abilities must be explicitly registered (`Gate::has`), even if the app's global superadmin bypass would otherwise authorize unknown abilities. This code does NOT register/grant the permissions.
+- Deferred unit test `V2FinanceCsvExporterTest` covers fixed columns, formula sanitization and report scope.
+- **Implementation submeter updated:** 7/7 typed source families, 14/14 gateway operations, 5/5 pilot report/read formats, 2/2 CSV report exports, and 9/9 gated local HTTP endpoints.
+- All new code remains untested during this turn by owner request; no runtime/CI PASS claimed. Historical UTC P4.G3 and production UAT remain blocked. Accepted gates stay **8/24 = 33.3%**.
