@@ -55,3 +55,17 @@ P4.G3 and P4.G4 remain BLOCKED; P6 financial/cutover gates remain BLOCKED. Phase
 ## Independent schema cross-check of operator's mismatch list
 
 The 41 reported `TABLE_DIFF` table names were cross-checked against all four pinned `database/v2_schema/legacy_columns_*.json` files. **41/41 mismatching tables have at least one original TIMESTAMP field; zero UTC-mismatching tables are timestamp-free.** Those 41 tables collectively define **102 original TIMESTAMP columns**. The 16 original source tables that matched under UTC include some timestamp columns; presence alone does not prove a changed stored value. This strongly supports timezone dependence but does not establish precise affected-row count or exclude additional differences. A two-session source digest classification is required.
+
+## 2026-10-31 — Owner two-session diagnostic PASS, mismatch confirmed
+
+At clean local commit `6efaace6`, owner executed the read-only `diagnose_mysql_source_timezone_parity.php` with verified private source digest. PHP lint and `--selftest` PASS. The exact output classification was:
+
+- `SOURCE_MATCHES_PLUS05_ONLY` = **41** original tables.
+- `SOURCE_MATCHES_BOTH_SESSIONS` = **16** original tables.
+- `SOURCE_MATCHES_UTC_ONLY` = **0**.
+- `SOURCE_MATCHES_NEITHER_SESSION` = **0**.
+- Expected historical row count = **120165**; database unchanged; CLI exit **4** intentionally blocks original UTC acceptance.
+
+The 41 table digests match original SQL source column values only if stored MySQL TIMESTAMPs are *rendered at +05:00*; the original SQL dump explicitly exported those values in *+00:00*. This strongly establishes a **five-hour UTC instant offset for at least some original TIMESTAMP-bearing rows** in the existing isolated rehearsal clone. There is no evidence here that all 120165 rows or every TIMESTAMP field are affected. Zero other unexplained **table-level** mismatches were observed at the two tested sessions.
+
+**Decision:** Retain the affected rehearsal as read-only diagnostic evidence; do not attempt in-place timestamp shifting. A new, separately named and owner-authorized empty V2 target plus the corrected +00 importer and independent source-UTC full-digest parity will be required for P4.G3. No approved production cutover.
