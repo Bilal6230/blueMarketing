@@ -142,6 +142,16 @@ final class V2PostingGateway
         return (new V2PostingReportReader())->lines($projectId, $from, $through);
     }
 
+    public function postingSummary(
+        int $projectId,
+        ?string $from = null,
+        ?string $through = null
+    ): array {
+        return (new V2PostingSummaryReader())->summarize(
+            $projectId, $from, $through
+        );
+    }
+
     public function trialBalance(
         int $projectId,
         ?string $from = null,
