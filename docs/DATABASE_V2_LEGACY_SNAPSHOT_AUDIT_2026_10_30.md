@@ -128,3 +128,37 @@ Absent from `ledgers`, `customer_ledger`, `labours`, `labour_attendances`, `user
 **Phase tracker:** [DATABASE_V2_REBUILD_ROADMAP.md](DATABASE_V2_REBUILD_ROADMAP.md) — P1.G1 completed; overall 1/24 = 4%.
 
 No database was connected to, restored, modified, or migrated. No finance code changed. No deployment performed.
+
+## Next pass — 56 unconstrained `*_id` candidate columns
+
+This is an **automated naming-based inventory, not confirmed 56 missing FKs**. Some are genuine join candidates, but others are polymorphic business IDs (`type_id`, `model_id`, `tokenable_id`, `record_id`) or statuses and must **not** be assigned a false FK. Confirm each with application code and data before altering schema.
+
+| Table | Unconstrained candidate fields to classify |
+|---|---|
+| accounting_expenses | project_head_subheads_id |
+| areas | project_id |
+| bookings | project_id, customer_id, plot_id, broker_id |
+| booking_edit_audits | booking_id, project_id, user_id, journal_voucher_id |
+| booking_vouchers | booking_id, customer_ledger_id, ledger_id, project_id, customer_id, plot_id, bank_id |
+| commision_voucher_details | account_id |
+| customer_ledger | type_id, project_id, plot_id, bank_id |
+| draft_ledgers | type_id, customer_id, project_id, plot_id, bank_id, project_head_subheads_id |
+| journal_vouchers | project_id |
+| journal_voucher_details | account_id |
+| leads | area_id, zone_id, follow_id, project_id |
+| ledgers | type_id, project_head_subheads_id |
+| model_has_permissions | model_id |
+| model_has_roles | model_id |
+| pending_updates | record_id |
+| personal_access_tokens | tokenable_id |
+| plots | project_id, road_id, facing_id |
+| project_head_subheads | plot_id, customer_id |
+| punches | user_id, project_id |
+| sites | head_accounting_id, subhead_accounting_id |
+| stock_bills | party_id, entry_id |
+| stock_movements | source_id, source_line_id |
+| users | status_id, project_id |
+| works | user_id |
+
+**Immediate priority:** real ledger account FK, JV detail account FK, explicit journal/commission/stock identity, booking source references, and project tenancy. Keep Laravel/Spatie/Sanctum polymorphic fields polymorphic unless changing their model is independently justified. Do not automatically add FKs to business sequence numbers or workflow polymorphic keys.
+
