@@ -12,6 +12,7 @@ from unittest.mock import patch
 TOOL_DIR = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(TOOL_DIR))
 import v2_import_plan as v2
+import rehearse_legacy_in_sqlite as mirror
 
 
 class V2ImportPlannerTests(unittest.TestCase):
@@ -86,6 +87,18 @@ class V2ImportPlannerTests(unittest.TestCase):
         )):
             with self.assertRaisesRegex(ValueError, 'checksum mismatch'):
                 v2.stage_plan(self.file, '0' * 64, 57)
+
+    def test_all_57_synthetic_rows_round_trip_in_86_fk_disposable_sqlite_mirror(self):
+        with patch('rehearse_legacy_in_sqlite.verified_schema', return_value=(
+            self.cols, self.original_fks, self.extra_fks, self.sha
+        )):
+            result = mirror.run(self.file, self.sha, 57)
+        self.assertEqual(result['source_rows'], 57)
+        self.assertEqual(result['mirror_rows'], 57)
+        self.assertEqual(result['source_parent_fk_edges'], 86)
+        self.assertEqual(result['fk_violations'], 0)
+        self.assertEqual(result['row_multiset_mismatch_tables'], 0)
+        self.assertEqual(result['archived_legacy_migration_rows'], 1)
 
     def test_changed_row_count_fails_closed(self):
         with patch('v2_import_plan.verified_schema', return_value=(
