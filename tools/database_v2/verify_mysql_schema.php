@@ -157,6 +157,29 @@ if ((int) DB::table('customer_ledger')->count() !== 0) {
     throw new RuntimeException('Disposable import fixture left persistent rows.');
 }
 
+// One 2026-10-30 source follow_up TIMESTAMP is a historic ZERO date.
+// Verify exact preservation is possible in a disposable session WITHOUT
+// changing the GLOBAL sql_mode. Always restore the session mode.
+$beforeMode = (string) $db->selectOne('SELECT @@SESSION.sql_mode AS m')->m;
+$db->statement('CREATE TEMPORARY TABLE v2_zero_date_session_probe (stamp TIMESTAMP NOT NULL)');
+try {
+    $withoutZeroModes = implode(',', array_filter(explode(',', $beforeMode),
+        static fn ($m) => !in_array($m, ['NO_ZERO_DATE', 'NO_ZERO_IN_DATE'], true)));
+    $db->statement('SET SESSION sql_mode = ?', [$withoutZeroModes]);
+    $db->table('v2_zero_date_session_probe')->insert(['stamp' => '0000-00-00 00:00:00']);
+    $saved = (string) $db->table('v2_zero_date_session_probe')->value('stamp');
+    if ($saved !== '0000-00-00 00:00:00') {
+        throw new RuntimeException('Legacy zero TIMESTAMP was not preserved exactly in isolated MySQL.');
+    }
+} finally {
+    $db->statement('SET SESSION sql_mode = ?', [$beforeMode]);
+    $db->statement('DROP TEMPORARY TABLE IF EXISTS v2_zero_date_session_probe');
+}
+$restored = (string) $db->selectOne('SELECT @@SESSION.sql_mode AS m')->m;
+if ($restored !== $beforeMode) {
+    throw new RuntimeException('Session SQL mode not restored after legacy compatibility test.');
+}
+
 // Rejected FK insert must cause NO persistent ledger changes.
 $original = (int) DB::table('ledgers')->count();
 DB::beginTransaction();
