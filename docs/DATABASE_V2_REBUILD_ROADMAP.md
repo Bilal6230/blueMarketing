@@ -8,19 +8,28 @@
 
 ## Live progress bar (acceptance-gate based)
 
-**Overall: 6 / 24 gates = 25%**  
-`[█████░░░░░░░░░░░░░░░]` **25%**
+**Overall: 8 / 24 gates = 33%**  
+`[████████░░░░░░░░░░░░░░░░]` **33%**
 
 The percentage counts **verified completion gates**, not lines of code, elapsed time, engineering quality, or production readiness. Each of six phases has four equally weighted gates. Update this meter and the last verified evidence with every substantive completed milestone. Do not mark a gate done on code creation alone when tests/approval are required.
 
 | Phase | Workstream | Gates passed | Progress | Status |
 |---|---|---:|---:|---|
 | 1 | Legacy SQL + repository dependency audit | **2 / 4** | **50%** | IN PROGRESS |
-| 2 | Database V2 schema / migration design | **1 / 4** | **25%** | IN PROGRESS |
+| 2 | Database V2 schema / migration design | **2 / 4** | **50%** | IN PROGRESS |
 | 3 | Clean schema creation and constraint rehearsal | **3 / 4** | **75%** | IN PROGRESS |
-| 4 | Faithful old-to-new data transfer | 0 / 4 | 0% | NOT STARTED |
+| 4 | Faithful old-to-new data transfer | **1 / 4** | **25%** | IN PROGRESS |
 | 5 | Full Laravel application refactor | 0 / 4 | 0% | NOT STARTED |
 | 6 | Tests, financial parity and controlled cutover | 0 / 4 | 0% | NOT STARTED |
+
+### 2026-10-30 latest acceptance update — 8/24 = 33%
+
+- **P2.G2 PASS (schema/design only):** canonical finance source claim + 7 typed source tables enforce exclusive voucher family under real MySQL 8.4 CHECK and composite FK; JV writer and typed report regression pass. Production service refactor/reversal remains open. [Source design and CI evidence](DATABASE_V2_REAL_DUMP_REHEARSAL_AND_TYPED_POSTING_2026_10_30.md).
+- **P4.G2 PASS (import graph and fidelity staging only):** 57 original source tables and 86 FK edges form an acyclic dependency order; 120,165 real source rows were loaded into private ephemeral SQLite mirror and **all 120,165 rows matched source full-column multisets** (0/86 FK problems, 7 site source account mappings, 14 old migration history archived). Original SQL not uploaded or modified; this is not a full real MySQL imported snapshot.
+- **Disposable MySQL 8.4 importer test:** deliberately wrong source FK rejected with full rollback; synthetic 57-table / two-record good import preserves date/ID/metadata; 70-table/116-FK V2 schema acceptance passed. [CI example](https://github.com/Bilal6230/blueMarketing/actions/runs/41098426140). Existing unrelated legacy finance regression suite still RED.
+- **Writer risk index:** 360 app/route/database/Blade source files, 291 static access matches across 71 files, **39 dynamic references classified** in [risk register](DATABASE_V2_INDIRECT_LEDGER_ACCESS_CLASSIFICATION_2026_10_30.md). This is NOT complete P1.G3 semantic certification.
+- **V2 reader pilot:** [V2PostingReportReader](../app/Services/Finance/V2PostingReportReader.php) returns exact typed header IDs and blocks cross-project / unclaimed / missing-typed-source reports; no existing production controller or report switched.
+- **Still open:** source-specific old financial attribution decisions, P1.G3/G4, per-table delete/reversal policy sign-off P2.G3/G4, complete V2 app refactor, actual **120,165-row MySQL 8.4 import** and financial/project parity, UAT and cutover. NO user DB modified.
 
 ### 2026-10-30 accepted-gate evidence (newest)
 
@@ -41,7 +50,7 @@ The percentage counts **verified completion gates**, not lines of code, elapsed 
 ## Phase 2 — Design schema and import mappings
 
 - [x] **P2.G1** Define full V2 physical schema entities, PK/FK widths/cardinality, nullable/project-link exceptions, original indexes/uniques, DECIMAL/status enums, original timestamp fields, and typed source pilot. **Completed 2026-10-30, verified on disposable MySQL 8.4.** Owner policy choices and full application mapping remain P2.G2–G4.
-- [ ] **P2.G2** Design ledger posting identity: immutable balanced posting batches, per-line ledger FKs, independently verified typed source relationships (actual DB-enforced source FK where possible), reversal and idempotency policy; distinguish journal, commission, stock, labour, booking, cash source families.
+- [x] **P2.G2** Design and physically verify canonical source claims, exclusive typed source FKs, debit/credit lines, idempotency, and immutable reversal policy across seven voucher/source families. **2026-10-30: DESIGN/FK INVARIANT ACCEPTED**, disposable MySQL 8.4 70 tables / 116 FK-column references / 7 source-kind CHECK constraints; JV posting service atomic. Other family services and reversal implementation remain P5 gates. [Evidence](DATABASE_V2_REAL_DUMP_REHEARSAL_AND_TYPED_POSTING_2026_10_30.md).
 - [ ] **P2.G3** Decide delete/void policy *per table* (SoftDeletes on appropriate masters, restrictive FK deletes for audited finance, dedicated reversal/correction entries); devise backward compatibility for old IDs/URLs/reports.
 - [ ] **P2.G4** Review/approve the 57-table V1→V2 column map, database migration ordering, rejected-source quarantine, test plan, and exact constraint policy. Treat MariaDB 11.8.9 export vs MySQL 8.4.3 target compatibility explicitly.
 
@@ -51,7 +60,7 @@ The percentage counts **verified completion gates**, not lines of code, elapsed 
 
 - [x] **P3.G1** Create isolated opt-in V2-only migration set in `database/v2_migrations` on the existing `upgrade/laravel-framework` development branch, leaving default deployed `database/migrations` and all V1 migration history untouched. **Completed 2026-10-30.** (No separate feature branch was created.)
 - [x] **P3.G2** Rehearse full fresh V2 migration set with `migrate --path=database/v2_migrations` against an **empty, disposable MySQL 8.4** database `bluemarketing_v2_ci` (NOT `migrate:fresh` against any existing database). **Completed 2026-10-30, GitHub Actions job passed.**
-- [x] **P3.G3** Verify 69 tables / at least 108 physical FK columns, correct broker/bank/ledger account link, BIGINT width, journal unique index, bank PK duplicate rejection, rejected invalid ledger account, restrictive parent delete and historical timestamp/money literals; perform complete V2 rollback + clean schema re-application in disposable MySQL 8.4. **Completed 2026-10-30, isolated CI MySQL job passed.**
+- [x] **P3.G3** Verify 70 tables / at least 116 physical FK-column references, correct broker/bank/ledger account link, BIGINT width, journal unique index, bank PK duplicate rejection, rejected invalid ledger account, restrictive parent delete and historical timestamp/money literals; perform complete V2 rollback + clean schema re-application in disposable MySQL 8.4. **Completed 2026-10-30, isolated CI MySQL job passed.**
 - [ ] **P3.G4** Verify Laravel models, relationships, casts, unique constraints and migrations against clean schema and test database.
 
 **Acceptance:** independent fresh database migration passes without disabling FK checks to conceal inconsistent relationships.
@@ -59,7 +68,7 @@ The percentage counts **verified completion gates**, not lines of code, elapsed 
 ## Phase 4 — Preserve historical records and import safely
 
 - [ ] **P4.G1** Immutable source snapshot checksum/backup, extract mapping, classify nulls/duplicates/orphans and decide exception policy.
-- [ ] **P4.G2** Deterministic parent-first import order; two-pass deferred links for cycles, preserving original IDs where possible and maintaining explicit old→new IDs otherwise.
+- [x] **P4.G2** Verified deterministic 57-table parent-first V2 import order from 40 original + 46 added FK edges; graph is **acyclic**, so two-pass cycle resolution is **not applicable**. Original IDs preserved 1:1, old Laravel 14 migration rows isolated in legacy history. **2026-10-30: ACCEPTED** with 120,165 real rows in disposable SQLite mirror at 0 row/FK differences and MySQL 8.4 transactional synthetic good/bad import tests. This is NOT acceptance of real MySQL financial import. [Evidence](DATABASE_V2_REAL_DUMP_REHEARSAL_AND_TYPED_POSTING_2026_10_30.md).
 - [ ] **P4.G3** Preserve existing `created_at`, `updated_at`, any `deleted_at`, amounts, references, voucher numbers, statuses, original timezone interpretation, and original audit history; do not use Eloquent auto-timestamps during import.
 - [ ] **P4.G4** Reconcile counts, IDs, full column checksums/values, FKs, orphan exception register, financial leg totals and balances before accepting import.
 
@@ -104,7 +113,7 @@ The percentage counts **verified completion gates**, not lines of code, elapsed 
 
 With each verified milestone: (a) update checkbox, (b) recalculate `completed / 24` and phase bars, (c) add dated evidence and the exact branch/commit, (d) update `BLUEMARKETING_PROGRESS_TRACKER.md`, (e) record open blockers and manual decisions. If verification fails, **do not** increment progress.
 
-**Last update:** 2026-10-30. **6/24 = 25% accepted gates**; five linked engineering delivery milestones summarized in [execution report](DATABASE_V2_FIVE_MILESTONE_EXECUTION_2026_10_30.md). Historical row import not run; remaining 18/24 gates pending.
+**Last update:** 2026-10-30. **8/24 = 33% accepted gates**; five linked engineering delivery milestones summarized in [execution report](DATABASE_V2_FIVE_MILESTONE_EXECUTION_2026_10_30.md). Historical row import not run; remaining 18/24 gates pending.
 
 ## 2026-10-30 implementation tranche: 4 substantial sub-milestones delivered (acceptance gates still open)
 
