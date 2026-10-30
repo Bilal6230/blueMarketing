@@ -172,6 +172,20 @@ final class V2FinancePilotHttpSafetyTest extends TestCase
         $this->assertDatabaseCount('finance_posting_batches', 0);
     }
 
+    public function test_project_membership_still_applies_when_future_read_gate_allows_non_admin(): void
+    {
+        $this->enablePilot();
+        // Simulate an explicitly approved future read role. Project membership
+        // must be independently enforced AFTER the Gate allows access.
+        Gate::define('v2-finance-read', static fn ($user): bool => true);
+        $this->authenticate(false, 1);
+        $this->getJson('/api/v2/finance/projects/1/trial-balance')
+            ->assertOk();
+        $this->getJson('/api/v2/finance/projects/2/trial-balance')
+            ->assertForbidden();
+        $this->assertDatabaseCount('finance_posting_batches', 0);
+    }
+
     public function test_read_only_pilot_rejects_writes_even_for_superadmin(): void
     {
         $this->enablePilot(false);
