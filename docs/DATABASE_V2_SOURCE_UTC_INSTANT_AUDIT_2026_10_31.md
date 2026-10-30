@@ -1,7 +1,7 @@
 # Database V2 — source UTC TIMESTAMP instant acceptance checkpoint
 
-**Date:** 2026-10-31  
-**Target:** `bluemarketing_v2_local_rehearsal` only, read-only source digests.  
+**Date:** 2026-10-31
+**Target:** `bluemarketing_v2_local_rehearsal` only, read-only source digests.
 **Status:** Source timezone proof PASS, new UTC instant verification pending.
 
 ## Evidence already confirmed by owner
@@ -35,7 +35,7 @@ Expected complete success **only if all 57 source tables agree when read at UTC*
 `V2_FULL_ROW_UTC_SEMANTIC_PARITY_PASS: 57/57 tables, 120165/120165 rows` and
 `V2_SOURCE_UTC_HISTORICAL_SEMANTICS_PASS`.
 
-**On FAIL:** report only `TABLE_DIFF` table names; do not upload personal rows/SQL, set any server-wide timezone, alter existing data or reimport automatically. A FAIL demonstrates that the earlier default-session digest was insufficient to establish UTC original-instant preservation. Any remediation needs a new isolated disposable target, source checksum + explicit UTC import session, complete parity re-check, and separate owner authorization. 
+**On FAIL:** report only `TABLE_DIFF` table names; do not upload personal rows/SQL, set any server-wide timezone, alter existing data or reimport automatically. A FAIL demonstrates that the earlier default-session digest was insufficient to establish UTC original-instant preservation. Any remediation needs a new isolated disposable target, source checksum + explicit UTC import session, complete parity re-check, and separate owner authorization.
 
 ## Formal gate accounting
 
