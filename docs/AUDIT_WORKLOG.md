@@ -886,3 +886,11 @@ All four existing documentation changes preserved. No application code changed, 
 - Explicit invariants require active mismatch categories sum to 66 (or the current measured mismatch total) and deleted candidate partitions sum to deleted header count. Source attribution from numeric `type_id` remains unverified; do not post/reassign historical finance rows.
 - Gate disposition unchanged: 8/24 = 33%; P4.G4/P6.G2 pending detailed finance evidence, ownership and independently approved exception decisions. No production/staging/V1 database touched; CI/local tests for new code pending.
 
+
+
+### 2026-10-31 — Owner-verified JV exception classifications PASS
+
+- Owner pulled `a522e03c`; PHP lint PASS, clean Git tree. Exact local read-only auditor returned `headers=980`, `candidate_exact=914`, `candidate_mismatch=66`, `mismatch_no_candidate=64`, `mismatch_partial_or_extra_candidate=2`, `mismatch_no_active_details=0`, `mismatch_project_null=0`.
+- The same read-only snapshot returned `all_jv_headers_including_deleted=988`, `soft_deleted_jv_headers_excluded=8`, `deleted_headers_exact_candidates=8`, `deleted_headers_mismatched_candidates=0`, `deleted_headers_without_active_details=8`, `deleted_headers_header_detail_amount_mismatch=8`. The earlier eight total discrepancies are accounted for by deleted-header population under the active-detail definition; not authorization to rewrite headers.
+- Partition invariants passed. **64 absent same-project candidates are NOT 64 confirmed missing ledgers; 2 partial candidates are not proven source-owned.** Existing 914 matches are candidates only. Financial recovery/reclassification and typed claims remain blocked pending source proof.
+- P4.G4/P6.G2 OPEN, acceptance 8/24 (33%), production deployment BLOCKED. Read-only V2 audit; original V1/staging/live untouched.
