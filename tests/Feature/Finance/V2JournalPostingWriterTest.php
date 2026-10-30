@@ -148,4 +148,21 @@ class V2JournalPostingWriterTest extends TestCase
         $this->assertDatabaseCount('finance_posting_batches', 1);
         $this->assertDatabaseCount('finance_posting_lines', 2);
     }
+    public function test_replay_rejects_tampered_posted_amounts(): void
+    {
+        $writer = new V2JournalPostingWriter();
+        $id = $writer->post(1, 51, 'JV-TEST-REQUEST-0007');
+        DB::table('finance_posting_lines')
+            ->where('posting_batch_id', $id)
+            ->where('project_head_subhead_id', 101)
+            ->update(['debit' => '999.99']);
+        try {
+            $writer->post(1, 51, 'JV-TEST-REQUEST-0007');
+            $this->fail('Expected replay integrity rejection');
+        } catch (\DomainException $e) {
+            $this->assertSame('V2_REPLAY_LEDGER_TAMPERED', $e->getMessage());
+        }
+        $this->assertDatabaseCount('finance_posting_batches', 1);
+    }
+
 }
