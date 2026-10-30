@@ -319,4 +319,18 @@ final class V2MultiFamilyPostingTest extends TestCase
         $this->assertSame('180.00', $summary['total_credit']);
         $this->assertCount(2, $summary['groups']);
     }
+    public function test_voucher_register_shows_real_cv_text_reference_not_legacy_type_id(): void
+    {
+        $gateway = new V2PostingGateway();
+        $batch = $gateway->postCommission(1, 10, 'CV-TEXT-REGISTER-0001');
+        $documents = $gateway->voucherRegister(1);
+        $this->assertCount(1, $documents);
+        $this->assertSame($batch, $documents[0]['posting_batch_id']);
+        $this->assertSame('CV-10-A', $documents[0]['source_reference']);
+        $this->assertSame('commission', $documents[0]['source_kind']);
+        $this->assertSame(10, $documents[0]['source_id']);
+        $this->assertSame('90.00', $documents[0]['total_debit']);
+        $this->assertSame('90.00', $documents[0]['total_credit']);
+    }
+
 }
