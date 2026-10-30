@@ -14,6 +14,7 @@
  */
 declare(strict_types=1);
 
+use App\Services\Finance\V2HistoricalImportTargetGuard;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -28,7 +29,7 @@ set_exception_handler(static function (Throwable $e): void {
     exit(2);
 });
 
-$args = getopt('', ['manifest:', 'source-evidence:', 'expected-sha256:', 'expected-rows:']);
+$args = getopt('', ['manifest:', 'source-evidence:', 'expected-sha256:', 'expected-rows:', 'verify-source-utc']);
 $manifestPath = $args['manifest'] ?? '';
 $evidencePath = $args['source-evidence'] ?? '';
 $expectedSha = strtolower((string) ($args['expected-sha256'] ?? ''));
@@ -52,6 +53,17 @@ if (($manifest['source_sha256'] ?? '') !== $expectedSha ||
     throw new RuntimeException('Source/manifest fingerprint and 57-table row count mismatch');
 }
 
+$verifyUtc = array_key_exists('verify-source-utc', $args);
+if ($verifyUtc) {
+    // Validate a separately named local candidate before connecting to MySQL.
+    $config = config('database.connections.' . config('database.default'));
+    if (!is_array($config)) {
+        throw new DomainException('V2_UTC_FINANCIAL_DATABASE_CONFIG_MISSING');
+    }
+    V2HistoricalImportTargetGuard::assertAllowed(
+        $config, (string) config('app.env'), false
+    );
+}
 $db = DB::connection();
 $name = (string) $db->getDatabaseName();
 $environment = (string) config('app.env');
@@ -63,6 +75,18 @@ if ($db->getDriverName() !== 'mysql' ||
 }
 if ((int) $db->selectOne('SELECT @@FOREIGN_KEY_CHECKS AS n')->n !== 1) {
     throw new RuntimeException('Target FK checks disabled');
+}
+
+if ($verifyUtc) {
+    // TIMESTAMP extrema must be interpreted using the same session zone as
+    // the pinned original SQL export and the full-row UTC digest verifier.
+    // Changes THIS PHP process connection only, never GLOBAL or stored rows.
+    $db->statement("SET SESSION time_zone = '+00:00'");
+    $session = $db->selectOne('SELECT @@SESSION.time_zone AS tz');
+    if (!$session || (string) $session->tz !== '+00:00') {
+        throw new DomainException('V2_UTC_FINANCIAL_SESSION_NOT_APPLIED');
+    }
+    echo "V2_FINANCIAL_SOURCE_UTC_SESSION_VERIFIED: +00:00; session_only=yes\n";
 }
 
 $tableMeta = $source['tables'] ?? [];
@@ -139,7 +163,7 @@ if ($problems !== []) {
     }
     exit(3);
 }
-echo 'V2_FINANCIAL_PARITY_PASS: ' . $passed . '/57 historical tables, '
+echo ($verifyUtc ? 'V2_FINANCIAL_UTC_PARITY_PASS: ' : 'V2_FINANCIAL_PARITY_PASS: ') . $passed . '/57 historical tables, '
     . $expectedRows . ' records, exact ID/timestamp bounds and '
     . $numericColumns . " source numeric aggregate columns match.\n";
 echo "LIMITATION: full-column per-row hashing and JV source attribution are separate controls.\n";
