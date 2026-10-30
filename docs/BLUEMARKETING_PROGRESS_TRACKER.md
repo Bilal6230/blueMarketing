@@ -1,3 +1,12 @@
+### 2026-10-30 — DATABASE V2 REBUILD STARTED — uploaded dev SQL baseline / 4% gate progress
+
+- **Project roadmap:** `docs/DATABASE_V2_REBUILD_ROADMAP.md` — six phases, four independently verifiable acceptance gates each (24 total), progress bar **1/24 = 4%**. Phase 1 initial snapshot check done; full 57-table code relationship map and source ownership audit remain pending; Phase 2-6 not started. Progress is acceptance-gate bookkeeping, NOT a production readiness or engineering time estimate.
+- **Read-only assessment:** `docs/DATABASE_V2_LEGACY_SNAPSHOT_AUDIT_2026_10_30.md`. User uploaded `u429032065_dev.sql`: MariaDB 11.8.9 dev dump, **57 tables / 120,165 rows / 40 declared FKs / 16 declared UNIQUE keys / 10 tables with deleted_at**; 14 legacy migrations rows. Distinguish from previous MySQL `bluenew` or staging captures.
+- Exact counts: 18,003 ledgers, 2,970 JV-typed ledger rows, 991 JV headers, 5,147 historical JV details, 5,580 customer_ledger sources. 30 materialized FK relationships and selected extra candidate relationships had zero observed missing parent IDs, but **no universal ledger source identity proof**. 3 JV-typed ledger rows match a journal header numeric ID in a different account project; they are ambiguous candidates, not auto-void targets.
+- Verified structural incompatibility: `ledgers.project_head_subheads_id` BIGINT UNSIGNED vs `project_head_subheads.id` INT UNSIGNED; `journal_voucher_details.account_id` likewise. `journal_vouchers.project_id` signed INT vs `projects.id` unsigned BIGINT; many booking and customer_ledger key width/signedness gaps. Must resolve before true FK migrations.
+- Uploaded dump's ledgers has **no journal_voucher_detail_id**, and dump has **no ledger_source_attributions** table. Current code capability is not deployment confirmation.
+- **No** DB restore, schema/data edits, application changes, migration run, financial backfill, or deployment. Private SQL not committed. Keep existing safety guards, immutable history and per-table delete policies. Next: P1.G2 57-table relationship dictionary + key compatibility; P1.G3 exhaustive code writers/readers; then V2 schema approval.
+
 ### 2026-10-29 branch audit continuation — verified stock/labour JV identity collision
 
 - New documentation: `docs/LEDGER_SOURCE_IDENTITY_REPOSITORY_AUDIT_2026_10_29.md` (partial VERIFIED matrix; NOT complete whole-tree audit).
