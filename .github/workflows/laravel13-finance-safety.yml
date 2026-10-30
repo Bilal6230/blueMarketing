@@ -135,3 +135,76 @@ jobs:
         if: always()
         run: |
           echo "Only isolated SQLite :memory: tests were run. No production database or deployment credentials configured."
+
+
+  database-v2-mysql:
+    name: Database V2 — disposable MySQL 8.4 migration gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci_only_not_a_real_password
+          MYSQL_DATABASE: bluemarketing_v2_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci_only_not_a_real_password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    env:
+      APP_ENV: testing
+      APP_DEBUG: "false"
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: "3306"
+      DB_DATABASE: bluemarketing_v2_ci
+      DB_USERNAME: root
+      DB_PASSWORD: ci_only_not_a_real_password
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+    steps:
+      - name: Checkout V2-only baseline
+        uses: actions/checkout@v4
+
+      - name: PHP 8.3 MySQL and Composer
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring, bcmath, intl, gd, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Install isolated application dependencies
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          cp .env.example .env
+          php artisan key:generate --force
+
+      - name: Assert isolated MySQL database identity before running migrations
+        run: |
+          php -r '$db=getenv("DB_DATABASE"); if ($db!=="bluemarketing_v2_ci") { fwrite(STDERR,"Refused non-disposable target".PHP_EOL); exit(1); }'
+          php artisan migrate:status --path=database/v2_migrations --no-interaction || true
+
+      - name: Apply complete V2-only Laravel schema to fresh disposable MySQL 8.4
+        run: |
+          php artisan migrate --path=database/v2_migrations --force --no-interaction
+          php artisan migrate:status --path=database/v2_migrations --no-interaction
+
+      - name: Validate all V2 entity tables, new FKs and framework migration history
+        run: |
+          php -r '
+          require "vendor/autoload.php";
+          $app=require "bootstrap/app.php"; $app->make(Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap();
+          $db=Illuminate\\Support\\Facades\\DB::connection();
+          $name=$db->getDatabaseName();
+          if ($name!=="bluemarketing_v2_ci") { throw new RuntimeException("Wrong database"); }
+          $count=(int) $db->selectOne("SELECT COUNT(*) n FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE()") ->n;
+          $fk=(int) $db->selectOne("SELECT COUNT(*) n FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA=DATABASE() AND REFERENCED_TABLE_NAME IS NOT NULL")->n;
+          if ($count<69 || $fk<75) { throw new RuntimeException("V2 baseline incomplete: ".$count." tables / ".$fk." FKs"); }
+          echo "V2 MySQL 8.4 schema passes: ".$count." tables / ".$fk." FK columns".PHP_EOL;
+          '
