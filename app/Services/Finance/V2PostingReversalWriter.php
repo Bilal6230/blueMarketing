@@ -64,6 +64,10 @@ final class V2PostingReversalWriter
                 throw new \DomainException('V2_REVERSAL_ORIGINAL_NOT_POSTED');
             }
 
+            if ($effectiveDate < (string) $original->effective_date) {
+                throw new \DomainException('V2_REVERSAL_DATE_BEFORE_ORIGINAL');
+            }
+
             $claim = DB::table('finance_posting_source_claims')
                 ->where('posting_batch_id', $originalBatchId)->first();
             $sourceTables = [
