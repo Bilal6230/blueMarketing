@@ -847,3 +847,11 @@ All four existing documentation changes preserved. No application code changed, 
 - Independent `V2_FINANCIAL_PARITY_PASS`: 57/57 tables, 120165 records, ID/timestamp bounds and 34 numeric aggregate columns match; initial missing-arguments abort was an invocation error, not failed data parity.
 - Five sub-milestones documented: ENUM restoration, original-column parity, aggregate parity, prior JV exception register classification, safe gate/next-work handoff. [Evidence and limits](DATABASE_V2_FIVE_MILESTONE_PARITY_CHECKPOINT_2026_10_31.md). **No claim that five formal phase gates passed.**
 - **Acceptance remains 8/24 = 33%** until independent P4.G3 timezone/audit-history review and P4.G4/P6 JV source, project/account/financial-leg reconciliation. 74 candidate-mismatching JV headers and eight total mismatches are unresolved, not automatically remediated. No V1/staging/live edits or deployment; assistant did not run local SQL or CI.
+
+
+### 2026-10-31 — Actual code tranche (not documentation-only)
+
+- Added `tests/Feature/DatabaseV2SourceEnumFidelityTest.php`: four fixture cases preserve ENUM member case/order and escaped quotes, plus schema metadata contract for three original stock enums. Uses isolated Laravel test harness; never touches historical database.
+- CI now includes new test file in PHP lint and isolated PHPUnit invocation; new `tools/database_v2/audit_local_jv_candidate_parity.php` is included in CI syntax lint. **CI and user-local tests not yet reported PASS; changes are implemented, not accepted gates.**
+- Added guarded **read-only** local V2 aggregate JV candidate audit. It requires exact `bluemarketing_v2_local_rehearsal`, localhost, local APP_ENV, FK checks on and zero typed source claims; compares active JV details vs same-project JV-typed ledger candidate multisets and checks header/detail totals with integer cents, outputs only aggregate categories. Numeric `type_id` is **NOT** declared ownership; do not auto-post, modify or reassign any record.
+- New development changes: `cb9109a0` (ENUM regression), `66eb6c5c` (CI test integration), `e4279141` (read-only JV candidate auditor), `19fbf2d7` (auditor CI lint). **Acceptance stays 8/24 (33%)** pending actual CI and local run plus per-gate review. V1/staging/live and existing isolated V2 data were not connected or changed by the assistant.
