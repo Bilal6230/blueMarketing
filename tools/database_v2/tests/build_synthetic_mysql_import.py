@@ -76,6 +76,44 @@ def main() -> None:
         "tables": metadata,
     }
     (target / "manifest.json").write_text(json.dumps(plan, indent=2) + "\n", encoding="utf-8")
+
+    # Aggregate-only expected values for the optional read-only verifier.
+    expected = {}
+    for table, source_columns in cols.items():
+        name = "legacy_migration_history" if table == "migrations" else table
+        count = len(statements.get(name, []))
+        has_id = "id" in source_columns
+        synthetic_id = 99999 if table == "projects" else 42 if table == "migrations" else None
+        dates = {}
+        for column in ("created_at", "updated_at", "deleted_at"):
+            if column not in source_columns:
+                continue
+            date_value = (("2020-02-03 04:05:06" if column == "created_at"
+                           else "2020-04-05 06:07:08" if column == "updated_at" else None)
+                          if table == "projects" else None)
+            dates[column] = {
+                "non_null": 1 if date_value else 0,
+                "min": date_value,
+                "max": date_value,
+            }
+        expected[table] = {
+            "rows": count,
+            "id_non_null": count if has_id else None,
+            "id_min": synthetic_id if count and has_id else None,
+            "id_max": synthetic_id if count and has_id else None,
+            "timestamps": dates,
+            "numeric_totals": {},
+        }
+    (target / "fake_source_fingerprints.json").write_text(
+        json.dumps({
+            "kind": "CI-only synthetic financial fingerprints",
+            "source_sha256": SHA,
+            "source_rows": plan["source_row_count"],
+            "table_count": 57,
+            "tables": expected,
+        }, indent=2) + "\n", encoding="utf-8"
+    )
+
     print(json.dumps({
         "fixture": "invalid-fk" if a.invalid_fk else "valid",
         "tables": len(metadata),
