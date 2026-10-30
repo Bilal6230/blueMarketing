@@ -33,6 +33,7 @@ def source_evidence(path: Path, checksum: str, row_count: int = 120165) -> dict:
         raise ValueError("Source 57-table/count mismatch")
 
     table_stats = {}
+    zero_date_evidence = {}
     for table, columns in cols.items():
         meta = dict(columns)
         money_cols = sorted(name for name, sql_type in meta.items()
@@ -62,6 +63,16 @@ def source_evidence(path: Path, checksum: str, row_count: int = 120165) -> dict:
                 except InvalidOperation as e:
                     raise ValueError("Non-numeric source money field: " + table + "." + field) from e
             totals[field] = {"non_null": non_null, "sum": format(total, "f")}
+        zero_dates = {}
+        for name, definition in meta.items():
+            if not re.match(r'^(?:date|datetime|timestamp)\\b', definition, re.I):
+                continue
+            count = sum(1 for row in rows if row.get(name) is not None
+                        and str(row[name]).startswith('0000-00-00'))
+            if count:
+                zero_dates[name] = count
+        if zero_dates:
+            zero_date_evidence[table] = zero_dates
         table_stats[table] = {
             "rows": len(rows),
             "id_non_null": len(ids) if "id" in meta else None,
@@ -75,6 +86,7 @@ def source_evidence(path: Path, checksum: str, row_count: int = 120165) -> dict:
         "source_sha256": manifest["source_sha256"],
         "source_rows": manifest["total_insert_rows"],
         "table_count": manifest["table_count"],
+        "mysql8_zero_date_exceptions": zero_date_evidence,
         "tables": table_stats,
         "limitations": [
             "Aggregate count, ID bounds, timestamps, money sums do not prove exact all-column row parity",
@@ -104,6 +116,7 @@ def main() -> None:
         "tables": evidence["table_count"],
         "rows": evidence["source_rows"],
         "money_columns": sum(len(t["numeric_totals"]) for t in evidence["tables"].values()),
+        "strict_mysql_zero_date_fields": evidence["mysql8_zero_date_exceptions"],
         "output": str(out),
     }, indent=2))
 
