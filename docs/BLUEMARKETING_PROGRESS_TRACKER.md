@@ -871,3 +871,8 @@ Evidence ID: V2_HARDENING_32_87_LOCAL_PASS
 - **P3.G4 implementation:** three schema-aligned V2-only Eloquent posting models, seven relationship contracts and DECIMAL/date casts; isolated full-schema PHPUnit test; actual disposable MySQL `verify_mysql_v2_model_schema.php` checks model FK, money scale and unique indexes. Legacy fillable-only source columns require explicit compatibility decision, not automated schema changes.
 - **P4.G3 implementation:** isolated MySQL READ-ONLY `audit_local_temporal_history.php` inventories original dated columns and archived 14 legacy migration history rows, reports aggregate and MySQL TZ metadata. The original snapshot export-session timezone is **not yet authenticated**. Existing source full-row digest PASS remains separate from historical timezone interpretation.
 - CI lints new PHP tools/models/reversal, runs new SQLite regression, and checks model contracts against disposable MySQL 8.4. **New suite and MySQL audit have NOT yet been executed/confirmed by operator.** Roadmap acceptance remains **8/24 = 33%**; P3.G4, P4.G3, P5.G1 are still open. See [detailed checkpoint](DATABASE_V2_REVERSAL_TYPED_MODELS_AND_TIME_HISTORY_2026_10_31.md). No V1/staging/live DB change or deployment.
+
+### 2026-10-31 — Reversal amount identity added
+
+- `V2PostingReportReader` now verifies reversal legs are exactly account-wise inverted original posting legs, even for reversal-only date windows. It refuses balanced but financially incorrect reversal postings (`V2_REPORT_REVERSAL_NOT_EXACT_INVERSE`). `V2JournalPostingWriterTest` has the corresponding tamper test.
+- New code and regression remain **operator/CI execution pending**, P5.G1 and formal 8/24 gates unchanged.
