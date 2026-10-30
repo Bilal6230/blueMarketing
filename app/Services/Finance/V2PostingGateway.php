@@ -67,4 +67,15 @@ final class V2PostingGateway
             $projectId, $from, $through
         );
     }
+
+    public function accountStatement(
+        int $projectId,
+        int $accountId,
+        ?string $from = null,
+        ?string $through = null
+    ): array {
+        return (new V2AccountStatementReader())->lines(
+            $projectId, $accountId, $from, $through
+        );
+    }
 }
