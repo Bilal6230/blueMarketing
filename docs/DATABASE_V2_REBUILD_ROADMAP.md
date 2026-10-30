@@ -4,7 +4,7 @@
 **Repository branch for planning:** `upgrade/laravel-framework`  
 **Source evidence:** user-uploaded `u429032065_dev.sql` (private; do NOT commit raw SQL or personal/financial rows)  
 **Target:** isolated Database V2, new migration baseline, faithful historical import, verified application refactor and reconciliation.  
-**Current state (2026-10-30):** 57-table schema dictionary + 46 proposed true-source FKs implemented, full isolated V2 Laravel migration baseline and typed finance pilot, successful disposable MySQL 8.4 migration/rollback, checksum-guarded historical import staging tool; historical data import, complete application refactor and production acceptance remain PENDING.
+**Current state (2026-10-30):** 57-table schema dictionary, isolated 70-table V2 schema, 116 physical FK-column references, and typed finance pilot verified. **Owner successfully imported all 120,165 private historical rows into isolated local MySQL 8.0.30**, with 57/57 table counts, original ID/timestamp boundaries and 34 source numeric aggregate totals passing. Full original-column row digests, 74 JV source exception reviews, V2 application refactor, financial parity and production UAT remain PENDING.
 
 ## Live progress bar (acceptance-gate based)
 
@@ -37,6 +37,13 @@ The percentage counts **verified completion gates**, not lines of code, elapsed 
 - **P2.G1 accepted:** full 56-source-entity normalized Laravel schema (+ banks + legacy migration archive), verified in MySQL 8.4; tenant ownership exceptions deliberately documented, not silently coerced.
 - **P3.G1/P3.G2/P3.G3 accepted:** V2-only explicit migration directory under existing upgrade branch; fresh disposable MySQL `bluemarketing_v2_ci` migration, 27-bank seeding, physical FK/unique/width/restrict checks, complete rollback and migration re-run. GitHub Actions: <https://github.com/Bilal6230/blueMarketing/actions/runs/41092458939> (V2 MySQL job SUCCESS; unrelated old finance regression FAILED).
 - **Engineering sub-milestones M1–M5 delivered:** [five-milestone execution document](DATABASE_V2_FIVE_MILESTONE_EXECUTION_2026_10_30.md). No production or V1 database touched, historical 120,165-row import not executed. Overall acceptance **25%**, not 100% because code + schema tests do not prove full reconciliation or entire app refactor.
+
+### 2026-10-30 — Actual owner-operated MySQL historical import: PASS (aggregate stage)
+
+- **Confirmed from operator terminal:** `V2_IMPORT_APPLIED_TO_ISOLATED_DB_ONLY: 120165 source rows preserved` and `V2_FINANCIAL_PARITY_PASS: 57/57 historical tables, 120165 records, exact ID/timestamp bounds and 34 source numeric aggregate columns match`; final `V2_LOCAL_IMPORT_AND_AGGREGATE_PARITY_PASS`. Target was **local MySQL 8.0.30**, NOT GitHub MySQL 8.4 and not old V1/staging/live. Original SHA: `bbc45fe7f0b6cdab1a188d2437e973e2bb56d442a29585ab328bd062e89335ed`.
+- Source `account_types` zero/one IDs and one `leads.follow_up` zero TIMESTAMP preserved under **connection-only** session policy; all 14 old Laravel migration history rows remain archived, originals not applied as new migrations. New typed finance source claims deliberately **unattributed**.
+- **New next gate script:** `tools/database_v2/full_row_digests.py` + `verify_mysql_full_row_digests.php` check every original column of each of the 120,165 rows using canonical per-row SHA and duplicate-preserving multisets, without printing data. See [actual MySQL import evidence and next read-only commands](DATABASE_V2_REAL_MYSQL_IMPORT_SUCCESS_2026_10_30.md).
+- **Formal gate count remains 8/24 = 33%**: P4.G3 remains open until the full original-column row and audit-history values pass; P4.G4/P6 explicitly require additional FK/account-level/financial leg reconciliation and source-ownership approval. Aggregate parity alone cannot establish every transaction's value survived unmodified.
 
 ## Phase 1 — Audit the legacy database AND actual code
 
