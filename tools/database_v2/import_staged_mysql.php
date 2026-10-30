@@ -28,7 +28,14 @@ set_exception_handler(static function (Throwable $e): void {
     $category = $e instanceof \Illuminate\Database\QueryException
         ? 'SQL_CONSTRAINT_OR_QUERY_REJECTED'
         : 'VALIDATION_OR_APPLICATION_REJECTED';
-    fwrite(STDERR, 'V2_IMPORT_ABORTED: ' . $category . PHP_EOL);
+    // All blocked() messages are authored constant validation policy labels;
+    // never emit QueryException text because it can contain private SQL rows.
+    $safeReason = ($e instanceof RuntimeException &&
+        str_starts_with($e->getMessage(), 'V2_IMPORT_REFUSED: '))
+        ? substr($e->getMessage(), strlen('V2_IMPORT_REFUSED: '))
+        : '';
+    fwrite(STDERR, 'V2_IMPORT_ABORTED: ' . $category
+        . ($safeReason !== '' ? ' | ' . $safeReason : '') . PHP_EOL);
     exit(2);
 });
 
@@ -156,8 +163,22 @@ foreach ($order as $offset => $name) {
     }
     $raw = (string) file_get_contents($path);
     $withoutComment = preg_replace('/\\A-- PRIVATE legacy source data\\.[^\\r\\n]*\\R/', '', $raw, 1);
-    if (hash('sha256', (string) $withoutComment) !== $byTable[$name]['content_sha256']) {
-        blocked('Staging SQL content checksum differs for ' . $name);
+    $expectedContentHash = (string) $byTable[$name]['content_sha256'];
+    if (!hash_equals($expectedContentHash, hash('sha256', (string) $withoutComment))) {
+        // Python's text-mode write_text() expands LF to CRLF on Windows.
+        // The manifest hashes the ORIGINAL unmodified SQL statement text.
+        // Accept Windows newline expansion ONLY when undoing it reproduces
+        // the exact source fingerprint. Never silently accept arbitrary edits.
+        $canonicalRaw = str_replace("\r\n", "\n", $raw);
+        $canonicalBody = preg_replace(
+            '/\\A-- PRIVATE legacy source data\\.[^\\r\\n]*\\R/',
+            '', $canonicalRaw, 1
+        );
+        if (!is_string($canonicalBody) ||
+            !hash_equals($expectedContentHash, hash('sha256', $canonicalBody))) {
+            blocked('Staging SQL content checksum differs for ' . $name);
+        }
+        $raw = $canonicalRaw;
     }
     $chunks = parseInsertStatements($raw, $name);
     if (count($chunks) !== (int) $byTable[$name]['insert_statements']) {
