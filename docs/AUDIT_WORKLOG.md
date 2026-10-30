@@ -1,6 +1,14 @@
 # Read-only Audit Worklog & Decision Register
 
-**Updated:** 2026-10-28. Keep new entries dated, evidence-based and append-only where practical.
+**Updated:** 2026-10-30. Keep new entries dated, evidence-based and append-only where practical.
+
+## 2026-10-30 — Database V2 rebuild roadmap and initial SQL baseline
+
+- Received user-uploaded 18 MB `u429032065_dev.sql`, an October 30 MariaDB 11.8.9 dev export. Inspected **offline/read-only**; no MySQL/MariaDB execution or connection. SQL data is private and was not committed.
+- Enumerated 57 tables / 44 with rows / 120,165 exported records / 40 FK DDL / 16 unique-key DDL / 10 deleted_at columns; 14 rows in that snapshot's migrations table. Recorded actual row counts and evidence in `docs/DATABASE_V2_LEGACY_SNAPSHOT_AUDIT_2026_10_30.md`.
+- Verified key type drift (ledgers account BIGINT UNSIGNED vs project_head_subheads PK INT UNSIGNED; journal detail account similarly; journal/booking project links signed INT vs project PK unsigned BIGINT), plus absent snapshot JV detail provenance column and attribution table. Existing 30 materialized FK checks and selected implicit parent-ID checks found no unmatched parent IDs; do NOT infer source provenance or production readiness.
+- Logged 2,970 JV-typed ledgers, 81 JV-typed numeric type IDs without a journal header match, and three numeric header matches with a different account project; none are proven general JV owned or invalid. No historical ledger deletion/attribution/repair authorized.
+- Added `docs/DATABASE_V2_REBUILD_ROADMAP.md`: 6 phases × 4 gates; P1.G1 read-only snapshot verified, 1/24 = 4% acceptance progress, all migration/import/refactor/deployment gates pending. Synced `docs/BLUEMARKETING_PROGRESS_TRACKER.md`. Production/live/staging/local financial data and migration history untouched.
 
 ## 2026-10-28 - structural compatibility capture verified
 
