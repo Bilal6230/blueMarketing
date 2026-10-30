@@ -53,6 +53,13 @@ New private source column digest tool and read-only isolated MySQL comparator lo
 
 **P4.G3/P6.G1 remain OPEN and formal acceptance stays 8/24 = 33%** until proof of full source parity or explicitly reviewed, lossless exceptions. All 74 JV candidate-source discrepancies are independently unresolved.
 
+### 2026-10-31 — STOCK ENUM source-label case regression identified and permanently fixed
+
+- **Exact root cause:** V2 baseline previously lowercased the **whole SQL type token**, including quoted uppercase/mixed-case ENUM member names. The MySQL imported clone therefore returned `in/out` and `supplier/consumer/site` instead of original `IN/OUT` and `Supplier/Consumer/Site`. Owner's read-only column SHA comparison isolated precisely `stock_entries.flow`, `stock_movements.direction`, and `stock_parties.type`; all 39 other stock fields and remaining 54 table SHA comparisons MATCHED.
+- **Future greenfield fix:** `database/v2_migrations/2026_10_30_000020_create_v2_legacy_domain_baseline.php` now only lowercases the SQL **type identifier**, preserving quoted enum labels. Disposable MySQL8.4 CI asserts three exact `information_schema.COLUMNS.COLUMN_TYPE` values and rehearses case-only ENUM ALTER on a temporary table, verifying member ordinals unchanged.
+- **Already-imported local V2 clone:** separate **read-only default** `tools/database_v2/restore_stock_enum_case.php` verifies exact local DB, approved source row hashes, 3 V2 migrations, 27 banks, zero posting rows, expected stock row counts and ENUM ordinals. `--apply` is explicit **DDL, not transactional**, and must be preceded by a private local backup and owner consent. No source row UPDATE or general data reimport. [Repair runbook](DATABASE_V2_STOCK_ENUM_CASE_REPAIR_2026_10_31.md).
+- **No repair has yet been executed against the owner's MySQL 8.0.30 clone**. All-original-column SHA still 54/57, P4.G3 still OPEN, project formal accepted gates **8/24 = 33%**.
+
 ## Phase 1 — Audit the legacy database AND actual code
 
 - [x] **P1.G1** Identify uploaded SQL snapshot; enumerate schema, counts, actual FKs, soft-delete fields, key-type risks and initial orphan checks. Evidence: [snapshot assessment](DATABASE_V2_LEGACY_SNAPSHOT_AUDIT_2026_10_30.md). **Completed 2026-10-30 (read-only).**
