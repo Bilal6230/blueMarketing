@@ -140,6 +140,8 @@ if (in_array(config('app.env'), ['local', 'testing'], true)
         ->group(function (): void {
             $controller = \App\Http\Controllers\Api\V2\V2FinancePilotController::class;
             Route::get('postings', [$controller, 'lines'])->whereNumber('projectId');
+            Route::get('voucher-register', [$controller, 'voucherRegister'])
+                ->whereNumber('projectId');
             Route::get('summary', [$controller, 'summary'])->whereNumber('projectId');
             Route::get('trial-balance', [$controller, 'trialBalance'])->whereNumber('projectId');
             Route::get('trial-balance/export', [$controller, 'exportTrialBalance'])
