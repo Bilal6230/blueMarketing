@@ -56,6 +56,9 @@ function addLeg(array &$map, string $key): void
 $db->statement('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
 $db->beginTransaction();
 try {
+    $allJvHeaders = (int) $db->table('journal_vouchers')->where('type', 'JV')->count();
+    $softDeletedJvHeaders = (int) $db->table('journal_vouchers')
+        ->where('type', 'JV')->whereNotNull('deleted_at')->count();
     $headers = $db->table('journal_vouchers')
         ->where('type', 'JV')->whereNull('deleted_at')
         ->get(['id', 'project_id', 'total_debit', 'total_credit']);
@@ -109,6 +112,12 @@ try {
         ksort($d['legs']);
         ksort($c);
         $result[$d['legs'] === $c ? 'candidate_exact' : 'candidate_mismatch']++;
+    }
+    $result['all_jv_headers_including_deleted'] = $allJvHeaders;
+    $result['soft_deleted_jv_headers_excluded'] = $softDeletedJvHeaders;
+    if ($result['headers'] + $softDeletedJvHeaders !== $allJvHeaders
+        || $result['candidate_exact'] + $result['candidate_mismatch'] !== $result['headers']) {
+        throw new RuntimeException('JV audit aggregate partition invariant failed');
     }
     $db->commit();
 } catch (Throwable $e) {
