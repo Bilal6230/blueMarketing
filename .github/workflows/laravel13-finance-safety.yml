@@ -232,6 +232,20 @@ jobs:
           php artisan migrate --path=database/v2_migrations --force --no-interaction
           php artisan db:seed --class=V2LegacyBanksSeeder --force --no-interaction
           php tools/database_v2/verify_mysql_schema.php
+      - name: Reproduce Windows CRLF source staging and prove SHA-safe preflight
+        run: |
+          python3 tools/database_v2/tests/build_synthetic_mysql_import.py --out=/tmp/v2windows --windows-newlines
+          php tools/database_v2/import_staged_mysql.php --dir=/tmp/v2windows --expected-sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --expected-rows=2 --ci-synthetic
+          python3 - <<'PY'
+          from pathlib import Path
+          p=next(Path('/tmp/v2windows').glob('*_projects.sql'))
+          p.write_bytes(p.read_bytes()+b'UNAUTHORIZED')
+          PY
+          if php tools/database_v2/import_staged_mysql.php --dir=/tmp/v2windows --expected-sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --expected-rows=2 --ci-synthetic; then
+            echo "ERROR: changed Windows-staged SQL unexpectedly accepted"
+            exit 1
+          fi
+
       - name: Rehearse BAD historical FK import then prove full transaction rollback
         run: |
           python3 tools/database_v2/tests/build_synthetic_mysql_import.py --out=/tmp/v2bad --invalid-fk
