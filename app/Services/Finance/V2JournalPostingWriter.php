@@ -34,7 +34,7 @@ final class V2JournalPostingWriter
             throw new \RuntimeException('V2 posting refused outside isolated database.');
         }
         foreach (['finance_posting_batches', 'finance_posting_lines',
-                  'finance_posting_journal_sources', 'finance_journal_line_sources'] as $table) {
+                  'finance_posting_source_claims', 'finance_posting_journal_sources', 'finance_journal_line_sources'] as $table) {
             if (!Schema::hasTable($table)) {
                 throw new \RuntimeException('V2 finance migration missing: ' . $table);
             }
@@ -145,6 +145,9 @@ final class V2JournalPostingWriter
                 'payload_sha256' => $payloadHash, 'effective_date' => $header->date,
                 'posted_by' => $actorId, 'posted_at' => now(),
                 'created_at' => now(), 'updated_at' => now(),
+            ]);
+            DB::table('finance_posting_source_claims')->insert([
+                'posting_batch_id' => $batchId, 'source_kind' => 'journal',
             ]);
             DB::table('finance_posting_journal_sources')->insert([
                 'posting_batch_id' => $batchId, 'journal_voucher_id' => $journalId,
