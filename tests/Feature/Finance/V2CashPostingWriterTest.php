@@ -169,15 +169,15 @@ class V2CashPostingWriterTest extends TestCase
         $this->assertDatabaseCount('finance_posting_lines', 0);
     }
 
-    public function test_cash_replay_rejects_mutated_canonical_source_family(): void
+    public function test_cash_replay_rejects_mutated_batch_series(): void
     {
         $writer = new V2CashPostingWriter();
         $id = $writer->post(1, 42, 'CASH-FAMILY-REPLAY-0001', $this->crLegs());
-        DB::table('finance_posting_source_claims')
-            ->where('posting_batch_id', $id)->update(['source_kind' => 'journal']);
+        DB::table('finance_posting_batches')
+            ->where('id', $id)->update(['voucher_series' => 'CP']);
         try {
             $writer->post(1, 42, 'CASH-FAMILY-REPLAY-0001', $this->crLegs());
-            $this->fail('Expected source family replay rejection');
+            $this->fail('Expected corrupted batch voucher series rejection');
         } catch (\DomainException $e) {
             $this->assertSame('V2_CASH_IDEMPOTENCY_CONFLICT', $e->getMessage());
         }
