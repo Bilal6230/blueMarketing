@@ -55,6 +55,23 @@ final class V2PostingReportReader
         if ($from !== null && $through !== null && $from > $through) {
             throw new \InvalidArgumentException('V2 report start date is after end date.');
         }
+        // An inner join alone could silently hide an unclaimed or foreign
+        // account posting. Fail instead of returning a misleading balance.
+        $inconsistent = DB::table('finance_posting_lines as line')
+            ->join('finance_posting_batches as batch', 'batch.id', '=', 'line.posting_batch_id')
+            ->leftJoin('finance_posting_source_claims as claim',
+                'claim.posting_batch_id', '=', 'batch.id')
+            ->leftJoin('project_head_subheads as account',
+                'account.id', '=', 'line.project_head_subhead_id')
+            ->where('batch.project_id', $projectId)
+            ->where(function ($query) use ($projectId) {
+                $query->whereNull('claim.posting_batch_id')
+                    ->orWhereNull('account.id')
+                    ->orWhere('account.project_id', '!=', $projectId);
+            })->exists();
+        if ($inconsistent) {
+            throw new \DomainException('V2_REPORT_SOURCE_OR_PROJECT_INTEGRITY_FAILURE');
+        }
         $q = DB::table('finance_posting_lines as line')
             ->join('finance_posting_batches as batch', 'batch.id', '=', 'line.posting_batch_id')
             ->join('finance_posting_source_claims as claim',
