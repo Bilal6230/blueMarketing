@@ -11,6 +11,13 @@
 
 **Updated:** 2026-10-30. Keep new entries dated, evidence-based and append-only where practical.
 
+## 2026-10-30 — Owner Stage1 succeeded; zero TIMESTAMP evidence mismatch found and corrected
+
+- Owner executed local Windows Stage1 against `u429032065_dev.sql`; source fingerprint `bbc45fe7f0b6cdab1a188d2437e973e2bb56d442a29585ab328bd062e89335ed`, 57 source tables / 120,165 rows, 40+46 classified source links, 14 migration history rows; 57 private SQL parts staged outside Git; **NO database was accessed or modified**.
+- Stage1 reported `strict_mysql_zero_date_fields: {}` despite source zero TIMESTAMP warning. Root cause in `financial_source_fingerprints.py`: double-escaped `\\b` in raw SQL DATE/DATETIME/TIMESTAMP type regex caused all date types to be skipped. Fixed to real word boundary; added synthetic `leads.follow_up` zero-date regression.
+- Added PowerShell source-fingerprint invariant validating exactly `{"leads":{"follow_up":1}}` on Stage1 completion and **before any Stage2 MySQL connection/migration**. Invalid/stale source evidence rejects apply. Existing 57 staged SQL chunks need not be regenerated; safely backup only original `source_fingerprints.json` and re-run source fingerprint tool in private directory. [Owner instructions](DATABASE_V2_STAGE1_ZERO_DATE_FINGERPRINT_FIX_2026_10_30.md).
+- Owner must **not create/use/modify a local V2 MySQL database until corrected evidence is confirmed**. Formal progress stays 8/24 = 33%; real MySQL historical import and full reconciliation unverified.
+
 ## 2026-10-30 — Financial approvals fail-closed, V2 cash posting pilot and user-local actual MySQL runbook
 
 - **Legacy approvals changed narrowly:** new `FinancialPendingChangeGuard` rejects posted `ledgers` amount, project, account, date, voucher and source edits and posted `customer_ledger` money/source edits through Web `VoucherController::approveFinancePending` and mobile `applyPendingUpdate`. Legacy generic `VoucherController::approve` finance table requests delegate to proper permission-checked transactional approval instead of dynamic `DB::table(...)->update()`. Descriptive ledger detail/customer note only; drafts preserve business fields with identity exclusions. Added feature/unit negative 409 tests. This is an actual V1 safety refactor, not a V2 route switch.
