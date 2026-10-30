@@ -147,11 +147,15 @@ return new class extends Migration
         }
         $nullable = !str_contains(strtoupper($definition), 'NOT NULL');
         $unsigned = $isForeign || str_contains(strtoupper($definition), 'UNSIGNED');
-        $sqlType = strtolower((string) strtok($definition, ' '));
+        // Lowercasing the complete type token also changed quoted ENUM
+        // labels (IN->in, Supplier->supplier) and silently altered source
+        // values on first MySQL import. Preserve literal arguments exactly;
+        // only the SQL type identifier itself is case-insensitive.
+        $sqlType = (string) strtok($definition, ' ');
         if (!preg_match('/^([a-z]+)(?:\\((.*)\\))?$/i', $sqlType, $m)) {
             throw new RuntimeException('Unsupported V2 legacy SQL type for ' . $name . ': ' . $definition);
         }
-        $base = $m[1];
+        $base = strtolower($m[1]);
         $args = $m[2] ?? '';
         if ($isForeign) {
             $column = $table->unsignedBigInteger($name);
