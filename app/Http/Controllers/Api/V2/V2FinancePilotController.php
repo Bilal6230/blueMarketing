@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\V2;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Services\Finance\V2IsolatedConnectionGuard;
+use App\Services\Finance\V2FinanceCsvExporter;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Services\Finance\V2PostingGateway;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
@@ -89,6 +91,46 @@ final class V2FinancePilotController extends Controller
         return response()->json($gateway->accountStatement(
             $projectId, $accountId, $data['from'] ?? null, $data['through'] ?? null
         ));
+    }
+
+    public function exportTrialBalance(
+        Request $request, int $projectId,
+        V2PostingGateway $gateway, V2FinanceCsvExporter $exporter
+    ): StreamedResponse {
+        $this->project($request, $projectId, false);
+        $data = $request->validate([
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'through' => ['nullable', 'date_format:Y-m-d'],
+        ]);
+        $report = $gateway->trialBalance(
+            $projectId, $data['from'] ?? null, $data['through'] ?? null
+        );
+        $csv = $exporter->trialBalance($report);
+        return response()->streamDownload(
+            static function () use ($csv): void { echo $csv; },
+            'v2-trial-balance-project-' . $projectId . '.csv',
+            ['Content-Type' => 'text/csv; charset=UTF-8']
+        );
+    }
+
+    public function exportAccountStatement(
+        Request $request, int $projectId, int $accountId,
+        V2PostingGateway $gateway, V2FinanceCsvExporter $exporter
+    ): StreamedResponse {
+        $this->project($request, $projectId, false);
+        $data = $request->validate([
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'through' => ['nullable', 'date_format:Y-m-d'],
+        ]);
+        $report = $gateway->accountStatement(
+            $projectId, $accountId, $data['from'] ?? null, $data['through'] ?? null
+        );
+        $csv = $exporter->accountStatement($report);
+        return response()->streamDownload(
+            static function () use ($csv): void { echo $csv; },
+            'v2-account-statement-project-' . $projectId . '-account-' . $accountId . '.csv',
+            ['Content-Type' => 'text/csv; charset=UTF-8']
+        );
     }
 
     public function post(Request $request, int $projectId, V2PostingGateway $gateway): JsonResponse
