@@ -32,7 +32,11 @@ final class V2FinancePilotController extends Controller
         if (!$request->user() || $projectId < 1) {
             throw new AuthorizationException('V2 project finance access denied.');
         }
-        Gate::authorize($write ? 'v2-finance-post' : 'v2-finance-read');
+        $ability = $write ? 'v2-finance-post' : 'v2-finance-read';
+        if (!Gate::has($ability)) {
+            throw new AuthorizationException('V2 finance ability is not configured.');
+        }
+        Gate::authorize($ability);
         $user = $request->user();
         if (!$user->hasRole('superadmin')
             && (int) $user->project_id !== $projectId) {
