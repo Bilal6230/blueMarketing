@@ -27,19 +27,19 @@ $spec = [
     'stock_entries' => [
         'column' => 'flow', 'rows' => 1, 'max' => 2,
         'old' => "enum('in','out')", 'new' => "enum('IN','OUT')",
-        'alter' => "ALTER TABLE stock_entries MODIFY COLUMN flow ENUM('IN','OUT') NOT NULL",
+        'alter' => "ALTER TABLE `stock_entries` MODIFY COLUMN `flow` ENUM('IN','OUT') NOT NULL",
     ],
     'stock_movements' => [
         'column' => 'direction', 'rows' => 2, 'max' => 2,
         'old' => "enum('in','out')", 'new' => "enum('IN','OUT')",
-        'alter' => "ALTER TABLE stock_movements MODIFY COLUMN direction "
+        'alter' => "ALTER TABLE `stock_movements` MODIFY COLUMN `direction` "
             . "ENUM('IN','OUT') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL",
     ],
     'stock_parties' => [
         'column' => 'type', 'rows' => 3, 'max' => 3,
         'old' => "enum('supplier','consumer','site')",
         'new' => "enum('Supplier','Consumer','Site')",
-        'alter' => "ALTER TABLE stock_parties MODIFY COLUMN type "
+        'alter' => "ALTER TABLE `stock_parties` MODIFY COLUMN `type` "
             . "ENUM('Supplier','Consumer','Site') NOT NULL",
     ],
 ];
