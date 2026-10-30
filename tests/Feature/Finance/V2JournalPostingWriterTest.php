@@ -437,4 +437,36 @@ class V2JournalPostingWriterTest extends TestCase
         (new V2PostingGateway())->trialBalance(1, '2026-11-01', '2026-10-30');
     }
 
+    public function test_v2_account_statement_reconciles_opening_period_and_reversal_running_balance(): void
+    {
+        $gateway = new V2PostingGateway();
+        $original = $gateway->postJournal(1, 51, 'JV-ACCOUNT-STATEMENT-ORIGINAL-1');
+
+        $prior = $gateway->accountStatement(1, 101, '2026-10-31', '2026-10-31');
+        $this->assertSame('125.50', $prior['opening_balance']);
+        $this->assertSame('0.00', $prior['period_debit']);
+        $this->assertSame('125.50', $prior['closing_balance']);
+        $this->assertSame([], $prior['lines']);
+
+        $gateway->reversePostedBatch(
+            1, $original, 'JV-ACCOUNT-STATEMENT-REVERSE-01', '2026-10-31', 'Correction'
+        );
+        $account = $gateway->accountStatement(1, 101, '2026-10-31', '2026-10-31');
+        $this->assertSame('125.50', $account['opening_balance']);
+        $this->assertSame('125.50', $account['period_credit']);
+        $this->assertSame('0.00', $account['closing_balance']);
+        $this->assertCount(1, $account['lines']);
+        $this->assertSame('journal', $account['lines'][0]['source_kind']);
+        $this->assertSame(51, $account['lines'][0]['source_id']);
+        $this->assertTrue($account['lines'][0]['is_reversal']);
+        $this->assertSame('0.00', $account['lines'][0]['running_balance']);
+    }
+
+    public function test_v2_account_statement_denies_foreign_project_account(): void
+    {
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('V2_ACCOUNT_STATEMENT_PROJECT_OWNERSHIP_MISMATCH');
+        (new V2PostingGateway())->accountStatement(1, 201);
+    }
+
 }
