@@ -162,6 +162,47 @@ final class V2PostingReportReader
             }
         }
 
+        // A balanced reversal is insufficient: the lines must be EXACT
+        // account-wise inverses of the original. Check even when the report
+        // date window excludes the original batch. No old ledger type_id use.
+        $reversalBatches = [];
+        $originalIds = [];
+        foreach ($lines as $line) {
+            if (!$line['is_reversal']) {
+                continue;
+            }
+            $batchId = (int) $line['posting_batch_id'];
+            $sourceId = (int) $line['reversal_of_batch_id'];
+            $originalIds[$sourceId] = true;
+            $reversalBatches[$batchId]['source_id'] = $sourceId;
+            $key = (int) $line['project_head_subhead_id'] . ':'
+                . $this->amountCents($line['debit']) . ':'
+                . $this->amountCents($line['credit']);
+            $reversalBatches[$batchId]['legs'][] = $key;
+        }
+        if ($originalIds !== []) {
+            $originalLegs = [];
+            $originRows = DB::table('finance_posting_lines')
+                ->whereIn('posting_batch_id', array_keys($originalIds))
+                ->get(['posting_batch_id', 'project_head_subhead_id', 'debit', 'credit']);
+            foreach ($originRows as $origin) {
+                $index = (int) $origin->posting_batch_id;
+                $key = (int) $origin->project_head_subhead_id . ':'
+                    . $this->amountCents($origin->credit) . ':'
+                    . $this->amountCents($origin->debit);
+                $originalLegs[$index][] = $key;
+            }
+            foreach ($reversalBatches as $reversal) {
+                $actualLegs = $reversal['legs'];
+                $expectedLegs = $originalLegs[$reversal['source_id']] ?? [];
+                sort($actualLegs);
+                sort($expectedLegs);
+                if ($actualLegs === [] || $actualLegs !== $expectedLegs) {
+                    throw new \DomainException('V2_REPORT_REVERSAL_NOT_EXACT_INVERSE');
+                }
+            }
+        }
+
         // A source-claim without its actual typed FK child is not sufficient
         // to provide a voucher URL or audited balance. Verify every batch in
         // seven bulk queries (not N+1), then expose the REAL source PK.
