@@ -113,10 +113,28 @@ final class V2JournalPostingWriter
                 if (!$claim || !hash_equals((string) $existing->payload_sha256, $payloadHash)) {
                     throw new \DomainException('V2_IDEMPOTENCY_CONFLICT');
                 }
-                if (DB::table('finance_journal_line_sources')
-                    ->whereIn('journal_voucher_detail_id', array_column($lines, 'detail_id'))
-                    ->count() !== count($lines)) {
-                    throw new \DomainException('V2_REPLAY_DETAILS_MISSING');
+                // A replay must re-verify the actual posted amounts/account
+                // and exact source IDs, not just the presence of two links.
+                $posted = DB::table('finance_journal_line_sources as src')
+                    ->join('finance_posting_lines as line', 'line.id', '=', 'src.posting_line_id')
+                    ->where('line.posting_batch_id', $existing->id)
+                    ->get(['src.journal_voucher_detail_id', 'line.project_head_subhead_id',
+                        'line.debit', 'line.credit']);
+                if ($posted->count() !== count($lines)) {
+                    throw new \\DomainException('V2_REPLAY_DETAILS_MISSING');
+                }
+                $expectedByDetail = [];
+                foreach ($lines as $line) {
+                    $expectedByDetail[$line['detail_id']] = $line;
+                }
+                foreach ($posted as $posting) {
+                    $detailId = (int) $posting->journal_voucher_detail_id;
+                    $expected = $expectedByDetail[$detailId] ?? null;
+                    if (!$expected || (int) $posting->project_head_subhead_id !== $expected['account_id'] ||
+                        $this->cents($posting->debit) !== $this->cents($expected['debit']) ||
+                        $this->cents($posting->credit) !== $this->cents($expected['credit'])) {
+                        throw new \\DomainException('V2_REPLAY_LEDGER_TAMPERED');
+                    }
                 }
                 return (int) $existing->id;
             }
