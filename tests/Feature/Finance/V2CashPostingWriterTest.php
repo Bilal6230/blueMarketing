@@ -212,12 +212,12 @@ class V2CashPostingWriterTest extends TestCase
         $this->assertSame('cash', $rows[0]['source_kind']);
         $this->assertSame(42, $rows[0]['source_id']);
         $this->assertSame($batch, (int) $rows[0]['reversal_of_batch_id']);
-        $this->assertSame('250.00', (string) DB::table('finance_posting_lines')
+        $this->assertSame('250.00', bcadd((string) DB::table('finance_posting_lines')
             ->where('posting_batch_id', $batch)->where('project_head_subhead_id', 101)
-            ->value('debit'));
+            ->value('debit'), '0', 2));
         $this->assertSame('250.00', (string) DB::table('finance_posting_lines')
             ->where('posting_batch_id', $reversal)->where('project_head_subhead_id', 101)
-            ->value('credit'));
+            ->value('credit'), '0', 2));
     }
 
     public function test_cash_payment_reversal_replay_and_duplicate_source_reversal_are_guarded(): void
