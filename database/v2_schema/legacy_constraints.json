@@ -1,0 +1,1490 @@
+{
+  "source_sha256": "bbc45fe7f0b6cdab1a188d2437e973e2bb56d442a29585ab328bd062e89335ed",
+  "alter_blocks": 133,
+  "foreign_keys": 40,
+  "table_constraints": {
+    "accounting_expenses": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "account_types": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [],
+      "auto_increment": [],
+      "foreign": []
+    },
+    "areas": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "bookings": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [
+        {
+          "name": "bookings_user_id_foreign",
+          "cols": [
+            "user_id"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": [
+        {
+          "name": "bookings_user_id_foreign",
+          "column": "user_id",
+          "references": "users",
+          "ref_column": "id",
+          "on_delete": "RESTRICT"
+        }
+      ]
+    },
+    "booking_details": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [
+        {
+          "name": "booking_details_booking_id_foreign",
+          "cols": [
+            "booking_id"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": [
+        {
+          "name": "booking_details_booking_id_foreign",
+          "column": "booking_id",
+          "references": "bookings",
+          "ref_column": "id",
+          "on_delete": "CASCADE"
+        }
+      ]
+    },
+    "booking_edit_audits": {
+      "primary": [
+        "id"
+      ],
+      "unique": [
+        {
+          "name": "booking_edit_audits_request_key_unique",
+          "cols": [
+            "request_key"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "booking_edit_audits_booking_id_created_at_index",
+          "cols": [
+            "booking_id",
+            "created_at"
+          ]
+        },
+        {
+          "name": "booking_edit_audits_project_id_operation_index",
+          "cols": [
+            "project_id",
+            "operation"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "booking_vouchers": {
+      "primary": [
+        "id"
+      ],
+      "unique": [
+        {
+          "name": "booking_vouchers_customer_ledger_id_unique",
+          "cols": [
+            "customer_ledger_id"
+          ]
+        },
+        {
+          "name": "booking_vouchers_ledger_id_unique",
+          "cols": [
+            "ledger_id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "booking_vouchers_project_series_number_idx",
+          "cols": [
+            "project_id",
+            "voucher_series",
+            "voucher_number"
+          ]
+        },
+        {
+          "name": "booking_vouchers_booking_id_index",
+          "cols": [
+            "booking_id"
+          ]
+        },
+        {
+          "name": "booking_vouchers_project_id_index",
+          "cols": [
+            "project_id"
+          ]
+        },
+        {
+          "name": "booking_vouchers_customer_id_index",
+          "cols": [
+            "customer_id"
+          ]
+        },
+        {
+          "name": "booking_vouchers_plot_id_index",
+          "cols": [
+            "plot_id"
+          ]
+        },
+        {
+          "name": "booking_vouchers_voucher_series_index",
+          "cols": [
+            "voucher_series"
+          ]
+        },
+        {
+          "name": "booking_vouchers_slip_reference_index",
+          "cols": [
+            "slip_reference"
+          ]
+        },
+        {
+          "name": "booking_vouchers_receipt_date_index",
+          "cols": [
+            "receipt_date"
+          ]
+        },
+        {
+          "name": "booking_vouchers_bank_id_index",
+          "cols": [
+            "bank_id"
+          ]
+        },
+        {
+          "name": "booking_vouchers_is_active_index",
+          "cols": [
+            "is_active"
+          ]
+        },
+        {
+          "name": "booking_vouchers_is_approve_index",
+          "cols": [
+            "is_approve"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "charge_types": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "commision_vouchers": {
+      "primary": [
+        "id"
+      ],
+      "unique": [
+        {
+          "name": "commision_vouchers_voucher_number_unique",
+          "cols": [
+            "voucher_number"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "commision_vouchers_project_id_foreign",
+          "cols": [
+            "project_id"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": [
+        {
+          "name": "commision_vouchers_project_id_foreign",
+          "column": "project_id",
+          "references": "projects",
+          "ref_column": "id",
+          "on_delete": "CASCADE"
+        }
+      ]
+    },
+    "commision_voucher_details": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [
+        {
+          "name": "commision_voucher_details_commision_voucher_id_foreign",
+          "cols": [
+            "commision_voucher_id"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": [
+        {
+          "name": "commision_voucher_details_commision_voucher_id_foreign",
+          "column": "commision_voucher_id",
+          "references": "commision_vouchers",
+          "ref_column": "id",
+          "on_delete": "CASCADE"
+        }
+      ]
+    },
+    "customer_ledger": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [
+        {
+          "name": "customer_ledger_customer_id_foreign",
+          "cols": [
+            "customer_id"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": [
+        {
+          "name": "customer_ledger_customer_id_foreign",
+          "column": "customer_id",
+          "references": "leads",
+          "ref_column": "id",
+          "on_delete": "CASCADE"
+        }
+      ]
+    },
+    "dasticash": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [
+        {
+          "name": "dasticash_project_id_foreign",
+          "cols": [
+            "project_id"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": [
+        {
+          "name": "dasticash_project_id_foreign",
+          "column": "project_id",
+          "references": "projects",
+          "ref_column": "id",
+          "on_delete": "CASCADE"
+        }
+      ]
+    },
+    "draft_ledgers": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "facings": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "failed_jobs": {
+      "primary": [
+        "id"
+      ],
+      "unique": [
+        {
+          "name": "failed_jobs_uuid_unique",
+          "cols": [
+            "uuid"
+          ]
+        }
+      ],
+      "indexes": [],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "head_accountings": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "hold_plots": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [
+        {
+          "name": "hold_plots_plot_id_foreign",
+          "cols": [
+            "plot_id"
+          ]
+        },
+        {
+          "name": "hold_plots_user_id_foreign",
+          "cols": [
+            "user_id"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": [
+        {
+          "name": "hold_plots_plot_id_foreign",
+          "column": "plot_id",
+          "references": "plots",
+          "ref_column": "id",
+          "on_delete": "CASCADE"
+        },
+        {
+          "name": "hold_plots_user_id_foreign",
+          "column": "user_id",
+          "references": "users",
+          "ref_column": "id",
+          "on_delete": "CASCADE"
+        }
+      ]
+    },
+    "installments": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "journal_vouchers": {
+      "primary": [
+        "id"
+      ],
+      "unique": [
+        {
+          "name": "unique_project_type_voucher",
+          "cols": [
+            "project_id",
+            "type",
+            "voucher_number"
+          ]
+        }
+      ],
+      "indexes": [],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "journal_voucher_details": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [
+        {
+          "name": "journal_voucher_details_journal_voucher_id_foreign",
+          "cols": [
+            "journal_voucher_id"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": [
+        {
+          "name": "journal_voucher_details_journal_voucher_id_foreign",
+          "column": "journal_voucher_id",
+          "references": "journal_vouchers",
+          "ref_column": "id",
+          "on_delete": "CASCADE"
+        }
+      ]
+    },
+    "labours": {
+      "primary": [
+        "id"
+      ],
+      "unique": [
+        {
+          "name": "labours_cnic_unique",
+          "cols": [
+            "cnic"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "laboure_project_id_foreign",
+          "cols": [
+            "project_id"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": [
+        {
+          "name": "laboure_project_id_foreign",
+          "column": "project_id",
+          "references": "projects",
+          "ref_column": "id",
+          "on_delete": "CASCADE"
+        }
+      ]
+    },
+    "labour_attendances": {
+      "primary": [
+        "id"
+      ],
+      "unique": [
+        {
+          "name": "unique_labour_attendance",
+          "cols": [
+            "labour_id",
+            "site_id",
+            "date"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "labour_attendances_site_id_foreign",
+          "cols": [
+            "site_id"
+          ]
+        },
+        {
+          "name": "labour_attendances_marked_by_foreign",
+          "cols": [
+            "marked_by"
+          ]
+        },
+        {
+          "name": "idx_labour_attendances_project_id",
+          "cols": [
+            "project_id"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": [
+        {
+          "name": "fk_labour_attendances_project_id",
+          "column": "project_id",
+          "references": "projects",
+          "ref_column": "id",
+          "on_delete": "SET NULL"
+        },
+        {
+          "name": "labour_attendances_labour_id_foreign",
+          "column": "labour_id",
+          "references": "labours",
+          "ref_column": "id",
+          "on_delete": "CASCADE"
+        },
+        {
+          "name": "labour_attendances_marked_by_foreign",
+          "column": "marked_by",
+          "references": "users",
+          "ref_column": "id",
+          "on_delete": "SET NULL"
+        },
+        {
+          "name": "labour_attendances_site_id_foreign",
+          "column": "site_id",
+          "references": "sites",
+          "ref_column": "id",
+          "on_delete": "SET NULL"
+        }
+      ]
+    },
+    "labour_ledgers": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [
+        {
+          "name": "labour_ledgers_labour_id_foreign",
+          "cols": [
+            "labour_id"
+          ]
+        },
+        {
+          "name": "idx_labour_ledgers_project_id",
+          "cols": [
+            "project_id"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": [
+        {
+          "name": "fk_labour_ledgers_project_id",
+          "column": "project_id",
+          "references": "projects",
+          "ref_column": "id",
+          "on_delete": "SET NULL"
+        },
+        {
+          "name": "labour_ledgers_labour_id_foreign",
+          "column": "labour_id",
+          "references": "labours",
+          "ref_column": "id",
+          "on_delete": "CASCADE"
+        }
+      ]
+    },
+    "leads": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "lead_user": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [
+        {
+          "name": "lead_user_lead_id_foreign",
+          "cols": [
+            "lead_id"
+          ]
+        },
+        {
+          "name": "lead_user_user_id_foreign",
+          "cols": [
+            "user_id"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": [
+        {
+          "name": "lead_user_lead_id_foreign",
+          "column": "lead_id",
+          "references": "leads",
+          "ref_column": "id",
+          "on_delete": "RESTRICT"
+        },
+        {
+          "name": "lead_user_user_id_foreign",
+          "column": "user_id",
+          "references": "users",
+          "ref_column": "id",
+          "on_delete": "RESTRICT"
+        }
+      ]
+    },
+    "ledgers": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [
+        {
+          "name": "idx_customer_ledger_id",
+          "cols": [
+            "customer_ledger_id"
+          ]
+        },
+        {
+          "name": "idx_charge_type_id",
+          "cols": [
+            "charge_type_id"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": [
+        {
+          "name": "fk_ledgers_charge_type",
+          "column": "charge_type_id",
+          "references": "charge_types",
+          "ref_column": "id",
+          "on_delete": "SET NULL"
+        },
+        {
+          "name": "fk_ledgers_customer_ledger",
+          "column": "customer_ledger_id",
+          "references": "customer_ledger",
+          "ref_column": "id",
+          "on_delete": "SET NULL"
+        }
+      ]
+    },
+    "migrations": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "model_has_permissions": {
+      "primary": [
+        "permission_id",
+        "model_id",
+        "model_type"
+      ],
+      "unique": [],
+      "indexes": [
+        {
+          "name": "model_has_permissions_model_id_model_type_index",
+          "cols": [
+            "model_id",
+            "model_type"
+          ]
+        }
+      ],
+      "auto_increment": [],
+      "foreign": [
+        {
+          "name": "model_has_permissions_permission_id_foreign",
+          "column": "permission_id",
+          "references": "permissions",
+          "ref_column": "id",
+          "on_delete": "CASCADE"
+        }
+      ]
+    },
+    "model_has_roles": {
+      "primary": [
+        "role_id",
+        "model_id",
+        "model_type"
+      ],
+      "unique": [],
+      "indexes": [
+        {
+          "name": "model_has_roles_model_id_model_type_index",
+          "cols": [
+            "model_id",
+            "model_type"
+          ]
+        }
+      ],
+      "auto_increment": [],
+      "foreign": [
+        {
+          "name": "model_has_roles_role_id_foreign",
+          "column": "role_id",
+          "references": "roles",
+          "ref_column": "id",
+          "on_delete": "CASCADE"
+        }
+      ]
+    },
+    "password_resets": {
+      "primary": [],
+      "unique": [],
+      "indexes": [
+        {
+          "name": "password_resets_email_index",
+          "cols": [
+            "email"
+          ]
+        }
+      ],
+      "auto_increment": [],
+      "foreign": []
+    },
+    "pending_updates": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "permissions": {
+      "primary": [
+        "id"
+      ],
+      "unique": [
+        {
+          "name": "permissions_name_guard_name_unique",
+          "cols": [
+            "name",
+            "guard_name"
+          ]
+        }
+      ],
+      "indexes": [],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "personal_access_tokens": {
+      "primary": [
+        "id"
+      ],
+      "unique": [
+        {
+          "name": "personal_access_tokens_token_unique",
+          "cols": [
+            "token"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "personal_access_tokens_tokenable_type_tokenable_id_index",
+          "cols": [
+            "tokenable_type",
+            "tokenable_id"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "plots": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "projects": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "project_head_subheads": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [
+        {
+          "name": "head_subhead_head_id_foreign",
+          "cols": [
+            "head_accounting_id"
+          ]
+        },
+        {
+          "name": "head_subhead_subhead_id_foreign",
+          "cols": [
+            "subhead_accounting_id"
+          ]
+        },
+        {
+          "name": "project_head_subheads_project_id_foreign",
+          "cols": [
+            "project_id"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": [
+        {
+          "name": "project_head_subheads_head_accounting_id_foreign",
+          "column": "head_accounting_id",
+          "references": "head_accountings",
+          "ref_column": "id",
+          "on_delete": "RESTRICT"
+        },
+        {
+          "name": "project_head_subheads_project_id_foreign",
+          "column": "project_id",
+          "references": "projects",
+          "ref_column": "id",
+          "on_delete": "RESTRICT"
+        },
+        {
+          "name": "project_head_subheads_subhead_accounting_id_foreign",
+          "column": "subhead_accounting_id",
+          "references": "subhead_accountings",
+          "ref_column": "id",
+          "on_delete": "RESTRICT"
+        }
+      ]
+    },
+    "project_zones": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [
+        {
+          "name": "project_zones_project_id_foreign",
+          "cols": [
+            "project_id"
+          ]
+        },
+        {
+          "name": "project_zones_zone_id_foreign",
+          "cols": [
+            "zone_id"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": [
+        {
+          "name": "project_zones_project_id_foreign",
+          "column": "project_id",
+          "references": "projects",
+          "ref_column": "id",
+          "on_delete": "RESTRICT"
+        },
+        {
+          "name": "project_zones_zone_id_foreign",
+          "column": "zone_id",
+          "references": "zones",
+          "ref_column": "id",
+          "on_delete": "RESTRICT"
+        }
+      ]
+    },
+    "punches": {
+      "primary": [],
+      "unique": [],
+      "indexes": [
+        {
+          "name": "id",
+          "cols": [
+            "id"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "roads": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "roles": {
+      "primary": [
+        "id"
+      ],
+      "unique": [
+        {
+          "name": "roles_name_guard_name_unique",
+          "cols": [
+            "name",
+            "guard_name"
+          ]
+        }
+      ],
+      "indexes": [],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "role_has_permissions": {
+      "primary": [
+        "permission_id",
+        "role_id"
+      ],
+      "unique": [],
+      "indexes": [
+        {
+          "name": "role_has_permissions_role_id_foreign",
+          "cols": [
+            "role_id"
+          ]
+        }
+      ],
+      "auto_increment": [],
+      "foreign": [
+        {
+          "name": "role_has_permissions_permission_id_foreign",
+          "column": "permission_id",
+          "references": "permissions",
+          "ref_column": "id",
+          "on_delete": "CASCADE"
+        },
+        {
+          "name": "role_has_permissions_role_id_foreign",
+          "column": "role_id",
+          "references": "roles",
+          "ref_column": "id",
+          "on_delete": "CASCADE"
+        }
+      ]
+    },
+    "settings": {
+      "primary": [
+        "id"
+      ],
+      "unique": [
+        {
+          "name": "settings_key_unique",
+          "cols": [
+            "key"
+          ]
+        }
+      ],
+      "indexes": [],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "sites": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [
+        {
+          "name": "idx_sites_project_id",
+          "cols": [
+            "project_id"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": [
+        {
+          "name": "fk_sites_project_id",
+          "column": "project_id",
+          "references": "projects",
+          "ref_column": "id",
+          "on_delete": "SET NULL"
+        }
+      ]
+    },
+    "stocks": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [
+        {
+          "name": "stocks_project_id_foreign",
+          "cols": [
+            "project_id"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": [
+        {
+          "name": "stocks_project_id_foreign",
+          "column": "project_id",
+          "references": "projects",
+          "ref_column": "id",
+          "on_delete": "CASCADE"
+        }
+      ]
+    },
+    "stock_bills": {
+      "primary": [
+        "id"
+      ],
+      "unique": [
+        {
+          "name": "stock_bills_bill_no_unique",
+          "cols": [
+            "bill_no"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "stock_bills_party_id_foreign",
+          "cols": [
+            "party_id"
+          ]
+        },
+        {
+          "name": "stock_bills_entry_id_foreign",
+          "cols": [
+            "entry_id"
+          ]
+        },
+        {
+          "name": "stock_bills_bill_date_index",
+          "cols": [
+            "bill_date"
+          ]
+        },
+        {
+          "name": "stock_bills_type_index",
+          "cols": [
+            "type"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "stock_bill_lines": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [
+        {
+          "name": "stock_bill_lines_item_id_foreign",
+          "cols": [
+            "item_id"
+          ]
+        },
+        {
+          "name": "stock_bill_lines_bill_id_item_id_index",
+          "cols": [
+            "bill_id",
+            "item_id"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": [
+        {
+          "name": "stock_bill_lines_bill_id_foreign",
+          "column": "bill_id",
+          "references": "stock_bills",
+          "ref_column": "id",
+          "on_delete": "CASCADE"
+        },
+        {
+          "name": "stock_bill_lines_item_id_foreign",
+          "column": "item_id",
+          "references": "stock_items",
+          "ref_column": "id",
+          "on_delete": "RESTRICT"
+        }
+      ]
+    },
+    "stock_counters": {
+      "primary": [
+        "key"
+      ],
+      "unique": [],
+      "indexes": [],
+      "auto_increment": [],
+      "foreign": []
+    },
+    "stock_entries": {
+      "primary": [
+        "id"
+      ],
+      "unique": [
+        {
+          "name": "stock_entries_slip_no_unique",
+          "cols": [
+            "slip_no"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "stock_entries_party_id_foreign",
+          "cols": [
+            "party_id"
+          ]
+        },
+        {
+          "name": "stock_entries_entry_date_index",
+          "cols": [
+            "entry_date"
+          ]
+        },
+        {
+          "name": "stock_entries_flow_index",
+          "cols": [
+            "flow"
+          ]
+        },
+        {
+          "name": "stock_entries_billed_at_index",
+          "cols": [
+            "billed_at"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": [
+        {
+          "name": "stock_entries_party_id_foreign",
+          "column": "party_id",
+          "references": "stock_parties",
+          "ref_column": "id",
+          "on_delete": "RESTRICT"
+        }
+      ]
+    },
+    "stock_entry_lines": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [
+        {
+          "name": "stock_entry_lines_item_id_foreign",
+          "cols": [
+            "item_id"
+          ]
+        },
+        {
+          "name": "stock_entry_lines_entry_id_item_id_index",
+          "cols": [
+            "entry_id",
+            "item_id"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": [
+        {
+          "name": "stock_entry_lines_entry_id_foreign",
+          "column": "entry_id",
+          "references": "stock_entries",
+          "ref_column": "id",
+          "on_delete": "CASCADE"
+        },
+        {
+          "name": "stock_entry_lines_item_id_foreign",
+          "column": "item_id",
+          "references": "stock_items",
+          "ref_column": "id",
+          "on_delete": "RESTRICT"
+        }
+      ]
+    },
+    "stock_items": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [
+        {
+          "name": "stock_items_name_index",
+          "cols": [
+            "name"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "stock_item_balances": {
+      "primary": [
+        "item_id"
+      ],
+      "unique": [],
+      "indexes": [],
+      "auto_increment": [],
+      "foreign": [
+        {
+          "name": "stock_item_balances_item_id_foreign",
+          "column": "item_id",
+          "references": "stock_items",
+          "ref_column": "id",
+          "on_delete": "CASCADE"
+        }
+      ]
+    },
+    "stock_movements": {
+      "primary": [
+        "id"
+      ],
+      "unique": [
+        {
+          "name": "stock_movements_source_type_source_line_id_unique",
+          "cols": [
+            "source_type",
+            "source_line_id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "stock_movements_party_id_foreign",
+          "cols": [
+            "party_id"
+          ]
+        },
+        {
+          "name": "stock_movements_item_id_movement_date_index",
+          "cols": [
+            "item_id",
+            "movement_date"
+          ]
+        },
+        {
+          "name": "stock_movements_movement_date_index",
+          "cols": [
+            "movement_date"
+          ]
+        },
+        {
+          "name": "stock_movements_direction_index",
+          "cols": [
+            "direction"
+          ]
+        },
+        {
+          "name": "stock_movements_source_type_index",
+          "cols": [
+            "source_type"
+          ]
+        },
+        {
+          "name": "stock_movements_source_id_index",
+          "cols": [
+            "source_id"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": [
+        {
+          "name": "stock_movements_item_id_foreign",
+          "column": "item_id",
+          "references": "stock_items",
+          "ref_column": "id",
+          "on_delete": "RESTRICT"
+        },
+        {
+          "name": "stock_movements_party_id_foreign",
+          "column": "party_id",
+          "references": "stock_parties",
+          "ref_column": "id",
+          "on_delete": "SET NULL"
+        }
+      ]
+    },
+    "stock_parties": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [
+        {
+          "name": "stock_parties_type_index",
+          "cols": [
+            "type"
+          ]
+        },
+        {
+          "name": "stock_parties_name_index",
+          "cols": [
+            "name"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "subhead_accountings": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "users": {
+      "primary": [
+        "id"
+      ],
+      "unique": [
+        {
+          "name": "users_email_unique",
+          "cols": [
+            "email"
+          ]
+        }
+      ],
+      "indexes": [],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    },
+    "works": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [
+        {
+          "name": "works_lead_id_foreign",
+          "cols": [
+            "lead_id"
+          ]
+        }
+      ],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": [
+        {
+          "name": "works_lead_id_foreign",
+          "column": "lead_id",
+          "references": "leads",
+          "ref_column": "id",
+          "on_delete": "RESTRICT"
+        }
+      ]
+    },
+    "zones": {
+      "primary": [
+        "id"
+      ],
+      "unique": [],
+      "indexes": [],
+      "auto_increment": [
+        "id"
+      ],
+      "foreign": []
+    }
+  }
+}
