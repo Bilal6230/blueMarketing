@@ -150,4 +150,38 @@ class V2CashPostingWriterTest extends TestCase
         $this->assertDatabaseCount('finance_posting_batches', 1);
         $this->assertDatabaseCount('finance_posting_lines', 2);
     }
+    public function test_cash_account_id_coercion_is_rejected_before_posting(): void
+    {
+        foreach (['101junk', '101.0', '00101', 101.5, false] as $index => $invalid) {
+            $legs = $this->crLegs();
+            $legs[0]['account_id'] = $invalid;
+            try {
+                (new V2CashPostingWriter())->post(
+                    1, 42, 'CASH-STRICT-ID-' . str_pad((string) $index, 5, '0', STR_PAD_LEFT),
+                    $legs
+                );
+                $this->fail('Coerced account ID was accepted');
+            } catch (\DomainException $e) {
+                $this->assertSame('V2_CASH_ACCOUNT_ID_INVALID', $e->getMessage());
+            }
+        }
+        $this->assertDatabaseCount('finance_posting_batches', 0);
+        $this->assertDatabaseCount('finance_posting_lines', 0);
+    }
+
+    public function test_cash_replay_rejects_mutated_canonical_source_family(): void
+    {
+        $writer = new V2CashPostingWriter();
+        $id = $writer->post(1, 42, 'CASH-FAMILY-REPLAY-0001', $this->crLegs());
+        DB::table('finance_posting_source_claims')
+            ->where('posting_batch_id', $id)->update(['source_kind' => 'journal']);
+        try {
+            $writer->post(1, 42, 'CASH-FAMILY-REPLAY-0001', $this->crLegs());
+            $this->fail('Expected source family replay rejection');
+        } catch (\DomainException $e) {
+            $this->assertSame('V2_CASH_IDEMPOTENCY_CONFLICT', $e->getMessage());
+        }
+        $this->assertDatabaseCount('finance_posting_batches', 1);
+    }
+
 }
