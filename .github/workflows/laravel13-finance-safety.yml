@@ -282,6 +282,7 @@ jobs:
           php -l app/Services/Finance/V2HistoricalImportTargetGuard.php
           php -l tests/Unit/Finance/V2HistoricalImportTargetGuardTest.php
           pwsh -NoProfile -Command '$tokens=$null; $errors=$null; [System.Management.Automation.Language.Parser]::ParseFile("tools/database_v2/verify_new_utc_rehearsal.ps1",[ref]$tokens,[ref]$errors) | Out-Null; if ($errors.Count) { $errors | ForEach-Object { Write-Error $_.Message }; exit 1 }'
+          pwsh -NoProfile -Command '$tokens=$null; $errors=$null; [System.Management.Automation.Language.Parser]::ParseFile("tools/database_v2/local_private_rehearsal.ps1",[ref]$tokens,[ref]$errors) | Out-Null; if ($errors.Count) { $errors | ForEach-Object { Write-Error $_.Message }; exit 1 }'
           if php tools/database_v2/import_staged_mysql.php --dir=/tmp/v2bad --expected-sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --expected-rows=3; then
             echo "ERROR: synthetic fixture accepted without CI-only authorization"
             exit 1
@@ -300,7 +301,7 @@ jobs:
         run: |
           python3 tools/database_v2/tests/build_synthetic_mysql_import.py --out=/tmp/v2good --zero-id
           php tools/database_v2/import_staged_mysql.php --dir=/tmp/v2good --expected-sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --expected-rows=4 --ci-synthetic --ci-simulated-timezone --apply
-          php tools/database_v2/verify_imported_mysql_financial.php --manifest=/tmp/v2good/manifest.json --source-evidence=/tmp/v2good/fake_source_fingerprints.json --expected-sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --expected-rows=4
+          php tools/database_v2/verify_imported_mysql_financial.php --manifest=/tmp/v2good/manifest.json --source-evidence=/tmp/v2good/fake_source_fingerprints.json --expected-sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --expected-rows=4 --verify-source-utc --ci-synthetic
           php -r '
           require "vendor/autoload.php"; $a=require "bootstrap/app.php"; $a->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
           $db=Illuminate\Support\Facades\DB::connection();
