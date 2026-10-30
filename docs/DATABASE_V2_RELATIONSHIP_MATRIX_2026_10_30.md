@@ -119,3 +119,11 @@
 5. Separate greenfield migration baseline from deployed Laravel history; lossless import preserving original IDs, created_at/updated_at/deleted_at; quarantine ambiguous ownership with source evidence and owner review.
 
 **Remaining P1.G2:** inspect model/controller relationships for every candidate, compute project-scope and duplicate cardinality per link; finalize FK/no-FK classification on all 54 rows. This is an in-progress evidence map, not gate completion. No schema changes executed.
+
+
+## 2026-10-30 V2 full baseline follow-up — superseding provisional relationship assumptions
+
+- **Verified actual broker FK:** `Booking::broker()` resolves `bookings.broker_id` to `subhead_accountings.id`, **not leads.id**. All 163 non-null broker values in this dev dump have a matching correct parent. Any prior guessed leads mapping is withdrawn; the canonical V2 FK registry now names `subhead_accountings`.
+- **57-table metadata complete:** all SQL column definitions and 133 ALTER blocks/40 original FK declarations stored without private data in `database/v2_schema/legacy_columns_01..04.json` and `legacy_constraints.json`. 54 nondeclared ID candidates classified into 46 enforceable parent link candidates and eight deliberate unlinked business/polymorphic identifiers. Canonical dispositions in `DATABASE_V2_57_TABLE_RELATIONSHIP_AND_TENANT_ACCEPTANCE_2026_10_30.md`.
+- **Tenant-project evidence:** numeric FK matches do not imply matching project. Cross-project comparisons: `leads.area_id` 7,976/13,391; `leads.follow_id` 8,022/13,391; `punches.user_id` 20/30. These may reflect shared lookup/assignment semantics, not invalid historical data; no blanket composite project FK or data rewrite.
+- **Implemented V2-only Laravel migrations** create 56 application tables, a separate archived old migration history table, 27-bank lookup and typed finance source/line tables. This supersedes earlier blueprint-only status. The opt-in migration path was tested on disposable MySQL 8.4; NO historical rows imported or live DB changes.
