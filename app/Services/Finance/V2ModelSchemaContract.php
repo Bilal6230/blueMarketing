@@ -19,7 +19,40 @@ final class V2ModelSchemaContract
         \App\Models\ProjectHeadSubhead::class,
     ];
 
-    public function inspect(): array
+    /**
+     * Detect relationship foreign-key drift as well as fillable drift.
+     * The relationship is inspected without executing business queries.
+     */
+    public function inspectRelationships(): array
+    {
+        $this->assertIsolatedDatabase();
+        $relationships = [
+            [\App\Models\JournalVoucher::class, 'details'],
+            [\App\Models\JournalVoucherDetail::class, 'journalVoucher'],
+            [\App\Models\JournalVoucherDetail::class, 'account'],
+            [\App\Models\Ledger::class, 'projectHeadSubhead'],
+            [\App\Models\Ledger::class, 'customerLedger'],
+            [\App\Models\ProjectHeadSubhead::class, 'ledgers'],
+        ];
+        $findings = [];
+        foreach ($relationships as [$class, $method]) {
+            $model = new $class();
+            $relation = $model->$method();
+            $foreignKey = $relation->getForeignKeyName();
+            $related = $relation->getRelated();
+            $owner = $relation instanceof \Illuminate\Database\Eloquent\Relations\BelongsTo
+                ? $model : $related;
+            if (!Schema::hasColumn($owner->getTable(), $foreignKey)) {
+                $findings[] = $class . '::' . $method . ':' . $owner->getTable() . '.' . $foreignKey;
+            }
+            if (!Schema::hasColumn($related->getTable(), $related->getKeyName())) {
+                $findings[] = $class . '::' . $method . ':related_pk_missing';
+            }
+        }
+        return $findings;
+    }
+
+    private function assertIsolatedDatabase(): void
     {
         $db = \Illuminate\Support\Facades\DB::connection();
         $name = (string) $db->getDatabaseName();
@@ -29,6 +62,11 @@ final class V2ModelSchemaContract
                 && !preg_match('/(?:stag|live|prod|client|dev)/i', $name))) {
             throw new RuntimeException('V2 schema model inspection requires isolated V2 or SQLite memory');
         }
+    }
+
+    public function inspect(): array
+    {
+        $this->assertIsolatedDatabase();
         $findings = [];
         foreach (self::MODEL_CLASSES as $class) {
             /** @var Model $model */
