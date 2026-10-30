@@ -51,14 +51,14 @@ try {
     ]);
     $ordinalBefore = $db->table('v2_enum_case_probe')
         ->selectRaw('flow + 0 AS a, direction + 0 AS b, party_type + 0 AS c')
-        ->orderByRaw('flow + 0')->get()->toArray();
+        ->orderByRaw('flow + 0')->get()->map(static fn ($row) => (array) $row)->all();
     $db->statement("ALTER TABLE v2_enum_case_probe
       MODIFY COLUMN flow ENUM('IN','OUT') NOT NULL,
       MODIFY COLUMN direction ENUM('IN','OUT') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
       MODIFY COLUMN party_type ENUM('Supplier','Consumer','Site') NOT NULL");
     $ordinalAfter = $db->table('v2_enum_case_probe')
         ->selectRaw('flow + 0 AS a, direction + 0 AS b, party_type + 0 AS c')
-        ->orderByRaw('flow + 0')->get()->toArray();
+        ->orderByRaw('flow + 0')->get()->map(static fn ($row) => (array) $row)->all();
     if ($ordinalBefore !== $ordinalAfter) {
         throw new RuntimeException('ENUM case restoration altered ordinal identities.');
     }
