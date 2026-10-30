@@ -9,8 +9,9 @@ param(
     [switch]$Apply,
     [switch]$ResumePrepared,
     [switch]$PreserveLegacyZeroDate,
-    [string]$Database = 'bluemarketing_v2_local_rehearsal',
-    [string]$ConfirmEmptyDatabase = ''
+    [string]$Database = '',
+    [string]$ConfirmEmptyDatabase = '',
+    [string]$SourceRowDigests = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -97,8 +98,9 @@ try {
         Write-Warning 'No original value will be silently changed; local apply requires -PreserveLegacyZeroDate.'
         Write-Host 'STAGING_COMPLETE: no database connection, migrations or import executed.' -ForegroundColor Green
         Write-Host ('PRIVATE_STAGE: ' + $staging)
-        Write-Host 'NEXT: create an EMPTY NEW bluemarketing_v2_local_rehearsal DB in local phpMyAdmin only.'
-        Write-Host 'Then re-run with -Apply -PreserveLegacyZeroDate -ConfirmEmptyDatabase bluemarketing_v2_local_rehearsal.'
+        Write-Host 'NEXT: obtain authorization and create a SEPARATE EMPTY database, e.g. bluemarketing_v2_local_utc_rehearsal.'
+        Write-Host 'For Stage 2 explicitly pass -Database, matching -ConfirmEmptyDatabase and private -SourceRowDigests path.'
+        Write-Warning 'Old bluemarketing_v2_local_rehearsal contains shifted TIMESTAMP instants. NEVER reimport into it.'
         return
     }
 
@@ -107,7 +109,98 @@ try {
     }
     # Prevent a guessed/partial target. Require fresh database and exact
     # second explicit confirmation; never create or delete a database.
-    if ($Database -notmatch '^bluemarketing_v2_local_[a-z0-9_]+$' -or
+    if ($Database -notmatch '^bluemarketing_v2_local_[a-z0-9_]+
+        throw 'TARGET_NOT_CONFIRMED: exact -Database and -ConfirmEmptyDatabase names must match a new V2 LOCAL database'
+    }
+    if (!(Test-Path -LiteralPath (Join-Path $staging 'manifest.json') -PathType Leaf) -or
+        !(Test-Path -LiteralPath (Join-Path $staging 'source_fingerprints.json') -PathType Leaf)) {
+        throw 'PRIVATE_STAGING_MISSING: run Stage 1 FIRST, before any MySQL operations'
+    }
+
+    if (-not $SourceRowDigests -or
+        !(Test-Path -LiteralPath $SourceRowDigests -PathType Leaf)) {
+        throw 'SOURCE_UTC_FULL_ROW_DIGESTS_REQUIRED: provide exact private source row hashes outside Git'
+    }
+    $privateDigests = (Resolve-Path -LiteralPath $SourceRowDigests).Path
+    if ($privateDigests.StartsWith($repo + [System.IO.Path]::DirectorySeparatorChar,
+            [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw 'SOURCE_UTC_FULL_ROW_DIGESTS_IN_GIT_REJECTED'
+    }
+
+    # Validate all private source exception evidence BEFORE the first DB
+    # connection or migration; a stale {} fingerprint is NOT approved.
+    Assert-SourceZeroDateEvidence (Join-Path $staging 'source_fingerprints.json')
+
+    $env:APP_ENV = 'local'
+    $env:DB_CONNECTION = 'mysql'
+    $env:DB_DATABASE = $Database
+    $env:DB_HOST = '127.0.0.1'
+    $env:DB_URL = ''
+    $env:DATABASE_URL = ''
+    Write-Host 'STAGE 2 — ISOLATED LOCAL DB ONLY. No old database is selected.' -ForegroundColor Yellow
+    if ($ResumePrepared) {
+        Write-Host 'RECOVERY MODE: SQL staging preflight followed by READ-ONLY V2 prepared-schema verification.' -ForegroundColor Cyan
+        # Stage already migrated and bank-seeded; NEVER run migrations,
+        # db:seed or any schema reset again on this recovery path.
+        Run-Checked 'php' @(
+            'tools/database_v2/import_staged_mysql.php',
+            ('--dir=' + $staging),
+            ('--expected-sha256=' + $expectedSha),
+            ('--expected-rows=' + $expectedRows),
+            ('--source-evidence=' + (Join-Path $staging 'source_fingerprints.json')),
+            '--preserve-legacy-zero-date'
+        )
+        Run-Checked 'php' @(
+            'tools/database_v2/check_local_v2_target.php',
+            ('--expected-name=' + $Database),
+            ('--require-prepared'),
+            ('--manifest=' + (Join-Path $staging 'manifest.json'))
+        )
+    } else {
+        Run-Checked 'php' @(
+            'tools/database_v2/check_local_v2_target.php',
+            ('--expected-name=' + $Database), '--require-empty'
+        )
+        Run-Checked 'php' @(
+            'artisan', 'migrate', '--path=database/v2_migrations',
+            '--force', '--no-interaction'
+        )
+        Run-Checked 'php' @(
+            'artisan', 'db:seed', '--class=V2LegacyBanksSeeder',
+            '--force', '--no-interaction'
+        )
+    }
+    Run-Checked 'php' @(
+        'tools/database_v2/import_staged_mysql.php',
+        ('--dir=' + $staging),
+        ('--expected-sha256=' + $expectedSha),
+        ('--expected-rows=' + $expectedRows),
+        ('--source-evidence=' + (Join-Path $staging 'source_fingerprints.json')),
+        '--preserve-legacy-zero-date',
+        '--apply'
+    )
+    Run-Checked 'php' @(
+        'tools/database_v2/verify_imported_mysql_financial.php',
+        ('--manifest=' + (Join-Path $staging 'manifest.json')),
+        ('--source-evidence=' + (Join-Path $staging 'source_fingerprints.json')),
+        ('--expected-sha256=' + $expectedSha),
+        ('--expected-rows=' + $expectedRows)
+    )
+    # A UTC import is NOT accepted just because timestamps appear correct
+    # in the local MySQL timezone. Verify every original source column at UTC.
+    Run-Checked 'php' @(
+        'tools/database_v2/verify_mysql_full_row_digests.php',
+        ('--source-evidence=' + $privateDigests), '--verify-source-utc'
+    )
+    Write-Host 'V2_NEW_LOCAL_IMPORT_UTC_ROW_PARITY_PASS — 57 source tables verified at +00:00.' -ForegroundColor Green
+    Write-Host 'V2_LOCAL_IMPORT_AND_AGGREGATE_PARITY_PASS — source DB untouched.' -ForegroundColor Green
+    Write-Host 'Do not use this isolated rehearsal database as production.'
+} finally {
+    Pop-Location
+}
+ -or
+        $Database -ceq 'bluemarketing_v2_local_rehearsal' -or
+        $Database -match '(?i:prod|stag|live|dev|client)' -or
         $ConfirmEmptyDatabase -cne $Database) {
         throw 'TARGET_NOT_CONFIRMED: exact -Database and -ConfirmEmptyDatabase names must match a new V2 LOCAL database'
     }
