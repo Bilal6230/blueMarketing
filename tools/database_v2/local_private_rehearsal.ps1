@@ -1,0 +1,131 @@
+# BlueMarketing V2 — guarded Windows/Laragon historical data rehearsal
+# Stage 1: read-only SQL verification/staging. NO database connection.
+# Stage 2: -Apply, explicitly named empty local V2 MySQL/MariaDB database.
+# No CREATE DATABASE, DROP, TRUNCATE, migrate:fresh or production writes.
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory = $true)][string]$SourceSql,
+    [Parameter(Mandatory = $true)][string]$StageDir,
+    [switch]$Apply,
+    [string]$Database = 'bluemarketing_v2_local_rehearsal',
+    [string]$ConfirmEmptyDatabase = ''
+)
+
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+$expectedSha = 'bbc45fe7f0b6cdab1a188d2437e973e2bb56d442a29585ab328bd062e89335ed'
+$expectedRows = '120165'
+$repo = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+$source = [System.IO.Path]::GetFullPath($SourceSql)
+$staging = [System.IO.Path]::GetFullPath($StageDir)
+
+function Run-Checked([string]$Command, [string[]]$Arguments) {
+    & $Command @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw ("STEP_FAILED: {0} returned {1}. Check output. NO automatic cleanup or retry." -f $Command, $LASTEXITCODE)
+    }
+}
+
+if (!(Test-Path -LiteralPath $source -PathType Leaf)) {
+    throw 'SOURCE_MISSING: select the original private u429032065_dev.sql outside Git'
+}
+if ($source.StartsWith($repo + [System.IO.Path]::DirectorySeparatorChar,
+        [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw 'PRIVATE_DUMP_IN_GIT_TREE: move the SQL source outside the repository'
+}
+if ($staging.StartsWith($repo + [System.IO.Path]::DirectorySeparatorChar,
+        [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw 'PRIVATE_STAGING_IN_GIT_TREE: choose a directory outside C:\laragon\www\blueMarketing'
+}
+$actual = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($actual -ne $expectedSha) {
+    throw ("SOURCE_SHA256_MISMATCH: expected {0}; got {1}. NO work performed." -f $expectedSha, $actual)
+}
+if (!(Get-Command php -ErrorAction SilentlyContinue)) {
+    throw 'PHP_NOT_FOUND: use Laragon terminal or add its PHP executable to PATH'
+}
+$python = 'python'
+$pythonPrefix = @()
+if (Get-Command py -ErrorAction SilentlyContinue) {
+    $python = 'py'
+    $pythonPrefix = @('-3')
+} elseif (!(Get-Command python -ErrorAction SilentlyContinue)) {
+    throw 'PYTHON_NOT_FOUND: install Python 3 or run through py -3'
+}
+Push-Location $repo
+try {
+    if (!$Apply) {
+        if (Test-Path -LiteralPath $staging) {
+            throw 'STAGING_ALREADY_EXISTS: choose a NEW outside-Git directory, never overwrite private evidence'
+        }
+        Write-Host 'STAGE 1 — VERIFY/EXTRACT ONLY. No local database will be connected.' -ForegroundColor Cyan
+        Run-Checked $python ($pythonPrefix + @(
+            'tools/database_v2/v2_import_plan.py',
+            '--source', $source,
+            '--expected-sha256', $expectedSha,
+            '--expected-rows', $expectedRows,
+            '--out-dir', $staging
+        ))
+        Run-Checked $python ($pythonPrefix + @(
+            'tools/database_v2/financial_source_fingerprints.py',
+            '--source', $source,
+            '--expected-sha256', $expectedSha,
+            '--expected-rows', $expectedRows,
+            '--out', (Join-Path $staging 'source_fingerprints.json')
+        ))
+        Write-Host 'STAGING_COMPLETE: no database connection, migrations or import executed.' -ForegroundColor Green
+        Write-Host ('PRIVATE_STAGE: ' + $staging)
+        Write-Host 'NEXT: create an EMPTY NEW bluemarketing_v2_local_rehearsal DB in local phpMyAdmin only.'
+        Write-Host 'Then re-run with -Apply -ConfirmEmptyDatabase bluemarketing_v2_local_rehearsal.'
+        return
+    }
+
+    # Prevent a guessed/partial target. Require fresh database and exact
+    # second explicit confirmation; never create or delete a database.
+    if ($Database -notmatch '^bluemarketing_v2_local_[a-z0-9_]+$' -or
+        $ConfirmEmptyDatabase -cne $Database) {
+        throw 'TARGET_NOT_CONFIRMED: exact -Database and -ConfirmEmptyDatabase names must match a new V2 LOCAL database'
+    }
+    if (!(Test-Path -LiteralPath (Join-Path $staging 'manifest.json') -PathType Leaf) -or
+        !(Test-Path -LiteralPath (Join-Path $staging 'source_fingerprints.json') -PathType Leaf)) {
+        throw 'PRIVATE_STAGING_MISSING: run Stage 1 FIRST, before any MySQL operations'
+    }
+
+    $env:APP_ENV = 'local'
+    $env:DB_CONNECTION = 'mysql'
+    $env:DB_DATABASE = $Database
+    $env:DB_HOST = '127.0.0.1'
+    $env:DB_URL = ''
+    $env:DATABASE_URL = ''
+    Write-Host 'STAGE 2 — ISOLATED LOCAL DB ONLY. No old database is selected.' -ForegroundColor Yellow
+    Run-Checked 'php' @(
+        'tools/database_v2/check_local_v2_target.php',
+        ('--expected-name=' + $Database), '--require-empty'
+    )
+    Run-Checked 'php' @(
+        'artisan', 'migrate', '--path=database/v2_migrations',
+        '--force', '--no-interaction'
+    )
+    Run-Checked 'php' @(
+        'artisan', 'db:seed', '--class=V2LegacyBanksSeeder',
+        '--force', '--no-interaction'
+    )
+    Run-Checked 'php' @(
+        'tools/database_v2/import_staged_mysql.php',
+        ('--dir=' + $staging),
+        ('--expected-sha256=' + $expectedSha),
+        ('--expected-rows=' + $expectedRows),
+        '--apply'
+    )
+    Run-Checked 'php' @(
+        'tools/database_v2/verify_imported_mysql_financial.php',
+        ('--manifest=' + (Join-Path $staging 'manifest.json')),
+        ('--source-evidence=' + (Join-Path $staging 'source_fingerprints.json')),
+        ('--expected-sha256=' + $expectedSha),
+        ('--expected-rows=' + $expectedRows)
+    )
+    Write-Host 'V2_LOCAL_IMPORT_AND_AGGREGATE_PARITY_PASS — source DB untouched.' -ForegroundColor Green
+    Write-Host 'Do not use this isolated rehearsal database as production.'
+} finally {
+    Pop-Location
+}
