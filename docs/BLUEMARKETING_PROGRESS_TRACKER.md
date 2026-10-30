@@ -1,3 +1,9 @@
+### 2026-10-31 — Owner full-row SHA audit: 54/57 tables PASS; 3 STOCK TABLE EXCEPTIONS
+
+Owner's `V2_FULL_ROW_PARITY_FAILED: 3/57 differing tables, total rows=120165` **does not undo the successful MySQL import**. Exactly `stock_entries` (1 original row), `stock_movements` (2) and `stock_parties` (3) require column-level investigation; remaining 54 original source tables passed all-original-column digests. All 57 historical row counts/ID/time bounds and 34 money aggregates had already passed.
+
+The new private `tools/database_v2/stock_column_diagnostics.py` and read-only `verify_mysql_stock_columns.php` compare per-column SHA for these three tables and report **only table names, column names and counts**, not sensitive row values. [Windows read-only instructions](DATABASE_V2_STOCK_FULL_ROW_PARITY_DIAGNOSTIC_2026_10_31.md). Never run migrate/fresh/import against populated V2 or edit old DB. **Formal progress unchanged 8/24 = 33%.**
+
 ### 2026-10-30 — **ACTUAL** 120,165-row local V2 MySQL import PASS; next full-row verification
 
 **Owner terminal evidence, 2026-10-30:** import is **no longer pending**. Target `bluemarketing_v2_local_rehearsal`, local **MySQL 8.0.30**, source SHA `bbc45fe7f0b6cdab1a188d2437e973e2bb56d442a29585ab328bd062e89335ed`: V2 source staging checks PASS; prepared 70-table/116-FK schema/3 migrations/27 banks PASS; **`V2_IMPORT_APPLIED_TO_ISOLATED_DB_ONLY: 120165 source rows preserved`**; **`V2_FINANCIAL_PARITY_PASS: 57/57 historical tables, 120165 records, original ID/timestamp bounds, 34 numeric financial source aggregates match`**; final **`V2_LOCAL_IMPORT_AND_AGGREGATE_PARITY_PASS`**. No pre-existing V1/staging/live database touched. Typed finance source claims remain unpopulated until evidence-backed JV attribution.
