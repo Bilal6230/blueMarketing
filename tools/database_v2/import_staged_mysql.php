@@ -21,6 +21,18 @@ require dirname(__DIR__, 2) . '/vendor/autoload.php';
 $app = require dirname(__DIR__, 2) . '/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 
+// Laravel's global error renderer can format a thrown QueryException while a
+// standalone PHP script still exits zero on some environments. Never signal
+// import success after ANY unhandled error, and never log sensitive SQL/values.
+set_exception_handler(static function (Throwable $e): void {
+    $category = $e instanceof \Illuminate\Database\QueryException
+        ? 'SQL_CONSTRAINT_OR_QUERY_REJECTED'
+        : 'VALIDATION_OR_APPLICATION_REJECTED';
+    fwrite(STDERR, 'V2_IMPORT_ABORTED: ' . $category . PHP_EOL);
+    exit(2);
+});
+
+
 function blocked(string $message): never
 {
     throw new RuntimeException('V2_IMPORT_REFUSED: ' . $message);
