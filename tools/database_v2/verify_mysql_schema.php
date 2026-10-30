@@ -114,6 +114,36 @@ try {
     DB::rollBack();
 }
 
+// Historical money/date values can be imported verbatim, while FK parents
+// cannot be deleted out from underneath financial payment sources.
+DB::beginTransaction();
+try {
+    $id = DB::table('customer_ledger')->insertGetId([
+        'date' => '2020-06-05', 'transaction_type' => 'CR',
+        'amount_in' => '123.45', 'amount_out' => '0.00',
+        'bank_id' => 1,
+        'created_at' => '2020-06-05 02:03:04',
+        'updated_at' => '2020-06-08 05:06:07',
+    ]);
+    $stored = DB::table('customer_ledger')->where('id', $id)->first();
+    if ((string) $stored->created_at !== '2020-06-05 02:03:04' ||
+        (string) $stored->updated_at !== '2020-06-08 05:06:07' ||
+        (string) $stored->amount_in !== '123.45') {
+        throw new RuntimeException('Historical timestamp or amount was changed by V2 schema.');
+    }
+    try {
+        DB::table('banks')->where('id', 1)->delete();
+        throw new RuntimeException('Bank parent deletion unexpectedly permitted.');
+    } catch (\Illuminate\Database\QueryException $e) {
+        // Strict FK prevents erasing a source lookup used by historic finance.
+    }
+} finally {
+    DB::rollBack();
+}
+if ((int) DB::table('customer_ledger')->count() !== 0) {
+    throw new RuntimeException('Disposable import fixture left persistent rows.');
+}
+
 // Rejected FK insert must cause NO persistent ledger changes.
 $original = (int) DB::table('ledgers')->count();
 DB::beginTransaction();
