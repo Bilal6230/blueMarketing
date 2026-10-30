@@ -3,6 +3,7 @@
 namespace App\Models\V2;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Services\Finance\V2IsolatedConnectionGuard;
 
 /**
  * The imported legacy tables are immutable V2 source evidence.
@@ -12,6 +13,15 @@ use Illuminate\Database\Eloquent\Model;
 abstract class ImportedHistoricalModel extends Model
 {
     protected $guarded = ['*'];
+
+    // All ordinary Eloquent queries (including scoped/unscoped relation
+    // queries) go through newModelQuery. Never read source evidence from V1
+    // or a remote/client/staging/live database by accident.
+    public function newModelQuery()
+    {
+        V2IsolatedConnectionGuard::assertAllowed();
+        return parent::newModelQuery();
+    }
 
     public function save(array $options = [])
     {
