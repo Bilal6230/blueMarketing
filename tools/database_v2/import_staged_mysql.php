@@ -86,7 +86,7 @@ function parseInsertStatements(string $sql, string $table): array
 
 $options = getopt('', [
     'dir:', 'expected-sha256:', 'expected-rows:', 'apply', 'ci-synthetic',
-    'source-evidence:', 'preserve-legacy-zero-date',
+    'source-evidence:', 'preserve-legacy-zero-date', 'ci-simulated-timezone',
 ]);
 $dir = isset($options['dir']) ? realpath((string) $options['dir']) : false;
 $sha = strtolower((string) ($options['expected-sha256'] ?? ''));
@@ -101,6 +101,10 @@ if ($dir === $root || str_starts_with($dir, $root . DIRECTORY_SEPARATOR)) {
 }
 
 $synthetic = array_key_exists('ci-synthetic', $options);
+$ciSimulatedTimeZone = array_key_exists('ci-simulated-timezone', $options);
+if ($ciSimulatedTimeZone && (!$synthetic || !array_key_exists('apply', $options))) {
+    blocked('CI_TIMEZONE_PROBE_REQUIRES_SYNTHETIC_APPLY');
+}
 $preserveZeroDate = array_key_exists('preserve-legacy-zero-date', $options);
 if ($preserveZeroDate) {
     if ($synthetic) {
@@ -224,6 +228,11 @@ foreach ($order as $name) {
         blocked('All 57 V2 import target tables must exist AND be empty: ' . $name);
     }
 }
+if ($ciSimulatedTimeZone) {
+    // Disposable MySQL 8.4 CI only: simulate a Pakistan local session before
+    // importing UTC source values. Never enabled for private historical data.
+    $connection->statement("SET SESSION time_zone = '+05:00'");
+}
 // The source phpMyAdmin dump explicitly declared NO_AUTO_VALUE_ON_ZERO.
 // account_types has BOTH original primary keys 0 and 1: without this mode
 // MySQL substitutes an AUTO_INCREMENT-generated 1 for the explicit zero,
@@ -330,6 +339,13 @@ try {
     $connection->statement('SET SESSION sql_mode = ?', [$previousSqlMode]);
 }
 
+if ($ciSimulatedTimeZone) {
+    $restored = (string) $connection->selectOne('SELECT @@SESSION.time_zone AS tz')->tz;
+    if ($restored !== '+05:00') {
+        blocked('CI_TIMEZONE_PROBE_IMPORT_SESSION_NOT_RESTORED');
+    }
+    echo "V2_IMPORT_CI_SOURCE_UTC_PAKISTAN_SIMULATION_PASS: UTC semantics retained; +05:00 session restored\n";
+}
 echo "V2_IMPORT_SOURCE_UTC_SESSION_VERIFIED: +00:00 (restored to previous zone after import)\n";
 echo 'V2_IMPORT_APPLIED_TO_ISOLATED_DB_ONLY: ' . $plannedRows . ' source rows preserved; '
     . 'site verified derived column filled. Financial source claims remain UNATTRIBUTED.\n';
