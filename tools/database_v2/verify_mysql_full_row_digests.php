@@ -6,7 +6,7 @@
  * php tools/database_v2/verify_mysql_full_row_digests.php
  *   --source-evidence=C:/PRIVATE/staging/source_full_row_digests.json
  *
- * Can also run --selftest without a database to check cross-language SHA.
+ * Can also run --selftest without a database to check cross-language SHA.\n * --verify-source-utc: source export must first pass its SHA+UTC-header proof;\n * compare historical TIMESTAMP instants under a session-only +00:00 zone.
  */
 declare(strict_types=1);
 
@@ -77,7 +77,7 @@ function hashTable(array $rowDigests): string
     return hash('sha256', implode("\n", $rowDigests));
 }
 
-$options = getopt('', ['source-evidence:', 'selftest']);
+$options = getopt('', ['source-evidence:', 'selftest', 'verify-source-utc']);
 if (array_key_exists('selftest', $options)) {
     $one = hashRow(['0', 'CI_ZERO_ACCOUNT', '1']);
     $two = hashRow(['1.20', '2020-02-03 04:05:06', "a\\b", null]);
@@ -122,6 +122,18 @@ if ($connection->getDriverName() !== 'mysql' ||
 }
 if ((int) $connection->selectOne('SELECT @@FOREIGN_KEY_CHECKS AS enabled')->enabled !== 1) {
     throw new DomainException('MYSQL_FOREIGN_KEY_CHECKS_DISABLED');
+}
+
+$verifyUtc = array_key_exists('verify-source-utc', $options);
+if ($verifyUtc) {
+    // Only this DB connection's timezone changes; stored timestamps are
+    // never updated. This exposes import-time UTC-to-local misinterpretation.
+    $connection->statement("SET SESSION time_zone = '+00:00'");
+    $session = $connection->selectOne('SELECT @@session.time_zone AS tz');
+    if (!$session || (string) $session->tz !== '+00:00') {
+        throw new DomainException('V2_UTC_SESSION_PRECONDITION_FAILED');
+    }
+    echo "V2_SOURCE_UTC_SEMANTIC_CHECK: session=+00:00, all_57_tables; session_only=yes\n";
 }
 
 $tables = [];
@@ -181,6 +193,6 @@ if ($total !== 120165 || $failures !== []) {
     exit(3);
 }
 
-echo "V2_FULL_ROW_PARITY_PASS: 57/57 tables, 120165/120165 rows, "
+echo ($verifyUtc ? "V2_FULL_ROW_UTC_SEMANTIC_PARITY_PASS" : "V2_FULL_ROW_PARITY_PASS") . ": 57/57 tables, 120165/120165 rows, "
     . "all original columns compared, including duplicate identical rows.\n";
 echo "LIMITATION: does not prove JV typed source attribution or new V2 derived-column policy.\n";
