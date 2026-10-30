@@ -117,6 +117,9 @@ final class V2PostingReversalWriter
                 'project_id' => $projectId, 'original_id' => $originalBatchId,
                 'date' => $effectiveDate, 'reason' => $reason,
                 'original_payload' => (string) $original->payload_sha256,
+                'original_series' => (string) $original->voucher_series,
+                'original_number' => $original->voucher_number,
+                'original_date' => (string) $original->effective_date,
                 'legs' => $expected,
             ], JSON_THROW_ON_ERROR));
 
@@ -127,7 +130,10 @@ final class V2PostingReversalWriter
                 if ((int) $existing->reversal_of_batch_id !== $originalBatchId
                     || !hash_equals((string) $existing->payload_sha256, $hash)
                     || (string) $existing->effective_date !== $effectiveDate
-                    || (string) $existing->voucher_series !== 'REV') {
+                    || (string) $existing->voucher_series !== 'REV'
+                    || (string) $existing->voucher_number !== (string) $original->voucher_number
+                    || DB::table('finance_posting_source_claims')
+                        ->where('posting_batch_id', $existing->id)->exists()) {
                     throw new \DomainException('V2_REVERSAL_IDEMPOTENCY_CONFLICT');
                 }
                 $actual = DB::table('finance_posting_lines')
