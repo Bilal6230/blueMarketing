@@ -1,3 +1,11 @@
+### 2026-10-31 — Exact root cause fixed: ENUM label case of 3 imported stock fields
+
+**Read-only forensic result:** `stock_entries.flow`, `stock_movements.direction`, `stock_parties.type` were the ONLY differing columns among 42 original stock column checks. **Root cause confirmed in V2 baseline migration:** it lowercased both SQL type name and quoted ENUM labels. Original `IN/OUT` / `Supplier/Consumer/Site` became `in/out` / `supplier/consumer/site`. All 120165 historical counts and 34 numeric financial sums remain PASS; all 54 other source tables' full-column SHA PASS.
+
+**Delivered:** fixed all future V2 baseline ENUM case, MySQL8.4 CI exact-column schema/regression/temporary enum ALTER checks, `restore_stock_enum_case.php` local-only read-only preview and opt-in schema-only correction (checks expected source SHA, stock counts, no posted lines, original ordinals) plus [safe backup and repair runbook](DATABASE_V2_STOCK_ENUM_CASE_REPAIR_2026_10_31.md). User clone NOT modified by GitHub pushes.
+
+**Next:** owner pulls, performs **read-only** preview, backs up new local V2 rehearsal database, then explicitly opts in to three case-only ALTER TABLE statements, and independently reruns 57-table full-row SHA. Formal acceptance remains **8/24 = 33%** until owner verifies local output.
+
 ### 2026-10-31 — Owner full-row SHA audit: 54/57 tables PASS; 3 STOCK TABLE EXCEPTIONS
 
 Owner's `V2_FULL_ROW_PARITY_FAILED: 3/57 differing tables, total rows=120165` **does not undo the successful MySQL import**. Exactly `stock_entries` (1 original row), `stock_movements` (2) and `stock_parties` (3) require column-level investigation; remaining 54 original source tables passed all-original-column digests. All 57 historical row counts/ID/time bounds and 34 money aggregates had already passed.
