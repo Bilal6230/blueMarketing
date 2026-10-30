@@ -35,6 +35,43 @@ if ($tables !== 70 || $foreign < 116) {
     throw new RuntimeException("Unexpected V2 topology: {$tables} tables / {$foreign} FK columns");
 }
 
+// Prove that MySQL 8.4 can change the old case-only ENUM labels to
+// the source's original label case WITHOUT changing stored ordinals.
+// This is a disposable TEMPORARY table, not a historical data migration.
+$db->statement(
+    "CREATE TEMPORARY TABLE v2_enum_case_probe (
+      flow ENUM('in','out') NOT NULL,
+      direction ENUM('in','out') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+      party_type ENUM('supplier','consumer','site') NOT NULL)"
+);
+try {
+    $db->table('v2_enum_case_probe')->insert([
+        ['flow' => 'in', 'direction' => 'out', 'party_type' => 'supplier'],
+        ['flow' => 'out', 'direction' => 'in', 'party_type' => 'site'],
+    ]);
+    $ordinalBefore = $db->table('v2_enum_case_probe')
+        ->selectRaw('flow + 0 AS a, direction + 0 AS b, party_type + 0 AS c')
+        ->orderByRaw('flow + 0')->get()->toArray();
+    $db->statement("ALTER TABLE v2_enum_case_probe
+      MODIFY COLUMN flow ENUM('IN','OUT') NOT NULL,
+      MODIFY COLUMN direction ENUM('IN','OUT') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+      MODIFY COLUMN party_type ENUM('Supplier','Consumer','Site') NOT NULL");
+    $ordinalAfter = $db->table('v2_enum_case_probe')
+        ->selectRaw('flow + 0 AS a, direction + 0 AS b, party_type + 0 AS c')
+        ->orderByRaw('flow + 0')->get()->toArray();
+    if ($ordinalBefore !== $ordinalAfter) {
+        throw new RuntimeException('ENUM case restoration altered ordinal identities.');
+    }
+    $fixed = $db->table('v2_enum_case_probe')->orderByRaw('flow + 0')->get();
+    if ($fixed[0]->flow !== 'IN' || $fixed[0]->direction !== 'OUT' ||
+        $fixed[0]->party_type !== 'Supplier' || $fixed[1]->flow !== 'OUT' ||
+        $fixed[1]->direction !== 'IN' || $fixed[1]->party_type !== 'Site') {
+        throw new RuntimeException('ENUM case restoration did not preserve original labels.');
+    }
+} finally {
+    $db->statement('DROP TEMPORARY TABLE IF EXISTS v2_enum_case_probe');
+}
+
 // Source ENUM labels are CASE-SENSITIVE business values. MariaDB V1 had
 // uppercase IN/OUT and mixed-case Supplier/Consumer/Site; never lowercase
 // the quoted enum type arguments when rebuilding the V2 schema.
