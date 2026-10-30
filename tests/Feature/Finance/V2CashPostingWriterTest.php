@@ -215,7 +215,7 @@ class V2CashPostingWriterTest extends TestCase
         $this->assertSame('250.00', bcadd((string) DB::table('finance_posting_lines')
             ->where('posting_batch_id', $batch)->where('project_head_subhead_id', 101)
             ->value('debit'), '0', 2));
-        $this->assertSame('250.00', (string) DB::table('finance_posting_lines')
+        $this->assertSame('250.00', bcadd((string) DB::table('finance_posting_lines')
             ->where('posting_batch_id', $reversal)->where('project_head_subhead_id', 101)
             ->value('credit'), '0', 2));
     }
