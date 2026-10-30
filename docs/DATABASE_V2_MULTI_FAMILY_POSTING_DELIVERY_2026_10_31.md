@@ -49,3 +49,9 @@ NO production, V1, staging, live, original SQL or affected local V2 rehearsal DB
 - Deferred unit test `V2FinanceCsvExporterTest` covers fixed columns, formula sanitization and report scope.
 - **Implementation submeter updated:** 7/7 typed source families, 14/14 gateway operations, 5/5 pilot report/read formats, 2/2 CSV report exports, and 9/9 gated local HTTP endpoints.
 - All new code remains untested during this turn by owner request; no runtime/CI PASS claimed. Historical UTC P4.G3 and production UAT remain blocked. Accepted gates stay **8/24 = 33.3%**.
+
+## Final local pilot activation hardening (code only)
+
+Added `V2FinancePilotServiceProvider`, passively registered in `config/app.php`. It defines `v2-finance-read`, `v2-finance-post`, and `approve-v2-stock-finance` only when `APP_ENV=local/testing` and the explicit read API flag is enabled. Read is limited to existing superadmin role; write and stock approval additionally require the separate write flag. Every request still checks active project ownership and isolated database. In production or when flags are false, the provider does nothing. Existing V1 role/permission definitions remain unchanged.
+
+**No local pilot flag was turned on, no stock approval was granted, and no test suite or migration was executed manually.**
