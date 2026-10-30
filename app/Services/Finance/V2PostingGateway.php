@@ -142,6 +142,16 @@ final class V2PostingGateway
         return (new V2PostingReportReader())->lines($projectId, $from, $through);
     }
 
+    public function voucherRegister(
+        int $projectId,
+        ?string $from = null,
+        ?string $through = null
+    ): array {
+        return (new V2VoucherRegisterReader())->documents(
+            $projectId, $from, $through
+        );
+    }
+
     public function postingSummary(
         int $projectId,
         ?string $from = null,
