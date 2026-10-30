@@ -110,6 +110,7 @@ jobs:
           php tools/database_v2/verify_mysql_stock_columns.php --selftest
           php tools/database_v2/verify_mysql_full_row_digests.php --selftest
           php tools/database_v2/diagnose_mysql_source_timezone_parity.php --selftest
+          php artisan test tests/Unit/Finance/V2HistoricalImportTargetGuardTest.php --no-progress
           python3 tools/database_v2/prove_source_export_timezone.py --selftest
           python3 -m py_compile tools/database_v2/prove_source_export_timezone.py
           python3 -m py_compile tools/database_v2/financial_source_fingerprints.py
@@ -278,6 +279,8 @@ jobs:
         run: |
           python3 tools/database_v2/tests/build_synthetic_mysql_import.py --out=/tmp/v2bad --invalid-fk
           php -l tools/database_v2/import_staged_mysql.php
+          php -l app/Services/Finance/V2HistoricalImportTargetGuard.php
+          php -l tests/Unit/Finance/V2HistoricalImportTargetGuardTest.php
           if php tools/database_v2/import_staged_mysql.php --dir=/tmp/v2bad --expected-sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --expected-rows=3; then
             echo "ERROR: synthetic fixture accepted without CI-only authorization"
             exit 1
