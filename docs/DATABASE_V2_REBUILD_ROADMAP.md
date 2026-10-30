@@ -45,6 +45,14 @@ The percentage counts **verified completion gates**, not lines of code, elapsed 
 - **New next gate script:** `tools/database_v2/full_row_digests.py` + `verify_mysql_full_row_digests.php` check every original column of each of the 120,165 rows using canonical per-row SHA and duplicate-preserving multisets, without printing data. See [actual MySQL import evidence and next read-only commands](DATABASE_V2_REAL_MYSQL_IMPORT_SUCCESS_2026_10_30.md).
 - **Formal gate count remains 8/24 = 33%**: P4.G3 remains open until the full original-column row and audit-history values pass; P4.G4/P6 explicitly require additional FK/account-level/financial leg reconciliation and source-ownership approval. Aggregate parity alone cannot establish every transaction's value survived unmodified.
 
+### 2026-10-31 — full original-column row comparison: 54/57 PASS; 3 stock tables need diagnosis
+
+Owner executed the new **read-only** MySQL full original-column SHA multiset verification after successful 120,165/120,165 import and 34 numeric aggregate parity. **54 source tables match exactly**, but the digests for `stock_entries` (1 source row), `stock_movements` (2 source rows) and `stock_parties` (3 source rows) differ. **Six total source rows are in the affected tables, not necessarily six changed rows.** Imported SQL remains untouched and historic aggregate checks still PASS. No automatic fixes or source re-import.
+
+New private source column digest tool and read-only isolated MySQL comparator localize the discrepancy to `table.column` labels without any source values/PKs in logs. [Stock mismatch diagnostic and exact Windows commands](DATABASE_V2_STOCK_FULL_ROW_PARITY_DIAGNOSTIC_2026_10_31.md).
+
+**P4.G3/P6.G1 remain OPEN and formal acceptance stays 8/24 = 33%** until proof of full source parity or explicitly reviewed, lossless exceptions. All 74 JV candidate-source discrepancies are independently unresolved.
+
 ## Phase 1 — Audit the legacy database AND actual code
 
 - [x] **P1.G1** Identify uploaded SQL snapshot; enumerate schema, counts, actual FKs, soft-delete fields, key-type risks and initial orphan checks. Evidence: [snapshot assessment](DATABASE_V2_LEGACY_SNAPSHOT_AUDIT_2026_10_30.md). **Completed 2026-10-30 (read-only).**
