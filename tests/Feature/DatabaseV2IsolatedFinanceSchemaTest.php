@@ -79,6 +79,9 @@ class DatabaseV2IsolatedFinanceSchemaTest extends TestCase
             'id' => 5, 'posting_batch_id' => 1,
             'project_head_subhead_id' => 101, 'debit' => 100, 'credit' => 0,
         ]);
+        DB::table('finance_posting_source_claims')->insert([
+            'posting_batch_id' => 1, 'source_kind' => 'journal',
+        ]);
         DB::table('finance_posting_journal_sources')->insert([
             'posting_batch_id' => 1, 'journal_voucher_id' => 55,
         ]);
@@ -86,6 +89,19 @@ class DatabaseV2IsolatedFinanceSchemaTest extends TestCase
             'posting_line_id' => 5, 'journal_voucher_detail_id' => 550,
         ]);
         $this->assertDatabaseCount('finance_posting_journal_sources', 1);
+        $this->assertDatabaseCount('finance_posting_source_claims', 1);
+        // A valid Stock Entry with the SAME numeric ID must not attach to
+        // the Journal batch: the composite source claim rejects the family.
+        try {
+            DB::table('finance_posting_stock_entry_sources')->insert([
+                'posting_batch_id' => 1, 'stock_entry_id' => 55,
+            ]);
+            $this->fail('Cross-family source collision unexpectedly accepted');
+        } catch (QueryException $e) {
+            $this->assertNotEmpty($e->getMessage());
+        }
+        $this->assertDatabaseCount('finance_posting_stock_entry_sources', 0);
+
         $this->assertDatabaseCount('finance_journal_line_sources', 1);
 
         try {
