@@ -137,15 +137,14 @@ if (in_array(config('app.env'), ['local', 'testing'], true)
     && config('finance.v2_pilot_api_enabled', false)) {
     Route::middleware(['auth:sanctum', 'throttle:30,1'])
         ->prefix('v2/finance/projects/{projectId}')
-        ->where(['projectId' => '[0-9]+'])
         ->group(function (): void {
             $controller = \App\Http\Controllers\Api\V2\V2FinancePilotController::class;
-            Route::get('postings', [$controller, 'lines']);
-            Route::get('summary', [$controller, 'summary']);
-            Route::get('trial-balance', [$controller, 'trialBalance']);
+            Route::get('postings', [$controller, 'lines'])->whereNumber('projectId');
+            Route::get('summary', [$controller, 'summary'])->whereNumber('projectId');
+            Route::get('trial-balance', [$controller, 'trialBalance'])->whereNumber('projectId');
             Route::get('accounts/{accountId}/statement', [$controller, 'accountStatement'])
-                ->whereNumber('accountId');
-            Route::post('postings', [$controller, 'post']);
-            Route::post('reversals', [$controller, 'reverse']);
+                ->whereNumber('projectId')->whereNumber('accountId');
+            Route::post('postings', [$controller, 'post'])->whereNumber('projectId');
+            Route::post('reversals', [$controller, 'reverse'])->whereNumber('projectId');
         });
 }
