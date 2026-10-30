@@ -90,6 +90,7 @@ jobs:
           php -l app/Models/V2/FinancePostingSourceClaim.php
           php -l tests/Feature/DatabaseV2PostingModelTest.php
           php -l tools/database_v2/audit_local_temporal_history.php
+          php -l tools/database_v2/verify_mysql_v2_model_schema.php
           php -l app/Services/Finance/V2IsolatedConnectionGuard.php
           php -l tests/Feature/Finance/V2IsolatedConnectionGuardTest.php
           php -l app/Services/Finance/V2CashPostingWriter.php
@@ -244,6 +245,7 @@ jobs:
         run: |
           php -l tools/database_v2/verify_mysql_schema.php
           php tools/database_v2/verify_mysql_schema.php
+          php tools/database_v2/verify_mysql_v2_model_schema.php
 
       - name: Rehearse complete isolated MySQL V2 rollback and clean re-run
         run: |
