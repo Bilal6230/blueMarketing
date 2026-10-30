@@ -17,38 +17,20 @@ return new class extends Migration
     // Verified against the 2026-10-30 dev dump and app relationship audit.
     // Deliberately excludes polymorphic IDs, business voucher numbers and
     // pending_updates.record_id / stock_movements.source_id.
-    private const EXTRA_FKS = [
-        'accounting_expenses' => ['project_head_subheads_id' => 'project_head_subheads'],
-        'areas' => ['project_id' => 'projects'],
-        'bookings' => ['project_id' => 'projects', 'customer_id' => 'leads',
-            'plot_id' => 'plots', 'broker_id' => 'leads'],
-        'booking_edit_audits' => ['booking_id' => 'bookings', 'project_id' => 'projects',
-            'user_id' => 'users', 'journal_voucher_id' => 'journal_vouchers'],
-        'booking_vouchers' => ['booking_id' => 'bookings',
-            'customer_ledger_id' => 'customer_ledger', 'ledger_id' => 'ledgers',
-            'project_id' => 'projects', 'customer_id' => 'leads',
-            'plot_id' => 'plots', 'bank_id' => 'banks'],
-        'commision_voucher_details' => ['account_id' => 'project_head_subheads'],
-        'customer_ledger' => ['project_id' => 'projects', 'plot_id' => 'plots',
-            'bank_id' => 'banks'],
-        'draft_ledgers' => ['customer_id' => 'leads', 'project_id' => 'projects',
-            'plot_id' => 'plots', 'bank_id' => 'banks',
-            'project_head_subheads_id' => 'project_head_subheads'],
-        'journal_vouchers' => ['project_id' => 'projects'],
-        'journal_voucher_details' => ['account_id' => 'project_head_subheads'],
-        'leads' => ['area_id' => 'areas', 'zone_id' => 'zones',
-            'follow_id' => 'users', 'project_id' => 'projects'],
-        'ledgers' => ['project_head_subheads_id' => 'project_head_subheads'],
-        'plots' => ['project_id' => 'projects', 'road_id' => 'roads',
-            'facing_id' => 'facings'],
-        'project_head_subheads' => ['plot_id' => 'plots', 'customer_id' => 'leads'],
-        'punches' => ['user_id' => 'users', 'project_id' => 'projects'],
-        'sites' => ['head_accounting_id' => 'head_accountings',
-            'subhead_accounting_id' => 'project_head_subheads'],
-        'stock_bills' => ['party_id' => 'stock_parties', 'entry_id' => 'stock_entries'],
-        'users' => ['project_id' => 'projects'],
-        'works' => ['user_id' => 'users'],
-    ];
+    // Additional verified relationships are source-controlled in
+    // database/v2_schema/v2_verified_extra_fks.json. This SAME registry
+    // drives migration FK generation and the V2 historical import planner.
+    private function verifiedExtraForeignKeys(): array
+    {
+        $metadata = json_decode((string) file_get_contents(
+            base_path('database/v2_schema/v2_verified_extra_fks.json')
+        ), true, 512, JSON_THROW_ON_ERROR);
+        if (($metadata['source_sha256'] ?? '') !==
+            'bbc45fe7f0b6cdab1a188d2437e973e2bb56d442a29585ab328bd062e89335ed') {
+            throw new RuntimeException('V2 verified foreign-key registry fingerprint mismatch.');
+        }
+        return $metadata['foreign_keys'];
+    }
 
     // Do not create SoftDeletes on accounting ledgers; immutable corrections
     // belong to reversal batches. Only master data gets a V2 nullable column.
@@ -113,7 +95,7 @@ return new class extends Migration
                 ];
             }
         }
-        foreach (self::EXTRA_FKS as $table => $columns) {
+        foreach ($this->verifiedExtraForeignKeys() as $table => $columns) {
             foreach ($columns as $column => $parent) {
                 if (isset($foreign[$table][$column])) {
                     throw new RuntimeException('V2 additional FK duplicates a declared FK.');
