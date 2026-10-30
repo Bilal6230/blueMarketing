@@ -61,7 +61,7 @@ The following checks compare non-NULL stored numeric keys with the corresponding
 | `ledgers.customer_ledger_id → customer_ledger.id` | 4,001 | 0 | YES | **Yes**, ON DELETE SET NULL |
 | `ledgers.charge_type_id → charge_types.id` | 0 | 0 | YES | **Yes**, ON DELETE SET NULL |
 
-For the **30 FK relationships with exported child data**, the non-NULL referenced ID checks found **zero missing parent IDs**. There are 40 declared FKs overall, but the remaining ten cannot be claimed data-tested from rows absent in this dump.
+For the **28 FK relationships with exported child data**, the non-NULL referenced ID checks found **zero missing parent IDs**. There are 40 declared FKs overall, but the remaining twelve cannot be claimed data-tested from rows absent in this dump.
 
 **Additional project ownership check:** 4,001 ledger rows carrying `customer_ledger_id` had no mismatch between the linked source project and the ledger account's project. This is only an account/source project identity check, not voucher posting parity.
 
@@ -167,7 +167,7 @@ This is an **automated naming-based inventory, not confirmed 56 missing FKs**. S
 ## 2026-10-30 verified follow-up and correction
 
 - Complete CREATE/ALTER/INSERT parser enumerated **54**, not the initial 56, unconstrained ID-column candidates. The older 56 count was a preliminary heuristic and is corrected in this document. This list requires application verification; it is **not** a count of missing FKs.
-- All **40** declared SQL FK relationships have zero unmatched non-NULL referenced parent IDs among exported rows. **30** of them have at least one row exercising the FK; ten do not establish data-level behavior because the export has no child rows. This is not financial source/posting reconciliation.
+- All **40** declared SQL FK relationships have zero unmatched non-NULL referenced parent IDs among exported rows. **28** of them have at least one row exercising the FK; ten do not establish data-level behavior because the export has no child rows. This is not financial source/posting reconciliation.
 - A naive cross-domain `bank_id -> project_head_subheads.id` suggestion observed 9 booking voucher and 254 customer ledger numerically unmatched IDs. **That assumed parent table is not correct**: `AppHelper::getBankNameById()` reads IDs from `getPakistanBanks()`. V2 needs a banks lookup preserving valid legacy IDs after code-list verification, not a project-account FK. The unmatched counts must **not** be reported as actual bank orphans.
 - `sites.subhead_accounting_id`: two non-NULL stored IDs do not match `subhead_accountings.id`. Do not add an FK without investigating original semantics and approved mapping.
 - The new `docs/DATABASE_V2_RELATIONSHIP_MATRIX_2026_10_30.md` includes the entire 57-table census and grouped FK candidate/compatibility design. No schema changes.
