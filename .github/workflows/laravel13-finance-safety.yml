@@ -79,6 +79,8 @@ jobs:
           php -l app/Services/Finance/FinancialPendingChangeGuard.php
           php -l app/Http/Controllers/Finance/VoucherController.php
           php -l tests/Feature/FinanceApprovalWorkflowTest.php
+          php -l tools/database_v2/verify_imported_mysql_financial.php
+          python3 -m py_compile tools/database_v2/financial_source_fingerprints.py
           php -l tests/Feature/Finance/V2JournalPostingWriterTest.php
           python3 -m py_compile tools/database_v2/legacy_import_plan.py tools/database_v2/v2_import_plan.py
           python3 -m unittest discover -s tools/database_v2/tests -p 'test_*.py' -v
@@ -242,6 +244,7 @@ jobs:
         run: |
           python3 tools/database_v2/tests/build_synthetic_mysql_import.py --out=/tmp/v2good
           php tools/database_v2/import_staged_mysql.php --dir=/tmp/v2good --expected-sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --expected-rows=2 --ci-synthetic --apply
+          php tools/database_v2/verify_imported_mysql_financial.php --manifest=/tmp/v2good/manifest.json --source-evidence=/tmp/v2good/fake_source_fingerprints.json --expected-sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --expected-rows=2
           php -r '
           require "vendor/autoload.php"; $a=require "bootstrap/app.php"; $a->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
           $db=Illuminate\Support\Facades\DB::connection();
