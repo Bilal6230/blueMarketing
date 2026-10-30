@@ -76,7 +76,13 @@ final class V2CashPostingWriter
                 if (!is_array($leg) || !isset($leg['account_id'], $leg['debit'], $leg['credit'])) {
                     throw new \DomainException('V2_CASH_LEG_INVALID');
                 }
-                $account = (int) $leg['account_id'];
+                $rawAccount = $leg['account_id'];
+                if ((!is_int($rawAccount) && !is_string($rawAccount)) ||
+                    !preg_match('/^[1-9][0-9]*$/D', (string) $rawAccount) ||
+                    (string) (int) $rawAccount !== (string) $rawAccount) {
+                    throw new \DomainException('V2_CASH_ACCOUNT_ID_INVALID');
+                }
+                $account = (int) $rawAccount;
                 if (!DB::table('project_head_subheads')
                     ->where('id', $account)->where('project_id', $projectId)->exists()) {
                     throw new \DomainException('V2_CASH_ACCOUNT_PROJECT_MISMATCH');
@@ -116,7 +122,12 @@ final class V2CashPostingWriter
                 $claim = DB::table('finance_posting_cash_sources')
                     ->where('posting_batch_id', $existing->id)
                     ->where('customer_ledger_id', $sourceId)->exists();
-                if (!$claim || !hash_equals((string) $existing->payload_sha256, $fingerprint)) {
+                $canonicalClaim = DB::table('finance_posting_source_claims')
+                    ->where('posting_batch_id', $existing->id)
+                    ->where('source_kind', 'cash')->exists();
+                if (!$claim || !$canonicalClaim ||
+                    (string) $existing->voucher_series !== (string) $source->transaction_type ||
+                    !hash_equals((string) $existing->payload_sha256, $fingerprint)) {
                     throw new \DomainException('V2_CASH_IDEMPOTENCY_CONFLICT');
                 }
                 $persisted = DB::table('finance_posting_lines')
