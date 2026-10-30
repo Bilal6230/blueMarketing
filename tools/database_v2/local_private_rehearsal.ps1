@@ -94,6 +94,13 @@ try {
             '--out', (Join-Path $staging 'source_fingerprints.json')
         ))
         Assert-SourceZeroDateEvidence (Join-Path $staging 'source_fingerprints.json')
+        # Immutable source-column evidence for independent UTC comparison.
+        # This writes only SHA digests in the PRIVATE staging directory.
+        Run-Checked $python ($pythonPrefix + @(
+            'tools/database_v2/full_row_digests.py',
+            '--source', $source,
+            '--out', (Join-Path $staging 'source_full_row_digests.json')
+        ))
         Write-Warning 'STRICT MYSQL EXCEPTION: one historical leads.follow_up TIMESTAMP is 0000-00-00 00:00:00.'
         Write-Warning 'No original value will be silently changed; local apply requires -PreserveLegacyZeroDate.'
         Write-Host 'STAGING_COMPLETE: no database connection, migrations or import executed.' -ForegroundColor Green
@@ -117,8 +124,10 @@ try {
         throw 'PRIVATE_STAGING_MISSING: run Stage 1 FIRST, before any MySQL operations'
     }
 
-    if (-not $SourceRowDigests -or
-        !(Test-Path -LiteralPath $SourceRowDigests -PathType Leaf)) {
+    if (-not $SourceRowDigests) {
+        $SourceRowDigests = Join-Path $staging 'source_full_row_digests.json'
+    }
+    if (!(Test-Path -LiteralPath $SourceRowDigests -PathType Leaf)) {
         throw 'SOURCE_UTC_FULL_ROW_DIGESTS_REQUIRED: provide exact private source row hashes outside Git'
     }
     $privateDigests = (Resolve-Path -LiteralPath $SourceRowDigests).Path
@@ -184,7 +193,8 @@ try {
         ('--manifest=' + (Join-Path $staging 'manifest.json')),
         ('--source-evidence=' + (Join-Path $staging 'source_fingerprints.json')),
         ('--expected-sha256=' + $expectedSha),
-        ('--expected-rows=' + $expectedRows)
+        ('--expected-rows=' + $expectedRows),
+        '--verify-source-utc'
     )
     # A UTC import is NOT accepted just because timestamps appear correct
     # in the local MySQL timezone. Verify every original source column at UTC.
