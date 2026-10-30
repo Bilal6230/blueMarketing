@@ -266,15 +266,17 @@ jobs:
 
       - name: Rehearse SUCCESSFUL fake 57-table V2 import with timestamps, PK and historical migration archive
         run: |
-          python3 tools/database_v2/tests/build_synthetic_mysql_import.py --out=/tmp/v2good
-          php tools/database_v2/import_staged_mysql.php --dir=/tmp/v2good --expected-sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --expected-rows=2 --ci-synthetic --apply
-          php tools/database_v2/verify_imported_mysql_financial.php --manifest=/tmp/v2good/manifest.json --source-evidence=/tmp/v2good/fake_source_fingerprints.json --expected-sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --expected-rows=2
+          python3 tools/database_v2/tests/build_synthetic_mysql_import.py --out=/tmp/v2good --zero-id
+          php tools/database_v2/import_staged_mysql.php --dir=/tmp/v2good --expected-sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --expected-rows=4 --ci-synthetic --apply
+          php tools/database_v2/verify_imported_mysql_financial.php --manifest=/tmp/v2good/manifest.json --source-evidence=/tmp/v2good/fake_source_fingerprints.json --expected-sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --expected-rows=4
           php -r '
           require "vendor/autoload.php"; $a=require "bootstrap/app.php"; $a->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
           $db=Illuminate\Support\Facades\DB::connection();
           $p=$db->table("projects")->where("id",99999)->first();
           if (!$p || $p->created_at!=="2020-02-03 04:05:06" || $p->updated_at!=="2020-04-05 06:07:08" || $p->address!=="synthetic; address") { throw new RuntimeException("Original synthetic IDs/timestamps/text were not preserved"); }
           if ((int)$db->table("legacy_migration_history")->where("id",42)->count()!==1 || (int)$db->table("migrations")->count()!==3) { throw new RuntimeException("Legacy migration history was not safely archived"); }
+          $ids=$db->table("account_types")->orderBy("id")->pluck("id")->map(fn ($x)=>(int)$x)->all();
+          if ($ids!==[0,1]) { throw new RuntimeException("Historical source auto-increment primary IDs 0 and 1 changed"); }
           echo "V2 synthetic historical import PASS: 57 tables, 2 source rows, exact ID/timestamps, FK rollback".PHP_EOL;
           '
 
