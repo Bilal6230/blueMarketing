@@ -72,6 +72,7 @@ try {
     foreach ($details as $detail) {
         $id = (string) $detail->journal_voucher_id;
         $key = legKey((string) $detail->account_id, (string) $detail->debit, (string) $detail->credit);
+        $byHeader[$id] ??= ['legs' => [], 'debit' => 0, 'credit' => 0, 'count' => 0];
         addLeg($byHeader[$id]['legs'], $key);
         $byHeader[$id]['debit'] = ($byHeader[$id]['debit'] ?? 0) + cents((string) $detail->debit);
         $byHeader[$id]['credit'] = ($byHeader[$id]['credit'] ?? 0) + cents((string) $detail->credit);
@@ -84,6 +85,7 @@ try {
         }
         $index = (string) $leg->type_id . ':' . (string) $leg->project_id;
         $key = legKey((string) $leg->project_head_subheads_id, (string) $leg->amount_in, (string) $leg->amount_out);
+        $candidate[$index] ??= [];
         addLeg($candidate[$index], $key);
     }
     $result = ['headers' => 0, 'candidate_exact' => 0, 'candidate_mismatch' => 0,
