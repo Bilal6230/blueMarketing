@@ -60,6 +60,22 @@ final class V2FinancePilotController extends Controller
         ]);
     }
 
+    public function voucherRegister(
+        Request $request, int $projectId, V2PostingGateway $gateway
+    ): JsonResponse {
+        $this->project($request, $projectId, false);
+        $data = $request->validate([
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'through' => ['nullable', 'date_format:Y-m-d'],
+        ]);
+        return response()->json([
+            'scope' => 'typed_v2_postings_only',
+            'documents' => $gateway->voucherRegister(
+                $projectId, $data['from'] ?? null, $data['through'] ?? null
+            ),
+        ]);
+    }
+
     public function summary(Request $request, int $projectId, V2PostingGateway $gateway): JsonResponse
     {
         $this->project($request, $projectId, false);
