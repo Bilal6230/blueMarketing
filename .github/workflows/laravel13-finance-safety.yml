@@ -81,6 +81,11 @@ jobs:
           php artisan test tests/Feature/DatabaseV2FullLegacyBaselineTest.php tests/Feature/DatabaseV2IsolatedFinanceSchemaTest.php tests/Feature/Finance/V2JournalPostingWriterTest.php
 
 
+      - name: Database V2 broad source/writer static audit (no database)
+        run: |
+          python3 -m py_compile tools/database_v2/audit_ledger_writers.py
+          python3 tools/database_v2/audit_ledger_writers.py --print-limit 30
+
       - name: End-to-end finance safety regression suite (SQLite in memory)
         run: |
           php artisan test \
