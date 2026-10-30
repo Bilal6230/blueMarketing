@@ -75,6 +75,7 @@ jobs:
           php -l tests/Feature/DatabaseV2FullLegacyBaselineTest.php
           php -l tests/Feature/DatabaseV2IsolatedFinanceSchemaTest.php
           php -l app/Services/Finance/V2JournalPostingWriter.php
+          php -l app/Services/Finance/V2PostingReportReader.php
           php -l tests/Feature/Finance/V2JournalPostingWriterTest.php
           python3 -m py_compile tools/database_v2/legacy_import_plan.py tools/database_v2/v2_import_plan.py
           python3 -m unittest discover -s tools/database_v2/tests -p 'test_*.py' -v
