@@ -25,7 +25,7 @@ The SQL contents and individual financial/customer records are private and **mus
 | `customer_ledger` rows | **5,580** | Multiple source families |
 | Ledger `type='JV'` rows | **2,970** | Includes non-general-JV source family risk |
 | Ledger rows with `customer_ledger_id` | **4,001** | Direct source FK present |
-| Distinct candidate columns ending `_id` without declared FK | **56** | **Heuristic leads, NOT 56 proven missing FKs** |
+| Distinct candidate columns ending `_id` without declared FK | **54** | **Heuristic leads, NOT 56 proven missing FKs** |
 
 ### Ledger type distribution (all 18,003 rows)
 
@@ -119,7 +119,7 @@ Absent from `ledgers`, `customer_ledger`, `labours`, `labour_attendances`, `user
 
 ## Required next actions and risk gates
 
-1. Expand every `_id` candidate to actual model/controller joins, relationship multiplicity, referential action, nullability and confirmed parent; classify 56 heuristics individually, not automatically.
+1. Expand every `_id` candidate to actual model/controller joins, relationship multiplicity, referential action, nullability and confirmed parent; classify 54 heuristics individually, not automatically.
 2. Finish exact code-path map of CRUD, ledger direct/bulk writes and readers, raw SQL and all voucher families (see `LEDGER_SOURCE_IDENTITY_REPOSITORY_AUDIT_2026_10_29.md`).
 3. Inspect actual legacy PK/unique/signedness and source timestamps before proposing V2 schema. Preserve original values and IDs where feasible; use deterministic old→new mapping if widths force a change.
 4. Design FK-safe import order and explicit failure/quarantine reporting; keep original source data immutable.
@@ -129,7 +129,7 @@ Absent from `ledgers`, `customer_ledger`, `labours`, `labour_attendances`, `user
 
 No database was connected to, restored, modified, or migrated. No finance code changed. No deployment performed.
 
-## Next pass — 56 unconstrained `*_id` candidate columns
+## Next pass — 54 unconstrained `*_id` candidate columns
 
 This is an **automated naming-based inventory, not confirmed 56 missing FKs**. Some are genuine join candidates, but others are polymorphic business IDs (`type_id`, `model_id`, `tokenable_id`, `record_id`) or statuses and must **not** be assigned a false FK. Confirm each with application code and data before altering schema.
 
@@ -162,3 +162,12 @@ This is an **automated naming-based inventory, not confirmed 56 missing FKs**. S
 
 **Immediate priority:** real ledger account FK, JV detail account FK, explicit journal/commission/stock identity, booking source references, and project tenancy. Keep Laravel/Spatie/Sanctum polymorphic fields polymorphic unless changing their model is independently justified. Do not automatically add FKs to business sequence numbers or workflow polymorphic keys.
 
+
+
+## 2026-10-30 verified follow-up and correction
+
+- Complete CREATE/ALTER/INSERT parser enumerated **54**, not the initial 56, unconstrained ID-column candidates. The older 56 count was a preliminary heuristic and is corrected in this document. This list requires application verification; it is **not** a count of missing FKs.
+- All **40** declared SQL FK relationships have zero unmatched non-NULL referenced parent IDs among exported rows. **30** of them have at least one row exercising the FK; ten do not establish data-level behavior because the export has no child rows. This is not financial source/posting reconciliation.
+- A naive cross-domain `bank_id -> project_head_subheads.id` suggestion observed 9 booking voucher and 254 customer ledger numerically unmatched IDs. **That assumed parent table is not correct**: `AppHelper::getBankNameById()` reads IDs from `getPakistanBanks()`. V2 needs a banks lookup preserving valid legacy IDs after code-list verification, not a project-account FK. The unmatched counts must **not** be reported as actual bank orphans.
+- `sites.subhead_accounting_id`: two non-NULL stored IDs do not match `subhead_accountings.id`. Do not add an FK without investigating original semantics and approved mapping.
+- The new `docs/DATABASE_V2_RELATIONSHIP_MATRIX_2026_10_30.md` includes the entire 57-table census and grouped FK candidate/compatibility design. No schema changes.
