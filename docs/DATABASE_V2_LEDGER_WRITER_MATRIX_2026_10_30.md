@@ -1,0 +1,45 @@
+# Database V2 — App-wide ledger writer/source identity matrix
+
+**Date:** 2026-10-30. **Branch:** `upgrade/laravel-framework`. **Evidence:** `docs/database_v2_scan/APP_LEDGER_SCAN_01.md` through `APP_LEDGER_SCAN_12.md` from exact branch GitHub files (189 / 189 `app/**/*.php` sources, 0 fetch errors, 96 direct Ledger/raw-statement token matches). Independent deeper review of the active methods listed below.
+
+**Coverage caveat:** 189-file **direct-token scan is complete**, but **exact full repository writer certification is NOT complete**: method aliases, dynamic `DB::table($table)`, query builder updates, Blade, SQL scripts, models' event hooks, `database/`, `routes/` and job/observer call graphs still need comprehensive semantic verification. Token matches include read-only and commented code; never classify them as writes without tracing.
+
+| Source family | Verified current path | Ledger type / type_id | Ledger reference | Strong link / V2 treatment | Risk |
+|---|---|---|---|---|---|
+| General Journal | `JournalVoucherController::store` L430–481 | `JV`; genuine `journal_vouchers.id` | Header form reference | `journal_voucher_detail_id` optional in runtime, typed attribution when available; V2 batch↔journal header FK and line↔detail FK | Column absent in October dev dump; check deployment |
+| Commission | `CommissionVoucherController::store/update/destroy` | Current methods HTTP 409; historical `JV` with conflicting CV header/detail numeric IDs | Historical user reference | V2 `commision_voucher_id` typed FK; never reinterpret historical JV numeric IDs | Confirmed historical collision regression |
+| Stock entry | `StockController::postEntryLedger` L1251–1348 | `JV`; generated last-JV-type_id + 1, **not** header ID | `STOCK-ENTRY:{stock_entries.id}` | `customer_ledger_id` plus V2 `stock_entry_id` actual FK | JV numeric namespace shared with real header; source not proved from type_id |
+| Stock bill | `StockController::postBillLedger` L1411–1498 | `JV`; generated last-JV-type_id + 1 | `STOCK-BILL:{stock_bills.id}` | V2 `stock_bill_id` actual FK | Same collision plus string-ref reuse risk |
+| Labour payment | `LabourController::labourPayment` L148–210 | `CP`; generated last-CP-type_id + 1 | Request reference | Ledger `customer_ledger_id` is CP source; `labour_ledgers` contains labour accounting records; V2 source FK after cardinality audit | Not `labour_ledgers.id` |
+| Labour site JV | `LabourController::createVoucher` L1050–1135 | `JV`; real journal header ID | NULL | JV details created, but ledger inserts **omit exact journal detail ID** | Missing provenance guard on this active writer |
+| Cash CR/CP | `LedgerController::store` L226/296–368 | `CR/CP`; allocated business voucher number on new source, clearance may use another series number | Form reference or clearance reference | `customer_ledger_id` FK; V2 cash typed source FK | `LedgerController::update` L950–1027 mutates posted cash amount/account/date after ownership checks; V2 reversal |
+| Cash pending bank | `Finance/VoucherController::updatePendingBankPaymentStatus` L870–1005 | `BR`; generated last BR type ID +1 | `BANK_CLEARANCE#customer_ledger.id` | `customer_ledger_id` FK; V2 explicit clearance source and idempotency | Existing ref check is application-only |
+| Plot payments | `BookingController::deposit` L2400–2572 | `PPR`; generated last PPR type ID +1 | User slip/business reference | `customer_ledger_id`, `booking_vouchers.ledger_id`; V2 booking/payment source FK | Can update existing PPR ledger metadata, must retain history |
+| Booking/Resale/Cancel sales | `BookingController::store/createSalesVoucher/createSalesVoucherLedger/recordSalesVoucherEntry/cancel` L355–442, 870–945, 3700+ | `SV`; **journal_vouchers.id**, whose header `type=SV` | `BOOKING-{id}` source header; ledger `reference=booking.id` | `journal_voucher_details`, `customer_ledger_id` when applicable; V2 typed journal/sales and booking source relation | firstOrCreate identity includes amount/reference/date/account; potential duplicate/replay/cardinality pitfalls |
+| Extra charge | `BookingController::deposit` `extra_charge` L2670–2745 | `EC`; generated customer source business voucher number | Request business reference | `customer_ledger.id` typed EC source | Two legs; record is absent from snapshot but active code |
+| Extra charge payment | `BookingController::deposit` `extra_charge_payment` L2630–2675 | `ECP`; generated customer source voucher number | `EC_PAYMENT#charge_id#reference` | `customer_ledger.id` ECP payment source, linked charge by parseable string | V2 should FK payment to EC charge, not parse a string |
+| Extra charge bank clearance | `ExtraChargeBankSettlement::resolve` L167–243 | `ECP`; source business number, **not source PK** | `EC_PAYMENT#charge_id#reference` | `customer_ledger_id`; two ECP legs | Checks project and expected two legs; V2 physical source FK |
+| Read-only/recovery command exception | `RepairMissingGeneralJournalLegs::handle` L35–147 | `JV`; header id with eligible recovered legs | Derived historical evidence | **Direct DB::table('ledgers')->insert()**; bypasses Ledger model event | Explicit `--apply` is data-mutating command; must lock down on V2 |
+| Posting detail display | `LedgerController`, `LedgerVoucherDisplayService`, `BookingSalesAccountingResolver` | Readers only | Numeric ref may collide | V2 resolve from typed FK only | Existing display service safely falls back for ambiguous JV |
+
+## Crucial indirect UPDATE paths absent from a naive literal `Ledger::create` scan
+
+1. `app/Http/Controllers/Api/V1/Mobile/MobileApprovalController.php::approve/applyPendingUpdate` L150–170 / 411+: `DB::table($table)->where('id',...)->update($safeValues)`. Allowed `$table` includes `ledgers`; ledger approval checks forbid changes to `type/type_id/amount_in/amount_out/date/reference/is_active/account`, but the dynamic builder **bypasses Eloquent events**. Additional metadata changes remain possible. Do not imply this is unrestricted financial posting.
+2. `app/Http/Controllers/Finance/VoucherController.php::approveAdmin` approx L313–338: dynamic `DB::table($request->table)->where('id',...)->update($pendingNewChanges)`, and `ledgers` is in allowed tables. Exact safeguards/new-values field allowlist require route tests before deeming safe. Can bypass model events.
+3. `LedgerController::update` L950–1027 uses Eloquent `$ledger->update` and linked `CustomerLedger` updates; transaction and source checks protect selected CR/CP but **still edit posted financial lines in place**.
+4. `BookingController::createSalesVoucherLedger` uses `Ledger::firstOrCreate`, not `Ledger::create`. Search for `firstOrCreate`, `updateOrCreate`, dynamic `DB::table($table)`, `upsert` and model relation creates in any subsequent full scan.
+
+## Permanent V2 source-FK strategy
+
+- New isolated migration `database/v2_migrations/2026_10_30_000100_create_v2_finance_posting_core.php` creates `finance_posting_batches`, `finance_posting_lines`, **seven separate actual FK source link tables** (Journal/CV/Stock Entry/Stock Bill/Cash/Booking/Labour), and exact journal-detail link table.
+- This is a **pilot schema pending baseline**. The migration fail-closes unless the isolated V2 database name is `bluemarketing_v2_*` or SQLite in-memory and all 11 prerequisite source/account tables exist with the correct MySQL `BIGINT UNSIGNED` IDs. Existing V1 tables cannot meet all requirements. Not deployed.
+- New bank migration and 27-ID strict seeder are in separate V2 files. Import planner `tools/database_v2/legacy_import_plan.py` preserves data-only statements, ordering and checksums; it does NOT execute them or claim V2 mapping.
+- **Open architecture risk:** separate source mapping tables do not **alone** enforce cross-table exactly-one source claim for a posting batch. Before production implementation, add one-of source enforcement in the posting service / database validation, plus project ownership/account integrity and balanced batch assertion. Do not mark final architecture approved merely because the seven FKs exist.
+- Posted batch lines immutable; reversal is separate balanced batch. Legacy fields `type/type_id/reference` are archived as historical evidence, not future FK truth.
+
+## Acceptance gates pending
+
+- Validate every indirect raw SQL/query builder writer in the whole repository, including `database/`, SQL files, route reachability, views, and model observers. 189 app PHP files have a basic direct-token index; 96 matching tokens are NOT 96 writers.
+- Finish per-candidate 54 relationship field mapping and project/account uniqueness, find any historical malformed values.
+- Produce reviewed full **57-table greenfield baseline**, code-specific typed claim exclusivity rule, staged full historical import mapping and MySQL 8.4 verification. The V2 pilot migration and tests exist but have not been executed in a Laravel runtime here.
+- No direct SQL, schema changes, deployment or historical correction authorized. Prior 98% P0.1 engineering estimate remains **not certified**.
