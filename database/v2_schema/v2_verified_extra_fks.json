@@ -12,7 +12,7 @@
       "project_id": "projects",
       "customer_id": "leads",
       "plot_id": "plots",
-      "broker_id": "leads"
+      "broker_id": "subhead_accountings"
     },
     "booking_edit_audits": {
       "booking_id": "bookings",
