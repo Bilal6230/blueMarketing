@@ -277,3 +277,10 @@ Evidence ID: V2_HARDENING_32_87_LOCAL_PASS
 
 - `V2PostingReportReader` now verifies reversal legs are exactly account-wise inverted original posting legs, even for reversal-only date windows. It refuses balanced but financially incorrect reversal postings (`V2_REPORT_REVERSAL_NOT_EXACT_INVERSE`). `V2JournalPostingWriterTest` has the corresponding tamper test.
 - New code and regression remain **operator/CI execution pending**, P5.G1 and formal 8/24 gates unchanged.
+
+### 2026-10-31 — Owner verification PASS; source export timezone proof and cash reversal regression delivered
+
+- Owner verified commit `587114d7` with **41 PASS / 139 assertions**, all new PHP lint PASS and clean working tree. Real local MySQL audit returned `V2_MYSQL_MODEL_CONTRACT_PASS`: 3 V2 typed models, 7 FK relationships, 2 exact DECIMAL casts, 2 posting uniqueness constraints. Independent read-only temporal history returned `V2_TEMPORAL_HISTORY_READ_ONLY_PASS`: 57 source tables, 142 original temporal columns (127 TIMESTAMP, 15 DATE), 320043 non-NULL values, 2158 soft-deleted rows, 14 migration archive rows, 0 new typed source claims. Local server TZ reported `Pakistan Standard Time`, which **does not establish original export-session TZ**.
+- `git diff --check a0bc6c97 HEAD` failed **only** on two Markdown trailing whitespace lines. Commit `a0a630e9` fixed them; actual 41 tests and MySQL audits were green before that edit.
+- Actual new code: private snapshot SHA-gated `prove_source_export_timezone.py` inspects explicit SQL export timezone directives (read-only, no source row output), plus cash CR/CP immutable reversal source-lineage, idempotency and cross-project negative tests in `V2CashPostingWriterTest.php`. CI executes independent synthetic timezone scanner selftest. This is **not** new 41-test approval: these additions remain unexecuted by operator/CI.
+- **Gate status 8/24=33% unchanged**. P3.G4 still needs full legacy model compatibility, P4.G3 needs original export-session provenance + parity/acceptance, P5.G1 needs concurrency and controlled API integration. No V1, staging, live or original source database mutation.
