@@ -1,3 +1,11 @@
+## 2026-10-30 — User completed REAL local 120,165-row MySQL V2 import + 57-table/34-money aggregate verification
+
+- **Owner terminal verified** `V2_IMPORT_APPLIED_TO_ISOLATED_DB_ONLY: 120165 source rows preserved`, using local `bluemarketing_v2_local_rehearsal` **MySQL 8.0.30**, `-Apply -ResumePrepared -PreserveLegacyZeroDate`, exact source SHA `bbc45fe7f0b6cdab1a188d2437e973e2bb56d442a29585ab328bd062e89335ed`. Earlier source checksum and prepared 70-table/116-FK, 3 migration/27 bank check PASS. No V1 user/dev/staging/live database was selected.
+- **Independent aggregate verifier PASS:** `V2_FINANCIAL_PARITY_PASS: 57/57 historical tables, 120165 records, exact ID/timestamp bounds and 34 source numeric aggregate columns match.` Final `V2_LOCAL_IMPORT_AND_AGGREGATE_PARITY_PASS`. Site new project-account mapping validated; old migration history archived. Typed historical finance source claims remain intentionally unattributed.
+- Imported clone remains isolated and NON-PRODUCTION. Aggregate parity does not prove every value of every source row; neither full JV source provenance nor final ledger balances reconciled.
+- Added read-only **full-original-column per-row SHA256** toolset `tools/database_v2/full_row_digests.py` + `verify_mysql_full_row_digests.php`. Source SHA/hash files remain outside Git; Python and PHP cross-language canonical SHA tests cover primary key zero, DECIMAL precision, NULL, backslashes and duplicate row multiplicities. [Verified milestone and next operator command](DATABASE_V2_REAL_MYSQL_IMPORT_SUCCESS_2026_10_30.md).
+- Master formal gate tally **8/24 (33%) unchanged** until owner runs full-row equality and business exception approval. P4.G4 and P6.G2 additionally depend on per-voucher/source ledger debit-credit/booking/stock/labour reconciliation; no production cutover.
+
 ## 2026-10-30 — Owner MySQL 8.0.30 historical import failed; SQL-mode source PK-zero safety recovery
 
 - Owner applied `-ResumePrepared` on an isolated, 70-table `bluemarketing_v2_local_rehearsal` with 3 migrations and 27 seeded banks. Staging SHA + prepared-state preflight PASSED. Actual INSERT attempt returned redacted `V2_IMPORT_ABORTED: SQL_CONSTRAINT_OR_QUERY_REJECTED` with no success/commit. Owner directed **not** to repeat command or change/drop local database.
