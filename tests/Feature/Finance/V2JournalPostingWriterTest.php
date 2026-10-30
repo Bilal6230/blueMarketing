@@ -358,4 +358,19 @@ class V2JournalPostingWriterTest extends TestCase
         (new V2PostingReportReader())->lines(1);
     }
 
+    public function test_v2_report_refuses_balanced_but_not_inverse_reversal(): void
+    {
+        $original = (new V2JournalPostingWriter())->post(1, 51, 'JV-REVERSAL-ORIGINAL-09');
+        $reversal = (new V2PostingReversalWriter())->reverse(
+            1, $original, 'JV-REVERSAL-REQUEST-09', '2026-10-31', 'Correction'
+        );
+        DB::table('finance_posting_lines')->where('posting_batch_id', $reversal)
+            ->where('project_head_subhead_id', 101)->update(['credit' => '500.00']);
+        DB::table('finance_posting_lines')->where('posting_batch_id', $reversal)
+            ->where('project_head_subhead_id', 102)->update(['debit' => '500.00']);
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('V2_REPORT_REVERSAL_NOT_EXACT_INVERSE');
+        (new V2PostingReportReader())->lines(1, '2026-10-31', '2026-10-31');
+    }
+
 }
