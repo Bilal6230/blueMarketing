@@ -301,3 +301,10 @@ Evidence ID: V2_HARDENING_32_87_LOCAL_PASS
 - **Future isolated importer corrected:** pinned source `SET SESSION time_zone='+00:00'` with restored session in `finally`; synthetic CI now imports with simulated +05:00 session and verifies source TIMESTAMP values at UTC. This applies to **new isolated imports only**; it does not retroactively repair existing records.
 - V2 reversal chronology guard now rejects an effective date earlier than original batch, covered by new regression.
 - **New code not yet independently executed by operator/CI; P4.G3 remains open.** No staging/live/V1 writes, guessed JV source claims or destructive history modifications. Formal accepted gates **8/24 = 33.3%**.
+
+### 2026-10-31 — Critical imported UTC instant parity failure; diagnostic shipped (P4.G3 BLOCKED)
+
+- Owner at `d2282d7b`: **45 tests / 159 assertions PASS**, original source SHA and `SET TIME_ZONE='+00:00'` confirmed, 120165 historic rows counted. **UTC full-row digest FAILED 41/57 original tables**; previously local `SYSTEM` display-time digest passed 57/57. Import target read only, clean git. **These are 41 differing table digests, not 41 changed rows**.
+- Original pinned 57-table schema metadata cross-check: all 41 differing tables have a source `TIMESTAMP` column (102 TIMESTAMP columns across these tables); zero timestamp-free tables in mismatch list. Other 16 tables match at UTC; further column-level proof needed.
+- Code fix: `verify_mysql_full_row_digests.php` EOF whitespace removed; added `diagnose_mysql_source_timezone_parity.php` with exact local target and source SHA guards, two-session (`+00:00`/`+05:00`) 57-table digest classification, read-only consistent transaction, no row contents/IDs; CI lints and runs selftest.
+- Source/target historical repair NOT performed or authorized. P4.G3/P4.G4/P6 remain blocked; P5 regression pilot still 45 PASS. See [UTC incident and safe diagnostic](DATABASE_V2_UTC_PARITY_EXCEPTION_2026_10_31.md). **Formal acceptance remains 8/24 (33.3%)**; Phase 4 1/4 (25%).
