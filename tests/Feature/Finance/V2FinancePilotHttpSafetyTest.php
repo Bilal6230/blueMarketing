@@ -285,7 +285,8 @@ final class V2FinancePilotHttpSafetyTest extends TestCase
             'kind' => 'journal', 'source_id' => 51,
             'request_key' => 'HTTP-SALES-AS-JV-BLOCK-01',
         ];
-        $this->postJson($base . '/postings', $invalid)->assertStatus(500);
+        $this->postJson($base . '/postings', $invalid)
+            ->assertStatus(409)->assertJsonPath('error', 'V2_POSTING_CONFLICT');
         $this->assertDatabaseCount('finance_posting_batches', 0);
 
         $payload = [
