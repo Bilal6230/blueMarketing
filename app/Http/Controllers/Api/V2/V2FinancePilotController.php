@@ -90,6 +90,26 @@ final class V2FinancePilotController extends Controller
         ]);
     }
 
+    public function exportVoucherRegister(
+        Request $request, int $projectId,
+        V2PostingGateway $gateway, V2FinanceCsvExporter $exporter
+    ): StreamedResponse {
+        $this->project($request, $projectId, false);
+        $data = $request->validate([
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'through' => ['nullable', 'date_format:Y-m-d'],
+        ]);
+        $documents = $gateway->voucherRegister(
+            $projectId, $data['from'] ?? null, $data['through'] ?? null
+        );
+        $csv = $exporter->voucherRegister($documents);
+        return response()->streamDownload(
+            static function () use ($csv): void { echo $csv; },
+            'v2-voucher-register-project-' . $projectId . '.csv',
+            ['Content-Type' => 'text/csv; charset=UTF-8']
+        );
+    }
+
     public function summary(Request $request, int $projectId, V2PostingGateway $gateway): JsonResponse
     {
         $this->project($request, $projectId, false);
