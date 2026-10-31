@@ -88,6 +88,44 @@ class V2JournalPostingWriterTest extends TestCase
         ]);
     }
 
+    public function test_isolated_jv_draft_updates_before_posting_and_locks_after(): void
+    {
+        $draft = new \App\Services\Finance\V2JournalDraftWorkflow();
+        $lines = [
+            ['account_id' => 101, 'debit' => '80.00', 'credit' => '0.00'],
+            ['account_id' => 102, 'debit' => '0.00', 'credit' => '80.00'],
+        ];
+        $draft->updateUnposted(1, 51, '2026-10-31', $lines);
+        $this->assertDatabaseHas('journal_vouchers', [
+            'id' => 51, 'date' => '2026-10-31', 'total_debit' => '80.00',
+        ]);
+        $this->assertSame(2, DB::table('journal_voucher_details')
+            ->where('journal_voucher_id', 51)->count());
+        (new V2PostingGateway())->postJournal(1, 51, 'JV-DRAFT-POST-LOCK-0001');
+        try {
+            $draft->updateUnposted(1, 51, '2026-10-31', $lines);
+            $this->fail('Posted JV must never accept direct line edits');
+        } catch (\DomainException $exception) {
+            $this->assertDatabaseCount('finance_posting_batches', 1);
+        }
+    }
+
+    public function test_isolated_jv_draft_refuses_foreign_project_without_changes(): void
+    {
+        $draft = new \App\Services\Finance\V2JournalDraftWorkflow();
+        try {
+            $draft->updateUnposted(2, 51, '2026-10-31', [
+                ['account_id' => 201, 'debit' => '30.00', 'credit' => '0.00'],
+                ['account_id' => 201, 'debit' => '0.00', 'credit' => '30.00'],
+            ]);
+            $this->fail('Foreign project JV update must fail');
+        } catch (\DomainException $exception) {
+            $this->assertDatabaseHas('journal_vouchers', [
+                'id' => 51, 'date' => '2026-10-30', 'total_debit' => '125.50',
+            ]);
+        }
+    }
+
     public function test_jv_posts_exact_detail_links_once_and_replays_safely(): void
     {
         $writer = new V2JournalPostingWriter();
