@@ -19,7 +19,7 @@ use App\Models\AccountingExpense;
 use App\Models\SubheadAccounting;
 use App\Models\ProjectHeadSubhead;
 use Illuminate\Support\Facades\DB;
-use Spatie\Permission\Models\Role;
+use App\Models\Role;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use RealRashid\SweetAlert\Facades\Alert;
@@ -29,6 +29,55 @@ use App\Repository\Lead\LeadRepository as lead_repo;
 
 class VoucherController extends Controller
 {
+    private function typedCashData(Request $request, bool $incoming)
+    {
+        $project = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($project);
+        $data = $request->validate([
+            'date_from' => ['nullable', 'date_format:Y-m-d'], 'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
+            'start' => ['sometimes', 'integer', 'min:0'], 'length' => ['sometimes', 'integer', 'min:-1', 'max:1000', 'not_in:0'],
+        ]);
+        try {
+            $rows = collect((new \App\Services\Finance\V2OriginalCashReport())->documents($project, $incoming, $data['date_from'] ?? null, $data['date_to'] ?? null));
+        } catch (\DomainException $e) { abort(409, 'Cash report integrity checks failed.'); }
+        $total = $rows->count();
+        foreach (['head_account' => 'head_ids', 'subhead_account' => 'subhead_ids'] as $input => $field) {
+            $ids = array_filter(array_map('strval', (array) $request->input($input, [])), fn ($value) => $value !== '');
+            if ($ids) { $rows = $rows->filter(fn ($row) => count(array_intersect($ids, array_map('strval', $row[$field]))) > 0); }
+        }
+        foreach (['voucher_number' => ['voucher_number'], 'search.value' => ['voucher_number', 'detail', 'head', 'subhead', 'submitted_by']] as $input => $fields) {
+            $search = trim((string) $request->input($input, ''));
+            if ($search !== '') { $rows = $rows->filter(fn ($row) => collect($fields)->contains(fn ($field) => stripos((string) $row[$field], $search) !== false)); }
+        }
+        foreach (['amount_min' => true, 'amount_max' => false] as $field => $minimum) {
+            if ($request->filled($field)) {
+                try { $limit = (int) str_replace('.', '', \App\Services\Finance\V2OriginalCustomerWorkflow::money($request->input($field))); }
+                catch (\DomainException $e) { abort(422, 'Amount filter is invalid.'); }
+                $rows = $rows->filter(fn ($row) => $minimum ? (int) str_replace('.', '', $row['amount']) >= $limit : (int) str_replace('.', '', $row['amount']) <= $limit);
+            }
+        }
+        $length = (int) ($data['length'] ?? 20) === -1 ? null : (int) ($data['length'] ?? 20);
+        $page = $rows->sortByDesc('date')->slice($data['start'] ?? 0, $length)->values()->map(function ($row) {
+            foreach (['detail', 'head', 'subhead', 'submitted_by', 'project', 'voucher_number'] as $field) { $row[$field] = e($row[$field]); }
+            return $row;
+        });
+        return response()->json(['draw' => (int) $request->input('draw', 1), 'recordsTotal' => $total,
+            'recordsFiltered' => $rows->count(), 'data' => $page,
+            'scope' => 'typed_v2_postings_only']);
+    }
+
+    public function printTypedSource($customerLedger)
+    {
+        $project = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($project);
+        $source = CustomerLedger::query()->whereKey($customerLedger)->where('project_id', $project)->firstOrFail();
+        try {
+            $lines = collect((new \App\Services\Finance\V2OriginalLedgerReport())->rows($project, null, null))
+                ->where('source_kind', 'cash')->where('source_id', $source->id)->values();
+        } catch (\DomainException $e) { abort(409, 'Voucher print integrity checks failed.'); }
+        abort_if($lines->isEmpty(), 404);
+        return view('admin.finance.voucher.typed_print', compact('source', 'lines'));
+    }
     private array $allowedPendingUpdateTables = ['ledgers', 'draft_ledgers', 'customer_ledger', 'leads'];
     private array $financePendingUpdateTables = ['ledgers', 'draft_ledgers', 'customer_ledger'];
     /**
@@ -553,6 +602,7 @@ class VoucherController extends Controller
 
     public function cash_out_data(Request $request)
     {
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) { return $this->typedCashData($request, false); }
         $selectedProjectId = getSelectedTown();
 
         // Build base query with only the necessary relationships and columns
@@ -884,6 +934,27 @@ class VoucherController extends Controller
 
     public function updatePendingBankPaymentStatus(Request $request, $customerLedger)
     {
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+            $project = (int) getSelectedTown();
+            \App\Services\Finance\V2OriginalWorkflowAccess::authorize($project);
+            $data = $request->validate([
+                'passing_status' => ['required', 'integer', 'in:1,2,3'],
+                'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
+                'bank_post_at' => ['required_if:passing_status,1', 'nullable', 'date_format:Y-m-d'],
+                'note' => ['required', 'string', 'max:1000'],
+                'posting_lines' => ['required_if:passing_status,1', 'array', 'min:2', 'max:100'],
+                'posting_lines.*.account_id' => ['required', 'integer', 'min:1'],
+                'posting_lines.*.debit' => ['required', 'regex:/^[0-9]{1,10}(?:\.[0-9]{1,2})?$/D'],
+                'posting_lines.*.credit' => ['required', 'regex:/^[0-9]{1,10}(?:\.[0-9]{1,2})?$/D'],
+            ]);
+            try {
+                $result = (new \App\Services\Finance\V2OriginalBankWorkflow())->settle(
+                    $project, (int) $customerLedger, (int) $data['passing_status'], $data['request_key'],
+                    $data['bank_post_at'] ?? '', $data['note'], $data['posting_lines'] ?? [], (int) Auth::id()
+                );
+            } catch (\DomainException $e) { abort(409, 'Bank settlement could not be posted.'); }
+            return response()->json(['status' => 'success', 'data' => $result]);
+        }
         $selectedProjectId = getSelectedTown();
         $validated = $request->validate([
             'passing_status' => 'required|in:1,2,3',
@@ -1050,6 +1121,7 @@ class VoucherController extends Controller
 
     public function cash_in_data(Request $request)
     {
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) { return $this->typedCashData($request, true); }
         $selectedProjectId = getSelectedTown();
 
         $q = Ledger::with([
@@ -1369,22 +1441,9 @@ class VoucherController extends Controller
     }
     public function updateVoucherNumber()
     {
-        Ledger::with('projectHeadSubhead:id,project_id')
-            ->orderBy('type')
-            ->orderBy('id')
-            ->chunk(500, function ($ledgers) use (&$counters) {
-
-                foreach ($ledgers as $ledger) {
-                    $projectId = $ledger->projectHeadSubhead->project_id;
-                    $type = $ledger->type;
-
-                    $counters[$projectId][$type] ??= 1;
-
-                    $ledger->update([
-                        'voucher_number' => $counters[$projectId][$type]++
-                    ]);
-                }
-            });
+        // Historical voucher numbers are accounting identities. Renumbering the
+        // whole ledger made existing JV rows appear missing or reassigned.
+        abort(410, 'Ledger voucher renumbering has been permanently disabled.');
     }
 
     private function applyVoucherSearchFilter(Builder $query, string $search)

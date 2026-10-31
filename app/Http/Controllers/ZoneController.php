@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
 
 
-use Spatie\Permission\Models\Role;
+use App\Models\Role;
 
 class ZoneController extends Controller
 {

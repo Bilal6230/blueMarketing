@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Labour extends Model
 {
+    use \App\Models\Concerns\PreservesDeletedRecords;
     use HasFactory;
      protected $fillable = [
         'name',

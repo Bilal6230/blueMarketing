@@ -74,8 +74,8 @@ final class V2JournalPostingWriter
             $lines = [];
             foreach ($rows as $detail) {
                 $accountId = (int) $detail->account_id;
-                if (!DB::table('project_head_subheads')
-                    ->where('id', $accountId)->where('project_id', $projectId)->exists()) {
+                if (!\App\Models\ProjectHeadSubhead::query()
+                    ->where('id', $accountId)->where('project_id', $projectId)->lockForUpdate()->first(['id'])) {
                     throw new \DomainException('V2_JV_ACCOUNT_PROJECT_MISMATCH');
                 }
                 $d = $this->cents($detail->debit);

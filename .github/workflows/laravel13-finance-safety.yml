@@ -65,6 +65,14 @@ jobs:
         run: |
           php artisan module:list
 
+      - name: Setup Node for posting form safety checks
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify posting form exact money and bank allocation behavior
+        run: node tests/JavaScript/original-posting-fields.test.cjs
+
       - name: PHP lint changed financial application files
         run: |
           find app/Services/Finance app/Http/Controllers/Finance app/Console/Commands -name '*.php' -print0 | xargs -0 -n1 php -l
@@ -74,6 +82,7 @@ jobs:
       - name: Database V2 isolated schema lint and import planner regression
         run: |
           find database/v2_migrations -name '*.php' -print0 | xargs -0 -n1 php -l
+          find database/workflow_migrations -name '*.php' -print0 | xargs -0 -n1 php -l
           php -l database/seeders/V2LegacyBanksSeeder.php
           php -l database/v2_migrations/2026_10_30_000020_create_v2_legacy_domain_baseline.php
           php -l app/Services/Finance/V2ModelSchemaContract.php

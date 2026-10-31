@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Validator;
 use RealRashid\SweetAlert\Facades\Alert;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
-use Spatie\Permission\Models\Role;
+use App\Models\Role;
 
 
 class AreaController extends Controller

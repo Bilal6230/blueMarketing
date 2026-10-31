@@ -20,7 +20,7 @@ use App\Models\SubheadAccounting;
 use App\Models\ProjectHeadSubhead;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Spatie\Permission\Models\Role;
+use App\Models\Role;
 use Illuminate\Support\Facades\Auth;
 use RealRashid\SweetAlert\Facades\Alert;
 use Yajra\DataTables\Facades\DataTables;
@@ -30,8 +30,70 @@ use Symfony\Component\HttpFoundation\Response;
 
 class LedgerController extends Controller
 {
+    private function typedReport(Request $request, ?string $group = null)
+    {
+        $project = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($project);
+        $data = $request->validate([
+            'start_date' => ['nullable', 'date_format:Y-m-d'],
+            'end_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:start_date'],
+        ]);
+        $report = new \App\Services\Finance\V2OriginalLedgerReport();
+        try {
+            $rows = $report->rows($project, $data['start_date'] ?? null, $data['end_date'] ?? null);
+        } catch (\DomainException $e) { abort(409, 'Ledger report integrity checks failed.'); }
+        return DataTables::of(collect($group ? $report->totals($rows, $group) : $rows))
+            ->with(['scope' => 'typed_v2_postings_only'])->toJson();
+    }
+
     public function store(Request $request)
     {
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+            $project = (int) getSelectedTown();
+            \App\Services\Finance\V2OriginalWorkflowAccess::authorize($project);
+            $data = \App\Services\Finance\V2OriginalVoucherInput::read($request);
+            $labels = $request->validate([
+                'voucher' => ['required', 'regex:/^(CR|CP)-[1-9][0-9]*$/D'],
+                'voucher_number' => ['required', 'same:voucher'],
+                'accounts_id' => ['required', 'integer'], 'subaccounts_id' => ['required', 'integer'],
+            ]);
+            $account = ProjectHeadSubhead::query()->where('project_id', $project)
+                ->where('head_accounting_id', $labels['accounts_id'])->where('subhead_accounting_id', $labels['subaccounts_id'])->first();
+            abort_unless($account, 422, 'Selected account does not belong to this project.');
+            if (str_starts_with($labels['voucher'], 'CP-') && in_array((int) $data['payment_type'], [2, 3], true)) {
+                abort_unless(Auth::user()->can('pass cheque'), 403);
+                $settlement = $request->validate([
+                    'selected_pending_payment_id' => ['required', 'integer', 'min:1'],
+                    'pending_status' => ['required', 'integer', 'in:1,2,3'],
+                    'posting_lines' => ['required_if:pending_status,1', 'array', 'min:2', 'max:100'],
+                ]);
+                $receipt = CustomerLedger::query()->whereKey($settlement['selected_pending_payment_id'])
+                    ->where('project_id', $project)->where('payment_type', $data['payment_type'])
+                    ->whereIn('transaction_type', ['CR', 'PPR'])->first();
+                abort_unless($receipt && \App\Services\Finance\V2OriginalCustomerWorkflow::money($data['amount'])
+                    === \App\Services\Finance\V2OriginalCustomerWorkflow::money(max($receipt->amount_in, $receipt->amount_out))
+                    && (string) $receipt->t_number === (string) $data['t_number'] && (int) $receipt->bank_id === (int) $data['bank_id'], 409, 'Selected receipt does not match the clearance.');
+                try {
+                    $result = (new \App\Services\Finance\V2OriginalBankWorkflow())->settle(
+                        $project, (int) $receipt->id, (int) $settlement['pending_status'], $data['request_key'],
+                        $data['passing_date'], $data['detail'], $data['posting_lines'] ?? [], (int) Auth::id()
+                    );
+                } catch (\DomainException $e) { abort(409, 'Cash-out bank clearance could not be posted.'); }
+                return response()->json(['status' => 'success', 'data' => $result + ['settled_existing_receipt' => true]]);
+            }
+            if (!in_array((int) $data['payment_type'], [2, 3], true)) {
+                abort_unless(collect($data['posting_lines'])->contains(fn ($line) => (int) $line['account_id'] === (int) $account->id), 422, 'Posting allocation must include the selected account.');
+            }
+            try {
+                $result = (new \App\Services\Finance\V2OriginalCustomerWorkflow())->create(
+                    $project, substr($labels['voucher'], 0, 2), $data['request_key'],
+                    \App\Services\Finance\V2OriginalVoucherInput::source($data), $data['posting_lines'] ?? [], (int) Auth::id()
+                );
+            } catch (\DomainException $e) {
+                abort(409, 'Cash voucher could not be posted.');
+            }
+            return response()->json(['status' => 'success', 'data' => $result]);
+        }
         $validator = Validator::make($request->all(), [
             'amount' => [
                 'required',
@@ -907,6 +969,22 @@ class LedgerController extends Controller
 
     public function update(Request $request)
     {
+        // Posted ledger legs are immutable. Editing amount/account/date in place
+        // destroys the original accounting evidence; correction must be a
+        // reversal followed by a new posting.
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'status' => 'error',
+                'error_key' => 'posted_ledger_immutable',
+                'message' => 'Posted vouchers cannot be overwritten. Reverse and repost the voucher.',
+            ], 422);
+        }
+
+        return back()->with('error', 'Posted vouchers cannot be overwritten. Reverse and repost the voucher.');
+
+        /* Legacy mutation retained temporarily below for forensic reference; it
+         * is unreachable and should not be restored as an edit workflow.
+         */
         $validator = Validator::make($request->all(), [
             'id' => ['required', 'integer'],
             'amount' => [
@@ -1072,6 +1150,9 @@ class LedgerController extends Controller
 
     public function fetch_data_url(Request $request)
     {
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+            return $this->typedReport($request);
+        }
         $selectedProjectId = getSelectedTown();
 
         $query = Ledger::with(
@@ -1180,6 +1261,9 @@ class LedgerController extends Controller
 
     public function fetch_data_by_party(Request $request)
     {
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+            return $this->typedReport($request, 'project_head_subheads_id');
+        }
         $selectedProjectId = getSelectedTown();
         $data = Ledger::with('projectHeadSubhead.project', 'projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting')
             ->where('is_active', 1)
@@ -1219,6 +1303,9 @@ class LedgerController extends Controller
 
     public function fetch_data_by_head(Request $request)
     {
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+            return $this->typedReport($request, $request->input('account_type') === 'account' ? 'acct_type' : 'head_accounting_id');
+        }
         $selectedProjectId = getSelectedTown();
         if ($request->account_type == 'account') {
             $data = Ledger::query()

@@ -8,7 +8,7 @@ use App\Models\HeadAccounting;
 use App\Models\SubheadAccounting;
 use App\Models\ProjectHeadSubhead;
 use Illuminate\Support\Facades\DB;
-use Spatie\Permission\Models\Role;
+use App\Models\Role;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;

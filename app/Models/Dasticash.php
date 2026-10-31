@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Dasticash extends Model
 {
+    use \App\Models\Concerns\PreservesDeletedRecords;
     use HasFactory;
 
     protected $table = 'dasticash';

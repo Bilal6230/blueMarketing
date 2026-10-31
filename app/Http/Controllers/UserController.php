@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-use Spatie\Permission\Models\Role;
+use App\Models\Role;
 use RealRashid\SweetAlert\Facades\Alert;
 use Symfony\Component\HttpFoundation\Response;
 

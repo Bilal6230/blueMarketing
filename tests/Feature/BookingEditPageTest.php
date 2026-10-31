@@ -268,7 +268,7 @@ class BookingEditPageTest extends TestCase
         $this->assertSame('active', $updated->status);
         $this->assertSame((int) $original->broker_id, (int) $updated->broker_id);
         $this->assertSame($accountingBefore, $this->snapshot(array_diff($this->protectedTables(), ['booking_details'])));
-        $this->assertSame(0, DB::table('booking_details')->where('booking_id', $booking->id)->count());
+        $this->assertSame(0, \App\Models\BookingDetail::where('booking_id', $booking->id)->count());
     }
 
     public function test_save_visibility_respects_effective_permissions_when_pricing_is_blocked(): void
@@ -370,7 +370,7 @@ class BookingEditPageTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $this->assertSame($newBroker, (int) $booking->fresh()->broker_id);
-        $this->assertSame(1, DB::table('booking_details')->count());
+        $this->assertSame(1, \App\Models\BookingDetail::count());
     }
 
     public function test_booking_date_only_update_preserves_schedule_and_accounting(): void
@@ -603,7 +603,7 @@ class BookingEditPageTest extends TestCase
             'journal_vouchers' => DB::table('journal_vouchers')->count(),
             'journal_voucher_details' => DB::table('journal_voucher_details')->count(),
             'ledgers' => DB::table('ledgers')->count(),
-            'booking_details' => DB::table('booking_details')->count(),
+            'booking_details' => \App\Models\BookingDetail::count(),
         ];
 
         $this->callEditController($booking->id, $this->projectId);
@@ -647,7 +647,7 @@ class BookingEditPageTest extends TestCase
         $this->assertSame(0, bccomp('6150000.00', (string) $booking->fresh()->total_price, 2));
         $this->assertSame('5150000.00', $result['new_outstanding']);
         $this->assertTrue($result['schedule_reset']);
-        $this->assertSame(0, DB::table('booking_details')->where('booking_id', $booking->id)->count());
+        $this->assertSame(0, \App\Models\BookingDetail::where('booking_id', $booking->id)->count());
         $this->assertSame($before, $this->snapshot(array_diff($this->protectedTables(), ['booking_details'])));
         $audit = DB::table('booking_edit_audits')->sole();
         $this->assertSame('booking_price_amendment', $audit->operation);
@@ -712,7 +712,7 @@ class BookingEditPageTest extends TestCase
             $this->updatePayload($booking, ['plot_rate' => '510000', 'dicount_value' => '125000', 'reason' => 'Component change', 'expected_paid_to_date' => '0.00']),
             false, true, $this->user->id);
         $this->assertFalse($sameTotal['schedule_reset']);
-        $this->assertSame(1, DB::table('booking_details')->count());
+        $this->assertSame(1, \App\Models\BookingDetail::count());
         $booking = $booking->fresh();
         $this->receipt($booking, '6000000.00', 1, null);
         $before = $this->snapshot(array_diff($this->protectedTables(), ['booking_details']));
@@ -997,16 +997,19 @@ class BookingEditPageTest extends TestCase
             $table->timestamps();
         });
         Schema::create('model_has_permissions', function (Blueprint $table) {
+            $table->softDeletes();
             $table->unsignedBigInteger('permission_id');
             $table->string('model_type');
             $table->unsignedBigInteger('model_id');
         });
         Schema::create('model_has_roles', function (Blueprint $table) {
+            $table->softDeletes();
             $table->unsignedBigInteger('role_id');
             $table->string('model_type');
             $table->unsignedBigInteger('model_id');
         });
         Schema::create('role_has_permissions', function (Blueprint $table) {
+            $table->softDeletes();
             $table->unsignedBigInteger('permission_id');
             $table->unsignedBigInteger('role_id');
         });
@@ -1031,7 +1034,7 @@ class BookingEditPageTest extends TestCase
             $t->timestamps();
         });
         Schema::create('ledgers', function(Blueprint $t){$t->id();$t->string('type')->nullable();$t->integer('type_id')->nullable();$t->integer('project_head_subheads_id')->nullable();$t->integer('customer_ledger_id')->nullable();$t->string('reference')->nullable();$t->decimal('amount_in',15,2)->default(0);$t->decimal('amount_out',15,2)->default(0);$t->string('detail')->nullable();});
-        Schema::create('booking_details', function(Blueprint $t){$t->id();$t->integer('booking_id')->nullable();$t->string('installment_details')->nullable();$t->decimal('amount',12,2)->nullable();$t->date('due_date')->nullable();$t->timestamps();});
+        Schema::create('booking_details', function(Blueprint $t){$t->id();$t->integer('booking_id')->nullable();$t->string('installment_details')->nullable();$t->decimal('amount',12,2)->nullable();$t->date('due_date')->nullable();$t->timestamps();$t->softDeletes();});
         Schema::create('booking_vouchers', function(Blueprint $t){
             $t->id();
             foreach (['booking_id', 'customer_ledger_id', 'ledger_id', 'project_id', 'customer_id', 'plot_id', 'bank_id', 'create_by', 'update_by'] as $field) $t->unsignedBigInteger($field)->nullable();

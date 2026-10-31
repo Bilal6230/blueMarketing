@@ -10,7 +10,7 @@ use App\Models\Work;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Spatie\Permission\Models\Role;
+use App\Models\Role;
 use RealRashid\SweetAlert\Facades\Alert;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;

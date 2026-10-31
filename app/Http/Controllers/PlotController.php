@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 
-use Spatie\Permission\Models\Role;
+use App\Models\Role;
 
 class PlotController extends Controller
 {

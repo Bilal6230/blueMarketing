@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Ledger extends Model
 {
+    use \App\Models\Concerns\ProtectsFinancialHistory;
     use HasFactory;
     protected $table = 'ledgers';
 
@@ -41,15 +42,26 @@ class Ledger extends Model
                     ->assertLinked($ledger->getAttributes());
             }
         });
+
+        static::updating(function (self $ledger): void {
+            // Defence in depth: controllers, jobs and future code using the
+            // model cannot renumber or reassign a posted accounting leg.
+            // A narrative correction is the only in-place change permitted.
+            $allowed = ['detail', 'update_by', 'updated_at'];
+            $forbidden = array_diff(array_keys($ledger->getDirty()), $allowed);
+            if ($forbidden !== []) {
+                throw new \DomainException('FINANCIAL_HISTORY_UPDATE_REQUIRES_REVERSAL');
+            }
+        });
     }
 
     public function projectHeadSubhead()
     {
-        return $this->belongsTo(ProjectHeadSubhead::class, 'project_head_subheads_id');
+        return $this->belongsTo(ProjectHeadSubhead::class, 'project_head_subheads_id')->withTrashed();
     }
     public function createdBy()
     {
-        return $this->belongsTo(User::class, 'create_by', 'id');
+        return $this->belongsTo(User::class, 'create_by', 'id')->withTrashed();
     }
     public function customerLedger()
     {

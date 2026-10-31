@@ -37,6 +37,7 @@
                                         <form action="{{ route('booking.customer.deposit') }}" method="POST"
                                             enctype="multipart/form-data" id="voucherForm">
                                             @csrf
+ @include('admin.finance.voucher.typed_posting_fields')
 
                                             <div class="row">
 
@@ -403,6 +404,7 @@
                                                             @can('create plot')
                                                                 <form method="POST" action="{{ route('booking.customer.deposit') }}">
                                                                     @csrf
+ @include('admin.finance.voucher.typed_posting_fields')
                                                                     <input type="hidden" name="action" value="extra_charge_payment">
                                                                     <input type="hidden" name="customer_id" value="{{ $i->customer_id }}">
                                                                     <input type="hidden" name="plot_id" value="{{ $i->plot_id }}">
@@ -426,6 +428,7 @@
                                                                     <summary>Receive Online / Cheque (pending)</summary>
                                                                     <form method="POST" action="{{ route('booking.customer.deposit') }}">
                                                                         @csrf
+ @include('admin.finance.voucher.typed_posting_fields')
                                                                         <input type="hidden" name="action" value="extra_charge_payment">
                                                                         <input type="hidden" name="customer_id" value="{{ $i->customer_id }}">
                                                                         <input type="hidden" name="plot_id" value="{{ $i->plot_id }}">
@@ -526,6 +529,7 @@
                                             @can('can approve')
                                                 <form method="POST" action="{{ route('booking.customer.deposit') }}" class="mt-2">
                                                     @csrf
+ @include('admin.finance.voucher.typed_posting_fields')
                                                     <input type="hidden" name="action" value="extra_charge_clearance">
                                                     <input type="hidden" name="extra_charge_payment_id" value="{{ $pending->id }}">
                                                     <input type="hidden" name="customer_id" value="0">
@@ -579,6 +583,7 @@
                 <div class="modal-body">
                     <form action="{{ route('charge-type.store') }}" method="POST" enctype="multipart/form-data">
                         @csrf
+ @include('admin.finance.voucher.typed_posting_fields')
                         <div class="row">
 
                             <div class="col-sm-12">
@@ -621,6 +626,7 @@
                 <div class="modal-body">
                     <form action="{{ route('ledger.update') }}" method="POST" enctype="multipart/form-data">
                         @csrf
+ @include('admin.finance.voucher.typed_posting_fields')
                         @method('PUT')
                         <div class="row">
 
@@ -791,6 +797,7 @@
                 <div class="modal-body">
                     <form action="{{ route('booking.customer.destroy') }}" method="POST" enctype="multipart/form-data">
                         @csrf
+ @include('admin.finance.voucher.typed_posting_fields')
                         @method('DELETE')
                         <p class="modal-text">Are you sure you want to delete? <b id="delete-data"></b></p>
                         <input type="hidden" name="id" id="did">
@@ -819,6 +826,7 @@
                 <div class="modal-body">
                     <form action="{{ route('booking.customer.approve') }}" method="POST" enctype="multipart/form-data">
                         @csrf
+ @include('admin.finance.voucher.typed_posting_fields')
                         @method('POST')
                         <p class="modal-text" id="msg">Are you sure you want to Approve? <b id="delete-data"></b>
                         </p>
@@ -849,6 +857,7 @@
                 <div class="modal-body">
                     <form action="{{ route('ledger.update') }}" method="POST" enctype="multipart/form-data">
                         @csrf
+ @include('admin.finance.voucher.typed_posting_fields')
                         @method('PUT')
                         <div class="row">
 

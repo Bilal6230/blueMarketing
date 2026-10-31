@@ -126,6 +126,12 @@ final class V2SourceApprovalReadiness
             }
         }
 
+        if ($reason === null && in_array($kind, ['cash', 'customer'], true)
+            && in_array((int) ($source->payment_type ?? 1), [2, 3], true)
+            && ((int) ($source->passing_status ?? 0) !== 1 || empty($source->bank_post_at))) {
+            $reason = 'BANK_CLEARANCE_REQUIRED';
+        }
+
         return [
             'project_id' => $projectId,
             'source_kind' => $kind,

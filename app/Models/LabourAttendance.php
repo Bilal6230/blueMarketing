@@ -28,7 +28,7 @@ class LabourAttendance extends Model
     ];
     public function labour()
     {
-        return $this->belongsTo(Labour::class);
+        return $this->belongsTo(Labour::class)->withTrashed();
     }
     public function site()
     {

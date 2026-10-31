@@ -14,7 +14,7 @@ use App\Models\Project;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Spatie\Permission\Models\Role;
+use App\Models\Role;
 use RealRashid\SweetAlert\Facades\Alert;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
@@ -508,7 +508,7 @@ class AccountingController extends Controller
 
         $selectedProjectId = getSelectedTown();
 
-        $x['categoryMappings'] = DB::table('project_head_subheads')
+        $x['categoryMappings'] = ProjectHeadSubhead::query()
             ->leftJoin('projects', 'projects.id', '=', 'project_head_subheads.project_id')
             ->leftJoin('head_accountings', 'head_accountings.id', '=', 'project_head_subheads.head_accounting_id')
             ->leftJoin('subhead_accountings', 'subhead_accountings.id', '=', 'project_head_subheads.subhead_accounting_id')
@@ -618,7 +618,8 @@ class AccountingController extends Controller
         ]);
 
         // Get the base record
-        $baseRecord = DB::table('project_head_subheads')->where('id', $id)->first();
+        $baseRecord = ProjectHeadSubhead::query()->where('id', $id)
+            ->where('project_id', getSelectedTown())->first();
         if (!$baseRecord) {
             return response()->json(['status' => 'error', 'message' => 'Record not found']);
         }
@@ -630,7 +631,7 @@ class AccountingController extends Controller
         DB::beginTransaction();
         try {
             // Get existing head IDs for this project + subhead
-            $existingHeadIds = DB::table('project_head_subheads')
+            $existingHeadIds = ProjectHeadSubhead::query()
                 ->where('project_id', $projectId)
                 ->where('subhead_accounting_id', $subheadId)
                 ->pluck('head_accounting_id')
@@ -651,7 +652,10 @@ class AccountingController extends Controller
             // Use first new head to update existing record
             $firstHeadId = array_shift($filteredHeads);
 
-            DB::table('project_head_subheads')
+            ProjectHeadSubhead::query()->whereKey($id)->lockForUpdate()->firstOrFail();
+            app(\App\Services\Finance\AccountMappingHistoryGuard::class)->assertUnused((int) $id);
+
+            ProjectHeadSubhead::query()
                 ->where('id', $id)
                 ->update([
                     'head_accounting_id' => $firstHeadId,
@@ -661,14 +665,14 @@ class AccountingController extends Controller
             // Insert remaining heads (if any)
             foreach ($filteredHeads as $headId) {
                 // Double-check again for duplicates (race condition safety)
-                $exists = DB::table('project_head_subheads')
+                $exists = ProjectHeadSubhead::query()
                     ->where('project_id', $projectId)
                     ->where('subhead_accounting_id', $subheadId)
                     ->where('head_accounting_id', $headId)
                     ->exists();
 
                 if (!$exists) {
-                    DB::table('project_head_subheads')->insert([
+                    ProjectHeadSubhead::query()->insert([
                         'project_id' => $projectId,
                         'subhead_accounting_id' => $subheadId,
                         'head_accounting_id' => $headId,
@@ -685,6 +689,9 @@ class AccountingController extends Controller
                 'message' => 'Head Accounts updated successfully!'
             ]);
 
+        } catch (\DomainException $e) {
+            DB::rollBack();
+            return response()->json(['status' => 'error', 'message' => 'Account has financial history and cannot be reassigned.'], 409);
         } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json([
@@ -697,15 +704,23 @@ class AccountingController extends Controller
     public function category_delete($id)
     {
         try {
-            $mapping = DB::table('project_head_subheads')->where('id', $id)->first();
-
-            if (!$mapping) {
-                return response()->json(['status' => 'error', 'message' => 'Record not found']);
+            $deleted = DB::transaction(function () use ($id): bool {
+                $mapping = ProjectHeadSubhead::query()->whereKey($id)
+                    ->where('project_id', getSelectedTown())->lockForUpdate()->first();
+                if (!$mapping) {
+                    return false;
+                }
+                app(\App\Services\Finance\AccountMappingHistoryGuard::class)->assertUnused((int) $id);
+                $mapping->delete();
+                return true;
+            });
+            if (!$deleted) {
+                return response()->json(['status' => 'error', 'message' => 'Record not found'], 404);
             }
 
-            DB::table('project_head_subheads')->where('id', $id)->delete();
-
             return response()->json(['status' => 'success', 'message' => 'Record deleted successfully!']);
+        } catch (\DomainException $e) {
+            return response()->json(['status' => 'error', 'message' => 'Account has financial history and cannot be deleted.'], 409);
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => 'Something went wrong!']);
         }

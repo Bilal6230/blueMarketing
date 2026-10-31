@@ -54,8 +54,12 @@
 </head>
 <body>
     @php
-        $voucherType = $voucher->type ?: 'JV';
-        $voucherTitle = $voucherType === 'SV' ? 'General Sales Voucher' : 'General Journal Voucher';
+        $voucherType = $sourceVoucherType ?? ($voucher->type ?: 'JV');
+        $voucherTitle = match ($voucherType) {
+            'CV' => 'General Commission Voucher',
+            'SV' => 'General Sales Voucher',
+            default => 'General Journal Voucher',
+        };
         $voucherDisplayNumber = $voucherType === 'SV'
             ? (int) $voucher->voucher_number
             : get_jv_number($voucher->voucher_number);
@@ -70,7 +74,7 @@
         <table class="table table-bordered voucher-details">
             <tr>
                 <th>Voucher No.</th>
-                <td>{{ $voucherType }}-{{ $voucherDisplayNumber }}</td>
+                <td>{{ $voucherType === 'CV' ? \App\Services\Finance\CommissionVoucherNumber::display($voucher->voucher_number) : $voucherType.'-'.$voucherDisplayNumber }}</td>
                 <th>Date</th>
                 <td>{{ $voucher->date }}</td>
             </tr>

@@ -98,14 +98,19 @@
                     </button>
                 </div>
                 <div class="modal-body">
-                    Are you sure you want to delete this Journal Voucher?
+                    Reverse this posted Journal Voucher? Its original entries will remain in history.
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                     <form id="deleteForm" method="POST">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" class="btn btn-danger">Delete</button>
+                        <input type="hidden" name="request_key" value="{{ old('request_key', (string) \Illuminate\Support\Str::uuid()) }}">
+                        <label for="reversalDate">Reversal date</label>
+                        <input id="reversalDate" type="date" name="effective_date" class="form-control mb-2" value="{{ old('effective_date', now()->toDateString()) }}" required>
+                        <label for="reversalReason">Reason</label>
+                        <input id="reversalReason" type="text" name="reason" class="form-control mb-2" maxlength="200" value="{{ old('reason') }}" required>
+                        <button type="submit" class="btn btn-danger">Reverse voucher</button>
                     </form>
                 </div>
             </div>

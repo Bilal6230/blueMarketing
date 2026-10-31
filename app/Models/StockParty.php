@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class StockParty extends Model
 {
+    use \App\Models\Concerns\PreservesDeletedRecords;
     use HasFactory;
 
     protected $table = 'stock_parties';

@@ -54,7 +54,7 @@ class BookingVoucher extends Model
 
     public function plot()
     {
-        return $this->belongsTo(Plot::class);
+        return $this->belongsTo(Plot::class)->withTrashed();
     }
 
     public function project()

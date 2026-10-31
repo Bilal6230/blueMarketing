@@ -19,7 +19,7 @@
                                         <div class="input-group">
                                             <input type="text" value="1" name="action" hidden />
                                             <input type="text" class="form-control " name="voucher_number"
-                                                value="{{ $type }}-{{ get_jv_number(getLastJvId() + 1) }}"
+                                                value="{{ \App\Services\Finance\CommissionVoucherNumber::display($nextCommissionNumber) }}"
                                                 autocomplete="off" readonly>
                                         </div>
                                     </div>

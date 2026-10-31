@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ProjectHeadSubhead extends Model
 {
+    use \App\Models\Concerns\PreservesDeletedRecords;
     use HasFactory;
 
     protected $fillable = [
@@ -32,7 +33,7 @@ class ProjectHeadSubhead extends Model
     }
     public function plot()
     {
-        return $this->belongsTo(Plot::class, 'plot_id');
+        return $this->belongsTo(Plot::class, 'plot_id')->withTrashed();
     }
     public function ledgers()
     {

@@ -11,7 +11,7 @@ use App\Models\User;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Spatie\Permission\Models\Role;
+use App\Models\Role;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -322,7 +322,8 @@ class JournalVoucherController extends Controller
 
         // Existing production databases may not have the reviewed finance metadata
         // migration. Only issue a durable retry key when both tables are present.
-        $x['financeRetryReady'] = app(\App\Services\Finance\FinancePostingSchemaGate::class)->isReady();
+        $x['financeRetryReady'] = \App\Services\Finance\V2OriginalWorkflowAccess::enabled()
+            || app(\App\Services\Finance\FinancePostingSchemaGate::class)->isReady();
         $x['financeRetryKey'] = $x['financeRetryReady']
             ? old('idempotency_key', (string) \Illuminate\Support\Str::uuid())
             : null;
@@ -410,6 +411,20 @@ class JournalVoucherController extends Controller
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'debit' => 'Total debit and credit must be equal and greater than zero.',
             ]);
+        }
+
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+            \App\Services\Finance\V2OriginalWorkflowAccess::authorize((int) $selectedProjectId);
+            $request->validate(['date' => ['required', 'date_format:Y-m-d']]);
+            try {
+                (new \App\Services\Finance\V2OriginalJournalWorkflow())->createAndPost(
+                    (int) $selectedProjectId, (string) $request->input('idempotency_key', ''),
+                    $validated, (int) Auth::id()
+                );
+            } catch (\DomainException $e) {
+                abort(409, 'Journal posting rejected to protect accounting history.');
+            }
+            return redirect()->route('journal.voucher.index')->with('success', 'Journal voucher posted successfully.');
         }
 
         // Guard the REAL posting path, not only an audit CLI: table presence
@@ -562,6 +577,7 @@ class JournalVoucherController extends Controller
         \App\Services\Finance\V2IsolatedConnectionGuard::assertAllowed();
         $projectId = (int) getSelectedTown();
         abort_if($projectId < 1, 403, 'Select a project.');
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
         $data = request()->validate([
             'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
             'effective_date' => ['required', 'date_format:Y-m-d'],
@@ -631,6 +647,7 @@ class JournalVoucherController extends Controller
         }
         $projectId = (int) getSelectedTown();
         abort_if($projectId < 1, 403, 'Select a project.');
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
         $accounts = ProjectHeadSubhead::where('project_id', $projectId)
             ->whereIn('id', $data['sub_accounts'])
             ->get(['id', 'head_accounting_id'])->keyBy('id');

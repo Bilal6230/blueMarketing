@@ -30,6 +30,6 @@ final class FinancePostingLine extends Model
 
     public function account(): BelongsTo
     {
-        return $this->belongsTo(ProjectHeadSubhead::class, 'project_head_subhead_id');
+        return $this->belongsTo(ProjectHeadSubhead::class, 'project_head_subhead_id')->withTrashed();
     }
 }

@@ -10,8 +10,8 @@ use App\Models\PendingUpdate;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
+use App\Models\Role;
+use App\Models\Permission;
 use RealRashid\SweetAlert\Facades\Alert;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
@@ -173,23 +173,7 @@ class LeadController extends Controller
                 abort(404);
             }
 
-            $leadAssignments = DB::table('lead_user')
-                ->where('lead_id', $lead->id)
-                ->lockForUpdate()
-                ->get();
-
-            $alreadyAssigned = $leadAssignments->contains(function ($assignment) use ($requestedUserId) {
-                return (int) $assignment->user_id === $requestedUserId;
-            });
-
-            if (!$alreadyAssigned) {
-                DB::table('lead_user')->insert([
-                    'lead_id' => $lead->id,
-                    'user_id' => $requestedUserId,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
+            $lead->users()->syncWithoutDetaching([$requestedUserId]);
 
             $lockedPending->update([
                 'status' => 'approved',

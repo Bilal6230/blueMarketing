@@ -44,6 +44,42 @@ class StockController extends Controller
         return view('admin.stock.index', $x);
     }
 
+    public function approveFinance(Request $request, string $kind, int $id)
+    {
+        $projectId = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+        $data = $request->validate([
+            'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
+            'evidence_reference' => ['required', 'string', 'min:12', 'max:128'],
+            'posting_lines' => ['required', 'array', 'min:2', 'max:100'],
+            'posting_lines.*.account_id' => ['required', 'integer', 'min:1'],
+            'posting_lines.*.debit' => ['required', 'regex:/^\d{1,9}(?:\.[0-9]{1,2})?$/D'],
+            'posting_lines.*.credit' => ['required', 'regex:/^\d{1,9}(?:\.[0-9]{1,2})?$/D'],
+        ]);
+        try {
+            $batch = (new \App\Services\Finance\V2StockApprovalWorkflow())->approveAndPost(
+                $projectId, $kind, $id, $data['request_key'], $data['evidence_reference'],
+                $data['posting_lines'], (int) Auth::id()
+            );
+        } catch (\DomainException $e) {
+            abort(409, 'Stock approval rejected to protect accounting history.');
+        }
+        return response()->json(['status' => 'success', 'posting_batch_id' => $batch]);
+    }
+
+    private function lockStockMasters(int $partyId, array $itemIds)
+    {
+        if (!StockParty::query()->whereKey($partyId)->lockForUpdate()->first(['id'])) {
+            throw new HttpException(422, 'Stock party is missing or archived.');
+        }
+        $items = StockItem::query()->whereIn('id', $itemIds)->orderBy('id')->lockForUpdate()
+            ->get(['id', 'name', 'unit'])->keyBy('id');
+        if ($items->count() !== count(array_unique($itemIds))) {
+            throw new HttpException(422, 'Stock item is missing or archived.');
+        }
+        return $items;
+    }
+
     /* ============================================================
      * META
      * ============================================================ */
@@ -717,61 +753,17 @@ class StockController extends Controller
 
         try {
             DB::transaction(function () use ($item) {
-                $entryIds = DB::table('stock_entry_lines')
-                    ->where('item_id', $item->id)
-                    ->pluck('entry_id')
-                    ->unique()
-                    ->values();
-
-                $billIds = DB::table('stock_bill_lines')
-                    ->where('item_id', $item->id)
-                    ->pluck('bill_id')
-                    ->unique()
-                    ->values();
-
-                $affectedItemIds = collect();
-                if ($entryIds->isNotEmpty()) {
-                    $affectedItemIds = $affectedItemIds->merge(
-                        DB::table('stock_entry_lines')
-                            ->whereIn('entry_id', $entryIds)
-                            ->pluck('item_id')
-                    );
+                StockItem::query()->whereKey($item->id)->lockForUpdate()->firstOrFail();
+                if (DB::table('stock_entry_lines')->where('item_id', $item->id)->exists()
+                    || DB::table('stock_bill_lines')->where('item_id', $item->id)->exists()
+                    || DB::table('stock_movements')->where('item_id', $item->id)->exists()
+                    || DB::table('stock_item_balances')->where('item_id', $item->id)->exists()) {
+                    throw new \DomainException('STOCK_ITEM_HAS_HISTORY');
                 }
-                if ($billIds->isNotEmpty()) {
-                    $affectedItemIds = $affectedItemIds->merge(
-                        DB::table('stock_bill_lines')
-                            ->whereIn('bill_id', $billIds)
-                            ->pluck('item_id')
-                    );
-                }
-                $affectedItemIds = $affectedItemIds->unique()->reject(function ($id) use ($item) {
-                    return (int) $id === (int) $item->id;
-                })->values();
-
-                if ($entryIds->isNotEmpty()) {
-                    DB::table('stock_movements')
-                        ->where('source_type', 'entry')
-                        ->whereIn('source_id', $entryIds)
-                        ->delete();
-                    DB::table('stock_entry_lines')->whereIn('entry_id', $entryIds)->delete();
-                    DB::table('stock_entries')->whereIn('id', $entryIds)->delete();
-                }
-
-                if ($billIds->isNotEmpty()) {
-                    DB::table('stock_movements')
-                        ->where('source_type', 'bill')
-                        ->whereIn('source_id', $billIds)
-                        ->delete();
-                    DB::table('stock_bill_lines')->whereIn('bill_id', $billIds)->delete();
-                    DB::table('stock_bills')->whereIn('id', $billIds)->delete();
-                }
-
-                DB::table('stock_item_balances')->where('item_id', $item->id)->delete();
-
                 $item->delete();
-
-                $this->rebuildBalances($affectedItemIds->all());
             });
+        } catch (\DomainException $e) {
+            return $this->errorResponse('stock_history_exists', 'Item has stock history and cannot be deleted.', 409);
         } catch (\Throwable $e) {
             report($e);
             return $this->errorResponse('server_error', 'Unable to delete item.', 500);
@@ -833,59 +825,16 @@ class StockController extends Controller
 
         try {
             DB::transaction(function () use ($party) {
-                $entryIds = DB::table('stock_entries')
-                    ->where('party_id', $party->id)
-                    ->pluck('id')
-                    ->unique()
-                    ->values();
-
-                $billIds = DB::table('stock_bills')
-                    ->where('party_id', $party->id)
-                    ->pluck('id')
-                    ->unique()
-                    ->values();
-
-                $affectedItemIds = collect();
-                if ($entryIds->isNotEmpty()) {
-                    $affectedItemIds = $affectedItemIds->merge(
-                        DB::table('stock_entry_lines')
-                            ->whereIn('entry_id', $entryIds)
-                            ->pluck('item_id')
-                    );
+                StockParty::query()->whereKey($party->id)->lockForUpdate()->firstOrFail();
+                if (DB::table('stock_entries')->where('party_id', $party->id)->exists()
+                    || DB::table('stock_bills')->where('party_id', $party->id)->exists()
+                    || DB::table('stock_movements')->where('party_id', $party->id)->exists()) {
+                    throw new \DomainException('STOCK_PARTY_HAS_HISTORY');
                 }
-                if ($billIds->isNotEmpty()) {
-                    $affectedItemIds = $affectedItemIds->merge(
-                        DB::table('stock_bill_lines')
-                            ->whereIn('bill_id', $billIds)
-                            ->pluck('item_id')
-                    );
-                }
-                $affectedItemIds = $affectedItemIds->unique()->values();
-
-                if ($entryIds->isNotEmpty()) {
-                    DB::table('stock_movements')
-                        ->where('source_type', 'entry')
-                        ->whereIn('source_id', $entryIds)
-                        ->delete();
-                    DB::table('stock_entry_lines')->whereIn('entry_id', $entryIds)->delete();
-                    DB::table('stock_entries')->whereIn('id', $entryIds)->delete();
-                }
-
-                if ($billIds->isNotEmpty()) {
-                    DB::table('stock_movements')
-                        ->where('source_type', 'bill')
-                        ->whereIn('source_id', $billIds)
-                        ->delete();
-                    DB::table('stock_bill_lines')->whereIn('bill_id', $billIds)->delete();
-                    DB::table('stock_bills')->whereIn('id', $billIds)->delete();
-                }
-
                 $party->delete();
-
-                if ($affectedItemIds->isNotEmpty()) {
-                    $this->rebuildBalances($affectedItemIds->all());
-                }
             });
+        } catch (\DomainException $e) {
+            return $this->errorResponse('stock_history_exists', 'Party has stock history and cannot be deleted.', 409);
         } catch (\Throwable $e) {
             report($e);
             return $this->errorResponse('server_error', 'Unable to delete party.', 500);
@@ -945,6 +894,9 @@ class StockController extends Controller
 
     public function storeEntry(Request $request)
     {
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+            \App\Services\Finance\V2OriginalWorkflowAccess::authorize((int) getSelectedTown());
+        }
         $validator = Validator::make($request->all(), [
             'date' => ['required', 'date'],
             'party_id' => ['required', 'integer', 'exists:stock_parties,id'],
@@ -972,7 +924,8 @@ class StockController extends Controller
         $itemNames = $itemMeta->mapWithKeys(fn($it) => [(int) $it->id => $it->name])->toArray();
 
         try {
-            $result = DB::transaction(function () use ($data, $flow, $linesInput, $itemNames) {
+            $result = DB::transaction(function () use ($data, $flow, $linesInput, $itemNames, $itemMeta) {
+                $itemMeta = $this->lockStockMasters((int) $data['party_id'], array_column($linesInput, 'item_id'));
                 $now = now();
 
                 $lines = [];
@@ -1085,12 +1038,16 @@ class StockController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => $result,
-            'message' => 'Entry saved.',
+            'message' => \App\Services\Finance\V2OriginalWorkflowAccess::selected()
+                ? 'Entry saved. Finance approval is required.' : 'Entry saved.',
         ]);
     }
 
     public function storeBill(Request $request)
     {
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+            \App\Services\Finance\V2OriginalWorkflowAccess::authorize((int) getSelectedTown());
+        }
         $validator = Validator::make($request->all(), [
             'type' => ['required', Rule::in(['purchase', 'sale'])],
             'date' => ['required', 'date'],
@@ -1126,7 +1083,8 @@ class StockController extends Controller
         }
 
         try {
-            $result = DB::transaction(function () use ($data, $direction, $linesInput, $itemNames, $entryId) {
+            $result = DB::transaction(function () use ($data, $direction, $linesInput, $itemNames, $itemMeta, $entryId) {
+                $itemMeta = $this->lockStockMasters((int) $data['party_id'], array_column($linesInput, 'item_id'));
                 $now = now();
 
                 $lines = [];
@@ -1244,12 +1202,17 @@ class StockController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => $result,
-            'message' => 'Bill saved.',
+            'message' => \App\Services\Finance\V2OriginalWorkflowAccess::selected()
+                ? 'Bill saved. Finance approval is required.' : 'Bill saved.',
         ]);
     }
 
     private function postEntryLedger(StockEntry $entry, string $flow, int $totalMinor, string $entryDate, array $lines): void
     {
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+            \App\Services\Finance\V2OriginalWorkflowAccess::authorize((int) getSelectedTown());
+            return; // Inventory source is saved; finance needs separate evidence-backed approval.
+        }
         $reference = 'STOCK-ENTRY:' . $entry->id;
         $ledgerType = 'JV';
         $amount = $this->minorToLedgerAmount($totalMinor);
@@ -1380,6 +1343,10 @@ class StockController extends Controller
 
     private function postBillLedger(StockBill $bill, string $billType, int $totalMinor, string $billDate, array $lines): void
     {
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+            \App\Services\Finance\V2OriginalWorkflowAccess::authorize((int) getSelectedTown());
+            return;
+        }
         $projectId = (int) getSelectedTown();
         if ($projectId <= 0) {
             throw new \DomainException('PROJECT_CONTEXT_MISSING');

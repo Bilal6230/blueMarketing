@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class DraftLedger extends Model
 {
+    use \App\Models\Concerns\PreservesDeletedRecords;
     use HasFactory;
     protected $fillable = [
         // Customer Ledger Fields
@@ -41,10 +42,10 @@ class DraftLedger extends Model
     ];
     public function projectHeadSubhead()
     {
-        return $this->belongsTo(ProjectHeadSubhead::class, 'project_head_subheads_id');
+        return $this->belongsTo(ProjectHeadSubhead::class, 'project_head_subheads_id')->withTrashed();
     }
     public function createdBy()
     {
-        return $this->belongsTo(User::class, 'create_by', 'id');
+        return $this->belongsTo(User::class, 'create_by', 'id')->withTrashed();
     }
 }

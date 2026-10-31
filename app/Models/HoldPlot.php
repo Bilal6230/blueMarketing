@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class HoldPlot extends Model
 {
+    use \App\Models\Concerns\PreservesDeletedRecords;
     use HasFactory;
         protected $fillable = [
         'plot_id',
@@ -16,11 +17,11 @@ class HoldPlot extends Model
 
     public function plot()
     {
-        return $this->belongsTo(Plot::class);
+        return $this->belongsTo(Plot::class)->withTrashed();
     }
 
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withTrashed();
     }
 }

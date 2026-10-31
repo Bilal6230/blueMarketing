@@ -63,7 +63,7 @@ final class V2CommissionDraftWorkflow
 
     public function createDraft(
         int $projectId, string $number, string $date, array $lines,
-        ?int $actorId = null
+        ?int $actorId = null, array $metadata = []
     ): int {
         V2IsolatedConnectionGuard::assertAllowed();
         if ($projectId < 1 || !preg_match('/^[A-Za-z0-9_-]{1,64}$/D', $number)
@@ -76,7 +76,8 @@ final class V2CommissionDraftWorkflow
                 throw new \RuntimeException('V2_CV_MISSING_SCHEMA');
             }
         }
-        return DB::transaction(function () use ($projectId, $number, $date, $lines, $actorId): int {
+        $metadata = array_intersect_key($metadata, array_flip(['reference', 'description']));
+        return DB::transaction(function () use ($projectId, $number, $date, $lines, $actorId, $metadata): int {
             if (!DB::table('projects')->where('id', $projectId)->lockForUpdate()->exists()) {
                 throw new \DomainException('V2_CV_PROJECT_MISSING');
             }
@@ -85,7 +86,7 @@ final class V2CommissionDraftWorkflow
                 ->where('voucher_number', $number)->exists()) {
                 throw new \DomainException('V2_CV_NUMBER_CONFLICT');
             }
-            $id = DB::table('commision_vouchers')->insertGetId([
+            $id = DB::table('commision_vouchers')->insertGetId($metadata + [
                 'project_id' => $projectId, 'voucher_number' => $number,
                 'date' => $date, 'total_debit' => $amount, 'total_credit' => $amount,
                 'status' => 'draft', 'created_by' => $actorId,
@@ -105,7 +106,7 @@ final class V2CommissionDraftWorkflow
      * The project row serializes competing edits and approval attempts.
      */
     public function updateDraft(
-        int $projectId, int $sourceId, string $date, array $lines
+        int $projectId, int $sourceId, string $date, array $lines, array $metadata = []
     ): void {
         V2IsolatedConnectionGuard::assertAllowed();
         $d = \DateTimeImmutable::createFromFormat('!Y-m-d', $date);
@@ -113,7 +114,8 @@ final class V2CommissionDraftWorkflow
             throw new \DomainException('V2_CV_INVALID_HEADER');
         }
 
-        DB::transaction(function () use ($projectId, $sourceId, $date, $lines): void {
+        $metadata = array_intersect_key($metadata, array_flip(['reference', 'description']));
+        DB::transaction(function () use ($projectId, $sourceId, $date, $lines, $metadata): void {
             if (!DB::table('projects')->where('id', $projectId)->lockForUpdate()->exists()) {
                 throw new \DomainException('V2_CV_PROJECT_MISSING');
             }
@@ -127,14 +129,15 @@ final class V2CommissionDraftWorkflow
             }
             [$prepared, $amount] = $this->lines($projectId, $lines);
             DB::table('commision_voucher_details')
-                ->where('commision_voucher_id', $sourceId)->delete();
+                ->where('commision_voucher_id', $sourceId)->whereNull('deleted_at')
+                ->update(['deleted_at' => now(), 'updated_at' => now()]);
             foreach ($prepared as $line) {
                 DB::table('commision_voucher_details')->insert($line + [
                     'commision_voucher_id' => $sourceId,
                     'created_at' => now(), 'updated_at' => now(),
                 ]);
             }
-            DB::table('commision_vouchers')->where('id', $sourceId)->update([
+            DB::table('commision_vouchers')->where('id', $sourceId)->update($metadata + [
                 'date' => $date, 'total_debit' => $amount, 'total_credit' => $amount,
                 'updated_at' => now(),
             ]);
@@ -177,6 +180,14 @@ final class V2CommissionDraftWorkflow
             if (!$source || $source->deleted_at !== null
                 || !in_array($source->status, ['draft', 'approved'], true)) {
                 throw new \DomainException('V2_CV_NOT_APPROVABLE');
+            }
+            if (Schema::hasTable('ledgers') && DB::table('ledgers')->where('type', 'JV')
+                ->where(function ($query) use ($sourceId): void {
+                    $query->where('type_id', $sourceId)->orWhereIn('type_id',
+                        DB::table('commision_voucher_details')->select('id')->where('commision_voucher_id', $sourceId));
+                })->exists()) {
+                // A collision is a reason to refuse, never proof of ownership.
+                throw new \DomainException('V2_CV_AMBIGUOUS_LEGACY_POSTING');
             }
             if ($source->status === 'draft') {
                 DB::table('commision_vouchers')->where('id', $sourceId)

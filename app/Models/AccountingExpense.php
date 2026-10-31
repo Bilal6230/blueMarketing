@@ -19,6 +19,6 @@ class AccountingExpense extends Model
     ];
     public function projectHeadSubhead()
     {
-        return $this->belongsTo(ProjectHeadSubhead::class, 'project_head_subheads_id');
+        return $this->belongsTo(ProjectHeadSubhead::class, 'project_head_subheads_id')->withTrashed();
     }
 }

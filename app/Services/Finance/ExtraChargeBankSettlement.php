@@ -60,6 +60,7 @@ final class ExtraChargeBankSettlement
      */
     public function balances(CustomerLedger $charge): array
     {
+        if (V2OriginalWorkflowAccess::selected()) { return (new V2ExtraChargeBalance())->read($charge); }
         $due = $this->cents($charge->amount_in);
         $paid = 0;
         $pending = 0;

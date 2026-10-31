@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Concerns\PreservesDeletedRecords as SoftDeletes;
 
 class JournalVoucherDetail extends Model
 {
@@ -47,6 +47,6 @@ class JournalVoucherDetail extends Model
      */
     public function account()
     {
-        return $this->belongsTo(ProjectHeadSubhead::class, 'account_id');
+        return $this->belongsTo(ProjectHeadSubhead::class, 'account_id')->withTrashed();
     }
 }

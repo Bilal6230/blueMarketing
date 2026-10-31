@@ -352,7 +352,7 @@ class SettingHelper
 
     public static function is_schedule($id = null)
     {
-        $totalAmount = DB::table('booking_details')
+        $totalAmount = \App\Models\BookingDetail::query()
         ->where('booking_id', $id)
         ->sum('amount');
 

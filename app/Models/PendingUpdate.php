@@ -26,7 +26,7 @@ class PendingUpdate extends Model
     
     public function submittedBy()
     {
-        return $this->belongsTo(User::class, 'submitted_by');
+        return $this->belongsTo(User::class, 'submitted_by')->withTrashed();
     }
 
     /**
@@ -34,6 +34,6 @@ class PendingUpdate extends Model
      */
     public function approvedBy()
     {
-        return $this->belongsTo(User::class, 'approved_by');
+        return $this->belongsTo(User::class, 'approved_by')->withTrashed();
     }
 }

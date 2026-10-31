@@ -70,6 +70,11 @@ final class V2StockSourceSnapshot
             throw new \DomainException('V2_STOCK_BILL_LINES_TOTAL_MISMATCH');
         }
         $date = $isEntry ? (string) $source->entry_date : (string) $source->bill_date;
+        // Eloquent's DATE cast stores midnight text in SQLite; MySQL DATE
+        // returns Y-m-d. Both represent the same business calendar date.
+        if (preg_match('/^\d{4}-\d{2}-\d{2} 00:00:00$/D', $date)) {
+            $date = substr($date, 0, 10);
+        }
         $series = $isEntry
             ? (($source->flow === 'IN') ? 'ST-IN' : (($source->flow === 'OUT') ? 'ST-OUT' : null))
             : (($source->type === 'purchase') ? 'SB-PUR' : (($source->type === 'sale') ? 'SB-SALE' : null));

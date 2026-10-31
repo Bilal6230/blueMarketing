@@ -34,6 +34,7 @@
                                     <div>
                                         <form action="{{ route('ledger.store') }}" method="POST" enctype="multipart/form-data" id="voucherForm">
                                             @csrf
+ @include('admin.finance.voucher.typed_posting_fields')
 
                                             <div class="row">
 

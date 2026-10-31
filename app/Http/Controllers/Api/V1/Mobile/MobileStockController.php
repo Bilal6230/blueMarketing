@@ -25,6 +25,28 @@ class MobileStockController extends BaseMobileController
 {
     use ResolvesMobileProjectAccess;
 
+    public function approveFinance(Request $request, string $kind, int $sourceId): JsonResponse
+    {
+        $projectId = (int) $this->resolveStockProjectId($request, $request->user(), true);
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+        $data = $request->validate([
+            'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
+            'evidence_reference' => ['required', 'string', 'min:12', 'max:128'],
+            'posting_lines' => ['required', 'array', 'min:2', 'max:100'],
+            'posting_lines.*.account_id' => ['required', 'integer', 'min:1'],
+            'posting_lines.*.debit' => ['required', 'regex:/^\d{1,9}(?:\.[0-9]{1,2})?$/D'],
+            'posting_lines.*.credit' => ['required', 'regex:/^\d{1,9}(?:\.[0-9]{1,2})?$/D'],
+        ]);
+        try {
+            $batch = (new \App\Services\Finance\V2StockApprovalWorkflow())->approveAndPost(
+                $projectId, $kind, $sourceId, $data['request_key'], $data['evidence_reference'], $data['posting_lines'], (int) $request->user()->id
+            );
+        } catch (\DomainException $e) {
+            return $this->errorResponse('posting_conflict', 'Stock approval could not be posted.', 409);
+        }
+        return $this->successResponse('Stock finance approved and posted.', ['posting_batch_id' => $batch]);
+    }
+
     public function meta(Request $request)
     {
         $this->authorizeStockRead($request->user());
@@ -401,6 +423,9 @@ class MobileStockController extends BaseMobileController
         ]);
 
         $projectId = $this->resolveStockProjectId($request, $user, true);
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+            \App\Services\Finance\V2OriginalWorkflowAccess::authorize((int) $projectId);
+        }
         $linesInput = $validated['lines'];
         $itemIds = collect($linesInput)->pluck('item_id')->unique()->values()->all();
         $itemMeta = StockItem::query()
@@ -430,6 +455,14 @@ class MobileStockController extends BaseMobileController
 
         try {
             $result = DB::transaction(function () use ($validated, $flow, $linesInput, $itemMeta, $itemNames, $user, $projectId) {
+                if (!StockParty::query()->whereKey($validated['party_id'])->where('is_active', 1)->lockForUpdate()->first(['id'])) {
+                    throw new HttpException(422, 'Stock party is missing or archived.');
+                }
+                $itemMeta = StockItem::query()->whereIn('id', array_column($linesInput, 'item_id'))
+                    ->where('is_active', 1)->orderBy('id')->lockForUpdate()->get(['id', 'name', 'unit'])->keyBy('id');
+                if ($itemMeta->count() !== count(array_unique(array_column($linesInput, 'item_id')))) {
+                    throw new HttpException(422, 'Stock item is missing or archived.');
+                }
                 $now = now();
                 $lines = [];
                 $totalsByItem = [];
@@ -545,6 +578,9 @@ class MobileStockController extends BaseMobileController
         $message = $flow === 'IN'
             ? 'Stock in entry saved successfully.'
             : 'Stock out entry saved successfully.';
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+            $message .= ' Finance approval is required.';
+        }
 
         return $this->successResponse($message, $result, [
             'selected_project_id' => $projectId,
@@ -902,6 +938,10 @@ class MobileStockController extends BaseMobileController
         int $projectId,
         int $userId
     ): void {
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+            \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+            return;
+        }
         if ($projectId <= 0) {
             throw new \DomainException('PROJECT_CONTEXT_MISSING');
         }

@@ -936,6 +936,7 @@
                             <button class="btn" id="voucherBtnSiteRun">Run</button>
                             <form action="" method="post" id="createVoucherForm">
                                 @csrf
+                                @include('admin.finance.voucher.typed_posting_fields', ['includePostingDate' => true])
                                 <input type="hidden" name="attendance_ids" id="attendance_ids" required>
                                 <input type="hidden" name="start_date" id="startDateV">
                                 <input type="hidden" name="end_date" id="endDateV">
@@ -1030,6 +1031,12 @@
                         </button>
                     </div>
                     <div id="personHeader" class="row" style="margin-bottom:10px"></div>
+                    @if(\App\Services\Finance\V2OriginalWorkflowAccess::enabled())
+                        <form id="typedPayrollFields">
+                            <input type="hidden" name="amount" value="0.00">
+                            @include('admin.finance.voucher.typed_posting_fields', ['includePostingDate' => true])
+                        </form>
+                    @endif
                     {{-- <div style="margin-top:14px" class="help">On first load, all labours are listed below. Use search to
                         pick someone.</div> --}}
                     <div style="margin-top:8px" class="table-scroll max-height">
@@ -1784,6 +1791,7 @@
                 }).then((result) => {
                     if (result.isConfirmed) {
 
+                        if (window.syncOriginalPostingForm) window.syncOriginalPostingForm($('#createVoucherForm')[0]);
                         let formData = $('#createVoucherForm').serialize();
 
                         $.ajax({
@@ -2832,6 +2840,13 @@
                             url: "{{ route('labours.payment') }}",
                             type: "POST",
                             data: {
+                                ...(() => {
+                                    const form = document.getElementById('typedPayrollFields');
+                                    if (!form || !window.originalPostingPayload) return {};
+                                    const total = window.originalPostingTotal(allLabours.map(worker => worker.amount));
+                                    form.querySelector('[name="amount"]').value = total || '';
+                                    return window.originalPostingPayload(form);
+                                })(),
                                 labours: allLabours,
                                 week: week,
                                 start_date: start_date,
@@ -2868,6 +2883,9 @@
 
                                 if (res.view) {
                                     $('#personAllBody').html(res.view);
+                                } else if (res.data?.posting_batch_id) {
+                                    $('#btnPersonRun').trigger('click');
+                                    window.refreshOriginalPostingKey?.(document.getElementById('typedPayrollFields'));
                                 }
 
                                 $('.labour_amount').val('');

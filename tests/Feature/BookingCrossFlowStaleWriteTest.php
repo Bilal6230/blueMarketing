@@ -85,7 +85,7 @@ class BookingCrossFlowStaleWriteTest extends TestCase
 
         $this->callSchedule('5000000.00');
 
-        $rows = DB::table('booking_details')->where('booking_id', $this->booking->id)->orderBy('id')->get();
+        $rows = \App\Models\BookingDetail::where('booking_id', $this->booking->id)->orderBy('id')->get();
         $this->assertCount(3, $rows);
         $this->assertNotContains('Existing', $rows->pluck('installment_details')->all());
         $this->assertSame(0, bccomp((string) $rows->sum('amount'), '5000000.00', 2));
@@ -236,7 +236,7 @@ class BookingCrossFlowStaleWriteTest extends TestCase
         Schema::create('leads', function (Blueprint $t) {$t->id();$t->integer('project_id');$t->string('first_name');$t->string('last_name')->nullable();$t->string('nic_number')->nullable();$t->string('phone_number')->nullable();});
         Schema::create('plots', function (Blueprint $t) {$t->id();$t->integer('project_id');$t->string('name');$t->integer('sold');$t->timestamps();});
         Schema::create('bookings', function (Blueprint $t) {$t->id();$t->integer('project_id');$t->integer('customer_id');$t->integer('plot_id');$t->integer('plot_type');$t->string('plot_size');$t->decimal('plot_rate',10,2);$t->integer('is_corner');$t->integer('is_park');$t->decimal('park_facing',10,2);$t->decimal('carner_price',10,2);$t->decimal('dicount_value',10,2);$t->decimal('total_price',10,2);$t->integer('broker_id')->nullable();$t->dateTime('booking_date');$t->string('status');$t->integer('user_id');$t->string('cancel_status');$t->timestamps();$t->softDeletes();});
-        Schema::create('booking_details', function (Blueprint $t) {$t->id();$t->integer('booking_id');$t->string('installment_details');$t->decimal('amount',10,2);$t->date('due_date');$t->timestamps();});
+        Schema::create('booking_details', function (Blueprint $t) {$t->id();$t->integer('booking_id');$t->string('installment_details');$t->decimal('amount',10,2);$t->date('due_date');$t->timestamps();$t->softDeletes();});
         Schema::create('head_accountings', function (Blueprint $t) {$t->id();$t->string('name');$t->integer('is_active');$t->integer('acct_type');$t->integer('create_by')->nullable();$t->timestamps();});
         Schema::create('project_head_subheads', function (Blueprint $t) {$t->id();$t->integer('project_id');$t->integer('head_accounting_id');$t->integer('subhead_accounting_id');$t->integer('plot_id')->nullable();$t->integer('customer_id')->nullable();$t->timestamps();});
         Schema::create('journal_vouchers', function (Blueprint $t) {$t->id();$t->integer('voucher_number');$t->string('type');$t->string('reference');$t->date('date');$t->text('description');$t->decimal('total_debit',10,2);$t->decimal('total_credit',10,2);$t->integer('project_id');$t->integer('created_by')->nullable();$t->string('status');$t->timestamps();$t->softDeletes();});

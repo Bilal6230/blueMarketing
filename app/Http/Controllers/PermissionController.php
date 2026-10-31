@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Nwidart\Modules\Facades\Module;
 use RealRashid\SweetAlert\Facades\Alert;
-use Spatie\Permission\Models\Permission;
+use App\Models\Permission;
 use Symfony\Component\HttpFoundation\Response;
 
 class PermissionController extends Controller

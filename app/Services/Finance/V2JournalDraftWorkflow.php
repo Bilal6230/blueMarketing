@@ -31,7 +31,18 @@ final class V2JournalDraftWorkflow
                 || DB::table('finance_posting_journal_sources')
                     ->where('journal_voucher_id', $sourceId)->exists()
                 || (Schema::hasTable('ledgers') && DB::table('ledgers')
-                    ->where('type', 'JV')->where('type_id', $sourceId)->exists())) {
+                    ->where(function ($query) use ($sourceId): void {
+                        $query->where(function ($legacy) use ($sourceId): void {
+                            $legacy->where('type', 'JV')->where('type_id', $sourceId);
+                        });
+                        // Exact provenance takes precedence over legacy labels:
+                        // even a misclassified ledger must keep its linked detail.
+                        if (Schema::hasColumn('ledgers', 'journal_voucher_detail_id')) {
+                            $query->orWhereIn('journal_voucher_detail_id',
+                                DB::table('journal_voucher_details')->select('id')
+                                    ->where('journal_voucher_id', $sourceId));
+                        }
+                    })->exists())) {
                 throw new \DomainException('V2_JV_DRAFT_IMMUTABLE');
             }
             $prepared = [];
@@ -69,7 +80,8 @@ final class V2JournalDraftWorkflow
                 throw new \DomainException('V2_JV_DRAFT_NOT_BALANCED');
             }
             DB::table('journal_voucher_details')
-                ->where('journal_voucher_id', $sourceId)->delete();
+                ->where('journal_voucher_id', $sourceId)->whereNull('deleted_at')
+                ->update(['deleted_at' => now()]);
             DB::table('journal_voucher_details')->insert($prepared);
             DB::table('journal_vouchers')->where('id', $sourceId)->update([
                 'date' => $date, 'total_debit' => $this->money($debit),

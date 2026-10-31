@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 class CustomerLedger extends Model
 {
+    use \App\Models\Concerns\ProtectsFinancialHistory;
     use HasFactory;
 
     protected $table = 'customer_ledger';
@@ -55,6 +57,25 @@ class CustomerLedger extends Model
                         (string) $source->reference);
             }
         });
+
+        static::updating(function (self $source): void {
+            if (!Schema::hasTable('ledgers') || !Ledger::query()
+                ->where('customer_ledger_id', $source->getKey())->exists()) {
+                return;
+            }
+
+            // Once a source owns a posted ledger leg its accounting identity
+            // and value are immutable. Clearance/approval/narrative fields can
+            // still progress without rewriting the original posting.
+            $immutable = [
+                'project_id', 'customer_id', 'plot_id', 'type_id', 'reference',
+                'date', 'transaction_type', 'amount_in', 'amount_out',
+                'payment_type', 't_number', 'bank_id', 'passing_date',
+            ];
+            if (array_intersect(array_keys($source->getDirty()), $immutable) !== []) {
+                throw new \DomainException('FINANCIAL_SOURCE_UPDATE_REQUIRES_REVERSAL');
+            }
+        });
     }
 
     public function addCheckHistory(array $checkDetails)
@@ -90,7 +111,7 @@ class CustomerLedger extends Model
 
     public function plot_list()
     {
-        return $this->belongsTo(Plot::class, 'plot_id');
+        return $this->belongsTo(Plot::class, 'plot_id')->withTrashed();
     }
 
     public function project_list()

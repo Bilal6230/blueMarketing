@@ -11,7 +11,7 @@ use App\Models\User;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Spatie\Permission\Models\Role;
+use App\Models\Role;
 use Illuminate\Support\Facades\DB;
 
 class CommissionVoucherController extends Controller
@@ -56,7 +56,7 @@ class CommissionVoucherController extends Controller
             $data = $vouchers->map(function ($voucher) {
                 return [
                     'id' => $voucher->id,
-                    'voucher_number' => 'CV-' . get_jv_number($voucher->voucher_number),
+                    'voucher_number' => \App\Services\Finance\CommissionVoucherNumber::display($voucher->voucher_number),
                     'reference' => $voucher->reference,
                     'date' => $voucher->date,
                     'description' => $voucher->description,
@@ -106,6 +106,7 @@ class CommissionVoucherController extends Controller
         // dd($data_list[0]->headAccounting->name);
 
         $x['accounts'] = $data_list;
+        $x['nextCommissionNumber'] = \App\Services\Finance\CommissionVoucherNumber::next((int) $selectedProjectId);
 
 
         return view('admin.reports.vouchers.commision_voucher', $x);
@@ -127,6 +128,8 @@ class CommissionVoucherController extends Controller
 
         $data = $request->validate([
             'voucher_number' => ['required', 'string', 'max:64'],
+            'reference' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:5000'],
             'date' => ['required', 'date_format:Y-m-d'],
             'accounts' => ['required', 'array', 'min:2', 'max:100'],
             'accounts.*' => ['required', 'integer', 'min:1'],
@@ -140,6 +143,9 @@ class CommissionVoucherController extends Controller
             'line_description.*' => ['nullable', 'string', 'max:1000'],
         ]);
         $keys = array_keys($data['accounts']);
+        if (preg_match('/^CV-([0-9]+)$/D', $data['voucher_number'], $match)) {
+            $data['voucher_number'] = (string) (int) $match[1];
+        }
         foreach (['sub_accounts', 'debit', 'credit'] as $field) {
             if (array_keys($data[$field]) !== $keys) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
@@ -151,6 +157,7 @@ class CommissionVoucherController extends Controller
         if ($projectId < 1) {
             abort(403, 'Select a project before creating a commission voucher.');
         }
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
         $accounts = ProjectHeadSubhead::query()
             ->where('project_id', $projectId)
             ->whereIn('id', $data['sub_accounts'])
@@ -174,7 +181,9 @@ class CommissionVoucherController extends Controller
         try {
             $id = (new \App\Services\Finance\V2CommissionDraftWorkflow())
                 ->createDraft($projectId, $data['voucher_number'], $data['date'],
-                    $lines, (int) Auth::id());
+                    $lines, (int) Auth::id(), [
+                        'reference' => $data['reference'] ?? null, 'description' => $data['description'] ?? null,
+                    ]);
         } catch (\DomainException $e) {
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'voucher_number' => 'Commission draft rejected: ' . $e->getMessage(),
@@ -182,6 +191,23 @@ class CommissionVoucherController extends Controller
         }
         return redirect()->route('commision.voucher.edit', ['id' => $id])
             ->with('success', 'Commission draft saved. Approval/posting is still required.');
+    }
+
+    public function approve(Request $request, $id)
+    {
+        $projectId = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+        $data = $request->validate([
+            'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
+        ]);
+        try {
+            (new \App\Services\Finance\V2CommissionDraftWorkflow())->approveAndPost(
+                $projectId, (int) $id, $data['request_key'], (int) Auth::id()
+            );
+        } catch (\DomainException $e) {
+            abort(409, 'Commission approval rejected to protect accounting history.');
+        }
+        return redirect()->route('commision.voucher.index')->with('success', 'Commission voucher approved and posted.');
     }
 
     public function destroy($id)
@@ -195,6 +221,7 @@ class CommissionVoucherController extends Controller
         \App\Services\Finance\V2IsolatedConnectionGuard::assertAllowed();
         $projectId = (int) getSelectedTown();
         abort_if($projectId < 1, 403, 'Select a project.');
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
         $request = request();
         $data = $request->validate([
             'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
@@ -243,6 +270,8 @@ class CommissionVoucherController extends Controller
         );
         \App\Services\Finance\V2IsolatedConnectionGuard::assertAllowed();
         $data = $request->validate([
+            'reference' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:5000'],
             'date' => ['required', 'date_format:Y-m-d'],
             'accounts' => ['required', 'array', 'min:2', 'max:100'],
             'accounts.*' => ['required', 'integer', 'min:1'],
@@ -265,6 +294,7 @@ class CommissionVoucherController extends Controller
         }
         $projectId = (int) getSelectedTown();
         abort_if($projectId < 1, 403, 'Select a project.');
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
         $accounts = ProjectHeadSubhead::query()->where('project_id', $projectId)
             ->whereIn('id', $data['sub_accounts'])
             ->get(['id', 'head_accounting_id'])->keyBy('id');
@@ -286,7 +316,8 @@ class CommissionVoucherController extends Controller
         }
         try {
             (new \App\Services\Finance\V2CommissionDraftWorkflow())
-                ->updateDraft($projectId, (int) $id, $data['date'], $lines);
+                ->updateDraft($projectId, (int) $id, $data['date'], $lines,
+                    array_intersect_key($data, array_flip(['reference', 'description'])));
         } catch (\DomainException $e) {
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'voucher' => 'Commission draft update rejected: ' . $e->getMessage(),
@@ -299,7 +330,7 @@ class CommissionVoucherController extends Controller
     public function print($id)
     {
         $voucher = CommisionVoucher::with('details.account.headAccounting', 'details.account.subheadAccounting')->where('project_id', getSelectedTown())->findOrFail($id);
-        return view('admin.reports.vouchers.print_journal_voucher', compact('voucher'));
+        return view('admin.reports.vouchers.print_journal_voucher', ['voucher' => $voucher, 'sourceVoucherType' => 'CV']);
     }
 
     private function getCommonData($title, $type = 'CV')

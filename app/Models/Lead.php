@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Lead extends Model
 {
+    use \App\Models\Concerns\ArchivesAssignments;
     use HasFactory;
 
     protected $fillable = [

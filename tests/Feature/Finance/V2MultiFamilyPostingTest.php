@@ -245,6 +245,8 @@ final class V2MultiFamilyPostingTest extends TestCase
         ]);
         $this->assertSame(2, DB::table('commision_voucher_details')
             ->where('commision_voucher_id', $id)->whereNull('deleted_at')->count());
+        $this->assertSame(2, DB::table('commision_voucher_details')
+            ->where('commision_voucher_id', $id)->whereNotNull('deleted_at')->count());
         $workflow->approveAndPost(1, $id, 'CV-EDIT-APPROVAL-POST-001');
         try {
             $workflow->updateDraft(1, $id, '2026-10-31', $this->legs('60.00'));

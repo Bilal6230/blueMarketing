@@ -1,5 +1,8 @@
 @extends('admin.layouts.master')
 @section('content')
+    @if(\App\Services\Finance\V2OriginalWorkflowAccess::selected())
+        <div class="alert alert-info">New finance postings only. Historical balances are pending reconciliation.</div>
+    @endif
     <div class="content-wrapper">
         <div class="content-header">
             <div class="container-fluid">

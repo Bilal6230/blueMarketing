@@ -64,6 +64,18 @@ final class V2CashPostingWriter
                     && (int) ($source->is_approve ?? 0) !== 1)) {
                 throw new \DomainException('V2_CASH_SOURCE_NOT_ACTIVE');
             }
+            $postingDate = (string) $source->date;
+            $bank = in_array((int) ($source->payment_type ?? 1), [2, 3], true);
+            if ($bank) {
+                if ((int) ($source->passing_status ?? 0) !== 1 || empty($source->bank_post_at)) {
+                    throw new \DomainException('V2_BANK_CLEARANCE_REQUIRED');
+                }
+                $postingDate = substr((string) $source->bank_post_at, 0, 10);
+                $calendar = \DateTimeImmutable::createFromFormat('!Y-m-d', $postingDate);
+                if (!$calendar || $calendar->format('Y-m-d') !== $postingDate) {
+                    throw new \DomainException('V2_BANK_POSTING_DATE_INVALID');
+                }
+            }
 
             $receipt = $this->cents($source->amount_in);
             $payment = $this->cents($source->amount_out);
@@ -90,8 +102,8 @@ final class V2CashPostingWriter
                     throw new \DomainException('V2_CASH_ACCOUNT_ID_INVALID');
                 }
                 $account = (int) $rawAccount;
-                if (!DB::table('project_head_subheads')
-                    ->where('id', $account)->where('project_id', $projectId)->exists()) {
+                if (!\App\Models\ProjectHeadSubhead::query()
+                    ->where('id', $account)->where('project_id', $projectId)->lockForUpdate()->first(['id'])) {
                     throw new \DomainException('V2_CASH_ACCOUNT_PROJECT_MISMATCH');
                 }
                 $d = $this->cents($leg['debit']);
@@ -116,7 +128,7 @@ final class V2CashPostingWriter
             $batchNumber = in_array((string) $source->transaction_type, ['CR', 'CP'], true)
                 ? $source->type_id : null;
 
-            $fingerprint = hash('sha256', json_encode([
+            $payload = [
                 'project' => $projectId,
                 'source_id' => $sourceId,
                 'transaction_type' => $source->transaction_type,
@@ -124,7 +136,9 @@ final class V2CashPostingWriter
                 'amount_in' => $this->asMoney($receipt),
                 'amount_out' => $this->asMoney($payment),
                 'legs' => $lines,
-            ], JSON_THROW_ON_ERROR));
+            ];
+            if ($bank) { $payload['bank_posting_date'] = $postingDate; }
+            $fingerprint = hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR));
 
             $existing = DB::table('finance_posting_batches')
                 ->where('project_id', $projectId)
@@ -140,7 +154,7 @@ final class V2CashPostingWriter
                 if (!$claim || !$canonicalClaim ||
                     (string) $existing->voucher_series !== (string) $source->transaction_type ||
                     (string) $existing->voucher_number !== (string) $batchNumber ||
-                    (string) $existing->effective_date !== (string) $source->date ||
+                    (string) $existing->effective_date !== $postingDate ||
                     $existing->reversal_of_batch_id !== null ||
                     !hash_equals((string) $existing->payload_sha256, $fingerprint)) {
                     throw new \DomainException('V2_CASH_IDEMPOTENCY_CONFLICT');
@@ -173,7 +187,7 @@ final class V2CashPostingWriter
                 'voucher_number' => $batchNumber,
                 'request_key' => $requestKey,
                 'payload_sha256' => $fingerprint,
-                'effective_date' => $source->date,
+                'effective_date' => $postingDate,
                 'posted_by' => $actorId,
                 'posted_at' => now(),
                 'created_at' => now(), 'updated_at' => now(),

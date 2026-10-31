@@ -1,3 +1,37 @@
+## 2026-10-31 - Cash/bank, payroll, booking and original reports (latest)
+
+Delivered original cash create/replay, append-only bank settlement decisions, exact payroll/attendance custody, PPR/EC/ECP source creation/reservations, shared posting forms, checked ledger/group/cash document reports and project-scoped source print. Final full regression **847 tests / 3,912 assertions PASS**; 122 PHP entries lint and JavaScript checks PASS. No owner DB/.env mutation or activation. [Detailed checkpoint](REMAINING_WORKFLOWS_IMPLEMENTATION_2026_10_31.md). B3 IN PROGRESS; checklist remains 7/12 accepted. Next: booking creation/SV and remaining lifecycle/report/export paths, then isolated MySQL and browser/mobile acceptance. Owner action: NONE for independent code work.
+
+## 2026-10-31 — Original controller integration batch (earlier)
+
+B3 is now IN PROGRESS with real original-controller changes: original JV create/replay/immutable reversal, CV draft metadata/approval/numbering/source-safe Edit/Print, CR/CP/PPR/EC/ECP customer-source approval, stock web/mobile inventory creation pending separate evidence-backed posting approval. Four posting writers lock active accounts; inventory create locks active stock masters. Legacy-linked source/collision guards refuse double posting without guessing historical ownership. Original reversal forms now collect date/reason/request key. No V1/owner schema activation.
+
+Final full suite **828 tests / 3,735 assertions PASS**; new original HTTP/view regressions **27 / 175 PASS**; 98 PHP entries lint PASS. Scope and remaining paths: [ORIGINAL_WORKFLOW_INTEGRATION_2026_10_31.md](ORIGINAL_WORKFLOW_INTEGRATION_2026_10_31.md). Do not mark B3 complete: original labour, remaining cash/customer creation/clearance, original typed report coexistence and some browser lifecycle/UI scenarios remain. Checklist stays 7/12 accepted deliverables; owner action NONE for independent implementation. Continue those remaining paths using this checkpoint, not a fresh inventory cycle.
+
+## 2026-10-31 — ACTIVE roadmap simplified by owner instruction
+
+Use [ACTIVE_DELIVERY_ROADMAP.md](ACTIVE_DELIVERY_ROADMAP.md) for all future progress reports. Owner explicitly permits replacing time-wasting phase structure. Four workstreams / twelve concrete deliverables now supersede the old six-phase/24-gate reporting requirement; historical evidence remains archived and source recovery, FK reconciliation, original workflow integration and UAT/restore gates remain required. Supporting inventories/reports are no longer standalone milestones. New engineering checklist: **7/12 (58.3%)**, not a comparable increase in old release acceptance.
+
+New delivered batch: assignment pivot soft-detach/reattach and transactional sync across users/roles/permissions/CRM; mobile approval no longer overwrites previous assignment IDs and can assign a previously unassigned lead; general/customer/labour ledger instance/bulk/destroy/force deletion blocked at model layer. New assignment migration remains unapplied. Final full regression **801 tests / 3,560 assertions PASS**, all 79 PHP entries lint PASS. Next actual implementation: B3 original web/mobile posting/approval and booking/stock/labour/report integration. Owner action NONE for independent code work. C2 MySQL/archive rollout, C3 missing-JV/source parity, D2 UAT and D3 restore/release remain OPEN.
+
+## 2026-10-31 soft-delete milestone batch — earlier local checkpoint
+
+User now explicitly requires soft deletion and preservation of application records. SD1 business archival (13 added model families plus force-delete protection for existing archived models), SD2 JV/CV/booking edit history preservation, and SD3 financial mapping deletion/reassignment protection are implemented and locally tested. Historical related actors/accounts/plots remain readable; archived users/roles/permissions stop granting access while assignment rows survive. Mapping delete now requires delete-accounting permission and both mapping actions filter the selected project.
+
+Latest full regression: 790 tests / 3,481 assertions PASS. Subsequent final selected-project mapping regression: 7 / 39 PASS. All changed PHP files lint PASS. Full suite was not repeated after the final selected-project guard. No actual database/schema change. [Exact scope, deployment dependency and next milestone](SOFT_DELETE_MILESTONES_2026_10_31.md). The archive migration must be rehearsed/applied before delete/edit operations that now require archive columns; reads remain compatible until rollout and no delete falls back to hard deletion.
+
+Next independent milestone: archive-aware assignment pivots (`syncRoles`, `syncPermissions`, CRM user sync), including detach/reattach, composite uniqueness and cache/access tests. Formal 10/24 unchanged; do not call the whole application free of physical deletes. Owner action: NONE for independent coding; real database activation remains unperformed.
+
+## 2026-10-31 local inspection and source-history deletion hardening
+
+Current local baseline: `b50c961`, clean worktree before this batch. Reviewed existing handoff, collision reproduction, writer matrix and latest JV draft implementation. Historical CV/JV numeric-ID collision is reproduced evidence, not proof of the cause of the owner's 200+ missing rows.
+
+Implemented exact `journal_voucher_detail_id` preservation in isolated JV draft edits, including mismatched legacy type/header identity. Removed destructive stock item/party deletion cascades: any item line, movement or balance, or party entry/bill now prevents deletion with HTTP 409. Unused master deletion remains supported. No source records, ledgers, migrations or real databases were changed by verification.
+
+Observed tests: Finance baseline 334 tests / 1,211 assertions PASS; JV protection 34 / 125 PASS; full suite after JV change 759 / 3,246 PASS; final focused JV + stock deletion 42 / 174 PASS. Full suite after stock cascade removal: 766 / 3,289 PASS; final movement-only party guard subsequently covered by focused 42 / 174 PASS. Tests use forced SQLite `:memory:`; this is not MySQL concurrency/FK deployment evidence.
+
+Formal acceptance stays 10/24 (41.7%), per latest operator handoff. P1 50%, P2 50%, P3 100% within scoped read-model contract, P4 25%, P5 25%, P6 0%. Gates 18–20 remain incomplete. Next: account-mapping deletion/reassignment review, remaining semantic writers, controlled historical parity and module workflow integration. Owner action: NONE for independent code work; no live cutover authorized.
+
 ## 2026-10-28 structural compatibility capture verified (latest)
 
 The approved seven-result-set capture passed identity and completeness gates: exit 0, 42 scoped, 41 present, `expences` absent, and terminal `REVIEW_REQUIRED`. Comparison of all 35 missing-history creates yields **19 structurally compatible, 13 incompatible and 3 unknown**. These labels describe only original schema declarations, not execution provenance or authorization to edit history.

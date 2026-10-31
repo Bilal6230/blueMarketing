@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Concerns\PreservesDeletedRecords as SoftDeletes;
 use App\Models\Site;
 use App\Models\User;
 
@@ -44,6 +44,6 @@ class JournalVoucher extends Model
 
     public function creator()
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(User::class, 'created_by')->withTrashed();
     }
 }

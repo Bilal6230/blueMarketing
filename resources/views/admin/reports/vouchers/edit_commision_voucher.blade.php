@@ -20,7 +20,7 @@
                                         <div class="input-group">
                                             <input type="text" value="1" name="action" hidden />
                                             <input type="text" class="form-control" name="voucher_number"
-                                                value="{{ $type }}-{{ get_jv_number($voucher->voucher_number) }}"
+                                                value="{{ \App\Services\Finance\CommissionVoucherNumber::display($voucher->voucher_number) }}"
                                                 autocomplete="off" readonly>
                                         </div>
                                     </div>
@@ -161,6 +161,15 @@
                                 </button>
                             </div>
                         </form>
+                        @if(\App\Services\Finance\V2OriginalWorkflowAccess::enabled() && $voucher->status === 'draft')
+                            @can('can approve')
+                                <form action="{{ route('commision.voucher.approve', $voucher->id) }}" method="POST" class="text-center mt-3">
+                                    @csrf
+                                    <input type="hidden" name="request_key" value="{{ old('request_key', (string) \Illuminate\Support\Str::uuid()) }}">
+                                    <button type="submit" class="btn btn-success">Approve saved voucher and post</button>
+                                </form>
+                            @endcan
+                        @endif
                     </div>
                 </div>
             </div>

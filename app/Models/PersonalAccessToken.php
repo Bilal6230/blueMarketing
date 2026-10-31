@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use Laravel\Sanctum\PersonalAccessToken as SanctumPersonalAccessToken;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Concerns\PreservesDeletedRecords as SoftDeletes;
 
 class PersonalAccessToken extends SanctumPersonalAccessToken
 {

@@ -100,7 +100,9 @@ class V2JournalPostingWriterTest extends TestCase
             'id' => 51, 'date' => '2026-10-31', 'total_debit' => '80.00',
         ]);
         $this->assertSame(2, DB::table('journal_voucher_details')
-            ->where('journal_voucher_id', 51)->count());
+            ->where('journal_voucher_id', 51)->whereNull('deleted_at')->count());
+        $this->assertSame(2, DB::table('journal_voucher_details')
+            ->where('journal_voucher_id', 51)->whereNotNull('deleted_at')->count());
         (new V2PostingGateway())->postJournal(1, 51, 'JV-DRAFT-POST-LOCK-0001');
         try {
             $draft->updateUnposted(1, 51, '2026-10-31', $lines);
@@ -124,6 +126,57 @@ class V2JournalPostingWriterTest extends TestCase
                 'id' => 51, 'date' => '2026-10-30', 'total_debit' => '125.50',
             ]);
         }
+    }
+
+    public function test_draft_refuses_exact_ledger_detail_link_with_mismatched_legacy_identity(): void
+    {
+        Schema::create('ledgers', function (Blueprint $table): void {
+            $table->id();
+            $table->string('type');
+            $table->unsignedBigInteger('type_id');
+            $table->unsignedBigInteger('journal_voucher_detail_id')->nullable();
+        });
+        DB::table('ledgers')->insert([
+            'type' => 'SV', 'type_id' => 999, 'journal_voucher_detail_id' => 511,
+        ]);
+        $before = DB::table('journal_voucher_details')->orderBy('id')->get()->toJson();
+        try {
+            (new \App\Services\Finance\V2JournalDraftWorkflow())->updateUnposted(
+                1, 51, '2026-10-31', [
+                    ['account_id' => 101, 'debit' => '80.00', 'credit' => '0.00'],
+                    ['account_id' => 102, 'debit' => '0.00', 'credit' => '80.00'],
+                ]
+            );
+            $this->fail('Exact linked detail must remain immutable');
+        } catch (\DomainException $exception) {
+            $this->assertSame('V2_JV_DRAFT_IMMUTABLE', $exception->getMessage());
+        }
+        $this->assertSame($before, DB::table('journal_voucher_details')->orderBy('id')->get()->toJson());
+        $this->assertDatabaseHas('journal_vouchers', ['id' => 51, 'date' => '2026-10-30']);
+        $this->assertDatabaseHas('ledgers', ['journal_voucher_detail_id' => 511]);
+    }
+
+    public function test_draft_preserves_unrelated_ledger_detail_links(): void
+    {
+        $this->makeJournal(52, 101, 102);
+        Schema::create('ledgers', function (Blueprint $table): void {
+            $table->id();
+            $table->string('type');
+            $table->unsignedBigInteger('type_id');
+            $table->unsignedBigInteger('journal_voucher_detail_id')->nullable();
+        });
+        DB::table('ledgers')->insert([
+            'type' => 'JV', 'type_id' => 52, 'journal_voucher_detail_id' => 521,
+        ]);
+        (new \App\Services\Finance\V2JournalDraftWorkflow())->updateUnposted(
+            1, 51, '2026-10-31', [
+                ['account_id' => 101, 'debit' => '80.00', 'credit' => '0.00'],
+                ['account_id' => 102, 'debit' => '0.00', 'credit' => '80.00'],
+            ]
+        );
+        $this->assertDatabaseHas('journal_vouchers', ['id' => 51, 'total_debit' => '80.00']);
+        $this->assertDatabaseHas('journal_voucher_details', ['id' => 521, 'debit' => '125.50']);
+        $this->assertDatabaseHas('ledgers', ['journal_voucher_detail_id' => 521]);
     }
 
     public function test_jv_posts_exact_detail_links_once_and_replays_safely(): void

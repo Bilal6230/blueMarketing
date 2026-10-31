@@ -449,13 +449,11 @@ class MobileApprovalController extends BaseMobileController
             $safeValues = $this->getSafeUpdateValues($table, $newValues);
 
             if (empty($safeValues)) {
-                DB::table('lead_user')
-                    ->where('lead_id', $locked->record_id)
-                    ->update([
-                        'user_id' => $locked->submitted_by,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
+                if (!User::query()->whereKey($locked->submitted_by)->exists()) {
+                    throw new \DomainException('target_record_missing');
+                }
+                Lead::query()->findOrFail($locked->record_id)->users()
+                    ->sync([(int) $locked->submitted_by]);
             } else {
                 DB::table($table)->where('id', $locked->record_id)->update($safeValues);
             }

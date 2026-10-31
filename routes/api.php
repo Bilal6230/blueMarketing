@@ -85,6 +85,9 @@ Route::prefix('v1/mobile')->group(function () {
                 ->whereNumber('entry');
             Route::post('entries/in', [MobileStockController::class, 'storeIn']);
             Route::post('entries/out', [MobileStockController::class, 'storeOut']);
+            Route::post('finance/{kind}/{sourceId}/approve', [MobileStockController::class, 'approveFinance'])
+                ->where('kind', 'stock_entry|stock_bill')->whereNumber('sourceId')
+                ->middleware('permission:can approve');
             Route::get('report', [MobileStockController::class, 'report']);
         });
 

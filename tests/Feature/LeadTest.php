@@ -624,6 +624,7 @@ class LeadTest extends TestCase
         });
 
         Schema::create('lead_user', function (Blueprint $table) {
+            $table->softDeletes();
             $table->increments('id');
             $table->unsignedBigInteger('lead_id');
             $table->unsignedBigInteger('user_id');

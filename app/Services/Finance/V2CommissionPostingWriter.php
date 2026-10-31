@@ -66,8 +66,8 @@ final class V2CommissionPostingWriter
             $credit = 0;
             foreach ($details as $d) {
                 $account = (int) $d->account_id;
-                if (!DB::table('project_head_subheads')
-                    ->where('id', $account)->where('project_id', $projectId)->exists()) {
+                if (!\App\Models\ProjectHeadSubhead::query()
+                    ->where('id', $account)->where('project_id', $projectId)->lockForUpdate()->first(['id'])) {
                     throw new \DomainException('V2_CV_CROSS_PROJECT_ACCOUNT');
                 }
                 $dr = $this->cents($d->debit);

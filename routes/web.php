@@ -217,7 +217,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::post('finance/accounting/category', 'category_store')->middleware(['permission:read accounting'])->name('accounting.category_store');
         Route::get('finance/accounting/category/edit/{id}', 'category_edit')->middleware(['permission:read accounting'])->name('accounting.category_edit');
         Route::post('finance/accounting/category/update/{id}', 'category_update')->middleware(['permission:read accounting'])->name('accounting.category_update');
-        Route::delete('finance/accounting/category/delete/{id}', 'category_delete')->middleware(['permission:read accounting'])->name('accounting.category_delete');
+        Route::delete('finance/accounting/category/delete/{id}', 'category_delete')->middleware(['permission:delete accounting'])->name('accounting.category_delete');
         // Route::post('accounting/category', 'category_store')->middleware(['permission:create accounting'])->name('accounting.category_store');
         // Route::post('accounting/category/show', 'category_show')->middleware(['permission:read accounting'])->name('accounting.category_show');
         // Route::put('accounting/category', 'category_update')->middleware(['permission:update accounting'])->name('accounting.category_update');
@@ -235,7 +235,6 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
     Route::controller(App\Http\Controllers\Finance\VoucherController::class)->group(function () {
 
         //accounting routes
-        Route::get('finance/update_voucher_number', 'updateVoucherNumber');
         Route::post('finance/check_new_voucher_number', 'checkNewVoucherNumber')->middleware(['permission:read voucher'])->name('check_new_voucher_number');
         Route::get('finance/voucher', 'index')->middleware(['permission:read voucher'])->name('finance.voucher.index');
         Route::get('finance/voucher/pending_updates', 'pendingIndex')->middleware(['permission:read voucher'])->name('finance.voucher.pending_updates_index');
@@ -255,6 +254,8 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::post('finance/voucher/{id}/rejectadmin', 'rejectAdmin')->middleware(['permission:read voucher'])->name('finance.voucher.rejectadmin');
         Route::post('finance/voucher/getcomment', 'GetComment')->middleware(['permission:read voucher'])->name('finance.voucher.getcomment');
         Route::get('finance/voucher/print/{id}', 'print')->middleware(['permission:read voucher'])->name('finance.voucher.print');
+        Route::get('finance/voucher/source/{customerLedger}/print', 'printTypedSource')->whereNumber('customerLedger')
+            ->middleware(['permission:read voucher'])->name('finance.voucher.source.print');
     });
 
     Route::controller(App\Http\Controllers\Finance\PaymentClearanceController::class)->group(function () {
@@ -312,6 +313,9 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
     Route::post('stocks/parties', [StockController::class, 'storeParty'])->name('stocks.parties.store');
     Route::post('stocks/entries', [StockController::class, 'storeEntry'])->name('stocks.entries.store');
     Route::post('stocks/bills', [StockController::class, 'storeBill'])->name('stocks.bills.store');
+    Route::post('stocks/finance/{kind}/{id}/approve', [StockController::class, 'approveFinance'])
+        ->where('kind', 'stock_entry|stock_bill')->whereNumber('id')
+        ->middleware(['permission:can approve'])->name('stocks.finance.approve');
     Route::put('stocks/items/{item}', [StockController::class, 'updateItem'])->name('stocks.items.update');
     Route::delete('stocks/items/{item}', [StockController::class, 'deleteItem'])->name('stocks.items.delete');
     Route::put('stocks/parties/{party}', [StockController::class, 'updateParty'])->name('stocks.parties.update');
@@ -420,6 +424,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::get('commision-voucher', 'index')->middleware(['permission:read jv'])->name('commision.voucher.index');
         Route::get('commision-voucher/create', 'create')->middleware(['permission:create jv'])->name('commision.voucher.create');
         Route::post('commision-voucher/create', 'store')->middleware(['permission:create jv'])->name('commision.voucher.store');
+        Route::post('commision-vouchers/{id}/approve', 'approve')->middleware(['permission:can approve'])->name('commision.voucher.approve');
         Route::get('commision-vouchers/{id}/edit', 'edit')->middleware(['permission:edit jv'])->name('commision.voucher.edit');
         Route::put('commision-vouchers/{id}', 'update')->middleware(['permission:edit jv'])->name('commision.voucher.update');
         Route::delete('commision-vouchers/delete/{id}', 'destroy')->middleware(['permission:delete jv'])->name('commision.voucher.delete');

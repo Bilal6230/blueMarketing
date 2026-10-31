@@ -121,6 +121,10 @@ final class V2ApprovedSourcePostingWriter
                     throw new \DomainException('V2_BOOKING_LINKED_LEDGER_CROSS_PROJECT');
                 }
             } elseif ($kind === 'labour') {
+                if (Schema::hasTable('finance_labour_payment_members') && DB::table('finance_labour_payment_members')
+                    ->where('labour_ledger_id', $sourceId)->exists()) {
+                    throw new \DomainException('V2_LABOUR_ALREADY_INCLUDED_IN_PAYROLL');
+                }
                 if ((int) $source->project_id !== $projectId
                     || !DB::table('labours')->where('id', $source->labour_id)
                         ->where('project_id', $projectId)->exists()) {
@@ -180,8 +184,8 @@ final class V2ApprovedSourcePostingWriter
                     throw new \DomainException('V2_APPROVED_SOURCE_ACCOUNT_INVALID');
                 }
                 $account = (int) $rawId;
-                if (!DB::table('project_head_subheads')
-                    ->where('id', $account)->where('project_id', $projectId)->exists()) {
+                if (!\App\Models\ProjectHeadSubhead::query()
+                    ->where('id', $account)->where('project_id', $projectId)->lockForUpdate()->first(['id'])) {
                     throw new \DomainException('V2_APPROVED_SOURCE_CROSS_PROJECT_ACCOUNT');
                 }
                 $dr = $this->cents($leg['debit']);

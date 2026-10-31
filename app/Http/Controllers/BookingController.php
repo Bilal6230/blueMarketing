@@ -33,7 +33,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use RealRashid\SweetAlert\Facades\Alert;
-use Spatie\Permission\Models\Role;
+use App\Models\Role;
 use Symfony\Component\HttpFoundation\Response;
 
 class BookingController extends Controller
@@ -1757,21 +1757,50 @@ class BookingController extends Controller
 
     public function approve(Request $request)
     {
-        // dd($request->input());
-        $data = [
-            'is_approve' => $request->is_approve,
-        ];
-        DB::beginTransaction();
-        try {
-            $result = CustomerLedger::find($request->id);
-            $result->update($data);
-            DB::commit();
-            Alert::success('Notification', 'Data <b>' . $result->name . '</b> update')->toToast()->toHtml();
-        } catch (\Throwable $th) {
-            DB::rollback();
-            Alert::error('Notification', 'Data <b>' . $result->name . '</b> failed to update: ' . $th->getMessage())->toToast()->toHtml();
+        $data = $request->validate([
+            'id' => ['required', 'integer', 'min:1'],
+            'is_approve' => ['required', 'integer', 'in:0,1'],
+        ]);
+        $projectId = (int) getSelectedTown();
+        abort_if($projectId < 1, 403, 'Select a project.');
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+            \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+            abort_unless((int) $data['is_approve'] === 1, 409, 'Posted vouchers require reversal.');
+            $posting = $request->validate([
+                'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
+                'posting_lines' => ['required', 'array', 'min:2', 'max:100'],
+                'posting_lines.*.account_id' => ['required', 'integer', 'min:1'],
+                'posting_lines.*.debit' => ['required', 'regex:/^\d{1,9}(?:\.[0-9]{1,2})?$/D'],
+                'posting_lines.*.credit' => ['required', 'regex:/^\d{1,9}(?:\.[0-9]{1,2})?$/D'],
+            ]);
+            try {
+                (new \App\Services\Finance\V2CustomerApprovalWorkflow())->approveAndPost(
+                    $projectId, (int) $data['id'], $posting['request_key'], $posting['posting_lines'], (int) Auth::id()
+                );
+            } catch (\DomainException $e) {
+                abort(409, 'Voucher approval rejected to protect accounting history.');
+            }
+            return back()->with('success', 'Voucher approved and posted.');
         }
-        return back();
+        try {
+            DB::transaction(function () use ($data, $projectId): void {
+                $source = CustomerLedger::query()->whereKey($data['id'])
+                    ->where('project_id', $projectId)->lockForUpdate()->firstOrFail();
+                if ((int) $data['is_approve'] === 0 && Ledger::query()
+                    ->where('customer_ledger_id', $source->id)->exists()) {
+                    throw new DomainException('POSTED_APPROVAL_IMMUTABLE');
+                }
+                $source->update(['is_approve' => (int) $data['is_approve']]);
+            });
+        } catch (DomainException $e) {
+            abort(409, 'Posted vouchers require reversal.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            abort(404);
+        } catch (\Throwable $th) {
+            report($th);
+            return back()->withErrors(['voucher' => 'Voucher approval could not be saved.']);
+        }
+        return back()->with('success', 'Voucher approval saved.');
     }
 
     public function getCustomers(Request $request)
@@ -2134,6 +2163,22 @@ class BookingController extends Controller
     }
     public function updateCashIn(Request $request, $id)
     {
+        // A received payment may already own posted ledger legs. Updating the
+        // source and those legs in place can silently reassign accounting
+        // history. Corrections must use reversal plus a new receipt.
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'status' => 'error',
+                'error_key' => 'posted_receipt_immutable',
+                'message' => 'Posted receipts cannot be overwritten. Reverse and repost the receipt.',
+            ], 422);
+        }
+
+        return redirect()->back()->withErrors([
+            'msg' => 'Posted receipts cannot be overwritten. Reverse and repost the receipt.',
+        ]);
+
+        /* Legacy in-place mutation is intentionally unreachable. */
         $validator = Validator::make($request->all(), [
             'reference' => 'required|string|max:255',
             'date' => 'required|date',
@@ -2328,6 +2373,44 @@ class BookingController extends Controller
 
     public function deposit(Request $request)
     {
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+            $project = (int) getSelectedTown();
+            \App\Services\Finance\V2OriginalWorkflowAccess::authorize($project);
+            if ($request->input('action') === 'extra_charge_clearance') {
+                abort_unless(Auth::user()->can('can approve'), 403);
+                $request->validate(['extra_charge_payment_id' => ['required', 'integer', 'min:1']]);
+                $id = (int) $request->input('extra_charge_payment_id');
+                abort_unless(CustomerLedger::query()->whereKey($id)->where('project_id', $project)->where('transaction_type', 'ECP')->exists(), 404);
+                $decision = \App\Services\Finance\V2OriginalVoucherInput::settlement($request);
+                try {
+                    $result = (new \App\Services\Finance\V2OriginalBankWorkflow())->settle(
+                        $project, $id, (int) $decision['passing_status'], $decision['request_key'],
+                        $decision['bank_post_at'] ?? '', $decision['note'], $decision['posting_lines'] ?? [], (int) Auth::id()
+                    );
+                } catch (\DomainException $e) { abort(409, 'Extra charge bank settlement could not be posted.'); }
+                return $request->expectsJson() ? response()->json(['status' => 'success', 'data' => $result]) : back()->with('success', 'Bank decision saved.');
+            }
+            if ($request->filled('extra_charge_id')) {
+                $request->validate(['extra_charge_id' => ['integer', 'min:1']]);
+                abort_if($request->filled('charge_id') && (int) $request->input('charge_id') !== (int) $request->input('extra_charge_id'), 422, 'Charge identities must match.');
+                $request->merge(['charge_id' => $request->input('extra_charge_id')]);
+            }
+            $data = \App\Services\Finance\V2OriginalVoucherInput::read($request);
+            $context = $request->validate([
+                'action' => ['required', 'in:deposit,extra_charge,extra_charge_payment'],
+                'customer_id' => ['required', 'integer', 'min:1'], 'plot_id' => ['required', 'integer', 'min:1'],
+                'reference' => ['required', 'string', 'max:128'],
+                'charge_type_id' => ['required_if:action,extra_charge', 'nullable', 'integer', 'min:1'],
+                'charge_id' => ['required_if:action,extra_charge_payment', 'nullable', 'integer', 'min:1'],
+            ]);
+            $series = match ($context['action']) { 'deposit' => 'PPR', 'extra_charge' => 'EC', 'extra_charge_payment' => 'ECP' };
+            try {
+                $result = (new \App\Services\Finance\V2OriginalBookingDepositWorkflow())->create(
+                    $project, $series, (int) $context['customer_id'], (int) $context['plot_id'], $data + $context, (int) Auth::id()
+                );
+            } catch (\DomainException $e) { abort(409, 'Booking voucher could not be posted.'); }
+            return $request->expectsJson() ? response()->json(['status' => 'success', 'data' => $result]) : back()->with('success', 'Booking voucher saved.');
+        }
         // dd($request->input());
         // Validate the incoming request data
         $validatedData = $request->validate([

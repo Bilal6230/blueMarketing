@@ -87,6 +87,7 @@
                                     <form action="{{ route('ledger.store') }}" method="POST" enctype="multipart/form-data"
                                         id="voucherForm">
                                         @csrf
+ @include('admin.finance.voucher.typed_posting_fields')
                                         <div class="row">
                                             <div class="col-10">
                                                 <div class="row g-2 align-items-end">
@@ -3059,6 +3060,9 @@
                                 data: null,
                                 orderable: false,
                                 render: function(row) {
+                                    if (row.scope === 'typed_v2_postings_only') {
+                                        return `<a href="${row.print_url}" target="_blank" class="btn btn-sm btn-info">Print</a>`;
+                                    }
 
                                     // Create dynamic print URL
                                     let printUrl = "{{ route('finance.voucher.print', ':id') }}";

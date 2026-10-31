@@ -44,7 +44,8 @@ class BookingAmendmentIntegrationTest extends TestCase
             ->put(route('booking.update', ['id' => $this->booking->id], false), $this->unifiedPayload(['plot_rate' => '600000']))
             ->assertRedirect(route('booking.plot.index'))->assertSessionHasNoErrors();
         $this->assertSame(0, bccomp('6000000.00', (string) $this->booking->fresh()->total_price, 2));
-        $this->assertSame(0, DB::table('booking_details')->count());
+        $this->assertSame(0, \App\Models\BookingDetail::count());
+        $this->assertSame(1, \App\Models\BookingDetail::onlyTrashed()->count());
         $this->assertSame($before, $this->accountingRows());
         $audit = DB::table('booking_edit_audits')->sole();
         $this->assertSame('booking_price_amendment', $audit->operation);
@@ -71,7 +72,7 @@ class BookingAmendmentIntegrationTest extends TestCase
         $this->actingAs($user)->withCookie('selected_action', '10')
             ->put(route('booking.update', ['id' => $this->booking->id], false), $this->unifiedPayload(['plot_rate' => '510000', 'dicount_value' => '100000']))
             ->assertRedirect(route('booking.plot.index'))->assertSessionHasNoErrors();
-        $this->assertSame(1, DB::table('booking_details')->count());
+        $this->assertSame(1, \App\Models\BookingDetail::count());
         $this->assertFalse(json_decode(DB::table('booking_edit_audits')->sole()->new_values, true)['schedule_reset']);
         $this->assertSame($before, $this->accountingRows());
     }
@@ -168,7 +169,7 @@ class BookingAmendmentIntegrationTest extends TestCase
         Schema::create('journal_voucher_details', function(Blueprint $t){$t->id();$t->integer('journal_voucher_id');$t->integer('account_id');$t->decimal('debit',15,2);$t->decimal('credit',15,2);$t->string('description')->nullable();$t->timestamps();$t->softDeletes();});
         Schema::create('customer_ledger', function(Blueprint $t){$t->id();$t->integer('customer_id');$t->integer('project_id');$t->integer('plot_id');$t->integer('type_id')->nullable();$t->string('reference')->nullable();$t->integer('payment_type')->nullable();$t->string('t_number')->nullable();$t->integer('bank_id')->nullable();$t->date('passing_date')->nullable();$t->integer('passing_status')->nullable();$t->json('check_history')->nullable();$t->date('date')->nullable();$t->string('transaction_type');$t->decimal('amount_in',10,2);$t->decimal('amount_out',10,2);$t->string('description')->nullable();$t->boolean('is_active')->default(true);$t->boolean('is_approve')->default(false);$t->text('note')->nullable();$t->date('bank_post_at')->nullable();$t->string('delete_reason')->nullable();$t->timestamps();});
         Schema::create('ledgers', function(Blueprint $t){$t->id();$t->string('type');$t->integer('type_id');$t->string('voucher_number')->nullable();$t->integer('project_head_subheads_id');$t->integer('customer_ledger_id')->nullable();$t->string('reference')->nullable();$t->decimal('amount_in',10,2);$t->decimal('amount_out',10,2);$t->string('detail')->nullable();$t->timestamps();});
-        Schema::create('booking_details', function(Blueprint $t){$t->id();$t->integer('booking_id');$t->string('installment_details')->nullable();$t->decimal('amount',10,2);$t->date('due_date');$t->timestamps();});
+        Schema::create('booking_details', function(Blueprint $t){$t->id();$t->integer('booking_id');$t->string('installment_details')->nullable();$t->decimal('amount',10,2);$t->date('due_date');$t->timestamps();$t->softDeletes();});
         Schema::create('booking_vouchers', function(Blueprint $t){$t->id();$t->integer('booking_id');$t->integer('customer_ledger_id')->nullable();$t->integer('ledger_id')->nullable();$t->integer('project_id')->nullable();$t->integer('customer_id')->nullable();$t->integer('plot_id')->nullable();$t->string('voucher_series');$t->integer('voucher_number')->nullable();$t->integer('payment_type')->nullable();$t->decimal('amount',12,2)->default(0);$t->date('receipt_date')->nullable();$t->string('description')->nullable();$t->integer('bank_id')->nullable();$t->string('t_number')->nullable();$t->date('passing_date')->nullable();$t->boolean('is_active')->default(true);$t->boolean('is_approve')->default(false);$t->integer('create_by')->nullable();$t->integer('update_by')->nullable();$t->timestamps();});
         Schema::create('booking_edit_audits', function(Blueprint $t){$t->id();$t->integer('booking_id');$t->integer('project_id');$t->integer('user_id')->nullable();$t->string('operation');$t->text('reason')->nullable();$t->json('old_values');$t->json('new_values');$t->decimal('old_total',10,2)->nullable();$t->decimal('new_total',10,2)->nullable();$t->decimal('delta',10,2)->nullable();$t->decimal('old_accounting_principal',10,2)->nullable();$t->decimal('delta_from_accounting',10,2)->nullable();$t->integer('journal_voucher_id')->nullable();$t->string('request_key')->nullable();$t->timestamps();});
     }
