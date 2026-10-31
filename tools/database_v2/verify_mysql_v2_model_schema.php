@@ -73,6 +73,68 @@ foreach (['debit', 'credit'] as $nameColumn) {
     }
 }
 
+// Audit the imported historical source models against the actual 57-table
+// MySQL baseline as well: old V1 model fillable drift must not silently
+// become fabricated columns in V2.
+$imported = [
+    new \App\Models\V2\ImportedJournalVoucher(),
+    new \App\Models\V2\ImportedJournalVoucherDetail(),
+    new \App\Models\V2\ImportedLedger(),
+    new \App\Models\V2\ImportedProjectAccount(),
+];
+$expectedSourceTables = [
+    'journal_vouchers', 'journal_voucher_details',
+    'ledgers', 'project_head_subheads',
+];
+foreach ($imported as $position => $model) {
+    if ($model->getTable() !== $expectedSourceTables[$position]
+        || !Schema::hasTable($model->getTable())
+        || !$model instanceof \App\Models\V2\ImportedHistoricalModel) {
+        throw new RuntimeException('V2 source evidence model/table contract failed');
+    }
+    if ($model->getGuarded() !== ['*']) {
+        throw new RuntimeException('V2 imported model unexpectedly mass assignable');
+    }
+}
+if (Schema::hasColumn('journal_vouchers', 'site_id')
+    || Schema::hasColumn('ledgers', 'journal_voucher_detail_id')) {
+    throw new RuntimeException('V2 imported schema drifted from pinned source evidence');
+}
+$sourceRelations = [
+    [$imported[0]->details(), 'journal_voucher_id', 'journal_voucher_details'],
+    [$imported[1]->journalVoucher(), 'journal_voucher_id', 'journal_voucher_details'],
+    [$imported[1]->account(), 'account_id', 'journal_voucher_details'],
+    [$imported[2]->projectAccount(), 'project_head_subheads_id', 'ledgers'],
+    [$imported[3]->journalDetails(), 'account_id', 'journal_voucher_details'],
+    [$imported[3]->legacyLedgerRows(), 'project_head_subheads_id', 'ledgers'],
+];
+foreach ($sourceRelations as [$relation, $fk, $ownerTable]) {
+    if ($relation->getForeignKeyName() !== $fk
+        || !Schema::hasColumn($ownerTable, $fk)) {
+        throw new RuntimeException('V2 imported source relation FK mismatch');
+    }
+}
+foreach ([
+    ['journal_voucher_details', 'debit', $imported[1]],
+    ['journal_voucher_details', 'credit', $imported[1]],
+    ['journal_vouchers', 'total_debit', $imported[0]],
+    ['journal_vouchers', 'total_credit', $imported[0]],
+    ['ledgers', 'amount_in', $imported[2]],
+    ['ledgers', 'amount_out', $imported[2]],
+] as [$table, $columnName, $model]) {
+    $physical = $db->selectOne(
+        'SELECT DATA_TYPE AS type, NUMERIC_SCALE AS scale'
+        . ' FROM information_schema.COLUMNS'
+        . ' WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME=?',
+        [$table, $columnName]
+    );
+    if (!$physical || $physical->type !== 'decimal'
+        || (int) $physical->scale !== 2
+        || ($model->getCasts()[$columnName] ?? null) !== 'decimal:2') {
+        throw new RuntimeException("V2 imported monetary model drift: {$table}.{$columnName}");
+    }
+}
+
 $indexes = $db->select(
     'SELECT INDEX_NAME AS index_name, NON_UNIQUE AS non_unique FROM information_schema.STATISTICS'
     . ' WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?',
@@ -90,5 +152,5 @@ foreach (['v2_posting_project_idempotency_unique', 'v2_one_reversal_per_batch_un
     }
 }
 
-echo 'V2_MYSQL_MODEL_CONTRACT_PASS: 3 typed models, 7 FK relations, '
-    . '2 DECIMAL casts, 2 posting unique constraints; no rows altered.' . PHP_EOL;
+echo 'V2_MYSQL_MODEL_CONTRACT_PASS: 3 typed + 4 historical models, '
+    . '13 verified relations, 8 DECIMAL casts, 2 posting unique constraints; no rows altered.' . PHP_EOL;
