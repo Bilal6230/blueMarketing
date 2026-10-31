@@ -143,6 +143,8 @@ if (in_array(config('app.env'), ['local', 'testing'], true)
             Route::get('sources/{kind}/{sourceId}/readiness', [$controller, 'sourceReadiness'])
                 ->whereNumber('projectId')->whereNumber('sourceId')
                 ->where('kind', 'journal|sales|cash|customer|commission|booking|labour|stock_entry|stock_bill');
+            Route::get('voucher-register/export', [$controller, 'exportVoucherRegister'])
+                ->whereNumber('projectId');
             Route::get('voucher-register', [$controller, 'voucherRegister'])
                 ->whereNumber('projectId');
             Route::get('summary', [$controller, 'summary'])->whereNumber('projectId');
