@@ -82,7 +82,7 @@ $required = [
 ];
 $missing = [];
 foreach ($required as $table) {
-    if (!\\Illuminate\\Support\\Facades\\Schema::hasTable($table)) {
+    if (!\Illuminate\Support\Facades\Schema::hasTable($table)) {
         $missing[] = $table;
     }
 }
