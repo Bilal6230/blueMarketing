@@ -77,6 +77,20 @@ if ($totals['writes'] < 15) {
 }
 $categories = array_count_values(array_column($endpoints, 'classification'));
 ksort($categories);
+// Fail closed if a deployment adds/removes an HTTP workflow without a
+// renewed controller-level audit. This does NOT certify the handlers migrated.
+$expected = [
+    'APPROVAL_STATE_TRANSITION' => 8,
+    'POST_READ_CANDIDATE_REQUIRES_BODY_REVIEW' => 15,
+    'WRITE_CANDIDATE_REQUIRES_BODY_REVIEW' => 33,
+];
+if ($categories !== $expected || $totals['reads'] !== 49
+    || $totals['writes'] !== 56) {
+    throw new RuntimeException('V2_LEGACY_ROUTE_INVENTORY_DRIFT_REVIEW_REQUIRED: '
+        . json_encode(['classified' => $categories, 'reads' => $totals['reads'],
+            'writes' => $totals['writes']], JSON_THROW_ON_ERROR));
+}
+echo 'V2_LEGACY_ROUTE_BASELINE_PINNED: 56 reviewed route candidates; no migration or cutover claimed.' . PHP_EOL;
 echo 'V2_LEGACY_ROUTE_CLASSIFICATION: ' . json_encode($categories, JSON_THROW_ON_ERROR) . PHP_EOL;
 echo 'V2_LEGACY_CONTROLLER_ROLLOUT_AUDIT: '
     . count($legacy) . ' target controllers; '
