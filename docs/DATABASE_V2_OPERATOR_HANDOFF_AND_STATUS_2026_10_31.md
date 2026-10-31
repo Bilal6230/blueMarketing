@@ -62,3 +62,13 @@ For fresh historical import Gate 15: ask for explicit permission and fresh dispo
 ## Reporting rules
 
 Every major checkpoint must show: formal accepted/24, six phase progress bars, all 24 gates with Completed / Partial / In Progress / Pending, new code/commit, actual tests and CI run evidence, next engineering focus, and a prominent owner-action banner if necessary.
+
+## 2026-10-31 — Phase 5 source inspection, user verification dependency
+
+Original controller source inspection confirms no `V2PostingGateway` invocation in JournalVoucherController, CommissionVoucherController, Finance/VoucherController, BookingController, StockController or LabourController. Source code does not prove a full V2 controller cutover. CommissionVoucherController::store/update/destroy intentionally return HTTP 409; unsafe approval-free enabling is forbidden. Historical record and accounting flow availability still requires an authorized clean source parity rehearsal and browser/API UAT on an isolated copy.
+
+Controller change commit `a5283f00` corrects the CV edit form's voucher type. This isolated UI fix does **not** count as voucher-posting migration or acceptance.
+
+### Owner action — explicit request when isolated integration/UAT is ready
+
+The owner must authorize a **new disposable MySQL V2 test database** and a **redacted or safely controlled historical sample** (or suitable synthetic fixtures) for end-to-end tests, distinct from current V1, production, staging, client clone and damaged historical rehearsal. Request clear permission and fresh target identity before any data write; only run exact guarded commands after authorization. Owner must later execute supplied UAT checklist on that copy and approve workflow parity. This is not a reason to pause independent controller coding.
