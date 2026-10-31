@@ -343,4 +343,20 @@ final class V2FinancePilotHttpSafetyTest extends TestCase
         $this->assertDatabaseCount('finance_posting_batches', 0);
     }
 
+    public function test_source_readiness_does_not_expose_foreign_project_voucher_identity(): void
+    {
+        $this->enablePilot(true);
+        $this->authenticate();
+        $this->getJson('/api/v2/finance/projects/2/sources/journal/51/readiness')
+            ->assertOk()
+            ->assertJsonPath('eligible', false)
+            ->assertJsonPath('source_series', null)
+            ->assertJsonPath('reason_code', 'SOURCE_NOT_FOUND');
+        $this->postJson('/api/v2/finance/projects/2/postings', [
+            'kind' => 'journal', 'source_id' => 51,
+            'request_key' => 'CROSS-PROJECT-VOUCHER-READINESS-1',
+        ])->assertStatus(409);
+        $this->assertDatabaseCount('finance_posting_batches', 0);
+    }
+
 }
