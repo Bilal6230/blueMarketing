@@ -236,6 +236,56 @@ final class V2FinancePilotHttpSafetyTest extends TestCase
         $this->assertDatabaseCount('finance_posting_batches', 0);
     }
 
+    public function test_source_scoped_journal_void_posts_immutable_inverse_and_replays(): void
+    {
+        $this->enablePilot(true);
+        $this->authenticate();
+        $base = '/api/v2/finance/projects/1';
+        $original = $this->postJson($base . '/postings', [
+            'kind' => 'journal', 'source_id' => 51,
+            'request_key' => 'HTTP-VOID-ORIGINAL-JV-0001',
+        ])->assertCreated()->json('posting_batch_id');
+
+        $void = [
+            'request_key' => 'HTTP-VOID-JV-SOURCE-0001',
+            'effective_date' => '2026-10-31',
+            'reason' => 'Approved void correction',
+        ];
+        $endpoint = $base . '/vouchers/journal/51/void';
+        $reversal = $this->postJson($endpoint, $void)
+            ->assertCreated()->json('reversal_batch_id');
+        $this->assertIsInt($reversal);
+        $this->assertNotSame($original, $reversal);
+        $this->assertSame($reversal, $this->postJson($endpoint, $void)
+            ->assertCreated()->json('reversal_batch_id'));
+        $this->postJson($endpoint, array_merge($void, [
+            'request_key' => 'HTTP-VOID-JV-SECOND-0001',
+        ]))->assertStatus(409);
+        $this->assertDatabaseHas('finance_posting_batches', [
+            'id' => $reversal, 'reversal_of_batch_id' => $original,
+        ]);
+        $this->assertDatabaseCount('finance_posting_batches', 2);
+        $this->assertDatabaseCount('finance_posting_lines', 4);
+        $this->getJson($base . '/trial-balance')
+            ->assertOk()->assertJsonPath('balanced', true);
+    }
+
+    public function test_source_scoped_void_rejects_wrong_project_and_unposted_commission(): void
+    {
+        $this->enablePilot(true);
+        $this->authenticate();
+        $void = [
+            'request_key' => 'HTTP-VOID-PROJECT-GUARD-01',
+            'effective_date' => '2026-10-31',
+            'reason' => 'Approved correction',
+        ];
+        $this->postJson('/api/v2/finance/projects/2/vouchers/journal/51/void', $void)
+            ->assertForbidden();
+        $this->postJson('/api/v2/finance/projects/1/vouchers/commission/41/void', $void)
+            ->assertStatus(409);
+        $this->assertDatabaseCount('finance_posting_batches', 0);
+    }
+
     public function test_stock_project_approval_requires_write_flag_before_any_query(): void
     {
         $this->enablePilot(false);
