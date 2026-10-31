@@ -214,6 +214,28 @@ final class V2FinancePilotHttpSafetyTest extends TestCase
         $this->assertDatabaseCount('finance_posting_batches', 0);
     }
 
+    public function test_source_scoped_void_requires_write_flag(): void
+    {
+        $this->enablePilot(false);
+        $this->authenticate();
+        $this->postJson('/api/v2/finance/projects/1/vouchers/journal/51/void', [
+            'request_key' => 'VOID-WRITE-BLOCKED-0001',
+            'effective_date' => '2026-10-31', 'reason' => 'Correction',
+        ])->assertNotFound();
+        $this->assertDatabaseCount('finance_posting_batches', 0);
+    }
+
+    public function test_source_scoped_void_refuses_unposted_journal_without_writes(): void
+    {
+        $this->enablePilot(true);
+        $this->authenticate();
+        $this->postJson('/api/v2/finance/projects/1/vouchers/journal/51/void', [
+            'request_key' => 'VOID-SOURCE-UNPOSTED-0001',
+            'effective_date' => '2026-10-31', 'reason' => 'Correction',
+        ])->assertStatus(409)->assertJsonPath('error', 'V2_VOUCHER_VOID_CONFLICT');
+        $this->assertDatabaseCount('finance_posting_batches', 0);
+    }
+
     public function test_stock_project_approval_requires_write_flag_before_any_query(): void
     {
         $this->enablePilot(false);
