@@ -37,12 +37,14 @@ if ($db->getDriverName() !== 'mysql'
     || (int) $db->selectOne('SELECT @@FOREIGN_KEY_CHECKS AS enabled')->enabled !== 1) {
     throw new RuntimeException('PHASE5_SETUP_REFUSED_TARGET_IDENTITY');
 }
+$verifyOnly = in_array('--verify-existing', $argv, true);
 $before = (int) $db->selectOne(
     'SELECT COUNT(*) AS n FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()'
 )->n;
-if ($before !== 0) {
+if (!$verifyOnly && $before !== 0) {
     throw new RuntimeException('PHASE5_SETUP_REFUSED_NONEMPTY_DATABASE: ' . $before);
 }
+if (!$verifyOnly) {
 echo 'PHASE5_TARGET_EMPTY_VERIFIED: ' . $target . PHP_EOL;
 $code = Artisan::call('migrate', [
     '--path' => 'database/v2_migrations',
@@ -53,12 +55,15 @@ echo Artisan::output();
 if ($code !== 0) {
     throw new RuntimeException('PHASE5_V2_MIGRATIONS_FAILED: ' . $code);
 }
+}
 $after = (int) $db->selectOne(
     "SELECT COUNT(*) AS n FROM information_schema.TABLES
     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE='BASE TABLE'"
 )->n;
 $history = (int) $db->table('migrations')->count();
-if ($after !== 72 || $history !== 5) {
+// The canonical V2 baseline is 72 domain/finance tables PLUS Laravel's
+// migrations history table = 73 physical tables in a freshly migrated DB.
+if ($after !== 73 || $history !== 5 || ($verifyOnly && $before !== 73)) {
     throw new RuntimeException("PHASE5_SCHEMA_CHECK_FAILED: {$after} tables / {$history} migrations");
 }
-echo "PHASE5_V2_SCHEMA_PASS: {$after} physical tables / {$history} migrations; no historical source import." . PHP_EOL;
+echo "PHASE5_V2_SCHEMA_PASS: {$after} physical tables (72 V2 + migrations) / {$history} migrations; no historical source import performed by this script." . PHP_EOL;
