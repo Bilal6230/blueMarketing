@@ -40,6 +40,8 @@ final class V2MultiFamilyPostingTest extends TestCase
             $t->string('voucher_number');
             $t->date('date');
             $t->string('status');
+            $t->unsignedBigInteger('created_by')->nullable();
+            $t->timestamps();
             $t->decimal('total_debit', 15, 2);
             $t->decimal('total_credit', 15, 2);
             $t->timestamp('deleted_at')->nullable();
@@ -51,6 +53,7 @@ final class V2MultiFamilyPostingTest extends TestCase
             $t->decimal('debit', 15, 2);
             $t->decimal('credit', 15, 2);
             $t->text('description')->nullable();
+            $t->timestamps();
             $t->timestamp('deleted_at')->nullable();
         });
         Schema::create('customer_ledger', function (Blueprint $t): void {
@@ -195,6 +198,40 @@ final class V2MultiFamilyPostingTest extends TestCase
             ['account_id' => 101, 'debit' => $amount, 'credit' => '0.00'],
             ['account_id' => 102, 'debit' => '0.00', 'credit' => $amount],
         ];
+    }
+
+    public function test_isolated_cv_draft_approval_posts_atomically_and_replays(): void
+    {
+        $workflow = new \App\Services\Finance\V2CommissionDraftWorkflow();
+        $id = $workflow->createDraft(1, 'CV-NEW-ISOLATED-42', '2026-10-30', $this->legs('40.00'), 1);
+        $this->assertDatabaseHas('commision_vouchers', ['id' => $id, 'status' => 'draft']);
+        $this->assertDatabaseCount('finance_posting_batches', 0);
+
+        $batch = $workflow->approveAndPost(1, $id, 'CV-DRAFT-APPROVAL-POST-001', 1);
+        $this->assertSame($batch, $workflow->approveAndPost(
+            1, $id, 'CV-DRAFT-APPROVAL-POST-001', 1
+        ));
+        $this->assertDatabaseHas('commision_vouchers', ['id' => $id, 'status' => 'approved']);
+        $this->assertDatabaseHas('finance_posting_commission_sources', [
+            'posting_batch_id' => $batch, 'commision_voucher_id' => $id,
+        ]);
+        $this->assertDatabaseCount('finance_posting_batches', 1);
+    }
+
+    public function test_isolated_cv_draft_rejects_cross_project_accounts_without_writes(): void
+    {
+        $workflow = new \App\Services\Finance\V2CommissionDraftWorkflow();
+        try {
+            $workflow->createDraft(1, 'CV-FOREIGN-DENIED', '2026-10-30', [
+                ['account_id' => 101, 'debit' => '40.00', 'credit' => '0.00'],
+                ['account_id' => 201, 'debit' => '0.00', 'credit' => '40.00'],
+            ]);
+            $this->fail('Cross-project account must not create CV');
+        } catch (\DomainException $e) {
+            $this->assertDatabaseMissing('commision_vouchers', [
+                'voucher_number' => 'CV-FOREIGN-DENIED',
+            ]);
+        }
     }
 
     public function test_commission_posts_exact_document_and_detail_fks_idempotently(): void
