@@ -359,6 +359,19 @@ class VoucherController extends Controller
             abort(400, 'Invalid table name.');
         }
 
+        // Generic finance rejection must use the exact same finance
+        // authorization and locked pending-state transition as dedicated
+        // finance rejection. Never authorize financial rejection via the
+        // broader non-finance direct-update permission.
+        if (in_array($request->table, $this->financePendingUpdateTables, true)) {
+            $pending = PendingUpdate::query()
+                ->where('record_id', $id)
+                ->where('table_name', $request->table)
+                ->firstOrFail();
+
+            return $this->rejectFinancePending($pending->id, $request);
+        }
+
         if (!Auth::user()->hasRole('super-admin') && !Auth::user()->can('direct-update')) {
             abort(403, 'Unauthorized action.');
         }
