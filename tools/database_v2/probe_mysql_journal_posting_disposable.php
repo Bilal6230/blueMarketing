@@ -27,6 +27,22 @@ V2HistoricalImportTargetGuard::assertAllowed(
     $config, (string) config('app.env'), true
 );
 $db = DB::connection();
+
+// Independent worker mode is reachable only after the same fail-closed
+// CI MySQL connection guard as the parent. It never seeds/cleans data.
+if (($argv[1] ?? '') === '--ci-parallel-jv-worker') {
+    if ($db->getDriverName() !== 'mysql'
+        || (string) $db->getDatabaseName() !== 'bluemarketing_v2_ci'
+        || (string) config('app.env') !== 'testing') {
+        throw new RuntimeException('CI_V2_PARALLEL_WORKER_WRONG_DATABASE');
+    }
+    $id = (new V2PostingGateway())->postJournal(
+        910001, 910001, 'MYSQL-CI-JV-ORIGINAL-0001', 910001
+    );
+    echo $id . PHP_EOL;
+    exit(0);
+}
+
 if ($db->getDriverName() !== 'mysql'
     || (string) $db->getDatabaseName() !== 'bluemarketing_v2_ci'
     || (int) $db->selectOne('SELECT @@FOREIGN_KEY_CHECKS AS flag')->flag !== 1
@@ -86,13 +102,46 @@ try {
             'credit' => '125.50', 'description' => 'CI source credit'],
     ]);
 
-    $original = $gateway->postJournal(
-        $project, $journal, 'MYSQL-CI-JV-ORIGINAL-0001', $user
-    );
+    // Two independent PHP application processes race the same voucher and
+    // request key. The project row lock + unique source FK must serialize
+    // them to exactly one posted batch with identical returned identities.
+    $workers = [];
+    for ($worker = 0; $worker < 2; $worker++) {
+        $pipes = [];
+        $process = proc_open(
+            [PHP_BINARY, __FILE__, '--ci-parallel-jv-worker'],
+            [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes,
+            dirname(__DIR__, 2)
+        );
+        if (!is_resource($process)) {
+            throw new RuntimeException('CI_V2_PARALLEL_PROC_OPEN_FAILED');
+        }
+        fclose($pipes[0]);
+        $workers[] = [$process, $pipes];
+    }
+    $postedIds = [];
+    foreach ($workers as [$process, $pipes]) {
+        $out = trim((string) stream_get_contents($pipes[1]));
+        $err = (string) stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        $status = proc_close($process);
+        if ($status !== 0 || !preg_match('/^[1-9][0-9]*$/D', $out)) {
+            throw new RuntimeException('CI_V2_PARALLEL_POST_FAILED_' . $status
+                . ': ' . substr(trim($err), 0, 400));
+        }
+        $postedIds[] = (int) $out;
+    }
+    [$original, $parallelReplay] = $postedIds;
+    if ($original !== $parallelReplay) {
+        throw new RuntimeException('CI_V2_PARALLEL_DUPLICATE_BATCH_CREATED');
+    }
     $replay = $gateway->postJournal(
         $project, $journal, 'MYSQL-CI-JV-ORIGINAL-0001', $user
     );
     if ($original !== $replay
+        || $original !== $parallelReplay
         || (int) $db->table('finance_posting_batches')->count() !== 1
         || (int) $db->table('finance_journal_line_sources')->count() !== 2
         || (int) $db->table('finance_posting_lines')->count() !== 2) {
@@ -143,6 +192,7 @@ try {
         || ($trial['accounts'][1]['closing_balance'] ?? null) !== '0.00') {
         throw new RuntimeException('CI_V2_JV_MYSQL_REPORT_RECONCILIATION_FAILED');
     }
+    echo "CI_V2_MYSQL_PARALLEL_JV_POST_PASS: two independent workers, one source and identical batch identity\n";
     echo "CI_V2_MYSQL_POSTING_REVERSAL_PASS: exact detail FKs, replay, exclusive source, balanced correction and zero closing balances\n";
     // Sales/booking SV vouchers share the verified physical journal header
     // and detail tables, but MUST retain their explicit SV series.
