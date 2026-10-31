@@ -126,7 +126,7 @@ class CommissionVoucherController extends Controller
     public function edit($id)
     {
         $voucher = CommisionVoucher::with('details')->where('project_id', getSelectedTown())->findOrFail($id);
-        $x = $this->getCommonData('Edit Commision Voucher');
+        $x = $this->getCommonData('Edit Commision Voucher', 'CV');
         $x['voucher'] = $voucher;
 
         // Get selected town's project_id
@@ -154,7 +154,7 @@ class CommissionVoucherController extends Controller
         return view('admin.reports.vouchers.print_journal_voucher', compact('voucher'));
     }
 
-    private function getCommonData($title, $type = 'JV')
+    private function getCommonData($title, $type = 'CV')
     {
         $power = Auth::user()->roles[0]->name;
         return [
