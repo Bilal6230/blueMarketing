@@ -23,6 +23,21 @@ final class V2PostingGateway
         );
     }
 
+    /**
+     * Booking sales vouchers are journal_vouchers.type = SV, linked by
+     * their real journal_vouchers.id and exact journal detail source rows.
+     * They are NOT booking_vouchers IDs or ledger.type_id guesses.
+     */
+    public function postSalesVoucher(
+        int $projectId, int $salesJournalVoucherId,
+        string $idempotencyKey, ?int $actorId = null
+    ): int {
+        return (new V2JournalPostingWriter())->post(
+            $projectId, $salesJournalVoucherId, $idempotencyKey,
+            $actorId, 'SV'
+        );
+    }
+
     public function postCash(
         int $projectId,
         int $customerLedgerId,
