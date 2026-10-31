@@ -106,19 +106,39 @@ try {
     // request key. The project row lock + unique source FK must serialize
     // them to exactly one posted batch with identical returned identities.
     $workers = [];
-    for ($worker = 0; $worker < 2; $worker++) {
-        $pipes = [];
-        $process = proc_open(
-            [PHP_BINARY, __FILE__, '--ci-parallel-jv-worker'],
-            [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
-            $pipes,
-            dirname(__DIR__, 2)
-        );
-        if (!is_resource($process)) {
-            throw new RuntimeException('CI_V2_PARALLEL_PROC_OPEN_FAILED');
+    // Parent holds the real project row lock while BOTH independent
+    // application workers start. They cannot complete a post early.
+    $db->beginTransaction();
+    try {
+        $locked = $db->table('projects')
+            ->where('id', $project)->lockForUpdate()->first();
+        if (!$locked) {
+            throw new RuntimeException('CI_V2_PARALLEL_PROJECT_LOCK_MISSING');
         }
-        fclose($pipes[0]);
-        $workers[] = [$process, $pipes];
+        for ($worker = 0; $worker < 2; $worker++) {
+            $pipes = [];
+            $process = proc_open(
+                [PHP_BINARY, __FILE__, '--ci-parallel-jv-worker'],
+                [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+                $pipes,
+                dirname(__DIR__, 2)
+            );
+            if (!is_resource($process)) {
+                throw new RuntimeException('CI_V2_PARALLEL_PROC_OPEN_FAILED');
+            }
+            fclose($pipes[0]);
+            $workers[] = [$process, $pipes];
+        }
+        usleep(750000);
+        foreach ($workers as [$process]) {
+            if (!(proc_get_status($process)['running'] ?? false)) {
+                throw new RuntimeException('CI_V2_PARALLEL_WORKER_EXITED_DURING_LOCK');
+            }
+        }
+    } finally {
+        // Release the parent lock; the two workers now race for the
+        // project and journal row locks and must return the SAME batch.
+        $db->rollBack();
     }
     $postedIds = [];
     foreach ($workers as [$process, $pipes]) {
