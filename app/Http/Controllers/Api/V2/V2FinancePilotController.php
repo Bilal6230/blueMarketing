@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V2;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Services\Finance\V2IsolatedConnectionGuard;
+use App\Services\Finance\V2SourceApprovalReadiness;
 use App\Services\Finance\V2FinanceCsvExporter;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Services\Finance\V2PostingGateway;
@@ -58,6 +59,19 @@ final class V2FinancePilotController extends Controller
             'scope' => 'typed_v2_postings_only',
             'lines' => $gateway->postingLines($projectId, $data['from'] ?? null, $data['through'] ?? null),
         ]);
+    }
+
+    public function sourceReadiness(
+        Request $request, int $projectId, string $kind, int $sourceId,
+        V2SourceApprovalReadiness $readiness
+    ): JsonResponse {
+        $this->project($request, $projectId, false);
+        $input = $request->validate([
+            'series' => ['nullable', Rule::in(['PPR', 'EC', 'ECP'])],
+        ]);
+        return response()->json($readiness->inspect(
+            $projectId, $kind, $sourceId, $input['series'] ?? null
+        ));
     }
 
     public function voucherRegister(
@@ -175,6 +189,14 @@ final class V2FinancePilotController extends Controller
         $legs = $data['allocation'] ?? [];
         $actor = (int) $request->user()->getAuthIdentifier();
         try {
+            // Mirror legacy approval/project state before dispatching; the
+            // transactional writer rechecks under row locks to prevent races.
+            $ready = (new V2SourceApprovalReadiness())->inspect(
+                $projectId, $data['kind'], $id, $data['series'] ?? null
+            );
+            if (!$ready['eligible']) {
+                throw new \DomainException('V2_SOURCE_APPROVAL_REQUIRED');
+            }
             $batchId = match ($data['kind']) {
             'journal' => $gateway->postJournal($projectId, $id, $key, $actor),
             'sales' => $gateway->postSalesVoucher($projectId, $id, $key, $actor),
