@@ -18,6 +18,16 @@ set_exception_handler(static function (Throwable $e): void {
     exit(2);
 });
 
+// Fail closed BEFORE connecting: disposable CI schema, loopback MySQL,
+// no replication hosts, DB URL, unix socket, staging or production.
+$settings = config('database.connections.' . config('database.default'));
+if (!is_array($settings)) {
+    throw new RuntimeException('V2_MYSQL_CI_CONFIG_REQUIRED');
+}
+\App\Services\Finance\V2HistoricalImportTargetGuard::assertAllowed(
+    $settings, (string) config('app.env'), true
+);
+
 $db = DB::connection();
 $name = (string) $db->getDatabaseName();
 if ($db->getDriverName() !== 'mysql'
