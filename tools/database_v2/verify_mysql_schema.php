@@ -14,6 +14,16 @@ $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+// Fail closed BEFORE connecting: disposable CI schema, loopback MySQL,
+// no replication hosts, DB URL, unix socket, staging or production.
+$settings = config('database.connections.' . config('database.default'));
+if (!is_array($settings)) {
+    throw new RuntimeException('V2_MYSQL_CI_CONFIG_REQUIRED');
+}
+\App\Services\Finance\V2HistoricalImportTargetGuard::assertAllowed(
+    $settings, (string) config('app.env'), true
+);
+
 $db = DB::connection();
 if ($db->getDriverName() !== 'mysql' ||
     (string) $db->getDatabaseName() !== 'bluemarketing_v2_ci' ||
