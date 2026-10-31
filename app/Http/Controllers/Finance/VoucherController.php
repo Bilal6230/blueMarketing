@@ -316,48 +316,33 @@ class VoucherController extends Controller
             return $this->approveFinancePending($pending->id, $request);
         }
 
-        // Fetch pending update record
-        $pending = PendingUpdate::where('record_id', $id)
-            ->where('table_name', $request->table)
-            ->where('status', 'pending')
-            ->firstOrFail();
-
-        // Authorization check
+        // Generic non-financial pending changes follow the same atomic
+        // state transition discipline as the finance-specific pathway.
         if (!Auth::user()->hasRole('super-admin') && !Auth::user()->can('direct-update')) {
             abort(403, 'Unauthorized action.');
         }
 
+        DB::transaction(function () use ($id, $request) {
+            $pending = PendingUpdate::query()
+                ->where('record_id', $id)
+                ->where('table_name', $request->table)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        $pendingNewChanges = json_decode($pending->new_values, true);
-        if (isset($pendingNewChanges['is_active']) && $pending->new_values == $pendingNewChanges['is_active']) {
-            DB::transaction(function () use ($pending, $pendingNewChanges, $request) {
-                $result = DB::table($request->table)::findOrFail($pending->record_id);
-                if ($request->table == 'ledgers') {
-                    $customerLedger = $result->customerLedger;
-                    if ($customerLedger) {
-                        $customerLedger->update($pendingNewChanges);
-                    }
-                }
-                $result->update($pendingNewChanges);
-            });
-        }
-
-        DB::transaction(function () use ($pending, $pendingNewChanges, $request) {
-            // Check if record exists
-            $record = DB::table($request->table)
-                ->where('id', $pending->record_id)
-                ->first();
-
-            if (!$record) {
-                abort(404, 'Record not found.');
+            if ($pending->status === 'approved') {
+                return;
             }
+            abort_unless($pending->status === 'pending', 409, 'This request has already been processed.');
 
-            // Update record dynamically
-            DB::table($request->table)
+            $changes = $this->decodePendingUpdatePayload($pending->new_values);
+            abort_if($changes === [], 422, 'No valid pending changes.');
+
+            $affected = DB::table($request->table)
                 ->where('id', $pending->record_id)
-                ->update($pendingNewChanges);
+                ->update($changes);
+            abort_if($affected === 0 && !DB::table($request->table)
+                ->where('id', $pending->record_id)->exists(), 404, 'Record not found.');
 
-            // Mark pending as approved
             $pending->update([
                 'status' => 'approved',
                 'approved_by' => Auth::id(),
@@ -374,19 +359,27 @@ class VoucherController extends Controller
             abort(400, 'Invalid table name.');
         }
 
-        $pending = PendingUpdate::where('record_id', $id)
-            ->where('table_name', $request->table)
-            ->where('status', 'pending')
-            ->firstOrFail();
-
         if (!Auth::user()->hasRole('super-admin') && !Auth::user()->can('direct-update')) {
             abort(403, 'Unauthorized action.');
         }
 
-        $pending->update([
-            'status' => 'rejected',
-            'approved_by' => Auth::id(),
-        ]);
+        DB::transaction(function () use ($id, $request) {
+            $pending = PendingUpdate::query()
+                ->where('record_id', $id)
+                ->where('table_name', $request->table)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($pending->status === 'rejected') {
+                return;
+            }
+            abort_unless($pending->status === 'pending', 409, 'This request has already been processed.');
+
+            $pending->update([
+                'status' => 'rejected',
+                'approved_by' => Auth::id(),
+            ]);
+        });
 
         return back()->with('success', 'Voucher rejected.');
     }
