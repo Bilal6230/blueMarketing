@@ -72,3 +72,20 @@ Controller change commit `a5283f00` corrects the CV edit form's voucher type. Th
 ### Owner action — explicit request when isolated integration/UAT is ready
 
 The owner must authorize a **new disposable MySQL V2 test database** and a **redacted or safely controlled historical sample** (or suitable synthetic fixtures) for end-to-end tests, distinct from current V1, production, staging, client clone and damaged historical rehearsal. Request clear permission and fresh target identity before any data write; only run exact guarded commands after authorization. Owner must later execute supplied UAT checklist on that copy and approve workflow parity. This is not a reason to pause independent controller coding.
+
+
+## MANDATORY DELIVERY POLICY — LARGE, COMPLETE MILESTONE BATCHES (OWNER DIRECTIVE, 2026-10-31)
+
+**No more incremental micro-fix delivery loops.** When the owner assigns one or several milestones for completion in one turn, treat the ENTIRE ORIGINAL ACCEPTANCE SCOPE of EVERY assigned milestone as the required deliverable; do not quietly narrow scope, rebrand a partial fix as completion, or return after small code changes, reports, route inventories, database preflight, or status updates as though the assignment were done.
+
+**Execution contract:**
+1. Before coding, inspect all affected source controllers, business services, original CRUD/approval paths, routing, view/report/mobile consumers, database mapping, and regression expectations. Build a cohesive multi-module implementation batch, not a chain of superficial commits.
+2. Implement the original requested functionality across all relevant real paths, including approval/idempotency/reversal, booking/stock/labour/reports and cross-module compatibility as applicable. Keep production and V1 data protected; no unsafe cutover or guessed financial source relationships.
+3. Author and actually execute relevant unit, integration, MySQL, HTTP, rollback, concurrency, security, and workflow tests when the environment permits. Capture observed run IDs, outputs, failing cases, commit SHAs and exact acceptance evidence. Unrun tests are NEVER PASS.
+4. **Do not return merely to say 'In Progress' or to ask for another routine check.** Continue independent engineering work within the current available execution. If owner action is a true prerequisite, IMMEDIATELY surface the prominent heading `SIR, AAPKI TARAF SE KAAM PENDING HAI`, with exact safe instructions and blocked milestone; work on all nonblocked tasks in parallel.
+5. Milestones are **Completed** only after their original (not reduced) scope is implemented, automated regression actually PASSes, and required acceptance evidence exists. If one cannot genuinely finish, report exactly what remains, what was implemented/tested, and the real blocker; never claim completion, fabricate progress or promise asynchronous delivery. Incomplete delivery is an exception, not the planned work cadence.
+6. A batch that explicitly names milestones 18, 19 and 20 is **not accepted** by isolated CSV exports, schema checks, safety scripts, documentation edits or route inventories alone. Acceptance requires real original voucher-controller workflow integration, booking/stock/labour/report integration, and end-to-end cross-module tests and business UAT as defined before the work.
+7. **Do not force the owner to explain the same context in a new chat.** Maintain the latest exact checkpoint, original acceptance scope, open blockers, commits and proven test evidence in this repository handoff file. Persist decisions before context rollover.
+8. Avoid user-visible filler and repetitive explanations; prioritize substantive code and verified completion. Do not sacrifice safety to reach a cosmetic 100%.
+
+**Current evidence boundary at adoption:** `bluemarketing_v2_phase5_test` schema has 73 physical tables, 5 V2 migrations, 16 verified source/posting tables and 124 physical FK columns, as owner-tested. Those PASS markers verify only schema readiness. Milestones 18–20 remain unaccepted until original workflow integrations and functional regressions actually pass. No immediate owner task is pending for database setup.
