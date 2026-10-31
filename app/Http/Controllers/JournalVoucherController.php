@@ -601,9 +601,63 @@ class JournalVoucherController extends Controller
 
     public function update(Request $request, $id)
     {
-        // Legacy JV type_id values are polymorphic and cannot be safely
-        // overwritten or deleted until source ownership is proven.
-        abort(409, 'This voucher action is temporarily disabled to protect accounting history.');
+        abort_unless(
+            in_array(config('app.env'), ['local', 'testing'], true)
+                && config('finance.v2_pilot_api_enabled')
+                && config('finance.v2_pilot_write_enabled'),
+            409, 'This voucher action is temporarily disabled to protect accounting history.'
+        );
+        \App\Services\Finance\V2IsolatedConnectionGuard::assertAllowed();
+        $data = $request->validate([
+            'date' => ['required', 'date_format:Y-m-d'],
+            'accounts' => ['required', 'array', 'min:2', 'max:100'],
+            'accounts.*' => ['required', 'integer', 'min:1'],
+            'sub_accounts' => ['required', 'array', 'min:2', 'max:100'],
+            'sub_accounts.*' => ['required', 'integer', 'min:1'],
+            'debit' => ['required', 'array', 'min:2', 'max:100'],
+            'debit.*' => ['required', 'regex:/^(0|[1-9][0-9]{0,9})(?:\\.[0-9]{1,2})?$/D'],
+            'credit' => ['required', 'array', 'min:2', 'max:100'],
+            'credit.*' => ['required', 'regex:/^(0|[1-9][0-9]{0,9})(?:\\.[0-9]{1,2})?$/D'],
+            'line_description' => ['sometimes', 'array'],
+            'line_description.*' => ['nullable', 'string', 'max:1000'],
+        ]);
+        $keys = array_keys($data['accounts']);
+        foreach (['sub_accounts', 'debit', 'credit'] as $field) {
+            if (array_keys($data[$field]) !== $keys) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    $field => 'Journal line arrays must share identical keys.',
+                ]);
+            }
+        }
+        $projectId = (int) getSelectedTown();
+        abort_if($projectId < 1, 403, 'Select a project.');
+        $accounts = ProjectHeadSubhead::where('project_id', $projectId)
+            ->whereIn('id', $data['sub_accounts'])
+            ->get(['id', 'head_accounting_id'])->keyBy('id');
+        $lines = [];
+        foreach ($keys as $index) {
+            $sub = (int) $data['sub_accounts'][$index];
+            if (!$accounts->has($sub)
+                || (int) $accounts->get($sub)->head_accounting_id !== (int) $data['accounts'][$index]) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'sub_accounts' => 'Journal account/head mismatch or foreign project.',
+                ]);
+            }
+            $lines[] = [
+                'account_id' => $sub,
+                'debit' => (string) $data['debit'][$index],
+                'credit' => (string) $data['credit'][$index],
+                'description' => $data['line_description'][$index] ?? '',
+            ];
+        }
+        try {
+            (new \App\Services\Finance\V2JournalDraftWorkflow())
+                ->updateUnposted($projectId, (int) $id, $data['date'], $lines);
+        } catch (\DomainException $exception) {
+            abort(409, 'Journal voucher cannot be edited after posting or legacy ledger attribution.');
+        }
+        return redirect()->route('journal.voucher.edit', ['id' => $id])
+            ->with('success', 'Unposted journal draft updated.');
     }
 
 
