@@ -36,22 +36,28 @@ final class V2JournalPostingWriter
         }
     }
 
-    public function post(int $projectId, int $journalId, string $requestKey, ?int $actorId = null): int
+    public function post(
+        int $projectId, int $journalId, string $requestKey,
+        ?int $actorId = null, string $expectedSeries = 'JV'
+    ): int
     {
         $this->assertIsolated();
+        if (!in_array($expectedSeries, ['JV', 'SV'], true)) {
+            throw new \DomainException('V2_JOURNAL_SOURCE_SERIES_INVALID');
+        }
         if ($projectId < 1 || $journalId < 1 ||
             !preg_match('/^[A-Za-z0-9_-]{16,128}$/D', $requestKey)) {
             throw new \DomainException('V2_POSTING_IDENTITY_INVALID');
         }
 
-        return DB::transaction(function () use ($projectId, $journalId, $requestKey, $actorId): int {
+        return DB::transaction(function () use ($projectId, $journalId, $requestKey, $actorId, $expectedSeries): int {
             if (!DB::table('projects')->where('id', $projectId)->lockForUpdate()->exists()) {
                 throw new \DomainException('V2_PROJECT_NOT_FOUND');
             }
             $header = DB::table('journal_vouchers')
                 ->where('id', $journalId)->where('project_id', $projectId)
                 ->lockForUpdate()->first();
-            if (!$header || (string) ($header->type ?? '') !== 'JV' ||
+            if (!$header || (string) ($header->type ?? '') !== $expectedSeries ||
                 ($header->deleted_at ?? null) !== null) {
                 throw new \DomainException('V2_JV_HEADER_NOT_ACTIVE');
             }
@@ -93,6 +99,7 @@ final class V2JournalPostingWriter
 
             $payloadHash = hash('sha256', json_encode([
                 'project_id' => $projectId, 'journal_id' => $journalId,
+                'series' => $expectedSeries,
                 'voucher_number' => (string) $header->voucher_number,
                 'effective_date' => (string) $header->date,
                 'lines' => $lines,
@@ -108,7 +115,7 @@ final class V2JournalPostingWriter
                 $kindMatches = DB::table('finance_posting_source_claims')
                     ->where('posting_batch_id', $existing->id)
                     ->where('source_kind', 'journal')->exists();
-                if (!$claim || !$kindMatches || (string) $existing->voucher_series !== 'JV'
+                if (!$claim || !$kindMatches || (string) $existing->voucher_series !== $expectedSeries
                     || (string) $existing->voucher_number !== (string) $header->voucher_number
                     || (string) $existing->effective_date !== (string) $header->date
                     || $existing->reversal_of_batch_id !== null
@@ -147,7 +154,7 @@ final class V2JournalPostingWriter
             }
 
             $batchId = DB::table('finance_posting_batches')->insertGetId([
-                'project_id' => $projectId, 'voucher_series' => 'JV',
+                'project_id' => $projectId, 'voucher_series' => $expectedSeries,
                 'voucher_number' => $header->voucher_number, 'request_key' => $requestKey,
                 'payload_sha256' => $payloadHash, 'effective_date' => $header->date,
                 'posted_by' => $actorId, 'posted_at' => now(),
