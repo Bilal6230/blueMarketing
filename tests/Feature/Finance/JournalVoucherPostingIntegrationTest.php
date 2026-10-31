@@ -45,6 +45,16 @@ class JournalVoucherPostingIntegrationTest extends TestCase
             $t->decimal('debit', 15, 2); $t->decimal('credit', 15, 2); $t->text('description')->nullable();
             $t->unsignedBigInteger('created_by')->nullable(); $t->softDeletes(); $t->timestamps();
         });
+        // ProjectVoucherAllocator::nextJournal() checks the actual
+        // customer_ledger source sequence, even when no customer voucher
+        // exists. Keep this isolated SQLite fixture faithful to that query.
+        // Do not change production numbering or bypass the source lookup.
+        Schema::create('customer_ledger', function (Blueprint $t) {
+            $t->id();
+            $t->unsignedBigInteger('project_id');
+            $t->string('transaction_type');
+            $t->unsignedBigInteger('type_id')->nullable();
+        });
         Schema::create('ledgers', function (Blueprint $t) {
             $t->id(); $t->string('voucher_number'); $t->string('type'); $t->unsignedBigInteger('type_id');
             $t->unsignedBigInteger('project_head_subheads_id'); $t->string('reference')->nullable();
