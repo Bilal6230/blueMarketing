@@ -240,6 +240,66 @@ final class V2FinancePilotController extends Controller
         ], 201);
     }
 
+    /**
+     * Isolated CV draft endpoints: never operate on V1's default database.
+     */
+    public function commissionDraft(
+        Request $request, int $projectId, string $action,
+        ?int $sourceId = null
+    ): JsonResponse {
+        $this->project($request, $projectId, true);
+        $service = new \App\Services\Finance\V2CommissionDraftWorkflow();
+        try {
+            if ($action === 'create' && $sourceId === null) {
+                $data = $request->validate([
+                    'voucher_number' => ['required', 'string', 'max:64'],
+                    'date' => ['required', 'date_format:Y-m-d'],
+                    'lines' => ['required', 'array', 'min:2', 'max:100'],
+                    'lines.*.account_id' => ['required', 'integer', 'min:1'],
+                    'lines.*.debit' => ['required', 'regex:/^(0|[1-9][0-9]{0,9})(?:\\.[0-9]{1,2})?$/D'],
+                    'lines.*.credit' => ['required', 'regex:/^(0|[1-9][0-9]{0,9})(?:\\.[0-9]{1,2})?$/D'],
+                    'lines.*.description' => ['nullable', 'string', 'max:1000'],
+                ]);
+                $id = $service->createDraft(
+                    $projectId, $data['voucher_number'], $data['date'],
+                    $data['lines'], (int) $request->user()->getAuthIdentifier()
+                );
+                return response()->json(['source_id' => $id, 'status' => 'draft'], 201);
+            }
+            if ($sourceId === null || $sourceId < 1) {
+                abort(404);
+            }
+            if ($action === 'update') {
+                $data = $request->validate([
+                    'date' => ['required', 'date_format:Y-m-d'],
+                    'lines' => ['required', 'array', 'min:2', 'max:100'],
+                    'lines.*.account_id' => ['required', 'integer', 'min:1'],
+                    'lines.*.debit' => ['required', 'regex:/^(0|[1-9][0-9]{0,9})(?:\\.[0-9]{1,2})?$/D'],
+                    'lines.*.credit' => ['required', 'regex:/^(0|[1-9][0-9]{0,9})(?:\\.[0-9]{1,2})?$/D'],
+                ]);
+                $service->updateDraft($projectId, $sourceId, $data['date'], $data['lines']);
+                return response()->json(['source_id' => $sourceId, 'status' => 'draft']);
+            }
+            if ($action === 'cancel') {
+                $service->cancelDraft($projectId, $sourceId);
+                return response()->json(['source_id' => $sourceId, 'status' => 'cancelled']);
+            }
+            if ($action === 'approve') {
+                $data = $request->validate([
+                    'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/'],
+                ]);
+                $batch = $service->approveAndPost(
+                    $projectId, $sourceId, $data['request_key'],
+                    (int) $request->user()->getAuthIdentifier()
+                );
+                return response()->json(['source_id' => $sourceId, 'posting_batch_id' => $batch], 201);
+            }
+            abort(404);
+        } catch (\DomainException $exception) {
+            return response()->json(['error' => 'V2_CV_DRAFT_CONFLICT'], 409);
+        }
+    }
+
     public function voidVoucher(
         Request $request, int $projectId, string $kind, int $sourceId
     ): JsonResponse {
