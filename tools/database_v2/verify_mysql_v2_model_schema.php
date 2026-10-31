@@ -153,9 +153,9 @@ foreach (['v2_posting_project_idempotency_unique', 'v2_one_reversal_per_batch_un
 }
 
 $domainReport = (new \App\Services\Finance\V2DomainModelContract())->inspect();
-if ($domainReport['model_count'] !== 18
-    || $domainReport['cast_count'] < 70
-    || $domainReport['relation_count'] < 24) {
+if ($domainReport['model_count'] !== 22
+    || $domainReport['cast_count'] < 140
+    || $domainReport['relation_count'] < 28) {
     throw new RuntimeException('V2_DOMAIN_MODEL_CONTRACT_INCOMPLETE');
 }
 echo 'V2_MYSQL_DOMAIN_MODEL_CONTRACT_PASS: '
