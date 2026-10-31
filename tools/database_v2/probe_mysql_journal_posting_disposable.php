@@ -144,6 +144,47 @@ try {
         throw new RuntimeException('CI_V2_JV_MYSQL_REPORT_RECONCILIATION_FAILED');
     }
     echo "CI_V2_MYSQL_POSTING_REVERSAL_PASS: exact detail FKs, replay, exclusive source, balanced correction and zero closing balances\n";
+    // Sales/booking SV vouchers share the verified physical journal header
+    // and detail tables, but MUST retain their explicit SV series.
+    $db->table('journal_vouchers')->insert([
+        'id' => 910002, 'voucher_number' => 78, 'type' => 'SV',
+        'date' => '2026-10-30', 'project_id' => $project,
+        'created_by' => $user, 'status' => 'approved',
+        'total_debit' => '30.25', 'total_credit' => '30.25',
+    ]);
+    $db->table('journal_voucher_details')->insert([
+        ['id' => 910003, 'journal_voucher_id' => 910002,
+            'account_id' => $account1, 'debit' => '30.25',
+            'credit' => '0.00', 'description' => 'Synthetic SV debit'],
+        ['id' => 910004, 'journal_voucher_id' => 910002,
+            'account_id' => $account2, 'debit' => '0.00',
+            'credit' => '30.25', 'description' => 'Synthetic SV credit'],
+    ]);
+    $sales = $gateway->postSalesVoucher(
+        $project, 910002, 'MYSQL-CI-SALES-SV-POST-0001', $user
+    );
+    if ($sales === $original || $sales === $reversal
+        || $gateway->postSalesVoucher(
+            $project, 910002, 'MYSQL-CI-SALES-SV-POST-0001', $user
+        ) !== $sales
+        || (string) $db->table('finance_posting_batches')
+            ->where('id', $sales)->value('voucher_series') !== 'SV'
+        || (int) $db->table('finance_posting_journal_sources')
+            ->where('journal_voucher_id', 910002)->count() !== 1) {
+        throw new RuntimeException('CI_V2_SALES_EXACT_JOURNAL_FK_FAILED');
+    }
+    try {
+        $gateway->postJournal(
+            $project, 910002, 'MYSQL-CI-SALES-WRONG-JV-0001', $user
+        );
+        throw new RuntimeException('CI_V2_SALES_IMPROPERLY_ACCEPTED_AS_JV');
+    } catch (DomainException $expected) {
+        if ($expected->getMessage() !== 'V2_JV_HEADER_NOT_ACTIVE') {
+            throw $expected;
+        }
+    }
+    echo "CI_V2_MYSQL_SALES_SV_TYPED_SOURCE_PASS: real header/detail IDs and wrong-kind guard\n";
+
 } finally {
     // Runs exclusively against a fresh disposable CI database. Physical FK
     // constraints stay ENABLED; delete child rows before source parents.
@@ -154,8 +195,8 @@ try {
     $db->table('finance_posting_batches')->whereNotNull('reversal_of_batch_id')->delete();
     $db->table('finance_posting_batches')->delete();
 
-    $db->table('journal_voucher_details')->where('journal_voucher_id', $journal)->delete();
-    $db->table('journal_vouchers')->where('id', $journal)->delete();
+    $db->table('journal_voucher_details')->whereIn('journal_voucher_id', [$journal, 910002])->delete();
+    $db->table('journal_vouchers')->whereIn('id', [$journal, 910002])->delete();
     $db->table('project_head_subheads')->where('project_id', $project)->delete();
     $db->table('subhead_accountings')->whereIn('id', [$subhead1, $subhead2])->delete();
     $db->table('head_accountings')->where('id', $head)->delete();
