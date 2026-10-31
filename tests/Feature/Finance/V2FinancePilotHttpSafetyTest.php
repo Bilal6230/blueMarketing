@@ -307,4 +307,40 @@ final class V2FinancePilotHttpSafetyTest extends TestCase
             ->assertOk()->assertJsonPath('documents.0.voucher_series', 'SV');
     }
 
+    public function test_v2_readiness_scopes_exact_source_kind_to_project_and_no_writes(): void
+    {
+        $this->enablePilot(false);
+        $this->authenticate();
+        $base = '/api/v2/finance/projects/1/sources/';
+        $this->getJson($base . 'journal/51/readiness')
+            ->assertOk()->assertJsonPath('eligible', true)
+            ->assertJsonPath('source_kind', 'journal');
+        $this->getJson($base . 'sales/51/readiness')
+            ->assertOk()->assertJsonPath('eligible', false)
+            ->assertJsonPath('reason_code', 'SOURCE_PROJECT_OR_TYPE_INVALID');
+        $this->getJson($base . 'journal/999/readiness')
+            ->assertOk()->assertJsonPath('eligible', false)
+            ->assertJsonPath('reason_code', 'SOURCE_NOT_FOUND');
+        $this->getJson($base . 'unknown/51/readiness')->assertNotFound();
+        $this->assertDatabaseCount('finance_posting_batches', 0);
+    }
+
+    public function test_v2_readiness_and_post_refuse_mismatched_sales_type(): void
+    {
+        $this->enablePilot(true);
+        $this->authenticate();
+        DB::table('journal_vouchers')->where('id', 51)->update(['type' => 'SV']);
+        $base = '/api/v2/finance/projects/1';
+        $this->getJson($base . '/sources/sales/51/readiness')
+            ->assertOk()->assertJsonPath('eligible', true);
+        $this->getJson($base . '/sources/journal/51/readiness')
+            ->assertOk()->assertJsonPath('eligible', false);
+
+        $this->postJson($base . '/postings', [
+            'kind' => 'journal', 'source_id' => 51,
+            'request_key' => 'SV-READINESS-FAIL-0001',
+        ])->assertStatus(409)->assertJsonPath('error', 'V2_POSTING_CONFLICT');
+        $this->assertDatabaseCount('finance_posting_batches', 0);
+    }
+
 }
