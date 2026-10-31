@@ -279,8 +279,12 @@ final class V2FinancePilotHttpSafetyTest extends TestCase
             'effective_date' => '2026-10-31',
             'reason' => 'Approved correction',
         ];
+        // Superadmins may inspect more than one project, but source 51 is
+        // owned by project 1. Source isolation must fail with 409, never
+        // accidentally reverse a project-1 posting through project 2.
         $this->postJson('/api/v2/finance/projects/2/vouchers/journal/51/void', $void)
-            ->assertForbidden();
+            ->assertStatus(409)
+            ->assertJsonPath('error', 'V2_VOUCHER_VOID_CONFLICT');
         $this->postJson('/api/v2/finance/projects/1/vouchers/commission/41/void', $void)
             ->assertStatus(409);
         $this->assertDatabaseCount('finance_posting_batches', 0);
