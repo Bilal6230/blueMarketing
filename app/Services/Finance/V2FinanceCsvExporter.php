@@ -85,4 +85,31 @@ final class V2FinanceCsvExporter
             'is_reversal', 'debit', 'credit', 'running_balance',
         ], $rows);
     }
+    /** Approved, typed V2 register for JV/CV/cash/booking/labour/stock. */
+    public function voucherRegister(array $documents): string
+    {
+        $rows = [];
+        foreach ($documents as $document) {
+            $rows[] = [
+                $document['posting_batch_id'],
+                $document['source_kind'],
+                $document['source_id'],
+                $document['source_reference'],
+                $document['voucher_series'],
+                $document['effective_date'],
+                $document['is_reversal'] ? '1' : '0',
+                $document['reversal_of_batch_id'] ?? '',
+                $document['line_count'],
+                $document['total_debit'],
+                $document['total_credit'],
+            ];
+        }
+        return $this->table([
+            'posting_batch_id', 'source_kind', 'source_id',
+            'source_reference', 'voucher_series', 'effective_date',
+            'is_reversal', 'reversal_of_batch_id', 'line_count',
+            'total_debit', 'total_credit',
+        ], $rows);
+    }
+
 }
