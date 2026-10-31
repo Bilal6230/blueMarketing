@@ -8,10 +8,12 @@
 
 **LATEST SAFETY STATUS (2026-10-31): P4.G3 BLOCKED — 41/57 original tables match under +05:00 rendering but fail source UTC instant parity. Retain existing V2 rehearsal unchanged; corrected fresh UTC importer and isolated target guard are implemented.**
 
+**Latest verified gate milestone (2026-10-31): P5.G1 ACCEPTED (isolated central V2 engine) — GitHub Actions [run #762](https://github.com/Bilal6230/blueMarketing/actions/runs/41175650122), both finance-safety and disposable MySQL 8.4 jobs SUCCESS; two separate PHP workers posting one real JV source returned one identical batch ID. P4.G3 UTC parity and P5.G2/G3 live-workflow switchover remain blocked/pending. No deployment.**
+
 ## Live progress bar (acceptance-gate based)
 
-**Overall: 8 / 24 gates = 33%**  
-`[████████░░░░░░░░░░░░░░░░]` **33%**
+**Overall: 9 / 24 gates = 37.5%**  
+`[█████████░░░░░░░░░░░░░░░]` **37.5%**
 
 The percentage counts **verified completion gates**, not lines of code, elapsed time, engineering quality, or production readiness. Each of six phases has four equally weighted gates. Update this meter and the last verified evidence with every substantive completed milestone. Do not mark a gate done on code creation alone when tests/approval are required.
 
@@ -21,7 +23,7 @@ The percentage counts **verified completion gates**, not lines of code, elapsed 
 | 2 | Database V2 schema / migration design | **2 / 4** | **50%** | IN PROGRESS |
 | 3 | Clean schema creation and constraint rehearsal | **3 / 4** | **75%** | IN PROGRESS |
 | 4 | Faithful old-to-new data transfer | **1 / 4** | **25%** | IN PROGRESS |
-| 5 | Full Laravel application refactor | 0 / 4 | 0% | IMPLEMENTATION PILOT (NO GATES ACCEPTED) |
+| 5 | Full Laravel application refactor | **1 / 4** | **25%** | P5.G1 V2 posting engine accepted; legacy workflow rollout pending |
 | 6 | Tests, financial parity and controlled cutover | 0 / 4 | 0% | NOT STARTED |
 
 ### 2026-10-30 latest acceptance update — 8/24 = 33%
@@ -62,6 +64,13 @@ New private source column digest tool and read-only isolated MySQL comparator lo
 - **Already-imported local V2 clone:** separate **read-only default** `tools/database_v2/restore_stock_enum_case.php` verifies exact local DB, approved source row hashes, 3 V2 migrations, 27 banks, zero posting rows, expected stock row counts and ENUM ordinals. `--apply` is explicit **DDL, not transactional**, and must be preceded by a private local backup and owner consent. No source row UPDATE or general data reimport. [Repair runbook](DATABASE_V2_STOCK_ENUM_CASE_REPAIR_2026_10_31.md).
 - **No repair has yet been executed against the owner's MySQL 8.0.30 clone**. All-original-column SHA still 54/57, P4.G3 still OPEN, project formal accepted gates **8/24 = 33%**.
 
+### 2026-10-31 — P5.G1 evidence-verified acceptance (9/24 = 37.5%)
+
+- **Exact CI:** [run #762](https://github.com/Bilal6230/blueMarketing/actions/runs/41175650122) from commit `c08ce950`; full Laravel finance-safety **733 passed / 3,127 assertions**, disposable MySQL 8.4 **SUCCESS**. Both job logs retrieved through GitHub directly, not inferred from a screenshot.
+- **Actual MySQL concurrency proof:** `CI_V2_MYSQL_PARALLEL_JV_POST_PASS`: parent project row locked while two independent PHP worker processes became active; after lock release both posting attempts returned the SAME batch ID, unique source FK/idempotency and exact JV detail links held. `CI_V2_MYSQL_POSTING_REVERSAL_PASS` and `CI_V2_MYSQL_POSTING_CLEAN_DISPOSABLE_BASELINE_PASS` verify source correction, balanced account closing and child-first cleanup. `CI_V2_MYSQL_SALES_SV_TYPED_SOURCE_PASS` verifies SV separate typed header ID.
+- **Authorization/API:** Earlier real authenticated local-only HTTP pilot tests 9/9 PASS and latest complete 733-test suite PASS. Legacy V1 controllers still untouched; pilot routes default OFF. P5.G2/P5.G3/P5.G4 and all remaining gates NOT accepted from this proof.
+- **Formal acceptance 9/24 (37.5%)**; phases: P1 2/4, P2 2/4, P3 3/4, P4 1/4, P5 1/4, P6 0/4. Fresh UTC historical import, financial reconciliation, owner approvals and UAT remain independent gates.
+
 ## Phase 1 — Audit the legacy database AND actual code
 
 - [x] **P1.G1** Identify uploaded SQL snapshot; enumerate schema, counts, actual FKs, soft-delete fields, key-type risks and initial orphan checks. Evidence: [snapshot assessment](DATABASE_V2_LEGACY_SNAPSHOT_AUDIT_2026_10_30.md). **Completed 2026-10-30 (read-only).**
@@ -100,7 +109,7 @@ New private source column digest tool and read-only isolated MySQL comparator lo
 
 ## Phase 5 — Refactor the whole Laravel project to V2
 
-- [ ] **P5.G1** Central financial posting API: transactions, row/project locking, idempotency, exact header/detail source, balanced multi-leg posting, reversal instead of destructive update.
+- [x] **P5.G1** Central **isolated V2** posting engine/API: transactions, real MySQL project row locking, same-voucher two-process idempotency with one batch ID, exact header/detail FKs, balanced multi-leg posting and immutable reversals. **Accepted 2026-10-31** after full GitHub Actions [#762](https://github.com/Bilal6230/blueMarketing/actions/runs/41175650122) PASS (both jobs), including `CI_V2_MYSQL_PARALLEL_JV_POST_PASS`, `CI_V2_MYSQL_POSTING_REVERSAL_PASS`, previous 9/9 HTTP auth/flag regression and full Laravel 733 tests/3127 assertions. **Scoped to V2 pilot engine, not activation of legacy controllers, full all-family concurrency or production.**
 - [ ] **P5.G2** Update JV/CV/CR/CP/PPR/EC/ECP and commission/source ownership, keeping safety 409 guards until replacement workflows are validated.
 - [ ] **P5.G3** Update booking/sales, stock/purchases, labour/attendance, all APIs, exports/reports, permissions and background/raw SQL paths; avoid relying on model events for DB builder writes.
 - [ ] **P5.G4** Confirm every read/write path uses V2 identity; run isolation, project ownership, concurrency, rollback, and duplicate posting regression suite.
