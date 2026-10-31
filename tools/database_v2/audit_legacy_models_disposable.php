@@ -82,7 +82,7 @@ if ($issues !== $expected) {
 }
 // All nine are intentionally excluded from isolated V2 source-model scope.
 // Do not interpret this as an assertion that legacy V1 CRUD is portable.
-$domain = app(\\App\\Services\\Finance\\V2DomainModelContract::class)->inspect();
+$domain = app(\App\Services\Finance\V2DomainModelContract::class)->inspect();
 if ($domain['model_count'] !== 22
     || $domain['cast_count'] < 148
     || $domain['relation_count'] < 38) {
