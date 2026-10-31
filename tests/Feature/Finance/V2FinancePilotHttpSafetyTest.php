@@ -274,4 +274,36 @@ final class V2FinancePilotHttpSafetyTest extends TestCase
         ])->assertUnprocessable();
         $this->assertDatabaseCount('finance_posting_batches', 0);
     }
+    public function test_sales_journal_sv_requires_explicit_kind_and_uses_physical_source_fk(): void
+    {
+        $this->enablePilot(true);
+        $this->authenticate();
+        DB::table('journal_vouchers')->where('id', 51)->update(['type' => 'SV']);
+
+        $base = '/api/v2/finance/projects/1';
+        $invalid = [
+            'kind' => 'journal', 'source_id' => 51,
+            'request_key' => 'HTTP-SALES-AS-JV-BLOCK-01',
+        ];
+        $this->postJson($base . '/postings', $invalid)->assertStatus(500);
+        $this->assertDatabaseCount('finance_posting_batches', 0);
+
+        $payload = [
+            'kind' => 'sales', 'source_id' => 51,
+            'request_key' => 'HTTP-SALES-AS-SV-POST-01',
+        ];
+        $id = $this->postJson($base . '/postings', $payload)
+            ->assertCreated()->json('posting_batch_id');
+        $this->assertSame($id, $this->postJson($base . '/postings', $payload)
+            ->assertCreated()->json('posting_batch_id'));
+        $this->assertDatabaseHas('finance_posting_batches', [
+            'id' => $id, 'voucher_series' => 'SV', 'project_id' => 1,
+        ]);
+        $this->assertDatabaseHas('finance_posting_journal_sources', [
+            'posting_batch_id' => $id, 'journal_voucher_id' => 51,
+        ]);
+        $this->getJson($base . '/voucher-register')
+            ->assertOk()->assertJsonPath('documents.0.voucher_series', 'SV');
+    }
+
 }
