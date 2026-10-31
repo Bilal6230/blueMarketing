@@ -212,6 +212,60 @@ final class V2MultiFamilyPostingTest extends TestCase
         $this->assertSame(10, $gateway->postingLines(1)[0]['source_id']);
     }
 
+    public function test_posted_commission_void_by_exact_source_is_immutable_and_idempotent(): void
+    {
+        $gateway = new V2PostingGateway();
+        $original = $gateway->postCommission(1, 10, 'CV-VOID-ORIGINAL-0001');
+        $lifecycle = new \App\Services\Finance\V2VoucherLifecycleService();
+
+        $reversal = $lifecycle->reverse(
+            1, 'commission', 10, 'CV-VOID-REVERSAL-0001',
+            '2026-10-31', 'Approved commission correction'
+        );
+        $this->assertNotSame($original, $reversal);
+        $this->assertSame($reversal, $lifecycle->reverse(
+            1, 'commission', 10, 'CV-VOID-REVERSAL-0001',
+            '2026-10-31', 'Approved commission correction'
+        ));
+        $this->assertDatabaseHas('finance_posting_batches', [
+            'id' => $reversal, 'reversal_of_batch_id' => $original,
+        ]);
+        $this->assertDatabaseHas('commision_vouchers', [
+            'id' => 10, 'project_id' => 1, 'status' => 'approved',
+        ]);
+        $this->assertDatabaseCount('finance_posting_batches', 2);
+        $this->assertDatabaseCount('finance_posting_lines', 4);
+
+        try {
+            $lifecycle->reverse(
+                1, 'commission', 10, 'CV-VOID-SECOND-KEY-0001',
+                '2026-10-31', 'Other reversal'
+            );
+            $this->fail('Reversing the same commission twice must be rejected');
+        } catch (\DomainException $exception) {
+            $this->assertDatabaseCount('finance_posting_batches', 2);
+        }
+    }
+
+    public function test_commission_void_wrong_project_cannot_reverse_original_batch(): void
+    {
+        $gateway = new V2PostingGateway();
+        $original = $gateway->postCommission(1, 10, 'CV-PROJECT-SOURCE-0001');
+        $lifecycle = new \App\Services\Finance\V2VoucherLifecycleService();
+        try {
+            $lifecycle->reverse(
+                2, 'commission', 10, 'CV-PROJECT-VOID-BLOCK-0001',
+                '2026-10-31', 'Wrong project'
+            );
+            $this->fail('Cross-project source void must be rejected');
+        } catch (\DomainException $exception) {
+            $this->assertDatabaseCount('finance_posting_batches', 1);
+            $this->assertDatabaseHas('finance_posting_batches', [
+                'id' => $original, 'reversal_of_batch_id' => null,
+            ]);
+        }
+    }
+
     public function test_commission_rejects_changed_detail_replay(): void
     {
         $gateway = new V2PostingGateway();
