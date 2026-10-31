@@ -257,6 +257,8 @@ jobs:
           php -l tools/database_v2/verify_mysql_schema.php
           php tools/database_v2/verify_mysql_schema.php
           php tools/database_v2/verify_mysql_v2_model_schema.php
+          php -l tools/database_v2/audit_legacy_models_disposable.php
+          php tools/database_v2/audit_legacy_models_disposable.php
           php tools/database_v2/test_mysql_timestamp_timezone_disposable.php
           php -l tools/database_v2/probe_mysql_row_lock_disposable.php
           php tools/database_v2/probe_mysql_row_lock_disposable.php
