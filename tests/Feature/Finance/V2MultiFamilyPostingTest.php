@@ -234,6 +234,53 @@ final class V2MultiFamilyPostingTest extends TestCase
         }
     }
 
+    public function test_cv_unposted_draft_can_be_replaced_then_posted_but_not_edited_again(): void
+    {
+        $workflow = new \App\Services\Finance\V2CommissionDraftWorkflow();
+        $id = $workflow->createDraft(1, 'CV-EDIT-ISOLATED-43', '2026-10-30', $this->legs('40.00'));
+        $workflow->updateDraft(1, $id, '2026-10-31', $this->legs('55.00'));
+        $this->assertDatabaseHas('commision_vouchers', [
+            'id' => $id, 'status' => 'draft', 'date' => '2026-10-31',
+            'total_debit' => '55.00',
+        ]);
+        $this->assertSame(2, DB::table('commision_voucher_details')
+            ->where('commision_voucher_id', $id)->whereNull('deleted_at')->count());
+        $workflow->approveAndPost(1, $id, 'CV-EDIT-APPROVAL-POST-001');
+        try {
+            $workflow->updateDraft(1, $id, '2026-10-31', $this->legs('60.00'));
+            $this->fail('A posted commission document must be immutable');
+        } catch (\DomainException $e) {
+            $this->assertDatabaseHas('commision_vouchers', [
+                'id' => $id, 'status' => 'approved', 'total_debit' => '55.00',
+            ]);
+        }
+    }
+
+    public function test_cv_draft_cancellation_soft_deletes_source_without_posting(): void
+    {
+        $workflow = new \App\Services\Finance\V2CommissionDraftWorkflow();
+        $id = $workflow->createDraft(1, 'CV-CANCEL-DRAFT-44', '2026-10-30', $this->legs('25.00'));
+        $workflow->cancelDraft(1, $id);
+        $this->assertNotNull(DB::table('commision_vouchers')->where('id', $id)->value('deleted_at'));
+        $this->assertSame(2, DB::table('commision_voucher_details')
+            ->where('commision_voucher_id', $id)->whereNotNull('deleted_at')->count());
+        $this->assertDatabaseCount('finance_posting_batches', 0);
+    }
+
+    public function test_cv_draft_update_rejects_foreign_project_without_changes(): void
+    {
+        $workflow = new \App\Services\Finance\V2CommissionDraftWorkflow();
+        $id = $workflow->createDraft(1, 'CV-FOREIGN-UPDATE-45', '2026-10-30', $this->legs('25.00'));
+        try {
+            $workflow->updateDraft(2, $id, '2026-10-31', $this->legs('25.00'));
+            $this->fail('Foreign project must not edit CV draft');
+        } catch (\DomainException $e) {
+            $this->assertDatabaseHas('commision_vouchers', [
+                'id' => $id, 'project_id' => 1, 'date' => '2026-10-30',
+            ]);
+        }
+    }
+
     public function test_commission_posts_exact_document_and_detail_fks_idempotently(): void
     {
         $gateway = new V2PostingGateway();
