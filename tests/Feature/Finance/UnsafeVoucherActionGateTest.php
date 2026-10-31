@@ -42,6 +42,18 @@ class UnsafeVoucherActionGateTest extends TestCase
         $this->assertBlocked(fn () => app(CommissionVoucherController::class)->destroy(41));
     }
 
+    public function test_original_voucher_actions_remain_fail_closed_when_only_api_flag_is_on(): void
+    {
+        config()->set('finance.v2_pilot_api_enabled', true);
+        config()->set('finance.v2_pilot_write_enabled', false);
+        $this->assertBlocked(fn () => app(JournalVoucherController::class)->destroy(41));
+        $this->assertBlocked(fn () => app(CommissionVoucherController::class)->destroy(41));
+        $this->assertBlocked(fn () => app(CommissionVoucherController::class)
+            ->update(Request::create('/test-cv/41', 'PUT'), 41));
+        $this->assertBlocked(fn () => app(CommissionVoucherController::class)
+            ->store(Request::create('/test-cv', 'POST')));
+    }
+
     private function assertBlocked(callable $action): void
     {
         try {
