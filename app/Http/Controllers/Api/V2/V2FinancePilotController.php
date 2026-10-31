@@ -174,7 +174,8 @@ final class V2FinancePilotController extends Controller
         $key = (string) $data['request_key'];
         $legs = $data['allocation'] ?? [];
         $actor = (int) $request->user()->getAuthIdentifier();
-        $batchId = match ($data['kind']) {
+        try {
+            $batchId = match ($data['kind']) {
             'journal' => $gateway->postJournal($projectId, $id, $key, $actor),
             'sales' => $gateway->postSalesVoucher($projectId, $id, $key, $actor),
             'commission' => $gateway->postCommission($projectId, $id, $key, $actor),
@@ -187,6 +188,11 @@ final class V2FinancePilotController extends Controller
             'stock_entry' => $gateway->postStockEntry($projectId, $id, $key, $legs, $actor),
             'stock_bill' => $gateway->postStockBill($projectId, $id, $key, $legs, $actor),
         };
+        } catch (\DomainException $error) {
+            // Business/source conflicts are intentional denials, not 500s.
+            // Do not leak source details or SQL into a pilot HTTP response.
+            return response()->json(['error' => 'V2_POSTING_CONFLICT'], 409);
+        }
         return response()->json([
             'scope' => 'isolated_v2_pilot_only', 'posting_batch_id' => $batchId,
         ], 201);
@@ -201,11 +207,15 @@ final class V2FinancePilotController extends Controller
             'effective_date' => ['required', 'date_format:Y-m-d'],
             'reason' => ['required', 'string', 'min:1', 'max:200'],
         ]);
+        try {
         $id = $gateway->reversePostedBatch(
             $projectId, (int) $data['original_batch_id'],
             $data['request_key'], $data['effective_date'],
             $data['reason'], (int) $request->user()->getAuthIdentifier()
         );
+        } catch (\DomainException $error) {
+            return response()->json(['error' => 'V2_REVERSAL_CONFLICT'], 409);
+        }
         return response()->json([
             'scope' => 'isolated_v2_pilot_only', 'reversal_batch_id' => $id,
         ], 201);
