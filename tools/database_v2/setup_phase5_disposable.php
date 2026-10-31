@@ -67,3 +67,36 @@ if ($after !== 73 || $history !== 5 || ($verifyOnly && $before !== 73)) {
     throw new RuntimeException("PHASE5_SCHEMA_CHECK_FAILED: {$after} tables / {$history} migrations");
 }
 echo "PHASE5_V2_SCHEMA_PASS: {$after} physical tables (72 V2 + migrations) / {$history} migrations; no historical source import performed by this script." . PHP_EOL;
+
+// Read-only acceptance of physical source and posting integrity on this
+// exact disposable local target. Never claim business workflow parity from
+// an empty schema.
+$required = [
+    'journal_vouchers', 'journal_voucher_details', 'commision_vouchers',
+    'commision_voucher_details', 'customer_ledger', 'booking_vouchers',
+    'stock_entries', 'stock_bills', 'labour_ledgers',
+    'finance_posting_batches', 'finance_posting_lines',
+    'finance_posting_source_claims', 'finance_posting_commission_sources',
+    'finance_commission_line_sources', 'finance_stock_entry_project_approvals',
+    'finance_stock_bill_project_approvals',
+];
+$missing = [];
+foreach ($required as $table) {
+    if (!\\Illuminate\\Support\\Facades\\Schema::hasTable($table)) {
+        $missing[] = $table;
+    }
+}
+if ($missing !== []) {
+    throw new RuntimeException('PHASE5_MISSING_WORKFLOW_TABLES: ' . implode(',', $missing));
+}
+$fk = (int) $db->selectOne(
+    'SELECT COUNT(*) AS n FROM information_schema.KEY_COLUMN_USAGE '
+    . 'WHERE TABLE_SCHEMA = DATABASE() AND REFERENCED_TABLE_NAME IS NOT NULL'
+)->n;
+if ($fk < 124) {
+    throw new RuntimeException('PHASE5_FOREIGN_KEY_COVERAGE_FAILED: ' . $fk);
+}
+echo 'PHASE5_WORKFLOW_SCHEMA_CONTRACT_PASS: ' . count($required)
+    . ' core source/posting tables and ' . $fk
+    . ' physical FK columns; business workflow tests NOT yet accepted.' . PHP_EOL;
+
