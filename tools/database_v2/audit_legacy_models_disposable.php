@@ -59,6 +59,28 @@ foreach (glob(app_path('Models/*.php')) ?: [] as $file) {
     }
 }
 ksort($issues);
+// Pin the known baseline explicitly. New discrepancies must fail CI rather
+// than silently increasing an informational count; these are NOT resolved
+// V1 CRUD compatibility findings and never justify adding fabricated columns.
+$expected = [
+    'Expence' => ['TABLE_NOT_IN_PINNED_V2_BASELINE:expences'],
+    'JournalVoucher' => ['MISSING_FILLABLE:site_id'],
+    'LabourAttendance' => ['MISSING_FILLABLE:site_name'],
+    'LandingPage' => ['TABLE_NOT_IN_PINNED_V2_BASELINE:landing_pages'],
+    'Lead' => ['MISSING_FILLABLE:sectors'],
+    'Ledger' => ['MISSING_FILLABLE:journal_voucher_detail_id'],
+    'Plot' => ['MISSING_FILLABLE:amount', 'MISSING_CAST_COLUMN:amount'],
+    'StockCounter' => ['MISSING_CAST_COLUMN:id'],
+    'StockItemBalance' => ['MISSING_CAST_COLUMN:id'],
+];
+ksort($expected);
+if ($issues !== $expected) {
+    echo 'V2_LEGACY_MODEL_FINDINGS_BASELINE_DRIFT: ' . json_encode(
+        ['actual' => $issues, 'expected' => $expected], JSON_THROW_ON_ERROR
+    ) . PHP_EOL;
+    throw new RuntimeException('V2_LEGACY_MODEL_FINDINGS_CHANGED_REVIEW_REQUIRED');
+}
+echo 'V2_LEGACY_MODEL_KNOWN_FINDINGS_PINNED: 9 documented V1 compatibility findings; no source schema alterations.' . PHP_EOL;
 if ($audited < 40 || $mapped < 35) {
     throw new RuntimeException('V2_LEGACY_MODEL_AUDIT_UNEXPECTED_COVERAGE');
 }
