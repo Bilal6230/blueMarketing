@@ -58,6 +58,8 @@ final class V2FinancePilotHttpSafetyTest extends TestCase
             $t->string('voucher_number');
             $t->date('date');
             $t->string('status');
+            $t->unsignedBigInteger('created_by')->nullable();
+            $t->timestamps();
             $t->decimal('total_debit', 15, 2);
             $t->decimal('total_credit', 15, 2);
             $t->timestamp('deleted_at')->nullable();
@@ -69,6 +71,7 @@ final class V2FinancePilotHttpSafetyTest extends TestCase
             $t->decimal('debit', 15, 2);
             $t->decimal('credit', 15, 2);
             $t->text('description')->nullable();
+            $t->timestamps();
             $t->timestamp('deleted_at')->nullable();
         });
         Schema::create('project_head_subheads', function (Blueprint $t): void {
@@ -351,6 +354,36 @@ final class V2FinancePilotHttpSafetyTest extends TestCase
         ]);
         $this->assertDatabaseCount('finance_posting_batches', 2);
         $this->assertDatabaseCount('finance_posting_lines', 4);
+    }
+
+    public function test_http_commission_draft_create_update_approve_post_and_immutability(): void
+    {
+        $this->enablePilot(true);
+        $this->authenticate();
+        $base = '/api/v2/finance/projects/1/commission-drafts';
+        $legs = [
+            ['account_id' => 101, 'debit' => '35.00', 'credit' => '0.00'],
+            ['account_id' => 102, 'debit' => '0.00', 'credit' => '35.00'],
+        ];
+        $id = $this->postJson($base . '/create', [
+            'voucher_number' => 'CV-HTTP-NEW-52',
+            'date' => '2026-10-30', 'lines' => $legs,
+        ])->assertCreated()->json('source_id');
+        $this->assertIsInt($id);
+        $this->postJson($base . '/update/' . $id, [
+            'date' => '2026-10-31', 'lines' => $legs,
+        ])->assertOk();
+        $batch = $this->postJson($base . '/approve/' . $id, [
+            'request_key' => 'HTTP-CV-DRAFT-APPROVE-001',
+        ])->assertCreated()->json('posting_batch_id');
+        $this->assertIsInt($batch);
+        $this->postJson($base . '/update/' . $id, [
+            'date' => '2026-10-31', 'lines' => $legs,
+        ])->assertStatus(409);
+        $this->postJson($base . '/cancel/' . $id)->assertStatus(409);
+        $this->assertDatabaseHas('finance_posting_commission_sources', [
+            'posting_batch_id' => $batch, 'commision_voucher_id' => $id,
+        ]);
     }
 
     public function test_stock_project_approval_requires_write_flag_before_any_query(): void
