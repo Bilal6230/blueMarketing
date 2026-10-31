@@ -240,6 +240,30 @@ final class V2FinancePilotController extends Controller
         ], 201);
     }
 
+    public function voidVoucher(
+        Request $request, int $projectId, string $kind, int $sourceId
+    ): JsonResponse {
+        $this->project($request, $projectId, true);
+        $data = $request->validate([
+            'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/'],
+            'effective_date' => ['required', 'date_format:Y-m-d'],
+            'reason' => ['required', 'string', 'min:1', 'max:200'],
+        ]);
+        try {
+            $batchId = (new \App\Services\Finance\V2VoucherLifecycleService())->reverse(
+                $projectId, $kind, $sourceId,
+                $data['request_key'], $data['effective_date'],
+                $data['reason'], (int) $request->user()->getAuthIdentifier()
+            );
+        } catch (\DomainException $error) {
+            return response()->json(['error' => 'V2_VOUCHER_VOID_CONFLICT'], 409);
+        }
+        return response()->json([
+            'scope' => 'isolated_v2_pilot_only',
+            'reversal_batch_id' => $batchId,
+        ], 201);
+    }
+
     public function reverse(Request $request, int $projectId, V2PostingGateway $gateway): JsonResponse
     {
         $this->project($request, $projectId, true);
