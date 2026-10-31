@@ -44,8 +44,8 @@ if (array_key_exists('require-prepared', $opts)) {
         throw new RuntimeException('Prepared and empty checks cannot both be requested');
     }
     $manifest = (string) ($opts['manifest'] ?? '');
-    if (!is_file($manifest) || $count !== 70) {
-        throw new RuntimeException('V2_PREPARED_REFUSED: expected 70 schema tables and private staging manifest');
+    if (!is_file($manifest) || $count !== 72) {
+        throw new RuntimeException('V2_PREPARED_REFUSED: expected 72 schema tables and private staging manifest');
     }
     $plan = json_decode((string) file_get_contents($manifest), true, 512, JSON_THROW_ON_ERROR);
     if (($plan['source_sha256'] ?? '') !==
@@ -57,7 +57,7 @@ if (array_key_exists('require-prepared', $opts)) {
         throw new RuntimeException('V2_PREPARED_REFUSED: staging source fingerprint mismatch');
     }
     if ((int) $db->selectOne('SELECT @@FOREIGN_KEY_CHECKS AS n')->n !== 1 ||
-        (int) $db->table('migrations')->count() !== 3 ||
+        (int) $db->table('migrations')->count() !== 5 ||
         (int) $db->table('banks')->count() !== 27) {
         throw new RuntimeException('V2_PREPARED_REFUSED: framework migration/bank FK state incorrect');
     }
@@ -81,6 +81,9 @@ if (array_key_exists('require-prepared', $opts)) {
         'finance_posting_stock_entry_sources', 'finance_posting_stock_bill_sources',
         'finance_posting_cash_sources', 'finance_posting_booking_sources',
         'finance_posting_labour_sources',
+        'finance_commission_line_sources',
+        'finance_stock_entry_project_approvals',
+        'finance_stock_bill_project_approvals',
     ] as $table) {
         if (!\Illuminate\Support\Facades\Schema::hasTable($table) ||
             (int) $db->table($table)->count() !== 0) {
@@ -91,11 +94,11 @@ if (array_key_exists('require-prepared', $opts)) {
         "SELECT COUNT(*) AS n FROM information_schema.KEY_COLUMN_USAGE
          WHERE TABLE_SCHEMA=DATABASE() AND REFERENCED_TABLE_NAME IS NOT NULL"
     )->n;
-    if ($fk < 116) {
+    if ($fk < 124) {
         throw new RuntimeException('V2_PREPARED_REFUSED: physical FK graph incomplete');
     }
-    echo "SAFE_LOCAL_V2_PREPARED_TARGET_VERIFIED: 70 tables, 3 migrations, 27 bank IDs, "
-        . "57 empty historic target tables, 11 empty finance posting tables, {$fk} FK columns." . PHP_EOL;
+    echo "SAFE_LOCAL_V2_PREPARED_TARGET_VERIFIED: 72 tables, 5 migrations, 27 bank IDs, "
+        . "57 empty historic target tables, 14 empty finance posting/approval tables, {$fk} FK columns." . PHP_EOL;
 }
 
 $version = (string) $db->selectOne('SELECT VERSION() AS v')->v;
