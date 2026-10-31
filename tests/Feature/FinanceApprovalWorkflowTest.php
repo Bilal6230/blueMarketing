@@ -358,6 +358,53 @@ class FinanceApprovalWorkflowTest extends TestCase
         $this->assertSame('pending', $pending->fresh()->status);
     }
 
+    public function test_legacy_generic_finance_rejection_delegates_to_locked_finance_path(): void
+    {
+        $pending = PendingUpdate::create([
+            'table_name' => 'ledgers',
+            'record_id' => 1,
+            'old_values' => ['detail' => 'Ledger 1'],
+            'new_values' => ['detail' => 'Rejected narrative'],
+            'status' => 'pending',
+            'submitted_by' => $this->admin->id,
+        ]);
+        $request = Request::create('/admin/reject/1', 'POST', ['table' => 'ledgers']);
+        $session = app('session.store');
+        $session->start();
+        $session->setPreviousUrl('/admin/approvals/finance');
+        $request->setLaravelSession($session);
+        $this->app->instance('request', $request);
+        Auth::setUser($this->makeFinanceUser(true, true));
+
+        $response = app(VoucherController::class)->reject(1, $request);
+        $this->assertSame(302, $response->getStatusCode());
+        $this->assertSame('rejected', $pending->fresh()->status);
+        $this->assertSame('Ledger 1', DB::table('ledgers')->where('id', 1)->value('detail'));
+    }
+
+    public function test_legacy_generic_finance_rejection_requires_finance_read_permission(): void
+    {
+        $pending = PendingUpdate::create([
+            'table_name' => 'ledgers',
+            'record_id' => 1,
+            'old_values' => ['detail' => 'Ledger 1'],
+            'new_values' => ['detail' => 'Rejected narrative'],
+            'status' => 'pending',
+            'submitted_by' => $this->admin->id,
+        ]);
+        $request = Request::create('/admin/reject/1', 'POST', ['table' => 'ledgers']);
+        $this->app->instance('request', $request);
+        Auth::setUser($this->makeFinanceUser(false, true));
+
+        try {
+            app(VoucherController::class)->reject(1, $request);
+            $this->fail('Finance reject must require read voucher permission');
+        } catch (HttpExceptionInterface $e) {
+            $this->assertSame(403, $e->getStatusCode());
+        }
+        $this->assertSame('pending', $pending->fresh()->status);
+    }
+
     protected function createSchema(): void
     {
         Schema::dropAllTables();
