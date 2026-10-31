@@ -82,6 +82,11 @@ final class V2FinancePilotHttpSafetyTest extends TestCase
             ['id' => 1, 'is_active' => 1],
             ['id' => 2, 'is_active' => 1],
         ]);
+        // The authenticated mock has User::id=1. Finance batches preserve
+        // actor attribution via a REAL posted_by -> users.id foreign key;
+        // create that same physical user in this isolated memory fixture.
+        // Never bypass or disable the FK to make a posting test pass.
+        DB::table('users')->insert(['id' => 1]);
         DB::table('project_head_subheads')->insert([
             ['id' => 101, 'project_id' => 1],
             ['id' => 102, 'project_id' => 1],
@@ -237,6 +242,9 @@ final class V2FinancePilotHttpSafetyTest extends TestCase
         $original = $this->postJson($base . '/postings', $payload)
             ->assertCreated()->json('posting_batch_id');
         $this->assertIsInt($original);
+        $this->assertDatabaseHas('finance_posting_batches', [
+            'id' => $original, 'project_id' => 1, 'posted_by' => 1,
+        ]);
         $this->assertSame($original,
             $this->postJson($base . '/postings', $payload)
                 ->assertCreated()->json('posting_batch_id'));
