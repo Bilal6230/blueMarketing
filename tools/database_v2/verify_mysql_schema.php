@@ -31,8 +31,32 @@ $foreign = (int) $db->selectOne(
      WHERE TABLE_SCHEMA=DATABASE() AND REFERENCED_TABLE_NAME IS NOT NULL"
 )->n;
 
-if ($tables !== 70 || $foreign < 116) {
+if ($tables !== 72 || $foreign < 124) {
     throw new RuntimeException("Unexpected V2 topology: {$tables} tables / {$foreign} FK columns");
+}
+
+// The two additive V2 migrations are now part of the canonical baseline.
+// Require exact commission posting-line ancestry and explicit stock ownership
+// approvals; an old 70-table/3-migration baseline must not silently pass.
+foreach ([
+    ['finance_commission_line_sources', 'posting_line_id', 'finance_posting_lines'],
+    ['finance_commission_line_sources', 'commision_voucher_detail_id', 'commision_voucher_details'],
+    ['finance_stock_entry_project_approvals', 'stock_entry_id', 'stock_entries'],
+    ['finance_stock_entry_project_approvals', 'project_id', 'projects'],
+    ['finance_stock_entry_project_approvals', 'approved_by', 'users'],
+    ['finance_stock_bill_project_approvals', 'stock_bill_id', 'stock_bills'],
+    ['finance_stock_bill_project_approvals', 'project_id', 'projects'],
+    ['finance_stock_bill_project_approvals', 'approved_by', 'users'],
+] as [$child, $column, $parent]) {
+    $referenced = $db->selectOne(
+        'SELECT REFERENCED_TABLE_NAME AS parent FROM information_schema.KEY_COLUMN_USAGE'
+        . ' WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME=?'
+        . ' AND REFERENCED_TABLE_NAME IS NOT NULL',
+        [$child, $column]
+    );
+    if (!$referenced || $referenced->parent !== $parent) {
+        throw new RuntimeException("V2 additive source FK missing: {$child}.{$column} -> {$parent}");
+    }
 }
 
 // Prove that MySQL 8.4 can change the old case-only ENUM labels to
@@ -148,7 +172,7 @@ foreach ([
     }
 }
 
-if ((int) DB::table('migrations')->count() !== 3 ||
+if ((int) DB::table('migrations')->count() !== 5 ||
     (int) DB::table('legacy_migration_history')->count() !== 0) {
     throw new RuntimeException('V2 and V1 Laravel migration-history separation failed.');
 }
