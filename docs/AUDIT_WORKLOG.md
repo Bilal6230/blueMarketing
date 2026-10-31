@@ -1033,3 +1033,10 @@ Evidence ID: V2_HARDENING_32_87_LOCAL_PASS
 - Added targeted lint and PHPUnit CI commands. **New HTTP tests have NOT been run by operator/CI as of this entry.** Real isolated MySQL and parallel concurrency still pending. Historical P4.G3 blocked on known source UTC instant difference. Formal acceptance **8/24 = 33.3% unchanged**. No live, client, staging, original dump or local historical rehearsal data was accessed/changed.
 
 Additional HTTP negative case: an explicitly granted future v2-finance-read Gate does NOT bypass independent per-project membership; the new HTTP suite now contains 9 tests, all unexecuted at this checkpoint.
+
+### 2026-10-31 — HTTP auth regression root cause isolated and fixture corrected; awaiting rerun
+
+- Operator ran new 9-case `V2FinancePilotHttpSafetyTest` on `1cb10fdd`: **4 PASS, 5 FAIL (14 assertions)**. Every failing HTTP request returned 500 due to **SQLite in-memory `permissions` table missing**, NOT observed business/posting logic failure. PHP lint, whitespace check and clean working tree passed. Earlier separate 69 tests / 274 assertions remain PASS on `103202f4`.
+- Cause: real Spatie PermissionRegistrar's global `Gate::before` calls user `hasPermissionTo()` (read/write abilities) and loads its `permissions` table before the pilot Gate handlers; HTTP test fixture built finance tables but omitted Spatie's original tables. This is a real test fixture setup flaw; **do not change V1 security or bypass the registrar**.
+- Fix commit `bcdc061f`: the HTTP test `setUp()` now runs the existing `database/migrations/2022_03_19_102456_create_permission_tables.php` in the already isolated SQLite `:memory:` connection via `require_once` and `CreatePermissionTables::up()`. Preserves real Gate callbacks, role permission schema and FK behavior. No schema modification on V1, staging, live or historical local V2.
+- **Status pending re-test**: do NOT claim 9/9 PASS, do NOT alter formal accepted gates (**8/24 = 33.3%**). Next target is same isolated HTTP test only; review any subsequent independent assertion failures separately.
