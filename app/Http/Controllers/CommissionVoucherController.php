@@ -186,7 +186,31 @@ class CommissionVoucherController extends Controller
 
     public function destroy($id)
     {
-        abort(409, 'Commission voucher deletion is temporarily disabled to protect accounting history until reversal posting is implemented.');
+        abort_unless(
+            in_array(config('app.env'), ['local', 'testing'], true)
+                && config('finance.v2_pilot_api_enabled')
+                && config('finance.v2_pilot_write_enabled'),
+            409, 'Commission voucher deletion is temporarily disabled to protect accounting history until reversal posting is implemented.'
+        );
+        \App\Services\Finance\V2IsolatedConnectionGuard::assertAllowed();
+        $projectId = (int) getSelectedTown();
+        abort_if($projectId < 1, 403, 'Select a project.');
+        $request = request();
+        $data = $request->validate([
+            'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
+            'effective_date' => ['required', 'date_format:Y-m-d'],
+            'reason' => ['required', 'string', 'min:1', 'max:200'],
+        ]);
+        try {
+            (new \App\Services\Finance\V2VoucherLifecycleService())->reverse(
+                $projectId, 'commission', (int) $id, $data['request_key'],
+                $data['effective_date'], $data['reason'], (int) Auth::id()
+            );
+        } catch (\DomainException $exception) {
+            abort(409, 'Commission voucher reversal rejected to protect accounting history.');
+        }
+        return redirect()->route('commision.voucher.index')
+            ->with('success', 'Commission voucher reversed; original accounting history preserved.');
     }
 
     public function edit($id)
