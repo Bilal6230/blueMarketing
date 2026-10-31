@@ -469,4 +469,32 @@ class V2JournalPostingWriterTest extends TestCase
         (new V2PostingGateway())->accountStatement(1, 201);
     }
 
+    public function test_sales_voucher_uses_real_journal_header_and_details_with_same_typed_fk(): void
+    {
+        DB::table('journal_vouchers')->where('id', 51)->update(['type' => 'SV']);
+        $gateway = new V2PostingGateway();
+        $id = $gateway->postSalesVoucher(1, 51, 'SV-REAL-JOURNAL-POST-0001');
+        $this->assertSame($id, $gateway->postSalesVoucher(1, 51, 'SV-REAL-JOURNAL-POST-0001'));
+        $this->assertDatabaseHas('finance_posting_batches', [
+            'id' => $id, 'project_id' => 1,
+            'voucher_series' => 'SV', 'voucher_number' => 51,
+        ]);
+        $this->assertDatabaseHas('finance_posting_journal_sources', [
+            'posting_batch_id' => $id, 'journal_voucher_id' => 51,
+        ]);
+        $this->assertDatabaseCount('finance_journal_line_sources', 2);
+        $this->assertSame('journal', $gateway->postingLines(1)[0]['source_kind']);
+        $this->assertSame('SV', $gateway->postingLines(1)[0]['voucher_series']);
+        $this->assertSame('125.50', $gateway->postingSummary(1)['total_debit']);
+        $this->assertSame('51', $gateway->voucherRegister(1)[0]['source_reference']);
+    }
+
+    public function test_jv_writer_refuses_sales_document_without_explicit_sv_series(): void
+    {
+        DB::table('journal_vouchers')->where('id', 51)->update(['type' => 'SV']);
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('V2_JV_HEADER_NOT_ACTIVE');
+        (new V2PostingGateway())->postJournal(1, 51, 'SV-INVALID-JV-POST-0001');
+    }
+
 }
