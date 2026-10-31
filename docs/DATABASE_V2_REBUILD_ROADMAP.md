@@ -368,3 +368,10 @@ Additional HTTP negative case: an explicitly granted future v2-finance-read Gate
 - Cause: real Spatie PermissionRegistrar's global `Gate::before` calls user `hasPermissionTo()` (read/write abilities) and loads its `permissions` table before the pilot Gate handlers; HTTP test fixture built finance tables but omitted Spatie's original tables. This is a real test fixture setup flaw; **do not change V1 security or bypass the registrar**.
 - Fix commit `bcdc061f`: the HTTP test `setUp()` now runs the existing `database/migrations/2022_03_19_102456_create_permission_tables.php` in the already isolated SQLite `:memory:` connection via `require_once` and `CreatePermissionTables::up()`. Preserves real Gate callbacks, role permission schema and FK behavior. No schema modification on V1, staging, live or historical local V2.
 - **Status pending re-test**: do NOT claim 9/9 PASS, do NOT alter formal accepted gates (**8/24 = 33.3%**). Next target is same isolated HTTP test only; review any subsequent independent assertion failures separately.
+
+### 2026-10-31 — HTTP finance regression improves to 8/9; remaining actor FK fixture gap fixed
+
+- User ran `V2FinancePilotHttpSafetyTest` on `6b4ae3c`: **8 PASS, 1 FAIL, 32 assertions**. Earlier `permissions` missing-table failures are resolved; read/report/CSV/Sanctum/project/mode protections all PASS.
+- Only failing case: authorized JV HTTP post/replay/reversal returned 500 on `finance_posting_batches.posted_by` physical FK to `users.id`. The test authenticated a mocked `User` with ID 1 but left the in-memory `users` table EMPTY. This is an incomplete SQLite test fixture, not justification to weaken the production FK.
+- New commit `7620d635`: seed `users.id=1` in disposable SQLite `:memory:` setup; strengthen HTTP test to assert `posted_by=1` and same physical project. No changes to V1, live/staging, actual rehearsal, finance writer, existing schema or guard behavior.
+- **Still pending rerun**; do not claim 9/9 or count the formal P5 gate as accepted yet. Previously verified 69/69 standalone finance tests remain intact at their earlier commit. Formal progress **8/24 = 33.3%** unchanged.
