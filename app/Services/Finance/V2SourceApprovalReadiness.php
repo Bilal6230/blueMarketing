@@ -32,11 +32,30 @@ final class V2SourceApprovalReadiness
             throw new \InvalidArgumentException('V2_APPROVAL_READINESS_INPUT_INVALID');
         }
         $table = self::TABLES[$kind];
-        $source = DB::table($table)->where('id', $sourceId)->first();
+        $stock = in_array($kind, ['stock_entry', 'stock_bill'], true);
+        // Never reveal whether another project's source document exists.
+        $query = DB::table($table)->where('id', $sourceId);
+        if (!$stock) {
+            $query->where('project_id', $projectId);
+        }
+        $source = $stock ? null : $query->first();
+        if ($stock) {
+            // No project_id on stock sources: require the independently
+            // authorized project/source FK BEFORE inspecting stock data.
+            $approvalTable = $kind === 'stock_entry'
+                ? 'finance_stock_entry_project_approvals'
+                : 'finance_stock_bill_project_approvals';
+            $fk = $kind === 'stock_entry' ? 'stock_entry_id' : 'stock_bill_id';
+            $approved = DB::table($approvalTable)
+                ->where($fk, $sourceId)->where('project_id', $projectId)
+                ->first();
+            $source = $approved ? $query->first() : null;
+        }
         $reason = null;
         $sourceSeries = null;
         if (!$source) {
-            $reason = 'SOURCE_NOT_FOUND';
+            $reason = $stock
+                ? 'STOCK_PROJECT_APPROVAL_REQUIRED' : 'SOURCE_NOT_FOUND';
         } elseif (in_array($kind, ['journal', 'sales'], true)) {
             $sourceSeries = (string) $source->type;
             if ((int) $source->project_id !== $projectId
