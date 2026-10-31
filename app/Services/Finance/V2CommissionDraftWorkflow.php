@@ -100,6 +100,71 @@ final class V2CommissionDraftWorkflow
         }, 3);
     }
 
+    /**
+     * Replace lines only while a voucher is an unposted draft.
+     * The project row serializes competing edits and approval attempts.
+     */
+    public function updateDraft(
+        int $projectId, int $sourceId, string $date, array $lines
+    ): void {
+        V2IsolatedConnectionGuard::assertAllowed();
+        $d = \DateTimeImmutable::createFromFormat('!Y-m-d', $date);
+        if ($projectId < 1 || $sourceId < 1 || !$d || $d->format('Y-m-d') !== $date) {
+            throw new \DomainException('V2_CV_INVALID_HEADER');
+        }
+
+        DB::transaction(function () use ($projectId, $sourceId, $date, $lines): void {
+            if (!DB::table('projects')->where('id', $projectId)->lockForUpdate()->exists()) {
+                throw new \DomainException('V2_CV_PROJECT_MISSING');
+            }
+            $header = DB::table('commision_vouchers')
+                ->where('id', $sourceId)->where('project_id', $projectId)
+                ->lockForUpdate()->first();
+            if (!$header || $header->deleted_at !== null || $header->status !== 'draft'
+                || DB::table('finance_posting_commission_sources')
+                    ->where('commision_voucher_id', $sourceId)->exists()) {
+                throw new \DomainException('V2_CV_DRAFT_IMMUTABLE');
+            }
+            [$prepared, $amount] = $this->lines($projectId, $lines);
+            DB::table('commision_voucher_details')
+                ->where('commision_voucher_id', $sourceId)->delete();
+            foreach ($prepared as $line) {
+                DB::table('commision_voucher_details')->insert($line + [
+                    'commision_voucher_id' => $sourceId,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+            DB::table('commision_vouchers')->where('id', $sourceId)->update([
+                'date' => $date, 'total_debit' => $amount, 'total_credit' => $amount,
+                'updated_at' => now(),
+            ]);
+        }, 3);
+    }
+
+    public function cancelDraft(int $projectId, int $sourceId): void
+    {
+        V2IsolatedConnectionGuard::assertAllowed();
+        DB::transaction(function () use ($projectId, $sourceId): void {
+            if (!DB::table('projects')->where('id', $projectId)->lockForUpdate()->exists()) {
+                throw new \DomainException('V2_CV_PROJECT_MISSING');
+            }
+            $header = DB::table('commision_vouchers')
+                ->where('id', $sourceId)->where('project_id', $projectId)
+                ->lockForUpdate()->first();
+            if (!$header || $header->deleted_at !== null || $header->status !== 'draft'
+                || DB::table('finance_posting_commission_sources')
+                    ->where('commision_voucher_id', $sourceId)->exists()) {
+                throw new \DomainException('V2_CV_DRAFT_IMMUTABLE');
+            }
+            DB::table('commision_voucher_details')
+                ->where('commision_voucher_id', $sourceId)
+                ->update(['deleted_at' => now(), 'updated_at' => now()]);
+            DB::table('commision_vouchers')->where('id', $sourceId)->update([
+                'deleted_at' => now(), 'updated_at' => now(),
+            ]);
+        }, 3);
+    }
+
     public function approveAndPost(
         int $projectId, int $sourceId, string $requestKey, ?int $actorId = null
     ): int {
