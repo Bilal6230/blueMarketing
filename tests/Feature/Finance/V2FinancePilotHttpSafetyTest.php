@@ -53,6 +53,24 @@ final class V2FinancePilotHttpSafetyTest extends TestCase
                 $t->id();
             });
         }
+        Schema::table('commision_vouchers', function (Blueprint $t): void {
+            $t->unsignedBigInteger('project_id');
+            $t->string('voucher_number');
+            $t->date('date');
+            $t->string('status');
+            $t->decimal('total_debit', 15, 2);
+            $t->decimal('total_credit', 15, 2);
+            $t->timestamp('deleted_at')->nullable();
+        });
+        Schema::create('commision_voucher_details', function (Blueprint $t): void {
+            $t->id();
+            $t->unsignedBigInteger('commision_voucher_id');
+            $t->unsignedBigInteger('account_id');
+            $t->decimal('debit', 15, 2);
+            $t->decimal('credit', 15, 2);
+            $t->text('description')->nullable();
+            $t->timestamp('deleted_at')->nullable();
+        });
         Schema::create('project_head_subheads', function (Blueprint $t): void {
             $t->id();
             $t->unsignedBigInteger('project_id');
@@ -91,6 +109,17 @@ final class V2FinancePilotHttpSafetyTest extends TestCase
             ['id' => 101, 'project_id' => 1],
             ['id' => 102, 'project_id' => 1],
             ['id' => 201, 'project_id' => 2],
+        ]);
+        DB::table('commision_vouchers')->insert([
+            'id' => 41, 'project_id' => 1, 'voucher_number' => 'CV-41',
+            'date' => '2026-10-30', 'status' => 'approved',
+            'total_debit' => '35.00', 'total_credit' => '35.00',
+        ]);
+        DB::table('commision_voucher_details')->insert([
+            ['id' => 411, 'commision_voucher_id' => 41, 'account_id' => 101,
+                'debit' => '35.00', 'credit' => '0.00'],
+            ['id' => 412, 'commision_voucher_id' => 41, 'account_id' => 102,
+                'debit' => '0.00', 'credit' => '35.00'],
         ]);
         DB::table('journal_vouchers')->insert([
             'id' => 51, 'project_id' => 1, 'type' => 'JV', 'voucher_number' => 51,
@@ -288,6 +317,39 @@ final class V2FinancePilotHttpSafetyTest extends TestCase
         $this->postJson('/api/v2/finance/projects/1/vouchers/commission/41/void', $void)
             ->assertStatus(409);
         $this->assertDatabaseCount('finance_posting_batches', 0);
+    }
+
+    public function test_approved_commission_posts_and_voids_over_real_http_with_replay(): void
+    {
+        $this->enablePilot(true);
+        $this->authenticate();
+        $base = '/api/v2/finance/projects/1';
+        $original = $this->postJson($base . '/postings', [
+            'kind' => 'commission', 'source_id' => 41,
+            'request_key' => 'HTTP-CV-SOURCE-POST-0001',
+        ])->assertCreated()->json('posting_batch_id');
+
+        $endpoint = $base . '/vouchers/commission/41/void';
+        $payload = [
+            'request_key' => 'HTTP-CV-SOURCE-VOID-0001',
+            'effective_date' => '2026-10-31',
+            'reason' => 'Approved CV correction',
+        ];
+        $reversal = $this->postJson($endpoint, $payload)
+            ->assertCreated()->json('reversal_batch_id');
+        $this->assertSame($reversal, $this->postJson($endpoint, $payload)
+            ->assertCreated()->json('reversal_batch_id'));
+        $this->postJson($endpoint, array_merge($payload, [
+            'request_key' => 'HTTP-CV-SECOND-VOID-0001',
+        ]))->assertStatus(409);
+        $this->assertDatabaseHas('finance_posting_batches', [
+            'id' => $reversal, 'reversal_of_batch_id' => $original,
+        ]);
+        $this->assertDatabaseHas('commision_vouchers', [
+            'id' => 41, 'status' => 'approved',
+        ]);
+        $this->assertDatabaseCount('finance_posting_batches', 2);
+        $this->assertDatabaseCount('finance_posting_lines', 4);
     }
 
     public function test_stock_project_approval_requires_write_flag_before_any_query(): void
