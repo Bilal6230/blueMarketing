@@ -115,7 +115,73 @@ class CommissionVoucherController extends Controller
     // No dead write path is retained behind these deliberate safety gates.
     public function store(Request $request)
     {
-        abort(409, 'Commission voucher creation is temporarily disabled to protect accounting history.');
+        // Original browser form may write ONLY in the explicitly isolated
+        // local V2 pilot. Never enable this against an existing V1 database.
+        \App\Services\Finance\V2IsolatedConnectionGuard::assertAllowed();
+        abort_unless(
+            in_array(config('app.env'), ['local', 'testing'], true)
+                && config('finance.v2_pilot_api_enabled')
+                && config('finance.v2_pilot_write_enabled'),
+            409, 'Commission voucher creation is temporarily disabled to protect accounting history.'
+        );
+
+        $data = $request->validate([
+            'voucher_number' => ['required', 'string', 'max:64'],
+            'date' => ['required', 'date_format:Y-m-d'],
+            'accounts' => ['required', 'array', 'min:2', 'max:100'],
+            'accounts.*' => ['required', 'integer', 'min:1'],
+            'sub_accounts' => ['required', 'array', 'min:2', 'max:100'],
+            'sub_accounts.*' => ['required', 'integer', 'min:1'],
+            'debit' => ['required', 'array', 'min:2', 'max:100'],
+            'debit.*' => ['required', 'regex:/^(0|[1-9][0-9]{0,9})(?:\\.[0-9]{1,2})?$/D'],
+            'credit' => ['required', 'array', 'min:2', 'max:100'],
+            'credit.*' => ['required', 'regex:/^(0|[1-9][0-9]{0,9})(?:\\.[0-9]{1,2})?$/D'],
+            'line_description' => ['sometimes', 'array'],
+            'line_description.*' => ['nullable', 'string', 'max:1000'],
+        ]);
+        $keys = array_keys($data['accounts']);
+        foreach (['sub_accounts', 'debit', 'credit'] as $field) {
+            if (array_keys($data[$field]) !== $keys) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    $field => 'Commission voucher line keys must match.',
+                ]);
+            }
+        }
+        $projectId = (int) getSelectedTown();
+        if ($projectId < 1) {
+            abort(403, 'Select a project before creating a commission voucher.');
+        }
+        $accounts = ProjectHeadSubhead::query()
+            ->where('project_id', $projectId)
+            ->whereIn('id', $data['sub_accounts'])
+            ->get(['id', 'head_accounting_id'])->keyBy('id');
+        $lines = [];
+        foreach ($keys as $index) {
+            $sub = (int) $data['sub_accounts'][$index];
+            if (!$accounts->has($sub)
+                || (int) $accounts->get($sub)->head_accounting_id !== (int) $data['accounts'][$index]) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'sub_accounts' => 'Account must match the selected project and head.',
+                ]);
+            }
+            $lines[] = [
+                'account_id' => $sub,
+                'debit' => (string) $data['debit'][$index],
+                'credit' => (string) $data['credit'][$index],
+                'description' => $data['line_description'][$index] ?? null,
+            ];
+        }
+        try {
+            $id = (new \App\Services\Finance\V2CommissionDraftWorkflow())
+                ->createDraft($projectId, $data['voucher_number'], $data['date'],
+                    $lines, (int) Auth::id());
+        } catch (\DomainException $e) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'voucher_number' => 'Commission draft rejected: ' . $e->getMessage(),
+            ]);
+        }
+        return redirect()->route('commision.voucher.edit', ['id' => $id])
+            ->with('success', 'Commission draft saved. Approval/posting is still required.');
     }
 
     public function destroy($id)
