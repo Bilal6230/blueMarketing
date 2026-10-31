@@ -35,6 +35,14 @@ final class V2FinancePilotHttpSafetyTest extends TestCase
         DB::setDefaultConnection('sqlite');
         DB::statement('PRAGMA foreign_keys = ON');
 
+        // The real Spatie PermissionRegistrar registers a Gate::before
+        // callback and queries permissions BEFORE the V2 pilot Gate handler.
+        // Use the application's actual permission migration in :memory:
+        // instead of mocking away a security-critical authorization layer.
+        // No non-test database is ever reachable (DatabaseIsolation guard).
+        require_once base_path('database/migrations/2022_03_19_102456_create_permission_tables.php');
+        (new \CreatePermissionTables())->up();
+
         Schema::create('projects', function (Blueprint $t): void {
             $t->id();
             $t->boolean('is_active')->default(true);
