@@ -133,6 +133,8 @@ jobs:
         run: |
           python3 -m py_compile tools/database_v2/audit_ledger_writers.py
           python3 tools/database_v2/audit_ledger_writers.py --print-limit 350
+          php -l tools/database_v2/audit_v1_controller_routes.php
+          php tools/database_v2/audit_v1_controller_routes.php
 
       - name: End-to-end finance safety regression suite (SQLite in memory)
         run: |
