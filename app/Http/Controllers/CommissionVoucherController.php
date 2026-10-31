@@ -117,13 +117,13 @@ class CommissionVoucherController extends Controller
     {
         // Original browser form may write ONLY in the explicitly isolated
         // local V2 pilot. Never enable this against an existing V1 database.
-        \App\Services\Finance\V2IsolatedConnectionGuard::assertAllowed();
         abort_unless(
             in_array(config('app.env'), ['local', 'testing'], true)
                 && config('finance.v2_pilot_api_enabled')
                 && config('finance.v2_pilot_write_enabled'),
             409, 'Commission voucher creation is temporarily disabled to protect accounting history.'
         );
+        \App\Services\Finance\V2IsolatedConnectionGuard::assertAllowed();
 
         $data = $request->validate([
             'voucher_number' => ['required', 'string', 'max:64'],
