@@ -36,6 +36,10 @@ final class V2DomainModelContract
         \App\Models\V2\ImportedLabourLedger::class,
         \App\Models\V2\ImportedLabour::class,
         \App\Models\V2\ImportedLabourAttendance::class,
+        \App\Models\V2\ImportedLead::class,
+        \App\Models\V2\ImportedPlot::class,
+        \App\Models\V2\ImportedStockCounter::class,
+        \App\Models\V2\ImportedStockItemBalance::class,
     ];
 
     public function inspect(): array
@@ -49,6 +53,13 @@ final class V2DomainModelContract
             /** @var ImportedHistoricalModel $model */
             $model = new $class();
             $table = $model->getTable();
+            // Source stock counters and quantity balances do not have id
+            // keys. Explicitly retain their original natural primary keys.
+            if (($table === 'stock_counters' && $model->getKeyName() !== 'key')
+                || ($table === 'stock_item_balances'
+                    && $model->getKeyName() !== 'item_id')) {
+                throw new RuntimeException('V2_DOMAIN_NATURAL_KEY_DRIFT');
+            }
             if (!Schema::hasTable($table) || $model->getGuarded() !== ['*']) {
                 throw new RuntimeException("V2_DOMAIN_MODEL_UNSAFE_OR_MISSING: {$table}");
             }
