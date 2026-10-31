@@ -89,3 +89,9 @@ The owner must authorize a **new disposable MySQL V2 test database** and a **red
 8. Avoid user-visible filler and repetitive explanations; prioritize substantive code and verified completion. Do not sacrifice safety to reach a cosmetic 100%.
 
 **Current evidence boundary at adoption:** `bluemarketing_v2_phase5_test` schema has 73 physical tables, 5 V2 migrations, 16 verified source/posting tables and 124 physical FK columns, as owner-tested. Those PASS markers verify only schema readiness. Milestones 18–20 remain unaccepted until original workflow integrations and functional regressions actually pass. No immediate owner task is pending for database setup.
+
+## Mandatory output-driven continuation and progress bars — 2026-10-31
+
+When the owner shares commands, logs, screenshots or test results, treat that output as the next execution trigger: verify the observed evidence, immediately proceed with substantive implementation of the next unfinished part of the assigned milestone in the same response where tool access permits, and provide precise next commands only where owner-side execution is required. Do not stop at congratulating the owner or re-explaining the plan. Every such response must include 6 phase progress bars and a clear status for the currently assigned milestone(s). Never inflate bars from mere test counts or infrastructure checks; original-scope acceptance remains mandatory.
+
+Owner-observed local focused Finance/Voucher/Journal/Commission/Approval regression: **545 PASS, 2,372 assertions, 0 failures**, SQLite in-memory, 2026-10-31. This is a verified regression BASELINE, not Milestone 18 completion. Original JV/CV update/delete and CV create still intentionally disabled, original V2 controller cutover still outstanding. No owner action currently pending.
