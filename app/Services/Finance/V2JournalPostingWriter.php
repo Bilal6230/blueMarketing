@@ -99,7 +99,6 @@ final class V2JournalPostingWriter
 
             $payloadHash = hash('sha256', json_encode([
                 'project_id' => $projectId, 'journal_id' => $journalId,
-                'series' => $expectedSeries,
                 'voucher_number' => (string) $header->voucher_number,
                 'effective_date' => (string) $header->date,
                 'lines' => $lines,
