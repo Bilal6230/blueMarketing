@@ -42,7 +42,21 @@ foreach (Route::getRoutes() as $route) {
     $writes = array_intersect($verbs, ['POST', 'PUT', 'PATCH', 'DELETE']) !== [];
     $counts[$controller][$writes ? 'writes' : 'reads']++;
     if ($writes) {
+        $classification = match (true) {
+            in_array($method, [
+                'GetComment', 'checkNewVoucherNumber', 'customer_report_display',
+                'fatch_voucher', 'getCustomerPlots', 'getCustomers',
+                'getCustomersbyPlot', 'getPlotCustomer', 'getPlots',
+                'attendanceReport', 'checkValidate', 'personAttendanceReport',
+                'printAttendanceReport', 'printPersonReport', 'printSiteReport',
+            ], true) => 'POST_READ_CANDIDATE_REQUIRES_BODY_REVIEW',
+            str_starts_with(strtolower($method), 'approve'),
+            str_starts_with(strtolower($method), 'reject'),
+            $method === 'updatePendingBankPaymentStatus' => 'APPROVAL_STATE_TRANSITION',
+            default => 'WRITE_CANDIDATE_REQUIRES_BODY_REVIEW',
+        };
         $endpoints[] = [
+            'classification' => $classification,
             'controller' => $controller,
             'method' => $method,
             'route' => implode(',', $verbs) . ' ' . $route->uri(),
@@ -61,12 +75,15 @@ foreach ($counts as $counter) {
 if ($totals['writes'] < 15) {
     throw new RuntimeException('V2_LEGACY_CONTROLLER_AUDIT_UNEXPECTEDLY_EMPTY');
 }
+$categories = array_count_values(array_column($endpoints, 'classification'));
+ksort($categories);
+echo 'V2_LEGACY_ROUTE_CLASSIFICATION: ' . json_encode($categories, JSON_THROW_ON_ERROR) . PHP_EOL;
 echo 'V2_LEGACY_CONTROLLER_ROLLOUT_AUDIT: '
     . count($legacy) . ' target controllers; '
     . $totals['writes'] . ' registered V1 mutating routes still require '
     . 'real workflow mapping and acceptance; '
     . $totals['reads'] . ' read routes; NO CUTOVER.' . PHP_EOL;
 foreach ($endpoints as $e) {
-    echo 'V2_LEGACY_WRITE_ROUTE_UNMIGRATED: ' . $e['controller'] . '@'
+    echo 'V2_LEGACY_WRITE_ROUTE_UNMIGRATED: [' . $e['classification'] . '] ' . $e['controller'] . '@'
         . $e['method'] . ' ' . $e['route'] . PHP_EOL;
 }
