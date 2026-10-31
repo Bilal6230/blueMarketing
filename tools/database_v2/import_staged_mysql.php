@@ -229,7 +229,7 @@ if ($synthetic && !($env === 'testing' && $database === 'bluemarketing_v2_ci')) 
 if ((int) $connection->selectOne('SELECT @@FOREIGN_KEY_CHECKS AS n')->n !== 1) {
     blocked('MySQL FK checks must be enabled');
 }
-if ((int) $connection->table('migrations')->count() !== 3 ||
+if ((int) $connection->table('migrations')->count() !== 5 ||
     (int) $connection->table('banks')->count() !== 27) {
     blocked('V2 migrations/27 banks not seeded to expected clean baseline');
 }
