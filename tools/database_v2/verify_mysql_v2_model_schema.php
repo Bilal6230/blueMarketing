@@ -152,5 +152,17 @@ foreach (['v2_posting_project_idempotency_unique', 'v2_one_reversal_per_batch_un
     }
 }
 
+$domainReport = (new \App\Services\Finance\V2DomainModelContract())->inspect();
+if ($domainReport['model_count'] !== 18
+    || $domainReport['cast_count'] < 70
+    || $domainReport['relation_count'] < 24) {
+    throw new RuntimeException('V2_DOMAIN_MODEL_CONTRACT_INCOMPLETE');
+}
+echo 'V2_MYSQL_DOMAIN_MODEL_CONTRACT_PASS: '
+    . $domainReport['model_count'] . ' read-only source models, '
+    . $domainReport['cast_count'] . ' physical column casts, '
+    . $domainReport['relation_count'] . ' verified physical relationships.'
+    . PHP_EOL;
+
 echo 'V2_MYSQL_MODEL_CONTRACT_PASS: 3 typed + 4 historical models, '
     . '13 verified relations, 8 DECIMAL casts, 2 posting unique constraints; no rows altered.' . PHP_EOL;
