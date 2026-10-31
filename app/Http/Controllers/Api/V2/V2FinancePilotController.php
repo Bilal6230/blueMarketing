@@ -158,13 +158,13 @@ final class V2FinancePilotController extends Controller
         $this->project($request, $projectId, true);
         $data = $request->validate([
             'kind' => ['required', Rule::in([
-                'journal', 'cash', 'customer', 'commission',
+                'journal', 'sales', 'cash', 'customer', 'commission',
                 'booking', 'labour', 'stock_entry', 'stock_bill',
             ])],
             'source_id' => ['required', 'integer', 'min:1'],
             'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/'],
             'series' => ['required_if:kind,customer', 'nullable', Rule::in(['PPR', 'EC', 'ECP'])],
-            'allocation' => ['required_unless:kind,journal,commission', 'array', 'min:2'],
+            'allocation' => ['required_unless:kind,journal,commission,sales', 'array', 'min:2'],
             'allocation.*.account_id' => ['required_with:allocation', 'integer', 'min:1'],
             'allocation.*.debit' => ['required_with:allocation', 'numeric', 'min:0'],
             'allocation.*.credit' => ['required_with:allocation', 'numeric', 'min:0'],
@@ -176,6 +176,7 @@ final class V2FinancePilotController extends Controller
         $actor = (int) $request->user()->getAuthIdentifier();
         $batchId = match ($data['kind']) {
             'journal' => $gateway->postJournal($projectId, $id, $key, $actor),
+            'sales' => $gateway->postSalesVoucher($projectId, $id, $key, $actor),
             'commission' => $gateway->postCommission($projectId, $id, $key, $actor),
             'cash' => $gateway->postCash($projectId, $id, $key, $legs, $actor),
             'customer' => $gateway->postCustomerVoucher(
