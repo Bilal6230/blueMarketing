@@ -157,6 +157,9 @@ if (in_array(config('app.env'), ['local', 'testing'], true)
                 ->whereNumber('projectId')->whereNumber('accountId');
             Route::post('postings', [$controller, 'post'])->whereNumber('projectId');
             Route::post('reversals', [$controller, 'reverse'])->whereNumber('projectId');
+            Route::post('commission-drafts/{action}/{sourceId?}', [$controller, 'commissionDraft'])
+                ->whereNumber('projectId')->whereNumber('sourceId')
+                ->where('action', 'create|update|cancel|approve');
             Route::post('vouchers/{kind}/{sourceId}/void', [$controller, 'voidVoucher'])
                 ->whereNumber('projectId')->whereNumber('sourceId')
                 ->where('kind', 'journal|commission');
