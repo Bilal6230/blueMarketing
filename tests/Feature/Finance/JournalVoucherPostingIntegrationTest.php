@@ -164,6 +164,20 @@ class JournalVoucherPostingIntegrationTest extends TestCase
         $this->assertSame(4, DB::table('ledgers')->count());
     }
 
+    public function test_jv_number_reserves_existing_customer_source_series_identity(): void
+    {
+        // Legacy customer_ledger.type_id is NOT a V2 source FK, but the V1
+        // voucher allocator intentionally reserves its project+series number.
+        DB::table('customer_ledger')->insert([
+            'project_id' => 7, 'transaction_type' => 'JV', 'type_id' => 55,
+        ]);
+        app(JournalVoucherController::class)->store($this->request($this->payload()));
+        $this->assertSame('56', (string) DB::table('journal_vouchers')
+            ->where('project_id', 7)->value('voucher_number'));
+        $this->assertSame(2, DB::table('ledgers')->count());
+        $this->assertSame(1, DB::table('customer_ledger')->count());
+    }
+
     public function test_both_debit_and_credit_on_same_line_are_rejected_without_writes(): void
     {
         $p = $this->payload();
