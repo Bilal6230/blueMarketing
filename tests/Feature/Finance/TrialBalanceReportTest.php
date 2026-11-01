@@ -47,17 +47,24 @@ class TrialBalanceReportTest extends TestCase
         $this->assertSame(12000, $account['amounts']['closing_debit']);
         $this->assertSame(0, $account['amounts']['closing_credit']);
         $hierarchy = (new TrialBalanceReport())->hierarchy((new TrialBalanceReport())->flatten($report['tree']));
-        $this->assertSame('Current Assets', $hierarchy['heads'][2]['name']);
-        $this->assertSame('Receivables', $hierarchy['heads'][2]['subheads'][3]['name']);
+        $this->assertSame('Current Assets', $hierarchy['types'][1]['heads'][2]['name']);
+        $this->assertSame('Assets', $hierarchy['types'][1]['name']);
         $rows = (new TrialBalanceReport())->flatten($report['tree']);
         $this->assertCount(1, $rows);
         $this->assertArrayNotHasKey('entries', $rows[0]);
-        $this->assertSame($account['amounts'], $hierarchy['heads'][2]['subheads'][3]['accounts'][0]['amounts']);
+        $this->assertSame($account['amounts'], $hierarchy['types'][1]['heads'][2]['accounts'][0]['amounts']);
         $this->assertSame($report['totals'], $hierarchy['totals']);
 
         $html = view('admin.finance.reports._trial_balance_table', compact('hierarchy'))->render();
         $this->assertSame(1, substr_count($html, 'class="account-row"'));
         $this->assertStringContainsString('Ali Store', $html);
+        $this->assertStringContainsString('ASSETS', $html);
+        $this->assertStringContainsString('CURRENT ASSETS', $html);
+        $this->assertStringNotContainsString('RECEIVABLES', $html);
+        $this->assertStringNotContainsString('Sub Total:', $html);
+        $this->assertSame($report['totals'], $hierarchy['types'][1]['totals']);
+        $pageHierarchy = (new TrialBalanceReport())->hierarchy(array_slice($rows, 0, 1));
+        $this->assertSame('Assets', $pageHierarchy['types'][1]['name']);
         $this->assertStringContainsString('120.00', $html);
         $this->assertStringNotContainsString('Opening Balance', $html);
         $this->assertStringNotContainsString('2026-09-10', $html);

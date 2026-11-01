@@ -122,11 +122,12 @@ final class TrialBalanceReport
     public function flatten(array $tree): array
     {
         $rows = [];
-        foreach ($tree as $type) {
+        foreach ($tree as $typeId => $type) {
             foreach ($type['heads'] as $headId => $head) {
                 foreach ($head['subheads'] as $subheadId => $subhead) {
                     foreach ($subhead['accounts'] as $account) {
                         $rows[] = $account + [
+                            'type_id' => (int) $typeId, 'type_name' => $type['name'],
                             'head_id' => (int) $headId, 'head_name' => $head['name'],
                             'subhead_id' => (int) $subheadId, 'subhead_name' => $subhead['name'],
                         ];
@@ -139,22 +140,23 @@ final class TrialBalanceReport
 
     public function hierarchy(array $accounts): array
     {
-        $heads = [];
+        $types = [];
         foreach ($accounts as $account) {
-            $headId = $account['head_id']; $subheadId = $account['subhead_id'];
-            $heads[$headId]['name'] = $account['head_name'];
-            $heads[$headId]['subheads'][$subheadId]['name'] = $account['subhead_name'];
-            $heads[$headId]['subheads'][$subheadId]['accounts'][] = $account;
+            $typeId = $account['type_id'];
+            $headId = $account['head_id'];
+            $types[$typeId]['name'] = $account['type_name'];
+            $types[$typeId]['heads'][$headId]['name'] = $account['head_name'];
+            $types[$typeId]['heads'][$headId]['accounts'][] = $account;
         }
-        foreach ($heads as &$head) {
-            foreach ($head['subheads'] as &$subhead) {
-                $subhead['totals'] = $this->totals($subhead['accounts']);
+        foreach ($types as &$type) {
+            foreach ($type['heads'] as &$head) {
+                $head['totals'] = $this->totals($head['accounts']);
             }
-            unset($subhead);
-            $head['totals'] = $this->totals($head['subheads']);
+            unset($head);
+            $type['totals'] = $this->totals($type['heads']);
         }
-        unset($head);
-        return ['heads' => $heads, 'totals' => $this->totals($heads)];
+        unset($type);
+        return ['types' => $types, 'totals' => $this->totals($types)];
     }
 
     private function accountName(object $account): string
