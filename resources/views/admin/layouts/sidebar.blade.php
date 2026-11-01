@@ -322,6 +322,13 @@
 
                             @can('report party_report')
                                 <li class="nav-item">
+                                    <a href="{{ route('finance.reports.trial_balance') }}"
+                                        class="nav-link {{ request()->routeIs('finance.reports.trial_balance') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i>
+                                        <p>Trial Balance</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
                                     <a href="{{ route('finance.reports.show_ledger_party') }}"
                                         class="nav-link {{ request()->routeIs('finance.reports.show_ledger_party') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i>

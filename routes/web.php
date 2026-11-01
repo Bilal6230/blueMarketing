@@ -350,6 +350,9 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
 
         Route::get('finance/reports/ledger/party', 'show_ledger_party')->middleware(['permission:report party_report'])->name('finance.reports.show_ledger_party');
         Route::get('finance/reports/ledger/head', 'show_ledger_head')->middleware(['permission:report party_report'])->name('finance.reports.show_ledger_head');
+        Route::get('finance/reports/trial-balance', 'trialBalance')->middleware(['permission:report party_report'])->name('finance.reports.trial_balance');
+        Route::get('finance/reports/trial-balance/show', 'trialBalanceShow')->middleware(['permission:report party_report'])->name('finance.reports.trial_balance.show');
+        Route::get('finance/reports/trial-balance/print', 'trialBalancePrint')->middleware(['permission:report party_report'])->name('finance.reports.trial_balance.print');
 
         Route::post('fetch-data-url-party', 'fetch_data_by_party')->middleware(['permission:master report'])->name('fetch-data_by_party');
         Route::post('fetch-data-url-head', 'fetch_data_by_head')->middleware(['permission:master report'])->name('fetch_data_by_head');

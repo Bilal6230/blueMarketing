@@ -1259,6 +1259,60 @@ class LedgerController extends Controller
         return view('admin.finance.reports.head_ledger', $x);
     }
 
+    public function trialBalance(Request $request)
+    {
+        return view('admin.finance.reports.trial_balance', [
+            'title' => 'Trial Balance',
+            'from' => now()->startOfMonth()->toDateString(),
+            'to' => now()->toDateString(),
+        ]);
+    }
+
+    public function trialBalanceShow(Request $request)
+    {
+        $projectId = (int) getSelectedTown();
+        abort_if($projectId < 1, 403, 'Please select a project.');
+        $data = $request->validate([
+            'from' => ['required', 'date_format:Y-m-d'],
+            'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
+        ]);
+        $service = new \App\Services\Finance\TrialBalanceReport();
+        try { $report = $service->build($projectId, $data['from'], $data['to']); }
+        catch (\DomainException $e) { abort(409, 'Trial balance integrity check failed.'); }
+        $allAccounts = $service->flatten($report['tree']);
+        $page = max((int) $request->input('page', 1), 1); $perPage = 50;
+        $slice = array_slice($allAccounts, ($page - 1) * $perPage, $perPage);
+        $paginator = new \Illuminate\Pagination\LengthAwarePaginator($slice, count($allAccounts), $perPage, $page, [
+            'path' => route('finance.reports.trial_balance.show'), 'query' => $data,
+        ]);
+        return view('admin.finance.reports.trial_balance_report', [
+            'title' => 'Trial Balance',
+            'from' => $data['from'], 'to' => $data['to'],
+            'hierarchy' => $service->hierarchy($slice), 'paginator' => $paginator,
+            'rowNumberStart' => ($page - 1) * $perPage,
+            'projectName' => Project::whereKey($projectId)->value('project') ?? 'Project',
+        ]);
+    }
+
+    public function trialBalancePrint(Request $request)
+    {
+        $projectId = (int) getSelectedTown();
+        abort_if($projectId < 1, 403, 'Please select a project.');
+        $data = $request->validate([
+            'from' => ['required', 'date_format:Y-m-d'],
+            'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
+        ]);
+        $service = new \App\Services\Finance\TrialBalanceReport();
+        try { $report = $service->build($projectId, $data['from'], $data['to']); }
+        catch (\DomainException $e) { abort(409, 'Trial balance integrity check failed.'); }
+        return view('admin.finance.reports.trial_balance_print', [
+            'from' => $data['from'], 'to' => $data['to'],
+            'hierarchy' => $service->hierarchy($service->flatten($report['tree'])),
+            'rowNumberStart' => 0,
+            'projectName' => Project::whereKey($projectId)->value('project') ?? 'Project',
+        ]);
+    }
+
     public function fetch_data_by_party(Request $request)
     {
         if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
