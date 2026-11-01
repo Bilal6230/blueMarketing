@@ -328,11 +328,27 @@ class JournalVoucherController extends Controller
             ? old('idempotency_key', (string) \Illuminate\Support\Str::uuid())
             : null;
 
+        $x['restoredSubAccounts'] = ProjectHeadSubhead::with('subheadAccounting')
+            ->where('project_id', $selectedProjectId)
+            ->whereIn('id', (array) old('sub_accounts', []))->get()->keyBy('id');
+
         return view('admin.reports.vouchers.journal_voucher', $x);
     }
 
     public function store(Request $request)
     {
+        // The form leaves the unused side of each line blank. Normalize only
+        // submitted blank cells; missing rows and invalid amounts still fail validation.
+        foreach (['debit', 'credit'] as $field) {
+            $amounts = $request->input($field);
+            if (is_array($amounts)) {
+                $request->merge([$field => array_map(
+                    fn ($amount) => $amount === null || (is_string($amount) && trim($amount) === '') ? '0' : $amount,
+                    $amounts
+                )]);
+            }
+        }
+
         $validated = $request->validate([
             'idempotency_key' => ['sometimes', 'required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
             'voucher_number' => 'required|string',

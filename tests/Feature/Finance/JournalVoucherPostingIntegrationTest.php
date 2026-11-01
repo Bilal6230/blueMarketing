@@ -110,6 +110,21 @@ class JournalVoucherPostingIntegrationTest extends TestCase
         $this->assertSame(0, DB::table('ledgers')->where('date', '<>', $header->date)->count());
     }
 
+    public function test_blank_unused_amount_cells_post_as_zero(): void
+    {
+        foreach (['', null] as $blank) {
+            $payload = $this->payload();
+            $payload['debit'][1] = $blank;
+            $payload['credit'][0] = $blank;
+            $response = app(JournalVoucherController::class)->store($this->request($payload));
+            $this->assertSame(302, $response->getStatusCode());
+        }
+        $this->assertSame(2, DB::table('journal_vouchers')->count());
+        $this->assertSame(4, DB::table('ledgers')->count());
+        $this->assertEquals(200.50, DB::table('ledgers')->sum('amount_in'));
+        $this->assertEquals(200.50, DB::table('ledgers')->sum('amount_out'));
+    }
+
     public function test_cross_project_account_is_rejected_without_any_posting(): void
     {
         $p = $this->payload();

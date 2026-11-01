@@ -9,6 +9,16 @@
                         <h4 class="mb-0">{{ $title }}</h4>
                     </div>
                     <div class="card-body">
+                        @if ($errors->any())
+                            <div class="alert alert-danger" role="alert">
+                                <strong>Journal voucher could not be saved:</strong>
+                                <ul class="mb-0">
+                                    @foreach ($errors->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
                         <form id="journalForm" action="{{ route('journal.voucher.store') }}" method="POST">
                             @csrf
                             {{-- A stable key for this rendered form; browser retries reuse it.
@@ -46,7 +56,7 @@
                                     <div class="input-group">
                                         <label class="fbox">Date</label>
                                         <div class="input-group">
-                                            <input type="text" name="date" class="date form-control" data-input>
+                                            <input type="text" name="date" class="date form-control" value="{{ old('date') }}" data-input>
                                             <input type="hidden" id="hiddenDate" name="hiddenDate">
                                             @error('date')
                                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -60,7 +70,7 @@
                             <div class="row mb-4">
                                 <div class="col-md-12">
                                     <label for="description" class="form-label"><strong>Description</strong></label>
-                                    <textarea id="description" name="description" class="form-control" rows="3" required></textarea>
+                                    <textarea id="description" name="description" class="form-control" rows="3" required>{{ old('description') }}</textarea>
                                 </div>
                             </div>
 
@@ -88,13 +98,14 @@
         </tr>
     </thead>
                                     <tbody>
+                                        @foreach (old('accounts', ['', '']) as $rowIndex => $selectedAccount)
                                         <tr>
                                             <td>
                                                 <select name="accounts[]" class="form-control select2 account-select"
                                                     required>
                                                     <option value="">Select Account</option>
                                                     @foreach ($accounts as $account)
-                                                        <option value="{{ $account->head_accounting_id }}">
+                                                        <option value="{{ $account->head_accounting_id }}" @selected((string) $selectedAccount === (string) $account->head_accounting_id)>
                                                             {{ $account->headAccounting->name }}</option>
                                                     @endforeach
                                                 </select>
@@ -103,12 +114,16 @@
                                                 <select name="sub_accounts[]"
                                                     class="form-control select2 sub-account-select" required>
                                                     <option value="">Select Sub-Account</option>
+                                                    @php($restoredSub = $restoredSubAccounts->get(old("sub_accounts.$rowIndex")))
+                                                    @if ($restoredSub && (string) $restoredSub->head_accounting_id === (string) $selectedAccount)
+                                                        <option value="{{ $restoredSub->id }}" selected>{{ $restoredSub->subheadAccounting->name }}</option>
+                                                    @endif
                                                 </select>
                                             </td>
-                                            <td><input type="text" name="line_description[]" class="form-control"></td>
-                                            <td><input type="number" name="credit[]" class="form-control" step="0.01">
+                                            <td><input type="text" name="line_description[]" value="{{ old('line_description.' . $rowIndex) }}" class="form-control"></td>
+                                            <td><input type="number" name="credit[]" value="{{ old('credit.' . $rowIndex) }}" class="form-control" step="0.01">
                                             </td>
-                                            <td><input type="number" name="debit[]" class="form-control" step="0.01">
+                                            <td><input type="number" name="debit[]" value="{{ old('debit.' . $rowIndex) }}" class="form-control" step="0.01">
                                             </td>
                                             <td>
                                                 <button type="button" class="btn btn-success btn-sm add-row">
@@ -119,6 +134,7 @@
                                                 </button>
                                             </td>
                                         </tr>
+                                        @endforeach
                                     </tbody>
                                     <tfoot>
                                         <tr>
@@ -203,6 +219,8 @@
                 $('#totalDebit').val(totalDebit.toFixed(2));
                 $('#totalCredit').val(totalCredit.toFixed(2));
             }
+
+            calculateTotals();
 
             // Trigger Submission Confirmation Modal
             $('#journalForm').on('submit', function(e) {
