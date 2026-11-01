@@ -25,7 +25,6 @@ final class TrialBalanceReport
             ])->keyBy('id');
 
         $balances = [];
-        $movements = [];
         if ($accounts->isNotEmpty()) {
             $legacy = DB::table('ledgers')
                 ->whereIn('project_head_subheads_id', $accounts->keys())
@@ -46,18 +45,7 @@ final class TrialBalanceReport
                     'period_credit' => $this->cents($row->period_credit),
                 ];
             }
-            foreach (DB::table('ledgers')->whereIn('project_head_subheads_id', $accounts->keys())
-                ->where('is_active', 1)->whereBetween('date', [$from, $to])
-                ->orderBy('date')->orderBy('id')
-                ->get(['id', 'project_head_subheads_id', 'date', 'type', 'voucher_number', 'detail', 'amount_in', 'amount_out']) as $row) {
-                $movements[(int) $row->project_head_subheads_id][] = [
-                    'date' => substr((string) $row->date, 0, 10),
-                    'voucher' => trim((string) $row->type.'-'.(string) $row->voucher_number, '-'),
-                    'detail' => (string) ($row->detail ?? ''),
-                    'debit' => $this->cents($row->amount_in), 'credit' => $this->cents($row->amount_out),
-                    'order' => 'L'.str_pad((string) $row->id, 20, '0', STR_PAD_LEFT),
-                ];
-            }
+
         }
 
         // V2 posting tables are an isolated local/testing pilot. Production
@@ -80,15 +68,7 @@ final class TrialBalanceReport
                 $prefix = $line['effective_date'] < $from ? 'previous_' : 'period_';
                 $balances[$id][$prefix.'debit'] += $this->cents($line['debit']);
                 $balances[$id][$prefix.'credit'] += $this->cents($line['credit']);
-                if ($line['effective_date'] >= $from) {
-                    $movements[$id][] = [
-                        'date' => $line['effective_date'],
-                        'voucher' => trim((string) $line['voucher_series'].'-'.(string) ($line['voucher_number'] ?? $line['posting_batch_id']), '-'),
-                        'detail' => (string) ($line['description'] ?? ''),
-                        'debit' => $this->cents($line['debit']), 'credit' => $this->cents($line['credit']),
-                        'order' => 'V'.str_pad((string) $line['posting_line_id'], 20, '0', STR_PAD_LEFT),
-                    ];
-                }
+
             }
         }
 
@@ -106,32 +86,6 @@ final class TrialBalanceReport
             $net = $openingNet + $amounts['period_debit'] - $amounts['period_credit'];
             $amounts['closing_debit'] = max($net, 0);
             $amounts['closing_credit'] = max(-$net, 0);
-            $entries = [];
-            $running = $openingNet;
-            if ($openingNet !== 0) {
-                $entries[] = [
-                    'date' => '', 'voucher' => '', 'detail' => 'Opening Balance',
-                    'amounts' => [
-                        'previous_debit' => max($openingNet, 0), 'previous_credit' => max(-$openingNet, 0),
-                        'period_debit' => 0, 'period_credit' => 0,
-                        'closing_debit' => max($openingNet, 0), 'closing_credit' => max(-$openingNet, 0),
-                    ],
-                ];
-            }
-            $accountMovements = $movements[(int) $id] ?? [];
-            usort($accountMovements, fn ($a, $b) => [$a['date'], $a['order']] <=> [$b['date'], $b['order']]);
-            foreach ($accountMovements as $movement) {
-                $running += $movement['debit'] - $movement['credit'];
-                $entries[] = [
-                    'date' => $movement['date'], 'voucher' => $movement['voucher'], 'detail' => $movement['detail'],
-                    'amounts' => [
-                        'previous_debit' => 0, 'previous_credit' => 0,
-                        'period_debit' => $movement['debit'], 'period_credit' => $movement['credit'],
-                        'closing_debit' => max($running, 0), 'closing_credit' => max(-$running, 0),
-                    ],
-                ];
-            }
-
             $typeKey = (int) ($account->type_id ?? 0);
             $headKey = (int) $account->head_id;
             $subKey = (int) $account->subhead_id;
@@ -142,7 +96,6 @@ final class TrialBalanceReport
                 'id' => (int) $id,
                 'name' => $this->accountName($account),
                 'amounts' => $amounts,
-                'entries' => $entries,
             ];
         }
 
@@ -173,14 +126,10 @@ final class TrialBalanceReport
             foreach ($type['heads'] as $headId => $head) {
                 foreach ($head['subheads'] as $subheadId => $subhead) {
                     foreach ($subhead['accounts'] as $account) {
-                        foreach ($account['entries'] as $entry) {
-                            $row = $account;
-                            $row['entries'] = [$entry];
-                            $rows[] = $row + [
-                                'head_id' => (int) $headId, 'head_name' => $head['name'],
-                                'subhead_id' => (int) $subheadId, 'subhead_name' => $subhead['name'],
-                            ];
-                        }
+                        $rows[] = $account + [
+                            'head_id' => (int) $headId, 'head_name' => $head['name'],
+                            'subhead_id' => (int) $subheadId, 'subhead_name' => $subhead['name'],
+                        ];
                     }
                 }
             }
@@ -195,20 +144,10 @@ final class TrialBalanceReport
             $headId = $account['head_id']; $subheadId = $account['subhead_id'];
             $heads[$headId]['name'] = $account['head_name'];
             $heads[$headId]['subheads'][$subheadId]['name'] = $account['subhead_name'];
-            $accountId = $account['id'];
-            if (!isset($heads[$headId]['subheads'][$subheadId]['accounts'][$accountId])) {
-                $heads[$headId]['subheads'][$subheadId]['accounts'][$accountId] = $account + ['entries' => []];
-                $heads[$headId]['subheads'][$subheadId]['accounts'][$accountId]['entries'] = [];
-            }
-            array_push($heads[$headId]['subheads'][$subheadId]['accounts'][$accountId]['entries'], ...$account['entries']);
+            $heads[$headId]['subheads'][$subheadId]['accounts'][] = $account;
         }
         foreach ($heads as &$head) {
             foreach ($head['subheads'] as &$subhead) {
-                foreach ($subhead['accounts'] as &$account) {
-                    $account['amounts'] = $this->entryTotals($account['entries']);
-                }
-                unset($account);
-                $subhead['accounts'] = array_values($subhead['accounts']);
                 $subhead['totals'] = $this->totals($subhead['accounts']);
             }
             unset($subhead);
@@ -216,19 +155,6 @@ final class TrialBalanceReport
         }
         unset($head);
         return ['heads' => $heads, 'totals' => $this->totals($heads)];
-    }
-
-    private function entryTotals(array $entries): array
-    {
-        $totals = array_fill_keys(['previous_debit', 'previous_credit', 'period_debit', 'period_credit', 'closing_debit', 'closing_credit'], 0);
-        foreach ($entries as $entry) {
-            foreach (['previous_debit', 'previous_credit', 'period_debit', 'period_credit'] as $key) {
-                $totals[$key] += (int) $entry['amounts'][$key];
-            }
-            $totals['closing_debit'] = (int) $entry['amounts']['closing_debit'];
-            $totals['closing_credit'] = (int) $entry['amounts']['closing_credit'];
-        }
-        return $totals;
     }
 
     private function accountName(object $account): string

@@ -49,10 +49,17 @@ class TrialBalanceReportTest extends TestCase
         $hierarchy = (new TrialBalanceReport())->hierarchy((new TrialBalanceReport())->flatten($report['tree']));
         $this->assertSame('Current Assets', $hierarchy['heads'][2]['name']);
         $this->assertSame('Receivables', $hierarchy['heads'][2]['subheads'][3]['name']);
-        $entries = $hierarchy['heads'][2]['subheads'][3]['accounts'][0]['entries'];
-        $this->assertCount(2, $entries);
-        $this->assertSame('Opening Balance', $entries[0]['detail']);
-        $this->assertSame('2026-09-10', $entries[1]['date']);
-        $this->assertSame(12000, $entries[1]['amounts']['closing_debit']);
+        $rows = (new TrialBalanceReport())->flatten($report['tree']);
+        $this->assertCount(1, $rows);
+        $this->assertArrayNotHasKey('entries', $rows[0]);
+        $this->assertSame($account['amounts'], $hierarchy['heads'][2]['subheads'][3]['accounts'][0]['amounts']);
+        $this->assertSame($report['totals'], $hierarchy['totals']);
+
+        $html = view('admin.finance.reports._trial_balance_table', compact('hierarchy'))->render();
+        $this->assertSame(1, substr_count($html, 'class="account-row"'));
+        $this->assertStringContainsString('Ali Store', $html);
+        $this->assertStringContainsString('120.00', $html);
+        $this->assertStringNotContainsString('Opening Balance', $html);
+        $this->assertStringNotContainsString('2026-09-10', $html);
     }
 }

@@ -16,14 +16,11 @@
         @foreach($head['subheads'] as $subhead)
             <tr class="subhead-row"><th colspan="9">{{ strtoupper($subhead['name']) }}</th></tr>
             @foreach($subhead['accounts'] as $account)
-                <tr class="account-label"><th colspan="9">A/C {{ $account['id'] }} — {{ $account['name'] }}</th></tr>
-                @foreach($account['entries'] as $entry)
-                    <tr class="account-row">
-                        <td class="code-col">{{ ++$serial }}</td><td class="code-col">{{ $account['id'] }}</td>
-                        <td><span class="entry-meta">{{ $entry['date'] }} {{ $entry['voucher'] }}</span>{{ $entry['detail'] }}</td>
-                        {!! $amountCells($entry['amounts']) !!}
-                    </tr>
-                @endforeach
+                <tr class="account-row">
+                    <td class="code-col">{{ ++$serial }}</td><td class="code-col">{{ $account['id'] }}</td>
+                    <td>{{ $account['name'] }}</td>
+                    {!! $amountCells($account['amounts']) !!}
+                </tr>
             @endforeach
             <tr class="subtotal"><th colspan="3">Sub Total: {{ $subhead['name'] }}</th>{!! $amountCells($subhead['totals']) !!}</tr>
         @endforeach
