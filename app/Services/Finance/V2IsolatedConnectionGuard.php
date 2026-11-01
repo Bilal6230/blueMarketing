@@ -8,12 +8,12 @@ namespace App\Services\Finance;
  */
 final class V2IsolatedConnectionGuard
 {
-    public static function assertAllowed(): void
+    public static function isAllowed(): bool
     {
         $name = (string) config('database.default', '');
         $settings = config('database.connections.' . $name);
         if (!is_array($settings)) {
-            throw new \RuntimeException('V2_ISOLATED_CONNECTION_REQUIRED');
+            return false;
         }
 
         $driver = (string) ($settings['driver'] ?? '');
@@ -24,18 +24,23 @@ final class V2IsolatedConnectionGuard
 
         if ($driver === 'sqlite' && $database === ':memory:'
             && $environment === 'testing' && $url === '') {
-            return;
+            return true;
         }
 
         // Read/write replicas can override the top-level host: reject them.
-        if ($driver !== 'mysql'
+        return !($driver !== 'mysql'
             || !in_array($environment, ['local', 'testing'], true)
             || !str_starts_with($database, 'bluemarketing_v2_')
             || preg_match('/(?:stag|prod|live|client|dev)/i', $database)
             || !in_array($host, ['localhost', '127.0.0.1'], true)
             || $url !== ''
             || !empty($settings['read'])
-            || !empty($settings['write'])) {
+            || !empty($settings['write']));
+    }
+
+    public static function assertAllowed(): void
+    {
+        if (!self::isAllowed()) {
             throw new \RuntimeException('V2_ISOLATED_CONNECTION_REQUIRED');
         }
     }

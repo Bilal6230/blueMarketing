@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
+        if (Schema::hasTable('landing_pages')) {
+            return;
+        }
+
         Schema::create('landing_pages', function (Blueprint $table) {
             $table->id();
             $table->string('theme', 40)->default('corporate');

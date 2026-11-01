@@ -60,7 +60,12 @@ final class TrialBalanceReport
             }
         }
 
-        if (Schema::hasTable('finance_posting_lines') && Schema::hasTable('finance_posting_batches')) {
+        // V2 posting tables are an isolated local/testing pilot. Production
+        // reports must continue from the authoritative legacy ledgers and
+        // must not invoke the deliberately production-blocked V2 reader.
+        if (V2IsolatedConnectionGuard::isAllowed()
+            && Schema::hasTable('finance_posting_lines')
+            && Schema::hasTable('finance_posting_batches')) {
             foreach ((new V2PostingGateway())->postingLines($projectId, null, $to) as $line) {
                 if ($line['legacy_ledger_id'] !== null) {
                     continue;
