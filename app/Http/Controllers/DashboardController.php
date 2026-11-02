@@ -78,6 +78,49 @@ class DashboardController extends Controller
         $total_hand_balance = ($data->balance ?? 0)-($dasticashtotalcash->total ?? 0);
         $getalllead = lead_repo::getAllLeads($selectedProjectId);
         $lead_response = lead_repo::getLeadsToday($selectedProjectId, 'today', $create_by);
+        // Dashboard New Leads date preset (only this metric is filtered).
+        $leadPeriod = $request->query('lead_period', 'today');
+        $validLeadPeriods = ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month'];
+        if (!in_array($leadPeriod, $validLeadPeriods, true)) {
+            $leadPeriod = 'today';
+        }
+        $today = Carbon::today();
+        switch ($leadPeriod) {
+            case 'yesterday':
+                $from = $today->copy()->subDay();
+                $to = $from->copy()->endOfDay();
+                break;
+            case 'this_week':
+                $from = $today->copy()->startOfWeek();
+                $to = $today->copy()->endOfWeek();
+                break;
+            case 'last_week':
+                $from = $today->copy()->subWeek()->startOfWeek();
+                $to = $from->copy()->endOfWeek();
+                break;
+            case 'this_month':
+                $from = $today->copy()->startOfMonth();
+                $to = $today->copy()->endOfMonth();
+                break;
+            case 'last_month':
+                $from = $today->copy()->subMonthNoOverflow()->startOfMonth();
+                $to = $from->copy()->endOfMonth();
+                break;
+            default:
+                $from = $today->copy()->startOfDay();
+                $to = $today->copy()->endOfDay();
+        }
+        $x['lead_period'] = $leadPeriod;
+        $x['lead_period_from'] = $from->toDateString();
+        $x['lead_period_to'] = $to->toDateString();
+        $leadPeriodQuery = \\App\\Models\\Lead::query()
+            ->where('is_active', 1)
+            ->where('project_id', $selectedProjectId)
+            ->whereBetween('created_at', [$from, $to]);
+        if ($create_by !== null) {
+            $leadPeriodQuery->where('create_by', $create_by);
+        }
+        $lead_response['total_leads'] = $leadPeriodQuery->count();
         $x['get_all_lead'] = $getalllead['total_leads'];
         $x['total_blance'] = $total_hand_balance;
         $x['handCashOut'] = $data->total_out;
