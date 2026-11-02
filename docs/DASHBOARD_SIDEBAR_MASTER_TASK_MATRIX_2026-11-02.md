@@ -154,3 +154,65 @@ No implementation claim is made for this documentation-only revision. Existing d
 - Today Scheduled counts current `follow_up` date equal to today. Other old dashboard KPI names and their existing calculations are preserved pending definition audit.
 - **Not done:** Completed Follow-ups status verification, historic as-of status reconstruction, production tests, role/empty/negative-value QA, footer browser checks.
 - **Next:** inspect CRM follow-up status transitions and finalize Completed/Pending/Overdue classification with tests; then unify date/employee/project filters across dashboard cards.
+
+## Consolidated delivery status — 2026-11-02 after Batch 15
+
+**Scope:** Client Sections A+B = Dashboard; Section C = Sidebar; Section D = common rules. Dasticash is an owner-added mandatory dashboard requirement. **Sidebar ON HOLD.** The statuses below distinguish committed source from user-verified runtime behavior. Percentages are not test pass rates.
+
+### Completed (code committed; regression acceptance still outstanding)
+| Feature | Evidence / scope |
+| --- | --- |
+| Responsive dashboard base | Four KPI cards, compact 2×2 content grid, component scrolling and desktop wrapper adjustments in `resources/views/admin/dashboard.blade.php` |
+| Financial Summary single donut | Hand Cash/Bank Account proportional ring, small red portion minimum visual size, increased inward thickness, blank center, right-side values and tooltip; does **not** change ledger formulas |
+| Dasticash visual presentation | Existing Dasticash table/Add/Edit/Delete controls retained in redesigned dashboard; original AJAX flows retained, **not re-certified** |
+| New Leads AJAX date selector | Today, Yesterday, This/Last Week, This/Last Month, Custom Date Range; only affected KPI updated, no dashboard reload; `DashboardController@index` JSON path |
+| CRM Details AJAX foundation | Authenticated `dashboard.crm_snapshot` route, modal, lead detail (up to 100 rows), selected-period filter, project/employee filters and employee summary table |
+| CRM additional *provisional* snapshot counters | Today Scheduled Follow-ups and Due+Overdue current-state counts available in CRM Details modal; status semantics not finalized |
+
+### In progress / partial (DO NOT mark fully completed)
+| Workstream | Current result | Remaining acceptance criteria |
+| --- | --- | --- |
+| CRM summary | Current main dashboard still has legacy four KPI labels | Client New Leads, Follow-ups Completed, Today Follow-ups, combined Pending+Overdue, with common date/role/project filters |
+| CRM drill-down | AJAX rows plus employee breakdown, limited to 100 | Complete lead follow-up status and remarks interpretation; verified accurate employee metrics, pagination/export, filters and report drill-down for all summary cards |
+| CRM follow-up semantics | Lead.follow_up and Work event date queries inspected; logged activities surfaced separately | Confirm true completed events, open/pending/rescheduled business rules, historical as-of status; tests |
+| Financial dashboard | Existing Hand Cash/Bank/Total only | Client's eight financial KPIs, reliable receivable/payable and today's cash/bank receipts/payment aggregation, account/date drill-down, reconciliation |
+| Dasticash and finance sync | Legacy AJAX IDs retained, dynamic visual sync implemented | Runtime add/edit/delete reconciliation, chart re-render, negative/zero/tiny portions, permissions |
+| UI responsive & performance | Desktop viewport CSS and tablet/mobile wrapping coded | Validate real sizes, zero page scrollbar desktop, focus/tooltip accessibility, slow/large dataset behavior, role-specific views |
+
+### Pending — dashboard (not yet implemented)
+1. Central Approvals Management dashboard with pending counts, permissioned approve/reject/request-info/remarks and audit history; integrate existing approvals where available, **NEW unified module**.
+2. Employee Attendance seven client cards with drill-down; Hikvision automatic sync **NEW integration** (manual punch already exists).
+3. Employee Task Management nine cards and employee performance; dedicated module **NEW provisional** until full repository confirmation.
+4. Cheque nine indicators, three-stage workflow and full history; use existing cheque source, expand missing actions. Online transaction dashboard/workflow **NEW provisional**.
+5. Sales & Plot Inventory six plot status counts, six financial metrics, project-wise filters (existing plots/bookings sources).
+6. Store & Inventory six indicators, material request workflow **NEW if missing** (stock sources existing).
+7. Labour & Project Work five indicators (labour/ledger/attendance sources existing).
+8. Client-wide date/employee/project/account filters, consistent permission checks, notifications, optimized aggregate services and full regression tests.
+9. Production-level completion and QA signoff remain **PENDING**, even for code-committed widgets.
+
+### Sidebar (client Section C) — ON HOLD, 0% implementation
+11 requested top-level groups: Dashboard; Definitions & Settings; Daily Entries; Administration; Reports; CRM; Sales & Plot Management; Store & Inventory; Labour Management; Employee Task Management; Employee Attendance. Existing dynamic/permission-gated sidebar remains unchanged. All regrouping pending owner's authorization.
+
+### Progress dashboard (scope estimates, not acceptance results)
+| Area | Status | Estimate |
+| --- | --- | --- |
+| Requirements classification & tracking | COMPLETE | 100% |
+| Dashboard foundation and styling source | IN PROGRESS / QA PENDING | 85% |
+| Financial ring design source | IN PROGRESS / QA PENDING | 90% |
+| New Leads AJAX source | IN PROGRESS / QA PENDING | 90% |
+| CRM unified client functionality | IN PROGRESS | 45% |
+| Client financial eight-card scope | PENDING / PARTIAL data base exists | 15% |
+| Dasticash redesign and QA | IN PROGRESS | 65% |
+| Approvals / Attendance / Tasks / Cheques / Sales / Store / Labour integrations | PENDING | 0% verified delivered |
+| Sidebar regrouping | ON HOLD | 0% |
+| Full local automated / browser / permissions validation | PENDING | 0% confirmed |
+
+### Next execution milestones
+- **M16:** Audit `follow_status`/`call_status` workflows, implement and test accurate Completed/Today/Pending+Overdue classification plus unified CRM report.
+- **M17:** Finish CRM drill-down pagination/export and common filter behavior, verify role/project scopes.
+- **M18:** Financial eight KPIs, ledger reconciliation, Dasticash AJAX balance invariants.
+- **M19+:** Approvals, Attendance/Hikvision, Tasks, Cheques/Online, Sales, Store, Labour and dashboard notifications.
+- **Last:** responsive/browser/authorization/performance regression and owner/client signoff. Sidebar work starts only when explicitly requested.
+
+### Verification after pulling this document
+`git pull --ff-only origin upgrade/laravel-framework` then `git log -2 --oneline`. This update is **documentation only**; no PHP/Blade/app behavior modified.
