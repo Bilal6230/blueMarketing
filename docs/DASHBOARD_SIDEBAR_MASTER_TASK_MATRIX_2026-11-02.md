@@ -100,3 +100,13 @@ No implementation claim is made for this documentation-only revision. Existing d
 - Source evidence: `app/Repository/Lead/LeadRepository.php`, `app/Models/Lead.php`, `app/Models/Work.php`, `resources/views/dashboard/leads_by_users_report.blade.php`, `resources/views/dashboard/today_lead_work_report.blade.php`.
 - Unified CRM report with true completed/pending/overdue semantics and employee breakdown still **PENDING**. Need confirm lead status workflow rules, last/next follow-up mapping and business definitions before implementing.
 - **QA:** GitHub commits successful. Local PHP syntax, Blade compilation, actual counts, role/date boundary tests are not yet verified. Preserve original no-mutation policy and test with read-only local account. Sidebar untouched.
+
+## Batch 09 — dashboard AJAX KPI update + Custom Date Range (2026-11-02)
+- **Code commits:** `e815f68b`, `78d3ed2c`.
+- User requirement: on-dashboard actions must not cause full-page reload; use AJAX to patch only affected widgets, as with Dasticash.
+- Updated `DashboardController@index`: when same-origin authenticated dashboard request uses AJAX + JSON Accept, returns `new_leads`, selected `period`, `from`, `to` instead of rendering HTML. Existing `/home` GET route and selected-project / non-superadmin creator restrictions retained.
+- Added validated `custom` period via `lead_from`/`lead_to` (`Y-m-d`, in chronological order, max 366 days). Presets remain Today, Yesterday, This Week/Last Week/This Month/Last Month.
+- Dashboard Blade now submits period changes with `fetch` and request cancellation, updates **only New Leads** KPI/count and period display; error message stays local. Custom date UI appears only for Custom and needs Apply; full page does not reload on selection/submission.
+- **Not yet implemented:** client-specified common CRM date selection across *all* CRM KPIs, completed/due/overdue semantics, unified report or employee/project filters.
+- **Verification:** Code committed; syntax, Blade compilation, visual behavior, date boundaries/permissions not tested by assistant on user's local DB. On local pull run `php -l app/Http/Controllers/DashboardController.php`, `php artisan view:cache`; then check browser Network tab: period request XHR/Fetch returns JSON, no Document navigation. Do not alter financial records.
+- **Next gate:** review and test AJAX counts, then implement CRM combined detail reporting once status rules are verified; sidebar still ON HOLD.
