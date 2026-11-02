@@ -164,3 +164,11 @@ Keep existing submenus, route names and permission checks; **reorganize only nav
 - Existing hand cash/bank/total cash math, lead routes, punch forms, Dasticash Add/Edit/Delete modals and AJAX kept unchanged.
 - **Local gate:** pull, `php artisan view:cache`, `php artisan view:clear`, hard refresh `Ctrl+Shift+R` at `http://localhost:8000/home`. Compare 1366x768 and 1920x1080 and report screenshot; verify no missing widget (Dasticash is mandatory). Do not run live destructive tests.
 - **Progress:** M02 modern dashboard layout PARTIAL; M07 Dasticash layout PARTIAL; no production acceptance or browser signoff yet. Sidebar M03 explicitly deferred.
+
+## 11. Incident: Batch 02 layout regression — rollback (2026-11-02)
+- User's local screenshot after successful `git pull` showed the dashboard KPI row but oversized Punch-in Records occupying the rest of viewport, with Financial Summary, Dasticash, Lead Search and Punch form not visible.
+- Cause: unsafe DOM relocation added in Batch 02; moved Blade-generated widgets into a newly assembled CSS grid and left incompatible row structures/height constraints. The attempted selector correction did not solve it.
+- **Fix committed:** `6a821f087adf1686dca8fd7abb4d2869f6b1805b`; dashboard Blade restored **exactly to the prior Batch 01 revision** (`eb381703ed057d4f694fb630e6e8ccb827003a8c`), retaining compact card styling and count-up animation but removing faulty Batch 02 grid relocation and donut ring CSS.
+- **Verification:** GitHub commit successful; local runtime verification pending user's pull and hard refresh. Do not mark Batch 02 complete. This supersedes the optimistic progress in sections above.
+- **Status correction:** M02 layout **regressed then rolled back**; M07 Dasticash visibility expected to recover after local verification. Sidebar untouched.
+- **Next:** Implement fixed-grid layout using explicit Blade wrappers rather than runtime DOM movement; run local Blade/browser verification before claiming complete.
