@@ -229,6 +229,12 @@
  .bm-finance .bm-cash-donut{width:clamp(112px,31vw,150px)}
  .bm-finance .bm-single-donut{padding:13px}
 }
+
+/* Tiny real-value financial slice: minimum 2-degree visual arc, actual % retained in legend. */
+.bm-finance .bm-single-donut{background:conic-gradient(var(--hand-color) 0 var(--hand-display-share,var(--hand-share)),var(--bank-color) var(--hand-display-share,var(--hand-share)) 100%)}
+.bm-finance .bm-tiny-hand-marker,.bm-finance .bm-tiny-bank-marker{position:absolute;width:13px;height:13px;top:3%;left:50%;transform:translate(-50%,-50%);border-radius:50%;border:2px solid white;background:#991b1b;box-shadow:0 1px 5px #0005;z-index:4;cursor:pointer;padding:0}
+.bm-finance .bm-tiny-hand-marker[hidden],.bm-finance .bm-tiny-bank-marker[hidden]{display:none!important}
+.bm-finance .bm-tiny-bank-marker{background:#991b1b}
 </style>
 @endpush
 @section('content')
@@ -298,7 +304,7 @@
       <div class="bm-cash-inner bm-single-donut" style="--hand-share:{{ $bmHandPct }}%;--bank-share:{{ $bmBankPct }}%;--hand-color:{{ $bmHandCash <= $bmBankCash ? '#991b1b' : '#0cae87' }};--bank-color:{{ $bmBankCash < $bmHandCash ? '#991b1b' : '#198add' }}" data-type="split" tabindex="0" aria-label="Hand Cash and Bank Account distribution">
         <div class="bm-cash-core"><span>Total Cash</span><strong id="totalCash">{{ number_format($bmTotalCash,2) }}</strong></div>
       </div>
-      <div class="bm-finance-tooltip" id="bm-finance-tooltip" role="status" hidden></div>
+      <button type="button" class="bm-tiny-hand-marker" data-type="hand" aria-label="Hand Cash amount" hidden></button><button type="button" class="bm-tiny-bank-marker" data-type="bank" aria-label="Bank balance amount" hidden></button><div class="bm-finance-tooltip" id="bm-finance-tooltip" role="status" hidden></div>
     </div>
     <div class="bm-cash-legend">
       <div class="bm-cash-detail" data-type="hand" tabindex="0"><span><i class="bm-dot bm-dot-hand" style="background:{{ $bmHandCash <= $bmBankCash ? '#991b1b' : '#0cae87' }}"></i>Hand Cash</span><strong id="handCash">{{ number_format($bmHandCash,2) }}</strong><small>{{ number_format($bmHandPct,2) }}%</small></div>
@@ -352,7 +358,7 @@
   <div class="modal-header"><h5 class="modal-title" id="bmCrmTitle">CRM Details — selected period</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
   <div class="modal-body">
    <p class="text-muted">Follow-up activities below are logged Work entries, not confirmed completed follow-ups. Due/overdue counts use stored lead follow-up dates.</p>
-   <div class="bm-crm-kpis" id="bm-crm-kpis" aria-live="polite"></div>
+   <div class="form-inline mb-2"><label for="bm-crm-employee" class="mr-2">Employee</label><select class="form-control form-control-sm mr-2" id="bm-crm-employee"><option value="">All employees</option>@foreach($users_list as $employee)<option value="{{ $employee->id }}">{{ $employee->name }}</option>@endforeach</select><button type="button" class="btn btn-sm btn-primary" id="bm-crm-apply">Apply Filter</button></div><div class="bm-crm-kpis" id="bm-crm-kpis" aria-live="polite"></div>
    <div id="bm-crm-error" role="alert" class="text-danger"></div>
    <div class="table-responsive bm-crm-table"><table class="table table-sm table-striped"><thead><tr><th>Lead ID</th><th>Customer</th><th>Mobile</th><th>Project</th><th>Assigned Employee</th><th>Created</th><th>Last Activity</th><th>Next Follow-up</th><th>Remarks</th></tr></thead><tbody id="bm-crm-rows"></tbody></table></div>
    <small class="text-muted">Showing at most 100 matching leads; this is a preview of the integrated report, not a full export.</small>
@@ -452,14 +458,14 @@
  const summary=document.getElementById('bm-crm-kpis');
  const labels=[['new_leads','New Leads'],['logged_activities','Logged Follow-up Activities'],['due_on_period_end','Due on Period End'],['overdue_as_of_period_end','Overdue as of Period End']];
  const cell=(tr,value)=>{const td=document.createElement('td');td.textContent=value??'—';tr.appendChild(td);};
- open.addEventListener('click',async()=>{
+ async function loadCrm(){
    if(!window.jQuery){return;}
    window.jQuery('#bmCrmModal').modal('show');
    summary.textContent='';rowHost.textContent='';error.textContent='Loading CRM data…';
    const bounds=document.getElementById('bm-lead-period-bounds').textContent.trim().split(' to ');
    if(bounds.length!==2){error.textContent='Select a date range first.';return;}
    try{
-     const query=new URLSearchParams({from:bounds[0],to:bounds[1]});
+     const query=new URLSearchParams({from:bounds[0],to:bounds[1]});const employee=document.getElementById('bm-crm-employee');if(employee && employee.value)query.set('employee_id',employee.value);
      const res=await fetch(open.dataset.url+'?'+query.toString(),{credentials:'same-origin',headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}});
      if(!res.ok)throw new Error('CRM report failed to load ('+res.status+').');
      const data=await res.json();error.textContent='';
@@ -467,7 +473,9 @@
      (data.rows||[]).forEach(row=>{const tr=document.createElement('tr');['id','customer','mobile','project','assigned','created_at','last_activity','next_follow_up','remarks'].forEach(k=>cell(tr,row[k]));rowHost.appendChild(tr);});
      if(!data.rows?.length)error.textContent='No matching leads for this period.';
    }catch(e){error.textContent=e.message;}
- });
+ }
+ open.addEventListener('click',()=>{if(window.jQuery)window.jQuery('#bmCrmModal').modal('show');loadCrm();});
+ document.getElementById('bm-crm-apply')?.addEventListener('click',loadCrm);
 })();
 </script>
 
@@ -486,6 +494,14 @@
  }
  function update(){const d=current();const inner=host.querySelector('.bm-cash-inner');
  inner.style.setProperty('--hand-share',d.hp+'%');inner.style.setProperty('--bank-share',d.bp+'%');
+ const minAnglePercent=2/3.6;let handDisplay=d.hp;
+ if(d.hp>0&&d.hp<minAnglePercent)handDisplay=minAnglePercent;
+ if(d.bp>0&&d.bp<minAnglePercent)handDisplay=100-minAnglePercent;
+ inner.style.setProperty('--hand-display-share',handDisplay+'%');
+ const handMarker=host.querySelector('.bm-tiny-hand-marker'),bankMarker=host.querySelector('.bm-tiny-bank-marker');
+ if(handMarker)handMarker.hidden=!(d.hp>0&&d.hp<minAnglePercent);
+ if(bankMarker)bankMarker.hidden=!(d.bp>0&&d.bp<minAnglePercent);
+
  inner.style.setProperty('--hand-color',d.hand<=d.bank?'#991b1b':'#0cae87');
  inner.style.setProperty('--bank-color',d.bank<d.hand?'#991b1b':'#198add');
  const dots=host.querySelectorAll('.bm-cash-detail .bm-dot');if(dots[0])dots[0].style.background=d.hand<=d.bank?'#991b1b':'#0cae87';if(dots[1])dots[1].style.background=d.bank<d.hand?'#991b1b':'#198add';
