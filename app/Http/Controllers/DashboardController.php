@@ -154,6 +154,70 @@ class DashboardController extends Controller
 
 
 
+    /**
+     * Read-only, project/role-scoped CRM snapshot for dashboard AJAX.
+     * Work entries are labeled logged activities, NOT completed follow-ups.
+     */
+    public function crmSnapshot(Request $request)
+    {
+        $data = $request->validate([
+            'from' => ['required', 'date_format:Y-m-d'],
+            'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
+            'employee_id' => ['nullable', 'integer', 'min:1'],
+        ]);
+        $from = Carbon::parse($data['from'])->startOfDay();
+        $to = Carbon::parse($data['to'])->endOfDay();
+        if ($from->diffInDays($to) > 366) {
+            abort(422, 'Date range must not exceed 366 days.');
+        }
+        $projectId = getSelectedTown();
+        $user = Auth::user();
+        $isAdmin = $user->roles->first()?->name === 'superadmin';
+        $employeeId = $isAdmin ? ($data['employee_id'] ?? null) : $user->id;
+        $scope = \\App\\Models\\Lead::query()
+            ->where('is_active', 1)
+            ->where('project_id', $projectId);
+        if ($employeeId) {
+            $scope->whereHas('users', fn ($q) => $q->where('users.id', $employeeId));
+        }
+        $new = (clone $scope)->whereBetween('created_at', [$from, $to])->count();
+        $cutoff = $to->copy()->min(now());
+        $due = (clone $scope)->whereDate('follow_up', $cutoff->toDateString())->count();
+        $overdue = (clone $scope)->whereNotNull('follow_up')
+            ->where('follow_up', '<', $cutoff->copy()->startOfDay())->count();
+        $logged = Work::query()->whereHas('leads', function ($q) use ($projectId, $employeeId) {
+            $q->where('is_active', 1)->where('project_id', $projectId);
+            if ($employeeId) {
+                $q->whereHas('users', fn ($assigned) => $assigned->where('users.id', $employeeId));
+            }
+        })->whereBetween('created_at', [$from, $to])->count();
+        $rows = (clone $scope)->where(function ($query) use ($from, $to, $cutoff) {
+            $query->whereBetween('created_at', [$from, $to])
+                ->orWhereDate('follow_up', '<=', $cutoff->toDateString());
+        })->with(['project:id,project', 'users:id,name', 'comments' => function ($q) {
+            $q->select('id', 'lead_id', 'comment', 'created_at', 'follow_up')->limit(100);
+        }])->latest('id')->limit(100)->get()->map(function ($lead) {
+            $latest = $lead->comments->first();
+            return [
+                'id' => $lead->id,
+                'customer' => trim(($lead->first_name ?? '') . ' ' . ($lead->last_name ?? '')),
+                'mobile' => $lead->phone_number ?: $lead->mobile_number,
+                'project' => $lead->project?->project,
+                'assigned' => $lead->users->pluck('name')->join(', '),
+                'created_at' => optional($lead->created_at)->toDateString(),
+                'last_activity' => optional($latest?->created_at)->toDateString(),
+                'next_follow_up' => $lead->follow_up,
+                'remarks' => $latest?->comment,
+            ];
+        });
+        return response()->json([
+            'from' => $from->toDateString(), 'to' => $to->toDateString(),
+            'new_leads' => $new, 'logged_activities' => $logged,
+            'due_on_period_end' => $due, 'overdue_as_of_period_end' => $overdue,
+            'rows' => $rows, 'limited' => true,
+        ]);
+    }
+
     public function punch(Request $request)
     {
         $validator = Validator::make($request->all(), [
