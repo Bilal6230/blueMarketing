@@ -211,6 +211,12 @@
 @media(prefers-reduced-motion:reduce){.bm-cash-donut{animation:none}}
 
 .bm-crm-open{align-self:flex-end;font-size:11px;font-weight:700;padding:3px 10px;margin-bottom:-5px}.bm-crm-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:8px 0 15px}.bm-crm-kpis>div{padding:12px;border:1px solid #dce6f1;border-radius:9px;background:#f8faff}.bm-crm-kpis strong{font-size:21px;display:block}.bm-crm-kpis span{font-size:11px}.bm-crm-table{max-height:48vh!important;overflow:auto}.bm-crm-table th{white-space:nowrap;position:sticky;top:0;background:#e9eff7}.bm-crm-table td{max-width:230px;overflow-wrap:anywhere}@media(max-width:600px){.bm-crm-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Batch 11: one donut ring, lowest balance dark red, visible floating hover amount. */
+.bm-finance .bm-single-donut{width:100%;height:100%;border:0;padding:clamp(15px,1.45vw,23px);border-radius:50%;background:conic-gradient(var(--hand-color) 0 var(--hand-share),var(--bank-color) var(--hand-share) calc(var(--hand-share) + var(--bank-share)),#e2e9f1 0 100%);cursor:pointer}
+.bm-finance .bm-single-donut .bm-cash-core{width:100%;height:100%}
+.bm-finance-tooltip{position:fixed!important;top:0;left:0;bottom:auto!important;transform:none!important;z-index:2147483000!important;pointer-events:none!important;max-width:min(300px,85vw);white-space:normal;line-height:1.45}
+.bm-cash-detail{cursor:pointer}
 </style>
 @endpush
 @section('content')
@@ -277,16 +283,14 @@
   <div class="bm-panel-body bm-finance-dual" id="bm-financial-widget"
     data-hand="{{ $bmHandCash }}" data-bank="{{ $bmBankCash }}" data-total="{{ $bmTotalCash }}">
     <div class="bm-cash-donut" role="img" aria-label="Total Cash {{ number_format($bmTotalCash,2) }}, Hand Cash {{ number_format($bmHandCash,2) }}, Bank Account {{ number_format($bmBankCash,2) }}">
-      <div class="bm-cash-outer" data-type="total" tabindex="0" aria-label="Total Cash">
-       <div class="bm-cash-inner" style="--hand-share:{{ $bmHandPct }}%;--bank-share:{{ $bmBankPct }}%" data-type="split" tabindex="0" aria-label="Hand Cash and Bank Account distribution">
+      <div class="bm-cash-inner bm-single-donut" style="--hand-share:{{ $bmHandPct }}%;--bank-share:{{ $bmBankPct }}%;--hand-color:{{ $bmHandCash <= $bmBankCash ? '#991b1b' : '#0cae87' }};--bank-color:{{ $bmBankCash < $bmHandCash ? '#991b1b' : '#198add' }}" data-type="split" tabindex="0" aria-label="Hand Cash and Bank Account distribution">
         <div class="bm-cash-core"><span>Total Cash</span><strong id="totalCash">{{ number_format($bmTotalCash,2) }}</strong></div>
-       </div>
       </div>
       <div class="bm-finance-tooltip" id="bm-finance-tooltip" role="status" hidden></div>
     </div>
     <div class="bm-cash-legend">
-      <div class="bm-cash-detail" data-type="hand" tabindex="0"><span><i class="bm-dot bm-dot-hand"></i>Hand Cash</span><strong id="handCash">{{ number_format($bmHandCash,2) }}</strong><small>{{ number_format($bmHandPct,2) }}%</small></div>
-      <div class="bm-cash-detail" data-type="bank" tabindex="0"><span><i class="bm-dot bm-dot-bank"></i>Bank Account</span><strong id="bmBankCash">{{ number_format($bmBankCash,2) }}</strong><small>{{ number_format($bmBankPct,2) }}%</small></div>
+      <div class="bm-cash-detail" data-type="hand" tabindex="0"><span><i class="bm-dot bm-dot-hand" style="background:{{ $bmHandCash <= $bmBankCash ? '#991b1b' : '#0cae87' }}"></i>Hand Cash</span><strong id="handCash">{{ number_format($bmHandCash,2) }}</strong><small>{{ number_format($bmHandPct,2) }}%</small></div>
+      <div class="bm-cash-detail" data-type="bank" tabindex="0"><span><i class="bm-dot bm-dot-bank" style="background:{{ $bmBankCash < $bmHandCash ? '#991b1b' : '#198add' }}"></i>Bank Account</span><strong id="bmBankCash">{{ number_format($bmBankCash,2) }}</strong><small>{{ number_format($bmBankPct,2) }}%</small></div>
       <div class="bm-cash-detail bm-cash-total" data-type="total" tabindex="0"><span><i class="bm-dot bm-dot-total"></i>Total Cash</span><strong id="bmCashLegendTotal">{{ number_format($bmTotalCash,2) }}</strong></div>
       @if($bmHandCash < 0 || $bmBankCash < 0)<small class="bm-cash-warning">Negative balances shown separately; ring proportions use non-negative components only.</small>@endif
     </div>
@@ -469,6 +473,9 @@
  }
  function update(){const d=current();const inner=host.querySelector('.bm-cash-inner');
  inner.style.setProperty('--hand-share',d.hp+'%');inner.style.setProperty('--bank-share',d.bp+'%');
+ inner.style.setProperty('--hand-color',d.hand<=d.bank?'#991b1b':'#0cae87');
+ inner.style.setProperty('--bank-color',d.bank<d.hand?'#991b1b':'#198add');
+ const dots=host.querySelectorAll('.bm-cash-detail .bm-dot');if(dots[0])dots[0].style.background=d.hand<=d.bank?'#991b1b':'#0cae87';if(dots[1])dots[1].style.background=d.bank<d.hand?'#991b1b':'#198add';
  [['handCash',d.hand],['bmBankCash',d.bank],['totalCash',d.total],['bmCashLegendTotal',d.total]].forEach(([id,n])=>{const el=document.getElementById(id);if(el)el.textContent=number(n)});
  const small=host.querySelectorAll('.bm-cash-detail small');if(small[0])small[0].textContent=d.hp.toFixed(2)+'%';if(small[1])small[1].textContent=d.bp.toFixed(2)+'%';
  }
@@ -477,18 +484,19 @@
  tooltip.textContent=name+': Rs. '+number(amount)+(type==='total'?'':' ('+percent.toFixed(2)+'% of positive balances)');
  tooltip.hidden=false;
  }
+ function place(x,y){const margin=12;tooltip.style.left=Math.min(x+14,window.innerWidth-260)+'px';tooltip.style.top=Math.max(margin,Math.min(y-53,window.innerHeight-70))+'px';}
+ function ringSegment(event,el){
+   const rect=el.getBoundingClientRect(),x=event.clientX-rect.left-rect.width/2,y=event.clientY-rect.top-rect.height/2;
+   const dist=Math.hypot(x,y),innerRadius=Math.min(rect.width,rect.height)*0.32;
+   if(dist<innerRadius)return 'total';
+   const deg=(Math.atan2(y,x)*180/Math.PI+450)%360;
+   return deg<current().hp*3.6?'hand':'bank';
+ }
  host.querySelectorAll('[data-type]').forEach(el=>{
-   el.addEventListener('mouseenter',()=>show(el.dataset.type));
-   if(el.classList.contains('bm-cash-inner')){
-     el.addEventListener('mousemove',event=>{
-       const rect=el.getBoundingClientRect();
-       const x=event.clientX-(rect.left+rect.width/2),y=event.clientY-(rect.top+rect.height/2);
-       const deg=(Math.atan2(y,x)*180/Math.PI+450)%360;
-       show(deg<current().hp*3.6?'hand':'bank');
-     });
-   }
+   el.addEventListener('mouseenter',event=>{show(el.dataset.type==='split'?ringSegment(event,el):el.dataset.type);place(event.clientX,event.clientY);});
+   el.addEventListener('mousemove',event=>{show(el.dataset.type==='split'?ringSegment(event,el):el.dataset.type);place(event.clientX,event.clientY);});
    el.addEventListener('mouseleave',()=>tooltip.hidden=true);
-   el.addEventListener('focus',()=>show(el.dataset.type));
+   el.addEventListener('focus',()=>{show(el.dataset.type==='split'?'total':el.dataset.type);const rect=el.getBoundingClientRect();place(rect.left+rect.width/2,rect.top);});
    el.addEventListener('blur',()=>tooltip.hidden=true);
  });
  const observer=new MutationObserver(()=>{const h=parseFloat((document.getElementById('handCash')?.textContent||'').replace(/,/g,''));if(Number.isFinite(h)&&Math.abs(h-Number(host.dataset.hand))>.001){host.dataset.hand=h;update();}});
