@@ -217,6 +217,18 @@
 .bm-finance .bm-single-donut .bm-cash-core{width:100%;height:100%}
 .bm-finance-tooltip{position:fixed!important;top:0;left:0;bottom:auto!important;transform:none!important;z-index:2147483000!important;pointer-events:none!important;max-width:min(300px,85vw);white-space:normal;line-height:1.45}
 .bm-cash-detail{cursor:pointer}
+
+/* Batch 12: slightly smaller, thinner single financial donut. */
+.bm-finance .bm-cash-donut{width:clamp(108px,10.5vw,158px)}
+.bm-finance .bm-single-donut{padding:clamp(11px,1vw,16px)}
+@media(min-width:992px) and (max-height:690px){
+ .bm-finance .bm-cash-donut{width:clamp(92px,9vw,132px)}
+ .bm-finance .bm-single-donut{padding:11px}
+}
+@media(max-width:650px){
+ .bm-finance .bm-cash-donut{width:clamp(112px,31vw,150px)}
+ .bm-finance .bm-single-donut{padding:13px}
+}
 </style>
 @endpush
 @section('content')
