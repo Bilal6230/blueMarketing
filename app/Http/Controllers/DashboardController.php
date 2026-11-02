@@ -174,7 +174,7 @@ class DashboardController extends Controller
         $user = Auth::user();
         $isAdmin = $user->roles->first()?->name === 'superadmin';
         $employeeId = $isAdmin ? ($data['employee_id'] ?? null) : $user->id;
-        $scope = \\App\\Models\\Lead::query()
+        $scope = \App\Models\Lead::query()
             ->where('is_active', 1)
             ->where('project_id', $projectId);
         if ($employeeId) {
@@ -195,7 +195,7 @@ class DashboardController extends Controller
             $query->whereBetween('created_at', [$from, $to])
                 ->orWhereDate('follow_up', '<=', $cutoff->toDateString());
         })->with(['project:id,project', 'users:id,name', 'comments' => function ($q) {
-            $q->select('id', 'lead_id', 'comment', 'created_at', 'follow_up')->limit(100);
+            $q->select('id', 'lead_id', 'comment', 'created_at', 'follow_up');
         }])->latest('id')->limit(100)->get()->map(function ($lead) {
             $latest = $lead->comments->first();
             return [
