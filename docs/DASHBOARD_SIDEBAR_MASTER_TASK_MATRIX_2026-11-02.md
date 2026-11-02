@@ -91,3 +91,12 @@ Existing sidebar: `resources/views/admin/layouts/sidebar.blade.php`; dynamic `$m
 | 10 | Sidebar regrouping (11 menus) | ON HOLD by user |
 
 No implementation claim is made for this documentation-only revision. Existing dashboard design commits remain separate. Avoid new database migrations or production mutations until metric definitions/source reconciliation.
+
+## Batch 08 — CRM source audit + first live scoped date filter (2026-11-02)
+**Commits:** `9b51281d`, `73a47abd`, `111782eb`.  
+**Code changes:** `app/Http/Controllers/DashboardController.php`, `resources/views/admin/dashboard.blade.php`.
+- Existing `LeadRepository::getLeadsToday(..., 'today')` counts active leads by **created_at**, project, and creator for non-superadmin. New Leads KPI now accepts an allowlisted `lead_period`: today, yesterday, this_week, last_week, this_month, last_month. Date bounds are shown on the dashboard; scope remains selected project and role-restricted creator. It is not yet Custom Date Range.
+- Existing `Setting::getTodayLeadWorkCount()` is a separate work count, **not verified** as a scheduled-due today count. Existing `getAllLeads()` aggregates `follow_up <= today` with assigned-user scoping (not necessarily true pending Tasks). Neither metric was relabeled or altered.
+- Source evidence: `app/Repository/Lead/LeadRepository.php`, `app/Models/Lead.php`, `app/Models/Work.php`, `resources/views/dashboard/leads_by_users_report.blade.php`, `resources/views/dashboard/today_lead_work_report.blade.php`.
+- Unified CRM report with true completed/pending/overdue semantics and employee breakdown still **PENDING**. Need confirm lead status workflow rules, last/next follow-up mapping and business definitions before implementing.
+- **QA:** GitHub commits successful. Local PHP syntax, Blade compilation, actual counts, role/date boundary tests are not yet verified. Preserve original no-mutation policy and test with read-only local account. Sidebar untouched.
