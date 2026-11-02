@@ -1,6 +1,39 @@
 @extends('admin.layouts.master')
+
+@push('style')
+<style>
+/* Dashboard-only presentation upgrade; preserves all existing form, AJAX and routes. */
+.bm-dashboard-modern { background: #f3f6fb; }
+.bm-dashboard-modern .content-header { padding: 10px 0 5px; }
+.bm-dashboard-modern .content-header h1 { font-weight: 750; font-size: 1.35rem; color: #193252; }
+.bm-dashboard-modern .small-box { border-radius: 15px; overflow: hidden; min-height: 127px; margin-bottom: 12px; box-shadow: 0 5px 18px rgba(18,38,75,.10); transition: transform .2s,box-shadow .2s; }
+.bm-dashboard-modern .small-box:hover { transform:translateY(-3px); box-shadow:0 10px 22px rgba(18,38,75,.15); }
+.bm-dashboard-modern .small-box .inner { padding: 17px 19px 12px; }
+.bm-dashboard-modern .small-box h3 { font-size: clamp(1.3rem,2vw,2rem); font-weight: 800; overflow-wrap:anywhere; }
+.bm-dashboard-modern .small-box p { font-size: .88rem; font-weight: 600; }
+.bm-dashboard-modern .small-box .icon { opacity:.35; }
+.bm-dashboard-modern .small-box-footer { padding: 7px 12px; font-size: .78rem; }
+.bm-dashboard-modern .custom_card { background: #fff; border: 1px solid #e3eaf3; border-radius: 15px; box-shadow: 0 5px 18px rgba(18,38,75,.06); overflow: hidden; }
+.bm-dashboard-modern .custom_card .card-body { padding: 17px; }
+.bm-dashboard-modern .custom_card h4,.bm-dashboard-modern .custom_card h5 { font-weight: 750; color: #193252; }
+.bm-dashboard-modern .financial-circle { border-radius:50%; box-shadow: 0 6px 20px rgba(17,36,74,.12); margin-inline:auto; }
+.bm-dashboard-modern .financial-circle h4 { font-size: clamp(.92rem,1.35vw,1.25rem); overflow-wrap:anywhere; }
+.bm-dashboard-modern #dasticashTable th { white-space:nowrap; background:#f5f8fd; color:#52637a; }
+.bm-dashboard-modern #dasticashTable td { vertical-align:middle; }
+.bm-dashboard-modern .table-responsive,.bm-dashboard-modern .table-resposive { max-height: 220px; overflow:auto; scrollbar-width:thin; }
+.bm-dashboard-modern .table-responsive thead th,.bm-dashboard-modern .table-resposive thead th { position:sticky; top:0; background:#f5f8fd; z-index:1; }
+.bm-dashboard-modern .edit-btn,.bm-dashboard-modern .delete-btn { border-radius:7px; min-width:30px; }
+@media (min-width: 992px) and (min-height: 720px) {
+  .bm-dashboard-modern .content { height:calc(100vh - 133px); overflow:hidden; }
+  .bm-dashboard-modern .content > .container-fluid { height:100%; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .bm-dashboard-modern .small-box { transition:none; }
+}
+</style>
+@endpush
 @section('content')
-    <div class="content-wrapper">
+    <div class="content-wrapper bm-dashboard-modern">
         <div class="content-header">
             <div class="container-fluid">
                 <div class="row mb-2">
@@ -422,6 +455,34 @@
     </div>
 @endsection
 @section('js')
+
+<script>
+(function () {
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  function runDashboardCounters() {
+    document.querySelectorAll('.bm-dashboard-modern .small-box .inner h3, .bm-dashboard-modern .financial-circle h4').forEach(function (node) {
+      var raw = node.textContent.trim();
+      var clean = raw.replace(/,/g, '');
+      if (!/^-?\d+(?:\.\d+)?$/.test(clean)) return;
+      var target = Number(clean), decimals = (clean.split('.')[1] || '').length;
+      var start = performance.now();
+      function frame(now) {
+        if (!node.isConnected) return;
+        var progress = Math.min((now - start) / 1100, 1);
+        var eased = 1 - Math.pow(1 - progress, 3);
+        node.textContent = (target * eased).toLocaleString('en-US', {
+          minimumFractionDigits: decimals, maximumFractionDigits: decimals
+        });
+        if (progress < 1) requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', runDashboardCounters);
+  else runDashboardCounters();
+})();
+</script>
+
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
