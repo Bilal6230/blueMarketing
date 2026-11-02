@@ -140,6 +140,9 @@ class DashboardController extends Controller
         $x['bankOut'] = $Bankaccountdata->total_out;
         $x['dasticashData'] = $dasticash;
         $x['total_bank_account_data'] = $Bankaccountdata->balance;
+        $x['crm_projects'] = $power === 'superadmin'
+            ? \App\Models\Project::query()->orderBy('project')->get(['id', 'project'])
+            : \App\Models\Project::query()->whereKey($selectedProjectId)->get(['id', 'project']);
         $x['today_leads'] = $lead_response['total_leads'];
         if ($request->ajax() && $request->expectsJson()) {
             return response()->json([
@@ -164,15 +167,18 @@ class DashboardController extends Controller
             'from' => ['required', 'date_format:Y-m-d'],
             'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
             'employee_id' => ['nullable', 'integer', 'min:1'],
+            'project_id' => ['nullable', 'integer', 'min:1'],
         ]);
         $from = Carbon::parse($data['from'])->startOfDay();
         $to = Carbon::parse($data['to'])->endOfDay();
         if ($from->diffInDays($to) > 366) {
             abort(422, 'Date range must not exceed 366 days.');
         }
-        $projectId = getSelectedTown();
+        $selectedProjectId = getSelectedTown();
         $user = Auth::user();
         $isAdmin = $user->roles->first()?->name === 'superadmin';
+        $projectId = $isAdmin && isset($data['project_id']) ? (int) $data['project_id'] : $selectedProjectId;
+        abort_unless(\App\Models\Project::query()->whereKey($projectId)->exists(), 404);
         $employeeId = $isAdmin ? ($data['employee_id'] ?? null) : $user->id;
         $scope = \App\Models\Lead::query()
             ->where('is_active', 1)
@@ -210,11 +216,30 @@ class DashboardController extends Controller
                 'remarks' => $latest?->comment,
             ];
         });
+        // Employee-wise activity and assigned lead counts; activities are not treated as completed follow-ups.
+        $employees = User::query()->where('project_id', $projectId)
+            ->when($employeeId, fn ($q) => $q->whereKey($employeeId))
+            ->orderBy('name')->get(['id','name']);
+        $employeeSummary = $employees->map(function ($employee) use ($projectId, $from, $to, $cutoff) {
+            $leadQuery = \App\Models\Lead::query()->where('is_active', 1)
+                ->where('project_id', $projectId)
+                ->whereHas('users', fn ($q) => $q->where('users.id', $employee->id));
+            $workQuery = Work::query()->where('user_id', $employee->id)
+                ->whereHas('leads', fn ($q) => $q->where('is_active', 1)->where('project_id', $projectId));
+            return [
+                'employee' => $employee->name,
+                'assigned_leads' => (clone $leadQuery)->count(),
+                'new_leads' => (clone $leadQuery)->whereBetween('created_at', [$from, $to])->count(),
+                'logged_activities' => $workQuery->whereBetween('created_at', [$from, $to])->count(),
+                'due_on_period_end' => (clone $leadQuery)->whereDate('follow_up', $cutoff->toDateString())->count(),
+                'overdue_as_of_period_end' => (clone $leadQuery)->whereNotNull('follow_up')->where('follow_up', '<', $cutoff->copy()->startOfDay())->count(),
+            ];
+        });
         return response()->json([
             'from' => $from->toDateString(), 'to' => $to->toDateString(),
             'new_leads' => $new, 'logged_activities' => $logged,
             'due_on_period_end' => $due, 'overdue_as_of_period_end' => $overdue,
-            'rows' => $rows, 'limited' => true,
+            'rows' => $rows, 'employee_summary' => $employeeSummary, 'limited' => true,
         ]);
     }
 
