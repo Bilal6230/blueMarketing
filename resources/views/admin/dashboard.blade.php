@@ -235,6 +235,14 @@
 .bm-finance .bm-tiny-hand-marker,.bm-finance .bm-tiny-bank-marker{position:absolute;width:13px;height:13px;top:3%;left:50%;transform:translate(-50%,-50%);border-radius:50%;border:2px solid white;background:#991b1b;box-shadow:0 1px 5px #0005;z-index:4;cursor:pointer;padding:0}
 .bm-finance .bm-tiny-hand-marker[hidden],.bm-finance .bm-tiny-bank-marker[hidden]{display:none!important}
 .bm-finance .bm-tiny-bank-marker{background:#991b1b}
+
+/* Batch 14: financial widget is non-scrolling; ring thick, center blank. */
+.bm-dashboard-modern .bm-finance .bm-finance-dual{overflow:hidden!important;min-height:0;align-items:center}
+.bm-dashboard-modern .bm-finance .bm-cash-donut{flex-shrink:0;max-height:min(100%,175px);width:min(150px,32%,25vh);aspect-ratio:1}
+.bm-dashboard-modern .bm-finance .bm-single-donut{padding:clamp(7px,.65vw,11px)!important}
+.bm-finance .bm-single-donut .bm-cash-core{background:white;border-radius:50%}
+.bm-total-cash-hidden{display:none!important}
+@media(max-width:650px){.bm-dashboard-modern .bm-finance .bm-finance-dual{overflow:visible!important}.bm-dashboard-modern .bm-finance .bm-cash-donut{width:min(145px,42vw)}}
 </style>
 @endpush
 @section('content')
@@ -302,9 +310,9 @@
     data-hand="{{ $bmHandCash }}" data-bank="{{ $bmBankCash }}" data-total="{{ $bmTotalCash }}">
     <div class="bm-cash-donut" role="img" aria-label="Total Cash {{ number_format($bmTotalCash,2) }}, Hand Cash {{ number_format($bmHandCash,2) }}, Bank Account {{ number_format($bmBankCash,2) }}">
       <div class="bm-cash-inner bm-single-donut" style="--hand-share:{{ $bmHandPct }}%;--bank-share:{{ $bmBankPct }}%;--hand-color:{{ $bmHandCash <= $bmBankCash ? '#991b1b' : '#0cae87' }};--bank-color:{{ $bmBankCash < $bmHandCash ? '#991b1b' : '#198add' }}" data-type="split" tabindex="0" aria-label="Hand Cash and Bank Account distribution">
-        <div class="bm-cash-core"><span>Total Cash</span><strong id="totalCash">{{ number_format($bmTotalCash,2) }}</strong></div>
+        <div class="bm-cash-core" aria-hidden="true"></div>
       </div>
-      <button type="button" class="bm-tiny-hand-marker" data-type="hand" aria-label="Hand Cash amount" hidden></button><button type="button" class="bm-tiny-bank-marker" data-type="bank" aria-label="Bank balance amount" hidden></button><div class="bm-finance-tooltip" id="bm-finance-tooltip" role="status" hidden></div>
+      <strong id="totalCash" class="bm-total-cash-hidden">{{ number_format($bmTotalCash,2) }}</strong><div class="bm-finance-tooltip" id="bm-finance-tooltip" role="status" hidden></div>
     </div>
     <div class="bm-cash-legend">
       <div class="bm-cash-detail" data-type="hand" tabindex="0"><span><i class="bm-dot bm-dot-hand" style="background:{{ $bmHandCash <= $bmBankCash ? '#991b1b' : '#0cae87' }}"></i>Hand Cash</span><strong id="handCash">{{ number_format($bmHandCash,2) }}</strong><small>{{ number_format($bmHandPct,2) }}%</small></div>
@@ -498,9 +506,7 @@
  if(d.hp>0&&d.hp<minAnglePercent)handDisplay=minAnglePercent;
  if(d.bp>0&&d.bp<minAnglePercent)handDisplay=100-minAnglePercent;
  inner.style.setProperty('--hand-display-share',handDisplay+'%');
- const handMarker=host.querySelector('.bm-tiny-hand-marker'),bankMarker=host.querySelector('.bm-tiny-bank-marker');
- if(handMarker)handMarker.hidden=!(d.hp>0&&d.hp<minAnglePercent);
- if(bankMarker)bankMarker.hidden=!(d.bp>0&&d.bp<minAnglePercent);
+
 
  inner.style.setProperty('--hand-color',d.hand<=d.bank?'#991b1b':'#0cae87');
  inner.style.setProperty('--bank-color',d.bank<d.hand?'#991b1b':'#198add');
