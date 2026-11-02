@@ -196,3 +196,10 @@ Keep existing submenus, route names and permission checks; **reorganize only nav
 - Responsive fallback for small widths; owner screenshot review pending.
 - **Status:** code committed, browser/UI behavior unverified until local pull. Approx M02 layout 85%, M07 Dasticash UI 65% (unchanged this batch). Backend permission/finance regression not re-tested.
 - **Pull:** `git pull --ff-only origin upgrade/laravel-framework`, `php artisan optimize:clear`, `php artisan view:cache`.
+
+## 14. Implementation batch 05 — upper card height and financial typography (2026-11-02)
+- **Code commit:** `0a768d9cbfcc804f57c052941ddb7a7d802e6ed2`.
+- Updated dashboard CSS only: desktop grid allocates a shorter first row to Financial Summary and Lead Search & Attendance; the lower Dasticash/Attendance record row gets more height. Financial rings capped smaller.
+- Increased Financial Summary ring title, amount and caption font sizes and weights for readability.
+- No dashboard metrics, Dasticash AJAX, backend, permissions or sidebar modified.
+- **Verification:** GitHub commit confirmed; local pull, view compile and browser screenshot pending. Smaller viewport and overflow remain browser QA gates.
