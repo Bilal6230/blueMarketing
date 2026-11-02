@@ -47,7 +47,7 @@ Route::prefix('v1/mobile')->group(function () {
     Route::post('auth/login', [MobileAuthController::class, 'login'])
         ->middleware('throttle:5,1');
 
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', \App\Http\Middleware\EnsureActiveMobileUser::class])->group(function () {
         Route::get('auth/me', [MobileAuthController::class, 'me']);
         Route::post('auth/logout', [MobileAuthController::class, 'logout']);
         Route::get('projects', [MobileProjectController::class, 'index']);
