@@ -221,3 +221,9 @@ Keep existing submenus, route names and permission checks; **reorganize only nav
 - On tablet/mobile use normal document scroll instead of clipping content. `:has()` is supported by user's Chrome-based browser, but browser matrix QA remains pending.
 - No changes to master layout Blade, sidebar, ledger, data queries or Dasticash AJAX.
 - **Status:** code committed; local browser verification pending user pull. Do not claim scrollbar eliminated until confirmed in browser.
+
+## 17. Master requirements split and source inventory (2026-11-02)
+- **New authoritative task matrix:** `docs/DASHBOARD_SIDEBAR_MASTER_TASK_MATRIX_2026-11-02.md` (commit `e08fa58b5ed9b587402891c8053c07efc9705c05`).
+- Client **Sections A + B = DASHBOARD**. Section **C = SIDEBAR**. Section D applies to both as appropriate. Dasticash is mandatory owner-added dashboard functionality.
+- Source audit separates EXISTING infrastructure, PARTIAL dashboard features, NEW required work and NOT VERIFIED areas. NEW standalone modules are marked provisional until repository-wide audit; sidebar implementation remains ON HOLD.
+- Use the master matrix for subsequent scope reporting; historical milestones/percentages in this log reflect past status only.
