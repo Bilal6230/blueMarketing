@@ -209,6 +209,8 @@
 @media(max-width:1100px){.bm-cash-donut{width:clamp(105px,12vw,160px)}.bm-finance .bm-finance-dual{gap:9px;padding:7px}.bm-cash-legend{min-width:125px}.bm-cash-detail{gap:4px;grid-template-columns:minmax(80px,1fr) auto}.bm-cash-detail small{display:none}}
 @media(max-width:650px){.bm-finance .bm-finance-dual{flex-wrap:wrap;overflow:visible}.bm-cash-donut{width:clamp(130px,37vw,180px)}.bm-cash-legend{width:100%;max-width:none}.bm-cash-detail small{display:block}}
 @media(prefers-reduced-motion:reduce){.bm-cash-donut{animation:none}}
+
+.bm-crm-open{align-self:flex-end;font-size:11px;font-weight:700;padding:3px 10px;margin-bottom:-5px}.bm-crm-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:8px 0 15px}.bm-crm-kpis>div{padding:12px;border:1px solid #dce6f1;border-radius:9px;background:#f8faff}.bm-crm-kpis strong{font-size:21px;display:block}.bm-crm-kpis span{font-size:11px}.bm-crm-table{max-height:48vh!important;overflow:auto}.bm-crm-table th{white-space:nowrap;position:sticky;top:0;background:#e9eff7}.bm-crm-table td{max-width:230px;overflow-wrap:anywhere}@media(max-width:600px){.bm-crm-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 @endpush
 @section('content')
@@ -246,6 +248,7 @@
  <span id="bm-lead-period-bounds" aria-live="polite">{{ $lead_period_from }} to {{ $lead_period_to }}</span>
  <span id="bm-lead-period-error" role="alert" hidden></span>
 </form>
+<button type="button" class="btn btn-sm btn-outline-primary bm-crm-open" id="bm-crm-open" data-url="{{ route('dashboard.crm_snapshot') }}"><i class="fas fa-chart-line"></i> CRM Details</button>
 <div class="bm-kpis">
 @foreach ([
  ['value'=>$today_leads,'label'=>'New Leads Add Today','icon'=>'fa-user','href'=>route('dashboard.leads_by_users_report'),'tone'=>'indigo'],
@@ -328,6 +331,19 @@
  </section>
  @endcan
 </div>
+<div class="modal fade" id="bmCrmModal" tabindex="-1" role="dialog" aria-labelledby="bmCrmTitle" aria-hidden="true">
+ <div class="modal-dialog modal-xl" role="document"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title" id="bmCrmTitle">CRM Details — selected period</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+  <div class="modal-body">
+   <p class="text-muted">Follow-up activities below are logged Work entries, not confirmed completed follow-ups. Due/overdue counts use stored lead follow-up dates.</p>
+   <div class="bm-crm-kpis" id="bm-crm-kpis" aria-live="polite"></div>
+   <div id="bm-crm-error" role="alert" class="text-danger"></div>
+   <div class="table-responsive bm-crm-table"><table class="table table-sm table-striped"><thead><tr><th>Lead ID</th><th>Customer</th><th>Mobile</th><th>Project</th><th>Assigned Employee</th><th>Created</th><th>Last Activity</th><th>Next Follow-up</th><th>Remarks</th></tr></thead><tbody id="bm-crm-rows"></tbody></table></div>
+   <small class="text-muted">Showing at most 100 matching leads; this is a preview of the integrated report, not a full export.</small>
+  </div>
+ </div></div>
+</div>
+
 <!-- Add Dasticash Modal -->
                     <div class="modal fade" id="addDasticashModal" tabindex="-1" role="dialog"
                         aria-labelledby="addDasticashModalLabel" aria-hidden="true">
@@ -409,6 +425,36 @@
     </div>
 @endsection
 @section('js')
+
+<script>
+(function(){
+ const open=document.getElementById('bm-crm-open');
+ if(!open)return;
+ const form=document.getElementById('bm-lead-period-form');
+ const rowHost=document.getElementById('bm-crm-rows');
+ const error=document.getElementById('bm-crm-error');
+ const summary=document.getElementById('bm-crm-kpis');
+ const labels=[['new_leads','New Leads'],['logged_activities','Logged Follow-up Activities'],['due_on_period_end','Due on Period End'],['overdue_as_of_period_end','Overdue as of Period End']];
+ const cell=(tr,value)=>{const td=document.createElement('td');td.textContent=value??'—';tr.appendChild(td);};
+ open.addEventListener('click',async()=>{
+   if(!window.jQuery){return;}
+   window.jQuery('#bmCrmModal').modal('show');
+   summary.textContent='';rowHost.textContent='';error.textContent='Loading CRM data…';
+   const bounds=document.getElementById('bm-lead-period-bounds').textContent.trim().split(' to ');
+   if(bounds.length!==2){error.textContent='Select a date range first.';return;}
+   try{
+     const query=new URLSearchParams({from:bounds[0],to:bounds[1]});
+     const res=await fetch(open.dataset.url+'?'+query.toString(),{credentials:'same-origin',headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}});
+     if(!res.ok)throw new Error('CRM report failed to load ('+res.status+').');
+     const data=await res.json();error.textContent='';
+     labels.forEach(([key,label])=>{const box=document.createElement('div');const value=document.createElement('strong');value.textContent=Number(data[key]||0).toLocaleString('en-PK');const caption=document.createElement('span');caption.textContent=label;box.append(value,caption);summary.appendChild(box);});
+     (data.rows||[]).forEach(row=>{const tr=document.createElement('tr');['id','customer','mobile','project','assigned','created_at','last_activity','next_follow_up','remarks'].forEach(k=>cell(tr,row[k]));rowHost.appendChild(tr);});
+     if(!data.rows?.length)error.textContent='No matching leads for this period.';
+   }catch(e){error.textContent=e.message;}
+ });
+})();
+</script>
+
 
 <script>
 (function(){
