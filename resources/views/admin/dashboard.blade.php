@@ -189,6 +189,26 @@
 .bm-lead-period-filter [role=alert]{color:#bf3040;font-weight:600}
 .bm-lead-period-filter[aria-busy=true]{opacity:.7}
 @media(max-width:650px){.bm-lead-period-filter .bm-custom-period{flex-wrap:wrap}}
+
+/* Batch 10: one two-level cash donut and live accessible legend. */
+.bm-finance .bm-finance-dual{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:clamp(13px,2.2vw,32px);overflow:auto;padding:10px 14px}
+.bm-cash-donut{position:relative;flex:0 0 auto;width:clamp(120px,13vw,195px);aspect-ratio:1}
+.bm-cash-outer{width:100%;height:100%;border-radius:50%;background:conic-gradient(#7353d8 0 100%);display:grid;place-items:center;padding:clamp(10px,1vw,15px);cursor:help}
+.bm-cash-inner{width:100%;height:100%;border-radius:50%;background:conic-gradient(#0cae87 0 var(--hand-share),#198add var(--hand-share) calc(var(--hand-share) + var(--bank-share)),#e2e9f1 0 100%);display:grid;place-items:center;padding:clamp(12px,1.3vw,20px);cursor:help;border:3px solid white}
+.bm-cash-core{background:white;width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:3px}
+.bm-cash-core span{font-size:clamp(10px,.8vw,13px);color:#64748b}.bm-cash-core strong{font-size:clamp(12px,1.15vw,19px);color:#173450;white-space:nowrap}
+.bm-cash-legend{flex:1;min-width:150px;max-width:330px;display:flex;flex-direction:column;gap:9px}
+.bm-cash-detail{display:grid;grid-template-columns:minmax(95px,1fr) auto auto;align-items:center;gap:8px;font-size:clamp(11px,.85vw,14px);cursor:help;border-radius:7px;padding:5px}
+.bm-cash-detail:hover,.bm-cash-detail:focus-visible{background:#f0f5fb;outline-offset:1px}
+.bm-cash-detail span{display:flex;align-items:center;gap:7px}.bm-cash-detail strong{white-space:nowrap;font-size:clamp(11px,.86vw,14px)}
+.bm-cash-detail small{font-size:10px;color:#6e7f98;min-width:36px;text-align:right}
+.bm-cash-total{border-top:1px solid #e1e6f0;padding-top:10px;font-weight:750;grid-template-columns:1fr auto}
+.bm-dot{height:9px;width:9px;display:inline-block;border-radius:50%;flex-shrink:0}.bm-dot-hand{background:#0cae87}.bm-dot-bank{background:#198add}.bm-dot-total{background:#7353d8}
+.bm-finance-tooltip{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);background:#162b45;color:white;border-radius:6px;padding:7px 10px;white-space:nowrap;font-size:11px;z-index:7;pointer-events:none;box-shadow:0 6px 18px #0004}
+.bm-finance-tooltip[hidden]{display:none}.bm-cash-warning{font-size:10px;color:#a06119}
+@media(max-width:1100px){.bm-cash-donut{width:clamp(105px,12vw,160px)}.bm-finance .bm-finance-dual{gap:9px;padding:7px}.bm-cash-legend{min-width:125px}.bm-cash-detail{gap:4px;grid-template-columns:minmax(80px,1fr) auto}.bm-cash-detail small{display:none}}
+@media(max-width:650px){.bm-finance .bm-finance-dual{flex-wrap:wrap;overflow:visible}.bm-cash-donut{width:clamp(130px,37vw,180px)}.bm-cash-legend{width:100%;max-width:none}.bm-cash-detail small{display:block}}
+@media(prefers-reduced-motion:reduce){.bm-cash-donut{animation:none}}
 </style>
 @endpush
 @section('content')
@@ -243,17 +263,30 @@
 <div class="bm-dashboard-grid">
  <section class="bm-panel bm-finance">
   <div class="bm-panel-heading"><h5>Financial Summary</h5><span>Ledger balances</span></div>
-  <div class="bm-panel-body bm-finance-body">
-   @foreach ([
-    ['name'=>'Hand Cash','label'=>'Hand Cash Balance','value'=>$total_blance,'id'=>'handCash','accent'=>'#13bd8b'],
-    ['name'=>'Bank Account','label'=>'Current Bank Balance','value'=>-$total_bank_account_data,'id'=>'','accent'=>'#456eea'],
-    ['name'=>'Total Cash','label'=>'Available Cash Balance','value'=>$total_blance - $total_bank_account_data,'id'=>'totalCash','accent'=>'#9767e9']
-   ] as $finance)
-   <div class="bm-ring-item">
-    <div class="bm-ring" style="--ring-color:{{ $finance['accent'] }}"><div class="bm-ring-center"><span>{{ $finance['name'] }}</span><strong class="bm-counter" @if($finance['id']) id="{{ $finance['id'] }}" @endif data-number="{{ $finance['value'] }}">{{ number_format($finance['value'],2) }}</strong></div></div>
-    <div class="bm-ring-caption">{{ $finance['label'] }}</div>
-   </div>
-   @endforeach
+  @php
+    $bmHandCash = (float) $total_blance;
+    $bmBankCash = (float) (-$total_bank_account_data);
+    $bmTotalCash = $bmHandCash + $bmBankCash;
+    $bmPositiveSum = max(0, $bmHandCash) + max(0, $bmBankCash);
+    $bmHandPct = $bmPositiveSum > 0 ? max(0, $bmHandCash) / $bmPositiveSum * 100 : 0;
+    $bmBankPct = $bmPositiveSum > 0 ? max(0, $bmBankCash) / $bmPositiveSum * 100 : 0;
+  @endphp
+  <div class="bm-panel-body bm-finance-dual" id="bm-financial-widget"
+    data-hand="{{ $bmHandCash }}" data-bank="{{ $bmBankCash }}" data-total="{{ $bmTotalCash }}">
+    <div class="bm-cash-donut" role="img" aria-label="Total Cash {{ number_format($bmTotalCash,2) }}, Hand Cash {{ number_format($bmHandCash,2) }}, Bank Account {{ number_format($bmBankCash,2) }}">
+      <div class="bm-cash-outer" data-type="total" tabindex="0" aria-label="Total Cash">
+       <div class="bm-cash-inner" style="--hand-share:{{ $bmHandPct }}%;--bank-share:{{ $bmBankPct }}%" data-type="split" tabindex="0" aria-label="Hand Cash and Bank Account distribution">
+        <div class="bm-cash-core"><span>Total Cash</span><strong id="totalCash">{{ number_format($bmTotalCash,2) }}</strong></div>
+       </div>
+      </div>
+      <div class="bm-finance-tooltip" id="bm-finance-tooltip" role="status" hidden></div>
+    </div>
+    <div class="bm-cash-legend">
+      <div class="bm-cash-detail" data-type="hand" tabindex="0"><span><i class="bm-dot bm-dot-hand"></i>Hand Cash</span><strong id="handCash">{{ number_format($bmHandCash,2) }}</strong><small>{{ number_format($bmHandPct,2) }}%</small></div>
+      <div class="bm-cash-detail" data-type="bank" tabindex="0"><span><i class="bm-dot bm-dot-bank"></i>Bank Account</span><strong id="bmBankCash">{{ number_format($bmBankCash,2) }}</strong><small>{{ number_format($bmBankPct,2) }}%</small></div>
+      <div class="bm-cash-detail bm-cash-total" data-type="total" tabindex="0"><span><i class="bm-dot bm-dot-total"></i>Total Cash</span><strong id="bmCashLegendTotal">{{ number_format($bmTotalCash,2) }}</strong></div>
+      @if($bmHandCash < 0 || $bmBankCash < 0)<small class="bm-cash-warning">Negative balances shown separately; ring proportions use non-negative components only.</small>@endif
+    </div>
   </div>
  </section>
  <section class="bm-panel bm-actions">
@@ -376,6 +409,40 @@
     </div>
 @endsection
 @section('js')
+
+<script>
+(function(){
+ const host=document.getElementById('bm-financial-widget');
+ if(!host)return;
+ const tooltip=document.getElementById('bm-finance-tooltip');
+ const number=(v)=>Number(v).toLocaleString('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2});
+ function current(){
+   const hand=Number(host.dataset.hand)||0,bank=Number(host.dataset.bank)||0;
+   const positive=Math.max(0,hand)+Math.max(0,bank);
+   return {hand,bank,total:hand+bank,hp:positive?Math.max(0,hand)/positive*100:0,bp:positive?Math.max(0,bank)/positive*100:0};
+ }
+ function update(){const d=current();const inner=host.querySelector('.bm-cash-inner');
+ inner.style.setProperty('--hand-share',d.hp+'%');inner.style.setProperty('--bank-share',d.bp+'%');
+ [['handCash',d.hand],['bmBankCash',d.bank],['totalCash',d.total],['bmCashLegendTotal',d.total]].forEach(([id,n])=>{const el=document.getElementById(id);if(el)el.textContent=number(n)});
+ const small=host.querySelectorAll('.bm-cash-detail small');if(small[0])small[0].textContent=d.hp.toFixed(2)+'%';if(small[1])small[1].textContent=d.bp.toFixed(2)+'%';
+ }
+ function show(type){const d=current(),name=type==='hand'?'Hand Cash':type==='bank'?'Bank Account':'Total Cash';
+ const amount=type==='hand'?d.hand:type==='bank'?d.bank:d.total,percent=type==='hand'?d.hp:type==='bank'?d.bp:100;
+ tooltip.textContent=name+': Rs. '+number(amount)+(type==='total'?'':' ('+percent.toFixed(2)+'% of positive balances)');
+ tooltip.hidden=false;
+ }
+ host.querySelectorAll('[data-type]').forEach(el=>{
+   el.addEventListener('mouseenter',()=>show(el.dataset.type));
+   el.addEventListener('mouseleave',()=>tooltip.hidden=true);
+   el.addEventListener('focus',()=>show(el.dataset.type));
+   el.addEventListener('blur',()=>tooltip.hidden=true);
+ });
+ const observer=new MutationObserver(()=>{const h=parseFloat((document.getElementById('handCash')?.textContent||'').replace(/,/g,''));if(Number.isFinite(h)&&Math.abs(h-Number(host.dataset.hand))>.001){host.dataset.hand=h;update();}});
+ const hand=document.getElementById('handCash');if(hand)observer.observe(hand,{childList:true,characterData:true,subtree:true});
+ update();
+})();
+</script>
+
 
 <script>
 (function(){
