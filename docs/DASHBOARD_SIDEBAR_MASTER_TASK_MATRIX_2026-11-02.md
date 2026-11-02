@@ -119,3 +119,11 @@ No implementation claim is made for this documentation-only revision. Existing d
 - **Interpretation boundary:** Logged activities ARE NOT claimed as confirmed completed follow-ups; due/overdue currently use recorded Lead `follow_up` dates, not a history-reconstructed pending snapshot. Full user/client CRM milestone remains PARTIAL pending sign-off of status rules and employee breakdown.
 - **Data integrity:** Read-only queries; no migrations/accounting logic/sidebar mutations. Desktop/mobile UI validation still pending.
 - **Local QA:** `php -l app/Http/Controllers/DashboardController.php`, `php artisan route:list --name=dashboard.crm_snapshot`, `php artisan view:cache`, test financial chart tooltips, Dasticash local non-production CRUD, CRM Details AJAX JSON, role restrictions, narrow screen wrapping.
+
+## Batch 11 — financial chart user fixes (2026-11-02)
+- **Commits:** `723d03c5` (single ring & dark-red smaller balance, hover value handling), `947c9e20` (floating tooltip moved outside clipped dashboard panel).
+- Removed colored **outer Total Cash ring**; retained one proportional ring for Hand Cash vs Bank Account. Total Cash remains numeric center and side legend. The lesser balance displays in **dark red** (`#991b1b`); the larger displays in green/blue. Equal values prefer Hand Cash red deterministically.
+- Replaced native `cursor:help` ("?" marker) with pointer; hover over each wedge shows segment label, **Rs amount and proportion** in a custom tooltip, with center showing Total Cash. Side legend hover/focus is also supported.
+- Tooltip is positioned at viewport coordinates and appended to `document.body` to escape `overflow:hidden` clipping by dashboard/widget containers; the chart's Dasticash mutation-sync/amount selectors remain intact.
+- **Verification:** GitHub commit succeeded. Local PHP/Blade/browser checks and hover QA pending user's pull. Responsive, negative/zero balance and AJAX Dasticash QA remain open.
+- Backend ledger calculations, sidebar and other modules unchanged.
