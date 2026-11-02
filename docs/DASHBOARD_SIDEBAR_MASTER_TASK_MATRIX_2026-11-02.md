@@ -138,3 +138,12 @@ No implementation claim is made for this documentation-only revision. Existing d
 - CRM Details modal: project-scoped Employee selector from existing `$users_list` and Apply Filter action, reusing existing `crmSnapshot` endpoint's `employee_id` filter, via AJAX and without a full page refresh. Non-superadmins are still constrained server-side to their own user.
 - Code-only commit verified on GitHub; local Laravel/Blade/browser tests still pending. Sidebar unchanged.
 - **Next:** CRM project filter and employee performance totals, followed by verified follow-up status mapping and proper due/pending/overdue classification.
+
+## Batch 14 — financial card cleanup + CRM project / employee summary (2026-11-02)
+- **Code commits:** `603f3fc9` financial widget styling/markup; `e2eaf682` role/project-scoped backend breakdown; `77ebe4f5` modal project selector/table; `492116b7` filter label correction.
+- Removed tiny **red dot marker** HTML and center Total Cash text. Retained hidden `#totalCash` node for existing Dasticash AJAX amount synchronization; visible Total Cash remains in the right legend.
+- Financial ring made thicker by reducing inner padding; desktop Finance widget overflow hidden (no internal scrollbar). Mobile chart scales to available width.
+- CRM Details modal: project filter and employee-wise report table (Assigned Leads, New Leads, Logged Activities, Due and Overdue as of end date), populated using live project-scoped read-only AJAX. Only superadmin may request a different project; ordinary users remain restricted to their selected project and own identity.
+- **Honesty:** logged work activity is NOT the same as completed follow-up. Pending + Overdue and actual completion statuses remain next milestone. Date-as-of historical reporting still has no event sourcing and needs explicit semantics validation. Filtering result endpoint 100-row detail cap remains.
+- **Verification required after pull:** PHP lint, Blade compilation, role-specific CRM AJAX checks, chart/legend/Dasticash update inspection, responsive widths. GitHub commits confirmed, local browser tests not yet executed.
+- **Next milestone:** CRM status semantics / combined pending-overdue KPI and Today Due count (only after inspecting follow_status/call_status workflow), then unified report paging/export.
