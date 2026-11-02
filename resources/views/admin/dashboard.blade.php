@@ -433,6 +433,14 @@
  }
  host.querySelectorAll('[data-type]').forEach(el=>{
    el.addEventListener('mouseenter',()=>show(el.dataset.type));
+   if(el.classList.contains('bm-cash-inner')){
+     el.addEventListener('mousemove',event=>{
+       const rect=el.getBoundingClientRect();
+       const x=event.clientX-(rect.left+rect.width/2),y=event.clientY-(rect.top+rect.height/2);
+       const deg=(Math.atan2(y,x)*180/Math.PI+450)%360;
+       show(deg<current().hp*3.6?'hand':'bank');
+     });
+   }
    el.addEventListener('mouseleave',()=>tooltip.hidden=true);
    el.addEventListener('focus',()=>show(el.dataset.type));
    el.addEventListener('blur',()=>tooltip.hidden=true);
