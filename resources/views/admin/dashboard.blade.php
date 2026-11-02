@@ -465,6 +465,7 @@
  const host=document.getElementById('bm-financial-widget');
  if(!host)return;
  const tooltip=document.getElementById('bm-finance-tooltip');
+ document.body.appendChild(tooltip); // Escape clipped dashboard panel for visible hover values.
  const number=(v)=>Number(v).toLocaleString('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2});
  function current(){
    const hand=Number(host.dataset.hand)||0,bank=Number(host.dataset.bank)||0;
@@ -484,7 +485,7 @@
  tooltip.textContent=name+': Rs. '+number(amount)+(type==='total'?'':' ('+percent.toFixed(2)+'% of positive balances)');
  tooltip.hidden=false;
  }
- function place(x,y){const margin=12;tooltip.style.left=Math.min(x+14,window.innerWidth-260)+'px';tooltip.style.top=Math.max(margin,Math.min(y-53,window.innerHeight-70))+'px';}
+ function place(x,y){const margin=12;tooltip.style.left=Math.max(8,Math.min(x+14,window.innerWidth-260))+'px';tooltip.style.top=Math.max(margin,Math.min(y-53,window.innerHeight-70))+'px';}
  function ringSegment(event,el){
    const rect=el.getBoundingClientRect(),x=event.clientX-rect.left-rect.width/2,y=event.clientY-rect.top-rect.height/2;
    const dist=Math.hypot(x,y),innerRadius=Math.min(rect.width,rect.height)*0.32;
