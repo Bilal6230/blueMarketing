@@ -131,3 +131,10 @@ No implementation claim is made for this documentation-only revision. Existing d
 ## Batch 12 — smaller/thinner financial ring (2026-11-02)
 - Code commit `33da4298`: dashboard-scoped CSS reduces single-donut diameter and ring thickness with desktop, short-screen and mobile responsive overrides. Amount, legend, tooltip, AJAX balance logic unchanged.
 - Committed; local screenshot QA pending. Sidebar/finance backend untouched.
+
+## Batch 13 — tiny cash slice + AJAX employee filter (2026-11-02)
+- **Code commit:** `71fa0282707f7411b325408e022236461041a814`.
+- Financial Summary: a positive but ultra-small Hand Cash/Bank share receives a minimum two-degree **visual-only** arc and a dark-red marker. Text and tooltip still show true, unrounded percentages. Zero-valued components have no fake slice. Backend balances untouched.
+- CRM Details modal: project-scoped Employee selector from existing `$users_list` and Apply Filter action, reusing existing `crmSnapshot` endpoint's `employee_id` filter, via AJAX and without a full page refresh. Non-superadmins are still constrained server-side to their own user.
+- Code-only commit verified on GitHub; local Laravel/Blade/browser tests still pending. Sidebar unchanged.
+- **Next:** CRM project filter and employee performance totals, followed by verified follow-up status mapping and proper due/pending/overdue classification.
