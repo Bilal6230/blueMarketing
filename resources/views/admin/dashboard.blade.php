@@ -30,6 +30,34 @@
 @media (prefers-reduced-motion:reduce) {
   .bm-dashboard-modern .small-box { transition:none; }
 }
+
+/* Dashboard V3: direct Blade grid, no DOM relocation. */
+.bm-dashboard-modern .content-header{padding:5px 0 2px}
+.bm-dashboard-modern .content-header h1{font-size:1.05rem}
+.bm-dashboard-modern .content>.container-fluid{display:flex;flex-direction:column;gap:10px}
+.bm-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;flex-shrink:0}
+.bm-kpi{position:relative;overflow:hidden;display:block;background:#fff;color:#243852;border:1px solid #e5ebf3;border-radius:12px;padding:11px 13px;box-shadow:0 3px 12px #1b2f4b09;min-width:0;text-decoration:none!important}
+.bm-kpi:hover{color:#223755;box-shadow:0 7px 20px #162c4d18;transform:translateY(-1px)}
+.bm-kpi-icon{width:29px;height:29px;border-radius:8px;display:grid;place-items:center;margin-bottom:4px}
+.bm-indigo .bm-kpi-icon{background:#e8edff;color:#5b6fe0}.bm-green .bm-kpi-icon{background:#dff8ef;color:#0eac82}.bm-amber .bm-kpi-icon{background:#fff0da;color:#c88f2e}.bm-blue .bm-kpi-icon{background:#e6f1ff;color:#307ad8}
+.bm-kpi-value{font-size:clamp(16px,1.8vw,25px);font-weight:800;line-height:1.2;overflow-wrap:anywhere}
+.bm-kpi-label{font-size:11px;color:#708199;margin-top:4px}.bm-kpi-action{font-size:10px;color:#376be1;margin-top:5px}
+.bm-dashboard-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:10px;min-height:0;flex:1}
+.bm-panel{background:white;border:1px solid #e3eaf3;border-radius:13px;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;box-shadow:0 3px 14px #14263c09}
+.bm-panel-heading{padding:10px 13px;border-bottom:1px solid #eef1f6;display:flex;align-items:center;justify-content:space-between;gap:8px;flex:0 0 auto}
+.bm-panel-heading h5{font-weight:750;font-size:13px;margin:0;color:#213956}.bm-panel-heading span{font-size:10px;color:#8391a7}
+.bm-panel-body{min-height:0;flex:1;padding:10px 12px}
+.bm-finance-body{display:flex;align-items:center;justify-content:space-around;gap:9px;overflow:auto}
+.bm-ring-item{flex:1;min-width:0;text-align:center}
+.bm-ring{width:clamp(79px,8.3vw,130px);aspect-ratio:1;max-width:100%;margin:0 auto 8px;padding:10px;border-radius:50%;background:conic-gradient(var(--ring-color) 0 76%,#e6edf6 76% 100%);display:grid;place-items:center}
+.bm-ring-center{width:100%;height:100%;border-radius:50%;background:white;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px}
+.bm-ring-center span{font-size:10px;color:#7a899e}.bm-ring-center strong{font-size:clamp(10px,1.05vw,15px);white-space:nowrap}
+.bm-ring-caption{font-size:10px;color:#8994a9}
+.bm-action-body{overflow-y:auto}.bm-action-block{margin-bottom:10px}.bm-action-block h6{font-size:12px;font-weight:700}.bm-action-title{display:flex;align-items:center;justify-content:space-between;gap:5px}.bm-attendance-fields{display:flex;gap:8px}.bm-attendance-fields>*{min-width:0;flex:1}
+.bm-table-scroll{overflow:auto;scrollbar-width:thin;padding:0 11px 9px}.bm-table-scroll table{margin:0;font-size:11px}.bm-table-scroll thead th{position:sticky;top:0;background:#f5f8fc;z-index:2;border-top:0;white-space:nowrap}.bm-table-scroll td{vertical-align:middle}.bm-actions-cell{white-space:nowrap}
+@media(min-width:992px){.bm-dashboard-modern .content{height:calc(100dvh - 127px)!important;overflow:hidden!important}.bm-dashboard-modern .content>.container-fluid{height:100%;overflow:hidden!important;padding-bottom:8px}.bm-kpi{padding:7px 11px}.bm-kpi-icon{margin-bottom:2px}.bm-panel-heading{padding:8px 11px}.bm-panel-body{padding:8px 11px}.bm-table-scroll{padding:0 10px 5px}}
+@media(max-width:991.98px){.bm-dashboard-modern .content{height:auto!important;overflow:visible!important}.bm-dashboard-modern .content>.container-fluid{height:auto!important;overflow:visible!important}.bm-dashboard-grid{grid-template-rows:auto}.bm-panel{min-height:220px}.bm-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.bm-dashboard-grid{grid-template-columns:1fr}.bm-finance-body{gap:5px}.bm-ring{width:78px;padding:8px}.bm-ring-center strong{font-size:10px}.bm-attendance-fields{flex-direction:column}}
 </style>
 @endpush
 @section('content')
@@ -51,330 +79,76 @@
         </div>
         <section class="content">
             <div class="container-fluid">
-                <!-- Small boxes (Stat box) -->
-                <div class="row">
-                    <div class="col-lg-3 col-6">
-                        <!-- small box -->
-                        <div class="small-box bg-info">
-                            <div class="inner">
-                                <h3>{{ $today_leads }}</h3>
-                                <p>New Leads Add Today</p>
-                            </div>
-                            <div class="icon">
-                                <i class="fas fa-user"></i>
-                            </div>
-                            <a href="{{ route('dashboard.leads_by_users_report') }}" class="small-box-footer">More info <i
-                                    class="fas fa-arrow-circle-right"></i></a>
-                        </div>
-                    </div>
-                    <!-- ./col -->
-                    <div class="col-lg-3 col-6">
-                        <!-- small box -->
-                        <div class="small-box bg-success">
-                            <div class="inner">
-                                <h3>{{ Setting::getTodayLeadWorkCount() }}</h3>
-                                <p>Today Follow UP</p>
-                            </div>
-                            <div class="icon">
-                                <i class="fas fa-comments"></i>
-                            </div>
-                            <a href="{{ route('crm.todayLeadWorkReport') }}" class="small-box-footer">More info <i
-                                    class="fas fa-arrow-circle-right"></i></a>
-                        </div>
-                    </div>
-                    <!-- ./col -->
-                    <div class="col-lg-3 col-6">
-                        <!-- small box -->
-                        <div class="small-box bg-warning">
-                            <div class="inner">
-                                <h3>{{ $get_all_lead }}</h3>
-
-                                <p>Pending Works</p>
-                            </div>
-                            <div class="icon">
-                                <i class="fas fa-tasks"></i>
-                            </div>
-                            <a href="{{ route('report.lead.index') }}" class="small-box-footer"
-                                style="color: #fff !important;">More info <i class="fas fa-arrow-circle-right"></i></a>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-6">
-                        <!-- small box -->
-                        <div class="small-box bg-primary">
-                            <div class="inner">
-                                <h3>{{ $total_blance }}</h3>
-                                <p>Total Balance</p>
-                            </div>
-                            <div class="icon">
-                                <i class="fas fa-wallet"></i>
-                            </div>
-                            <a href="{{ route('finance.reports.show_ledger') }}" class="small-box-footer">More info <i
-                                    class="fas fa-arrow-circle-right"></i></a>
-                        </div>
-                    </div>
-                    <!-- ./col -->
-                </div>
-                @canany(['lead search', 'lead details', 'read attendance'])
-                    <div class="row">
-                        @can('lead search')
-                            <div class="col-md-6 mb-4">
-                                <div class="custom_card h-100">
-                                    <div class="card-body">
-                                        <div class="mb-3 d-flex align-items-center justify-content-between">
-                                            <h5 class="text-lg font-semibold">Search Lead By Number</h5>
-                                        </div>
-                                        <div class="form-group">
-                                            <div class="input-group input-group-sm">
-                                                @csrf
-                                                <input type="text" class="form-control" name="number" id="number" maxlength="11"
-                                                    size="11">
-                                                <span class="input-group-append">
-                                                    <button type="submit" class="btn btn-info btn-flat" id="search_number"><i
-                                                            class="fas fa-search mr-1"></i> Search</button>
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div class="">
-                                            <div id="msg" class="message  ">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        @endcan
-
-                        @can('read attendance')
-                            <div class="col-md-6 mb-4">
-                                <div class="custom_card h-100">
-                                    <div class="card-body">
-                                        <form action="/admin/punch" method="POST" enctype="multipart/form-data">
-                                            <div class="mb-3 d-flex align-items-center justify-content-between">
-                                                <h5 class="text-lg font-semibold">Employee Attendance</h5>
-                                                <button class="btn btn-sm custom_btn_outline primary" id="punch_button">
-                                                    <i class="fas fa-plus mr-1"></i> Punch In
-                                                </button>
-                                            </div>
-
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    @csrf
-                                                    <select class="form-control" name="user_id">
-                                                        @foreach ($users_list as $u)
-                                                            <option value="{{ $u->id }}"> {{ $u->name }}
-                                                            </option>
-                                                        @endforeach
-
-                                                    </select>
-                                                </div>
-
-                                                @if ($display_date)
-                                                    <div class="col-md-6">
-                                                        <input type="datetime-local" class="form-control" name="punch_time"
-                                                            id="date_time">
-                                                    </div>
-                                                @endif
-                                            </div>
-                                        </form>
-                                        <div class="form-group row">
-                                            <div id="msg" class="message  ">
-                                            </div>
-                                            <div id="soft-alert" class="alert" style="display:none;"></div>
-
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        @endcan
-
-
-                    </div>
-                @endcanany
-                {{-- Financial Summary --}}
-                <div class="row">
-                    <div class="col-md-6 mb-4">
-                        <div class="custom_card h-100">
-                            <div class="card-body">
-                                <div class="row justify-content-center">
-                                    <div class="col-12 text-center mb-4">
-                                        <h4 class="text-lg">Financial Summary</h4>
-                                    </div>
-
-                                    <!-- Hand Cash Total -->
-                                    <div class="col-md-4 mb-4 mb-md-0">
-                                        <div class="financial-circle bg_success">
-                                            <div class="circle-content">
-                                                <h6>Hand Cash</h6>
-                                                {{-- @dd($total_blance) --}}
-                                                <!-- Hand Cash -->
-                                                <h4 class="mt-2" id="handCash">
-                                                    {{ number_format($total_blance, 2) }}
-                                                </h4>
-                                            </div>
-                                        </div>
-                                        <p class="text-muted mt-2 text-center">Hand Cash Balance</p>
-                                    </div>
-                                    <!-- Bank Account Total -->
-                                    <div class="col-md-4">
-                                        <div class="financial-circle {{ (-$total_bank_account_data) >= 0 ? 'bg_success' : 'bg_danger' }}">
-                                            <div class="circle-content">
-                                                <h6>Bank Account</h6>
-                                                <h4 class="mt-2">{{ number_format(-$total_bank_account_data, 2) }}
-                                                </h4>
-                                            </div>
-                                        </div>
-                                        <p class="text-muted mt-2 text-center">Current Bank Balance</p>
-                                    </div>
-                                    <!-- Hand Cash Total -->
-                                    <div class="col-md-4 mb-4 mb-md-0">
-                                        <div class="financial-circle bg_success">
-                                            <div class="circle-content">
-                                                <h6>Total Cash</h6>
-                                                <h4 class="mt-2" id="totalCash">{{ number_format($total_blance - $total_bank_account_data, 2) }}</h4>
-                                            </div>
-                                        </div>
-                                        <p class="text-muted mt-2 text-center">Available Cash Balance</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6 mb-4">
-                        <div class="custom_card h-100">
-                            <div class="card-body">
-                                <div class="mb-3 d-flex align-items-center justify-content-between">
-                                    <h5 class="text-lg font-semibold">Dasticash Summary</h5>
-                                    <button class="btn btn-sm custom_btn_outline primary" data-toggle="modal"
-                                        data-target="#addDasticashModal">
-                                        <i class="fas fa-plus mr-1"></i> Add Dasticash
-                                    </button>
-                                </div>
-                                <!-- DataTable -->
-                                <div class="table-responsive">
-                                    <table class="table table-hover" id="dasticashTable">
-                                        <thead>
-                                            <tr>
-                                                <th>ID</th>
-                                                <th>Name</th>
-                                                <th>Amount</th>
-                                                <th>Description</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach ($dasticashData as $key => $item)
-                                                <tr id="row-{{ $item->id }}">
-                                                    <td>{{ $key + 1 }}</td>
-                                                    <td class="name-cell">{{ $item->name }}</td>
-                                                    <td class="amount-cell">{{ $item->amount }}</td>
-                                                    <td class="desc-cell">{{ $item->description }}</td>
-                                                    <td>
-                                                        <a href="javascript:void(0)" class="btn btn-sm btn-info edit-btn"
-                                                            data-id="{{ $item->id }}" data-name="{{ $item->name }}"
-                                                            data-amount="{{ $item->amount }}"
-                                                            data-description="{{ $item->description }}">
-                                                            <i class="fas fa-edit"></i>
-                                                        </a>
-                                                        <button class="btn btn-sm btn-danger delete-btn"
-                                                            data-id="{{ $item->id }}"
-                                                            data-url="{{ route('dasticash.destroy', $item->id) }}"><i
-                                                                class="fas fa-trash"></i></button>
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- /.row (main row) -->
-
-                {{-- <div class="row">
-                    <div class="col-md-6">
-                        <div class="card card-danger">
-                            <div class="card-header">
-                                <h3 class="card-title">Donut Chart</h3>
-
-                                <div class="card-tools">
-                                    <button type="button" class="btn btn-tool" data-card-widget="collapse">
-                                        <i class="fas fa-minus"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-tool" data-card-widget="remove">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <canvas id="donutChart"
-                                    style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
-                            </div>
-                            <!-- /.card-body -->
-                        </div>
-                        <!-- /.card -->
-                    </div> --}}
-
-
-                    @canany(['read attendance'])
-                        <div class="col-md-12 mb-4">
-                            <div class="custom_card h-100">
-                                <div class="card-body">
-                                    <div class="mb-3 d-flex align-items-center justify-content-between">
-                                        <h5 class="text-lg font-semibold">Punch-in Records for Today</h5>
-
-                                    </div>
-                                    <div class="table-resposive">
-
-                                        <table class="table table-hover ">
-                                            <thead>
-                                                <tr>
-                                                    <th>Date</th>
-                                                    <th>User Name</th>
-                                                    <th>Punch In</th>
-                                                    <th>Punch Out</th>
-                                                    <th>Total Hours</th>
-
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach ($today_punches as $punch)
-                                                    <tr>
-                                                        <td>{{ date('Y-m-d', strtotime($punch->punch_in)) }}</td>
-                                                        <td>{{ $punch->user->name }}</td>
-                                                        <td>{{ date('H:i:s', strtotime($punch->punch_in)) }}</td>
-                                                        <td>{{ $punch->punch_out ? date('H:i:s', strtotime($punch->punch_out)) : 'N/A' }}
-                                                        </td>
-
-                                                        <td>
-                                                            @if ($punch->punch_out)
-                                                                                                    <?php
-                                                                $punchInTime = strtotime($punch->punch_in);
-                                                                $punchOutTime = strtotime($punch->punch_out);
-                                                                $totalSeconds = $punchOutTime - $punchInTime;
-                                                                $hours = floor($totalSeconds / 3600);
-                                                                $minutes = floor(($totalSeconds % 3600) / 60);
-                                                                $seconds = $totalSeconds % 60;
-                                                                                                                                                                    ?>
-                                                                                                    {{ $hours }}h {{ $minutes }}m
-                                                                                                    {{ $seconds }}s
-                                                            @else
-                                                                N/A
-                                                            @endif
-                                                        </td>
-
-                                                    </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    @endcanany
-
-                    <!-- Add Dasticash Modal -->
+                
+<div class="bm-kpis">
+@foreach ([
+ ['value'=>$today_leads,'label'=>'New Leads Add Today','icon'=>'fa-user','href'=>route('dashboard.leads_by_users_report'),'tone'=>'indigo'],
+ ['value'=>Setting::getTodayLeadWorkCount(),'label'=>'Today Follow UP','icon'=>'fa-comments','href'=>route('crm.todayLeadWorkReport'),'tone'=>'green'],
+ ['value'=>$get_all_lead,'label'=>'Pending Works','icon'=>'fa-tasks','href'=>route('report.lead.index'),'tone'=>'amber'],
+ ['value'=>$total_blance,'label'=>'Total Balance','icon'=>'fa-wallet','href'=>route('finance.reports.show_ledger'),'tone'=>'blue']
+] as $kpi)
+<a class="bm-kpi bm-{{ $kpi['tone'] }}" href="{{ $kpi['href'] }}">
+ <div class="bm-kpi-icon"><i class="fas {{ $kpi['icon'] }}"></i></div>
+ <div class="bm-kpi-value bm-counter" data-number="{{ $kpi['value'] }}">{{ number_format((float)$kpi['value'],is_numeric($kpi['value']) && floor((float)$kpi['value'])!=(float)$kpi['value'] ? 2 : 0) }}</div>
+ <div class="bm-kpi-label">{{ $kpi['label'] }}</div><div class="bm-kpi-action">View report <i class="fas fa-arrow-right"></i></div>
+</a>
+@endforeach
+</div>
+<div class="bm-dashboard-grid">
+ <section class="bm-panel bm-finance">
+  <div class="bm-panel-heading"><h5>Financial Summary</h5><span>Ledger balances</span></div>
+  <div class="bm-panel-body bm-finance-body">
+   @foreach ([
+    ['name'=>'Hand Cash','label'=>'Hand Cash Balance','value'=>$total_blance,'id'=>'handCash','accent'=>'#13bd8b'],
+    ['name'=>'Bank Account','label'=>'Current Bank Balance','value'=>-$total_bank_account_data,'id'=>'','accent'=>'#456eea'],
+    ['name'=>'Total Cash','label'=>'Available Cash Balance','value'=>$total_blance - $total_bank_account_data,'id'=>'totalCash','accent'=>'#9767e9']
+   ] as $finance)
+   <div class="bm-ring-item">
+    <div class="bm-ring" style="--ring-color:{{ $finance['accent'] }}"><div class="bm-ring-center"><span>{{ $finance['name'] }}</span><strong class="bm-counter" @if($finance['id']) id="{{ $finance['id'] }}" @endif data-number="{{ $finance['value'] }}">{{ number_format($finance['value'],2) }}</strong></div></div>
+    <div class="bm-ring-caption">{{ $finance['label'] }}</div>
+   </div>
+   @endforeach
+  </div>
+ </section>
+ <section class="bm-panel bm-actions">
+  <div class="bm-panel-heading"><h5>Lead Search & Attendance</h5><span>Quick actions</span></div>
+  <div class="bm-panel-body bm-action-body">
+   @can('lead search')
+   <div class="bm-action-block"><h6>Search Lead By Number</h6><div class="input-group input-group-sm">@csrf<input name="number" id="number" type="text" maxlength="11" class="form-control" placeholder="Mobile number"><div class="input-group-append"><button type="button" id="search_number" class="btn btn-info"><i class="fas fa-search"></i> Search</button></div></div><div id="msg" class="message"></div></div>
+   @endcan
+   @can('read attendance')
+   <div class="bm-action-block"><form method="POST" action="/admin/punch" enctype="multipart/form-data">@csrf
+    <div class="bm-action-title"><h6>Employee Attendance</h6><button type="submit" class="btn btn-primary btn-sm" id="punch_button"><i class="fas fa-plus"></i> Punch In</button></div>
+    <div class="bm-attendance-fields"><select class="form-control" name="user_id">@foreach($users_list as $u)<option value="{{ $u->id }}">{{ $u->name }}</option>@endforeach</select>
+    @if($display_date)<input type="datetime-local" class="form-control" name="punch_time" id="date_time">@endif</div>
+    <div id="soft-alert" class="alert" style="display:none"></div></form></div>
+   @endcan
+  </div>
+ </section>
+ <section class="bm-panel bm-dasticash">
+  <div class="bm-panel-heading"><h5>Dasticash Summary</h5><button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#addDasticashModal"><i class="fas fa-plus"></i> Add Dasticash</button></div>
+  <div class="bm-panel-body bm-table-scroll"><table class="table table-hover" id="dasticashTable"><thead><tr><th>ID</th><th>Name</th><th>Amount</th><th>Description</th><th>Actions</th></tr></thead><tbody>
+  @foreach($dasticashData as $key=>$item)
+  <tr id="row-{{ $item->id }}"><td>{{ $key+1 }}</td><td class="name-cell">{{ $item->name }}</td><td class="amount-cell">{{ $item->amount }}</td><td class="desc-cell">{{ $item->description }}</td><td class="bm-actions-cell">
+  <a href="javascript:void(0)" class="btn btn-sm btn-info edit-btn" data-id="{{ $item->id }}" data-name="{{ $item->name }}" data-amount="{{ $item->amount }}" data-description="{{ $item->description }}"><i class="fas fa-edit"></i></a>
+  <button type="button" class="btn btn-sm btn-danger delete-btn" data-id="{{ $item->id }}" data-url="{{ route('dasticash.destroy',$item->id) }}"><i class="fas fa-trash"></i></button></td></tr>
+  @endforeach
+  </tbody></table></div>
+ </section>
+ @can('read attendance')
+ <section class="bm-panel bm-punches">
+  <div class="bm-panel-heading"><h5>Punch-in Records for Today</h5><span>Today · Employee records</span></div>
+  <div class="bm-panel-body bm-table-scroll"><table class="table table-hover"><thead><tr><th>Date</th><th>User Name</th><th>Punch In</th><th>Punch Out</th><th>Total Hours</th></tr></thead><tbody>
+  @foreach($today_punches as $punch)
+  <tr><td>{{ date('Y-m-d',strtotime($punch->punch_in)) }}</td><td>{{ $punch->user->name }}</td><td>{{ date('H:i:s',strtotime($punch->punch_in)) }}</td><td>{{ $punch->punch_out ? date('H:i:s',strtotime($punch->punch_out)) : 'N/A' }}</td><td>
+  @if($punch->punch_out){{ gmdate('H:i:s',max(0,strtotime($punch->punch_out)-strtotime($punch->punch_in))) }}@else N/A @endif
+  </td></tr>
+  @endforeach
+  </tbody></table></div>
+ </section>
+ @endcan
+</div>
+<!-- Add Dasticash Modal -->
                     <div class="modal fade" id="addDasticashModal" tabindex="-1" role="dialog"
                         aria-labelledby="addDasticashModalLabel" aria-hidden="true">
                         <div class="modal-dialog" role="document">
