@@ -172,3 +172,16 @@ Keep existing submenus, route names and permission checks; **reorganize only nav
 - **Verification:** GitHub commit successful; local runtime verification pending user's pull and hard refresh. Do not mark Batch 02 complete. This supersedes the optimistic progress in sections above.
 - **Status correction:** M02 layout **regressed then rolled back**; M07 Dasticash visibility expected to recover after local verification. Sidebar untouched.
 - **Next:** Implement fixed-grid layout using explicit Blade wrappers rather than runtime DOM movement; run local Blade/browser verification before claiming complete.
+
+## 12. Implementation batch 03 — direct Blade dashboard grid (2026-11-02)
+- **Code commit:** `f2ce810b86669701aad891b3299a3c18972b5172`.
+- Replaced the former legacy dashboard content section with **direct Blade** KPI row and 2x2 widget grid; removed reliance on prior faulty runtime DOM relocation.
+- Four existing KPI values retained; cards link to their original report routes.
+- Finance panel: hand cash, bank account, total cash values from existing controller with three contemporary donut-style *decorative* progress rings (not ratios); preserved `handCash` and `totalCash` identifiers used by original Dasticash AJAX updates.
+- Quick action panel: Lead Search and Employee Attendance controls, with original `number`, `search_number`, `punch_button`, `date_time` selectors and POST `/admin/punch`; role-gated with original permissions.
+- Dasticash panel: existing table name/amount/description columns, `dasticashTable`, `row-ID` and Add/Edit/Delete buttons/modal data attributes retained; original add/edit/delete AJAX script and modal blocks were not rewritten.
+- Attendance records panel: original record fields, role permission, scrollable table. Updated visual display of worked time to HH:mm:ss; consider original long-duration semantics during regression.
+- New dashboard-only CSS supports compact desktop viewport, internal table scroll, and responsive fallback on small screens. Sidebar unchanged.
+- **Verification status: code committed, NOT browser-verified, NOT tested on local Laravel instance.** User must pull, compile views and screenshot. A real screenshot may reveal further CSS adjustment required.
+- **Milestones:** M02 layout development **in progress** (rough estimate 75%); M07 Dasticash appearance **in progress** (rough estimate 65%); tests remain pending. No claims of completed end-to-end production features.
+- **Commands:** `git pull --ff-only origin upgrade/laravel-framework`; `php artisan optimize:clear`; `php artisan view:cache`; test `/home` with hard refresh. Avoid destructive Dasticash CRUD in live finance database.
