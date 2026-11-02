@@ -127,3 +127,7 @@ No implementation claim is made for this documentation-only revision. Existing d
 - Tooltip is positioned at viewport coordinates and appended to `document.body` to escape `overflow:hidden` clipping by dashboard/widget containers; the chart's Dasticash mutation-sync/amount selectors remain intact.
 - **Verification:** GitHub commit succeeded. Local PHP/Blade/browser checks and hover QA pending user's pull. Responsive, negative/zero balance and AJAX Dasticash QA remain open.
 - Backend ledger calculations, sidebar and other modules unchanged.
+
+## Batch 12 — smaller/thinner financial ring (2026-11-02)
+- Code commit `33da4298`: dashboard-scoped CSS reduces single-donut diameter and ring thickness with desktop, short-screen and mobile responsive overrides. Amount, legend, tooltip, AJAX balance logic unchanged.
+- Committed; local screenshot QA pending. Sidebar/finance backend untouched.
