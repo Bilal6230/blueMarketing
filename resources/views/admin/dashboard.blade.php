@@ -521,7 +521,7 @@
   ];
   widgets.forEach(function(item){
    if(!item.el)return;
-   var col=item.el.closest('[class*="col-md-"],[class*="col-lg-"]');
+   var col=null,ancestor=item.el;while(ancestor && ancestor!==host){if(ancestor.parentElement && ancestor.parentElement.classList.contains('row') && ancestor.parentElement.parentElement===host){col=ancestor;break;}ancestor=ancestor.parentElement;}
    if(!col || !host.contains(col))return;
    col.classList.add('bm-widget','bm-'+item.label);
    grid.appendChild(col);
