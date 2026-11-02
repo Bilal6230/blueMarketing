@@ -147,3 +147,10 @@ No implementation claim is made for this documentation-only revision. Existing d
 - **Honesty:** logged work activity is NOT the same as completed follow-up. Pending + Overdue and actual completion statuses remain next milestone. Date-as-of historical reporting still has no event sourcing and needs explicit semantics validation. Filtering result endpoint 100-row detail cap remains.
 - **Verification required after pull:** PHP lint, Blade compilation, role-specific CRM AJAX checks, chart/legend/Dasticash update inspection, responsive widths. GitHub commits confirmed, local browser tests not yet executed.
 - **Next milestone:** CRM status semantics / combined pending-overdue KPI and Today Due count (only after inspecting follow_status/call_status workflow), then unified report paging/export.
+
+## Batch 15 — thicker inward ring and CRM current-state follow-up KPIs (2026-11-02)
+- **Code commits:** `60011895` thickens cash donut inward by expanding the colored annulus; ring center remains blank. `7d10eec7` adds project/role-scoped Today Scheduled Follow-ups and combined Due + Overdue counts to CRM AJAX snapshot. `dd88d958` renders those in CRM Details without page reload.
+- **Important semantic limitation:** combined count reads leads whose current `follow_up` date is on/before selected cutoff. It is **not a verified open/pending-status historical snapshot** and may contain completed/rescheduled follow-ups. Thus this is a *current-state provisional KPI*, not final client-accepted Pending + Overdue logic.
+- Today Scheduled counts current `follow_up` date equal to today. Other old dashboard KPI names and their existing calculations are preserved pending definition audit.
+- **Not done:** Completed Follow-ups status verification, historic as-of status reconstruction, production tests, role/empty/negative-value QA, footer browser checks.
+- **Next:** inspect CRM follow-up status transitions and finalize Completed/Pending/Overdue classification with tests; then unify date/employee/project filters across dashboard cards.
