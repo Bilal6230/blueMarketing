@@ -212,3 +212,12 @@ Keep existing submenus, route names and permission checks; **reorganize only nav
 - On short desktop viewports the donut size is reduced to protect form and table space; tablet layout remains a two-column flexible grid; mobile stacks panels and allows natural document scroll for readability and accessibility.
 - No changes to finance amounts, data sources, Dasticash CRUD, permission checks or sidebar.
 - **QA gate:** GitHub commit created, local responsive visual verification still pending; measure on user's ~1640x900 screen and narrow widths. Check navbar/site footer/debug toolbar behavior separately if browser still shows a scrollbar.
+
+## 16. Implementation batch 07 — AdminLTE document scrollbar (2026-11-02)
+- **Code commit:** `33f7a1c414760ca1a03aaf6a66f9e5ce04966082`.
+- **User screenshot:** vertical scrollbar remained on the right of the entire application, with the footer below dashboard content; scroll had shifted the top navbar out of view. Individual widget sizing was not the sole cause.
+- **Root-cause hypothesis from inspected layout:** AdminLTE's `.content-wrapper` minimum-height management and separate `.main-footer` contribute more document height than the viewport. Prior fixes constrained only the inner `.content`, not the complete wrapper/navbar/footer column.
+- CSS **only in dashboard view**, targeted via `body:has(.bm-dashboard-modern)` at desktop breakpoints. Set wrapper as 100dvh flex column; navbar/footer non-shrinking; content wrapper flex-fill with `min-height:0!important` to override AdminLTE computed min-height; internal dashboard grid/table panes remain scrollable.
+- On tablet/mobile use normal document scroll instead of clipping content. `:has()` is supported by user's Chrome-based browser, but browser matrix QA remains pending.
+- No changes to master layout Blade, sidebar, ledger, data queries or Dasticash AJAX.
+- **Status:** code committed; local browser verification pending user pull. Do not claim scrollbar eliminated until confirmed in browser.
