@@ -113,7 +113,7 @@ class DashboardController extends Controller
         $x['lead_period'] = $leadPeriod;
         $x['lead_period_from'] = $from->toDateString();
         $x['lead_period_to'] = $to->toDateString();
-        $leadPeriodQuery = \\App\\Models\\Lead::query()
+        $leadPeriodQuery = \App\Models\Lead::query()
             ->where('is_active', 1)
             ->where('project_id', $selectedProjectId)
             ->whereBetween('created_at', [$from, $to]);
