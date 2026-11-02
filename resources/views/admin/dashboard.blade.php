@@ -243,6 +243,11 @@
 .bm-finance .bm-single-donut .bm-cash-core{background:white;border-radius:50%}
 .bm-total-cash-hidden{display:none!important}
 @media(max-width:650px){.bm-dashboard-modern .bm-finance .bm-finance-dual{overflow:visible!important}.bm-dashboard-modern .bm-finance .bm-cash-donut{width:min(145px,42vw)}}
+
+/* Batch 15: substantially thicken the ring inward; blank center retained. */
+.bm-dashboard-modern .bm-finance .bm-single-donut{padding:clamp(22px,2vw,30px)!important}
+.bm-dashboard-modern .bm-finance .bm-cash-core{min-width:0;min-height:0}
+@media(max-width:650px){.bm-dashboard-modern .bm-finance .bm-single-donut{padding:clamp(18px,5vw,26px)!important}}
 </style>
 @endpush
 @section('content')
