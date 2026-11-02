@@ -203,3 +203,12 @@ Keep existing submenus, route names and permission checks; **reorganize only nav
 - Increased Financial Summary ring title, amount and caption font sizes and weights for readability.
 - No dashboard metrics, Dasticash AJAX, backend, permissions or sidebar modified.
 - **Verification:** GitHub commit confirmed; local pull, view compile and browser screenshot pending. Smaller viewport and overflow remain browser QA gates.
+
+## 15. Implementation batch 06 — responsive rings and desktop viewport (2026-11-02)
+- **Code commit:** `1ab0d61419bd8ab446e75e5d9ab7c0a0fc519100`.
+- **Source:** owner's current browser screenshot shows smaller-than-desired Financial Summary rings and an outer page scrollbar despite scrollable Dasticash and Punch Records cards.
+- CSS-only dashboard change: enlarge Financial Summary rings on typical desktop screens (clamped responsive width, also restricted by viewport height).
+- Correct the desktop viewport calculation: the earlier `content height: 100dvh - 127px` neglected the dashboard breadcrumb/content-header area and caused overflow. Now outer dashboard wrapper is flex-bounded below the navbar; content fills available space and two bottom panels are flex/grid bounded with independently scrollable records.
+- On short desktop viewports the donut size is reduced to protect form and table space; tablet layout remains a two-column flexible grid; mobile stacks panels and allows natural document scroll for readability and accessibility.
+- No changes to finance amounts, data sources, Dasticash CRUD, permission checks or sidebar.
+- **QA gate:** GitHub commit created, local responsive visual verification still pending; measure on user's ~1640x900 screen and narrow widths. Check navbar/site footer/debug toolbar behavior separately if browser still shows a scrollbar.
