@@ -181,6 +181,14 @@
 .bm-lead-period-filter select{border:1px solid #d8e2f0;border-radius:7px;padding:3px 8px;background:#fff;color:#253b5a}
 .bm-lead-period-filter span{font-size:10px;color:#75869b}
 @media(max-width:600px){.bm-lead-period-filter{justify-content:flex-start;margin-bottom:0}}
+
+/* AJAX period selector: custom inputs shown only when needed. */
+.bm-lead-period-filter .bm-custom-period{display:inline-flex;align-items:center;gap:5px}
+.bm-lead-period-filter .bm-custom-period[hidden],.bm-lead-period-filter [hidden]{display:none!important}
+.bm-lead-period-filter input[type=date]{border:1px solid #d8e2f0;border-radius:6px;padding:3px;max-width:135px}
+.bm-lead-period-filter [role=alert]{color:#bf3040;font-weight:600}
+.bm-lead-period-filter[aria-busy=true]{opacity:.7}
+@media(max-width:650px){.bm-lead-period-filter .bm-custom-period{flex-wrap:wrap}}
 </style>
 @endpush
 @section('content')
@@ -203,14 +211,20 @@
         <section class="content">
             <div class="container-fluid">
                 
-<form method="GET" action="{{ route('home') }}" class="bm-lead-period-filter" aria-label="New Leads date period">
+<form method="GET" action="{{ route('home') }}" class="bm-lead-period-filter" id="bm-lead-period-form" aria-label="New Leads date period">
  <label for="bm-lead-period">New Leads period</label>
- <select id="bm-lead-period" name="lead_period" onchange="this.form.submit()">
-  @foreach (['today'=>'Today','yesterday'=>'Yesterday','this_week'=>'This Week','last_week'=>'Last Week','this_month'=>'This Month','last_month'=>'Last Month'] as $periodValue=>$periodLabel)
+ <select id="bm-lead-period" name="lead_period">
+  @foreach (['today'=>'Today','yesterday'=>'Yesterday','this_week'=>'This Week','last_week'=>'Last Week','this_month'=>'This Month','last_month'=>'Last Month','custom'=>'Custom Date Range'] as $periodValue=>$periodLabel)
    <option value="{{ $periodValue }}" {{ $lead_period === $periodValue ? 'selected' : '' }}>{{ $periodLabel }}</option>
   @endforeach
  </select>
- <span>{{ $lead_period_from }} to {{ $lead_period_to }}</span>
+ <span id="bm-custom-period" class="bm-custom-period" {{ $lead_period === 'custom' ? '' : 'hidden' }}>
+  <input type="date" name="lead_from" aria-label="From date" value="{{ $lead_period_from }}">
+  <input type="date" name="lead_to" aria-label="To date" value="{{ $lead_period_to }}">
+  <button type="submit" class="btn btn-sm btn-primary">Apply</button>
+ </span>
+ <span id="bm-lead-period-bounds" aria-live="polite">{{ $lead_period_from }} to {{ $lead_period_to }}</span>
+ <span id="bm-lead-period-error" role="alert" hidden></span>
 </form>
 <div class="bm-kpis">
 @foreach ([
@@ -221,7 +235,7 @@
 ] as $kpi)
 <a class="bm-kpi bm-{{ $kpi['tone'] }}" href="{{ $kpi['href'] }}">
  <div class="bm-kpi-top"><div class="bm-kpi-icon"><i class="fas {{ $kpi['icon'] }}"></i></div>
- <div class="bm-kpi-value bm-counter" data-number="{{ $kpi['value'] }}">{{ number_format((float)$kpi['value'],is_numeric($kpi['value']) && floor((float)$kpi['value'])!=(float)$kpi['value'] ? 2 : 0) }}</div></div>
+ <div class="bm-kpi-value bm-counter" @if($loop->first) id="bm-new-leads-count" @endif data-number="{{ $kpi['value'] }}">{{ number_format((float)$kpi['value'],is_numeric($kpi['value']) && floor((float)$kpi['value'])!=(float)$kpi['value'] ? 2 : 0) }}</div></div>
  <div class="bm-kpi-bottom"><div class="bm-kpi-label">{{ $kpi['label'] }}</div><span class="bm-kpi-action">View report <i class="fas fa-arrow-right"></i></span></div>
 </a>
 @endforeach
@@ -362,6 +376,46 @@
     </div>
 @endsection
 @section('js')
+
+<script>
+(function(){
+  const form=document.getElementById('bm-lead-period-form');
+  if(!form)return;
+  const preset=form.querySelector('#bm-lead-period');
+  const custom=form.querySelector('#bm-custom-period');
+  const label=form.querySelector('#bm-lead-period-bounds');
+  const error=form.querySelector('#bm-lead-period-error');
+  const value=document.getElementById('bm-new-leads-count');
+  let pending=null;
+  function toggleCustom(){custom.hidden=preset.value!=='custom';}
+  async function loadPeriod(){
+    if(preset.value==='custom' && (!form.elements.lead_from.value||!form.elements.lead_to.value))return;
+    if(pending)pending.abort();
+    pending=new AbortController();
+    const current=pending;
+    form.setAttribute('aria-busy','true');
+    error.hidden=true;
+    try{
+      const params=new URLSearchParams(new FormData(form));
+      const response=await fetch(form.action+'?'+params.toString(),{
+        method:'GET',credentials:'same-origin',headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'},signal:current.signal
+      });
+      if(!response.ok)throw new Error(response.status===422?'Invalid date range.':'Unable to load New Leads.');
+      const result=await response.json();
+      if(!Number.isFinite(Number(result.new_leads)))throw new Error('Invalid response from server.');
+      value.textContent=Number(result.new_leads).toLocaleString('en-US');
+      value.dataset.number=result.new_leads;
+      label.textContent=result.from+' to '+result.to;
+    }catch(e){
+      if(e.name!=='AbortError'){error.textContent=e.message;error.hidden=false;}
+    }finally{if(pending===current){form.removeAttribute('aria-busy');pending=null;}}
+  }
+  preset.addEventListener('change',()=>{toggleCustom();if(preset.value!=='custom')loadPeriod();});
+  form.addEventListener('submit',e=>{e.preventDefault();loadPeriod();});
+  toggleCustom();
+})();
+</script>
+
 
 <script>
 (function () {
