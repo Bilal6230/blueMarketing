@@ -80,12 +80,23 @@ class DashboardController extends Controller
         $lead_response = lead_repo::getLeadsToday($selectedProjectId, 'today', $create_by);
         // Dashboard New Leads date preset (only this metric is filtered).
         $leadPeriod = $request->query('lead_period', 'today');
-        $validLeadPeriods = ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month'];
+        $validLeadPeriods = ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month', 'custom'];
         if (!in_array($leadPeriod, $validLeadPeriods, true)) {
             $leadPeriod = 'today';
         }
         $today = Carbon::today();
         switch ($leadPeriod) {
+            case 'custom':
+                $request->validate([
+                    'lead_from' => ['required', 'date_format:Y-m-d'],
+                    'lead_to' => ['required', 'date_format:Y-m-d', 'after_or_equal:lead_from'],
+                ]);
+                $from = Carbon::createFromFormat('Y-m-d', $request->query('lead_from'))->startOfDay();
+                $to = Carbon::createFromFormat('Y-m-d', $request->query('lead_to'))->endOfDay();
+                if ($from->diffInDays($to) > 366) {
+                    abort(422, 'Date range must be within 366 days.');
+                }
+                break;
             case 'yesterday':
                 $from = $today->copy()->subDay();
                 $to = $from->copy()->endOfDay();
@@ -130,6 +141,14 @@ class DashboardController extends Controller
         $x['dasticashData'] = $dasticash;
         $x['total_bank_account_data'] = $Bankaccountdata->balance;
         $x['today_leads'] = $lead_response['total_leads'];
+        if ($request->ajax() && $request->expectsJson()) {
+            return response()->json([
+                'new_leads' => $x['today_leads'],
+                'period' => $leadPeriod,
+                'from' => $x['lead_period_from'],
+                'to' => $x['lead_period_to'],
+            ]);
+        }
         return view('admin.dashboard', $x);
     }
 
