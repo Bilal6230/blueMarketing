@@ -58,6 +58,28 @@
 @media(min-width:992px){.bm-dashboard-modern .content{height:calc(100dvh - 127px)!important;overflow:hidden!important}.bm-dashboard-modern .content>.container-fluid{height:100%;overflow:hidden!important;padding-bottom:8px}.bm-kpi{padding:7px 11px}.bm-kpi-icon{margin-bottom:2px}.bm-panel-heading{padding:8px 11px}.bm-panel-body{padding:8px 11px}.bm-table-scroll{padding:0 10px 5px}}
 @media(max-width:991.98px){.bm-dashboard-modern .content{height:auto!important;overflow:visible!important}.bm-dashboard-modern .content>.container-fluid{height:auto!important;overflow:visible!important}.bm-dashboard-grid{grid-template-rows:auto}.bm-panel{min-height:220px}.bm-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.bm-dashboard-grid{grid-template-columns:1fr}.bm-finance-body{gap:5px}.bm-ring{width:78px;padding:8px}.bm-ring-center strong{font-size:10px}.bm-attendance-fields{flex-direction:column}}
+
+/* Batch 04 — tighter KPI layout, smaller rings, inline form controls */
+.bm-kpi-top{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:29px}
+.bm-kpi-bottom{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:7px;min-width:0}
+.bm-kpi .bm-kpi-icon{margin:0;width:34px;height:34px;flex-shrink:0;font-size:16px}
+.bm-kpi .bm-kpi-value{font-size:clamp(20px,2vw,28px);text-align:right}
+.bm-kpi .bm-kpi-label{margin:0;font-size:clamp(11px,.83vw,13px);font-weight:700;color:#32445d;min-width:0}
+.bm-kpi .bm-kpi-action{margin:0;flex-shrink:0;white-space:nowrap;font-size:clamp(10px,.78vw,12px);font-weight:700;color:#356ae2}
+.bm-kpi .bm-kpi-action i{margin-left:4px}
+.bm-ring{width:clamp(68px,6.4vw,100px);padding:8px;margin-bottom:5px}
+.bm-ring-center span{font-size:9px}.bm-ring-center strong{font-size:clamp(9px,.9vw,13px)}
+.bm-lead-search{position:relative;display:flex;align-items:center}
+.bm-lead-search input{height:37px;padding-right:42px;border-radius:8px}
+.bm-search-icon{position:absolute;right:5px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:30px;height:29px;border:0;border-radius:6px;background:transparent;color:#3475c9;font-size:15px;cursor:pointer}
+.bm-search-icon:hover,.bm-search-icon:focus-visible{background:#e9f1ff;outline:2px solid #b5ceff;outline-offset:0}
+.bm-attendance-fields{display:flex;align-items:stretch;gap:8px}
+.bm-attendance-fields select{flex:1 1 38%;width:0}
+.bm-attendance-fields input{flex:1 1 39%;width:0}
+.bm-attendance-fields .bm-punch-button{flex:0 0 auto;width:auto;white-space:nowrap;padding:5px 12px;font-size:12px;font-weight:700}
+@media(min-width:992px){.bm-kpi{padding:9px 12px}.bm-kpis{gap:9px}.bm-finance-body{align-items:center}.bm-panel-heading{padding:8px 11px}}
+@media(max-width:1100px){.bm-kpi-bottom{flex-wrap:wrap;gap:3px}.bm-kpi .bm-kpi-action{font-size:10px}.bm-attendance-fields{flex-wrap:wrap}.bm-attendance-fields select,.bm-attendance-fields input{flex:1 1 35%;width:auto}}
+@media(max-width:600px){.bm-kpi .bm-kpi-icon{width:29px;height:29px}.bm-kpi .bm-kpi-value{font-size:18px}.bm-attendance-fields{flex-direction:column}.bm-attendance-fields select,.bm-attendance-fields input{width:100%}}
 </style>
 @endpush
 @section('content')
@@ -88,9 +110,9 @@
  ['value'=>$total_blance,'label'=>'Total Balance','icon'=>'fa-wallet','href'=>route('finance.reports.show_ledger'),'tone'=>'blue']
 ] as $kpi)
 <a class="bm-kpi bm-{{ $kpi['tone'] }}" href="{{ $kpi['href'] }}">
- <div class="bm-kpi-icon"><i class="fas {{ $kpi['icon'] }}"></i></div>
- <div class="bm-kpi-value bm-counter" data-number="{{ $kpi['value'] }}">{{ number_format((float)$kpi['value'],is_numeric($kpi['value']) && floor((float)$kpi['value'])!=(float)$kpi['value'] ? 2 : 0) }}</div>
- <div class="bm-kpi-label">{{ $kpi['label'] }}</div><div class="bm-kpi-action">View report <i class="fas fa-arrow-right"></i></div>
+ <div class="bm-kpi-top"><div class="bm-kpi-icon"><i class="fas {{ $kpi['icon'] }}"></i></div>
+ <div class="bm-kpi-value bm-counter" data-number="{{ $kpi['value'] }}">{{ number_format((float)$kpi['value'],is_numeric($kpi['value']) && floor((float)$kpi['value'])!=(float)$kpi['value'] ? 2 : 0) }}</div></div>
+ <div class="bm-kpi-bottom"><div class="bm-kpi-label">{{ $kpi['label'] }}</div><span class="bm-kpi-action">View report <i class="fas fa-arrow-right"></i></span></div>
 </a>
 @endforeach
 </div>
@@ -114,13 +136,14 @@
   <div class="bm-panel-heading"><h5>Lead Search & Attendance</h5><span>Quick actions</span></div>
   <div class="bm-panel-body bm-action-body">
    @can('lead search')
-   <div class="bm-action-block"><h6>Search Lead By Number</h6><div class="input-group input-group-sm">@csrf<input name="number" id="number" type="text" maxlength="11" class="form-control" placeholder="Mobile number"><div class="input-group-append"><button type="button" id="search_number" class="btn btn-info"><i class="fas fa-search"></i> Search</button></div></div><div id="msg" class="message"></div></div>
+   <div class="bm-action-block"><h6>Search Lead By Number</h6><div class="bm-lead-search"><input name="number" id="number" type="text" maxlength="11" class="form-control" placeholder="Mobile number" aria-label="Search lead by mobile number"><button type="button" id="search_number" class="bm-search-icon" aria-label="Search lead"><i class="fas fa-search"></i></button></div><div id="msg" class="message"></div></div>
    @endcan
    @can('read attendance')
    <div class="bm-action-block"><form method="POST" action="/admin/punch" enctype="multipart/form-data">@csrf
-    <div class="bm-action-title"><h6>Employee Attendance</h6><button type="submit" class="btn btn-primary btn-sm" id="punch_button"><i class="fas fa-plus"></i> Punch In</button></div>
+    <div class="bm-action-title"><h6>Employee Attendance</h6></div>
     <div class="bm-attendance-fields"><select class="form-control" name="user_id">@foreach($users_list as $u)<option value="{{ $u->id }}">{{ $u->name }}</option>@endforeach</select>
-    @if($display_date)<input type="datetime-local" class="form-control" name="punch_time" id="date_time">@endif</div>
+    @if($display_date)<input type="datetime-local" class="form-control" name="punch_time" id="date_time">@endif
+    <button type="submit" class="btn btn-primary btn-sm bm-punch-button" id="punch_button"><i class="fas fa-plus"></i> Punch In</button></div>
     <div id="soft-alert" class="alert" style="display:none"></div></form></div>
    @endcan
   </div>
