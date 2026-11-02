@@ -141,3 +141,15 @@ Keep existing submenus, route names and permission checks; **reorganize only nav
 3. Prepare interactive client preview covering **all requested** sections, including Dasticash.
 4. Request client approval of UI before modifying production dashboard presentation.
 5. Implement in small audited changes, with evidence-based progress updates.
+
+## 9. Implementation batch 01 — 2026-11-02
+- **GitHub commit:** `eb381703ed057d4f694fb630e6e8ccb827003a8c`
+- **Changed:** `resources/views/admin/dashboard.blade.php`.
+- Added dashboard-scoped modern presentation (KPI cards, financial circles, Dasticash table, attendance table); existing Blade variables, routes, form actions, validation, permissions and AJAX blocks left in place.
+- Added initial numeric count-up animation for top-level cards and finance circles, respecting `prefers-reduced-motion`.
+- Added desktop height constraint plus scrollable dashboard content container; Dasticash and attendance tables scroll independently. This is an incremental layout, **not yet** the final client-specified zero-dashboard-scroll/tab-based design.
+- **No backend API, sidebar regrouping, new CRM/finance/approvals/task/cheque metrics, or Hikvision logic implemented** in this batch.
+- **Verification:** GitHub commit created. Local Blade compilation, browsers, finance arithmetic and role tests **not yet run**; user's `git pull` and local smoke test are next gates.
+- **Status:** M00 document COMPLETE; M01 audit IN PROGRESS; M02 screen redesign PARTIAL (existing widgets only, client approval pending); M07 Dasticash visual styling PARTIAL (existing CRUD preserved in source but regression unverified); others PENDING.
+- **Next pull:** `git pull --ff-only origin upgrade/laravel-framework`.
+- **Local checks after pull:** `php artisan view:cache`, `php artisan view:clear`, inspect `/admin/dashboard` as administrator and a restricted user; verify Dasticash add/edit/delete, hand cash balance and scrolling without modifying real accounting records (use disposable clone for destructive actions).
