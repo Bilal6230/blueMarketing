@@ -153,3 +153,14 @@ Keep existing submenus, route names and permission checks; **reorganize only nav
 - **Status:** M00 document COMPLETE; M01 audit IN PROGRESS; M02 screen redesign PARTIAL (existing widgets only, client approval pending); M07 Dasticash visual styling PARTIAL (existing CRUD preserved in source but regression unverified); others PENDING.
 - **Next pull:** `git pull --ff-only origin upgrade/laravel-framework`.
 - **Local checks after pull:** `php artisan view:cache`, `php artisan view:clear`, inspect `/admin/dashboard` as administrator and a restricted user; verify Dasticash add/edit/delete, hand cash balance and scrolling without modifying real accounting records (use disposable clone for destructive actions).
+
+## 10. Implementation batch 02 — compact dashboard-only composition (2026-11-02)
+- **Commits:** `4e26d36d1504030395f1ad6b6c766e96704c8c53` and selector correction `601117e26633a82e4674080d3d10728d76008720`.
+- **File updated:** `resources/views/admin/dashboard.blade.php`, **sidebar untouched** by owner's express instruction.
+- Arranges the existing four KPI cards in a compact top row, and existing financial summary, lead search, attendance form, Dasticash and attendance-record widgets into a bounded responsive grid; preserves the underlying original Blade/form/AJAX elements by DOM relocation rather than duplicating controls.
+- The three financial circles now display modern donut/ring-style visuals with original, live ledger numeric text. The visual arc is decorative only, **not** an accounting percentage (no unsupported financial ratios).
+- On desktop the dashboard viewport container and widgets use internal scrolling; on narrower displays the layout falls back to responsive flow. Some heights/role combinations still require browser verification.
+- Known limitation: with 5 widgets, third grid row spans both columns. UI may not match screenshot perfectly at every resolution; further tuning is needed after local screenshot.
+- Existing hand cash/bank/total cash math, lead routes, punch forms, Dasticash Add/Edit/Delete modals and AJAX kept unchanged.
+- **Local gate:** pull, `php artisan view:cache`, `php artisan view:clear`, hard refresh `Ctrl+Shift+R` at `http://localhost:8000/home`. Compare 1366x768 and 1920x1080 and report screenshot; verify no missing widget (Dasticash is mandatory). Do not run live destructive tests.
+- **Progress:** M02 modern dashboard layout PARTIAL; M07 Dasticash layout PARTIAL; no production acceptance or browser signoff yet. Sidebar M03 explicitly deferred.
