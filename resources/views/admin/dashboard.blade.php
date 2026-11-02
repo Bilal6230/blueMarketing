@@ -130,6 +130,50 @@
  .bm-dashboard-modern .bm-finance .bm-ring-caption{font-size:clamp(9px,2.5vw,12px)}
  .bm-dashboard-modern .bm-kpi-label{font-size:clamp(10px,2.6vw,13px)}
 }
+
+/* Batch 07 — contain AdminLTE wrapper, not just dashboard inner panels.
+   AdminLTE's JavaScript min-height and the separate footer previously
+   extended the whole document despite a viewport-bounded .content. */
+@media (min-width: 992px) {
+ body:has(.bm-dashboard-modern) { height:100dvh!important; overflow:hidden!important; }
+ body:has(.bm-dashboard-modern) .wrapper {
+   height:100dvh!important; min-height:0!important;
+   display:flex; flex-direction:column; overflow:hidden!important;
+ }
+ body:has(.bm-dashboard-modern) .main-header {
+   flex:0 0 auto; min-height:0;
+ }
+ body:has(.bm-dashboard-modern) .main-footer {
+   flex:0 0 auto; min-height:0; margin-top:0!important;
+ }
+ body:has(.bm-dashboard-modern) .content-wrapper.bm-dashboard-modern {
+   flex:1 1 0%; height:auto!important; min-height:0!important;
+   margin-bottom:0!important; overflow:hidden!important;
+   display:flex; flex-direction:column;
+ }
+ .bm-dashboard-modern .content-header { flex:0 0 auto; }
+ .bm-dashboard-modern .content {
+   flex:1 1 0%; height:auto!important; min-height:0!important;
+   overflow:hidden!important;
+ }
+ .bm-dashboard-modern .content > .container-fluid {
+   height:100%!important; min-height:0!important; overflow:hidden!important;
+   display:flex; flex-direction:column;
+ }
+ .bm-dashboard-modern .bm-dashboard-grid {
+   min-height:0!important; flex:1 1 0%;
+   grid-template-rows:minmax(0,0.79fr) minmax(0,1.21fr);
+ }
+ .bm-dashboard-modern .bm-panel {min-height:0!important}
+ .bm-dashboard-modern .bm-table-scroll {min-height:0; overflow:auto}
+}
+@media (max-width:991.98px) {
+ /* Smaller devices must keep normal document scroll rather than clipping controls. */
+ body:has(.bm-dashboard-modern),
+ body:has(.bm-dashboard-modern) .wrapper {
+   height:auto!important; min-height:100dvh!important; overflow:visible!important;
+ }
+}
 </style>
 @endpush
 @section('content')
