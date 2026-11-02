@@ -174,6 +174,13 @@
    height:auto!important; min-height:100dvh!important; overflow:visible!important;
  }
 }
+
+/* Batch 08 — New Leads-only date preset; other KPIs retain original semantics. */
+.bm-lead-period-filter{display:flex;align-items:center;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-bottom:-4px;font-size:11px;color:#566987}
+.bm-lead-period-filter label{margin:0;font-weight:650}
+.bm-lead-period-filter select{border:1px solid #d8e2f0;border-radius:7px;padding:3px 8px;background:#fff;color:#253b5a}
+.bm-lead-period-filter span{font-size:10px;color:#75869b}
+@media(max-width:600px){.bm-lead-period-filter{justify-content:flex-start;margin-bottom:0}}
 </style>
 @endpush
 @section('content')
@@ -196,6 +203,15 @@
         <section class="content">
             <div class="container-fluid">
                 
+<form method="GET" action="{{ route('home') }}" class="bm-lead-period-filter" aria-label="New Leads date period">
+ <label for="bm-lead-period">New Leads period</label>
+ <select id="bm-lead-period" name="lead_period" onchange="this.form.submit()">
+  @foreach (['today'=>'Today','yesterday'=>'Yesterday','this_week'=>'This Week','last_week'=>'Last Week','this_month'=>'This Month','last_month'=>'Last Month'] as $periodValue=>$periodLabel)
+   <option value="{{ $periodValue }}" {{ $lead_period === $periodValue ? 'selected' : '' }}>{{ $periodLabel }}</option>
+  @endforeach
+ </select>
+ <span>{{ $lead_period_from }} to {{ $lead_period_to }}</span>
+</form>
 <div class="bm-kpis">
 @foreach ([
  ['value'=>$today_leads,'label'=>'New Leads Add Today','icon'=>'fa-user','href'=>route('dashboard.leads_by_users_report'),'tone'=>'indigo'],
