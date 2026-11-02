@@ -80,6 +80,20 @@
 @media(min-width:992px){.bm-kpi{padding:9px 12px}.bm-kpis{gap:9px}.bm-finance-body{align-items:center}.bm-panel-heading{padding:8px 11px}}
 @media(max-width:1100px){.bm-kpi-bottom{flex-wrap:wrap;gap:3px}.bm-kpi .bm-kpi-action{font-size:10px}.bm-attendance-fields{flex-wrap:wrap}.bm-attendance-fields select,.bm-attendance-fields input{flex:1 1 35%;width:auto}}
 @media(max-width:600px){.bm-kpi .bm-kpi-icon{width:29px;height:29px}.bm-kpi .bm-kpi-value{font-size:18px}.bm-attendance-fields{flex-direction:column}.bm-attendance-fields select,.bm-attendance-fields input{width:100%}}
+
+/* Batch 05: compact upper panels without stretching their content. */
+@media(min-width:992px){
+ .bm-dashboard-grid{grid-template-rows:minmax(155px,0.74fr) minmax(0,1.26fr)}
+ .bm-finance .bm-panel-body,.bm-actions .bm-panel-body{padding-top:5px;padding-bottom:5px}
+ .bm-finance .bm-ring{width:clamp(70px,6.2vw,94px);margin-bottom:4px}
+ .bm-actions .bm-action-block{margin-bottom:7px}
+ .bm-actions .bm-action-block h6{margin-bottom:5px}
+}
+.bm-finance .bm-ring-center span{font-size:clamp(10px,.9vw,13px);font-weight:650}
+.bm-finance .bm-ring-center strong{font-size:clamp(12px,1.05vw,16px);font-weight:800}
+.bm-finance .bm-ring-caption{font-size:clamp(11px,.86vw,13px);font-weight:600;color:#53657e}
+.bm-finance .bm-panel-heading h5{font-size:14px}
+@media(max-width:991.98px){.bm-dashboard-grid{grid-template-rows:auto}.bm-finance,.bm-actions{min-height:175px}}
 </style>
 @endpush
 @section('content')
