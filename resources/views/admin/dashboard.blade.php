@@ -94,6 +94,42 @@
 .bm-finance .bm-ring-caption{font-size:clamp(11px,.86vw,13px);font-weight:600;color:#53657e}
 .bm-finance .bm-panel-heading h5{font-size:14px}
 @media(max-width:991.98px){.bm-dashboard-grid{grid-template-rows:auto}.bm-finance,.bm-actions{min-height:175px}}
+
+/* Batch 06 — fit the complete desktop dashboard below the navbar + breadcrumb.
+   The previous 127px subtraction ignored the dashboard content header. */
+@media (min-width: 992px) {
+ .bm-dashboard-modern { height: calc(100dvh - 57px); min-height:0; overflow:hidden; display:flex; flex-direction:column; }
+ .bm-dashboard-modern .content-header { flex:0 0 auto; }
+ .bm-dashboard-modern .content { flex:1 1 auto; min-height:0; height:auto!important; overflow:hidden!important; }
+ .bm-dashboard-modern .content > .container-fluid { box-sizing:border-box; height:100%; min-height:0; overflow:hidden!important; padding-bottom:9px; }
+ .bm-dashboard-modern .bm-dashboard-grid { grid-template-rows:minmax(0,0.76fr) minmax(0,1.24fr); min-height:0; }
+ .bm-dashboard-modern .bm-dasticash, .bm-dashboard-modern .bm-punches { min-height:0; }
+ .bm-dashboard-modern .bm-dasticash .bm-table-scroll,
+ .bm-dashboard-modern .bm-punches .bm-table-scroll { overflow-y:auto; overflow-x:auto; min-height:0; }
+ .bm-dashboard-modern .bm-finance .bm-ring { width:clamp(90px,7.4vw,112px); max-width:min(100%,20vh); }
+}
+@media (min-width:992px) and (max-height:690px) {
+ .bm-dashboard-modern .bm-finance .bm-ring { width:clamp(70px,6.3vw,95px); max-width:17vh; }
+ .bm-dashboard-modern .bm-dashboard-grid { grid-template-rows:minmax(0,0.84fr) minmax(0,1.16fr); }
+ .bm-dashboard-modern .bm-panel-heading{padding:6px 10px}
+}
+@media (min-width: 600px) and (max-width:991.98px) {
+ .bm-dashboard-modern {height:auto;overflow:visible}
+ .bm-dashboard-modern .bm-dashboard-grid {grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:auto;align-items:stretch}
+ .bm-dashboard-modern .bm-panel {min-height:220px}
+ .bm-dashboard-modern .bm-finance .bm-ring{width:clamp(75px,9vw,110px)}
+ .bm-dashboard-modern .bm-kpis {grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:599.98px) {
+ .bm-dashboard-modern {height:auto;overflow:visible}
+ .bm-dashboard-modern .bm-dashboard-grid{grid-template-columns:minmax(0,1fr);grid-template-rows:auto}
+ .bm-dashboard-modern .bm-panel{min-height:190px}
+ .bm-dashboard-modern .bm-finance .bm-ring{width:clamp(64px,21vw,105px)}
+ .bm-dashboard-modern .bm-finance .bm-ring-center strong{font-size:clamp(10px,2.7vw,14px)}
+ .bm-dashboard-modern .bm-finance .bm-ring-center span{font-size:clamp(9px,2.3vw,12px)}
+ .bm-dashboard-modern .bm-finance .bm-ring-caption{font-size:clamp(9px,2.5vw,12px)}
+ .bm-dashboard-modern .bm-kpi-label{font-size:clamp(10px,2.6vw,13px)}
+}
 </style>
 @endpush
 @section('content')
