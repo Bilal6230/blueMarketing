@@ -185,3 +185,14 @@ Keep existing submenus, route names and permission checks; **reorganize only nav
 - **Verification status: code committed, NOT browser-verified, NOT tested on local Laravel instance.** User must pull, compile views and screenshot. A real screenshot may reveal further CSS adjustment required.
 - **Milestones:** M02 layout development **in progress** (rough estimate 75%); M07 Dasticash appearance **in progress** (rough estimate 65%); tests remain pending. No claims of completed end-to-end production features.
 - **Commands:** `git pull --ff-only origin upgrade/laravel-framework`; `php artisan optimize:clear`; `php artisan view:cache`; test `/home` with hard refresh. Avoid destructive Dasticash CRUD in live finance database.
+
+## 13. Implementation batch 04 — compact KPI header and inline actions (2026-11-02)
+- **Commit:** `5b174fcaa2f6922b45c096662624393f120572d6`.
+- Based on user's verified working Batch 03 screenshot. Updated only `resources/views/admin/dashboard.blade.php`, no sidebar/backend modifications.
+- KPI card: icon left/value right in top row; title left/View report right in bottom row; larger icon/value/title/action typography and reduced widget height.
+- Finance ring size reduced; three financial amount values and cash IDs remain unchanged.
+- Lead Search: separate colored Search text button removed; small search-icon-only trigger overlaid **inside the right side of the input**, preserving `#number` and `#search_number` for the original AJAX search.
+- Attendance: employee selector, optional admin date/time input, and Punch In submit button in one horizontal row on desktop; the original POST form and selectors preserved. Restricted roles without datetime field still show selector + button.
+- Responsive fallback for small widths; owner screenshot review pending.
+- **Status:** code committed, browser/UI behavior unverified until local pull. Approx M02 layout 85%, M07 Dasticash UI 65% (unchanged this batch). Backend permission/finance regression not re-tested.
+- **Pull:** `git pull --ff-only origin upgrade/laravel-framework`, `php artisan optimize:clear`, `php artisan view:cache`.
