@@ -58,6 +58,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
     Route::post('punch', [DashboardController::class, 'punch']);
     Route::get('punch', [DashboardController::class, 'index']);
     Route::get('dashboard/print-leads-by-users', [DashboardController::class, 'printLeadsByUsersReport'])->name('dashboard.leads_by_users_report');
+    Route::get('dashboard/crm-snapshot', [DashboardController::class, 'crmSnapshot'])->name('dashboard.crm_snapshot');
 
     Route::get('crm/today-lead-work-report', [DashboardController::class, 'todayLeadWorkReport'])->name('crm.todayLeadWorkReport');
 
