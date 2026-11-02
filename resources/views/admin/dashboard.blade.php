@@ -210,7 +210,7 @@
 @media(max-width:650px){.bm-finance .bm-finance-dual{flex-wrap:wrap;overflow:visible}.bm-cash-donut{width:clamp(130px,37vw,180px)}.bm-cash-legend{width:100%;max-width:none}.bm-cash-detail small{display:block}}
 @media(prefers-reduced-motion:reduce){.bm-cash-donut{animation:none}}
 
-.bm-crm-open{align-self:flex-end;font-size:11px;font-weight:700;padding:3px 10px;margin-bottom:-5px}.bm-crm-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:8px 0 15px}.bm-crm-kpis>div{padding:12px;border:1px solid #dce6f1;border-radius:9px;background:#f8faff}.bm-crm-kpis strong{font-size:21px;display:block}.bm-crm-kpis span{font-size:11px}.bm-crm-table{max-height:48vh!important;overflow:auto}.bm-crm-table th{white-space:nowrap;position:sticky;top:0;background:#e9eff7}.bm-crm-table td{max-width:230px;overflow-wrap:anywhere}@media(max-width:600px){.bm-crm-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.bm-crm-open{align-self:flex-end;font-size:11px;font-weight:700;padding:3px 10px;margin-bottom:-5px}.bm-crm-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:8px 0 15px}.bm-crm-kpis>div{padding:12px;border:1px solid #dce6f1;border-radius:9px;background:#f8faff}.bm-crm-kpis strong{font-size:21px;display:block}.bm-crm-kpis span{font-size:11px}.bm-crm-table{max-height:48vh!important;overflow:auto}.bm-crm-table th{white-space:nowrap;position:sticky;top:0;background:#e9eff7}.bm-crm-table td{max-width:230px;overflow-wrap:anywhere}@media(max-width:600px){.bm-crm-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 /* Batch 11: one donut ring, lowest balance dark red, visible floating hover amount. */
 .bm-finance .bm-single-donut{width:100%;height:100%;border:0;padding:clamp(15px,1.45vw,23px);border-radius:50%;background:conic-gradient(var(--hand-color) 0 var(--hand-share),var(--bank-color) var(--hand-share) calc(var(--hand-share) + var(--bank-share)),#e2e9f1 0 100%);cursor:pointer}
@@ -469,7 +469,7 @@
  const rowHost=document.getElementById('bm-crm-rows');
  const error=document.getElementById('bm-crm-error');
  const summary=document.getElementById('bm-crm-kpis');
- const labels=[['new_leads','New Leads'],['logged_activities','Logged Follow-up Activities'],['due_on_period_end','Due on Period End'],['overdue_as_of_period_end','Overdue as of Period End']];
+ const labels=[['new_leads','New Leads'],['logged_activities','Logged Activities'],['today_due','Today Scheduled Follow-ups'],['pending_overdue_combined','Due + Overdue (Current State)'],['due_on_period_end','Due on Selected End Date'],['overdue_as_of_period_end','Overdue by Selected End Date']];
  const cell=(tr,value)=>{const td=document.createElement('td');td.textContent=value??'—';tr.appendChild(td);};
  async function loadCrm(){
    if(!window.jQuery){return;}
