@@ -30,51 +30,6 @@
 @media (prefers-reduced-motion:reduce) {
   .bm-dashboard-modern .small-box { transition:none; }
 }
-
-/* Batch 02: compact dashboard-only composition matching the approved V2 reference. */
-@media(min-width: 992px){
- .bm-dashboard-modern .content-header{padding:5px 0 1px}
- .bm-dashboard-modern .content-header h1{font-size:1.05rem}
- .bm-dashboard-modern .content{height:calc(100dvh - 126px);overflow:hidden}
- .bm-dashboard-modern .content>.container-fluid{height:100%;display:flex;flex-direction:column;gap:9px;overflow:hidden!important;padding-bottom:8px}
- .bm-dashboard-modern .bm-kpi-row{flex:0 0 auto;margin:0 -5px}
- .bm-dashboard-modern .bm-kpi-row>[class*="col-"]{padding:0 5px}
- .bm-dashboard-modern .bm-widget-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:repeat(2,minmax(0,1fr));gap:9px;flex:1;min-height:0}
- .bm-dashboard-modern .bm-widget-grid>.bm-widget{width:100%;max-width:none;min-height:0;padding:0!important;margin:0!important}
- .bm-dashboard-modern .bm-widget-grid .custom_card{height:100%!important;display:flex;flex-direction:column}
- .bm-dashboard-modern .bm-widget-grid .custom_card>.card-body{flex:1;min-height:0;display:flex;flex-direction:column;padding:12px!important;overflow:hidden}
- .bm-dashboard-modern .bm-widget-grid .table-responsive,.bm-dashboard-modern .bm-widget-grid .table-resposive{max-height:none;min-height:0;flex:1;overflow:auto}
- .bm-dashboard-modern .bm-widget-grid .financial-circle{width:min(100%,110px);height:auto;aspect-ratio:1;display:grid;place-items:center;border-radius:50%;background:conic-gradient(#22bf90 0 76%,#e9f0f7 76% 100%)!important;position:relative;animation:bm-ring-enter .7s ease-out both}
- .bm-dashboard-modern .bm-widget-grid .financial-circle .circle-content{width:79%;height:79%;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;flex-direction:column;position:relative;z-index:1;padding:3px}
- .bm-dashboard-modern .bm-widget-grid .financial-circle h4{font-size:clamp(.65rem,1vw,.9rem);margin:3px 0!important}
- .bm-dashboard-modern .bm-widget-grid .financial-circle h6{font-size:.65rem}
- .bm-dashboard-modern .bm-widget-grid .col-12.text-center.mb-4{margin-bottom:6px!important}
- .bm-dashboard-modern .bm-widget-grid .custom_card h4,.bm-dashboard-modern .bm-widget-grid .custom_card h5{font-size: .95rem}
- .bm-dashboard-modern .bm-widget-grid .form-group{margin-bottom:7px}
- .bm-dashboard-modern .small-box{min-height:88px;margin-bottom:0}
- .bm-dashboard-modern .small-box .inner{padding:9px 13px 5px}
- .bm-dashboard-modern .small-box h3{font-size:clamp(1.15rem,1.7vw,1.7rem);margin-bottom:2px}
- .bm-dashboard-modern .small-box p{font-size:.74rem;margin-bottom:3px}
- .bm-dashboard-modern .small-box-footer{padding:3px 8px;font-size:.66rem}
- .bm-dashboard-modern #dasticashTable td{font-size:.75rem}
- .bm-dashboard-modern .bm-widget-grid>.bm-widget.bm-attendance-records{grid-column:span 2}
- .bm-dashboard-modern .bm-widget-grid.bm-grid-five{grid-template-rows:repeat(3,minmax(0,1fr))}
- .bm-dashboard-modern .bm-widget-grid.bm-grid-five>.bm-widget.bm-attendance-records{grid-column:span 2}
-}
-@media(min-width:992px) and (max-height:700px){
- .bm-dashboard-modern .bm-widget-grid .financial-circle{width:80px}
- .bm-dashboard-modern .small-box{min-height:72px}
- .bm-dashboard-modern .small-box .inner{padding:6px 12px 2px}
- .bm-dashboard-modern .bm-widget-grid .custom_card>.card-body{padding:8px!important}
-}
-@media(max-width:991.98px){
- .bm-dashboard-modern .bm-widget-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:10px}
- .bm-dashboard-modern .bm-widget-grid>.bm-widget{padding:0;width:100%;max-width:none}
- .bm-dashboard-modern .content{height:auto!important;overflow:visible!important}
- .bm-dashboard-modern .content>.container-fluid{height:auto!important;overflow:visible!important}
-}
-@keyframes bm-ring-enter{from{transform:scale(.85);opacity:.3}to{transform:scale(1);opacity:1}}
-@media(prefers-reduced-motion:reduce){.bm-dashboard-modern .bm-widget-grid .financial-circle{animation:none}}
 </style>
 @endpush
 @section('content')
@@ -500,42 +455,6 @@
     </div>
 @endsection
 @section('js')
-
-<script>
-(function(){
- function arrangeBmDashboard(){
-  var host=document.querySelector('.bm-dashboard-modern .content > .container-fluid');
-  if(!host || host.querySelector('.bm-widget-grid'))return;
-  var allRows=Array.from(host.children).filter(function(el){return el.classList.contains('row')});
-  var kpi=allRows.find(function(row){return row.querySelectorAll('.small-box').length===4});
-  if(!kpi)return;
-  kpi.classList.add('bm-kpi-row');
-  var grid=document.createElement('div');grid.className='bm-widget-grid';
-  kpi.insertAdjacentElement('afterend',grid);
-  var widgets=[
-    {el:host.querySelector('#number'),label:'lead-search'},
-    {el:host.querySelector('#punch_button'),label:'attendance-form'},
-    {el:host.querySelector('#handCash'),label:'financial'},
-    {el:host.querySelector('#dasticashTable'),label:'dasticash'},
-    {el:Array.from(host.querySelectorAll('h5')).find(function(n){return n.textContent.trim()==='Punch-in Records for Today'}),label:'attendance-records'}
-  ];
-  widgets.forEach(function(item){
-   if(!item.el)return;
-   var col=null,ancestor=item.el;while(ancestor && ancestor!==host){if(ancestor.parentElement && ancestor.parentElement.classList.contains('row') && ancestor.parentElement.parentElement===host){col=ancestor;break;}ancestor=ancestor.parentElement;}
-   if(!col || !host.contains(col))return;
-   col.classList.add('bm-widget','bm-'+item.label);
-   grid.appendChild(col);
-  });
-  var count=grid.querySelectorAll(':scope > .bm-widget').length;
-  if(count>4)grid.classList.add('bm-grid-five');
-  /* Keep legacy rows outside the rearranged grid intact if they contain other controls. */
-  allRows.forEach(function(row){if(row!==kpi && !row.querySelector('.custom_card') && !row.textContent.trim())row.style.display='none'});
- }
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',arrangeBmDashboard);
- else arrangeBmDashboard();
-})();
-</script>
-
 
 <script>
 (function () {
