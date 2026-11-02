@@ -366,8 +366,8 @@
   <div class="modal-header"><h5 class="modal-title" id="bmCrmTitle">CRM Details — selected period</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
   <div class="modal-body">
    <p class="text-muted">Follow-up activities below are logged Work entries, not confirmed completed follow-ups. Due/overdue counts use stored lead follow-up dates.</p>
-   <div class="form-inline mb-2"><label for="bm-crm-employee" class="mr-2">Employee</label><select class="form-control form-control-sm mr-2" id="bm-crm-employee"><option value="">All employees</option>@foreach($users_list as $employee)<option value="{{ $employee->id }}">{{ $employee->name }}</option>@endforeach</select><button type="button" class="btn btn-sm btn-primary" id="bm-crm-apply">Apply Filter</button></div><div class="bm-crm-kpis" id="bm-crm-kpis" aria-live="polite"></div>
-   <div id="bm-crm-error" role="alert" class="text-danger"></div>
+   <div class="form-inline mb-2"><label for="bm-crm-employee" class="mr-2">Employee</label><label for="bm-crm-project" class="mr-2">Project</label><select class="form-control form-control-sm mr-2" id="bm-crm-project">@foreach($crm_projects as $crmProject)<option value="{{ $crmProject->id }}" {{ $crmProject->id == getSelectedTown() ? 'selected' : '' }}>{{ $crmProject->project }}</option>@endforeach</select><select class="form-control form-control-sm mr-2" id="bm-crm-employee"><option value="">All employees</option>@foreach($users_list as $employee)<option value="{{ $employee->id }}">{{ $employee->name }}</option>@endforeach</select><button type="button" class="btn btn-sm btn-primary" id="bm-crm-apply">Apply Filter</button></div><div class="bm-crm-kpis" id="bm-crm-kpis" aria-live="polite"></div>
+   <div id="bm-crm-error" role="alert" class="text-danger"></div><h6 class="mt-3">Employee-wise CRM Performance (logged activity)</h6><div class="table-responsive bm-crm-table"><table class="table table-sm table-striped"><thead><tr><th>Employee</th><th>Assigned Leads</th><th>New Leads</th><th>Logged Activities</th><th>Due on End Date</th><th>Overdue on End Date</th></tr></thead><tbody id="bm-crm-employee-rows"></tbody></table></div>
    <div class="table-responsive bm-crm-table"><table class="table table-sm table-striped"><thead><tr><th>Lead ID</th><th>Customer</th><th>Mobile</th><th>Project</th><th>Assigned Employee</th><th>Created</th><th>Last Activity</th><th>Next Follow-up</th><th>Remarks</th></tr></thead><tbody id="bm-crm-rows"></tbody></table></div>
    <small class="text-muted">Showing at most 100 matching leads; this is a preview of the integrated report, not a full export.</small>
   </div>
@@ -469,16 +469,18 @@
  async function loadCrm(){
    if(!window.jQuery){return;}
    window.jQuery('#bmCrmModal').modal('show');
-   summary.textContent='';rowHost.textContent='';error.textContent='Loading CRM data…';
+   summary.textContent='';rowHost.textContent='';document.getElementById('bm-crm-employee-rows').textContent='';error.textContent='Loading CRM data…';
    const bounds=document.getElementById('bm-lead-period-bounds').textContent.trim().split(' to ');
    if(bounds.length!==2){error.textContent='Select a date range first.';return;}
    try{
-     const query=new URLSearchParams({from:bounds[0],to:bounds[1]});const employee=document.getElementById('bm-crm-employee');if(employee && employee.value)query.set('employee_id',employee.value);
+     const query=new URLSearchParams({from:bounds[0],to:bounds[1]});const employee=document.getElementById('bm-crm-employee');if(employee && employee.value)query.set('employee_id',employee.value);const project=document.getElementById('bm-crm-project');if(project && project.value)query.set('project_id',project.value);
      const res=await fetch(open.dataset.url+'?'+query.toString(),{credentials:'same-origin',headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}});
      if(!res.ok)throw new Error('CRM report failed to load ('+res.status+').');
      const data=await res.json();error.textContent='';
      labels.forEach(([key,label])=>{const box=document.createElement('div');const value=document.createElement('strong');value.textContent=Number(data[key]||0).toLocaleString('en-PK');const caption=document.createElement('span');caption.textContent=label;box.append(value,caption);summary.appendChild(box);});
      (data.rows||[]).forEach(row=>{const tr=document.createElement('tr');['id','customer','mobile','project','assigned','created_at','last_activity','next_follow_up','remarks'].forEach(k=>cell(tr,row[k]));rowHost.appendChild(tr);});
+     const employeeRows=document.getElementById('bm-crm-employee-rows');
+     (data.employee_summary||[]).forEach(row=>{const tr=document.createElement('tr');['employee','assigned_leads','new_leads','logged_activities','due_on_period_end','overdue_as_of_period_end'].forEach(key=>cell(tr,row[key]));employeeRows.appendChild(tr);});
      if(!data.rows?.length)error.textContent='No matching leads for this period.';
    }catch(e){error.textContent=e.message;}
  }
