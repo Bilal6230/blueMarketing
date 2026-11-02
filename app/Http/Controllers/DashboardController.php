@@ -191,6 +191,11 @@ class DashboardController extends Controller
         $due = (clone $scope)->whereDate('follow_up', $cutoff->toDateString())->count();
         $overdue = (clone $scope)->whereNotNull('follow_up')
             ->where('follow_up', '<', $cutoff->copy()->startOfDay())->count();
+        // Current scheduled follow-up counts. These are current-state records,
+        // not an event-sourced historical snapshot of earlier dates.
+        $todayDue = (clone $scope)->whereDate('follow_up', Carbon::today()->toDateString())->count();
+        $pendingOverdue = (clone $scope)->whereNotNull('follow_up')
+            ->whereDate('follow_up', '<=', $cutoff->toDateString())->count();
         $logged = Work::query()->whereHas('leads', function ($q) use ($projectId, $employeeId) {
             $q->where('is_active', 1)->where('project_id', $projectId);
             if ($employeeId) {
@@ -239,6 +244,7 @@ class DashboardController extends Controller
             'from' => $from->toDateString(), 'to' => $to->toDateString(),
             'new_leads' => $new, 'logged_activities' => $logged,
             'due_on_period_end' => $due, 'overdue_as_of_period_end' => $overdue,
+            'today_due' => $todayDue, 'pending_overdue_combined' => $pendingOverdue,
             'rows' => $rows, 'employee_summary' => $employeeSummary, 'limited' => true,
         ]);
     }
