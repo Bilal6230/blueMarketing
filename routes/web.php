@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\DastiCashController;
 use App\Http\Controllers\EmployeeTaskController;
 use App\Http\Controllers\FileManagerController;
@@ -41,6 +42,9 @@ Auth::routes([
 Route::middleware(['auth'])->get('/home', [DashboardController::class, 'index'])->name('home');
 
 Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(function () {
+    Route::get('attendance', [AttendanceController::class, 'index'])->middleware('permission:read attendance')->name('attendance.index');
+    Route::post('attendance/device', [AttendanceController::class, 'saveDevice'])->middleware('permission:update setting')->name('attendance.device.save');
+    Route::post('attendance/mapping', [AttendanceController::class, 'saveMapping'])->middleware('permission:update setting')->name('attendance.mapping.save');
     Route::get('employee-tasks', [EmployeeTaskController::class, 'index'])->name('employee-tasks.index');
     Route::post('employee-tasks', [EmployeeTaskController::class, 'store'])->name('employee-tasks.store');
     Route::put('employee-tasks/{employeeTask}', [EmployeeTaskController::class, 'update'])->name('employee-tasks.update');

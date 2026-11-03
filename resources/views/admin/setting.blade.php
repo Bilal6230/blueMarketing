@@ -33,6 +33,7 @@
                                                 href="#{{ $i->category }}"
                                                 data-toggle="tab">{{ Str::ucfirst($i->category) }}</a></li>
                                     @endforeach
+                                    <li class="nav-item"><a class="nav-link {{ request('tab') === 'attendance-machine' ? 'active' : '' }}" href="#attendance-machine" data-toggle="tab">Attendance Machine</a></li>
                                 </ul>
                             </div>
                             <div class="card-body">
@@ -126,6 +127,7 @@
                                             </form>
                                         </div>
                                     @endforeach
+                                    @include('admin.attendance.settings-tab')
                                 </div>
                             </div>
                         </div>
