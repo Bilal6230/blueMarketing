@@ -1636,6 +1636,8 @@
 
             $(document).on("click", '.btn-edit', function() {
                 let id = $(this).attr("data-id");
+                let voucherType = $(this).attr("data-voucher-type");
+                let voucherNumber = $(this).attr("data-voucher-number");
                 resetEditModalFields();
                 $('#edit_id').val(id);
                 $('#edit-update-button').prop('disabled', true).text('Loading...');
@@ -1650,10 +1652,13 @@
                     dataType: "JSON",
                     data: {
                         id: id,
+                        voucher_type: voucherType,
+                        voucher_number: voucherNumber,
                         _token: "{{ csrf_token() }}"
                     },
                     success: function(data) {
                         const d = data.data || {};
+                        $('#edit_id').val(d.id || id);
                         const cl = d.customer_ledger || {};
                         ensureEditDatePickersInitialized();
 
@@ -3071,9 +3076,9 @@
                                     let buttons = `<div class="btn-group">`;
 
                                     @can('update voucher')
-                                        buttons +=
+                                        if (row.editable) buttons +=
                                             `
-                                                                                                                            <button class="btn btn-sm btn-primary btn-edit" data-id="${row.id}">
+                                                                                                                            <button class="btn btn-sm btn-primary btn-edit" data-id="${row.id}" data-voucher-type="${row.type}" data-voucher-number="${row.voucher_number_raw}">
                                                                                                                                 <i class="fas fa-pencil-alt"></i>
                                                                                                                             </button>
                                                                                                                         `;

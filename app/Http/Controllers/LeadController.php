@@ -360,7 +360,24 @@ class LeadController extends Controller
 
         DB::beginTransaction();
         try {
-            $result = Lead::find($request->id);
+            $selectedProjectId = (int) getSelectedTown();
+            $resultQuery = Lead::query()->whereKey($request->id);
+            if ($selectedProjectId > 0) {
+                $resultQuery->where('project_id', $selectedProjectId);
+            }
+            $result = $resultQuery->lockForUpdate()->firstOrFail();
+
+            $roleIds = array_map('intval', (array) $request->assign_id);
+            if ($selectedProjectId > 0) {
+                $validAssignees = User::query()->where('project_id', $selectedProjectId)
+                    ->whereIn('id', $roleIds)->pluck('id')->map(fn ($id) => (int) $id)->all();
+                sort($roleIds); sort($validAssignees);
+                if ($roleIds !== $validAssignees) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'assign_id' => 'Every assigned user must belong to the selected project.',
+                    ]);
+                }
+            }
 
             // Track changes for each field
             $changes = [];
@@ -393,14 +410,13 @@ class LeadController extends Controller
             }
 
             // Sync related users (for roles or assignments)
-            $roleIds = $request->assign_id;
             $result->users()->sync($roleIds);
             //$result->syncRoles($request->role);
             DB::commit();
             Alert::success('Notification', 'Data <b>' . $result->name . '</b> berhasil disimpan')->toToast()->toHtml();
         } catch (\Throwable $th) {
             DB::rollback();
-            Alert::error('Notification', 'Data <b>' . $result->name . '</b> gagal disimpan : ' . $th->getMessage())->toToast()->toHtml();
+            Alert::error('Notification', 'Lead update failed: ' . $th->getMessage())->toToast()->toHtml();
         }
         return back();
     }
@@ -413,7 +429,12 @@ class LeadController extends Controller
         ]);
 
         try {
-            $lead = Lead::find($request->id);
+            $selectedProjectId = (int) getSelectedTown();
+            $leadQuery = Lead::query()->whereKey($request->id);
+            if ($selectedProjectId > 0) {
+                $leadQuery->where('project_id', $selectedProjectId);
+            }
+            $lead = $leadQuery->first();
 
             if (!$lead) {
                 Alert::error('Notification', 'Lead not found.')->toToast()->toHtml();
@@ -427,7 +448,7 @@ class LeadController extends Controller
 
             Alert::success('Notification', 'Lead deleted successfully.')->toToast()->toHtml();
         } catch (\Throwable $th) {
-            Alert::error('Notification', 'Failed to delete lead' . ($name ? ' <b>' . $name . '</b>' : '') . ': ' . $th->getMessage())
+            Alert::error('Notification', 'Failed to delete lead' . (!empty($name) ? ' <b>' . $name . '</b>' : '') . ': ' . $th->getMessage())
                 ->toToast()
                 ->toHtml();
         }

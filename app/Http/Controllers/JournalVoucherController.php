@@ -584,28 +584,50 @@ class JournalVoucherController extends Controller
 
     public function destroy($id)
     {
-        abort_unless(
-            in_array(config('app.env'), ['local', 'testing'], true)
-                && config('finance.v2_pilot_api_enabled')
-                && config('finance.v2_pilot_write_enabled'),
-            409, 'This voucher action is temporarily disabled to protect accounting history.'
-        );
-        \App\Services\Finance\V2IsolatedConnectionGuard::assertAllowed();
         $projectId = (int) getSelectedTown();
         abort_if($projectId < 1, 403, 'Select a project.');
-        \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
-        $data = request()->validate([
-            'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
-            'effective_date' => ['required', 'date_format:Y-m-d'],
-            'reason' => ['required', 'string', 'min:1', 'max:200'],
-        ]);
-        try {
-            (new \App\Services\Finance\V2VoucherLifecycleService())->reverse(
-                $projectId, 'journal', (int) $id, $data['request_key'],
-                $data['effective_date'], $data['reason'], (int) Auth::id()
-            );
-        } catch (\DomainException $exception) {
-            abort(409, 'Journal reversal rejected to protect accounting history.');
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+            \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+            $data = request()->validate([
+                'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
+                'effective_date' => ['required', 'date_format:Y-m-d'],
+                'reason' => ['required', 'string', 'min:1', 'max:200'],
+            ]);
+            try {
+                (new \App\Services\Finance\V2VoucherLifecycleService())->reverse(
+                    $projectId, 'journal', (int) $id, $data['request_key'],
+                    $data['effective_date'], $data['reason'], (int) Auth::id()
+                );
+            } catch (\DomainException $exception) {
+                abort(409, 'Journal reversal rejected to protect accounting history.');
+            }
+        } else {
+            $data = request()->validate([
+                'effective_date' => ['nullable', 'date_format:Y-m-d'],
+                'reason' => ['nullable', 'string', 'max:200'],
+            ]);
+            DB::transaction(function () use ($id, $projectId, $data): void {
+                $voucher = JournalVoucher::whereKey((int) $id)->where('project_id', $projectId)
+                    ->where(fn ($q) => $q->where('type', 'JV')->orWhereNull('type'))
+                    ->lockForUpdate()->firstOrFail();
+                $ledgers = Ledger::query()->withoutGlobalScopes()->where('type', 'JV')
+                    ->where('type_id', $voucher->id)->where('is_active', 1)
+                    ->whereIn('project_head_subheads_id', ProjectHeadSubhead::where('project_id', $projectId)->select('id'))
+                    ->lockForUpdate()->get();
+                abort_if($ledgers->isEmpty(), 409, 'JV ledger entries are missing; reversal stopped.');
+                $date = $data['effective_date'] ?? now()->toDateString();
+                foreach ($ledgers as $old) {
+                    Ledger::create([
+                        'voucher_number' => $voucher->voucher_number, 'type' => 'JV', 'type_id' => $voucher->id,
+                        'project_head_subheads_id' => $old->project_head_subheads_id,
+                        'reference' => $voucher->reference, 'amount_in' => $old->amount_out,
+                        'amount_out' => $old->amount_in, 'date' => $date, 'is_active' => 1, 'status' => '0',
+                        'create_by' => Auth::id(), 'detail' => 'Voucher reversal: '.($data['reason'] ?? $old->detail),
+                    ]);
+                }
+                JournalVoucherDetail::where('journal_voucher_id', $voucher->id)->get()->each->delete();
+                $voucher->delete();
+            });
         }
         return redirect()->route('journal.voucher.index')
             ->with('success', 'Journal voucher reversed; original accounting history preserved.');

@@ -783,17 +783,34 @@ class LedgerController extends Controller
 
     public function show(Request $request)
     {
-        $ledger = Ledger::with([
+        $data = $request->validate([
+            'id' => ['required', 'integer', 'min:1'],
+            'voucher_type' => ['nullable', 'in:CR,CP'],
+            'voucher_number' => ['nullable', 'integer', 'min:1'],
+        ]);
+        $base = Ledger::with([
             'customerLedger',
             'projectHeadSubhead.headAccounting',
             'projectHeadSubhead.subheadAccounting',
             'projectHeadSubhead.project',
         ])
-            ->where('id', $request->id)
+            ->whereIn('type', ['CR', 'CP'])
+            ->whereNotNull('customer_ledger_id')
             ->whereHas('projectHeadSubhead', function ($q) {
                 $q->where('project_id', getSelectedTown());
-            })
-            ->firstOrFail();
+            });
+        $ledger = (clone $base)->whereKey((int) $data['id'])->first();
+        if (!$ledger && isset($data['voucher_type'], $data['voucher_number'])) {
+            $matches = (clone $base)->where('type', $data['voucher_type'])
+                ->where('voucher_number', (int) $data['voucher_number'])->limit(2)->get();
+            $ledger = $matches->count() === 1 ? $matches->first() : null;
+        }
+        if (!$ledger) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'The voucher was not found in the selected project. Please refresh the page and try again.',
+            ], 404);
+        }
 
         $customerLedger = $ledger->customerLedger;
         $accountTypeId = (int) ($ledger->projectHeadSubhead->headAccounting->acct_type ?? 0);
@@ -969,18 +986,44 @@ class LedgerController extends Controller
 
     public function update(Request $request)
     {
-        // Posted ledger legs are immutable. Editing amount/account/date in place
-        // destroys the original accounting evidence; correction must be a
-        // reversal followed by a new posting.
-        if ($request->expectsJson() || $request->ajax()) {
-            return response()->json([
-                'status' => 'error',
-                'error_key' => 'posted_ledger_immutable',
-                'message' => 'Posted vouchers cannot be overwritten. Reverse and repost the voucher.',
-            ], 422);
+        $data = $request->validate([
+            'id' => ['required', 'integer'], 'amount' => ['required', 'regex:/^\d[\d,]*(?:\.\d{1,2})?$/D'],
+            'detail' => ['required', 'string', 'max:255'], 'accounts_id' => ['required', 'integer'],
+            'subaccounts_id' => ['required', 'integer'], 'date' => ['required', 'date_format:Y-m-d'],
+            'payment_type' => ['required', 'integer', 'in:1,2,3'],
+            't_number' => ['required_if:payment_type,2,3', 'nullable', 'string', 'max:255'],
+            'bank_id' => ['required_if:payment_type,2,3', 'nullable', 'integer'],
+            'passing_date' => ['required_if:payment_type,2,3', 'nullable', 'date_format:Y-m-d'],
+            'passing_status' => ['nullable', 'integer', 'in:0,1,2,3'],
+        ]);
+        $projectId = (int) getSelectedTown();
+        abort_if($projectId < 1, 403, 'Select a project.');
+        $ledger = Ledger::query()->whereKey((int) $data['id'])
+            ->whereIn('type', ['CR', 'CP'])->whereNotNull('customer_ledger_id')
+            ->whereHas('projectHeadSubhead', fn ($q) => $q->where('project_id', $projectId))->firstOrFail();
+        $account = ProjectHeadSubhead::query()->where('project_id', $projectId)
+            ->where('head_accounting_id', (int) $data['accounts_id'])
+            ->where('subhead_accounting_id', (int) $data['subaccounts_id'])->firstOrFail();
+        $amount = str_replace(',', '', $data['amount']);
+        $cash = (int) $data['payment_type'] === 1;
+        try {
+            app(\App\Services\Finance\LegacyCashVoucherCorrection::class)->correct(
+                $projectId, (int) $ledger->customer_ledger_id, (int) $account->id,
+                [
+                    'reference' => (string) $ledger->reference.'-CORR-'.now()->format('YmdHisu'),
+                    'date' => $data['date'], 'description' => $data['detail'],
+                    'amount_in' => $ledger->type === 'CR' ? $amount : 0,
+                    'amount_out' => $ledger->type === 'CP' ? $amount : 0,
+                    'payment_type' => $data['payment_type'], 't_number' => $cash ? null : $data['t_number'],
+                    'bank_id' => $cash ? null : $data['bank_id'], 'passing_date' => $cash ? null : $data['passing_date'],
+                    'passing_status' => $data['passing_status'] ?? 0,
+                ], (int) Auth::id()
+            );
+        } catch (\DomainException $e) {
+            abort(409, 'Cash voucher correction rejected to protect accounting history.');
         }
-
-        return back()->with('error', 'Posted vouchers cannot be overwritten. Reverse and repost the voucher.');
+        $response = ['status' => 'success', 'message' => 'Voucher corrected; original posting and reversal preserved.'];
+        return ($request->expectsJson() || $request->ajax()) ? response()->json($response) : back()->with('success', $response['message']);
 
         /* Legacy mutation retained temporarily below for forensic reference; it
          * is unreachable and should not be restored as an edit workflow.

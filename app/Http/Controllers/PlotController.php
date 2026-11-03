@@ -169,6 +169,7 @@ class PlotController extends Controller
      */
     public function update(Request $request, Plot $plot)
     {
+        $selectedProjectId = (int) getSelectedTown();
         $amount = str_replace(',', '', (string) $request->amount);
         $request->merge(['amount' => $amount]);
 
@@ -180,7 +181,8 @@ class PlotController extends Controller
             'unit'      => ['required', 'string'],
             'amount'    => ['required', 'numeric', 'min:0'],
             'is_corner' => ['required', 'boolean'],
-            'project_id' => ['required', 'integer'],
+            'id'         => ['required', 'integer'],
+            'project_id' => ['required', 'integer', Rule::in([$selectedProjectId])],
             'road_id'   => ['required', 'integer'],
             'facing_id' => ['required', 'integer'],
             'description' => ['nullable', 'string'], // Adjust if this should be required
@@ -191,7 +193,8 @@ class PlotController extends Controller
             return back()->withErrors($validator)->withInput();
         }
         // Find the plot by ID
-        $plot = Plot::find($request->id);
+        $plot = Plot::query()->whereKey($request->id)
+            ->where('project_id', $selectedProjectId)->first();
         if (!$plot) {
             // Handle the case where the plot doesn't exist
             Alert::error('Error', 'Plot not found!')->toToast()->toHtml();
@@ -224,16 +227,18 @@ class PlotController extends Controller
 
     public function update_plot_number(Request $request)
     {
+        $selectedProjectId = (int) getSelectedTown();
         // Validate the incoming request data
         $validatedData = $request->validate([
-            'plot_id' => 'required|integer|exists:plots,id', // Ensure plot_id exists in the database
+            'plot_id' => 'required|integer',
             'plot_number' => 'required|string|max:255',     // Validate the plot number field
             'plot_size_update' => 'required|string|max:255',     // Validate the plot number field
         ]);
 
         try {
             // Find the plot by its ID
-            $plot = Plot::find($validatedData['plot_id']);
+            $plot = Plot::query()->whereKey($validatedData['plot_id'])
+                ->where('project_id', $selectedProjectId)->lockForUpdate()->first();
 
             if ($plot) {
                 // Update the plot number (name)
@@ -243,6 +248,7 @@ class PlotController extends Controller
 
                 // Update plot_size in all related bookings
                 Booking::where('plot_id', $plot->id)
+                    ->where('project_id', $selectedProjectId)
                     ->where('cancel_status', '0')
                     ->update(['plot_size' => $validatedData['plot_size_update']]);
 
@@ -272,7 +278,8 @@ class PlotController extends Controller
     public function destroy(Request $request)
     {
         // Find the plot by ID where sold is not 1
-        $plot = Plot::where('id', $request->id)->where('sold', '!=', 1)->first();
+        $plot = Plot::where('id', $request->id)->where('project_id', getSelectedTown())
+            ->where('sold', '!=', 1)->first();
 
         // Check if the plot exists and is not sold
         if (!$plot) {
@@ -298,7 +305,8 @@ class PlotController extends Controller
     public function unHold(Request $request)
     {
         // Find the plot by ID where sold is not 1
-        $plot = HoldPlot::where('plot_id', $request->id)->first();
+        $plot = HoldPlot::where('plot_id', $request->id)
+            ->whereHas('plot', fn ($query) => $query->where('project_id', getSelectedTown()))->first();
 
         // Check if the plot exists and is not sold
         if (!$plot) {

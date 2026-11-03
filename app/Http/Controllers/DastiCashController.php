@@ -39,14 +39,16 @@ class DastiCashController extends Controller
     // Show edit form
     public function edit($id)
     {
-        $record = Dasticash::findOrFail($id);
+        $record = Dasticash::query()->whereKey($id)
+            ->where('project_id', getSelectedTown())->firstOrFail();
         return view('dasticash.edit', compact('record'));
     }
 
     // Update record
     public function update(Request $request, $id)
     {
-        $record = Dasticash::findOrFail($id);
+        $record = Dasticash::query()->whereKey($id)
+            ->where('project_id', getSelectedTown())->firstOrFail();
 
         $validator = \Validator::make($request->all(), [
             'name' => 'required|string|max:255',

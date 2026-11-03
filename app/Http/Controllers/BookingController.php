@@ -2163,20 +2163,47 @@ class BookingController extends Controller
     }
     public function updateCashIn(Request $request, $id)
     {
-        // A received payment may already own posted ledger legs. Updating the
-        // source and those legs in place can silently reassign accounting
-        // history. Corrections must use reversal plus a new receipt.
-        if ($request->expectsJson() || $request->ajax()) {
-            return response()->json([
-                'status' => 'error',
-                'error_key' => 'posted_receipt_immutable',
-                'message' => 'Posted receipts cannot be overwritten. Reverse and repost the receipt.',
-            ], 422);
-        }
-
-        return redirect()->back()->withErrors([
-            'msg' => 'Posted receipts cannot be overwritten. Reverse and repost the receipt.',
+        $validated = $request->validate([
+            'reference' => ['required', 'string', 'max:200'], 'date' => ['required', 'date_format:Y-m-d'],
+            'amount_out' => ['required', 'regex:/^\d[\d,]*(?:\.\d{1,2})?$/D'],
+            'description' => ['nullable', 'string', 'max:255'], 'payment_type' => ['required', 'in:1,2,3'],
+            't_number' => ['required_if:payment_type,2,3', 'nullable', 'string', 'max:255'],
+            'bank_id' => ['required_if:payment_type,2,3', 'nullable', 'integer'],
+            'passing_date' => ['required_if:payment_type,2,3', 'nullable', 'date_format:Y-m-d'],
         ]);
+        $projectId = (int) getSelectedTown();
+        abort_if($projectId < 1, 403, 'Select a project.');
+        try {
+            $source = CustomerLedger::query()->whereKey((int) $id)->where('project_id', $projectId)
+                ->whereIn('transaction_type', ['CR', 'PPR'])->firstOrFail();
+            $oldLedger = Ledger::query()->where('customer_ledger_id', $source->id)
+                ->where('type', $source->transaction_type)->where('is_active', 1)->firstOrFail();
+            $cash = (string) $validated['payment_type'] === '1';
+            $result = app(\App\Services\Finance\LegacyCashVoucherCorrection::class)->correct(
+                $projectId, (int) $source->id, (int) $oldLedger->project_head_subheads_id,
+                [
+                    'reference' => $validated['reference'].'-CORR-'.now()->format('YmdHisu'),
+                    'date' => $validated['date'], 'description' => $validated['description'] ?? '',
+                    'amount_in' => str_replace(',', '', $validated['amount_out']), 'amount_out' => 0,
+                    'payment_type' => $validated['payment_type'], 't_number' => $cash ? null : $validated['t_number'],
+                    'bank_id' => $cash ? null : $validated['bank_id'], 'passing_date' => $cash ? null : $validated['passing_date'],
+                    'passing_status' => 0,
+                ], (int) Auth::id()
+            );
+            if ($source->bookingVoucher) {
+                $source->bookingVoucher->update([
+                    'customer_ledger_id' => $result['source']->id, 'ledger_id' => $result['ledger']->id,
+                    'voucher_number' => $result['source']->type_id, 'slip_reference' => $result['source']->reference,
+                    'amount' => $result['source']->amount_in, 'receipt_date' => $result['source']->date,
+                    'description' => $result['source']->description, 'payment_type' => $result['source']->payment_type,
+                    'bank_id' => $result['source']->bank_id, 't_number' => $result['source']->t_number,
+                    'passing_date' => $result['source']->passing_date, 'update_by' => Auth::id(),
+                ]);
+            }
+        } catch (\DomainException $e) {
+            return back()->withErrors(['msg' => 'Receipt correction rejected to protect accounting history.'])->withInput();
+        }
+        return back()->with('success', 'Receipt corrected; original posting and reversal preserved.');
 
         /* Legacy in-place mutation is intentionally unreachable. */
         $validator = Validator::make($request->all(), [

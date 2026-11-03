@@ -769,6 +769,7 @@ class VoucherController extends Controller
             return [
                 'date' => $i->date,
                 'voucher_number' => $i->type . '-' . $i->voucher_number,
+                'voucher_number_raw' => (int) $i->voucher_number,
                 'project' => optional($i->projectHeadSubhead->project)->project ?? '',
                 'head' => optional($i->projectHeadSubhead->headAccounting)->name ?? '',
                 'subhead' => trim(
@@ -787,6 +788,8 @@ class VoucherController extends Controller
                 'customers' => $customers, // List of customers + head/subhead
                 'id' => $i->id,
                 'type' => $i->type,
+                'editable' => in_array((string) $i->type, ['CR', 'CP'], true)
+                    && $i->customer_ledger_id !== null,
             ];
         });
 
@@ -1267,6 +1270,7 @@ class VoucherController extends Controller
             return [
                 'date' => $i->date,
                 'voucher_number' => $i->type . '-' . $i->voucher_number,
+                'voucher_number_raw' => (int) $i->voucher_number,
                 'project' => $i->projectHeadSubhead->project->project ?? '',
                 'head' => $i->projectHeadSubhead->headAccounting->name ?? '',
                 'subhead' => $i->projectHeadSubhead->subheadAccounting->name ?? '',
@@ -1278,6 +1282,8 @@ class VoucherController extends Controller
                 'new_values' => json_decode($p?->new_values, true) ?? [],
                 'id' => $i->id,
                 'type' => $i->type,
+                'editable' => in_array((string) $i->type, ['CR', 'CP'], true)
+                    && $i->customer_ledger_id !== null,
             ];
         });
 

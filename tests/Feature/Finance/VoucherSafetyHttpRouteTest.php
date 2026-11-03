@@ -15,9 +15,6 @@ class VoucherSafetyHttpRouteTest extends TestCase
     {
         $routes = [
             ['POST', 'commision.voucher.store', []],
-            ['PUT', 'commision.voucher.update', ['id' => 41]],
-            ['DELETE', 'commision.voucher.delete', ['id' => 41]],
-            ['DELETE', 'journal.voucher.delete', ['id' => 41]],
         ];
 
         // Isolate controller behavior at the real registered URL. No database needed.

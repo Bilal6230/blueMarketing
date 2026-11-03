@@ -212,29 +212,49 @@ class CommissionVoucherController extends Controller
 
     public function destroy($id)
     {
-        abort_unless(
-            in_array(config('app.env'), ['local', 'testing'], true)
-                && config('finance.v2_pilot_api_enabled')
-                && config('finance.v2_pilot_write_enabled'),
-            409, 'Commission voucher deletion is temporarily disabled to protect accounting history until reversal posting is implemented.'
-        );
-        \App\Services\Finance\V2IsolatedConnectionGuard::assertAllowed();
         $projectId = (int) getSelectedTown();
         abort_if($projectId < 1, 403, 'Select a project.');
-        \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
-        $request = request();
-        $data = $request->validate([
-            'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
-            'effective_date' => ['required', 'date_format:Y-m-d'],
-            'reason' => ['required', 'string', 'min:1', 'max:200'],
-        ]);
-        try {
-            (new \App\Services\Finance\V2VoucherLifecycleService())->reverse(
-                $projectId, 'commission', (int) $id, $data['request_key'],
-                $data['effective_date'], $data['reason'], (int) Auth::id()
-            );
-        } catch (\DomainException $exception) {
-            abort(409, 'Commission voucher reversal rejected to protect accounting history.');
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+            \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+            $data = request()->validate([
+                'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
+                'effective_date' => ['required', 'date_format:Y-m-d'],
+                'reason' => ['required', 'string', 'min:1', 'max:200'],
+            ]);
+            try {
+                (new \App\Services\Finance\V2VoucherLifecycleService())->reverse(
+                    $projectId, 'commission', (int) $id, $data['request_key'],
+                    $data['effective_date'], $data['reason'], (int) Auth::id()
+                );
+            } catch (\DomainException $exception) {
+                abort(409, 'Commission voucher reversal rejected to protect accounting history.');
+            }
+        } else {
+            $data = request()->validate([
+                'effective_date' => ['nullable', 'date_format:Y-m-d'],
+                'reason' => ['nullable', 'string', 'max:200'],
+            ]);
+            DB::transaction(function () use ($id, $projectId, $data): void {
+                $voucher = CommisionVoucher::whereKey((int) $id)->where('project_id', $projectId)
+                    ->lockForUpdate()->firstOrFail();
+                $ledgers = Ledger::query()->withoutGlobalScopes()->where('type', 'CV')
+                    ->where('type_id', $voucher->id)->where('is_active', 1)
+                    ->whereIn('project_head_subheads_id', ProjectHeadSubhead::where('project_id', $projectId)->select('id'))
+                    ->lockForUpdate()->get();
+                abort_if($ledgers->isEmpty(), 409, 'CV ledger entries are missing; reversal stopped.');
+                $date = $data['effective_date'] ?? now()->toDateString();
+                foreach ($ledgers as $old) {
+                    Ledger::create([
+                        'voucher_number' => $voucher->voucher_number, 'type' => 'CV', 'type_id' => $voucher->id,
+                        'project_head_subheads_id' => $old->project_head_subheads_id,
+                        'reference' => $voucher->reference, 'amount_in' => $old->amount_out,
+                        'amount_out' => $old->amount_in, 'date' => $date, 'is_active' => 1, 'status' => '0',
+                        'create_by' => Auth::id(), 'detail' => 'Voucher reversal: '.($data['reason'] ?? $old->detail),
+                    ]);
+                }
+                CommisionVoucherDetail::where('commision_voucher_id', $voucher->id)->get()->each->delete();
+                $voucher->delete();
+            });
         }
         return redirect()->route('commision.voucher.index')
             ->with('success', 'Commission voucher reversed; original accounting history preserved.');
@@ -262,13 +282,6 @@ class CommissionVoucherController extends Controller
 
     public function update(Request $request, $id)
     {
-        abort_unless(
-            in_array(config('app.env'), ['local', 'testing'], true)
-                && config('finance.v2_pilot_api_enabled')
-                && config('finance.v2_pilot_write_enabled'),
-            409, 'Commission voucher updates are temporarily disabled to protect accounting history until reversal posting is implemented.'
-        );
-        \App\Services\Finance\V2IsolatedConnectionGuard::assertAllowed();
         $data = $request->validate([
             'reference' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
@@ -294,11 +307,10 @@ class CommissionVoucherController extends Controller
         }
         $projectId = (int) getSelectedTown();
         abort_if($projectId < 1, 403, 'Select a project.');
-        \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
         $accounts = ProjectHeadSubhead::query()->where('project_id', $projectId)
             ->whereIn('id', $data['sub_accounts'])
             ->get(['id', 'head_accounting_id'])->keyBy('id');
-        $lines = [];
+        $lines = []; $totalDebitCents = 0; $totalCreditCents = 0;
         foreach ($keys as $index) {
             $sub = (int) $data['sub_accounts'][$index];
             if (!$accounts->has($sub)
@@ -307,24 +319,101 @@ class CommissionVoucherController extends Controller
                     'sub_accounts' => 'Account must match the selected project and head.',
                 ]);
             }
+            $debitCents = $this->moneyToCents((string) $data['debit'][$index]);
+            $creditCents = $this->moneyToCents((string) $data['credit'][$index]);
+            if (($debitCents === 0) === ($creditCents === 0)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'debit' => 'Each commission row must contain either debit or credit, but not both.',
+                ]);
+            }
+            $totalDebitCents += $debitCents; $totalCreditCents += $creditCents;
             $lines[] = [
                 'account_id' => $sub,
-                'debit' => (string) $data['debit'][$index],
-                'credit' => (string) $data['credit'][$index],
-                'description' => $data['line_description'][$index] ?? null,
+                'debit' => $this->centsToMoney($debitCents),
+                'credit' => $this->centsToMoney($creditCents),
+                'description' => $data['line_description'][$index] ?? '',
             ];
         }
-        try {
-            (new \App\Services\Finance\V2CommissionDraftWorkflow())
-                ->updateDraft($projectId, (int) $id, $data['date'], $lines,
-                    array_intersect_key($data, array_flip(['reference', 'description'])));
-        } catch (\DomainException $e) {
+        if ($totalDebitCents <= 0 || $totalDebitCents !== $totalCreditCents) {
             throw \Illuminate\Validation\ValidationException::withMessages([
-                'voucher' => 'Commission draft update rejected: ' . $e->getMessage(),
+                'debit' => 'Total debit and credit must be equal and greater than zero.',
             ]);
         }
+
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+            \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+            try {
+                (new \App\Services\Finance\V2CommissionDraftWorkflow())
+                    ->updateDraft($projectId, (int) $id, $data['date'], $lines,
+                        array_intersect_key($data, array_flip(['reference', 'description'])));
+            } catch (\DomainException $e) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'voucher' => 'Commission draft update rejected: ' . $e->getMessage(),
+                ]);
+            }
+        } else {
+            DB::transaction(function () use ($id, $projectId, $data, $lines, $totalDebitCents, $totalCreditCents): void {
+                $voucher = CommisionVoucher::whereKey((int) $id)->where('project_id', $projectId)
+                    ->lockForUpdate()->firstOrFail();
+                $oldDetails = CommisionVoucherDetail::where('commision_voucher_id', $voucher->id)
+                    ->lockForUpdate()->get();
+                $oldLedgers = Ledger::query()->withoutGlobalScopes()->where('type', 'CV')
+                    ->where('type_id', $voucher->id)->where('is_active', 1)
+                    ->whereIn('project_head_subheads_id', ProjectHeadSubhead::where('project_id', $projectId)->select('id'))
+                    ->lockForUpdate()->get();
+                abort_if($oldLedgers->isEmpty(), 409, 'CV ledger entries are missing; update stopped without changes.');
+                $typed = app(\App\Services\Finance\FinancePostingSchemaGate::class)->mode() === 'typed';
+
+                foreach ($oldLedgers as $old) {
+                    $reversal = Ledger::create([
+                        'voucher_number' => $voucher->voucher_number, 'type' => 'CV', 'type_id' => $voucher->id,
+                        'project_head_subheads_id' => $old->project_head_subheads_id,
+                        'reference' => $voucher->reference, 'amount_in' => $old->amount_out,
+                        'amount_out' => $old->amount_in,
+                        'detail' => 'Correction reversal: '.($old->detail ?: $voucher->description),
+                        'create_by' => Auth::id(), 'is_active' => 1, 'status' => '0', 'date' => $data['date'],
+                    ]);
+                    if ($typed) app(\App\Services\Finance\LedgerSourceAttributionWriter::class)
+                        ->recordNewPosting((int) $reversal->id, $projectId, 'commission_voucher', (int) $voucher->id);
+                }
+
+                foreach ($oldDetails as $detail) $detail->delete();
+                $voucher->update([
+                    'reference' => $data['reference'] ?? null, 'description' => $data['description'] ?? null,
+                    'date' => $data['date'], 'total_debit' => $this->centsToMoney($totalDebitCents),
+                    'total_credit' => $this->centsToMoney($totalCreditCents), 'updated_by' => Auth::id(),
+                ]);
+                foreach ($lines as $line) {
+                    CommisionVoucherDetail::create([
+                        'commision_voucher_id' => $voucher->id, 'account_id' => $line['account_id'],
+                        'debit' => $line['debit'], 'credit' => $line['credit'],
+                        'description' => $line['description'],
+                    ]);
+                    $ledger = Ledger::create([
+                        'voucher_number' => $voucher->voucher_number, 'type' => 'CV', 'type_id' => $voucher->id,
+                        'project_head_subheads_id' => $line['account_id'], 'reference' => $data['reference'] ?? null,
+                        'amount_in' => $line['debit'], 'amount_out' => $line['credit'],
+                        'detail' => $line['description'], 'create_by' => Auth::id(), 'is_active' => 1,
+                        'status' => '0', 'date' => $data['date'],
+                    ]);
+                    if ($typed) app(\App\Services\Finance\LedgerSourceAttributionWriter::class)
+                        ->recordNewPosting((int) $ledger->id, $projectId, 'commission_voucher', (int) $voucher->id);
+                }
+            });
+        }
         return redirect()->route('commision.voucher.edit', ['id' => $id])
-            ->with('success', 'Commission draft updated.');
+            ->with('success', 'Commission voucher corrected successfully; previous posting history was preserved.');
+    }
+
+    private function moneyToCents(string $value): int
+    {
+        [$whole, $decimal] = array_pad(explode('.', $value, 2), 2, '');
+        return ((int) $whole * 100) + (int) str_pad($decimal, 2, '0');
+    }
+
+    private function centsToMoney(int $cents): string
+    {
+        return intdiv($cents, 100).'.'.str_pad((string) ($cents % 100), 2, '0', STR_PAD_LEFT);
     }
 
     public function print($id)

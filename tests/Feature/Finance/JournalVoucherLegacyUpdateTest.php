@@ -58,4 +58,16 @@ class JournalVoucherLegacyUpdateTest extends TestCase
         $this->assertSame(2, DB::table('journal_voucher_details')->whereNull('deleted_at')->count());
         $this->assertDatabaseHas('journal_vouchers',['id'=>7,'total_debit'=>100,'total_credit'=>100,'description'=>'Old']);
     }
+
+    public function test_delete_soft_deletes_voucher_and_appends_exact_reversal(): void
+    {
+        $this->withUnencryptedCookie('selected_action','1')->delete(route('journal.voucher.delete',7), [
+            'effective_date'=>'2026-11-03','reason'=>'Duplicate voucher',
+        ])->assertRedirect(route('journal.voucher.index'));
+        $this->assertDatabaseHas('journal_vouchers',['id'=>7]);
+        $this->assertNotNull(DB::table('journal_vouchers')->where('id',7)->value('deleted_at'));
+        $this->assertSame(4, DB::table('ledgers')->where('type','JV')->where('type_id',7)->count());
+        $this->assertEquals(0.0, (float) DB::table('ledgers')->where('type','JV')->where('type_id',7)
+            ->selectRaw('SUM(amount_in-amount_out) balance')->value('balance'));
+    }
 }
