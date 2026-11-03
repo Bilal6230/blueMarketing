@@ -71,6 +71,8 @@ return [
 
     'timezone' => 'Asia/Karachi',
 
+    'attendance_start_time' => env('ATTENDANCE_START_TIME', '09:00:00'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration

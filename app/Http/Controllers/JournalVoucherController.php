@@ -633,15 +633,10 @@ class JournalVoucherController extends Controller
 
     public function update(Request $request, $id)
     {
-        abort_unless(
-            in_array(config('app.env'), ['local', 'testing'], true)
-                && config('finance.v2_pilot_api_enabled')
-                && config('finance.v2_pilot_write_enabled'),
-            409, 'This voucher action is temporarily disabled to protect accounting history.'
-        );
-        \App\Services\Finance\V2IsolatedConnectionGuard::assertAllowed();
         $data = $request->validate([
             'date' => ['required', 'date_format:Y-m-d'],
+            'reference' => ['nullable', 'string', 'max:255'],
+            'description' => ['required', 'string', 'max:2000'],
             'accounts' => ['required', 'array', 'min:2', 'max:100'],
             'accounts.*' => ['required', 'integer', 'min:1'],
             'sub_accounts' => ['required', 'array', 'min:2', 'max:100'],
@@ -663,11 +658,10 @@ class JournalVoucherController extends Controller
         }
         $projectId = (int) getSelectedTown();
         abort_if($projectId < 1, 403, 'Select a project.');
-        \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
         $accounts = ProjectHeadSubhead::where('project_id', $projectId)
             ->whereIn('id', $data['sub_accounts'])
             ->get(['id', 'head_accounting_id'])->keyBy('id');
-        $lines = [];
+        $lines = []; $totalDebitCents = 0; $totalCreditCents = 0;
         foreach ($keys as $index) {
             $sub = (int) $data['sub_accounts'][$index];
             if (!$accounts->has($sub)
@@ -676,21 +670,105 @@ class JournalVoucherController extends Controller
                     'sub_accounts' => 'Journal account/head mismatch or foreign project.',
                 ]);
             }
+            $debitCents = $this->moneyToCents((string) $data['debit'][$index]);
+            $creditCents = $this->moneyToCents((string) $data['credit'][$index]);
+            if (($debitCents === 0) === ($creditCents === 0)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'debit' => 'Each journal row must contain either debit or credit, but not both.',
+                ]);
+            }
+            $totalDebitCents += $debitCents; $totalCreditCents += $creditCents;
             $lines[] = [
                 'account_id' => $sub,
-                'debit' => (string) $data['debit'][$index],
-                'credit' => (string) $data['credit'][$index],
+                'debit' => $this->centsToMoney($debitCents),
+                'credit' => $this->centsToMoney($creditCents),
                 'description' => $data['line_description'][$index] ?? '',
             ];
         }
-        try {
-            (new \App\Services\Finance\V2JournalDraftWorkflow())
-                ->updateUnposted($projectId, (int) $id, $data['date'], $lines);
-        } catch (\DomainException $exception) {
-            abort(409, 'Journal voucher cannot be edited after posting or legacy ledger attribution.');
+        if ($totalDebitCents <= 0 || $totalDebitCents !== $totalCreditCents) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'debit' => 'Total debit and credit must be equal and greater than zero.',
+            ]);
+        }
+
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+            \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+            try {
+                (new \App\Services\Finance\V2JournalDraftWorkflow())
+                    ->updateUnposted($projectId, (int) $id, $data['date'], $lines);
+            } catch (\DomainException $exception) {
+                abort(409, 'Journal voucher cannot be edited after posting or legacy ledger attribution.');
+            }
+        } else {
+            DB::transaction(function () use ($id, $projectId, $data, $lines, $totalDebitCents, $totalCreditCents): void {
+                $voucher = JournalVoucher::whereKey((int) $id)->where('project_id', $projectId)
+                    ->where(function ($query) { $query->where('type', 'JV')->orWhereNull('type'); })
+                    ->lockForUpdate()->firstOrFail();
+                $oldDetails = JournalVoucherDetail::where('journal_voucher_id', $voucher->id)
+                    ->lockForUpdate()->get();
+                $oldLedgers = Ledger::query()->withoutGlobalScopes()->where('type', 'JV')
+                    ->where('type_id', $voucher->id)->where('is_active', 1)
+                    ->whereIn('project_head_subheads_id', ProjectHeadSubhead::where('project_id', $projectId)->select('id'))
+                    ->lockForUpdate()->get();
+                abort_if($oldLedgers->isEmpty(), 409, 'JV ledger entries are missing; update stopped without changes.');
+                $typed = app(\App\Services\Finance\FinancePostingSchemaGate::class)->mode() === 'typed';
+
+                // Append exact opposite legs first. The original posted history is
+                // retained; reports see original + reversal + corrected posting.
+                foreach ($oldLedgers as $old) {
+                    $reversal = Ledger::create([
+                        'voucher_number' => $voucher->voucher_number, 'type' => 'JV', 'type_id' => $voucher->id,
+                        'project_head_subheads_id' => $old->project_head_subheads_id,
+                        'reference' => $voucher->reference, 'amount_in' => $old->amount_out,
+                        'amount_out' => $old->amount_in,
+                        'detail' => 'Correction reversal: '.($old->detail ?: $voucher->description),
+                        'create_by' => Auth::id(), 'is_active' => 1, 'status' => '0', 'date' => $data['date'],
+                    ]);
+                    if ($typed) app(\App\Services\Finance\LedgerSourceAttributionWriter::class)
+                        ->recordNewPosting((int) $reversal->id, $projectId, 'journal_voucher', (int) $voucher->id);
+                }
+
+                foreach ($oldDetails as $detail) $detail->delete();
+                $voucher->update([
+                    'reference' => $data['reference'] ?? null, 'description' => $data['description'],
+                    'date' => $data['date'], 'total_debit' => $this->centsToMoney($totalDebitCents),
+                    'total_credit' => $this->centsToMoney($totalCreditCents), 'updated_by' => Auth::id(),
+                ]);
+                foreach ($lines as $line) {
+                    $detail = JournalVoucherDetail::create([
+                        'journal_voucher_id' => $voucher->id, 'account_id' => $line['account_id'],
+                        'debit' => $line['debit'], 'credit' => $line['credit'],
+                        'description' => $line['description'], 'created_by' => Auth::id(),
+                    ]);
+                    $attributes = [
+                        'voucher_number' => $voucher->voucher_number, 'type' => 'JV', 'type_id' => $voucher->id,
+                        'project_head_subheads_id' => $line['account_id'], 'reference' => $data['reference'] ?? null,
+                        'amount_in' => $line['debit'], 'amount_out' => $line['credit'],
+                        'detail' => $line['description'], 'create_by' => Auth::id(), 'is_active' => 1,
+                        'status' => '0', 'date' => $data['date'],
+                    ];
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('ledgers', 'journal_voucher_detail_id')) {
+                        $attributes['journal_voucher_detail_id'] = $detail->id;
+                    }
+                    $ledger = Ledger::create($attributes);
+                    if ($typed) app(\App\Services\Finance\LedgerSourceAttributionWriter::class)
+                        ->recordNewPosting((int) $ledger->id, $projectId, 'journal_voucher', (int) $voucher->id);
+                }
+            });
         }
         return redirect()->route('journal.voucher.edit', ['id' => $id])
-            ->with('success', 'Unposted journal draft updated.');
+            ->with('success', 'Journal voucher corrected successfully; previous posting history was preserved.');
+    }
+
+    private function moneyToCents(string $value): int
+    {
+        [$whole, $decimal] = array_pad(explode('.', $value, 2), 2, '');
+        return ((int) $whole * 100) + (int) str_pad($decimal, 2, '0');
+    }
+
+    private function centsToMoney(int $cents): string
+    {
+        return intdiv($cents, 100).'.'.str_pad((string) ($cents % 100), 2, '0', STR_PAD_LEFT);
     }
 
 

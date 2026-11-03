@@ -16,6 +16,8 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Repository\Lead\LeadRepository as lead_repo;
 use Carbon\Carbon;
+use App\Services\Crm\FollowUpStatus;
+use App\Services\Dashboard\ModuleMetrics;
 use Termwind\Components\Raw;
 
 class DashboardController extends Controller
@@ -132,6 +134,24 @@ class DashboardController extends Controller
             $leadPeriodQuery->where('create_by', $create_by);
         }
         $lead_response['total_leads'] = $leadPeriodQuery->count();
+        $crmScope = \App\Models\Lead::query()->where('is_active', 1)
+            ->where('project_id', $selectedProjectId);
+        if ($create_by !== null) {
+            $crmScope->whereHas('users', fn ($q) => $q->where('users.id', $create_by));
+        }
+        $openFollowStatuses = FollowUpStatus::OPEN;
+        $x['completed_followups'] = Work::query()
+            ->whereBetween('created_at', [$from, $to])
+            ->whereHas('leads', function ($q) use ($selectedProjectId, $create_by) {
+                $q->where('is_active', 1)->where('project_id', $selectedProjectId);
+                if ($create_by !== null) {
+                    $q->whereHas('users', fn ($assigned) => $assigned->where('users.id', $create_by));
+                }
+            })->when($create_by !== null, fn ($q) => $q->where('user_id', $create_by))->count();
+        $x['today_followups'] = (clone $crmScope)->whereIn('follow_status', $openFollowStatuses)
+            ->whereDate('follow_up', Carbon::today())->count();
+        $x['pending_overdue_followups'] = (clone $crmScope)->whereIn('follow_status', $openFollowStatuses)
+            ->whereNotNull('follow_up')->whereDate('follow_up', '<=', $to->copy()->min(now())->toDateString())->count();
         $x['get_all_lead'] = $getalllead['total_leads'];
         $x['total_blance'] = $total_hand_balance;
         $x['handCashOut'] = $data->total_out;
@@ -140,6 +160,16 @@ class DashboardController extends Controller
         $x['bankOut'] = $Bankaccountdata->total_out;
         $x['dasticashData'] = $dasticash;
         $x['total_bank_account_data'] = $Bankaccountdata->balance;
+        $metrics = new ModuleMetrics();
+        $x['finance_metrics'] = $metrics->finance($selectedProjectId, (float) $total_hand_balance, (float) -($Bankaccountdata->balance ?? 0));
+        $x['plot_metrics'] = $metrics->plots($selectedProjectId);
+        $x['stock_metrics'] = $metrics->stock();
+        $x['labour_metrics'] = $metrics->labour($selectedProjectId);
+        $x['approval_metrics'] = $metrics->approvals($selectedProjectId);
+        $x['attendance_metrics'] = $metrics->attendance($selectedProjectId);
+        $x['payment_metrics'] = $metrics->paymentInstruments($selectedProjectId);
+        $x['recovery_monthly'] = $metrics->monthlyRecovery($selectedProjectId);
+        $x['task_metrics'] = $metrics->employeeTasks($selectedProjectId, in_array($power, ['superadmin','admin'], true) ? null : $post_by);
         $x['crm_projects'] = $power === 'superadmin'
             ? \App\Models\Project::query()->orderBy('project')->get(['id', 'project'])
             : \App\Models\Project::query()->whereKey($selectedProjectId)->get(['id', 'project']);
@@ -147,6 +177,9 @@ class DashboardController extends Controller
         if ($request->ajax() && $request->expectsJson()) {
             return response()->json([
                 'new_leads' => $x['today_leads'],
+                'completed_followups' => $x['completed_followups'],
+                'today_followups' => $x['today_followups'],
+                'pending_overdue_followups' => $x['pending_overdue_followups'],
                 'period' => $leadPeriod,
                 'from' => $x['lead_period_from'],
                 'to' => $x['lead_period_to'],
@@ -168,6 +201,9 @@ class DashboardController extends Controller
             'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
             'employee_id' => ['nullable', 'integer', 'min:1'],
             'project_id' => ['nullable', 'integer', 'min:1'],
+            'status' => ['nullable', 'in:all,new,completed,today,pending_overdue'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:10', 'max:50'],
         ]);
         $from = Carbon::parse($data['from'])->startOfDay();
         $to = Carbon::parse($data['to'])->endOfDay();
@@ -180,6 +216,10 @@ class DashboardController extends Controller
         $projectId = $isAdmin && isset($data['project_id']) ? (int) $data['project_id'] : $selectedProjectId;
         abort_unless(\App\Models\Project::query()->whereKey($projectId)->exists(), 404);
         $employeeId = $isAdmin ? ($data['employee_id'] ?? null) : $user->id;
+        $statusFilter = $data['status'] ?? 'all';
+        $page = (int) ($data['page'] ?? 1);
+        $perPage = (int) ($data['per_page'] ?? 20);
+        $openFollowStatuses = FollowUpStatus::OPEN;
         $scope = \App\Models\Lead::query()
             ->where('is_active', 1)
             ->where('project_id', $projectId);
@@ -188,27 +228,55 @@ class DashboardController extends Controller
         }
         $new = (clone $scope)->whereBetween('created_at', [$from, $to])->count();
         $cutoff = $to->copy()->min(now());
-        $due = (clone $scope)->whereDate('follow_up', $cutoff->toDateString())->count();
+        $due = (clone $scope)->whereIn('follow_status', $openFollowStatuses)
+            ->whereDate('follow_up', $cutoff->toDateString())->count();
         $overdue = (clone $scope)->whereNotNull('follow_up')
+            ->whereIn('follow_status', $openFollowStatuses)
             ->where('follow_up', '<', $cutoff->copy()->startOfDay())->count();
         // Current scheduled follow-up counts. These are current-state records,
         // not an event-sourced historical snapshot of earlier dates.
-        $todayDue = (clone $scope)->whereDate('follow_up', Carbon::today()->toDateString())->count();
+        $todayDue = (clone $scope)->whereIn('follow_status', $openFollowStatuses)
+            ->whereDate('follow_up', Carbon::today()->toDateString())->count();
         $pendingOverdue = (clone $scope)->whereNotNull('follow_up')
+            ->whereIn('follow_status', $openFollowStatuses)
             ->whereDate('follow_up', '<=', $cutoff->toDateString())->count();
         $logged = Work::query()->whereHas('leads', function ($q) use ($projectId, $employeeId) {
             $q->where('is_active', 1)->where('project_id', $projectId);
             if ($employeeId) {
                 $q->whereHas('users', fn ($assigned) => $assigned->where('users.id', $employeeId));
             }
-        })->whereBetween('created_at', [$from, $to])->count();
-        $rows = (clone $scope)->where(function ($query) use ($from, $to, $cutoff) {
-            $query->whereBetween('created_at', [$from, $to])
-                ->orWhereDate('follow_up', '<=', $cutoff->toDateString());
-        })->with(['project:id,project', 'users:id,name', 'comments' => function ($q) {
+        })->when($employeeId, fn ($q) => $q->where('user_id', $employeeId))
+            ->whereBetween('created_at', [$from, $to])->count();
+        $rowQuery = clone $scope;
+        if ($statusFilter === 'new') {
+            $rowQuery->whereBetween('created_at', [$from, $to]);
+        } elseif ($statusFilter === 'completed') {
+            $rowQuery->whereHas('comments', function ($q) use ($from, $to, $employeeId) {
+                $q->whereBetween('created_at', [$from, $to]);
+                if ($employeeId) $q->where('user_id', $employeeId);
+            });
+        } elseif ($statusFilter === 'today') {
+            $rowQuery->whereIn('follow_status', $openFollowStatuses)->whereDate('follow_up', Carbon::today());
+        } elseif ($statusFilter === 'pending_overdue') {
+            $rowQuery->whereIn('follow_status', $openFollowStatuses)->whereNotNull('follow_up')
+                ->whereDate('follow_up', '<=', $cutoff->toDateString());
+        } else {
+            $rowQuery->where(function ($query) use ($from, $to, $cutoff, $openFollowStatuses) {
+                $query->whereBetween('created_at', [$from, $to])
+                    ->orWhereHas('comments', fn ($work) => $work->whereBetween('created_at', [$from, $to]))
+                    ->orWhere(function ($pending) use ($cutoff, $openFollowStatuses) {
+                        $pending->whereIn('follow_status', $openFollowStatuses)
+                            ->whereDate('follow_up', '<=', $cutoff->toDateString());
+                    });
+            });
+        }
+        $rowTotal = (clone $rowQuery)->count();
+        $rows = $rowQuery->with(['project:id,project', 'users:id,name', 'comments' => function ($q) {
             $q->select('id', 'lead_id', 'comment', 'created_at', 'follow_up');
-        }])->latest('id')->limit(100)->get()->map(function ($lead) {
+        }])->latest('id')->forPage($page, $perPage)->get()->map(function ($lead) use ($openFollowStatuses) {
             $latest = $lead->comments->first();
+            $next = $lead->follow_up ? Carbon::parse($lead->follow_up) : null;
+            $status = FollowUpStatus::label((int) $lead->follow_status, $next);
             return [
                 'id' => $lead->id,
                 'customer' => trim(($lead->first_name ?? '') . ' ' . ($lead->last_name ?? '')),
@@ -218,6 +286,7 @@ class DashboardController extends Controller
                 'created_at' => optional($lead->created_at)->toDateString(),
                 'last_activity' => optional($latest?->created_at)->toDateString(),
                 'next_follow_up' => $lead->follow_up,
+                'status' => $status,
                 'remarks' => $latest?->comment,
             ];
         });
@@ -235,17 +304,19 @@ class DashboardController extends Controller
                 'employee' => $employee->name,
                 'assigned_leads' => (clone $leadQuery)->count(),
                 'new_leads' => (clone $leadQuery)->whereBetween('created_at', [$from, $to])->count(),
-                'logged_activities' => $workQuery->whereBetween('created_at', [$from, $to])->count(),
-                'due_on_period_end' => (clone $leadQuery)->whereDate('follow_up', $cutoff->toDateString())->count(),
-                'overdue_as_of_period_end' => (clone $leadQuery)->whereNotNull('follow_up')->where('follow_up', '<', $cutoff->copy()->startOfDay())->count(),
+                'completed_followups' => (clone $workQuery)->whereBetween('created_at', [$from, $to])->count(),
+                'due_on_period_end' => (clone $leadQuery)->whereIn('follow_status', FollowUpStatus::OPEN)->whereDate('follow_up', $cutoff->toDateString())->count(),
+                'overdue_as_of_period_end' => (clone $leadQuery)->whereIn('follow_status', FollowUpStatus::OPEN)->whereNotNull('follow_up')->where('follow_up', '<', $cutoff->copy()->startOfDay())->count(),
             ];
         });
         return response()->json([
             'from' => $from->toDateString(), 'to' => $to->toDateString(),
-            'new_leads' => $new, 'logged_activities' => $logged,
+            'new_leads' => $new, 'completed_followups' => $logged, 'logged_activities' => $logged,
             'due_on_period_end' => $due, 'overdue_as_of_period_end' => $overdue,
             'today_due' => $todayDue, 'pending_overdue_combined' => $pendingOverdue,
-            'rows' => $rows, 'employee_summary' => $employeeSummary, 'limited' => true,
+            'rows' => $rows, 'employee_summary' => $employeeSummary,
+            'pagination' => ['page' => $page, 'per_page' => $perPage, 'total' => $rowTotal,
+                'last_page' => max(1, (int) ceil($rowTotal / $perPage))],
         ]);
     }
 
@@ -372,50 +443,50 @@ class DashboardController extends Controller
 
     public function todayLeadWorkReport(Request $request)
     {
-        $create_by = null;
-        $selectedProjectId = getSelectedTown();
-        $post_by = Auth::user()->id;
-        $power = Auth::user()->roles[0]->name;
-
-        // Get user_id from the request query parameter (if it exists)
-        $userId = $request->get('user_id', null);
-
-        // Apply the additional condition if the user is not a superadmin
-        if ($power !== 'superadmin') {
-            $userId = $post_by; // Restrict to the current user's data
+        $data = $request->validate(['mode'=>['nullable','in:today,completed,pending_overdue'],
+            'user_id'=>['nullable','integer','min:1'], 'date_range'=>['nullable','string','max:30']]);
+        $projectId=(int)getSelectedTown(); $mode=$data['mode']??'today';
+        $fromDate=Carbon::today()->startOfDay(); $toDate=Carbon::today()->endOfDay();
+        if (!empty($data['date_range'])) {
+            $dates=explode(' to ',$data['date_range']); abort_unless(count($dates)===2,422,'Invalid date range.');
+            try { $fromDate=Carbon::createFromFormat('Y-m-d',trim($dates[0]))->startOfDay(); $toDate=Carbon::createFromFormat('Y-m-d',trim($dates[1]))->endOfDay(); }
+            catch (\Throwable) { abort(422,'Invalid date range.'); }
+            abort_if($fromDate->gt($toDate),422,'The From date must be before the To date.');
         }
-
-        // Get date range from the request
-        $dateRange = $request->input('date_range', null);
-        $fromDate = Carbon::today(); // Default to today if no range is provided
-        $toDate = Carbon::today();
-
-        if ($dateRange) {
-            $dates = explode(' to ', $dateRange);
-            $fromDate = isset($dates[0]) ? Carbon::parse($dates[0]) : $fromDate;
-            $toDate = isset($dates[1]) ? Carbon::parse($dates[1]) : $toDate;
-        }
-
-        // Fetch the work report data, optionally filtering by user_id and date range
-        $todayWorkReport = Work::with(['leads', 'user'])
-            ->whereBetween('created_at', [$fromDate->startOfDay(), $toDate->endOfDay()]) // Filter by date range
-            ->when($userId, function ($query) use ($userId) {
-                $query->where('user_id', $userId); // Filter by user_id if provided
-            })
-            ->get()
-            ->groupBy(['user_id', 'lead_id']); // Group by user_id and lead_id
-
-        // Fetch all users with their works count for the given date range
-        $allUsers = User::withCount([
-            'works' => function ($query) use ($fromDate, $toDate) {
-                $query->whereBetween('created_at', [$fromDate->startOfDay(), $toDate->endOfDay()]);
+        $toDate=$toDate->min(now()->endOfDay());
+        abort_if($fromDate->gt($toDate),422,'Future follow-ups are not available in this report.');
+        $requested=isset($data['user_id'])?(int)$data['user_id']:null;
+        $userId=Auth::user()->hasRole('superadmin')?$requested:(int)Auth::id();
+        if ($userId) abort_unless(User::whereKey($userId)->where('project_id',$projectId)->exists(),404);
+        $users=User::where('project_id',$projectId)->where('status_id',1)->when($userId,fn($q)=>$q->whereKey($userId))->orderBy('name')->get(['id','name']);
+        $rowsByUser=collect(); $cards=collect();
+        foreach ($users as $user) {
+            if ($mode==='completed') {
+                $rows=Work::with('leads:id,first_name,last_name,phone_number,mobile_number,project_id')->where('user_id',$user->id)
+                    ->whereBetween('created_at',[$fromDate,$toDate])->whereHas('leads',fn($q)=>$q->where('is_active',1)->where('project_id',$projectId))
+                    ->latest('created_at')->get()->map(fn($work)=>['lead_id'=>$work->lead_id,'name'=>trim(($work->leads?->first_name??'').' '.($work->leads?->last_name??''))?:'N/A',
+                        'mobile'=>$work->leads?->phone_number?:($work->leads?->mobile_number?:'N/A'),'comment'=>$work->comment?:'-','follow_up'=>optional($work->created_at)->format('Y-m-d H:i'),
+                        'status'=>\Setting::getCallStatus($work->call_status),'late_days'=>null]);
+            } else {
+                $leadQuery=\App\Models\Lead::with(['comments:id,lead_id,comment'])->where('is_active',1)->where('project_id',$projectId)
+                    ->whereHas('users',fn($q)=>$q->where('users.id',$user->id))->whereIn('follow_status',FollowUpStatus::OPEN)->whereNotNull('follow_up');
+                $mode==='today'
+                    ? $leadQuery->whereBetween('follow_up',[$fromDate,$toDate])
+                    : $leadQuery->whereDate('follow_up','<=',$toDate->toDateString());
+                $rows=$leadQuery->orderBy('follow_up')->get()->map(function($lead)use($mode){$follow=Carbon::parse($lead->follow_up);return ['lead_id'=>$lead->id,
+                    'name'=>trim(($lead->first_name??'').' '.($lead->last_name??''))?:'N/A','mobile'=>$lead->phone_number?:($lead->mobile_number?:'N/A'),
+                    'comment'=>$lead->comments->first()?->comment?:'-','follow_up'=>$follow->format('Y-m-d H:i'),'status'=>$follow->isBefore(Carbon::today())?'Overdue':'Pending',
+                    'late_days'=>$mode==='pending_overdue'?(int)max(0,$follow->copy()->startOfDay()->diffInDays(Carbon::today(),false)):null];});
             }
-        ])
-            ->having('works_count', '>', 0) // Only include users with works in the date range (count > 0)
-            ->get();
-
-        // Pass data to the view
-        return view('dashboard.today_lead_work_report', compact('todayWorkReport', 'allUsers'));
+            if($rows->isNotEmpty()){$cards->push(['id'=>$user->id,'name'=>$user->name,'count'=>$rows->count()]);$rowsByUser->put($user->id,['user'=>$user,'rows'=>$rows]);}
+        }
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('dashboard.partials.follow_up_user_tables', compact('mode', 'rowsByUser'))->render(),
+                'count' => $rowsByUser->sum(fn ($group) => count($group['rows'])),
+            ]);
+        }
+        return view('dashboard.today_lead_work_report',compact('mode','fromDate','toDate','cards','rowsByUser','projectId','userId'));
     }
 
 

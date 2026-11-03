@@ -40,12 +40,12 @@ class TrialBalanceReportTest extends TestCase
         $report = (new TrialBalanceReport())->build(9, '2026-09-01', '2026-09-30');
         $account = $report['tree'][1]['heads'][2]['subheads'][3]['accounts'][0];
         $this->assertSame('Ali Store', $account['name']);
-        $this->assertSame(8000, $account['amounts']['previous_debit']);
-        $this->assertSame(0, $account['amounts']['previous_credit']);
-        $this->assertSame(5000, $account['amounts']['period_debit']);
-        $this->assertSame(1000, $account['amounts']['period_credit']);
-        $this->assertSame(12000, $account['amounts']['closing_debit']);
-        $this->assertSame(0, $account['amounts']['closing_credit']);
+        $this->assertSame(0, $account['amounts']['previous_debit']);
+        $this->assertSame(8000, $account['amounts']['previous_credit']);
+        $this->assertSame(1000, $account['amounts']['period_debit']);
+        $this->assertSame(5000, $account['amounts']['period_credit']);
+        $this->assertSame(0, $account['amounts']['closing_debit']);
+        $this->assertSame(12000, $account['amounts']['closing_credit']);
         $hierarchy = (new TrialBalanceReport())->hierarchy((new TrialBalanceReport())->flatten($report['tree']));
         $this->assertSame('Current Assets', $hierarchy['types'][1]['heads'][2]['name']);
         $this->assertSame('Assets', $hierarchy['types'][1]['name']);

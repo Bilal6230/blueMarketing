@@ -540,6 +540,10 @@ class StockController extends Controller
      * ============================================================ */
     public function report(Request $request)
     {
+        if (!$request->ajax() && !$request->expectsJson()) {
+            return redirect()->route('stocks.index');
+        }
+
         $validator = Validator::make($request->all(), [
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],

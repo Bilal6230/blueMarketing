@@ -24,6 +24,8 @@
         <nav class="mt-2">
             <ul class="nav nav-pills nav-sidebar flex-column nav-child-indent" data-widget="treeview" role="menu"
                 data-accordion="false">
+                @include('admin.layouts.sidebar-menu-v2')
+                @if(false)
                 <li class="nav-item">
                     <a href="{{ route('dashboard') }}"
                         class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
@@ -647,11 +649,11 @@
                         </ul>
                     </li>
                 @endcanany
-
-
-
-
-
+                <li class="nav-item">
+                    <a href="{{ route('employee-tasks.index') }}" class="nav-link {{ request()->routeIs('employee-tasks.*') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-tasks"></i><p>Employee Tasks</p>
+                    </a>
+                </li>
 
                 <li class="nav-header"></li>
                 <li class="nav-item">
@@ -662,6 +664,7 @@
                     </a>
                 </li>
                 <li class="nav-header"></li>
+                @endif
             </ul>
         </nav>
         <!-- /.sidebar-menu -->

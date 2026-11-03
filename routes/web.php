@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DastiCashController;
+use App\Http\Controllers\EmployeeTaskController;
 use App\Http\Controllers\FileManagerController;
 use App\Http\Controllers\LabourController;
 use App\Http\Controllers\ModuleController;
@@ -40,6 +41,12 @@ Auth::routes([
 Route::middleware(['auth'])->get('/home', [DashboardController::class, 'index'])->name('home');
 
 Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(function () {
+    Route::get('employee-tasks', [EmployeeTaskController::class, 'index'])->name('employee-tasks.index');
+    Route::post('employee-tasks', [EmployeeTaskController::class, 'store'])->name('employee-tasks.store');
+    Route::put('employee-tasks/{employeeTask}', [EmployeeTaskController::class, 'update'])->name('employee-tasks.update');
+    Route::patch('employee-tasks/{employeeTask}/status', [EmployeeTaskController::class, 'status'])->name('employee-tasks.status');
+    Route::patch('employee-task-notifications/{notification}', [EmployeeTaskController::class, 'readNotification'])->name('employee-tasks.notifications.read');
+    Route::delete('employee-tasks/{employeeTask}', [EmployeeTaskController::class, 'destroy'])->name('employee-tasks.destroy');
     // Public website editor: same authentication and settings permission as the existing admin.
     Route::get('landing-page', [\App\Http\Controllers\LandingPageAdminController::class, 'index'])
         ->middleware('permission:read landing page')->name('landing-page.admin.index');

@@ -35,7 +35,7 @@
 .bm-dashboard-modern .content-header{padding:5px 0 2px}
 .bm-dashboard-modern .content-header h1{font-size:1.05rem}
 .bm-dashboard-modern .content>.container-fluid{display:flex;flex-direction:column;gap:10px}
-.bm-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;flex-shrink:0}
+.bm-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;flex-shrink:0}
 .bm-kpi{position:relative;overflow:hidden;display:block;background:#fff;color:#243852;border:1px solid #e5ebf3;border-radius:12px;padding:11px 13px;box-shadow:0 3px 12px #1b2f4b09;min-width:0;text-decoration:none!important}
 .bm-kpi:hover{color:#223755;box-shadow:0 7px 20px #162c4d18;transform:translateY(-1px)}
 .bm-kpi-icon{width:29px;height:29px;border-radius:8px;display:grid;place-items:center;margin-bottom:4px}
@@ -205,12 +205,15 @@
 .bm-cash-total{border-top:1px solid #e1e6f0;padding-top:10px;font-weight:750;grid-template-columns:1fr auto}
 .bm-dot{height:9px;width:9px;display:inline-block;border-radius:50%;flex-shrink:0}.bm-dot-hand{background:#0cae87}.bm-dot-bank{background:#198add}.bm-dot-total{background:#7353d8}
 .bm-finance-tooltip{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);background:#162b45;color:white;border-radius:6px;padding:7px 10px;white-space:nowrap;font-size:11px;z-index:7;pointer-events:none;box-shadow:0 6px 18px #0004}
-.bm-finance-tooltip[hidden]{display:none}.bm-cash-warning{font-size:10px;color:#a06119}
+.bm-finance-tooltip[hidden]{display:none}.bm-cash-warning{font-size:9px;color:#a06119;white-space:nowrap;grid-column:1/-1}
 @media(max-width:1100px){.bm-cash-donut{width:clamp(105px,12vw,160px)}.bm-finance .bm-finance-dual{gap:9px;padding:7px}.bm-cash-legend{min-width:125px}.bm-cash-detail{gap:4px;grid-template-columns:minmax(80px,1fr) auto}.bm-cash-detail small{display:none}}
 @media(max-width:650px){.bm-finance .bm-finance-dual{flex-wrap:wrap;overflow:visible}.bm-cash-donut{width:clamp(130px,37vw,180px)}.bm-cash-legend{width:100%;max-width:none}.bm-cash-detail small{display:block}}
 @media(prefers-reduced-motion:reduce){.bm-cash-donut{animation:none}}
 
 .bm-crm-open{align-self:flex-end;font-size:11px;font-weight:700;padding:3px 10px;margin-bottom:-5px}.bm-crm-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:8px 0 15px}.bm-crm-kpis>div{padding:12px;border:1px solid #dce6f1;border-radius:9px;background:#f8faff}.bm-crm-kpis strong{font-size:21px;display:block}.bm-crm-kpis span{font-size:11px}.bm-crm-table{max-height:48vh!important;overflow:auto}.bm-crm-table th{white-space:nowrap;position:sticky;top:0;background:#e9eff7}.bm-crm-table td{max-width:230px;overflow-wrap:anywhere}@media(max-width:600px){.bm-crm-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.bm-module-panel{min-height:180px}.bm-module-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;overflow:auto}.bm-module-metric{display:block;padding:10px;border:1px solid #e3eaf3;border-radius:9px;background:#f8faff;color:#263d5b;text-decoration:none!important;min-width:0}.bm-module-metric strong{display:block;font-size:16px;overflow-wrap:anywhere}.bm-module-metric span{font-size:10px;color:#71829a}.bm-module-metric:hover{border-color:#9cb9ed;color:#1f4f9a}@media(min-width:992px){.bm-dashboard-modern .content>.container-fluid{overflow-y:auto!important}.bm-dashboard-modern .bm-dashboard-grid{grid-template-rows:auto!important;flex:none}.bm-dashboard-modern .bm-panel{min-height:180px}}@media(max-width:600px){.bm-module-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.bm-finance-value{cursor:default;background:#f7faff}.bm-finance-value span{font-size:10px}.bm-finance-value strong{font-size:11px}.bm-recovery-chart{height:145px;display:flex;align-items:flex-end;gap:5px;padding:12px 10px 7px;overflow-x:auto;border-bottom:1px solid #edf1f6}.bm-recovery-bar-wrap{height:100%;min-width:43px;flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;text-decoration:none!important;color:#60708a}.bm-recovery-value{font-size:8px;margin-bottom:3px;color:#52637a}.bm-recovery-bar{display:block;width:min(25px,70%);min-height:2px;border-radius:4px 4px 0 0;background:linear-gradient(180deg,#43a5e3,#2386c7);transition:filter .15s}.bm-recovery-bar-wrap:hover .bm-recovery-bar{filter:brightness(.85)}.bm-recovery-bar-wrap small{font-size:8px;white-space:nowrap;margin-top:4px}@media(min-width:1100px){.bm-cash-legend{max-width:500px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px 8px}.bm-cash-detail{padding:3px}.bm-cash-total{grid-column:1/-1}.bm-finance .bm-finance-dual{justify-content:flex-start}.bm-finance-value strong{font-size:10px}}
+.bm-actions .bm-lead-period-filter{justify-content:flex-start;margin:8px 0 4px}.bm-actions .bm-crm-open{align-self:flex-start;margin:3px 0}.bm-punch-inline{display:flex;align-items:center;gap:8px;margin:7px 0 10px}.bm-punch-inline select{max-width:280px}.bm-punch-inline input{max-width:260px}.bm-punch-inline .alert{margin:0;padding:4px 8px}@media(max-width:650px){.bm-punch-inline{flex-direction:column;align-items:stretch}.bm-punch-inline select,.bm-punch-inline input{max-width:none}}
 
 /* Batch 11: one donut ring, lowest balance dark red, visible floating hover amount. */
 .bm-finance .bm-single-donut{width:100%;height:100%;border:0;padding:clamp(15px,1.45vw,23px);border-radius:50%;background:conic-gradient(var(--hand-color) 0 var(--hand-share),var(--bank-color) var(--hand-share) calc(var(--hand-share) + var(--bank-share)),#e2e9f1 0 100%);cursor:pointer}
@@ -248,6 +251,64 @@
 .bm-dashboard-modern .bm-finance .bm-single-donut{padding:clamp(22px,2vw,30px)!important}
 .bm-dashboard-modern .bm-finance .bm-cash-core{min-width:0;min-height:0}
 @media(max-width:650px){.bm-dashboard-modern .bm-finance .bm-single-donut{padding:clamp(18px,5vw,26px)!important}}
+/* Dashboard now contains multiple module sections: keep one visible page scrollbar. */
+@media(min-width:992px){html,body:has(.bm-dashboard-modern){height:auto!important;min-height:100%!important;overflow-y:auto!important}body:has(.bm-dashboard-modern) .wrapper{display:block!important;height:auto!important;min-height:100vh!important;overflow:visible!important}body:has(.bm-dashboard-modern) .content-wrapper.bm-dashboard-modern{display:block!important;height:auto!important;min-height:calc(100vh - 57px)!important;overflow:visible!important}body:has(.bm-dashboard-modern) .content-wrapper.bm-dashboard-modern .content{display:block!important;height:auto!important;overflow:visible!important}body:has(.bm-dashboard-modern) .content-wrapper.bm-dashboard-modern .content>.container-fluid{display:flex!important;height:auto!important;overflow:visible!important;padding-bottom:24px}}
+html::-webkit-scrollbar,body::-webkit-scrollbar{width:11px}html::-webkit-scrollbar-thumb,body::-webkit-scrollbar-thumb{background:#aebbd0;border-radius:10px;border:2px solid #f3f6fb}html::-webkit-scrollbar-track,body::-webkit-scrollbar-track{background:#f3f6fb}
+/* Final responsive contract: one browser scrollbar; horizontal overflow stays inside tables. */
+.bm-dashboard-modern,.bm-dashboard-modern .content,.bm-dashboard-modern .content>.container-fluid{max-width:100%;overflow-x:hidden!important}
+.bm-dashboard-modern .bm-panel,.bm-dashboard-modern .bm-module-metric{min-width:0}
+.bm-dashboard-modern a:focus-visible,.bm-dashboard-modern button:focus-visible,.bm-dashboard-modern input:focus-visible,.bm-dashboard-modern select:focus-visible{outline:3px solid #74a7f7;outline-offset:2px}
+@media(min-width:768px){.bm-dashboard-modern .bm-module-metrics:has(> .bm-module-metric:nth-child(5):last-child){grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media(min-width:992px){.bm-dashboard-modern .bm-recovery-panel{grid-column:1;grid-row:2/span 2}.bm-dashboard-modern .bm-sales-panel{grid-column:2;grid-row:2}.bm-dashboard-modern #employee-attendance-summary{grid-column:2;grid-row:3;min-height:180px}.bm-dashboard-modern .bm-sales-panel .bm-module-metrics,.bm-dashboard-modern #employee-attendance-summary .bm-module-metrics{align-content:start;grid-auto-rows:64px}.bm-dashboard-modern .bm-sales-panel .bm-module-metric,.bm-dashboard-modern #employee-attendance-summary .bm-module-metric{height:64px;min-height:64px;padding:8px}.bm-dashboard-modern .bm-recovery-panel .bm-recovery-chart{height:auto;min-height:200px}.bm-dashboard-modern .bm-store-labour-panel{grid-column:1;grid-row:4}.bm-dashboard-modern .bm-cheque-panel{grid-column:2;grid-row:4}.bm-dashboard-modern .bm-activity-panel{grid-column:1;grid-row:5}.bm-dashboard-modern .bm-task-panel{grid-column:2;grid-row:5}}
+@media(max-width:767.98px){
+ .bm-dashboard-modern .content-header .breadcrumb{float:none!important;margin-top:6px;padding:0}
+ .bm-dashboard-modern .bm-kpis,.bm-dashboard-modern .bm-module-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .bm-dashboard-modern .bm-panel-heading{align-items:flex-start;gap:8px;flex-wrap:wrap}
+ .bm-dashboard-modern .bm-crm-open{align-self:stretch;margin:7px 0;text-align:center}
+ .bm-dashboard-modern .bm-lead-period-filter{justify-content:flex-start;width:100%}
+ .bm-dashboard-modern .bm-lead-period-filter select,.bm-dashboard-modern .bm-custom-period input{max-width:100%}
+ .bm-dashboard-modern .modal-dialog{margin:.5rem}
+}
+@media(max-width:420px){
+ .bm-dashboard-modern .bm-kpis,.bm-dashboard-modern .bm-module-metrics{grid-template-columns:1fr}
+ .bm-dashboard-modern .bm-kpi,.bm-dashboard-modern .bm-module-metric{min-height:64px}
+}
+
+/* Dashboard polish: distinct surfaces, compact finance matrix and live lead search. */
+.bm-dashboard-modern .bm-kpi:nth-child(1){background:linear-gradient(135deg,#ffffff 54%,#eef1ff);border-radius:18px 18px 18px 5px}
+.bm-dashboard-modern .bm-kpi:nth-child(2){background:linear-gradient(135deg,#ffffff 54%,#e8fbf4);border-radius:18px 5px 18px 18px}
+.bm-dashboard-modern .bm-kpi:nth-child(3){background:linear-gradient(135deg,#ffffff 54%,#eaf4ff);border-radius:22px 8px 22px 8px}
+.bm-dashboard-modern .bm-kpi:nth-child(4){background:linear-gradient(135deg,#ffffff 54%,#fff4e3);border-radius:8px 22px 8px 22px}
+.bm-dashboard-modern .bm-kpi:nth-child(5){background:linear-gradient(135deg,#ffffff 54%,#edf5ff);border-radius:5px 18px 18px 18px}
+.bm-dashboard-modern .bm-panel{border:0;box-shadow:0 8px 24px rgba(28,55,90,.09)}
+.bm-dashboard-modern .bm-panel:nth-of-type(4n+1){background:linear-gradient(145deg,#fff 70%,#f4f8ff)}
+.bm-dashboard-modern .bm-panel:nth-of-type(4n+2){background:linear-gradient(145deg,#fff 70%,#f2fbf8)}
+.bm-dashboard-modern .bm-panel:nth-of-type(4n+3){background:linear-gradient(145deg,#fff 70%,#fff8ef)}
+.bm-dashboard-modern .bm-panel-heading{border-bottom-color:#e8eef6}
+.bm-cash-legend{max-width:none!important;display:block!important}
+.bm-cash-primary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:8px}
+.bm-cash-primary .bm-cash-detail{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px;padding:6px 3px;border:0;border-bottom:1px solid #dfe6ef;background:transparent;border-radius:0}
+.bm-cash-primary .bm-cash-total{border-top:0;grid-column:auto;grid-template-columns:minmax(0,1fr) auto}
+.bm-cash-primary .bm-cash-detail strong{font-size:clamp(12px,1vw,16px);color:#173450}
+.bm-cash-primary .bm-cash-detail small{display:none!important}
+.bm-finance-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.bm-finance-metrics .bm-finance-value{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px;padding:6px 3px;border:0;border-bottom:1px solid #e3e9f1;border-radius:0;background:transparent}
+.bm-finance-metrics .bm-finance-value span{font-size:11px;color:#657890;white-space:normal}
+.bm-finance-metrics .bm-finance-value strong{font-size:clamp(12px,.92vw,15px);color:#183652}
+.bm-cash-warning{display:block;margin-top:8px;font-size:11px!important;line-height:1.35;white-space:normal!important;font-weight:650}
+.bm-actions .bm-panel-body{overflow:visible}
+.bm-lead-search input{height:43px;border:1px solid #d6e1ef;border-radius:12px;padding-left:14px;box-shadow:0 3px 10px rgba(28,55,90,.04);transition:border-color .15s,box-shadow .15s}
+.bm-lead-search input:focus{border-color:#4f8ff7;box-shadow:0 0 0 3px rgba(79,143,247,.14)}
+.bm-lead-result{margin-top:10px;border:1px solid #dce7f4;border-radius:14px;background:linear-gradient(135deg,#fff,#f5f9ff);box-shadow:0 8px 18px rgba(31,65,110,.09);overflow:hidden}
+.bm-lead-result-head{display:flex;align-items:center;gap:10px;padding:12px;background:linear-gradient(100deg,#163454,#2463a3);color:#fff}
+.bm-lead-avatar{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:#ffffff25;font-size:17px}
+.bm-lead-result-head strong{display:block;font-size:14px}.bm-lead-result-head small{opacity:.78}
+.bm-lead-result-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:11px}
+.bm-lead-result-grid div{padding:7px 9px;background:#fff;border:1px solid #e6edf6;border-radius:9px;min-width:0}
+.bm-lead-result-grid span{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:#7a8ba1}.bm-lead-result-grid b{display:block;font-size:12px;color:#233b59;overflow-wrap:anywhere}
+.bm-lead-result-actions{display:flex;gap:7px;padding:0 11px 11px}.bm-lead-result-actions .btn{border-radius:9px;font-size:11px;font-weight:700}
+.bm-lead-state{margin-top:8px;padding:10px 12px;border-radius:10px;font-size:12px}.bm-lead-state.loading{background:#edf5ff;color:#2862a8}.bm-lead-state.error{background:#fff0f1;color:#b3263b}
+@media(max-width:767px){.bm-cash-primary,.bm-finance-metrics{grid-template-columns:1fr}.bm-lead-result-grid{grid-template-columns:1fr}}
 </style>
 @endpush
 @section('content')
@@ -270,32 +331,17 @@
         <section class="content">
             <div class="container-fluid">
                 
-<form method="GET" action="{{ route('home') }}" class="bm-lead-period-filter" id="bm-lead-period-form" aria-label="New Leads date period">
- <label for="bm-lead-period">New Leads period</label>
- <select id="bm-lead-period" name="lead_period">
-  @foreach (['today'=>'Today','yesterday'=>'Yesterday','this_week'=>'This Week','last_week'=>'Last Week','this_month'=>'This Month','last_month'=>'Last Month','custom'=>'Custom Date Range'] as $periodValue=>$periodLabel)
-   <option value="{{ $periodValue }}" {{ $lead_period === $periodValue ? 'selected' : '' }}>{{ $periodLabel }}</option>
-  @endforeach
- </select>
- <span id="bm-custom-period" class="bm-custom-period" {{ $lead_period === 'custom' ? '' : 'hidden' }}>
-  <input type="date" name="lead_from" aria-label="From date" value="{{ $lead_period_from }}">
-  <input type="date" name="lead_to" aria-label="To date" value="{{ $lead_period_to }}">
-  <button type="submit" class="btn btn-sm btn-primary">Apply</button>
- </span>
- <span id="bm-lead-period-bounds" aria-live="polite">{{ $lead_period_from }} to {{ $lead_period_to }}</span>
- <span id="bm-lead-period-error" role="alert" hidden></span>
-</form>
-<button type="button" class="btn btn-sm btn-outline-primary bm-crm-open" id="bm-crm-open" data-url="{{ route('dashboard.crm_snapshot') }}"><i class="fas fa-chart-line"></i> CRM Details</button>
 <div class="bm-kpis">
 @foreach ([
- ['value'=>$today_leads,'label'=>'New Leads Add Today','icon'=>'fa-user','href'=>route('dashboard.leads_by_users_report'),'tone'=>'indigo'],
- ['value'=>Setting::getTodayLeadWorkCount(),'label'=>'Today Follow UP','icon'=>'fa-comments','href'=>route('crm.todayLeadWorkReport'),'tone'=>'green'],
- ['value'=>$get_all_lead,'label'=>'Pending Works','icon'=>'fa-tasks','href'=>route('report.lead.index'),'tone'=>'amber'],
- ['value'=>$total_blance,'label'=>'Total Balance','icon'=>'fa-wallet','href'=>route('finance.reports.show_ledger'),'tone'=>'blue']
+ ['value'=>$today_leads,'label'=>'New Leads','icon'=>'fa-user','href'=>route('dashboard.leads_by_users_report'),'tone'=>'indigo','id'=>'bm-new-leads-count'],
+ ['value'=>$completed_followups,'label'=>'Completed Follow-ups','icon'=>'fa-check-circle','href'=>route('crm.todayLeadWorkReport',['mode'=>'completed','date_range'=>$lead_period_from.' to '.$lead_period_to]),'tone'=>'green','id'=>'bm-completed-followups-count'],
+ ['value'=>$today_followups,'label'=>'Today Follow-ups','icon'=>'fa-comments','href'=>route('crm.todayLeadWorkReport',['mode'=>'today','date_range'=>now()->toDateString().' to '.now()->toDateString()]),'tone'=>'blue','id'=>'bm-today-followups-count'],
+ ['value'=>$pending_overdue_followups,'label'=>'Pending + Overdue','icon'=>'fa-tasks','href'=>route('crm.todayLeadWorkReport',['mode'=>'pending_overdue','date_range'=>$lead_period_from.' to '.$lead_period_to]),'tone'=>'amber','id'=>'bm-pending-overdue-count'],
+ ['value'=>$approval_metrics['total'],'label'=>'Pending Approvals','icon'=>'fa-clipboard-check','href'=>route('approvals.finance.index'),'tone'=>'blue']
 ] as $kpi)
 <a class="bm-kpi bm-{{ $kpi['tone'] }}" href="{{ $kpi['href'] }}">
  <div class="bm-kpi-top"><div class="bm-kpi-icon"><i class="fas {{ $kpi['icon'] }}"></i></div>
- <div class="bm-kpi-value bm-counter" @if($loop->first) id="bm-new-leads-count" @endif data-number="{{ $kpi['value'] }}">{{ number_format((float)$kpi['value'],is_numeric($kpi['value']) && floor((float)$kpi['value'])!=(float)$kpi['value'] ? 2 : 0) }}</div></div>
+ <div class="bm-kpi-value bm-counter" @isset($kpi['id']) id="{{ $kpi['id'] }}" @endisset data-number="{{ $kpi['value'] }}">{{ number_format((float)$kpi['value'],is_numeric($kpi['value']) && floor((float)$kpi['value'])!=(float)$kpi['value'] ? 2 : 0) }}</div></div>
  <div class="bm-kpi-bottom"><div class="bm-kpi-label">{{ $kpi['label'] }}</div><span class="bm-kpi-action">View report <i class="fas fa-arrow-right"></i></span></div>
 </a>
 @endforeach
@@ -320,29 +366,116 @@
       <strong id="totalCash" class="bm-total-cash-hidden">{{ number_format($bmTotalCash,2) }}</strong><div class="bm-finance-tooltip" id="bm-finance-tooltip" role="status" hidden></div>
     </div>
     <div class="bm-cash-legend">
+     <div class="bm-cash-primary">
       <div class="bm-cash-detail" data-type="hand" tabindex="0"><span><i class="bm-dot bm-dot-hand" style="background:{{ $bmHandCash <= $bmBankCash ? '#991b1b' : '#0cae87' }}"></i>Hand Cash</span><strong id="handCash">{{ number_format($bmHandCash,2) }}</strong><small>{{ number_format($bmHandPct,2) }}%</small></div>
       <div class="bm-cash-detail" data-type="bank" tabindex="0"><span><i class="bm-dot bm-dot-bank" style="background:{{ $bmBankCash < $bmHandCash ? '#991b1b' : '#198add' }}"></i>Bank Account</span><strong id="bmBankCash">{{ number_format($bmBankCash,2) }}</strong><small>{{ number_format($bmBankPct,2) }}%</small></div>
       <div class="bm-cash-detail bm-cash-total" data-type="total" tabindex="0"><span><i class="bm-dot bm-dot-total"></i>Total Cash</span><strong id="bmCashLegendTotal">{{ number_format($bmTotalCash,2) }}</strong></div>
+     </div>
+     <div class="bm-finance-metrics">
+      @foreach(['receivables'=>'Receivables','payables'=>'Payables','cash_receipts'=>"Today's Cash Receipts",'cash_payments'=>"Today's Cash Payments",'bank_receipts'=>"Today's Bank Receipts",'bank_payments'=>"Today's Bank Payments"] as $key=>$label)
+       <div class="bm-cash-detail bm-finance-value"><span>{{ $label }}</span><strong>Rs {{ number_format($finance_metrics[$key],2) }}</strong></div>
+      @endforeach
+     </div>
       @if($bmHandCash < 0 || $bmBankCash < 0)<small class="bm-cash-warning">Negative balances shown separately; ring proportions use non-negative components only.</small>@endif
     </div>
   </div>
  </section>
  <section class="bm-panel bm-actions">
-  <div class="bm-panel-heading"><h5>Lead Search & Attendance</h5><span>Quick actions</span></div>
+  <div class="bm-panel-heading"><h5>Lead Search</h5><span>Quick action</span></div>
   <div class="bm-panel-body bm-action-body">
    @can('lead search')
-   <div class="bm-action-block"><h6>Search Lead By Number</h6><div class="bm-lead-search"><input name="number" id="number" type="text" maxlength="11" class="form-control" placeholder="Mobile number" aria-label="Search lead by mobile number"><button type="button" id="search_number" class="bm-search-icon" aria-label="Search lead"><i class="fas fa-search"></i></button></div><div id="msg" class="message"></div></div>
+   <div class="bm-action-block" id="bm-live-lead-search" data-url="{{ route('lead.search') }}" data-edit-url="{{ url(config('adminPrefix') . 'admin/crm/lead') }}" data-current-user="{{ Auth::id() }}" data-super-admin="{{ Auth::user()->hasRole('superadmin') ? '1' : '0' }}"><h6>Search Lead By Number</h6><div class="bm-lead-search"><input name="number" id="bm-lead-number" type="text" inputmode="numeric" autocomplete="off" maxlength="11" class="form-control" placeholder="Type mobile number..." aria-label="Search lead by mobile number"><button type="button" id="bm-search-number" class="bm-search-icon" aria-label="Search lead"><i class="fas fa-search"></i></button></div><div id="bm-lead-result" aria-live="polite"></div></div>
    @endcan
-   @can('read attendance')
-   <div class="bm-action-block"><form method="POST" action="/admin/punch" enctype="multipart/form-data">@csrf
-    <div class="bm-action-title"><h6>Employee Attendance</h6></div>
-    <div class="bm-attendance-fields"><select class="form-control" name="user_id">@foreach($users_list as $u)<option value="{{ $u->id }}">{{ $u->name }}</option>@endforeach</select>
-    @if($display_date)<input type="datetime-local" class="form-control" name="punch_time" id="date_time">@endif
-    <button type="submit" class="btn btn-primary btn-sm bm-punch-button" id="punch_button"><i class="fas fa-plus"></i> Punch In</button></div>
-    <div id="soft-alert" class="alert" style="display:none"></div></form></div>
+   <button type="button" class="btn btn-sm btn-outline-primary bm-crm-open" id="bm-crm-open" data-url="{{ route('dashboard.crm_snapshot') }}"><i class="fas fa-chart-line"></i> CRM Details</button>
+  </div>
+ </section>
+ @can('report cashbook')
+ @can('stock module')
+ <section class="bm-panel bm-module-panel bm-recovery-panel">
+  <div class="bm-panel-heading"><h5>Monthly Recovery</h5><a href="{{ route('booking.plot.recovery_list') }}">Recovery report</a></div>
+  @php($recoveryMax = max(1, collect($recovery_monthly)->max('value')))
+  <div class="bm-panel-body bm-recovery-chart" aria-label="Month-wise project recovery bar chart">
+   @foreach($recovery_monthly as $month)
+    <a class="bm-recovery-bar-wrap" href="{{ route('booking.plot.recovery_list') }}" title="{{ $month['label'] }}: Rs {{ number_format($month['value'],2) }}">
+     <span class="bm-recovery-value">{{ $month['value'] ? number_format($month['value']/1000,1).'k' : '0' }}</span><span class="bm-recovery-bar" style="height:{{ max(2,($month['value']/$recoveryMax)*100) }}%"></span><small>{{ $month['label'] }}</small>
+    </a>
+   @endforeach
+  </div>
+ </section>
+ @endcan
+ @can('view inventory')
+ <section class="bm-panel bm-module-panel bm-sales-panel">
+  <div class="bm-panel-heading"><h5>Sales & Plot Inventory</h5><a href="{{ route('booking.plot.inventory') }}">View inventory</a></div>
+  <div class="bm-panel-body bm-module-metrics">
+   @foreach(['total'=>'Total Plots','available'=>'Available','hold'=>'On Hold','sold'=>'Sold','cancelled'=>'Cancelled'] as $key=>$label)
+    <a class="bm-module-metric" href="{{ route('booking.plot.inventory') }}"><strong>{{ number_format($plot_metrics[$key]) }}</strong><span>{{ $label }}</span></a>
+   @endforeach
+  </div>
+ </section>
+ @endcan
+ <section class="bm-panel bm-module-panel bm-store-labour-panel">
+  <div class="bm-panel-heading"><h5>Store Inventory & Labour Summary</h5><span><a href="{{ route('stocks.index') }}">Stock</a> · <a href="{{ route('labours.index') }}">Labour</a></span></div>
+  <div class="bm-panel-body bm-module-metrics">
+   @foreach(['quantity'=>'On-hand Quantity','value'=>'Stock Value (Rs)','inward'=>"Today's Inward",'outward'=>"Today's Outward"] as $key=>$label)
+    <a class="bm-module-metric" href="{{ route('stocks.index') }}"><strong>{{ number_format($stock_metrics[$key],$key==='quantity'||$key==='inward'||$key==='outward'?3:($key==='value'?2:0)) }}</strong><span>{{ $label }}</span></a>
+   @endforeach
+   @can('labour module')
+    @foreach(['active'=>'Active Workers','present'=>"Today's Present",'payable'=>'Payable (Rs)'] as $key=>$label)
+     <a class="bm-module-metric" href="{{ route('labours.index') }}"><strong>{{ number_format($labour_metrics[$key],$key==='payable'?2:0) }}</strong><span>{{ $label }}</span></a>
+    @endforeach
    @endcan
   </div>
  </section>
+ @endcan
+ @can('read attendance')
+ <section class="bm-panel bm-module-panel" id="employee-attendance-summary">
+  <div class="bm-panel-heading"><h5>Employee Attendance</h5><span>Today</span></div>
+  <div class="bm-panel-body bm-module-metrics">
+   @foreach(['total'=>'Total Employees','present'=>'Present','absent'=>'Absent','missing_punch'=>'Missing Punch-out','late_arrival'=>'Late Arrival'] as $key=>$label)
+    <a class="bm-module-metric" href="#today-punch-records"><strong>{{ $attendance_metrics[$key] }}</strong><span>{{ $label }}</span></a>
+   @endforeach
+  </div>
+ </section>
+ @endcan
+ <section class="bm-panel bm-module-panel bm-activity-panel">
+  <div class="bm-panel-heading"><h5>Activity Notifications</h5><span>Action required</span></div>
+  <div class="bm-panel-body bm-module-metrics">
+   @can('read voucher')
+   <a class="bm-module-metric" href="{{ route('approvals.finance.index') }}"><strong>{{ $approval_metrics['total'] }}</strong><span>Pending Approvals</span></a>
+   @endcan
+   <a class="bm-module-metric" href="{{ route('report.lead.index') }}"><strong>{{ $pending_overdue_followups }}</strong><span>Pending + Overdue CRM</span></a>
+   <a class="bm-module-metric" href="{{ route('employee-tasks.index',['status'=>'overdue']) }}"><strong>{{ $task_metrics['metrics']['overdue'] }}</strong><span>Overdue Tasks</span></a>
+   <a class="bm-module-metric" href="{{ route('employee-tasks.index',['status'=>'rework']) }}"><strong>{{ $task_metrics['metrics']['rework'] }}</strong><span>Tasks Requiring Rework</span></a>
+   @can('read attendance')
+   <a class="bm-module-metric" href="#today-punch-records"><strong>{{ $attendance_metrics['missing_punch'] }}</strong><span>Missing Punch-outs</span></a>
+   @endcan
+  </div>
+ </section>
+ @can('cheque report')
+ <section class="bm-panel bm-module-panel bm-cheque-panel">
+  <div class="bm-panel-heading"><h5>Cheque And Online Tracking</h5><a href="{{ route('report.check') }}">Cheque report</a></div>
+  <div class="bm-panel-body bm-module-metrics">
+   @foreach(['pending'=>'Pending','passed'=>'Passed','memo'=>'Memo','received_today'=>'Received Today','cleared_today'=>'Cleared Today','processed'=>'Processed'] as $key=>$label)
+    <a class="bm-module-metric" href="{{ route('report.check') }}"><strong>{{ $payment_metrics['cheques'][$key] ?? 0 }}</strong><span>{{ $label }}</span></a>
+   @endforeach
+   <a class="bm-module-metric" href="{{ route('finance.voucher.in') }}"><strong>{{ $payment_metrics['online']['total'] ?? 0 }}</strong><span>Online Transactions</span></a>
+  </div>
+ </section>
+ @endcan
+ <section class="bm-panel bm-module-panel bm-task-panel">
+  <div class="bm-panel-heading"><h5>Employee Tasks</h5><a href="{{ route('employee-tasks.index') }}">Task management</a></div>
+  <div class="bm-panel-body bm-module-metrics">
+   @foreach(['pending'=>'Pending','completed'=>'Completed','overdue'=>'Overdue','rework'=>'Rework','cancelled'=>'Cancelled'] as $key=>$label)
+    <a class="bm-module-metric" href="{{ route('employee-tasks.index',['status'=>in_array($key,['total'])?'':$key]) }}"><strong>{{ $task_metrics['metrics'][$key] }}</strong><span>{{ $label }}</span></a>
+   @endforeach
+  </div>
+ </section>
+ @if(count($task_metrics['performance']))
+ <section class="bm-panel bm-module-panel">
+  <div class="bm-panel-heading"><h5>Employee Task Performance</h5><span>Top 10</span></div>
+  <div class="bm-panel-body bm-table-scroll"><table class="table table-sm"><thead><tr><th>Employee</th><th>Assigned</th><th>Completed</th><th>Pending</th><th>In Progress</th><th>Overdue</th><th>On Time</th><th>Completion %</th></tr></thead><tbody>@foreach($task_metrics['performance'] as $row)<tr><td>{{ $row['employee'] }}</td><td>{{ $row['assigned'] }}</td><td>{{ $row['completed'] }}</td><td>{{ $row['pending'] }}</td><td>{{ $row['in_progress'] }}</td><td>{{ $row['overdue'] }}</td><td>{{ $row['on_time'] }}</td><td>{{ $row['completion_rate'] }}%</td></tr>@endforeach</tbody></table></div>
+ </section>
+ @endif
  <section class="bm-panel bm-dasticash">
   <div class="bm-panel-heading"><h5>Dasticash Summary</h5><button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#addDasticashModal"><i class="fas fa-plus"></i> Add Dasticash</button></div>
   <div class="bm-panel-body bm-table-scroll"><table class="table table-hover" id="dasticashTable"><thead><tr><th>ID</th><th>Name</th><th>Amount</th><th>Description</th><th>Actions</th></tr></thead><tbody>
@@ -354,9 +487,15 @@
   </tbody></table></div>
  </section>
  @can('read attendance')
- <section class="bm-panel bm-punches">
+ <section class="bm-panel bm-punches" id="today-punch-records">
   <div class="bm-panel-heading"><h5>Punch-in Records for Today</h5><span>Today · Employee records</span></div>
-  <div class="bm-panel-body bm-table-scroll"><table class="table table-hover"><thead><tr><th>Date</th><th>User Name</th><th>Punch In</th><th>Punch Out</th><th>Total Hours</th></tr></thead><tbody>
+  <div class="bm-panel-body bm-table-scroll">
+  <form method="POST" action="/admin/punch" enctype="multipart/form-data" class="bm-punch-inline">@csrf
+   <select class="form-control form-control-sm" name="user_id">@foreach($users_list as $u)<option value="{{ $u->id }}">{{ $u->name }}</option>@endforeach</select>
+   @if($display_date)<input type="datetime-local" class="form-control form-control-sm" name="punch_time" id="date_time">@endif
+   <button type="submit" class="btn btn-primary btn-sm" id="punch_button"><i class="fas fa-plus"></i> Punch In</button><div id="soft-alert" class="alert" style="display:none"></div>
+  </form>
+  <table class="table table-hover"><thead><tr><th>Date</th><th>User Name</th><th>Punch In</th><th>Punch Out</th><th>Total Hours</th></tr></thead><tbody>
   @foreach($today_punches as $punch)
   <tr><td>{{ date('Y-m-d',strtotime($punch->punch_in)) }}</td><td>{{ $punch->user->name }}</td><td>{{ date('H:i:s',strtotime($punch->punch_in)) }}</td><td>{{ $punch->punch_out ? date('H:i:s',strtotime($punch->punch_out)) : 'N/A' }}</td><td>
   @if($punch->punch_out){{ gmdate('H:i:s',max(0,strtotime($punch->punch_out)-strtotime($punch->punch_in))) }}@else N/A @endif
@@ -370,11 +509,15 @@
  <div class="modal-dialog modal-xl" role="document"><div class="modal-content">
   <div class="modal-header"><h5 class="modal-title" id="bmCrmTitle">CRM Details — selected period</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
   <div class="modal-body">
-   <p class="text-muted">Follow-up activities below are logged Work entries, not confirmed completed follow-ups. Due/overdue counts use stored lead follow-up dates.</p>
-   <div class="form-inline mb-2"><label for="bm-crm-project" class="mr-2">Project</label><select class="form-control form-control-sm mr-2" id="bm-crm-project">@foreach($crm_projects as $crmProject)<option value="{{ $crmProject->id }}" {{ $crmProject->id == getSelectedTown() ? 'selected' : '' }}>{{ $crmProject->project }}</option>@endforeach</select><label for="bm-crm-employee" class="mr-2">Employee</label><select class="form-control form-control-sm mr-2" id="bm-crm-employee"><option value="">All employees</option>@foreach($users_list as $employee)<option value="{{ $employee->id }}">{{ $employee->name }}</option>@endforeach</select><button type="button" class="btn btn-sm btn-primary" id="bm-crm-apply">Apply Filter</button></div><div class="bm-crm-kpis" id="bm-crm-kpis" aria-live="polite"></div>
-   <div id="bm-crm-error" role="alert" class="text-danger"></div><h6 class="mt-3">Employee-wise CRM Performance (logged activity)</h6><div class="table-responsive bm-crm-table"><table class="table table-sm table-striped"><thead><tr><th>Employee</th><th>Assigned Leads</th><th>New Leads</th><th>Logged Activities</th><th>Due on End Date</th><th>Overdue on End Date</th></tr></thead><tbody id="bm-crm-employee-rows"></tbody></table></div>
-   <div class="table-responsive bm-crm-table"><table class="table table-sm table-striped"><thead><tr><th>Lead ID</th><th>Customer</th><th>Mobile</th><th>Project</th><th>Assigned Employee</th><th>Created</th><th>Last Activity</th><th>Next Follow-up</th><th>Remarks</th></tr></thead><tbody id="bm-crm-rows"></tbody></table></div>
-   <small class="text-muted">Showing at most 100 matching leads; this is a preview of the integrated report, not a full export.</small>
+   <p class="text-muted">Completed means a saved follow-up activity. Pending/overdue includes only open CRM statuses and excludes Invalid Number, Not Interested and Sale Done.</p>
+   <form method="GET" action="{{ route('home') }}" class="bm-lead-period-filter mb-3" id="bm-lead-period-form" aria-label="CRM date period">
+    <label for="bm-lead-period">CRM period</label><select id="bm-lead-period" name="lead_period">@foreach (['today'=>'Today','yesterday'=>'Yesterday','this_week'=>'This Week','last_week'=>'Last Week','this_month'=>'This Month','last_month'=>'Last Month','custom'=>'Custom Date Range'] as $periodValue=>$periodLabel)<option value="{{ $periodValue }}" {{ $lead_period === $periodValue ? 'selected' : '' }}>{{ $periodLabel }}</option>@endforeach</select>
+    <span id="bm-custom-period" class="bm-custom-period" {{ $lead_period === 'custom' ? '' : 'hidden' }}><input type="date" name="lead_from" aria-label="From date" value="{{ $lead_period_from }}"><input type="date" name="lead_to" aria-label="To date" value="{{ $lead_period_to }}"><button type="submit" class="btn btn-sm btn-primary">Apply</button></span><span id="bm-lead-period-bounds" aria-live="polite">{{ $lead_period_from }} to {{ $lead_period_to }}</span><span id="bm-lead-period-error" role="alert" hidden></span>
+   </form>
+   <div class="form-inline mb-2"><label for="bm-crm-project" class="mr-2">Project</label><select class="form-control form-control-sm mr-2" id="bm-crm-project">@foreach($crm_projects as $crmProject)<option value="{{ $crmProject->id }}" {{ $crmProject->id == getSelectedTown() ? 'selected' : '' }}>{{ $crmProject->project }}</option>@endforeach</select><label for="bm-crm-employee" class="mr-2">Employee</label><select class="form-control form-control-sm mr-2" id="bm-crm-employee"><option value="">All employees</option>@foreach($users_list as $employee)<option value="{{ $employee->id }}">{{ $employee->name }}</option>@endforeach</select><label for="bm-crm-status" class="mr-2">Status</label><select class="form-control form-control-sm mr-2" id="bm-crm-status"><option value="all">All</option><option value="new">New Leads</option><option value="completed">Completed</option><option value="today">Today</option><option value="pending_overdue">Pending + Overdue</option></select><button type="button" class="btn btn-sm btn-primary" id="bm-crm-apply">Apply Filter</button></div><div class="bm-crm-kpis" id="bm-crm-kpis" aria-live="polite"></div>
+   <div id="bm-crm-error" role="alert" class="text-danger"></div><h6 class="mt-3">Employee-wise CRM Performance</h6><div class="table-responsive bm-crm-table"><table class="table table-sm table-striped"><thead><tr><th>Employee</th><th>Assigned Leads</th><th>New Leads</th><th>Completed Follow-ups</th><th>Due on End Date</th><th>Overdue on End Date</th></tr></thead><tbody id="bm-crm-employee-rows"></tbody></table></div>
+   <div class="table-responsive bm-crm-table"><table class="table table-sm table-striped"><thead><tr><th>Lead ID</th><th>Customer</th><th>Mobile</th><th>Project</th><th>Assigned Employee</th><th>Created</th><th>Last Activity</th><th>Next Follow-up</th><th>Status</th><th>Remarks</th></tr></thead><tbody id="bm-crm-rows"></tbody></table></div>
+   <div class="d-flex justify-content-between align-items-center mt-2"><small id="bm-crm-page-info" class="text-muted"></small><div><button type="button" class="btn btn-sm btn-outline-primary" id="bm-crm-prev">Previous</button><button type="button" class="btn btn-sm btn-outline-primary" id="bm-crm-next">Next</button></div></div>
   </div>
  </div></div>
 </div>
@@ -463,34 +606,77 @@
 
 <script>
 (function(){
+ const root=document.getElementById('bm-live-lead-search');
+ if(!root)return;
+ const input=document.getElementById('bm-lead-number');
+ const button=document.getElementById('bm-search-number');
+ const output=document.getElementById('bm-lead-result');
+ let timer=null,request=null,last='';
+ const escape=value=>String(value??'').replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[char]));
+ function state(message,type){output.innerHTML='<div class="bm-lead-state '+type+'">'+escape(message)+'</div>';}
+ function render(data){
+   const assigned=Array.isArray(data.assignTo)&&data.assignTo.length?data.assignTo.map(user=>user.name).join(', '):'Unassigned';
+   const allowed=root.dataset.superAdmin==='1'||(data.assignTo||[]).some(user=>String(user.id)===root.dataset.currentUser);
+   const action=allowed?'<a class="btn btn-primary" href="'+escape(root.dataset.editUrl)+'"><i class="fas fa-edit"></i> Open Lead</a>':'';
+   output.innerHTML='<article class="bm-lead-result">'+
+    '<div class="bm-lead-result-head"><div class="bm-lead-avatar"><i class="fas fa-user"></i></div><div><strong>'+escape(data.name||'Unnamed Lead')+'</strong><small>'+escape(data.active||'Lead record')+'</small></div></div>'+
+    '<div class="bm-lead-result-grid"><div><span>Project</span><b>'+escape(data.project||'No Project')+'</b></div><div><span>Follow-up Status</span><b>'+escape(data.follow_status||'Not set')+'</b></div><div><span>Assigned To</span><b>'+escape(assigned)+'</b></div><div><span>Last Updated</span><b>'+escape(data.updated_at||'—')+'</b></div></div>'+
+    (action?'<div class="bm-lead-result-actions">'+action+'</div>':'')+'</article>';
+ }
+ async function search(){
+   const number=input.value.replace(/\D/g,'').slice(0,11);input.value=number;
+   if(number.length<11){last='';if(number.length)state('Enter complete 11-digit mobile number.','loading');else output.textContent='';return;}
+   if(number===last)return;last=number;
+   if(request)request.abort();request=new AbortController();state('Searching lead…','loading');button.disabled=true;
+   try{
+    const body=new URLSearchParams({number,_token:'{{ csrf_token() }}'});
+    const response=await fetch(root.dataset.url,{method:'POST',credentials:'same-origin',headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest','Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body,signal:request.signal});
+    if(response.status===404){state('No lead found against this mobile number.','error');return;}
+    if(!response.ok)throw new Error('Search could not be completed.');
+    const payload=await response.json();if(!payload.data)throw new Error('No lead record returned.');render(payload.data);
+   }catch(error){if(error.name!=='AbortError')state(error.message,'error');}
+   finally{button.disabled=false;request=null;}
+ }
+ input.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(search,350);});
+ input.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();clearTimeout(timer);search();}});
+ button.addEventListener('click',()=>{clearTimeout(timer);search();});
+})();
+</script>
+
+<script>
+(function(){
  const open=document.getElementById('bm-crm-open');
  if(!open)return;
  const form=document.getElementById('bm-lead-period-form');
  const rowHost=document.getElementById('bm-crm-rows');
  const error=document.getElementById('bm-crm-error');
  const summary=document.getElementById('bm-crm-kpis');
- const labels=[['new_leads','New Leads'],['logged_activities','Logged Activities'],['today_due','Today Scheduled Follow-ups'],['pending_overdue_combined','Due + Overdue (Current State)'],['due_on_period_end','Due on Selected End Date'],['overdue_as_of_period_end','Overdue by Selected End Date']];
+ const labels=[['new_leads','New Leads'],['completed_followups','Completed Follow-ups'],['today_due','Today Follow-ups'],['pending_overdue_combined','Pending + Overdue'],['due_on_period_end','Due on Selected End Date'],['overdue_as_of_period_end','Overdue by Selected End Date']];
  const cell=(tr,value)=>{const td=document.createElement('td');td.textContent=value??'—';tr.appendChild(td);};
- async function loadCrm(){
+ let currentPage=1,lastPage=1;
+ async function loadCrm(page=1){
    if(!window.jQuery){return;}
    window.jQuery('#bmCrmModal').modal('show');
    summary.textContent='';rowHost.textContent='';document.getElementById('bm-crm-employee-rows').textContent='';error.textContent='Loading CRM data…';
    const bounds=document.getElementById('bm-lead-period-bounds').textContent.trim().split(' to ');
    if(bounds.length!==2){error.textContent='Select a date range first.';return;}
    try{
-     const query=new URLSearchParams({from:bounds[0],to:bounds[1]});const employee=document.getElementById('bm-crm-employee');if(employee && employee.value)query.set('employee_id',employee.value);const project=document.getElementById('bm-crm-project');if(project && project.value)query.set('project_id',project.value);
+     const query=new URLSearchParams({from:bounds[0],to:bounds[1],page:String(page),per_page:'20'});const employee=document.getElementById('bm-crm-employee');if(employee && employee.value)query.set('employee_id',employee.value);const project=document.getElementById('bm-crm-project');if(project && project.value)query.set('project_id',project.value);const status=document.getElementById('bm-crm-status');if(status)query.set('status',status.value);
      const res=await fetch(open.dataset.url+'?'+query.toString(),{credentials:'same-origin',headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}});
      if(!res.ok)throw new Error('CRM report failed to load ('+res.status+').');
      const data=await res.json();error.textContent='';
      labels.forEach(([key,label])=>{const box=document.createElement('div');const value=document.createElement('strong');value.textContent=Number(data[key]||0).toLocaleString('en-PK');const caption=document.createElement('span');caption.textContent=label;box.append(value,caption);summary.appendChild(box);});
-     (data.rows||[]).forEach(row=>{const tr=document.createElement('tr');['id','customer','mobile','project','assigned','created_at','last_activity','next_follow_up','remarks'].forEach(k=>cell(tr,row[k]));rowHost.appendChild(tr);});
+     (data.rows||[]).forEach(row=>{const tr=document.createElement('tr');['id','customer','mobile','project','assigned','created_at','last_activity','next_follow_up','status','remarks'].forEach(k=>cell(tr,row[k]));rowHost.appendChild(tr);});
      const employeeRows=document.getElementById('bm-crm-employee-rows');
-     (data.employee_summary||[]).forEach(row=>{const tr=document.createElement('tr');['employee','assigned_leads','new_leads','logged_activities','due_on_period_end','overdue_as_of_period_end'].forEach(key=>cell(tr,row[key]));employeeRows.appendChild(tr);});
+     (data.employee_summary||[]).forEach(row=>{const tr=document.createElement('tr');['employee','assigned_leads','new_leads','completed_followups','due_on_period_end','overdue_as_of_period_end'].forEach(key=>cell(tr,row[key]));employeeRows.appendChild(tr);});
+     currentPage=data.pagination?.page||1;lastPage=data.pagination?.last_page||1;document.getElementById('bm-crm-page-info').textContent='Page '+currentPage+' of '+lastPage+' - '+(data.pagination?.total||0)+' records';document.getElementById('bm-crm-prev').disabled=currentPage<=1;document.getElementById('bm-crm-next').disabled=currentPage>=lastPage;
      if(!data.rows?.length)error.textContent='No matching leads for this period.';
    }catch(e){error.textContent=e.message;}
  }
- open.addEventListener('click',()=>{if(window.jQuery)window.jQuery('#bmCrmModal').modal('show');loadCrm();});
- document.getElementById('bm-crm-apply')?.addEventListener('click',loadCrm);
+ open.addEventListener('click',()=>{if(window.jQuery)window.jQuery('#bmCrmModal').modal('show');loadCrm(1);});
+ document.getElementById('bm-crm-apply')?.addEventListener('click',()=>loadCrm(1));
+ document.getElementById('bm-crm-prev')?.addEventListener('click',()=>{if(currentPage>1)loadCrm(currentPage-1);});
+ document.getElementById('bm-crm-next')?.addEventListener('click',()=>{if(currentPage<lastPage)loadCrm(currentPage+1);});
 })();
 </script>
 
@@ -556,7 +742,7 @@
   const custom=form.querySelector('#bm-custom-period');
   const label=form.querySelector('#bm-lead-period-bounds');
   const error=form.querySelector('#bm-lead-period-error');
-  const value=document.getElementById('bm-new-leads-count');
+  const values={new_leads:document.getElementById('bm-new-leads-count'),completed_followups:document.getElementById('bm-completed-followups-count'),today_followups:document.getElementById('bm-today-followups-count'),pending_overdue_followups:document.getElementById('bm-pending-overdue-count')};
   let pending=null;
   function toggleCustom(){custom.hidden=preset.value!=='custom';}
   async function loadPeriod(){
@@ -574,8 +760,7 @@
       if(!response.ok)throw new Error(response.status===422?'Invalid date range.':'Unable to load New Leads.');
       const result=await response.json();
       if(!Number.isFinite(Number(result.new_leads)))throw new Error('Invalid response from server.');
-      value.textContent=Number(result.new_leads).toLocaleString('en-US');
-      value.dataset.number=result.new_leads;
+      Object.entries(values).forEach(([key,node])=>{if(node&&Number.isFinite(Number(result[key]))){node.textContent=Number(result[key]).toLocaleString('en-US');node.dataset.number=result[key];}});
       label.textContent=result.from+' to '+result.to;
     }catch(e){
       if(e.name!=='AbortError'){error.textContent=e.message;error.hidden=false;}

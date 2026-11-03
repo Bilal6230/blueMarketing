@@ -32,10 +32,10 @@ final class TrialBalanceReport
                 ->groupBy('project_head_subheads_id')
                 ->get([
                     'project_head_subheads_id',
-                    DB::raw("SUM(CASE WHEN date < '{$from}' THEN amount_in ELSE 0 END) AS previous_debit"),
-                    DB::raw("SUM(CASE WHEN date < '{$from}' THEN amount_out ELSE 0 END) AS previous_credit"),
-                    DB::raw("SUM(CASE WHEN date >= '{$from}' AND date <= '{$to}' THEN amount_in ELSE 0 END) AS period_debit"),
-                    DB::raw("SUM(CASE WHEN date >= '{$from}' AND date <= '{$to}' THEN amount_out ELSE 0 END) AS period_credit"),
+                    DB::raw("SUM(CASE WHEN date < '{$from}' THEN amount_out ELSE 0 END) AS previous_debit"),
+                    DB::raw("SUM(CASE WHEN date < '{$from}' THEN amount_in ELSE 0 END) AS previous_credit"),
+                    DB::raw("SUM(CASE WHEN date >= '{$from}' AND date <= '{$to}' THEN amount_out ELSE 0 END) AS period_debit"),
+                    DB::raw("SUM(CASE WHEN date >= '{$from}' AND date <= '{$to}' THEN amount_in ELSE 0 END) AS period_credit"),
                 ]);
             foreach ($legacy as $row) {
                 $balances[(int) $row->project_head_subheads_id] = [

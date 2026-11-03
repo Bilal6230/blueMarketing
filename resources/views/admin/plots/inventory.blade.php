@@ -68,7 +68,7 @@
                                 </div>
                             </div>
                             <div class="stat-percentage">
-                                {{ round(($chartData['sold'] / $chartData['total']) * 100, 1) }}%
+                                {{ $chartData['total'] > 0 ? round(($chartData['sold'] / $chartData['total']) * 100, 1) : 0 }}%
                             </div>
                         </div>
                     </div>
@@ -92,7 +92,7 @@
                                 </div>
                             </div>
                             <div class="stat-percentage">
-                                {{ round(($chartData['unsold'] / $chartData['total']) * 100, 1) }}%
+                                {{ $chartData['total'] > 0 ? round(($chartData['unsold'] / $chartData['total']) * 100, 1) : 0 }}%
                             </div>
                         </div>
                     </div>
@@ -116,7 +116,7 @@
                                 </div>
                             </div>
                             <div class="stat-percentage">
-                                {{ round(($chartData['hold'] / $chartData['total']) * 100, 1) }}%
+                                {{ $chartData['total'] > 0 ? round(($chartData['hold'] / $chartData['total']) * 100, 1) : 0 }}%
                             </div>
                         </div>
                     </div>

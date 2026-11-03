@@ -186,7 +186,7 @@
     </style>
 </head>
 
-<body class="control-sidebar-slide-open  sidebar-mini sidebar-collapse">
+<body class="control-sidebar-slide-open sidebar-mini sidebar-collapse layout-fixed layout-navbar-fixed">
     @php
         if (!$errors->isEmpty()) {
             alert()

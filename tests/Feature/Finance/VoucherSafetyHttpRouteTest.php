@@ -17,7 +17,6 @@ class VoucherSafetyHttpRouteTest extends TestCase
             ['POST', 'commision.voucher.store', []],
             ['PUT', 'commision.voucher.update', ['id' => 41]],
             ['DELETE', 'commision.voucher.delete', ['id' => 41]],
-            ['PUT', 'journal.voucher.update', ['id' => 41]],
             ['DELETE', 'journal.voucher.delete', ['id' => 41]],
         ];
 

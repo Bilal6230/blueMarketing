@@ -70,7 +70,6 @@ class ReportController extends Controller
         $x['role'] = Role::get();
         $x['users'] = User::get();
         $x['power'] = $power;
-        dd($x['users']);
         return view('admin.reports.agent_report', $x);
     }
 

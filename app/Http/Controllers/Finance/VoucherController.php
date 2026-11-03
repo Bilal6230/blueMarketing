@@ -859,6 +859,10 @@ class VoucherController extends Controller
 
     public function pendingBankPayments(Request $request)
     {
+        if (!$request->ajax() && !$request->expectsJson()) {
+            return redirect()->route('finance.voucher.in');
+        }
+
         $selectedProjectId = getSelectedTown();
 
         $query = CustomerLedger::with([

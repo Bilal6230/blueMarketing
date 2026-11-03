@@ -16,7 +16,7 @@
                 @php
                     $id = getSelectedTown();
                 @endphp
-                <select id="actionDropdown" class="form-control ">
+                <select id="actionDropdown" class="form-control" aria-label="Selected project" style="max-width:min(260px,34vw)">
                     @foreach (getProjects() as $v)
                         <option value="{{ $v->id }}" {{ $id == $v->id ? 'selected' : '' }}>{{ $v->project }}
                         </option>
@@ -43,49 +43,27 @@
             </a>
         </li>
 
+        @php($taskNotifications = \Illuminate\Support\Facades\Schema::hasTable('notifications') ? Auth::user()->unreadNotifications()->latest()->limit(5)->get() : collect())
         <li class="nav-item dropdown">
             <a class="nav-link" data-toggle="dropdown" href="#" aria-expanded="false">
                 <i class="far fa-bell"></i>
-                <span class="badge badge-warning navbar-badge">15</span>
+                @if($taskNotifications->isNotEmpty())<span class="badge badge-warning navbar-badge">{{ $taskNotifications->count() }}</span>@endif
             </a>
             <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right" style="left: inherit; right: 0px;">
-                <span class="dropdown-item dropdown-header">15 Notifications</span>
-                <div class="dropdown-divider"></div>
-                <a href="#" class="dropdown-item">
-                    <i class="fas fa-envelope mr-2"></i> 4 new messages
-                    <span class="float-right text-muted text-sm">3 mins</span>
-                </a>
-                <div class="dropdown-divider"></div>
-                <a href="#" class="dropdown-item">
-                    <i class="fas fa-users mr-2"></i> 8 friend requests
-                    <span class="float-right text-muted text-sm">12 hours</span>
-                </a>
-                <div class="dropdown-divider"></div>
-                <a href="#" class="dropdown-item">
-                    <i class="fas fa-file mr-2"></i> 3 new reports
-                    <span class="float-right text-muted text-sm">2 days</span>
-                </a>
-                <div class="dropdown-divider"></div>
-                <a href="#" class="dropdown-item dropdown-footer">See All Notifications</a>
+                <span class="dropdown-item dropdown-header">{{ $taskNotifications->count() }} Notifications</span>
+                @forelse($taskNotifications as $notification)<div class="dropdown-divider"></div><form method="POST" action="{{ route('employee-tasks.notifications.read',$notification->id) }}">@csrf @method('PATCH')<button class="dropdown-item text-left"><i class="fas fa-tasks mr-2"></i>{{ \Illuminate\Support\Str::limit($notification->data['message'] ?? 'Task updated',35) }}<span class="float-right text-muted text-sm">{{ $notification->created_at->diffForHumans() }}</span></button></form>@empty<div class="dropdown-divider"></div><span class="dropdown-item text-muted">No new notifications</span>@endforelse
+                <div class="dropdown-divider"></div><a href="{{ route('employee-tasks.index') }}" class="dropdown-item dropdown-footer">See Employee Tasks</a>
             </div>
         </li>
 
         <li class="nav-item dropdown user-menu">
             <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
-                @php
-                    $avatarPath = 'public/' . Auth::user()->avatar;
-                    $avatarUrl =
-                        Auth::user()->avatar && Storage::exists($avatarPath)
-                            ? Storage::url($avatarPath)
-                            : asset('images/default-avatar.png');
-                @endphp
-
-                <img src="{{ $avatarUrl }}" class="user-image img-circle elevation-2" alt="profile">
+                <img src="{{ Auth::user()->avatar ? asset('storage/'.ltrim(Auth::user()->avatar, '/')) : asset('images/default-avatar.png') }}" class="user-image img-circle elevation-2" alt="profile">
                 {{-- <span class="d-none d-md-inline">{{ Auth::user()->name }}</span> --}}
             </a>
             <ul class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
                 <li class="user-header bg-primary">
-                    <img src="/storage/{{ Auth::user()->avatar }}" class="img-circle elevation-2" alt="User Image">
+                    <img src="{{ Auth::user()->avatar ? asset('storage/'.ltrim(Auth::user()->avatar, '/')) : asset('images/default-avatar.png') }}" class="img-circle elevation-2" alt="User Image">
                     <p>
                         {{ Auth::user()->name }} - {{ implode(',', Auth::user()->getRoleNames()->toArray()) }}
                         <small>Last updated {{ date('d-m-Y H:i:s', strtotime(Auth::user()->updated_at)) }}</small>

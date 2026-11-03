@@ -16,14 +16,6 @@ class AppRepository {
 
     public static function getHeadList($user_id = null, $filter = null, $status = null){
 
-         //Lead::where('user_id', $user_id);
-         dd('asdasd');
-         //$data_list = ProjectHeadSubhead::with('headAccounting')->where(['project_id' => $request->projectID])->get();
-
-         $data_list = ProjectHeadSubhead::where('project_id', $projectId)
-            ->distinct()
-            ->pluck('head_accounting_id');
-
          $leads =  Lead::where('is_active', 1);
          if(!is_null($user_id)){
             $profile =  $leads->whereRelation('users', 'user_id', $user_id )->whereIn('follow_status',[2,6,3,7]);

@@ -203,10 +203,9 @@ class ProjectController extends Controller
     public function add_zone()
     {
         $x['title']     = 'Add Project Zone';
-        $x['data']      = Project::find(1)->zones();
+        $x['data']      = Project::findOrFail((int) getSelectedTown())->zones()->get();
         $x['role']      = Role::get();
 
-        dd($x['data']);
         return view('admin.projects.add_zone', $x);
     }
 

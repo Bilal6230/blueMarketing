@@ -1,226 +1,59 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Today's Lead Work Report</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <!-- Daterangepicker CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" rel="stylesheet">
-    
-
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>{{ $mode === 'completed' ? 'Completed Follow-ups' : ($mode === 'pending_overdue' ? 'Pending & Overdue Follow-ups' : "Today's Follow-ups") }}</title>
+    <style>
+        *{box-sizing:border-box}body{margin:0;background:#f3f6fb;color:#17233c;font-family:Inter,Segoe UI,Arial,sans-serif}.wrap{max-width:1500px;margin:auto;padding:28px}.top,.filter,.empty,.user-block{background:#fff;border:1px solid #e2e8f2;border-radius:14px;box-shadow:0 4px 18px rgba(28,50,85,.06)}.top{padding:22px 26px;display:flex;align-items:center;justify-content:space-between}.top h1{margin:0 0 6px;font-size:25px}.muted{color:#71809b;font-size:13px}.btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:8px;padding:10px 16px;background:#1677ff;color:#fff;text-decoration:none;font-weight:600;cursor:pointer}.btn.light{background:#edf4ff;color:#1469da}.filter{margin:18px 0;padding:18px;display:grid;grid-template-columns:1fr 1fr auto;gap:14px;align-items:end}.filter label{display:block;margin-bottom:7px;font-size:12px;font-weight:700;color:#53627a}.filter input{width:100%;height:42px;border:1px solid #ccd6e5;border-radius:8px;padding:0 12px}.cards{display:flex;gap:14px;margin:18px 0;overflow-x:auto;padding:2px 2px 8px}.user-card{flex:0 0 260px;display:block;background:#fff;border:2px solid transparent;border-radius:13px;padding:18px;text-decoration:none;color:inherit;box-shadow:0 4px 16px rgba(28,50,85,.06);transition:.15s}.user-card:hover{border-color:#8dbdff;transform:translateY(-2px)}.user-card.selected{border-color:#1677ff;background:#eaf3ff;box-shadow:0 5px 18px rgba(22,119,255,.2)}.user-card.selected .avatar{background:#1677ff;color:#fff}.avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:#e8f2ff;color:#1677ff;font-weight:800}.card-line{display:flex;align-items:center;gap:12px}.card-name{font-weight:750}.count{margin-top:5px;color:#71809b;font-size:13px}.user-block{overflow:hidden;margin:18px 0}.user-head{padding:14px 18px;background:#14243b;color:#fff;display:flex;justify-content:space-between;align-items:center}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:920px}th{background:#eaf1fa;color:#34445f;text-align:left;font-size:12px;padding:11px}td{padding:11px;border-top:1px solid #e5eaf1;font-size:13px;vertical-align:top}.customer{font-weight:700;color:#1268d4;text-decoration:none}.status{display:inline-block;padding:4px 8px;border-radius:20px;background:#e8f7ef;color:#168653;font-weight:700;font-size:11px}.late{color:#d33b3b;font-weight:800}.empty{padding:36px;text-align:center;color:#71809b}.skeleton{height:54px;margin:12px 0;border-radius:10px;background:linear-gradient(90deg,#e8edf4 25%,#f7f9fc 50%,#e8edf4 75%);background-size:200% 100%;animation:shine 1.1s infinite}@keyframes shine{to{background-position:-200% 0}}@media(max-width:720px){.wrap{padding:12px}.top{align-items:flex-start;gap:15px;flex-direction:column}.filter{grid-template-columns:1fr}.top h1{font-size:21px}.user-card{flex-basis:220px}}
+    </style>
 </head>
-<style>
-    .card:hover {
-        transform: translateY(-5px); /* Slight lift effect */
-        transition: transform 0.3s ease, box-shadow 0.3s ease; /* Smooth transition */
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Enhanced shadow */
-    }
-
-    .card-body .btn {
-        transition: background-color 0.2s ease;
-    }
-
-    .card-body .btn:hover {
-        background-color: #0056b3; /* Darker blue for the button on hover */
-    }
-
-    #date_range {
-        border: 2px solid #007bff; /* Add a blue border */
-        border-radius: 5px; /* Rounded corners */
-        padding: 10px; /* Add padding */
-        font-size: 16px; /* Increase font size */
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Add a subtle shadow */
-        transition: box-shadow 0.3s ease, border-color 0.3s ease; /* Smooth transitions */
-    }
-
-    #date_range:focus {
-        border-color: #0056b3; /* Darker blue on focus */
-        box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2); /* Enhanced shadow on focus */
-        outline: none; /* Remove default outline */
-    }
-
-    .daterangepicker {
-        border: 2px solid #007bff !important; /* Customize picker border */
-        border-radius: 10px !important; /* Rounded corners for picker */
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2) !important; /* Subtle shadow for picker */
-    }
-
-    .daterangepicker .calendar-table th, .daterangepicker .calendar-table td {
-        font-size: 14px; /* Adjust font size in calendar */
-    }
-
-    .daterangepicker .applyBtn, .daterangepicker .cancelBtn {
-        border-radius: 5px !important; /* Rounded buttons */
-        font-size: 14px; /* Adjust button font size */
-    }
-</style>
 <body>
-<div class="container mt-5">
-    <h1 class="text-center mb-4">Today's Lead Work Report</h1>
+@php
+    $title = $mode === 'completed' ? 'Completed Follow-ups' : ($mode === 'pending_overdue' ? 'Pending + Overdue Follow-ups' : "Today's Follow-ups");
+    $range = $fromDate->format('Y-m-d').' to '.$toDate->format('Y-m-d');
+@endphp
+<main class="wrap">
+    <section class="top">
+        <div><h1>{{ $title }}</h1><div class="muted">Selected project records only · {{ $range }}</div></div>
+        <a class="btn light" href="{{ route('dashboard') }}">← Dashboard</a>
+    </section>
 
-    <div class="d-flex justify-content-between mb-4">
-        <a href="{{ route('admin') }}" class="btn btn-primary">Go to Admin Page</a>
-    
-        @if(request()->has('user_id'))
-            <a href="{{ url()->current() }}" class="btn btn-danger">Reset Filter</a>
-        @endif
-    </div>
+    <form class="filter" method="get" action="{{ route('crm.todayLeadWorkReport') }}" onsubmit="this.date_range.value=this.from.value+' to '+this.to.value">
+        <input type="hidden" name="mode" value="{{ $mode }}"><input type="hidden" name="date_range" value="{{ $range }}">
+        <div><label for="from">FROM</label><input id="from" name="from" type="date" value="{{ $fromDate->format('Y-m-d') }}" required></div>
+        <div><label for="to">TO</label><input id="to" name="to" type="date" value="{{ $toDate->format('Y-m-d') }}" max="{{ now()->format('Y-m-d') }}" required></div>
+        <button class="btn" type="submit">Apply Filter</button>
+    </form>
 
-    <!-- Display all users and their work counts -->
-    <div class="mb-4">
-        <h3 class="mb-4 text-center">All Users</h3>
-        <div class="row">
-            @foreach($allUsers as $userId => $user)
-                <div class="col-md-4 mb-3">
-                    <div class="card shadow-sm hover-shadow-lg border-light rounded">
-                        <div class="card-body text-center">
-                            <h5 class="card-title mb-2 text-success">
-                                <i class="fas fa-user-circle"></i> {{ $user->name }}
-                            </h5>
-                            <p class="card-text text-muted">Total Work Count: {{ $user->works_count }}</p>
-                            <a href="{{ url()->current() . '?user_id=' . $user->id }}" class="btn btn-success btn-sm mt-2">View Work</a>
-                        </div>
-                    </div>
-                </div>
+    @if($cards->isNotEmpty())
+        <div class="cards">
+            @foreach($cards as $card)
+                <a class="user-card {{ (int)$userId === (int)$card['id'] ? 'selected' : '' }}" data-user-id="{{ $card['id'] }}" href="{{ route('crm.todayLeadWorkReport', ['mode'=>$mode,'date_range'=>$range,'user_id'=>$card['id']]) }}">
+                    <div class="card-line"><span class="avatar">{{ strtoupper(substr($card['name'],0,1)) }}</span><div><div class="card-name">{{ $card['name'] }}</div><div class="count">{{ number_format($card['count']) }} record(s)</div></div></div>
+                </a>
             @endforeach
         </div>
-    </div>
 
-    <div class="col-md-12">
-        <form method="GET" class="row align-items-center">
-            <div class="col-md-8 mb-3">
-                <label for="date_range" class="form-label">Select Date Range</label>
-                <input type="text" id="date_range" name="date_range" class="form-control" value="{{ request('date_range') }}">
-            </div>
-            <div class="col-md-4 d-flex align-items-end">
-                <button type="submit" class="btn btn-success w-100">Reload Report</button>
-            </div>
-        </form>
-    </div>
-
-    
-
-    @if($todayWorkReport->isEmpty())
-        <div class="alert alert-info text-center">
-            No work records found for today.
-        </div>
+        <div id="report-results">@include('dashboard.partials.follow_up_user_tables', ['mode'=>$mode, 'rowsByUser'=>$rowsByUser])</div>
     @else
-        @foreach($todayWorkReport as $userId => $userWork)
-            <div class="card mb-4">
-                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-                    <h4>
-                        <a href="{{ url()->current() . '?user_id=' . $userId }}" class="text-white text-decoration-none">
-                            User Name: {{ $userWork->first()->first()->user->name ?? 'N/A' }} 
-                        </a>
-                    </h4>
-                    <h5>
-                        <a href="{{ url()->current() . '?user_id=' . $userId }}" class="text-white text-decoration-none">
-                            User ID: {{ $userId }}
-                        </a>
-                    </h5>
-                </div>
-                <table class="table table-bordered">
-                    <thead class="table-success">
-                        <tr>
-                            <th style="width: 20%;">Name</th>
-                            <th style="width: 5%;">Mobile</th>
-                            <th style="width: 35%;">Comment</th>
-                            <th style="width: 10%;">Recall</th>
-                            <th style="width: 15%;">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($userWork as $leadId => $workEntries)
-                            @php
-                                $lead = $workEntries->first()->leads;
-                            @endphp
-                            @foreach($workEntries as $work)
-                                <tr>
-                                    <td>
-                                        <a href="/admin/crm/lead/work?id={{ $lead->id }}&status=1&user={{ $userId }}" class="text-decoration-none text-success fw-bold transition-colors hover:text-success">
-                                            {{ $lead->first_name ?? 'N/A' }} {{ $lead->last_name ?? '' }}
-                                        </a>
-                                    </td>
-                                    <td>{{ $lead->phone_number ?? 'N/A' }}</td>
-                                    
-                                    <td>{{ $work->comment }}</td>
-                                    <td>{{ Setting::timeRemaining($work->follow_up) }} </td>
-                                    <td
-                                        @if($work->call_status == 2)
-                                            class="bg-primary text-white" 
-                                        @elseif($work->call_status == 3)
-                                            class="bg-danger text-white"  
-                                        @elseif($work->call_status == 7)
-                                            class="bg-info text-white"  
-                                        @elseif($work->call_status == 4)
-                                            class="bg-secondary text-white"  
-                                        @endif
-                                    >
-                                        {{ Setting::getCallStatus($work->call_status) }} 
-                                    </td>
-                                </tr>
-                            @endforeach
-                        @endforeach
-                    </tbody>
-                </table>
-
-                
-            </div>
-        @endforeach
+        <div class="empty">No {{ strtolower($title) }} found for this project and selected period.</div>
     @endif
-</div>
-
-<!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
- <!-- jQuery -->
- <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
- <!-- Moment.js -->
- <script src="https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.min.js"></script>
-
-<!-- Daterangepicker JS -->
-<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
-
-<!-- Initialize Daterangepicker -->
+</main>
 <script>
-    $(document).ready(function () {
-        $('#date_range').daterangepicker({
-            autoUpdateInput: true, // Automatically update input field
-            locale: {
-                format: 'YYYY-MM-DD', // Date format for input
-                applyLabel: 'Apply', // Apply button label
-                cancelLabel: 'Cancel', // Cancel button label
-                customRangeLabel: 'Custom Range', // Custom range label
-            },
-            ranges: {
-                'Today': [moment(), moment()],
-                'Yesterday': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
-                'Last 7 Days': [moment().subtract(6, 'days'), moment()],
-                'Last 30 Days': [moment().subtract(29, 'days'), moment()],
-                'This Month': [moment().startOf('month'), moment().endOf('month')],
-                'Last Month': [moment().subtract(1, 'months').startOf('month'), moment().subtract(1, 'months').endOf('month')],
-            },
-            // Set the maximum date to today (disable future dates)
-            maxDate: moment(),
-            startDate: "{{ request('from_date', now()->startOfMonth()->format('YYYY-MM-DD')) }}",
-            endDate: "{{ request('to_date', now()->format('YYYY-MM-DD')) }}"
-        });
-
-        // Automatically update hidden inputs when the range is applied
-        $('#date_range').on('apply.daterangepicker', function (ev, picker) {
-            $(this).val(picker.startDate.format('YYYY-MM-DD') + ' to ' + picker.endDate.format('YYYY-MM-DD'));
-        });
-
-        // Clear input when the Cancel button is clicked
-        $('#date_range').on('cancel.daterangepicker', function (ev, picker) {
-            $(this).val('');
-        });
-    });
+document.querySelectorAll('.user-card[data-user-id]').forEach(card=>card.addEventListener('click',async event=>{
+    event.preventDefault();
+    document.querySelectorAll('.user-card').forEach(item=>item.classList.remove('selected'));
+    card.classList.add('selected');
+    const results=document.getElementById('report-results');
+    results.innerHTML='<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
+    try{
+        const response=await fetch(card.href,{headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'}});
+        if(!response.ok) throw new Error('Request failed');
+        const payload=await response.json(); results.innerHTML=payload.html;
+        history.replaceState({},'',card.href);
+    }catch(error){results.innerHTML='<div class="empty">Data load nahi ho saka. Please dobara try karein.</div>';}
+}));
 </script>
-
 </body>
 </html>

@@ -1,27 +1,12 @@
-@extends('admin.layouts.master')
-@section('content')
-<div class="content-wrapper"><section class="content pt-3"><div class="container-fluid">
-    <div class="mb-3 d-flex justify-content-between">
-        <a href="{{ route('finance.reports.trial_balance') }}" class="btn btn-light">← Change Dates</a>
-        <a target="_blank" href="{{ route('finance.reports.trial_balance.print', ['from'=>$from,'to'=>$to]) }}" class="btn btn-dark">Print</a>
-    </div>
-    <div class="card"><div class="card-body table-responsive">
-        <div class="report-heading"><h3>{{ $projectName }}</h3><h4>Trial Balance</h4><div>{{ $from }} to {{ $to }}</div></div>
-        @include('admin.finance.reports._trial_balance_table')
-        @if($paginator->hasPages())
-            <nav class="trial-pagination" aria-label="Trial Balance pages">
-                <a class="btn btn-sm btn-outline-primary {{ $paginator->onFirstPage() ? 'disabled' : '' }}"
-                   href="{{ $paginator->onFirstPage() ? '#' : $paginator->previousPageUrl() }}">&larr; Previous</a>
-                <span>Page {{ $paginator->currentPage() }} of {{ $paginator->lastPage() }}</span>
-                <a class="btn btn-sm btn-outline-primary {{ $paginator->hasMorePages() ? '' : 'disabled' }}"
-                   href="{{ $paginator->hasMorePages() ? $paginator->nextPageUrl() : '#' }}">Next &rarr;</a>
-            </nav>
-        @endif
-    </div></div>
-</div></section></div>
-@endsection
-@push('style')
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Trial Balance</title>
 <style>
-.report-heading{text-align:center;margin-bottom:18px;font-family:Arial,sans-serif}.report-heading h3,.report-heading h4{margin:2px}.trial-balance{font-family:Arial,sans-serif;font-size:12px;margin-bottom:0}.trial-balance th,.trial-balance td{vertical-align:middle;white-space:nowrap;padding:5px}.trial-balance thead th{text-align:center;background:#3498d4;color:#fff}.trial-balance .account-title{text-align:left}.head-row th{text-align:center;font-size:18px;font-weight:800;background:#dce6ee;padding:10px}.subhead-row th{text-align:center;font-size:14px;font-weight:700;background:#f0f3f5;padding:7px}.account-label th{text-align:left;font-size:12px;background:#f8f9fa;padding-left:14px}.account-row td:nth-child(3){white-space:normal;min-width:360px}.entry-meta{display:inline-block;min-width:155px;font-weight:600;color:#34495e}.code-col{text-align:center;width:58px}.number{text-align:right}.subtotal,.head-total{font-weight:700}.head-total{background:#e8eef2}.trial-balance tfoot{font-weight:800;background:#3498d4;color:#fff}.trial-pagination{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:16px;font-family:Arial,sans-serif}.trial-pagination span{font-size:13px;font-weight:600;color:#34495e}.trial-pagination .disabled{pointer-events:none;opacity:.5}
-</style>
-@endpush
+*{box-sizing:border-box}body{margin:0;background:#f5f7fa;color:#222;font:13px/1.25 Arial,sans-serif}.report-shell{max-width:1100px;margin:12px auto;background:#fff;border-radius:10px;box-shadow:0 4px 8px rgba(0,0,0,.1);padding:14px 16px}.toolbar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px}.btn{border:0;border-radius:4px;padding:7px 13px;text-decoration:none;color:#fff;background:#3498db;font-weight:600}.btn.secondary{background:#64748b}.header{margin-bottom:12px}.header h1{font-size:24px;color:#333;margin:0 0 4px}.header p{font-size:13px;color:#555;margin:0 0 2px}.section-title{font-size:16px;font-weight:bold;color:#2c3e50;border-left:4px solid #3498db;padding-left:8px;margin:8px 0}.table-responsive{width:100%;overflow-x:auto}.trial-balance{width:100%;border-collapse:collapse;table-layout:auto;margin:0;font-size:10px}.trial-balance th,.trial-balance td{border:1px solid #d4dce5;padding:4px 5px;vertical-align:middle;white-space:nowrap}.trial-balance thead th{background:#3498db;color:#fff;text-align:center;border-color:#fff}.trial-balance .account-title{text-align:left}.trial-balance .code-col{text-align:center;width:42px}.trial-balance .number{text-align:right}.trial-balance .account-row td:nth-child(3){white-space:normal;min-width:230px}.head-row th{text-align:center;font-size:14px;font-weight:800;background:#dceaf4;padding:7px}.subhead-row th{text-align:center;font-size:11px;font-weight:700;background:#edf3f7;padding:5px}.subtotal,.head-total{font-weight:700}.subtotal th{text-align:left}.head-total{background:#e1eaf0}.trial-balance tfoot{font-weight:800;background:#3498db;color:#fff}.trial-pagination{display:flex;justify-content:center;align-items:center;gap:12px;margin-top:12px}.trial-pagination .disabled{pointer-events:none;opacity:.5}.trial-pagination span{font-weight:600;color:#526176}@media(max-width:700px){.report-shell{margin:0;border-radius:0;padding:10px}.header h1{font-size:20px}}
+</style></head><body>
+<main class="report-shell">
+ <div class="toolbar"><a class="btn secondary" href="{{ route('finance.reports.trial_balance') }}">Change Dates</a><a class="btn" target="_blank" href="{{ route('finance.reports.trial_balance.print',['from'=>$from,'to'=>$to]) }}">Print</a></div>
+ <header class="header"><h1>Trial Balance</h1><p><strong>Project:</strong> {{ $projectName }}</p><p><strong>Date Range:</strong> {{ $from }} to {{ $to }}</p></header>
+ <section><div class="section-title">Trial Balance Details</div><div class="table-responsive">@include('admin.finance.reports._trial_balance_table')</div></section>
+ @if($paginator->hasPages())<nav class="trial-pagination"><a class="btn secondary {{ $paginator->onFirstPage()?'disabled':'' }}" href="{{ $paginator->onFirstPage()?'#':$paginator->previousPageUrl() }}">&larr; Previous</a><span>Page {{ $paginator->currentPage() }} of {{ $paginator->lastPage() }}</span><a class="btn {{ $paginator->hasMorePages()?'':'disabled' }}" href="{{ $paginator->hasMorePages()?$paginator->nextPageUrl():'#' }}">Next &rarr;</a></nav>@endif
+</main></body></html>
