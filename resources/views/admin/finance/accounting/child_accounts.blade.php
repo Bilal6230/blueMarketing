@@ -219,6 +219,8 @@
                         $("#id").val(data.id);
                         $("#cnic").val(data.cnic);
                         $("#phone").val(data.phone);
+                        $('#modal-edit [name="is_active"]').val(String(data.is_active));
+                        $('#subhead_status_change_reason').val('');
                         $('#modal-loading').modal('hide');
                         $('#modal-edit').modal({
                             backdrop: 'static',
@@ -388,6 +390,15 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                        <div class="form-group mt-2">
+                            <label for="subhead_status_change_reason">Status change reason</label>
+                            <textarea id="subhead_status_change_reason" class="form-control @error('status_change_reason') is-invalid @enderror"
+                                name="status_change_reason" rows="2" maxlength="500"
+                                placeholder="Required only when changing Active/Inactive status"></textarea>
+                            @error('status_change_reason')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
                         <div class="modal-footer justify-content-between">
                             <input type="hidden" name="id" id="id">

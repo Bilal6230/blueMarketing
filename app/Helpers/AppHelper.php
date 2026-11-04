@@ -9,6 +9,8 @@ use App\Models\JournalVoucher;
 use App\Models\ProjectHeadSubhead;
 
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use function PHPUnit\Framework\isNull;
 
 /**
@@ -310,7 +312,9 @@ function formatDateExperience4($date)
 if (!function_exists('getLastLedgerIdByType')) {
     function getLastLedgerIdByType($type, $id = null)
     {
-        $query = App\Models\Ledger::where('type', $type);
+        $projectId = (int) getSelectedTown();
+        $query = App\Models\Ledger::where('type', $type)
+            ->whereHas('projectHeadSubhead', fn ($q) => $q->where('project_id', $projectId));
 
         if ($id === null) {
             $query->latest('id');
@@ -323,28 +327,47 @@ if (!function_exists('getLastLedgerIdByType')) {
 }
 function getVocuherNumber($type)
 {
-    $numbers = Ledger::where('type', $type)
-        ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', getSelectedTown()))
+    // Never recycle a gap: inactive, reversed, or otherwise archived ledger
+    // rows still own their voucher identity. Sequence settings will replace
+    // this legacy fallback after all posting paths are migrated.
+    $projectId = (int) getSelectedTown();
+    $inTransaction = DB::transactionLevel() > 0;
+    if ($projectId > 0 && $inTransaction) {
+        // Use the project row as a fallback mutex before the counter migration
+        // exists and as the first-initialization mutex after it is installed.
+        DB::table('projects')->where('id', $projectId)->lockForUpdate()->firstOrFail();
+    }
+    $lastNumber = Ledger::where('type', $type)
+        ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $projectId))
         ->where('voucher_number', '>', 0)
-        ->orderBy('voucher_number')
-        ->pluck('voucher_number')
-        ->toArray();
+        ->max('voucher_number');
 
-    $nextNumber = 1; // default starting number
-
-    if (!empty($numbers)) {
-        $allNumbers = range(min($numbers), max($numbers));
-        $missing = array_diff($allNumbers, $numbers);
-        if (!empty($missing)) {
-            // Get the smallest missing number
-            $nextNumber = min($missing);
-        } else {
-            // If no missing numbers, continue from max
-            $nextNumber = max($numbers) + 1;
+    // Posting call sites execute inside their transaction. Serializing on the
+    // counter row serializes normal writes; the project row protects the
+    // first-time initialization race only.
+    // Outside a transaction this function is only used to preview a number.
+    if ($projectId > 0 && $inTransaction && Schema::hasTable('ledger_voucher_counters')) {
+        $counter = DB::table('ledger_voucher_counters')->where('project_id', $projectId)
+            ->where('voucher_type', (string) $type)->lockForUpdate()->first();
+        if (!$counter) {
+            $counter = DB::table('ledger_voucher_counters')->where('project_id', $projectId)
+                ->where('voucher_type', (string) $type)->lockForUpdate()->first();
         }
+        $next = max((int) $counter?->last_number, (int) $lastNumber) + 1;
+        $now = now();
+        if ($counter) {
+            DB::table('ledger_voucher_counters')->where('project_id', $projectId)->where('voucher_type', (string) $type)
+                ->update(['last_number' => $next, 'updated_at' => $now]);
+        } else {
+            DB::table('ledger_voucher_counters')->insert([
+                'project_id' => $projectId, 'voucher_type' => (string) $type, 'last_number' => $next,
+                'created_at' => $now, 'updated_at' => $now,
+            ]);
+        }
+        return $next;
     }
 
-    return $nextNumber;
+    return ((int) $lastNumber) + 1;
 }
 
 function get_new_voucher_number($type, $id = null)
@@ -456,25 +479,17 @@ function get_new_booking_voucher($type, $id = null)
 
 function get_new_typeID($type, $id = null)
 {
-    // Helper function to get the last ledger ID by plot
-    $getLastLedgerIdByplot = function ($type, $id = null) {
-        $query = App\Models\CustomerLedger::where('transaction_type', $type);
+    $projectId = (int) getSelectedTown();
+    $query = App\Models\CustomerLedger::query()->where('project_id', $projectId)
+        ->where('transaction_type', $type);
 
-        if ($id === null) {
-            $query->latest('id');
-        } else {
-            $query->where('id', $id);
-        }
+    // Preserve the historical lookup form while preventing cross-project reads.
+    if ($id !== null) {
+        return $query->whereKey($id)->value('type_id');
+    }
 
-        return $query->value('type_id');
-    };
-
-    // Replace 'ledgers' with your actual table name
-    $lastId = $getLastLedgerIdByplot($type, $id);
-
-    $newId = is_null($id) ? $lastId + 1 : $lastId;
-
-    return $newId;
+    return app(\App\Services\Finance\ProjectVoucherAllocator::class)
+        ->nextSourceId($projectId, (string) $type);
 }
 
 function getSumAmountForBooking($booking_id = null)
@@ -556,26 +571,35 @@ function getBankNameById($id)
 
 function getPaymentTypeName($value)
 {
-    $paymentTypes = [
-        '1' => 'Cash',
-        '2' => 'Online',
-        '3' => 'Check',
-        // Add more payment types as needed
-    ];
-
-    return $paymentTypes[$value] ?? 'Unknown';
+    return getPaymentTypeDetails($value)['name'] ?? 'Unknown';
 }
 
 function getPaymentTypeDetails($value)
 {
+    static $projectLabels = [];
     $paymentTypes = [
-        '1' => ['name' => 'Cash', 'badge' => 'badge-success'], // Green badge
-        '2' => ['name' => 'Online', 'badge' => 'badge-primary'], // Blue badge
-        '3' => ['name' => 'Check', 'badge' => 'badge-warning'], // Yellow badge
-        // Add more payment types as needed
+        '1' => ['name' => 'Cash', 'badge' => 'badge-success'],
+        '2' => ['name' => 'Online', 'badge' => 'badge-primary'],
+        '3' => ['name' => 'Check', 'badge' => 'badge-warning'],
     ];
 
-    return $paymentTypes[$value] ?? ['name' => 'Unknown', 'badge' => 'badge-secondary']; // Default gray badge
+    $code = (string) $value;
+    if (isset($paymentTypes[$code])) {
+        $projectId = (int) getSelectedTown();
+        $cacheKey = $projectId.':'.$code;
+        if (!array_key_exists($cacheKey, $projectLabels)) {
+            $label = null;
+            if ($projectId > 0 && class_exists(\Illuminate\Support\Facades\Schema::class)
+                && \Illuminate\Support\Facades\Schema::hasTable('project_payment_method_labels')) {
+                $label = \Illuminate\Support\Facades\DB::table('project_payment_method_labels')
+                    ->where('project_id', $projectId)->where('method_code', (int) $code)->value('label');
+            }
+            $projectLabels[$cacheKey] = is_string($label) && trim($label) !== '' ? trim($label) : $paymentTypes[$code]['name'];
+        }
+        $paymentTypes[$code]['name'] = $projectLabels[$cacheKey];
+    }
+
+    return $paymentTypes[$code] ?? ['name' => 'Unknown', 'badge' => 'badge-secondary'];
 }
 
 function approveStatus($value)

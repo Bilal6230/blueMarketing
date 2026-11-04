@@ -85,6 +85,29 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::delete('user', 'destroy')->middleware(['permission:delete user'])->name('user.destroy');
     });
 
+    Route::get('employee-definitions', [App\Http\Controllers\EmployeeDefinitionController::class, 'index'])
+        ->middleware(['permission:read user'])->name('employee-definitions.index');
+    Route::post('employee-definitions', [App\Http\Controllers\EmployeeDefinitionController::class, 'storeDefinition'])
+        ->middleware(['permission:create user'])->name('employee-definitions.store');
+    Route::put('employee-definitions/{definitionId}', [App\Http\Controllers\EmployeeDefinitionController::class, 'updateDefinition'])
+        ->middleware(['permission:update user'])->name('employee-definitions.update');
+    Route::post('employee-profiles', [App\Http\Controllers\EmployeeDefinitionController::class, 'saveProfile'])
+        ->middleware(['permission:create user|update user'])->name('employee-profiles.store');
+    Route::get('employee-attendance', [App\Http\Controllers\EmployeeAttendanceSnapshotController::class, 'index'])
+        ->middleware('permission:read attendance')->name('employee-attendance.index');
+    Route::post('employee-attendance/prepare', [App\Http\Controllers\EmployeeAttendanceSnapshotController::class, 'prepare'])
+        ->middleware('permission:create attendance')->name('employee-attendance.prepare');
+    Route::patch('employee-attendance/{recordId}', [App\Http\Controllers\EmployeeAttendanceSnapshotController::class, 'review'])
+        ->middleware('permission:update attendance')->name('employee-attendance.review');
+    Route::get('employee-payroll/preview', [App\Http\Controllers\EmployeePayrollPreviewController::class, 'index'])
+        ->middleware('permission:read payroll')->name('employee-payroll.preview');
+    Route::post('employee-payroll/snapshots', [App\Http\Controllers\EmployeePayrollPreviewController::class, 'snapshot'])
+        ->middleware('permission:create payroll')->name('employee-payroll.snapshot');
+    Route::post('employee-payroll/snapshots/{runId}/approve', [App\Http\Controllers\EmployeePayrollPreviewController::class, 'approve'])
+        ->middleware('permission:approve payroll')->name('employee-payroll.approve');
+    Route::get('employee-payroll/snapshots/{runId}', [App\Http\Controllers\EmployeePayrollPreviewController::class, 'showRun'])
+        ->middleware('permission:read payroll')->name('employee-payroll.run');
+
     Route::controller(RoleController::class)->group(function () {
         Route::get('role', 'index')->middleware(['permission:read role'])->name('role.index');
         Route::post('role', 'store')->middleware(['permission:create role'])->name('role.store');
@@ -111,6 +134,8 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::post('setting', 'store')->middleware(['permission:create setting'])->name('setting.store');
         Route::post('setting/show', 'show')->middleware(['permission:read setting'])->name('setting.show');
         Route::put('setting', 'update')->middleware(['permission:update setting'])->name('setting.update');
+        Route::post('setting/bank-account', 'saveProjectBankAccount')->middleware(['permission:update setting'])->name('setting.bank-account.save');
+        Route::post('setting/payment-method-labels', 'savePaymentMethodLabels')->middleware(['permission:update setting'])->name('setting.payment-method-labels.save');
         Route::delete('setting', 'destroy')->middleware(['permission:delete setting'])->name('setting.destroy');
     });
 
@@ -162,6 +187,17 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
 
     });
 
+    Route::get('plot-definitions', [App\Http\Controllers\PlotDefinitionController::class, 'index'])
+        ->middleware(['permission:read plot'])->name('project.plot-definitions.index');
+    Route::post('plot-definitions', [App\Http\Controllers\PlotDefinitionController::class, 'store'])
+        ->middleware(['permission:create plot'])->name('project.plot-definitions.store');
+    Route::put('plot-definitions/{definitionId}', [App\Http\Controllers\PlotDefinitionController::class, 'update'])
+        ->middleware(['permission:update plot'])->name('project.plot-definitions.update');
+    Route::patch('plot-definitions/{definitionId}/status', [App\Http\Controllers\PlotDefinitionController::class, 'status'])
+        ->middleware(['permission:update plot'])->name('project.plot-definitions.status');
+    Route::post('plot-definitions/{definitionId}/rate', [App\Http\Controllers\PlotDefinitionController::class, 'rate'])
+        ->middleware(['permission:update plot'])->name('project.plot-definitions.rate');
+
 
 
     Route::controller(App\Http\Controllers\LeadController::class)->group(function () {
@@ -210,6 +246,11 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         //head accounts routes
 
         Route::get('finance/accounting/head_account', 'head_index')->middleware(['permission:read accounting'])->name('accounting.head_index');
+        Route::get('finance/accounting/groups', 'account_groups_index')->middleware(['permission:read accounting'])->name('accounting.groups');
+        Route::post('finance/accounting/groups', 'account_group_store')->middleware(['permission:create accounting'])->name('accounting.group_store');
+        Route::put('finance/accounting/groups/{group}', 'account_group_update')->middleware(['permission:update accounting'])->name('accounting.group_update');
+        Route::post('finance/accounting/groups/{group}/assign-head', 'account_group_assign_head')->middleware(['permission:update accounting'])->name('accounting.group_assign_head');
+        Route::post('finance/accounting/groups/{group}/merge', 'account_group_merge_apply')->middleware(['permission:update accounting'])->name('accounting.group_merge_apply');
         Route::post('finance/accounting/head_account', 'head_store')->middleware(['permission:create accounting'])->name('accounting.head_store');
         Route::post('finance/accounting/head_account/show', 'head_show')->middleware(['permission:read accounting'])->name('accounting.head_show');
         Route::put('finance/accounting/head_account', 'head_update')->middleware(['permission:update accounting'])->name('accounting.head_update');
@@ -283,6 +324,11 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
     });
 
     Route::resource('labours', LabourController::class)->except(['show']);
+    Route::get('/contractors', [App\Http\Controllers\ContractorController::class, 'index'])->middleware(['permission:read labour'])->name('contractors.index');
+    Route::post('/contractors', [App\Http\Controllers\ContractorController::class, 'store'])->middleware(['permission:create labour'])->name('contractors.store');
+    Route::put('/contractors/{contractor}', [App\Http\Controllers\ContractorController::class, 'update'])->middleware(['permission:update labour'])->whereNumber('contractor')->name('contractors.update');
+    Route::patch('/contractors/{contractor}/status', [App\Http\Controllers\ContractorController::class, 'toggleStatus'])->middleware(['permission:update labour'])->whereNumber('contractor')->name('contractors.status');
+    Route::get('/contractors/{contractor}/ledger', [App\Http\Controllers\ContractorController::class, 'ledger'])->middleware(['permission:read labour'])->whereNumber('contractor')->name('contractors.ledger');
     Route::post('/labours/sitestore', [LabourController::class, 'siteStore'])
         ->name('labours.sitestore');
     Route::get('/labours/attendance/week', [LabourController::class, 'loadAttendanceWeek'])
@@ -322,15 +368,23 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
 
     // Create actions (AJAX)
     Route::post('stocks/items', [StockController::class, 'storeItem'])->name('stocks.items.store');
+    Route::get('stocks/items/export', [StockController::class, 'exportItems'])->name('stocks.items.export');
+    Route::post('stocks/items/import', [StockController::class, 'stageItemImport'])->name('stocks.items.import.stage');
+    Route::get('stocks/items/import/{batch}', [StockController::class, 'previewItemImport'])->whereNumber('batch')->name('stocks.items.import.preview');
+    Route::get('stocks/items/import-history', [StockController::class, 'itemImportHistory'])->name('stocks.items.import.history');
+    Route::post('stocks/items/import/{batch}/apply', [StockController::class, 'applyItemImport'])->whereNumber('batch')->name('stocks.items.import.apply');
+    Route::get('stocks/items/import/{batch}/errors', [StockController::class, 'downloadItemImportErrors'])->whereNumber('batch')->name('stocks.items.import.errors');
     Route::post('stocks/parties', [StockController::class, 'storeParty'])->name('stocks.parties.store');
     Route::post('stocks/entries', [StockController::class, 'storeEntry'])->name('stocks.entries.store');
     Route::post('stocks/bills', [StockController::class, 'storeBill'])->name('stocks.bills.store');
+    Route::post('stocks/legacy-reconciliation', [StockController::class, 'reconcileLegacyStock'])->name('stocks.legacy.reconcile');
     Route::post('stocks/finance/{kind}/{id}/approve', [StockController::class, 'approveFinance'])
         ->where('kind', 'stock_entry|stock_bill')->whereNumber('id')
         ->middleware(['permission:can approve'])->name('stocks.finance.approve');
     Route::put('stocks/items/{item}', [StockController::class, 'updateItem'])->name('stocks.items.update');
     Route::delete('stocks/items/{item}', [StockController::class, 'deleteItem'])->name('stocks.items.delete');
     Route::put('stocks/parties/{party}', [StockController::class, 'updateParty'])->name('stocks.parties.update');
+    Route::patch('stocks/parties/{party}/status', [StockController::class, 'updatePartyStatus'])->name('stocks.parties.status');
     Route::delete('stocks/parties/{party}', [StockController::class, 'deleteParty'])->name('stocks.parties.delete');
 
     // Lists (AJAX tables)

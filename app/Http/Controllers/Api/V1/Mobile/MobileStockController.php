@@ -18,12 +18,24 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class MobileStockController extends BaseMobileController
 {
     use ResolvesMobileProjectAccess;
+
+    private function projectStockItems(int $projectId, array $itemIds = [], bool $lock = false): \Illuminate\Support\Collection
+    {
+        abort_unless(Schema::hasTable('stock_project_item_definitions'), 409, 'Project stock item definitions are not installed yet.');
+        $query = StockItem::query()->join('stock_project_item_definitions as definition', 'definition.item_id', '=', 'stock_items.id')
+            ->where('definition.project_id', $projectId)->where('definition.is_active', 1)->whereNull('definition.deleted_at')
+            ->select(['stock_items.id', 'definition.name', 'definition.unit']);
+        if ($itemIds !== []) $query->whereIn('stock_items.id', $itemIds);
+        if ($lock) $query->orderBy('stock_items.id')->lockForUpdate();
+        return $query->get();
+    }
 
     public function approveFinance(Request $request, string $kind, int $sourceId): JsonResponse
     {
@@ -57,18 +69,21 @@ class MobileStockController extends BaseMobileController
 
         $user = $request->user();
         $projectId = $this->resolveStockProjectId($request, $user);
+        abort_unless($projectId !== null && Schema::hasTable('stock_project_item_balances'), 409, 'Project stock balances are not installed yet.');
 
-        $balances = DB::table('stock_item_balances')->pluck('on_hand_qty', 'item_id');
+        $balances = DB::table('stock_project_item_balances')->where('project_id', $projectId)->pluck('on_hand_qty', 'item_id');
 
-        $items = StockItem::query()
-            ->select(['id', 'name', 'unit', 'default_rate_minor'])
-            ->where('is_active', 1)
-            ->orderBy('name')
+        abort_unless(Schema::hasTable('stock_project_item_definitions'), 409, 'Project stock item definitions are not installed yet.');
+        $items = StockItem::query()->join('stock_project_item_definitions as definition', 'definition.item_id', '=', 'stock_items.id')
+            ->select(['stock_items.id', 'definition.name', 'definition.unit', 'definition.default_rate_minor'])
+            ->where('definition.project_id', $projectId)->where('definition.is_active', 1)->whereNull('definition.deleted_at')
+            ->orderBy('definition.name')
             ->get()
             ->map(fn (StockItem $item) => $this->transformStockItem($item, $balances->get($item->id)))
             ->all();
 
-        $parties = StockParty::query()
+        $mappedPartyIds = DB::table('stock_party_project_accounts')->where('project_id', $projectId)->pluck('stock_party_id');
+        $parties = StockParty::query()->whereIn('id', $mappedPartyIds)
             ->select(['id', 'type', 'name', 'mobile', 'address'])
             ->where('is_active', 1)
             ->orderBy('name')
@@ -93,22 +108,26 @@ class MobileStockController extends BaseMobileController
         $this->authorizeStockRead($request->user());
 
         $validated = $request->validate([
+            'project_id' => ['nullable', 'integer'],
             'search' => ['nullable', 'string'],
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         $perPage = (int) ($validated['per_page'] ?? 50);
-        $balances = DB::table('stock_item_balances')->pluck('on_hand_qty', 'item_id');
+        $projectId = $this->resolveStockProjectId($request, $request->user());
+        abort_unless($projectId !== null && Schema::hasTable('stock_project_item_balances'), 409, 'Project stock balances are not installed yet.');
+        $balances = DB::table('stock_project_item_balances')->where('project_id', $projectId)->pluck('on_hand_qty', 'item_id');
 
-        $query = StockItem::query()
-            ->select(['id', 'name', 'unit', 'default_rate_minor'])
-            ->where('is_active', 1)
-            ->orderBy('name');
+        abort_unless(Schema::hasTable('stock_project_item_definitions'), 409, 'Project stock item definitions are not installed yet.');
+        $query = StockItem::query()->join('stock_project_item_definitions as definition', 'definition.item_id', '=', 'stock_items.id')
+            ->select(['stock_items.id', 'definition.name', 'definition.unit', 'definition.default_rate_minor'])
+            ->where('definition.project_id', $projectId)->where('definition.is_active', 1)->whereNull('definition.deleted_at')
+            ->orderBy('definition.name');
 
         if (!empty($validated['search'])) {
             $search = trim($validated['search']);
-            $query->where('name', 'like', "%{$search}%");
+            $query->where('definition.name', 'like', "%{$search}%");
         }
 
         $items = $query->paginate($perPage);
@@ -130,6 +149,7 @@ class MobileStockController extends BaseMobileController
         $this->authorizeStockRead($request->user());
 
         $validated = $request->validate([
+            'project_id' => ['nullable', 'integer'],
             'type' => ['nullable', Rule::in(['Supplier', 'Consumer', 'Site'])],
             'search' => ['nullable', 'string'],
             'page' => ['nullable', 'integer', 'min:1'],
@@ -137,8 +157,11 @@ class MobileStockController extends BaseMobileController
         ]);
 
         $perPage = (int) ($validated['per_page'] ?? 50);
+        $projectId = $this->resolveStockProjectId($request, $request->user());
+        abort_unless($projectId !== null, 422, 'Select a project before loading stock parties.');
+        $mappedPartyIds = DB::table('stock_party_project_accounts')->where('project_id', $projectId)->pluck('stock_party_id');
 
-        $query = StockParty::query()
+        $query = StockParty::query()->whereIn('id', $mappedPartyIds)
             ->select(['id', 'type', 'name', 'mobile', 'address'])
             ->where('is_active', 1)
             ->orderBy('name');
@@ -187,10 +210,10 @@ class MobileStockController extends BaseMobileController
 
         $user = $request->user();
         $projectId = $this->resolveStockProjectId($request, $user);
+        abort_unless($projectId !== null && Schema::hasColumn('stock_entries', 'project_id'), 409, 'Project stock schema is not installed yet.');
         $perPage = (int) ($validated['per_page'] ?? 20);
         $search = trim((string) ($validated['search'] ?? ''));
 
-        // TODO: stock_entries has no project_id column; entries are global until schema supports project scoping.
         $query = DB::table('stock_entry_lines as l')
             ->join('stock_entries as e', 'e.id', '=', 'l.entry_id')
             ->join('stock_items as i', 'i.id', '=', 'l.item_id')
@@ -213,6 +236,7 @@ class MobileStockController extends BaseMobileController
                 'l.amount_minor',
             ])
             ->whereNull('e.deleted_at')
+            ->where('e.project_id', $projectId)
             ->orderByDesc('e.id')
             ->orderByDesc('l.id');
 
@@ -289,6 +313,7 @@ class MobileStockController extends BaseMobileController
                 'lines.item:id,name,unit',
             ])
             ->whereNull('deleted_at')
+            ->where('project_id', $projectId)
             ->find($entry);
 
         if (!$stockEntry) {
@@ -327,14 +352,14 @@ class MobileStockController extends BaseMobileController
 
         $user = $request->user();
         $projectId = $this->resolveStockProjectId($request, $user);
+        abort_unless($projectId !== null && Schema::hasTable('stock_project_item_balances'), 409, 'Project stock balances are not installed yet.');
 
         $from = $validated['date_from'] ?? null;
         $to = $validated['date_to'] ?? null;
         $itemId = !empty($validated['item_id']) ? (int) $validated['item_id'] : null;
 
-        // TODO: stock balances/movements are global; project_id is used for access context only.
         if (!$from || !$to) {
-            $rowsQuery = DB::table('stock_item_balances as b')
+            $rowsQuery = DB::table('stock_project_item_balances as b')
                 ->join('stock_items as i', 'i.id', '=', 'b.item_id')
                 ->select([
                     'i.id as item_id',
@@ -344,7 +369,7 @@ class MobileStockController extends BaseMobileController
                     DB::raw('0 as out_qty'),
                     'b.on_hand_qty as available_qty',
                 ])
-                ->where('i.is_active', 1)
+                ->where('i.is_active', 1)->where('b.project_id', $projectId)
                 ->orderBy('i.name');
 
             if ($itemId) {
@@ -375,6 +400,7 @@ class MobileStockController extends BaseMobileController
                 DB::raw("SUM(CASE WHEN m.direction='IN'  THEN m.qty ELSE 0 END) as in_qty"),
                 DB::raw("SUM(CASE WHEN m.direction='OUT' THEN m.qty ELSE 0 END) as out_qty"),
             ])
+            ->where('m.project_id', $projectId)
             ->whereBetween(DB::raw('DATE(m.movement_date)'), [$from, $to])
             ->where('i.is_active', 1)
             ->groupBy('m.item_id', 'i.name', 'i.unit')
@@ -384,7 +410,7 @@ class MobileStockController extends BaseMobileController
             $movQuery->where('m.item_id', $itemId);
         }
 
-        $balances = DB::table('stock_item_balances')->pluck('on_hand_qty', 'item_id');
+        $balances = DB::table('stock_project_item_balances')->where('project_id', $projectId)->pluck('on_hand_qty', 'item_id');
         $rows = $movQuery->get()->map(function ($row) use ($balances) {
             $row->available_qty = $balances[$row->item_id] ?? 0;
 
@@ -423,15 +449,13 @@ class MobileStockController extends BaseMobileController
         ]);
 
         $projectId = $this->resolveStockProjectId($request, $user, true);
+        abort_unless($projectId !== null && Schema::hasTable('stock_project_item_balances'), 409, 'Project stock balances are not installed yet.');
         if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
             \App\Services\Finance\V2OriginalWorkflowAccess::authorize((int) $projectId);
         }
         $linesInput = $validated['lines'];
         $itemIds = collect($linesInput)->pluck('item_id')->unique()->values()->all();
-        $itemMeta = StockItem::query()
-            ->whereIn('id', $itemIds)
-            ->where('is_active', 1)
-            ->get(['id', 'name', 'unit'])
+        $itemMeta = $this->projectStockItems($projectId, $itemIds)
             ->keyBy('id');
 
         if ($itemMeta->count() !== count($itemIds)) {
@@ -450,6 +474,9 @@ class MobileStockController extends BaseMobileController
                 'party_id' => ['Selected party is invalid or inactive.'],
             ]);
         }
+        if (!DB::table('stock_party_project_accounts')->where('project_id', $projectId)->where('stock_party_id', $party->id)->exists()) {
+            return $this->errorResponse('party_project_mapping_missing', 'Map this stock party to an account in the selected project before posting stock.', 422);
+        }
 
         $itemNames = $itemMeta->mapWithKeys(fn ($item) => [(int) $item->id => $item->name])->toArray();
 
@@ -458,8 +485,13 @@ class MobileStockController extends BaseMobileController
                 if (!StockParty::query()->whereKey($validated['party_id'])->where('is_active', 1)->lockForUpdate()->first(['id'])) {
                     throw new HttpException(422, 'Stock party is missing or archived.');
                 }
-                $itemMeta = StockItem::query()->whereIn('id', array_column($linesInput, 'item_id'))
-                    ->where('is_active', 1)->orderBy('id')->lockForUpdate()->get(['id', 'name', 'unit'])->keyBy('id');
+                $partyAccount = DB::table('stock_party_project_accounts')->where('project_id', $projectId)
+                    ->where('stock_party_id', $validated['party_id'])->lockForUpdate()->first();
+                if (!$partyAccount || !ProjectHeadSubhead::availableForPosting()->where('project_id', $projectId)
+                    ->whereKey((int) $partyAccount->project_head_subhead_id)->lockForUpdate()->exists()) {
+                    throw new HttpException(422, 'Map this stock party to an active account in the selected project before posting stock.');
+                }
+                $itemMeta = $this->projectStockItems($projectId, array_column($linesInput, 'item_id'), true)->keyBy('id');
                 if ($itemMeta->count() !== count(array_unique(array_column($linesInput, 'item_id')))) {
                     throw new HttpException(422, 'Stock item is missing or archived.');
                 }
@@ -491,11 +523,12 @@ class MobileStockController extends BaseMobileController
                     $totalsByItem[$line['item_id']] = ($totalsByItem[$line['item_id']] ?? 0) + $qtyInt;
                 }
 
-                $this->applyStockMovements($totalsByItem, $flow, $itemNames);
+                $this->applyStockMovements($projectId, $totalsByItem, $flow, $itemNames);
 
                 $slipNo = $this->nextSlipNumber();
 
                 $entry = StockEntry::create([
+                    'project_id' => $projectId,
                     'slip_no' => $slipNo,
                     'entry_date' => $validated['date'],
                     'flow' => $flow,
@@ -511,6 +544,7 @@ class MobileStockController extends BaseMobileController
 
                 foreach ($lines as $line) {
                     $lineRow = StockEntryLine::create([
+                        'project_id' => $projectId,
                         'entry_id' => $entry->id,
                         'item_id' => $line['item_id'],
                         'qty' => $line['qty_decimal'],
@@ -521,6 +555,7 @@ class MobileStockController extends BaseMobileController
                     ]);
 
                     DB::table('stock_movements')->insert([
+                        'project_id' => $projectId,
                         'movement_date' => $validated['date'],
                         'direction' => $flow,
                         'item_id' => $line['item_id'],
@@ -857,12 +892,12 @@ class MobileStockController extends BaseMobileController
         return $digits === '' ? 0 : (int) $digits;
     }
 
-    protected function ensureAvailableStock(array $totalsByItem, array $itemNames): void
+    protected function ensureAvailableStock(int $projectId, array $totalsByItem, array $itemNames): void
     {
         $itemIds = array_keys($totalsByItem);
         sort($itemIds);
 
-        $balances = DB::table('stock_item_balances')
+        $balances = DB::table('stock_project_item_balances')->where('project_id', $projectId)
             ->whereIn('item_id', $itemIds)
             ->orderBy('item_id')
             ->lockForUpdate()
@@ -884,12 +919,12 @@ class MobileStockController extends BaseMobileController
         }
     }
 
-    protected function applyStockMovements(array $totalsByItem, string $direction, array $itemNames): void
+    protected function applyStockMovements(int $projectId, array $totalsByItem, string $direction, array $itemNames): void
     {
         $itemIds = array_keys($totalsByItem);
         sort($itemIds);
 
-        $balances = DB::table('stock_item_balances')
+        $balances = DB::table('stock_project_item_balances')->where('project_id', $projectId)
             ->whereIn('item_id', $itemIds)
             ->orderBy('item_id')
             ->lockForUpdate()
@@ -916,11 +951,12 @@ class MobileStockController extends BaseMobileController
             ];
 
             if ($currentRow) {
-                DB::table('stock_item_balances')
-                    ->where('item_id', $itemId)
+                DB::table('stock_project_item_balances')
+                    ->where('project_id', $projectId)->where('item_id', $itemId)
                     ->update($payload);
             } else {
-                DB::table('stock_item_balances')->insert(array_merge($payload, [
+                DB::table('stock_project_item_balances')->insert(array_merge($payload, [
+                    'project_id' => $projectId,
                     'item_id' => $itemId,
                     'created_at' => now(),
                 ]));
@@ -1020,7 +1056,8 @@ class MobileStockController extends BaseMobileController
         }
 
         $voucherNumber = getVocuherNumber($ledgerType);
-        $typeId = (int) (getLastLedgerIdByType($ledgerType) ?? 0) + 1;
+        $typeId = app(\App\Services\Finance\ProjectVoucherAllocator::class)
+            ->nextLedgerId($projectId, $ledgerType);
 
         foreach ($legs as $leg) {
             Ledger::create([
@@ -1106,6 +1143,9 @@ class MobileStockController extends BaseMobileController
         if (!$head || !$subhead) {
             throw new \DomainException('PARTY_ACCOUNT_MAPPING_MISSING');
         }
+        if ((int) $head->is_active !== 1 || (int) $subhead->is_active !== 1) {
+            throw new \DomainException('PARTY_ACCOUNT_MAPPING_INACTIVE');
+        }
 
         $projectHeadSubhead = ProjectHeadSubhead::firstOrCreate([
             'project_id' => $projectId,
@@ -1114,6 +1154,10 @@ class MobileStockController extends BaseMobileController
             'plot_id' => null,
             'customer_id' => null,
         ]);
+
+        if (!ProjectHeadSubhead::availableForPosting()->whereKey($projectHeadSubhead->id)->exists()) {
+            throw new \DomainException('PARTY_ACCOUNT_MAPPING_INACTIVE');
+        }
 
         return (int) $projectHeadSubhead->id;
     }

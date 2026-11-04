@@ -74,7 +74,7 @@ final class V2JournalPostingWriter
             $lines = [];
             foreach ($rows as $detail) {
                 $accountId = (int) $detail->account_id;
-                if (!\App\Models\ProjectHeadSubhead::query()
+                if (!\App\Models\ProjectHeadSubhead::availableForPosting()
                     ->where('id', $accountId)->where('project_id', $projectId)->lockForUpdate()->first(['id'])) {
                     throw new \DomainException('V2_JV_ACCOUNT_PROJECT_MISMATCH');
                 }

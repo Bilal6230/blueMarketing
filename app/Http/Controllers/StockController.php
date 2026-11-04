@@ -19,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -35,13 +36,245 @@ class StockController extends Controller
         $selectedProjectId = getSelectedTown();
         $x['title'] = 'Stock';
         $x['stocks'] = Stock::where('project_id', $selectedProjectId)->get();
-        $data_list = ProjectHeadSubhead::select('project_id', 'head_accounting_id')
+        $projectStockSchemaReady = Schema::hasColumn('stock_entries', 'project_id')
+            && Schema::hasColumn('stock_bills', 'project_id')
+            && Schema::hasColumn('stock_movements', 'project_id')
+            && Schema::hasColumn('stock_entry_lines', 'project_id')
+            && Schema::hasColumn('stock_bill_lines', 'project_id');
+        $x['canReconcileLegacyStock'] = $projectStockSchemaReady
+            && auth()->user()->hasAnyRole(['admin', 'superadmin'])
+            && Schema::hasTable('stock_legacy_reconciliation_audits');
+        $x['legacyStockCandidates'] = $x['canReconcileLegacyStock']
+            ? $this->legacyStockCandidates((int) $selectedProjectId)
+            : ['entries' => collect(), 'bills' => collect(), 'movements' => collect()];
+        $x['legacyStockAudits'] = $x['canReconcileLegacyStock']
+            ? DB::table('stock_legacy_reconciliation_audits as audit')->leftJoin('users as actor', 'actor.id', '=', 'audit.actor_id')
+                ->where('audit.project_id', (int) $selectedProjectId)->orderByDesc('audit.id')->limit(30)
+                ->get(['audit.record_type', 'audit.record_id', 'audit.reason', 'audit.created_at', 'actor.name as actor_name'])
+            : collect();
+        $x['legacyStockStatus'] = [
+            'unassigned_entries' => Schema::hasColumn('stock_entries', 'project_id')
+                ? DB::table('stock_entries')->whereNull('project_id')->count() : null,
+            'unassigned_bills' => Schema::hasColumn('stock_bills', 'project_id')
+                ? DB::table('stock_bills')->whereNull('project_id')->count() : null,
+            'unassigned_movements' => Schema::hasColumn('stock_movements', 'project_id')
+                ? DB::table('stock_movements')->whereNull('project_id')->count() : null,
+            'legacy_balance_rows' => DB::table('stock_item_balances')->count(),
+        ];
+        $data_list = ProjectHeadSubhead::availableForPosting()->select('project_id', 'head_accounting_id')
             ->distinct()
             ->with('headAccounting')
             ->where(['project_id' => $selectedProjectId])
             ->get();
         $x['headaccounts'] = $data_list;
+        $x['partyAccountOptions'] = ProjectHeadSubhead::availableForPosting()
+            ->where('project_id', (int) $selectedProjectId)->whereNull('plot_id')->whereNull('customer_id')
+            ->with(['headAccounting:id,name', 'subheadAccounting:id,name'])->get()
+            ->map(fn ($account) => [
+                'id' => (int) $account->id,
+                'label' => ($account->headAccounting->name ?? 'Head').' / '.($account->subheadAccounting->name ?? 'Sub-account'),
+            ])->values();
         return view('admin.stock.index', $x);
+    }
+
+    public function reconcileLegacyStock(Request $request)
+    {
+        abort_unless(auth()->user()->hasAnyRole(['admin', 'superadmin']), 403, 'Only project administrators can reconcile legacy stock history.');
+        abort_unless(Schema::hasTable('stock_legacy_reconciliation_audits')
+            && Schema::hasTable('stock_project_item_balances')
+            && Schema::hasColumn('stock_entries', 'project_id')
+            && Schema::hasColumn('stock_bills', 'project_id')
+            && Schema::hasColumn('stock_movements', 'project_id')
+            && Schema::hasColumn('stock_entry_lines', 'project_id')
+            && Schema::hasColumn('stock_bill_lines', 'project_id'),
+            409, 'Project stock reconciliation migrations must be installed first.');
+
+        $data = $request->validate([
+            'kind' => ['required', Rule::in(['entry', 'bill', 'movement'])],
+            'record_id' => ['required', 'integer', 'min:1'],
+            'reason' => ['required', 'string', 'min:8', 'max:500'],
+        ]);
+        $projectId = (int) getSelectedTown();
+        abort_unless($projectId > 0, 409, 'Select a project before reconciling stock history.');
+        if (!auth()->user()->hasRole('superadmin')) {
+            abort_unless((int) auth()->user()->project_id === $projectId, 403);
+        }
+
+        $result = DB::transaction(function () use ($data, $projectId): array {
+            DB::table('projects')->where('id', $projectId)->lockForUpdate()->firstOrFail();
+            $changed = [];
+            $movementIds = [];
+            $itemIds = [];
+            $kind = $data['kind'];
+            $id = (int) $data['record_id'];
+
+            if ($kind === 'entry') {
+                $entry = DB::table('stock_entries')->where('id', $id)->whereNull('project_id')->lockForUpdate()->first();
+                abort_unless($entry, 409, 'This stock entry is already assigned or unavailable.');
+                $this->assertLegacyStockPartyMapping($entry->party_id, $projectId);
+                $this->assertLegacyStockScopeClear('stock_entry_lines', 'entry_id', $id, $projectId);
+                $entryLineIds = DB::table('stock_entry_lines')->where('entry_id', $id)->whereNull('project_id')->pluck('id');
+                $bills = DB::table('stock_bills')->where('entry_id', $id)->lockForUpdate()->get();
+                foreach ($bills as $bill) {
+                    abort_if($bill->project_id !== null && (int) $bill->project_id !== $projectId, 409, 'A linked bill belongs to another project.');
+                    abort_unless((int) $bill->party_id === (int) $entry->party_id, 409, 'A linked bill uses a different party; reconcile it separately after review.');
+                    $this->assertLegacyStockPartyMapping($bill->party_id, $projectId);
+                    $this->assertLegacyStockScopeClear('stock_bill_lines', 'bill_id', (int) $bill->id, $projectId);
+                }
+                $billLineIds = [];
+                foreach ($bills as $bill) {
+                    $billLineIds = array_merge($billLineIds, DB::table('stock_bill_lines')->where('bill_id', $bill->id)->whereNull('project_id')->pluck('id')->map(fn ($value) => (int) $value)->all());
+                }
+                $billIds = $bills->pluck('id')->map(fn ($value) => (int) $value)->all();
+                $this->assertLegacyMovementScopeClear('entry', [$id], $projectId);
+                if ($billIds) $this->assertLegacyMovementScopeClear('bill', $billIds, $projectId);
+                DB::table('stock_entries')->where('id', $id)->whereNull('project_id')->update(['project_id' => $projectId, 'updated_at' => now()]);
+                $changed[] = ['stock_entry', $id];
+                DB::table('stock_entry_lines')->where('entry_id', $id)->whereNull('project_id')->update(['project_id' => $projectId, 'updated_at' => now()]);
+                foreach ($entryLineIds as $lineId) $changed[] = ['stock_entry_line', (int) $lineId];
+                foreach ($bills as $bill) {
+                    if ($bill->project_id === null) {
+                        DB::table('stock_bills')->where('id', $bill->id)->whereNull('project_id')->update(['project_id' => $projectId, 'updated_at' => now()]);
+                        $changed[] = ['stock_bill', (int) $bill->id];
+                    }
+                    DB::table('stock_bill_lines')->where('bill_id', $bill->id)->whereNull('project_id')->update(['project_id' => $projectId, 'updated_at' => now()]);
+                }
+                foreach ($billLineIds as $lineId) $changed[] = ['stock_bill_line', $lineId];
+                $movementQuery = DB::table('stock_movements')->whereNull('project_id')->where(function ($query) use ($id, $billIds): void {
+                    $query->where(fn ($q) => $q->where('source_type', 'entry')->where('source_id', $id));
+                    if ($billIds) $query->orWhere(fn ($q) => $q->where('source_type', 'bill')->whereIn('source_id', $billIds));
+                })->lockForUpdate();
+                foreach ($movementQuery->get() as $movement) {
+                    abort_if($movement->party_id !== null && (int) $movement->party_id !== (int) $entry->party_id, 409, 'A linked stock movement uses a different party.');
+                    $movementIds[] = (int) $movement->id;
+                    $itemIds[] = (int) $movement->item_id;
+                    $changed[] = ['stock_movement', (int) $movement->id];
+                }
+            } elseif ($kind === 'bill') {
+                $bill = DB::table('stock_bills')->where('id', $id)->whereNull('project_id')->lockForUpdate()->first();
+                abort_unless($bill, 409, 'This stock bill is already assigned or unavailable.');
+                $this->assertLegacyStockPartyMapping($bill->party_id, $projectId);
+                $this->assertLegacyStockScopeClear('stock_bill_lines', 'bill_id', $id, $projectId);
+                $billLineIds = DB::table('stock_bill_lines')->where('bill_id', $id)->whereNull('project_id')->pluck('id');
+                $entry = $bill->entry_id ? DB::table('stock_entries')->where('id', $bill->entry_id)->lockForUpdate()->first() : null;
+                if ($entry) {
+                    abort_if($entry->project_id !== null && (int) $entry->project_id !== $projectId, 409, 'The linked entry belongs to another project.');
+                    abort_unless((int) $entry->party_id === (int) $bill->party_id, 409, 'The linked entry uses a different party.');
+                    $this->assertLegacyStockPartyMapping($entry->party_id, $projectId);
+                    $this->assertLegacyStockScopeClear('stock_entry_lines', 'entry_id', (int) $entry->id, $projectId);
+                    $entryLineIds = DB::table('stock_entry_lines')->where('entry_id', $entry->id)->whereNull('project_id')->pluck('id');
+                    $this->assertLegacyMovementScopeClear('entry', [(int) $entry->id], $projectId);
+                    if ($entry->project_id === null) {
+                        DB::table('stock_entries')->where('id', $entry->id)->whereNull('project_id')->update(['project_id' => $projectId, 'updated_at' => now()]);
+                        $changed[] = ['stock_entry', (int) $entry->id];
+                    }
+                    DB::table('stock_entry_lines')->where('entry_id', $entry->id)->whereNull('project_id')->update(['project_id' => $projectId, 'updated_at' => now()]);
+                    foreach ($entryLineIds as $lineId) $changed[] = ['stock_entry_line', (int) $lineId];
+                }
+                $this->assertLegacyMovementScopeClear('bill', [$id], $projectId);
+                DB::table('stock_bills')->where('id', $id)->whereNull('project_id')->update(['project_id' => $projectId, 'updated_at' => now()]);
+                DB::table('stock_bill_lines')->where('bill_id', $id)->whereNull('project_id')->update(['project_id' => $projectId, 'updated_at' => now()]);
+                $changed[] = ['stock_bill', $id];
+                foreach ($billLineIds as $lineId) $changed[] = ['stock_bill_line', (int) $lineId];
+                $sourceIds = [$id];
+                $entryId = $entry ? (int) $entry->id : null;
+                $movementQuery = DB::table('stock_movements')->whereNull('project_id')->where(function ($query) use ($sourceIds, $entryId): void {
+                    $query->where(fn ($q) => $q->where('source_type', 'bill')->whereIn('source_id', $sourceIds));
+                    if ($entryId) $query->orWhere(fn ($q) => $q->where('source_type', 'entry')->where('source_id', $entryId));
+                })->lockForUpdate();
+                foreach ($movementQuery->get() as $movement) {
+                    abort_if($movement->party_id !== null && (int) $movement->party_id !== (int) $bill->party_id, 409, 'A linked stock movement uses a different party.');
+                    $movementIds[] = (int) $movement->id;
+                    $itemIds[] = (int) $movement->item_id;
+                    $changed[] = ['stock_movement', (int) $movement->id];
+                }
+            } else {
+                $movement = DB::table('stock_movements')->where('id', $id)->whereNull('project_id')->lockForUpdate()->first();
+                abort_unless($movement, 409, 'This stock movement is already assigned or unavailable.');
+                abort_unless($movement->party_id !== null, 422, 'A movement without a party cannot be safely assigned.');
+                $this->assertLegacyStockPartyMapping($movement->party_id, $projectId, true);
+                if ($movement->source_type === 'entry') {
+                    abort_if(DB::table('stock_entries')->where('id', $movement->source_id)->exists(), 409, 'Reconcile the linked stock entry instead of assigning this movement alone.');
+                } elseif ($movement->source_type === 'bill') {
+                    abort_if(DB::table('stock_bills')->where('id', $movement->source_id)->exists(), 409, 'Reconcile the linked stock bill instead of assigning this movement alone.');
+                }
+                $movementIds[] = (int) $movement->id;
+                $itemIds[] = (int) $movement->item_id;
+                $changed[] = ['stock_movement', (int) $movement->id];
+            }
+
+            foreach ($movementIds as $movementId) {
+                DB::table('stock_movements')->where('id', $movementId)->whereNull('project_id')
+                    ->update(['project_id' => $projectId, 'updated_at' => now()]);
+            }
+            $changed = collect($changed)->unique(fn ($row) => $row[0].':'.$row[1])->values();
+            foreach ($changed as [$recordType, $recordId]) {
+                DB::table('stock_legacy_reconciliation_audits')->insert([
+                    'record_type' => $recordType, 'record_id' => $recordId, 'project_id' => $projectId,
+                    'reason' => trim($data['reason']), 'actor_id' => auth()->id(), 'created_at' => now(),
+                ]);
+            }
+
+            foreach (array_unique($itemIds) as $itemId) {
+                $balance = DB::table('stock_movements')->where('project_id', $projectId)->where('item_id', $itemId)
+                    ->selectRaw("COALESCE(SUM(CASE WHEN direction = 'IN' THEN qty ELSE -qty END), 0) as on_hand_qty")
+                    ->value('on_hand_qty');
+                DB::table('stock_project_item_balances')->upsert([[
+                    'project_id' => $projectId, 'item_id' => $itemId, 'on_hand_qty' => $balance,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]], ['project_id', 'item_id'], ['on_hand_qty', 'updated_at']);
+            }
+
+            return ['count' => $changed->count(), 'kind' => $kind];
+        }, 3);
+
+        return redirect()->route('stocks.index')->with('success', $result['count'].' legacy stock record(s) assigned to this project and audit logged. No movement amounts were changed.');
+    }
+
+    private function assertLegacyStockPartyMapping(int|string|null $partyId, int $projectId, bool $mustBeUnique = false): void
+    {
+        $mapping = $partyId
+            ? DB::table('stock_party_project_accounts')->where('project_id', $projectId)
+                ->where('stock_party_id', $partyId)->lockForUpdate()->first()
+            : null;
+        abort_unless($mapping, 422, 'The stock party must have an account mapping in the selected project.');
+        if ($mustBeUnique) {
+            $projectCount = DB::table('stock_party_project_accounts')->where('stock_party_id', $partyId)->distinct('project_id')->count('project_id');
+            abort_unless($projectCount === 1, 422, 'This stock party is mapped to multiple projects; a standalone movement needs manual review.');
+        }
+    }
+
+    private function assertLegacyStockScopeClear(string $table, string $parentColumn, int $parentId, int $projectId): void
+    {
+        abort_if(DB::table($table)->where($parentColumn, $parentId)->whereNotNull('project_id')->where('project_id', '<>', $projectId)->exists(),
+            409, 'A linked stock line is already assigned to another project.');
+    }
+
+    private function assertLegacyMovementScopeClear(string $sourceType, array $sourceIds, int $projectId): void
+    {
+        abort_if(DB::table('stock_movements')->where('source_type', $sourceType)->whereIn('source_id', $sourceIds)
+            ->whereNotNull('project_id')->where('project_id', '<>', $projectId)->exists(),
+            409, 'A linked stock movement is already assigned to another project.');
+    }
+
+    private function legacyStockCandidates(int $projectId): array
+    {
+        $entries = DB::table('stock_entries as e')->join('stock_parties as p', 'p.id', '=', 'e.party_id')
+            ->whereNull('e.project_id')->whereExists(fn ($q) => $q->selectRaw('1')->from('stock_party_project_accounts as map')
+                ->whereColumn('map.stock_party_id', 'e.party_id')->where('map.project_id', $projectId))
+            ->orderBy('e.id')->limit(50)->get(['e.id', 'e.slip_no', 'e.entry_date', 'e.flow', 'e.deleted_at', 'p.name as party_name']);
+        $bills = DB::table('stock_bills as b')->join('stock_parties as p', 'p.id', '=', 'b.party_id')
+            ->whereNull('b.project_id')->whereExists(fn ($q) => $q->selectRaw('1')->from('stock_party_project_accounts as map')
+                ->whereColumn('map.stock_party_id', 'b.party_id')->where('map.project_id', $projectId))
+            ->orderBy('b.id')->limit(50)->get(['b.id', 'b.bill_no', 'b.bill_date', 'b.type', 'b.entry_id', 'b.deleted_at', 'p.name as party_name']);
+        $movements = DB::table('stock_movements as m')->join('stock_parties as p', 'p.id', '=', 'm.party_id')
+            ->whereNull('m.project_id')->whereExists(fn ($q) => $q->selectRaw('1')->from('stock_party_project_accounts as map')
+                ->whereColumn('map.stock_party_id', 'm.party_id')->where('map.project_id', $projectId))
+            ->whereIn('m.party_id', DB::table('stock_party_project_accounts')->select('stock_party_id')->groupBy('stock_party_id')->havingRaw('COUNT(DISTINCT project_id) = 1'))
+            ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('stock_entries as e')->whereColumn('e.id', 'm.source_id')->whereRaw("m.source_type = 'entry'"))
+            ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('stock_bills as b')->whereColumn('b.id', 'm.source_id')->whereRaw("m.source_type = 'bill'"))
+            ->orderBy('m.id')->limit(50)->get(['m.id', 'm.movement_date', 'm.direction', 'm.item_id', 'm.qty', 'm.source_type', 'm.source_id', 'p.name as party_name']);
+        return compact('entries', 'bills', 'movements');
     }
 
     public function approveFinance(Request $request, string $kind, int $id)
@@ -67,17 +300,40 @@ class StockController extends Controller
         return response()->json(['status' => 'success', 'posting_batch_id' => $batch]);
     }
 
-    private function lockStockMasters(int $partyId, array $itemIds)
+    private function lockStockMasters(int $projectId, int $partyId, array $itemIds)
     {
-        if (!StockParty::query()->whereKey($partyId)->lockForUpdate()->first(['id'])) {
-            throw new HttpException(422, 'Stock party is missing or archived.');
+        $partyAccount = $projectId > 0
+            ? DB::table('stock_party_project_accounts')->where('project_id', $projectId)->where('stock_party_id', $partyId)->lockForUpdate()->first()
+            : null;
+        if (!$partyAccount) {
+            throw new HttpException(422, 'Map this stock party to an account in the selected project before posting stock.');
         }
-        $items = StockItem::query()->whereIn('id', $itemIds)->orderBy('id')->lockForUpdate()
-            ->get(['id', 'name', 'unit'])->keyBy('id');
+        if (!ProjectHeadSubhead::availableForPosting()->where('project_id', $projectId)
+            ->whereKey((int) $partyAccount->project_head_subhead_id)->lockForUpdate()->exists()) {
+            throw new HttpException(422, 'The stock party accounting account is inactive or unavailable in this project.');
+        }
+        if (!StockParty::query()->whereKey($partyId)->where('is_active', true)->lockForUpdate()->first(['id'])) {
+            throw new HttpException(422, 'Stock party is inactive or archived.');
+        }
+        abort_unless(Schema::hasTable('stock_project_item_definitions'), 409, 'Project stock item definitions migration is required.');
+        $items = StockItem::query()->join('stock_project_item_definitions as definition', 'definition.item_id', '=', 'stock_items.id')
+            ->where('definition.project_id', $projectId)->where('definition.is_active', 1)->whereNull('definition.deleted_at')
+            ->whereIn('stock_items.id', $itemIds)->orderBy('stock_items.id')->lockForUpdate()
+            ->get(['stock_items.id', 'definition.name', 'definition.unit'])->keyBy('id');
         if ($items->count() !== count(array_unique($itemIds))) {
             throw new HttpException(422, 'Stock item is missing or archived.');
         }
         return $items;
+    }
+
+    private function projectItemDefinitions(int $projectId): \Illuminate\Database\Query\Builder
+    {
+        abort_unless($projectId > 0 && Schema::hasTable('stock_project_item_definitions'), 409,
+            'Project stock item definitions migration is required.');
+        return DB::table('stock_project_item_definitions as definition')
+            ->join('stock_items as item', 'item.id', '=', 'definition.item_id')
+            ->where('definition.project_id', $projectId)->whereNull('definition.deleted_at')
+            ->whereNull('item.deleted_at');
     }
 
     /* ============================================================
@@ -85,15 +341,22 @@ class StockController extends Controller
      * ============================================================ */
     public function meta()
     {
-        $items = StockItem::query()
-            ->select(['id', 'name', 'unit', 'default_rate_minor'])
-            ->orderBy('name')
+        $projectId = (int) getSelectedTown();
+        $items = $this->projectItemDefinitions($projectId)->where('definition.is_active', 1)
+            ->select(['item.id', 'definition.name', 'definition.unit', 'definition.default_rate_minor'])
+            ->orderBy('definition.name')
             ->get();
 
-        $parties = StockParty::query()
-            ->select(['id', 'type', 'name', 'mobile', 'address', 'head_account', 'sub_head_account'])
+        $partyColumns = ['id', 'type', 'name', 'mobile', 'address', 'head_account', 'sub_head_account'];
+        if (Schema::hasColumn('stock_parties', 'vendor_code')) {
+            $partyColumns[] = 'vendor_code';
+        }
+        $mappedPartyIds = DB::table('stock_party_project_accounts')->where('project_id', $projectId)->pluck('stock_party_id');
+        $parties = StockParty::query()->where('is_active', true)->whereIn('id', $mappedPartyIds)
+            ->select($partyColumns)
             ->orderBy('name')
             ->get();
+        $accountMap = $this->projectPartyAccountMap($projectId, $parties->pluck('id')->all());
 
         $items = $items->map(function ($i) {
             return [
@@ -104,15 +367,17 @@ class StockController extends Controller
             ];
         });
 
-        $parties = $parties->map(function ($p) {
+        $parties = $parties->map(function ($p) use ($accountMap) {
             return [
                 'id' => (int) $p->id,
                 'type' => $p->type,
+                'vendor_code' => $p->vendor_code,
                 'name' => $p->name,
                 'mobile' => $p->mobile,
                 'address' => $p->address,
-                'head' => $p->head_account,
-                'subhead' => $p->sub_head_account,
+                'head' => $accountMap->get((int) $p->id)['head'] ?? $p->head_account,
+                'subhead' => $accountMap->get((int) $p->id)['subhead'] ?? $p->sub_head_account,
+                'account_id' => $accountMap->get((int) $p->id)['account_id'] ?? null,
             ];
         });
 
@@ -223,13 +488,13 @@ class StockController extends Controller
             return $this->validationError($validator);
         }
 
-        $q = StockItem::query()
-            ->select(['id', 'name', 'unit', 'default_rate_minor', 'created_at'])
-            ->orderBy('name');
+        $q = $this->projectItemDefinitions((int) getSelectedTown())->where('definition.is_active', 1)
+            ->select(['item.id', 'definition.name', 'definition.unit', 'definition.default_rate_minor', 'definition.created_at'])
+            ->orderBy('definition.name');
 
         if ($request->filled('q')) {
             $s = trim((string) $request->query('q'));
-            $q->where('name', 'like', "%{$s}%");
+            $q->where('definition.name', 'like', "%{$s}%");
         }
 
         $rows = $q->limit(500)->get()->map(function ($i) {
@@ -251,6 +516,287 @@ class StockController extends Controller
         ]);
     }
 
+    public function exportItems(Request $request)
+    {
+        $request->validate(['format' => ['nullable', Rule::in(['csv', 'xlsx'])]]);
+        $ids = collect((array) $request->query('item_ids', []))->map(fn ($id) => (int) $id)->filter(fn ($id) => $id > 0)->unique()->values();
+        $query = $this->projectItemDefinitions((int) getSelectedTown())->where('definition.is_active', 1)->orderBy('item.id');
+        if ($ids->isNotEmpty()) $query->whereIn('item.id', $ids);
+        $query->select(['item.id', 'definition.name', 'definition.unit', 'definition.default_rate_minor']);
+
+        if ($request->query('format') === 'xlsx') {
+            $path = (new \App\Services\Stock\StockItemExcel())->export($query->cursor());
+            return response()->download($path, 'stock-items-'.now()->format('Ymd-His').'.xlsx', [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ])->deleteFileAfterSend(true);
+        }
+
+        return response()->streamDownload(function () use ($query): void {
+            $out = fopen('php://output', 'wb');
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, ['item_id', 'name', 'unit', 'default_rate_minor']);
+            foreach ($query->cursor() as $item) {
+                fputcsv($out, [
+                    (int) $item->id,
+                    $this->spreadsheetSafeCsvText($item->name),
+                    $this->spreadsheetSafeCsvText($item->unit),
+                    (int) $item->default_rate_minor,
+                ]);
+            }
+            fclose($out);
+        }, 'stock-items-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    public function stageItemImport(Request $request)
+    {
+        $this->authorizeStockImportAccess();
+        abort_unless(Schema::hasTable('stock_item_import_batches') && Schema::hasTable('stock_item_import_rows'), 409, 'Stock import history migration is not installed yet.');
+        $data = $request->validate(['file' => ['required', 'file', 'mimes:csv,txt,xlsx', 'max:5120']]);
+        $projectId = (int) getSelectedTown();
+        abort_unless($projectId > 0, 409, 'Select a project before staging a stock import.');
+
+        $convertedPath = null;
+        if (strtolower((string) $data['file']->getClientOriginalExtension()) === 'xlsx') {
+            try {
+                $convertedPath = (new \App\Services\Stock\StockItemExcel())->toCsv($data['file']->getRealPath());
+            } catch (\InvalidArgumentException $exception) {
+                return $this->errorResponse('import_file_invalid', $exception->getMessage(), 422);
+            }
+        }
+        $handle = fopen($convertedPath ?? $data['file']->getRealPath(), 'rb');
+        if (!$handle) return $this->errorResponse('import_file_unreadable', 'Unable to read the uploaded CSV file.', 422);
+        $headers = fgetcsv($handle, 0, ',', '"', '\\');
+        if (!$headers) { fclose($handle); if ($convertedPath) @unlink($convertedPath); return $this->errorResponse('import_header_invalid', 'Import header is missing.', 422); }
+        $headers[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string) $headers[0]);
+        $headers = array_map(fn ($header) => strtolower(trim((string) $header)), $headers);
+        if (array_slice($headers, 0, 4) !== ['item_id', 'name', 'unit', 'default_rate_minor']) {
+            fclose($handle);
+            if ($convertedPath) @unlink($convertedPath);
+            return $this->errorResponse('import_header_invalid', 'Required columns: item_id, name, unit, default_rate_minor.', 422);
+        }
+
+        $rows = [];
+        $seenIds = [];
+        $seenNewDefinitions = [];
+        $lineNumber = 1;
+        while (($cells = fgetcsv($handle, 0, ',', '"', '\\')) !== false) {
+            $lineNumber++;
+            if (count($rows) >= 10000) { fclose($handle); if ($convertedPath) @unlink($convertedPath); return $this->errorResponse('import_too_large', 'A single import can contain at most 10,000 data rows.', 422); }
+            $cells = array_pad(array_slice($cells, 0, count($headers)), count($headers), '');
+            $row = array_combine($headers, array_map(fn ($cell) => trim((string) $cell), $cells));
+            if (implode('', $row) === '') continue;
+
+            $errors = [];
+            $rawId = trim((string) $row['item_id']);
+            $itemId = $rawId === '' ? null : (ctype_digit($rawId) && (int) $rawId > 0 ? (int) $rawId : -1);
+            $originalHash = null;
+            $validItemId = null;
+            if ($itemId === -1) $errors[] = 'item_id must be a positive ID or empty for a new item.';
+            if ($itemId && isset($seenIds[$itemId])) $errors[] = 'item_id is duplicated in this file.';
+            if ($itemId) $seenIds[$itemId] = true;
+            if ($itemId > 0) {
+                $currentItem = $this->projectItemDefinitions($projectId)->where('item.id', $itemId)
+                    ->first(['item.id', 'definition.name', 'definition.unit', 'definition.default_rate_minor']);
+                if (!$currentItem) $errors[] = 'item_id does not identify an active stock item.';
+                else {
+                    $validItemId = $itemId;
+                    $originalHash = $this->stockItemDefinitionHash($currentItem);
+                }
+            }
+            if ($row['name'] === '' || mb_strlen($row['name']) > 255) $errors[] = 'name is required and must be at most 255 characters.';
+            if ($row['unit'] === '' || mb_strlen($row['unit']) > 40) $errors[] = 'unit is required and must be at most 40 characters.';
+            if (!$itemId && $row['name'] !== '' && $row['unit'] !== '') {
+                $newDefinitionKey = mb_strtolower(trim($row['name'])).'|'.mb_strtolower(trim($row['unit']));
+                if (isset($seenNewDefinitions[$newDefinitionKey])) $errors[] = 'A new item with the same name and unit is duplicated in this file.';
+                $seenNewDefinitions[$newDefinitionKey] = true;
+            }
+            if ($row['default_rate_minor'] !== '' && (!ctype_digit($row['default_rate_minor']) || strlen($row['default_rate_minor']) > 14)) $errors[] = 'default_rate_minor must be a non-negative integer with at most 14 digits.';
+
+            $rows[] = [
+                'row_number' => $lineNumber,
+                'stock_item_id' => $validItemId,
+                'action' => $errors ? 'failed' : ($itemId ? 'updated' : 'added'),
+                'payload' => json_encode([
+                    'item_id' => $itemId > 0 ? $itemId : null,
+                    'name' => $row['name'], 'unit' => $row['unit'],
+                    'default_rate_minor' => $row['default_rate_minor'] === '' ? '0' : $row['default_rate_minor'],
+                    'original_hash' => $originalHash,
+                ], JSON_THROW_ON_ERROR),
+                'errors' => $errors ? json_encode($errors, JSON_THROW_ON_ERROR) : null,
+                'created_at' => now(), 'updated_at' => now(),
+            ];
+        }
+        fclose($handle);
+        if ($convertedPath) @unlink($convertedPath);
+        if (!$rows) return $this->errorResponse('import_empty', 'The CSV contains no item rows.', 422);
+
+        $hasNewItems = collect($rows)->contains(fn ($row) => $row['action'] === 'added');
+        if ($hasNewItems && !auth()->user()->can('create stock') && !auth()->user()->hasAnyRole(['admin', 'superadmin'])) {
+            abort(403, 'You do not have permission to create stock items through import.');
+        }
+        $batchId = DB::transaction(function () use ($rows, $projectId): int {
+            $batchId = DB::table('stock_item_import_batches')->insertGetId([
+                'project_id' => $projectId, 'created_by' => auth()->id(), 'status' => 'staged',
+                'total_rows' => count($rows),
+                'added_rows' => collect($rows)->where('action', 'added')->count(),
+                'updated_rows' => collect($rows)->where('action', 'updated')->count(),
+                'skipped_rows' => collect($rows)->where('action', 'skipped')->count(),
+                'failed_rows' => collect($rows)->where('action', 'failed')->count(),
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+            foreach (array_chunk($rows, 500) as $chunk) {
+                foreach ($chunk as &$row) $row['batch_id'] = $batchId;
+                unset($row);
+                DB::table('stock_item_import_rows')->insert($chunk);
+            }
+            return $batchId;
+        });
+
+        return response()->json(['status' => 'success', 'data' => $this->stockImportPreview($batchId, $projectId)]);
+    }
+
+    public function previewItemImport(int $batch)
+    {
+        $this->authorizeStockImportAccess();
+        $projectId = (int) getSelectedTown();
+        abort_unless(Schema::hasTable('stock_item_import_batches'), 409, 'Stock import history migration is not installed yet.');
+        return response()->json(['status' => 'success', 'data' => $this->stockImportPreview($batch, $projectId)]);
+    }
+
+    public function itemImportHistory()
+    {
+        $this->authorizeStockImportAccess();
+        abort_unless(Schema::hasTable('stock_item_import_batches'), 409, 'Stock import history migration is not installed yet.');
+        $projectId = (int) getSelectedTown();
+        $rows = DB::table('stock_item_import_batches as batch')
+            ->leftJoin('users as actor', 'actor.id', '=', 'batch.created_by')
+            ->where('batch.project_id', $projectId)
+            ->orderByDesc('batch.id')->limit(25)
+            ->get(['batch.id', 'batch.status', 'batch.total_rows', 'batch.added_rows', 'batch.updated_rows', 'batch.skipped_rows', 'batch.failed_rows', 'batch.created_at', 'batch.applied_at', 'actor.name as created_by_name'])
+            ->map(fn ($row) => [
+                'id' => (int) $row->id, 'status' => $row->status,
+                'total' => (int) $row->total_rows, 'added' => (int) $row->added_rows,
+                'updated' => (int) $row->updated_rows, 'skipped' => (int) $row->skipped_rows,
+                'failed' => (int) $row->failed_rows, 'created_at' => $row->created_at,
+                'applied_at' => $row->applied_at, 'created_by' => $row->created_by_name,
+            ]);
+        return response()->json(['status' => 'success', 'data' => ['rows' => $rows]]);
+    }
+
+    public function applyItemImport(Request $request, int $batch)
+    {
+        $this->authorizeStockImportAccess();
+        $request->validate(['confirmed' => ['required', 'accepted']]);
+        $projectId = (int) getSelectedTown();
+        abort_unless(Schema::hasTable('stock_item_import_batches'), 409, 'Stock import history migration is not installed yet.');
+        $result = DB::transaction(function () use ($batch, $projectId) {
+            $import = DB::table('stock_item_import_batches')->where('id', $batch)->where('project_id', $projectId)->lockForUpdate()->first();
+            abort_unless($import, 404, 'Import batch not found.');
+            if ($import->status === 'applied') return ['already_applied' => true, 'batch_id' => $batch];
+            abort_unless($import->status === 'staged', 409, 'This import batch is not available to apply.');
+            $rows = DB::table('stock_item_import_rows')->where('batch_id', $batch)->orderBy('row_number')->lockForUpdate()->get();
+            abort_unless($rows->isNotEmpty() && $rows->every(fn ($row) => $row->action !== 'failed'), 422, 'Fix all row errors before applying this import.');
+            $added = 0; $updated = 0;
+            foreach ($rows as $row) {
+                if ($row->action === 'skipped') continue;
+                $payload = json_decode($row->payload, true, 512, JSON_THROW_ON_ERROR);
+                if ($row->action === 'added') {
+                    if (!auth()->user()->can('create stock') && !auth()->user()->hasAnyRole(['admin', 'superadmin'])) abort(403, 'You do not have permission to create stock items through import.');
+                    $item = StockItem::create(['name' => $payload['name'], 'unit' => $payload['unit'], 'default_rate_minor' => (int) $payload['default_rate_minor'], 'created_by' => auth()->id()]);
+                    DB::table('stock_project_item_definitions')->insert([
+                        'project_id' => $projectId, 'item_id' => $item->id, 'name' => $payload['name'],
+                        'unit' => $payload['unit'], 'default_rate_minor' => (int) $payload['default_rate_minor'],
+                        'is_active' => 1, 'updated_by' => auth()->id(), 'created_at' => now(), 'updated_at' => now(),
+                    ]);
+                    DB::table('stock_item_import_rows')->where('id', $row->id)->update(['stock_item_id' => $item->id, 'updated_at' => now()]);
+                    $added++;
+                } else {
+                    if (!auth()->user()->can('edit stock') && !auth()->user()->can('create stock') && !auth()->user()->hasAnyRole(['admin', 'superadmin'])) abort(403, 'You do not have permission to update stock items through import.');
+                    $item = $this->projectItemDefinitions($projectId)->where('item.id', (int) $row->stock_item_id)
+                        ->lockForUpdate()->first(['item.id', 'definition.name', 'definition.unit', 'definition.default_rate_minor']);
+                    abort_unless($item, 409, 'An item in this import was archived after preview.');
+                    abort_unless(isset($payload['original_hash'])
+                        && hash_equals((string) $payload['original_hash'], $this->stockItemDefinitionHash($item)),
+                        409, 'A stock item changed after this import was staged. Restage the file to review the latest values.');
+                    DB::table('stock_project_item_definitions')->where('project_id', $projectId)->where('item_id', $item->id)
+                        ->update(['name' => $payload['name'], 'unit' => $payload['unit'],
+                            'default_rate_minor' => (int) $payload['default_rate_minor'], 'updated_by' => auth()->id(), 'updated_at' => now()]);
+                    $updated++;
+                }
+            }
+            DB::table('stock_item_import_batches')->where('id', $batch)->where('project_id', $projectId)->update([
+                'status' => 'applied', 'added_rows' => $added, 'updated_rows' => $updated,
+                'applied_at' => now(), 'updated_at' => now(),
+            ]);
+            return ['already_applied' => false, 'batch_id' => $batch, 'added' => $added, 'updated' => $updated, 'skipped' => (int) $import->skipped_rows];
+        });
+        return response()->json(['status' => 'success', 'data' => $result]);
+    }
+
+    public function downloadItemImportErrors(int $batch)
+    {
+        $this->authorizeStockImportAccess();
+        $projectId = (int) getSelectedTown();
+        abort_unless(DB::table('stock_item_import_batches')->where('id', $batch)->where('project_id', $projectId)->exists(), 404);
+        $rows = DB::table('stock_item_import_rows')->where('batch_id', $batch)->whereNotNull('errors')->orderBy('row_number')->get();
+        return response()->streamDownload(function () use ($rows): void {
+            $out = fopen('php://output', 'wb'); fputcsv($out, ['row_number', 'item_id', 'name', 'unit', 'default_rate_minor', 'errors']);
+            foreach ($rows as $row) {
+                $payload = json_decode($row->payload, true) ?: [];
+                fputcsv($out, [
+                    (int) $row->row_number,
+                    $payload['item_id'] ?? '',
+                    $this->spreadsheetSafeCsvText($payload['name'] ?? ''),
+                    $this->spreadsheetSafeCsvText($payload['unit'] ?? ''),
+                    $payload['default_rate_minor'] ?? '',
+                    $this->spreadsheetSafeCsvText(implode('; ', json_decode($row->errors, true) ?: [])),
+                ]);
+            }
+            fclose($out);
+        }, 'stock-item-import-errors-'.$batch.'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /** Prevent spreadsheet applications from interpreting untrusted text cells as formulas. */
+    private function spreadsheetSafeCsvText(mixed $value): string
+    {
+        $text = (string) $value;
+        if (preg_match('/^[\x00-\x20]*[=+\-@]/u', $text)) {
+            return "'".$text;
+        }
+
+        return $text;
+    }
+
+    private function stockItemDefinitionHash(object $item): string
+    {
+        return hash('sha256', json_encode([
+            'id' => (int) $item->id,
+            'name' => (string) $item->name,
+            'unit' => (string) $item->unit,
+            'default_rate_minor' => (int) $item->default_rate_minor,
+        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE));
+    }
+
+    private function stockImportPreview(int $batchId, int $projectId): array
+    {
+        $batch = DB::table('stock_item_import_batches')->where('id', $batchId)->where('project_id', $projectId)->first();
+        abort_unless($batch, 404, 'Import batch not found.');
+        $rows = DB::table('stock_item_import_rows')->where('batch_id', $batchId)->orderBy('row_number')->get()->map(fn ($row) => [
+            'row_number' => (int) $row->row_number, 'action' => $row->action,
+            'item' => json_decode($row->payload, true), 'errors' => json_decode($row->errors ?? '[]', true),
+        ]);
+        return ['batch_id' => $batchId, 'status' => $batch->status, 'counts' => [
+            'total' => (int) $batch->total_rows, 'added' => (int) $batch->added_rows,
+            'updated' => (int) $batch->updated_rows, 'skipped' => (int) $batch->skipped_rows,
+            'failed' => (int) $batch->failed_rows,
+        ], 'rows' => $rows];
+    }
+
+    private function authorizeStockImportAccess(): void
+    {
+        abort_unless(auth()->user()->can('create stock') || auth()->user()->can('edit stock') || auth()->user()->hasAnyRole(['admin', 'superadmin']), 403, 'You do not have permission to manage stock item imports.');
+    }
+
     public function parties(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -261,8 +807,14 @@ class StockController extends Controller
             return $this->validationError($validator);
         }
 
-        $q = StockParty::query()
-            ->select(['id', 'type', 'name', 'mobile', 'address', 'head_account', 'sub_head_account', 'created_at'])
+        $partyColumns = ['id', 'type', 'name', 'mobile', 'address', 'head_account', 'sub_head_account', 'created_at'];
+        if (Schema::hasColumn('stock_parties', 'vendor_code')) {
+            $partyColumns[] = 'vendor_code';
+        }
+        $partyColumns[] = 'is_active';
+        $mappedPartyIds = DB::table('stock_party_project_accounts')->where('project_id', (int) getSelectedTown())->pluck('stock_party_id');
+        $q = StockParty::query()->whereIn('id', $mappedPartyIds)
+            ->select($partyColumns)
             ->orderBy('name');
 
         if ($request->filled('type')) {
@@ -282,6 +834,8 @@ class StockController extends Controller
             return [
                 'id' => (int) $p->id,
                 'type' => $p->type,
+                'vendor_code' => $p->vendor_code,
+                'is_active' => (bool) $p->is_active,
                 'name' => $p->name,
                 'mobile' => $p->mobile,
                 'address' => $p->address,
@@ -289,6 +843,17 @@ class StockController extends Controller
                 'subhead' => $p->sub_head_account,
                 'created_at' => $p->created_at,
             ];
+        });
+
+        $accountMap = $this->projectPartyAccountMap((int) getSelectedTown(), $rows->pluck('id')->all());
+        $rows = $rows->map(function ($row) use ($accountMap) {
+            $mapping = $accountMap->get((int) $row['id']);
+            if ($mapping) {
+                $row['head'] = $mapping['head'];
+                $row['subhead'] = $mapping['subhead'];
+                $row['account_id'] = $mapping['account_id'];
+            }
+            return $row;
         });
 
         return response()->json([
@@ -306,6 +871,7 @@ class StockController extends Controller
      */
     public function entries(Request $request)
     {
+        abort_unless(Schema::hasColumn('stock_entries', 'project_id') && Schema::hasColumn('stock_entry_lines', 'project_id'), 409, 'Project stock schema is not installed yet.');
         $validator = Validator::make($request->all(), [
             'item_id' => ['nullable', 'integer', 'exists:stock_items,id'],
             'flow' => ['nullable', Rule::in(['IN', 'OUT'])],
@@ -350,6 +916,7 @@ class StockController extends Controller
                 'l.amount_minor',
             ])
             ->whereNull('e.deleted_at')
+            ->where('e.project_id', (int) getSelectedTown())
             ->orderByDesc('e.id')
             ->orderByDesc('l.id');
 
@@ -435,6 +1002,7 @@ class StockController extends Controller
      */
     public function bills(Request $request)
     {
+        abort_unless(Schema::hasColumn('stock_bills', 'project_id') && Schema::hasColumn('stock_bill_lines', 'project_id'), 409, 'Project stock schema is not installed yet.');
         $validator = Validator::make($request->all(), [
             'type' => ['nullable', Rule::in(['purchase', 'sale'])],
             'party_id' => ['nullable', 'integer', 'exists:stock_parties,id'],
@@ -467,6 +1035,7 @@ class StockController extends Controller
                 'b.total_minor as total_amount',
             ])
             ->whereNull('b.deleted_at')
+            ->where('b.project_id', (int) getSelectedTown())
             ->groupBy('b.id', 'b.bill_no', 'b.bill_date', 'b.type', 'e.slip_no', 'p.name', 'b.total_minor')
             ->orderByDesc('b.id');
 
@@ -557,10 +1126,12 @@ class StockController extends Controller
         $from = $data['from'] ?? null;
         $to = $data['to'] ?? null;
         $itemId = !empty($data['item_id']) ? (int) $data['item_id'] : null;
+        $projectId = (int) getSelectedTown();
+        abort_unless($projectId > 0 && Schema::hasTable('stock_project_item_balances') && Schema::hasColumn('stock_movements', 'project_id'), 409, 'Project stock balances are not installed yet.');
 
         // If dates missing => show current balances (works with your JS too)
         if (!$from || !$to) {
-            $rowsQ = DB::table('stock_item_balances as b')
+            $rowsQ = DB::table('stock_project_item_balances as b')
                 ->join('stock_items as i', 'i.id', '=', 'b.item_id')
                 ->select([
                     'i.id as item_id',
@@ -569,7 +1140,7 @@ class StockController extends Controller
                     DB::raw('0 as purchase_qty'),
                     DB::raw('0 as sale_qty'),
                     DB::raw('b.on_hand_qty as available'),
-                ])
+                ])->where('b.project_id', $projectId)
                 ->orderBy('i.name');
 
             if ($itemId)
@@ -601,6 +1172,7 @@ class StockController extends Controller
                 DB::raw("SUM(CASE WHEN m.direction='IN'  THEN m.qty ELSE 0 END) as purchase_qty"),
                 DB::raw("SUM(CASE WHEN m.direction='OUT' THEN m.qty ELSE 0 END) as sale_qty"),
             ])
+            ->where('m.project_id', $projectId)
             ->whereBetween(DB::raw('DATE(m.movement_date)'), [$from, $to])
             ->groupBy('m.item_id', 'i.name', 'i.unit')
             ->orderBy('i.name');
@@ -611,7 +1183,7 @@ class StockController extends Controller
         $rows = $movQ->get();
 
         // current available (from balances)
-        $balances = DB::table('stock_item_balances')->pluck('on_hand_qty', 'item_id');
+        $balances = DB::table('stock_project_item_balances')->where('project_id', $projectId)->pluck('on_hand_qty', 'item_id');
 
         $rows = $rows->map(function ($r) use ($balances) {
             $avail = (int) ($balances[$r->item_id] ?? 0);
@@ -644,6 +1216,8 @@ class StockController extends Controller
      * ============================================================ */
     public function storeItem(Request $request)
     {
+        $projectId = (int) getSelectedTown();
+        abort_unless($projectId > 0 && Schema::hasTable('stock_project_item_definitions'), 409, 'Project stock item definitions migration is required.');
         $validator = Validator::make($request->all(), [
             'name' => ['required', 'string', 'max:190'],
             'unit' => ['required', 'string', 'max:40'],
@@ -654,12 +1228,19 @@ class StockController extends Controller
         }
 
         $data = $validator->validated();
-        $item = StockItem::create([
-            'name' => trim($data['name']),
-            'unit' => trim($data['unit']),
-            'default_rate_minor' => (int) ($data['default_rate'] ?? 0),
-            'created_by' => auth()->id(),
-        ]);
+        $item = DB::transaction(function () use ($data, $projectId): StockItem {
+            DB::table('projects')->where('id', $projectId)->lockForUpdate()->firstOrFail();
+            $item = StockItem::create([
+                'name' => trim($data['name']), 'unit' => trim($data['unit']),
+                'default_rate_minor' => (int) ($data['default_rate'] ?? 0), 'created_by' => auth()->id(),
+            ]);
+            DB::table('stock_project_item_definitions')->insert([
+                'project_id' => $projectId, 'item_id' => $item->id,
+                'name' => $item->name, 'unit' => $item->unit, 'default_rate_minor' => $item->default_rate_minor,
+                'is_active' => 1, 'updated_by' => auth()->id(), 'created_at' => now(), 'updated_at' => now(),
+            ]);
+            return $item;
+        });
 
         return response()->json([
             'status' => 'success',
@@ -682,22 +1263,32 @@ class StockController extends Controller
             'name' => ['required', 'string', 'max:190'],
             'mobile' => ['nullable', 'string', 'max:40'],
             'address' => ['nullable', 'string', 'max:255'],
-            'head' => ['nullable'],
-            'subhead' => ['nullable'],
+            'head' => ['nullable', 'integer', 'min:1'],
+            'subhead' => ['nullable', 'integer', 'min:1'],
+            'account_id' => ['nullable', 'integer', 'min:1'],
         ]);
         if ($validator->fails()) {
             return $this->validationError($validator);
         }
         $data = $validator->validated();
-        $party = StockParty::create([
+        $projectId = (int) getSelectedTown();
+        abort_unless($projectId > 0, 409, 'Select a project before creating a stock party.');
+        [$party, $account] = DB::transaction(function () use ($data, $projectId) {
+            $account = $this->resolveSubmittedPartyAccount($projectId, $data['head'] ?? null, $data['subhead'] ?? null, $data['account_id'] ?? null);
+            $party = StockParty::create([
             'type' => $data['type'],
             'name' => trim($data['name']),
             'mobile' => $data['mobile'] ?? null,
             'address' => $data['address'] ?? null,
-            'head_account' => $request->head ?? null,
-            'sub_head_account' => $request->subhead ?? null,
             'created_by' => auth()->id(),
             ]);
+            if ($account) $this->savePartyProjectAccount($projectId, (int) $party->id, (int) $account->id);
+            if ($data['type'] === 'Supplier' && Schema::hasColumn('stock_parties', 'vendor_code')) {
+                $party->vendor_code = sprintf('SUP-%06d', $party->id);
+                $party->save();
+            }
+            return [$party, $account];
+        });
 
         return response()->json([
             'status' => 'success',
@@ -705,11 +1296,13 @@ class StockController extends Controller
                 'party' => [
                     'id' => (int) $party->id,
                     'type' => $party->type,
+                    'vendor_code' => $party->vendor_code,
                     'name' => $party->name,
                     'mobile' => $party->mobile,
                     'address' => $party->address,
-                    'head' => $party->head_account,
-                    'subhead' => $party->sub_head_account,
+                    'head' => $account?->head_accounting_id,
+                    'subhead' => $account?->subhead_accounting_id,
+                    'account_id' => $account?->id,
                 ],
             ],
             'message' => 'Party created.',
@@ -718,8 +1311,7 @@ class StockController extends Controller
 
     public function updateItem(Request $request, $id)
     {
-        $item = StockItem::query()->findOrFail($id);
-
+        $projectId = (int) getSelectedTown();
         $validator = Validator::make($request->all(), [
             'name' => ['required', 'string', 'max:190'],
             'unit' => ['required', 'string', 'max:40'],
@@ -730,21 +1322,25 @@ class StockController extends Controller
         }
 
         $data = $validator->validated();
-        $item->update([
-            'name' => trim($data['name']),
-            'unit' => trim($data['unit']),
-            'default_rate_minor' => (int) ($data['default_rate'] ?? 0),
-            'updated_by' => auth()->id(),
-        ]);
+        DB::transaction(function () use ($projectId, $id, $data): void {
+            DB::table('projects')->where('id', $projectId)->lockForUpdate()->firstOrFail();
+            $item = $this->projectItemDefinitions($projectId)->where('item.id', $id)
+                ->where('definition.is_active', 1)->lockForUpdate()->first(['item.id']);
+            abort_unless($item, 404, 'Stock item not found in this project.');
+            DB::table('stock_project_item_definitions')->where('project_id', $projectId)->where('item_id', $id)
+                ->update(['name' => trim($data['name']), 'unit' => trim($data['unit']),
+                    'default_rate_minor' => (int) ($data['default_rate'] ?? 0),
+                    'updated_by' => auth()->id(), 'updated_at' => now()]);
+        });
 
         return response()->json([
             'status' => 'success',
             'data' => [
                 'item' => [
-                    'id' => (int) $item->id,
-                    'name' => $item->name,
-                    'unit' => $item->unit,
-                    'default_rate' => (int) $item->default_rate_minor,
+                    'id' => (int) $id,
+                    'name' => trim($data['name']),
+                    'unit' => trim($data['unit']),
+                    'default_rate' => (int) ($data['default_rate'] ?? 0),
                 ],
             ],
             'message' => 'Item updated.',
@@ -753,29 +1349,18 @@ class StockController extends Controller
 
     public function deleteItem(Request $request, $id)
     {
-        $item = StockItem::query()->findOrFail($id);
-
-        try {
-            DB::transaction(function () use ($item) {
-                StockItem::query()->whereKey($item->id)->lockForUpdate()->firstOrFail();
-                if (DB::table('stock_entry_lines')->where('item_id', $item->id)->exists()
-                    || DB::table('stock_bill_lines')->where('item_id', $item->id)->exists()
-                    || DB::table('stock_movements')->where('item_id', $item->id)->exists()
-                    || DB::table('stock_item_balances')->where('item_id', $item->id)->exists()) {
-                    throw new \DomainException('STOCK_ITEM_HAS_HISTORY');
-                }
-                $item->delete();
-            });
-        } catch (\DomainException $e) {
-            return $this->errorResponse('stock_history_exists', 'Item has stock history and cannot be deleted.', 409);
-        } catch (\Throwable $e) {
-            report($e);
-            return $this->errorResponse('server_error', 'Unable to delete item.', 500);
-        }
+        $projectId = (int) getSelectedTown();
+        DB::transaction(function () use ($projectId, $id): void {
+            DB::table('projects')->where('id', $projectId)->lockForUpdate()->firstOrFail();
+            $item = $this->projectItemDefinitions($projectId)->where('item.id', $id)->lockForUpdate()->first(['item.id']);
+            abort_unless($item, 404, 'Stock item not found in this project.');
+            DB::table('stock_project_item_definitions')->where('project_id', $projectId)->where('item_id', $id)
+                ->update(['is_active' => 0, 'deleted_at' => now(), 'updated_by' => auth()->id(), 'updated_at' => now()]);
+        });
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Item deleted.',
+            'message' => 'Item archived for this project.',
         ]);
     }
 
@@ -788,23 +1373,33 @@ class StockController extends Controller
             'name' => ['required', 'string', 'max:190'],
             'mobile' => ['nullable', 'string', 'max:40'],
             'address' => ['nullable', 'string', 'max:255'],
-            'head' => ['nullable', 'string', 'max:255'],
-            'subhead' => ['nullable', 'string', 'max:255'],
+            'head' => ['nullable', 'integer', 'min:1'],
+            'subhead' => ['nullable', 'integer', 'min:1'],
+            'account_id' => ['nullable', 'integer', 'min:1'],
         ]);
         if ($validator->fails()) {
             return $this->validationError($validator);
         }
 
         $data = $validator->validated();
-        $party->update([
-            'type' => $data['type'],
-            'name' => trim($data['name']),
-            'mobile' => $data['mobile'] ?? null,
-            'address' => $data['address'] ?? null,
-            'head_account' => $data['head'] ?? null,
-            'sub_head_account' => $data['subhead'] ?? null,
-            'updated_by' => auth()->id(),
-        ]);
+        $projectId = (int) getSelectedTown();
+        abort_unless($projectId > 0, 409, 'Select a project before updating a stock party.');
+        $account = DB::transaction(function () use ($data, $party, $projectId) {
+            $account = $this->resolveSubmittedPartyAccount($projectId, $data['head'] ?? null, $data['subhead'] ?? null, $data['account_id'] ?? null);
+            $party->update([
+                'type' => $data['type'],
+                'name' => trim($data['name']),
+                'mobile' => $data['mobile'] ?? null,
+                'address' => $data['address'] ?? null,
+                'updated_by' => auth()->id(),
+            ]);
+            if ($account) $this->savePartyProjectAccount($projectId, (int) $party->id, (int) $account->id);
+            return $account;
+        });
+        if ($data['type'] === 'Supplier' && Schema::hasColumn('stock_parties', 'vendor_code') && empty($party->vendor_code)) {
+            $party->vendor_code = sprintf('SUP-%06d', $party->id);
+            $party->save();
+        }
 
         return response()->json([
             'status' => 'success',
@@ -812,11 +1407,13 @@ class StockController extends Controller
                 'party' => [
                     'id' => (int) $party->id,
                     'type' => $party->type,
+                    'vendor_code' => $party->vendor_code,
                     'name' => $party->name,
                     'mobile' => $party->mobile,
                     'address' => $party->address,
-                    'head' => $party->head_account,
-                    'subhead' => $party->sub_head_account,
+                    'head' => $account?->head_accounting_id,
+                    'subhead' => $account?->subhead_accounting_id,
+                    'account_id' => $account?->id,
                 ],
             ],
             'message' => 'Party updated.',
@@ -850,14 +1447,45 @@ class StockController extends Controller
         ]);
     }
 
-    private function rebuildBalances(array $itemIds): void
+    public function updatePartyStatus(Request $request, $id)
+    {
+        $data = $request->validate([
+            'is_active' => ['required', 'boolean'],
+            'reason' => ['required', 'string', 'max:500'],
+        ]);
+
+        abort_unless(Schema::hasTable('account_definition_status_audits'), 409, 'Install the account status audit migration before changing party status.');
+
+        $party = DB::transaction(function () use ($id, $data) {
+            $party = StockParty::query()->whereKey($id)->lockForUpdate()->firstOrFail();
+            $oldStatus = (int) $party->is_active;
+            $newStatus = (int) $data['is_active'];
+            if ($oldStatus !== $newStatus) {
+                app(\App\Services\Finance\AccountDefinitionStatusAudit::class)->record(
+                    'stock_party', (int) $party->id, $oldStatus, $newStatus, $data['reason'], Auth::id()
+                );
+                $party->is_active = $newStatus;
+                $party->updated_by = Auth::id();
+                $party->save();
+            }
+            return $party;
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => ['party' => ['id' => (int) $party->id, 'is_active' => (bool) $party->is_active]],
+            'message' => 'Party status updated.',
+        ]);
+    }
+
+    private function rebuildBalances(int $projectId, array $itemIds): void
     {
         $itemIds = array_values(array_unique(array_map('intval', $itemIds)));
         if (!$itemIds) {
             return;
         }
 
-        $rows = DB::table('stock_movements')
+        $rows = DB::table('stock_movements')->where('project_id', $projectId)
             ->select([
                 'item_id',
                 DB::raw("SUM(CASE WHEN direction='IN' THEN qty ELSE 0 END) as in_qty"),
@@ -876,17 +1504,18 @@ class StockController extends Controller
             $outInt = $this->parseQtyToInt($outQty) ?? 0;
             $onHand = $this->qtyIntToDecimal($inInt - $outInt);
 
-            $exists = DB::table('stock_item_balances')->where('item_id', $itemId)->exists();
+            $exists = DB::table('stock_project_item_balances')->where('project_id', $projectId)->where('item_id', $itemId)->exists();
             if ($exists) {
-                DB::table('stock_item_balances')
-                    ->where('item_id', $itemId)
+                DB::table('stock_project_item_balances')
+                    ->where('project_id', $projectId)->where('item_id', $itemId)
                     ->update([
                         'on_hand_qty' => $onHand,
                         'updated_at' => now(),
                     ]);
             } else {
-                DB::table('stock_item_balances')
+                DB::table('stock_project_item_balances')
                     ->insert([
+                        'project_id' => $projectId,
                         'item_id' => $itemId,
                         'on_hand_qty' => $onHand,
                         'created_at' => now(),
@@ -918,18 +1547,19 @@ class StockController extends Controller
         }
 
         $data = $validator->validated();
+        $projectId = (int) getSelectedTown();
+        abort_unless($projectId > 0 && Schema::hasTable('stock_project_item_balances'), 409, 'Project stock balances are not installed yet.');
         $flow = $data['flow'];
         $linesInput = $data['lines'];
         $itemIds = collect($linesInput)->pluck('item_id')->unique()->values()->all();
-        $itemMeta = StockItem::query()
-            ->whereIn('id', $itemIds)
-            ->get(['id', 'name', 'unit'])
+        $itemMeta = $this->projectItemDefinitions($projectId)->whereIn('item.id', $itemIds)
+            ->get(['item.id', 'definition.name', 'definition.unit'])
             ->keyBy('id');
         $itemNames = $itemMeta->mapWithKeys(fn($it) => [(int) $it->id => $it->name])->toArray();
 
         try {
-            $result = DB::transaction(function () use ($data, $flow, $linesInput, $itemNames, $itemMeta) {
-                $itemMeta = $this->lockStockMasters((int) $data['party_id'], array_column($linesInput, 'item_id'));
+            $result = DB::transaction(function () use ($data, $flow, $linesInput, $itemNames, $itemMeta, $projectId) {
+                $itemMeta = $this->lockStockMasters($projectId, (int) $data['party_id'], array_column($linesInput, 'item_id'));
                 $now = now();
 
                 $lines = [];
@@ -957,11 +1587,12 @@ class StockController extends Controller
                     $totalsByItem[$line['item_id']] = ($totalsByItem[$line['item_id']] ?? 0) + $qtyInt;
                 }
 
-                $this->applyStockAdjustments($totalsByItem, $flow, $itemNames);
+                $this->applyStockAdjustments($projectId, $totalsByItem, $flow, $itemNames);
 
                 $slipNo = $this->nextCounterNumber('slip_no', '', 2);
 
                 $entry = StockEntry::create([
+                    'project_id' => $projectId,
                     'slip_no' => $slipNo,
                     'entry_date' => $data['date'],
                     'flow' => $flow,
@@ -977,6 +1608,7 @@ class StockController extends Controller
 
                 foreach ($lines as $line) {
                     $lineRow = StockEntryLine::create([
+                        'project_id' => $projectId,
                         'entry_id' => $entry->id,
                         'item_id' => $line['item_id'],
                         'qty' => $line['qty_decimal'],
@@ -987,6 +1619,7 @@ class StockController extends Controller
                     ]);
 
                     DB::table('stock_movements')->insert([
+                        'project_id' => $projectId,
                         'movement_date' => $data['date'],
                         'direction' => $flow,
                         'item_id' => $line['item_id'],
@@ -1067,18 +1700,19 @@ class StockController extends Controller
         }
 
         $data = $validator->validated();
+        $projectId = (int) getSelectedTown();
+        abort_unless($projectId > 0 && Schema::hasTable('stock_project_item_balances'), 409, 'Project stock balances are not installed yet.');
         $direction = $data['type'] === 'purchase' ? 'IN' : 'OUT';
         $linesInput = $data['lines'];
         $itemIds = collect($linesInput)->pluck('item_id')->unique()->values()->all();
-        $itemMeta = StockItem::query()
-            ->whereIn('id', $itemIds)
-            ->get(['id', 'name', 'unit'])
+        $itemMeta = $this->projectItemDefinitions($projectId)->whereIn('item.id', $itemIds)
+            ->get(['item.id', 'definition.name', 'definition.unit'])
             ->keyBy('id');
         $itemNames = $itemMeta->mapWithKeys(fn($it) => [(int) $it->id => $it->name])->toArray();
 
         $entryId = null;
         if (!empty($data['entry_no'])) {
-            $entryId = StockEntry::where('slip_no', $data['entry_no'])->value('id');
+            $entryId = StockEntry::where('project_id', $projectId)->where('slip_no', $data['entry_no'])->value('id');
             if (!$entryId) {
                 return $this->errorResponse('validation_failed', 'Entry not found for the provided entry number.', 422, [
                     'entry_no' => ['Entry not found.'],
@@ -1087,8 +1721,8 @@ class StockController extends Controller
         }
 
         try {
-            $result = DB::transaction(function () use ($data, $direction, $linesInput, $itemNames, $itemMeta, $entryId) {
-                $itemMeta = $this->lockStockMasters((int) $data['party_id'], array_column($linesInput, 'item_id'));
+            $result = DB::transaction(function () use ($data, $direction, $linesInput, $itemNames, $itemMeta, $entryId, $projectId) {
+                $itemMeta = $this->lockStockMasters($projectId, (int) $data['party_id'], array_column($linesInput, 'item_id'));
                 $now = now();
 
                 $lines = [];
@@ -1116,12 +1750,13 @@ class StockController extends Controller
                     $totalsByItem[$line['item_id']] = ($totalsByItem[$line['item_id']] ?? 0) + $qtyInt;
                 }
 
-                $this->applyStockAdjustments($totalsByItem, $direction, $itemNames);
+                $this->applyStockAdjustments($projectId, $totalsByItem, $direction, $itemNames);
 
                 $counterKey = $data['type'] === 'sale' ? 'bill_sale' : 'bill_purchase';
                 $billNo = $this->nextCounterNumber($counterKey, 'B-', 5);
 
                 $bill = StockBill::create([
+                    'project_id' => $projectId,
                     'bill_no' => $billNo,
                     'bill_date' => $data['date'],
                     'type' => $data['type'],
@@ -1136,6 +1771,7 @@ class StockController extends Controller
 
                 foreach ($lines as $line) {
                     $lineRow = StockBillLine::create([
+                        'project_id' => $projectId,
                         'bill_id' => $bill->id,
                         'item_id' => $line['item_id'],
                         'qty' => $line['qty_decimal'],
@@ -1146,6 +1782,7 @@ class StockController extends Controller
                     ]);
 
                     DB::table('stock_movements')->insert([
+                        'project_id' => $projectId,
                         'movement_date' => $data['date'],
                         'direction' => $direction,
                         'item_id' => $line['item_id'],
@@ -1165,7 +1802,7 @@ class StockController extends Controller
                 $this->postBillLedger($bill, $data['type'], $totalMinor, $data['date'], $lines);
 
                 if ($entryId) {
-                    StockEntry::where('id', $entryId)
+                    StockEntry::where('id', $entryId)->where('project_id', $projectId)
                         ->update(['billed_at' => now(), 'updated_at' => $now]);
                 }
 
@@ -1291,7 +1928,8 @@ class StockController extends Controller
 
         $voucherNumber = app(\App\Services\Finance\ProjectVoucherAllocator::class)
             ->next($projectId, $ledgerType);
-        $typeId = (int) (getLastLedgerIdByType($ledgerType) ?? 0) + 1;
+        $typeId = app(\App\Services\Finance\ProjectVoucherAllocator::class)
+            ->nextLedgerId($projectId, $ledgerType);
         $userId = auth()->id();
 
         foreach ($legs as $leg) {
@@ -1324,6 +1962,18 @@ class StockController extends Controller
         $party = StockParty::query()->find($partyId);
         if (!$party) {
             throw new \DomainException('PARTY_ACCOUNT_MAPPING_MISSING');
+        }
+
+        if (Schema::hasTable('stock_party_project_accounts')) {
+            $mappedId = DB::table('stock_party_project_accounts')
+                ->where('project_id', $projectId)->where('stock_party_id', $partyId)
+                ->value('project_head_subhead_id');
+            if ($mappedId !== null) {
+                $account = ProjectHeadSubhead::availableForPosting()->where('project_id', $projectId)
+                    ->whereKey((int) $mappedId)->first();
+                if (!$account) throw new \DomainException('PARTY_ACCOUNT_MAPPING_INACTIVE');
+                return (int) $account->id;
+            }
         }
 
         $partyHead = trim((string) $party->head_account);
@@ -1361,13 +2011,7 @@ class StockController extends Controller
             throw new HttpException(422, 'Selected party not found.');
         }
 
-        $partyHead = trim((string) $party->head_account);
-        $partySubhead = trim((string) $party->sub_head_account);
-        if ($partyHead === '' || $partySubhead === '') {
-            throw new \DomainException('PARTY_ACCOUNT_MAPPING_MISSING');
-        }
-
-        $partyProjectHeadSubheadId = $this->systemHeadSubheadAccountId($projectId, $partyHead, $partySubhead, true);
+        $partyProjectHeadSubheadId = $this->resolvePartyPhsId((int) $party->id);
         $stockProjectHeadSubheadId = $this->systemHeadSubheadAccountId($projectId, 'Stock', 'Stock Khata', true);
         $detail = $this->buildStockLedgerDetail([
             'kind' => 'BILL',
@@ -1446,7 +2090,8 @@ class StockController extends Controller
 
         $voucherNumber = app(\App\Services\Finance\ProjectVoucherAllocator::class)
             ->next($projectId, $ledgerType);
-        $typeId = (int) (getLastLedgerIdByType($ledgerType) ?? 0) + 1;
+        $typeId = app(\App\Services\Finance\ProjectVoucherAllocator::class)
+            ->nextLedgerId($projectId, $ledgerType);
         $userId = auth()->id();
 
         foreach ($legs as $leg) {
@@ -1547,6 +2192,9 @@ class StockController extends Controller
         if (!$head || !$subhead) {
             throw new \DomainException('PARTY_ACCOUNT_MAPPING_MISSING');
         }
+        if ((int) $head->is_active !== 1 || (int) $subhead->is_active !== 1) {
+            throw new \DomainException('PARTY_ACCOUNT_MAPPING_INACTIVE');
+        }
 
         $projectHeadSubhead = ProjectHeadSubhead::firstOrCreate([
             'project_id' => $projectId,
@@ -1556,7 +2204,82 @@ class StockController extends Controller
             'customer_id' => null,
         ]);
 
+        if (!ProjectHeadSubhead::availableForPosting()->whereKey($projectHeadSubhead->id)->exists()) {
+            throw new \DomainException('PARTY_ACCOUNT_MAPPING_INACTIVE');
+        }
+
         return (int) $projectHeadSubhead->id;
+    }
+
+    private function projectPartyAccountMap(int $projectId, array $partyIds)
+    {
+        if ($projectId <= 0 || !$partyIds || !Schema::hasTable('stock_party_project_accounts')) {
+            return collect();
+        }
+
+        return DB::table('stock_party_project_accounts as link')
+            ->join('project_head_subheads as account', function ($join) {
+                $join->on('account.id', '=', 'link.project_head_subhead_id')
+                    ->on('account.project_id', '=', 'link.project_id');
+            })
+            ->where('link.project_id', $projectId)->whereIn('link.stock_party_id', $partyIds)
+            ->get(['link.stock_party_id', 'account.id as account_id', 'account.head_accounting_id', 'account.subhead_accounting_id'])
+            ->keyBy('stock_party_id')->map(fn ($row) => [
+                'head' => (int) $row->head_accounting_id,
+                'subhead' => (int) $row->subhead_accounting_id,
+                'account_id' => (int) $row->account_id,
+            ]);
+    }
+
+    private function resolveSubmittedPartyAccount(int $projectId, $headId, $subheadId, $accountId = null): ?ProjectHeadSubhead
+    {
+        if ($accountId !== null) {
+            $account = ProjectHeadSubhead::availableForPosting()->where('project_id', $projectId)
+                ->whereKey((int) $accountId)->whereNull('plot_id')->whereNull('customer_id')
+                ->lockForUpdate()->first();
+            if (!$account) throw new HttpException(422, 'The selected account does not belong to this project or is inactive.');
+            return $account;
+        }
+        if ($headId === null && $subheadId === null) return null;
+        if (!$headId || !$subheadId) {
+            throw new HttpException(422, 'Select both a head account and its sub-account.');
+        }
+
+        $account = ProjectHeadSubhead::availableForPosting()->where('project_id', $projectId)
+            ->where('head_accounting_id', (int) $headId)
+            ->where('subhead_accounting_id', (int) $subheadId)
+            ->whereNull('plot_id')->whereNull('customer_id')->lockForUpdate()->first();
+        if (!$account) throw new HttpException(422, 'The selected account does not belong to this project or is inactive.');
+        return $account;
+    }
+
+    private function savePartyProjectAccount(int $projectId, int $partyId, int $accountId): void
+    {
+        if (!Schema::hasTable('stock_party_project_accounts')) {
+            throw new HttpException(409, 'Run the stock party account-link migration before assigning accounting accounts.');
+        }
+
+        $link = DB::table('stock_party_project_accounts')->where('project_id', $projectId)
+            ->where('stock_party_id', $partyId)->first();
+        if ($link) {
+            if ((int) $link->project_head_subhead_id === $accountId) return;
+            DB::table('stock_party_project_accounts')->where('id', $link->id)->where('project_id', $projectId)->update([
+                'project_head_subhead_id' => $accountId, 'changed_by' => Auth::id(), 'updated_at' => now(),
+            ]);
+        } else {
+            DB::table('stock_party_project_accounts')->insert([
+                'project_id' => $projectId, 'stock_party_id' => $partyId,
+                'project_head_subhead_id' => $accountId, 'changed_by' => Auth::id(),
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        if (Schema::hasTable('stock_party_project_account_audits')) {
+            DB::table('stock_party_project_account_audits')->insert([
+                'project_id' => $projectId, 'stock_party_id' => $partyId,
+                'previous_account_id' => $link->project_head_subhead_id ?? null,
+                'new_account_id' => $accountId, 'actor_id' => Auth::id(), 'created_at' => now(),
+            ]);
+        }
     }
 
     private function parseQtyToInt($value): ?int
@@ -1587,12 +2310,12 @@ class StockController extends Controller
         return (int) intdiv($qtyInt * $rateMinor, 1000);
     }
 
-    private function applyStockAdjustments(array $totalsByItem, string $direction, $itemNames): void
+    private function applyStockAdjustments(int $projectId, array $totalsByItem, string $direction, $itemNames): void
     {
         $itemIds = array_keys($totalsByItem);
         sort($itemIds);
 
-        $balances = DB::table('stock_item_balances')
+        $balances = DB::table('stock_project_item_balances')->where('project_id', $projectId)
             ->whereIn('item_id', $itemIds)
             ->orderBy('item_id')
             ->lockForUpdate()
@@ -1619,12 +2342,13 @@ class StockController extends Controller
             ];
 
             if ($currentRow) {
-                DB::table('stock_item_balances')
-                    ->where('item_id', $itemId)
+                DB::table('stock_project_item_balances')
+                    ->where('project_id', $projectId)->where('item_id', $itemId)
                     ->update($payload);
             } else {
-                DB::table('stock_item_balances')
+                DB::table('stock_project_item_balances')
                     ->insert(array_merge($payload, [
+                        'project_id' => $projectId,
                         'item_id' => $itemId,
                         'created_at' => now(),
                     ]));

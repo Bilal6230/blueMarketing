@@ -3,6 +3,7 @@
 namespace App\Services\Finance;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Snapshot of exact original stock source + source lines for a separate
@@ -11,23 +12,25 @@ use Illuminate\Support\Facades\DB;
  */
 final class V2StockSourceSnapshot
 {
-    public function read(string $kind, int $sourceId): array
+    public function read(string $kind, int $sourceId, int $projectId): array
     {
         V2IsolatedConnectionGuard::assertAllowed();
-        if (!in_array($kind, ['stock_entry', 'stock_bill'], true) || $sourceId < 1) {
+        if (!in_array($kind, ['stock_entry', 'stock_bill'], true) || $sourceId < 1 || $projectId < 1) {
             throw new \DomainException('V2_STOCK_SOURCE_ID_INVALID');
         }
         $isEntry = $kind === 'stock_entry';
         $table = $isEntry ? 'stock_entries' : 'stock_bills';
         $lineTable = $isEntry ? 'stock_entry_lines' : 'stock_bill_lines';
         $lineFk = $isEntry ? 'entry_id' : 'bill_id';
-        $source = DB::table($table)->where('id', $sourceId)->lockForUpdate()->first();
+        $query = DB::table($table)->where('id', $sourceId);
+        if (Schema::hasColumn($table, 'project_id')) $query->where('project_id', $projectId);
+        $source = $query->lockForUpdate()->first();
         if (!$source || $source->deleted_at !== null) {
             throw new \DomainException('V2_STOCK_SOURCE_MISSING_OR_DELETED');
         }
         if ($isEntry && (
             $source->billed_at !== null
-            || DB::table('stock_bills')->where('entry_id', $sourceId)
+            || DB::table('stock_bills')->where('entry_id', $sourceId)->where('project_id', $projectId)
                 ->whereNull('deleted_at')->exists()
         )) {
             // Posting entry and its bill can produce a double financial claim.
@@ -38,7 +41,9 @@ final class V2StockSourceSnapshot
                 ->where('stock_entry_id', $source->entry_id)->exists()) {
             throw new \DomainException('V2_STOCK_BILL_ENTRY_ALREADY_POSTED');
         }
-        $lines = DB::table($lineTable)->where($lineFk, $sourceId)
+        $lineQuery = DB::table($lineTable)->where($lineFk, $sourceId);
+        if (Schema::hasColumn($lineTable, 'project_id')) $lineQuery->where('project_id', $projectId);
+        $lines = $lineQuery
             ->orderBy('id')->lockForUpdate()->get();
         if ($lines->isEmpty()) {
             throw new \DomainException('V2_STOCK_SOURCE_LINES_MISSING');
@@ -82,7 +87,7 @@ final class V2StockSourceSnapshot
             throw new \DomainException('V2_STOCK_SOURCE_TYPE_INVALID');
         }
         $fingerprint = hash('sha256', json_encode([
-            'kind' => $kind, 'source_id' => $sourceId,
+            'kind' => $kind, 'source_id' => $sourceId, 'project_id' => $projectId,
             'date' => $date, 'series' => $series,
             'source_number' => (string) ($isEntry ? $source->slip_no : $source->bill_no),
             'party_id' => (int) $source->party_id,

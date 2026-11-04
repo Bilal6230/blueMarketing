@@ -79,9 +79,9 @@ final class BookingAmendmentService
             if ($brokerChanged && !$mayBroker) {
                 throw new DomainException('BROKER_PERMISSION_REQUIRED');
             }
-            if ($brokerChanged && $newBroker !== null && !ProjectHeadSubhead::where('project_id', $projectId)
+            if ($brokerChanged && $newBroker !== null && !ProjectHeadSubhead::availableForPosting()->where('project_id', $projectId)
                 ->where('head_accounting_id', 6)->where('subhead_accounting_id', $newBroker)->exists()) {
-                throw new DomainException('BROKER_NOT_IN_PROJECT');
+                throw new DomainException('BROKER_NOT_AVAILABLE_IN_PROJECT');
             }
 
             $oldPricing = [];

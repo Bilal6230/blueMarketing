@@ -26,12 +26,15 @@
                 <div class="row">
                     <div class="col-12">
                         <div class="card">
-                            @can('create user')
+                            @canany(['create user', 'read user'])
                                 <div class="card-header">
                                     <h3 class="card-title">
-                                        <a href="#" class="btn btn-sm btn-success" data-toggle="modal"
-                                            data-target="#modal-tambah" data-backdrop="static" data-keyboard="false"><i
-                                                class="fas fa-plus"></i> Add</a>
+                                        <a href="{{ route('employee-definitions.index') }}" class="btn btn-sm btn-outline-primary mr-1"><i class="fas fa-user-cog"></i> Employee Setup</a>
+                                        @can('create user')
+                                            <a href="#" class="btn btn-sm btn-success" data-toggle="modal"
+                                                data-target="#modal-tambah" data-backdrop="static" data-keyboard="false"><i
+                                                    class="fas fa-plus"></i> Add</a>
+                                        @endcan
                                     </h3>
                                 </div>
                             @endcan

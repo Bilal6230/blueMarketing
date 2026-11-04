@@ -93,7 +93,7 @@
 
 
 
-                @canany(['read user', 'read role', 'read permission'])
+                @canany(['read user', 'read role', 'read permission', 'read accounting'])
                     <li class="nav-item">
                         <a href="#" class="nav-link {{ request()->routeIs('accounting*') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-plus"></i>
@@ -101,6 +101,14 @@
                         </a>
                         <ul class="nav nav-treeview"
                             style="display: {{ request()->routeIs('accounting*') ? 'block' : 'none' }};">
+                            @can('read accounting')
+                                <li class="nav-item">
+                                    <a href="{{ route('accounting.groups') }}"
+                                        class="nav-link {{ request()->routeIs('accounting.groups') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i><p>Account Groups</p>
+                                    </a>
+                                </li>
+                            @endcan
                             @can('read user')
                                 <li class="nav-item">
                                     <a href="{{ route('accounting.head_index') }}"

@@ -42,13 +42,17 @@ final class ExtraChargeAccounts
                 'create_by' => Auth::id(),
             ]);
         }
-        return (int) ProjectHeadSubhead::firstOrCreate([
+        $mapping = ProjectHeadSubhead::firstOrCreate([
             'project_id' => $projectId,
             'head_accounting_id' => $head->id,
             'subhead_accounting_id' => $subhead->id,
             'plot_id' => null,
             'customer_id' => null,
-        ])->id;
+        ]);
+        if (!ProjectHeadSubhead::availableForPosting()->whereKey($mapping->id)->exists()) {
+            throw new \DomainException('EC_SETTLEMENT_ACCOUNT_INACTIVE');
+        }
+        return (int) $mapping->id;
     }
 
     public function forProject(int $projectId, int $customerId, int $plotId): array
@@ -85,7 +89,11 @@ final class ExtraChargeAccounts
                 'plot_id' => $name === 'Extra Charge Receivable' ? $plotId : null,
                 'customer_id' => $name === 'Extra Charge Receivable' ? $customerId : null,
             ];
-            $accounts[$name] = (int) ProjectHeadSubhead::firstOrCreate($scope)->id;
+            $mapping = ProjectHeadSubhead::firstOrCreate($scope);
+            if (!ProjectHeadSubhead::availableForPosting()->whereKey($mapping->id)->exists()) {
+                throw new \DomainException('EC_ACCOUNT_MAPPING_INACTIVE');
+            }
+            $accounts[$name] = (int) $mapping->id;
         }
 
         if ($accounts['Extra Charge Receivable'] === $accounts['Extra Charge Income']) {

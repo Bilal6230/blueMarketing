@@ -156,7 +156,6 @@ class ReportController extends Controller
 
         DB::beginTransaction();
         try {
-            $lastId = getLastLedgerIdByType("BR");
             $selectedProjectId = getSelectedTown();
 
             $creditAccountId = null;
@@ -195,7 +194,7 @@ class ReportController extends Controller
 
             if ($request->passing_status == 1) {
                 // Resolve pass account before writing history so credit_account_id is saved.
-                $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', $request->accounts_id)
+                $creditAccountId = ProjectHeadSubhead::availableForPosting()->where('head_accounting_id', $request->accounts_id)
                     ->where('project_id', $selectedProjectId)
                     ->where('subhead_accounting_id', $request->subaccounts_id)
                     ->value('id');
@@ -257,7 +256,8 @@ class ReportController extends Controller
                         'customer_ledger_id' => $result->id,
                         'type' => 'BR',
                         'voucher_number' => $voucherNumber,
-                        'type_id' => $lastId + 2,
+                        'type_id' => app(\App\Services\Finance\ProjectVoucherAllocator::class)
+                            ->nextLedgerId((int) $selectedProjectId, 'BR'),
                         'project_head_subheads_id' => $creditAccountId,
                         'reference' => $clearanceReference,
                         'amount_in' => 0.00, // Adjust this field as per your data

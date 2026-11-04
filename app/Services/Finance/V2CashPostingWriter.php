@@ -102,7 +102,7 @@ final class V2CashPostingWriter
                     throw new \DomainException('V2_CASH_ACCOUNT_ID_INVALID');
                 }
                 $account = (int) $rawAccount;
-                if (!\App\Models\ProjectHeadSubhead::query()
+                if (!\App\Models\ProjectHeadSubhead::availableForPosting()
                     ->where('id', $account)->where('project_id', $projectId)->lockForUpdate()->first(['id'])) {
                     throw new \DomainException('V2_CASH_ACCOUNT_PROJECT_MISMATCH');
                 }

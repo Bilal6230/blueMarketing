@@ -263,6 +263,7 @@
                             projectID: {{ getSelectedTown() }}, // Replace with the dynamic project ID if applicable
                             accountID: accountID,
                             action: 'get_child',
+                            active_only: true,
                             _token: '{{ csrf_token() }}' // CSRF token for Laravel
                         },
                         success: function(response) {

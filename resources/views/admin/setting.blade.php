@@ -29,11 +29,12 @@
                             <div class="card-header p-2">
                                 <ul class="nav nav-pills">
                                     @foreach ($category as $i)
-                                        <li class="nav-item"><a class="nav-link {{ $loop->iteration == 1 ? 'active' : '' }}"
+                                        <li class="nav-item"><a class="nav-link {{ $activeSettingsTab === $i->category ? 'active' : '' }}"
                                                 href="#{{ $i->category }}"
                                                 data-toggle="tab">{{ Str::ucfirst($i->category) }}</a></li>
                                     @endforeach
-                                    <li class="nav-item"><a class="nav-link {{ request('tab') === 'attendance-machine' ? 'active' : '' }}" href="#attendance-machine" data-toggle="tab">Attendance Machine</a></li>
+                                    <li class="nav-item"><a class="nav-link {{ $attendanceTabActive ? 'active' : '' }}" href="#attendance-machine" data-toggle="tab">Attendance Machine</a></li>
+                                    <li class="nav-item"><a class="nav-link {{ $financeSettingsTabActive ? 'active' : '' }}" href="#bank-accounts" data-toggle="tab">Bank Accounts</a></li>
                                 </ul>
                             </div>
                             <div class="card-body">
@@ -42,7 +43,7 @@
                                         @php
                                             $settings = \App\Models\Setting::where('type', '!=', 'toggle')->where(['category' => $i->category])->get();
                                         @endphp
-                                        <div class="tab-pane {{ $loop->iteration == 1 ? 'active' : '' }}"
+                                        <div class="tab-pane {{ $activeSettingsTab === $i->category ? 'active' : '' }}"
                                             id="{{ $i->category }}">
                                             <form class="form-horizontal" action="{{ route('setting.update') }}"
                                                 method="POST">
@@ -128,6 +129,53 @@
                                         </div>
                                     @endforeach
                                     @include('admin.attendance.settings-tab')
+                                    <div class="tab-pane {{ $financeSettingsTabActive ? 'active' : '' }}" id="bank-accounts">
+                                        @if (session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
+                                        @if ($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
+                                        @if (!$financeSettingsSchemaReady)
+                                            <div class="alert alert-warning">Project bank account settings are not installed. Apply the project bank account migration before configuring accounts.</div>
+                                        @elseif (!$canManageFinanceSettings)
+                                            <div class="alert alert-info">Select your assigned project and sign in as a project administrator to manage bank accounts.</div>
+                                        @else
+                                            @if(!$paymentMethodLabelsReady)<div class="alert alert-warning">Payment method label settings are not installed yet. Apply their migration to enable project-level labels.</div>@else
+                                                <div class="card card-outline card-info"><div class="card-header"><strong>Payment method labels</strong><small class="text-muted ml-2">Codes and cash/transfer/cheque behavior stay fixed for old records.</small></div><div class="card-body">
+                                                    <form method="POST" action="{{ route('setting.payment-method-labels.save') }}" class="form-row align-items-end">@csrf
+                                                        @foreach([1 => 'Cash', 2 => 'Online', 3 => 'Check'] as $code => $defaultLabel)
+                                                            <div class="form-group col-md-3"><label>{{ $defaultLabel }} label (legacy code {{ $code }})</label><input class="form-control" name="labels[{{ $code }}]" maxlength="40" required value="{{ old('labels.'.$code, $projectPaymentMethodLabels->get($code, $defaultLabel)) }}"></div>
+                                                        @endforeach
+                                                        <div class="form-group col-md-3"><button class="btn btn-primary btn-block">Save method labels</button></div>
+                                                    </form>
+                                                </div></div>
+                                            @endif
+                                            <div class="row">
+                                                <div class="col-lg-5">
+                                                    <div class="card card-outline card-primary"><div class="card-header"><strong>{{ $projectBankAccount ? 'Edit project bank account' : 'Add project bank account' }}</strong></div><div class="card-body">
+                                                        <form method="POST" action="{{ route('setting.bank-account.save') }}">@csrf
+                                                            @if($projectBankAccount)<input type="hidden" name="bank_account_id" value="{{ $projectBankAccount->id }}">@endif
+                                                            <div class="form-group"><label>Bank name</label><input class="form-control" name="bank_name" maxlength="120" required value="{{ old('bank_name', $projectBankAccount->bank_name ?? '') }}" placeholder="e.g. Meezan Bank"></div>
+                                                            <div class="form-group"><label>Account title</label><input class="form-control" name="account_title" maxlength="120" required value="{{ old('account_title', $projectBankAccount->account_title ?? '') }}"></div>
+                                                            <div class="form-group"><label>Project Chart of Accounts mapping</label><select class="form-control" name="account_mapping_id" required><option value="">Select an active account</option>@foreach($projectBankMappings as $mapping)<option value="{{ $mapping->id }}" @selected((string)old('account_mapping_id', $projectBankAccount->account_mapping_id ?? '') === (string)$mapping->id)>{{ $mapping->headAccounting->name ?? 'Head' }} / {{ $mapping->subheadAccounting->name ?? 'Account' }}@if(!$mapping->headAccounting?->is_active || !$mapping->subheadAccounting?->is_active) (inactive historical link)@endif</option>@endforeach</select><small class="text-muted">New active bank accounts require an active mapping in Project #{{ $financeSettingsProjectId }}.</small></div>
+                                                            <div class="form-group"><label>Branch</label><input class="form-control" name="branch" maxlength="120" value="{{ old('branch', $projectBankAccount->branch ?? '') }}"></div>
+                                                            <div class="form-group"><label>Account number</label><input class="form-control" name="account_number" maxlength="255" autocomplete="off" placeholder="{{ $projectBankAccount ? 'Leave blank to keep saved number' : 'Optional account number' }}"><small class="text-muted">Encrypted before database storage. Existing number: @if($projectBankAccount && $projectBankAccount->account_number) ••••{{ substr($projectBankAccount->account_number, -4) }} @else not set @endif</small></div>
+                                                            <div class="form-group"><label>Status</label><select class="form-control" name="is_active" required><option value="1" @selected(old('is_active', $projectBankAccount->is_active ?? true))>Active</option><option value="0" @selected((string)old('is_active', $projectBankAccount ? (int)$projectBankAccount->is_active : 1) === '0')>Inactive (history retained)</option></select></div>
+                                                            <button class="btn btn-primary">Save bank account</button>@if($projectBankAccount)<a class="btn btn-outline-secondary" href="{{ route('setting.index', ['tab' => 'bank-accounts']) }}">Cancel edit</a>@endif
+                                                        </form>
+                                                    </div></div>
+                                                </div>
+                                                <div class="col-lg-7"><div class="card"><div class="card-header"><strong>Project bank accounts</strong><span class="badge badge-primary float-right">{{ $projectBankAccounts->count() }}</span></div><div class="card-body table-responsive"><table class="table table-bordered table-sm"><thead><tr><th>Bank / Branch</th><th>Account title</th><th>COA mapping</th><th>Number</th><th>Status</th><th></th></tr></thead><tbody>
+                                                    @forelse($projectBankAccounts as $bankAccount)
+                                                        <tr><td>{{ $bankAccount->bank_name }}<br><small>{{ $bankAccount->branch ?: 'Branch not set' }}</small></td><td>{{ $bankAccount->account_title }}</td><td>{{ $bankAccount->accountMapping->headAccounting->name ?? 'Head' }} / {{ $bankAccount->accountMapping->subheadAccounting->name ?? 'Account' }}</td><td>{{ $bankAccount->account_number ? '••••'.substr($bankAccount->account_number, -4) : '—' }}</td><td><span class="badge badge-{{ $bankAccount->is_active ? 'success' : 'secondary' }}">{{ $bankAccount->is_active ? 'Active' : 'Inactive' }}</span></td><td><a class="btn btn-sm btn-outline-primary" href="{{ route('setting.index', ['tab' => 'bank-accounts', 'bank_account_id' => $bankAccount->id]) }}">Edit</a></td></tr>
+                                                    @empty<tr><td colspan="6" class="text-center text-muted">No bank accounts configured for this project.</td></tr>@endforelse
+                                                </tbody></table><small class="text-muted">Changes are project-scoped and audited. Deactivation preserves history; bank setup does not rewrite existing vouchers.</small></div></div></div>
+                                            </div>
+                                            <div class="card mt-3"><div class="card-header"><strong>Recent bank account changes</strong><small class="text-muted ml-2">Latest 100 · account numbers are masked in audit details</small></div><div class="card-body table-responsive"><table class="table table-sm table-striped"><thead><tr><th>When</th><th>Action</th><th>Bank account</th><th>Changed by</th><th>Before / after</th></tr></thead><tbody>
+                                                @forelse($projectBankAccountAudits as $audit)
+                                                    <tr><td>{{ $audit->created_at }}</td><td>{{ ucfirst($audit->action) }}</td><td>{{ $audit->bank_name }} · {{ $audit->account_title }}</td><td>{{ $audit->actor_name ?? 'System' }}</td><td><small>{{ $audit->old_values ? json_encode(json_decode($audit->old_values, true)) : '—' }} → {{ json_encode(json_decode($audit->new_values, true)) }}</small></td></tr>
+                                                @empty<tr><td colspan="5" class="text-center text-muted">No bank account changes recorded.</td></tr>@endforelse
+                                            </tbody></table></div></div>
+                                            @if($paymentMethodLabelsReady)<div class="card mt-3"><div class="card-header"><strong>Recent payment label changes</strong><small class="text-muted ml-2">Latest 100</small></div><div class="card-body table-responsive"><table class="table table-sm table-striped"><thead><tr><th>When</th><th>Method code</th><th>Previous label</th><th>New label</th><th>Changed by</th></tr></thead><tbody>@forelse($paymentMethodLabelAudits as $audit)<tr><td>{{ $audit->created_at }}</td><td>{{ $audit->method_code }}</td><td>{{ $audit->old_label ?? '—' }}</td><td>{{ $audit->new_label }}</td><td>{{ $audit->actor_name ?? 'System' }}</td></tr>@empty<tr><td colspan="5" class="text-center text-muted">No payment label changes recorded.</td></tr>@endforelse</tbody></table></div></div>@endif
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
                         </div>

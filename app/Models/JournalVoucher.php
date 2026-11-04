@@ -24,6 +24,7 @@ class JournalVoucher extends Model
         'total_credit',
         'project_id',
         'site_id',
+        'contractor_id',
         'created_by',
         'updated_by',
         'status',

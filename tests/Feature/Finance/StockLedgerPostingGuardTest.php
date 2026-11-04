@@ -24,9 +24,22 @@ class StockLedgerPostingGuardTest extends TestCase
         });
         DB::table('projects')->insert(['id' => 5]);
 
+        Schema::create('head_accountings', function (Blueprint $table) {
+            $table->id();
+            $table->boolean('is_active')->default(true);
+        });
+        Schema::create('subhead_accountings', function (Blueprint $table) {
+            $table->id();
+            $table->boolean('is_active')->default(true);
+        });
+        DB::table('head_accountings')->insert(['id' => 1, 'is_active' => 1]);
+        DB::table('subhead_accountings')->insert(['id' => 1, 'is_active' => 1]);
+
         Schema::create('project_head_subheads', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('project_id');
+            $table->unsignedBigInteger('head_accounting_id');
+            $table->unsignedBigInteger('subhead_accounting_id');
         });
         Schema::create('customer_ledger', function (Blueprint $table) {
             $table->id();
@@ -53,9 +66,9 @@ class StockLedgerPostingGuardTest extends TestCase
         });
 
         DB::table('project_head_subheads')->insert([
-            ['id' => 11, 'project_id' => 5],
-            ['id' => 12, 'project_id' => 5],
-            ['id' => 21, 'project_id' => 9],
+            ['id' => 11, 'project_id' => 5, 'head_accounting_id' => 1, 'subhead_accounting_id' => 1],
+            ['id' => 12, 'project_id' => 5, 'head_accounting_id' => 1, 'subhead_accounting_id' => 1],
+            ['id' => 21, 'project_id' => 9, 'head_accounting_id' => 1, 'subhead_accounting_id' => 1],
         ]);
         DB::table('customer_ledger')->insert([
             'id' => 99, 'project_id' => 5, 'reference' => 'STOCK-ENTRY:123', 'transaction_type' => 'JV',

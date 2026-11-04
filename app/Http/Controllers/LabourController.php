@@ -16,6 +16,7 @@ use App\Models\CustomerLedger;
 use App\Models\JournalVoucher;
 use App\Models\JournalVoucherDetail;
 use App\Models\LabourLedger;
+use App\Models\Contractor;
 use App\Models\Project;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -31,14 +32,17 @@ class LabourController extends Controller
 
     public function index(Request $request)
     {
-        $selectedProjectId = getSelectedTown();
+        $selectedProjectId = (int) getSelectedTown();
         $x['selectedSiteId'] = null;
         $x['title'] = 'Labour';
-        $x['labours'] = Labour::get(); // You can also filter by $selectedProjectId if needed
-        $x['count'] = Labour::count();
+        $x['labours'] = Labour::where('project_id', $selectedProjectId)->get();
+        $x['count'] = Labour::where('project_id', $selectedProjectId)->count();
         $x['sites'] = Site::where('project_id', $selectedProjectId)->get();
+        $x['contractors'] = Schema::hasTable('contractors')
+            ? Contractor::where('project_id', $selectedProjectId)->where('is_active', true)->orderBy('name')->get()
+            : collect();
         $x['sitecount'] = Site::where('project_id', $selectedProjectId)->count();
-        $data_list = ProjectHeadSubhead::select('project_id', 'head_accounting_id')
+        $data_list = ProjectHeadSubhead::availableForPosting()->select('project_id', 'head_accounting_id')
             ->distinct()
             ->with('headAccounting')
             ->where(['project_id' => $selectedProjectId])
@@ -57,7 +61,7 @@ class LabourController extends Controller
             $days[] = $day->format('Y-m-d');
             $day->addDay();
         }
-        $x['attendance_labours'] = Labour::whereHas('attendances', function ($query) use ($days, $selectedProjectId) {
+        $x['attendance_labours'] = Labour::where('project_id', $selectedProjectId)->whereHas('attendances', function ($query) use ($days, $selectedProjectId) {
             $query->where('project_id', $selectedProjectId)->whereIn('date', $days)->with('site');
         })->get();
 
@@ -77,8 +81,9 @@ class LabourController extends Controller
 
     public function labourHistory($id)
     {
+        $selectedProjectId = (int) getSelectedTown();
         $x['title'] = 'Labour History';
-        $x['labour'] = $labour = Labour::with([
+        $x['labour'] = $labour = Labour::where('project_id', $selectedProjectId)->with([
             'attendances' => fn($q) => $q->where('status', 'present')->orderBy('date'),
             'labourLedgers'
         ])->findOrFail($id);
@@ -117,6 +122,7 @@ class LabourController extends Controller
                 'labours' => ['required', 'array', 'min:1', 'max:100'],
                 'labours.*.id' => ['required', 'integer', 'min:1', 'distinct'],
                 'labours.*.amount' => ['required', 'regex:/^[0-9]{1,10}(?:\.[0-9]{1,2})?$/D'],
+                'contractor_id' => ['nullable', 'integer', 'min:1'],
                 'posting_lines' => ['required', 'array', 'min:2', 'max:100'],
                 'posting_lines.*.account_id' => ['required', 'integer', 'min:1'],
                 'posting_lines.*.debit' => ['required', 'regex:/^[0-9]{1,10}(?:\.[0-9]{1,2})?$/D'],
@@ -124,19 +130,39 @@ class LabourController extends Controller
             ]);
             try {
                 $result = (new \App\Services\Finance\V2OriginalPayrollWorkflow())->pay(
-                    $projectId, $data['request_key'], $data['date'], $data['week'], $data['labours'], $data['posting_lines'], (int) Auth::id()
+                    $projectId, $data['request_key'], $data['date'], $data['week'], $data['labours'], $data['posting_lines'], (int) Auth::id(),
+                    isset($data['contractor_id']) ? (int) $data['contractor_id'] : null
                 );
             } catch (\DomainException $e) { abort(409, 'Labour payment could not be posted.'); }
             return response()->json(['success' => true, 'data' => $result]);
         }
         $request->validate([
             'labours' => 'required|array|min:1',
+            'labours.*.id' => 'required|integer|min:1|distinct',
+            'labours.*.amount' => 'required|numeric|gt:0',
             'week' => 'required',
+            'contractor_id' => 'nullable|integer|min:1',
         ]);
+        $selectedProjectId = (int) getSelectedTown();
+        $contractor = null;
+        $customerSubheadId = self::LABOUR_Sub_Acount_ID;
+        if ($request->filled('contractor_id')) {
+            $contractor = Contractor::where('project_id', $selectedProjectId)->where('is_active', true)->findOrFail($request->integer('contractor_id'));
+            $contractorAccount = ProjectHeadSubhead::availableForPosting()->where('project_id', $selectedProjectId)
+                ->whereKey($contractor->project_head_subhead_id)->firstOrFail();
+            $customerSubheadId = (int) $contractorAccount->subhead_accounting_id;
+        }
+        $labourIds = collect($request->labours)->pluck('id')->map(fn ($id) => (int) $id)->unique()->values();
+        abort_unless(
+            $selectedProjectId > 0
+                && Labour::where('project_id', $selectedProjectId)->whereIn('id', $labourIds)->count() === $labourIds->count(),
+            422,
+            'One or more labour records do not belong to the selected project.'
+        );
 
         try {
             $selected_project_id = getSelectedTown();
-            $head_sub_head = $this->systemHeadSubheadAccountId(
+            $head_sub_head = $contractor ? (int) $contractor->project_head_subhead_id : $this->systemHeadSubheadAccountId(
                 (int) $selected_project_id,
                 'Labour',
                 'Labour Party',
@@ -149,7 +175,18 @@ class LabourController extends Controller
                     'message' => 'Labour head/subhead account is not configured for the selected project : ' . $project->project . '. Please contact admin.',
                 ], 500);
             }
-            return DB::transaction(function () use ($request, $head_sub_head) {
+            return DB::transaction(function () use ($request, $head_sub_head, $selectedProjectId, $contractor, $customerSubheadId) {
+
+                $postingAccountId = (int) $head_sub_head;
+                $ledgerCustomerId = (int) $customerSubheadId;
+                if ($contractor) {
+                    $lockedContractor = Contractor::where('project_id', $selectedProjectId)->where('is_active', true)
+                        ->lockForUpdate()->findOrFail($contractor->id);
+                    $lockedAccount = ProjectHeadSubhead::availableForPosting()->where('project_id', $selectedProjectId)
+                        ->whereKey($lockedContractor->project_head_subhead_id)->lockForUpdate()->firstOrFail();
+                    $postingAccountId = (int) $lockedAccount->id;
+                    $ledgerCustomerId = (int) $lockedAccount->subhead_accounting_id;
+                }
 
                 $labours = $request->labours;
                 [$year, $weekNo] = explode('-W', $request->week);
@@ -167,8 +204,9 @@ class LabourController extends Controller
                     $days = count($labour['attendanceDates'] ?? []);
 
                     LabourLedger::create([
-                        'project_id' => getSelectedTown(),
+                        'project_id' => $selectedProjectId,
                         'labour_id' => $labour['id'],
+                        'contractor_id' => $contractor?->id,
                         'amount' => $amount,
                         'date' => now()->toDateString(),
                         'details' => json_encode($labour, JSON_UNESCAPED_UNICODE),
@@ -201,8 +239,9 @@ class LabourController extends Controller
                     'transaction_type' => self::LedgerType,
                     'type_id' => get_new_typeID(self::LedgerType), // generate new type_id based on CP type
                     'reference' => $request->reference,
-                    'project_id' => getSelectedTown(),
-                    'customer_id' => self::LABOUR_Sub_Acount_ID,
+                    'project_id' => $selectedProjectId,
+                    'customer_id' => $ledgerCustomerId,
+                    'contractor_id' => $contractor?->id,
                     'amount_in' => 0,
                     'amount_out' => $totalAmount,
                     'description' => $ledgerDetail,
@@ -221,8 +260,9 @@ class LabourController extends Controller
                     'customer_ledger_id' => $customerLedger->id,
                     'voucher_number' => $voucherNumber,
                     'type' => self::LedgerType,
-                    'type_id' => getLastLedgerIdByType('CP') + 1,
-                    'project_head_subheads_id' => $head_sub_head,
+                    'type_id' => app(\App\Services\Finance\ProjectVoucherAllocator::class)
+                        ->nextLedgerId((int) $selectedProjectId, 'CP'),
+                    'project_head_subheads_id' => $postingAccountId,
                     'reference' => $request->reference,
                     'amount_in' => 0,
                     'amount_out' => $totalAmount,
@@ -272,7 +312,7 @@ class LabourController extends Controller
             $days[] = $startOfWeek->copy()->addDays($i)->format('Y-m-d');
         }
 
-        $x['personWiseReports'] = $personWiseReports = Labour::select(
+        $x['personWiseReports'] = $personWiseReports = Labour::where('project_id', (int) getSelectedTown())->select(
             'labours.id',
             'labours.name',
             'labours.father_name',
@@ -367,8 +407,10 @@ class LabourController extends Controller
 
     public function store(Request $request)
     {
+        $selectedProjectId = (int) getSelectedTown();
+        abort_unless($selectedProjectId > 0, 422, 'Select a project before adding labour.');
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:labours,name',
+            'name' => 'required|string|max:255',
             'father_name' => 'required|string|max:255',
             'cnic' => 'required|string|max:20|unique:labours,cnic',
             'phone' => 'nullable|string|max:20|unique:labours,phone',
@@ -376,9 +418,10 @@ class LabourController extends Controller
             'daily_wage' => 'required|numeric',
         ]);
         $validated['join_date'] = date('Y-m-d');
+        $validated['project_id'] = $selectedProjectId;
 
         Labour::create($validated);
-        $labours = Labour::get();
+        $labours = Labour::where('project_id', $selectedProjectId)->get();
         $view = '';
         $view .= view('admin.labours.labour', compact('labours'))->render();
 
@@ -389,34 +432,72 @@ class LabourController extends Controller
     }
     public function siteStore(Request $request)
     {
-        $selectedProjectId = getSelectedTown();
+        $selectedProjectId = (int) getSelectedTown();
+        abort_unless($selectedProjectId > 0, 422, 'Select a project before saving a site.');
         $validated = $request->validate([
-            'site_name' => 'required|string|max:255',
-            'site_address' => 'required|string',
-            'accounts_id' => 'required',
-            'subaccounts_id' => 'required',
+            'site_id' => ['nullable', 'integer', 'min:1'],
+            'site_name' => ['required', 'string', 'max:255'],
+            'site_address' => ['required', 'string', 'max:2000'],
+            'accounts_id' => ['required', 'integer', 'exists:head_accountings,id'],
+            'subaccounts_id' => ['required', 'integer', 'exists:subhead_accountings,id'],
+            'is_active' => ['nullable', 'boolean'],
+            'status_reason' => ['nullable', 'string', 'max:500'],
         ]);
-        Site::updateOrCreate(
-            ['id' => $request->site_id], // ← condition (update when ID exists)
-            [
-                'project_id' => $selectedProjectId,
-                'site_name' => $request->site_name,
-                'site_address' => $request->site_address,
-                'head_accounting_id' => $request->accounts_id,
-                'subhead_accounting_id' => $request->subaccounts_id,
-            ]
-        );
-        $sites = Site::get();
+        $mapping = ProjectHeadSubhead::availableForPosting()
+            ->where('project_id', $selectedProjectId)
+            ->where('head_accounting_id', $validated['accounts_id'])
+            ->where('subhead_accounting_id', $validated['subaccounts_id'])
+            ->firstOrFail();
+
+        DB::transaction(function () use ($validated, $selectedProjectId, $mapping) {
+            $oldStatus = 1;
+            if (!empty($validated['site_id'])) {
+                $site = Site::where('project_id', $selectedProjectId)->lockForUpdate()->findOrFail($validated['site_id']);
+                $oldStatus = (int) ($site->is_active ?? 1);
+            } else {
+                $site = new Site();
+                $site->project_id = $selectedProjectId;
+            }
+            $newStatus = empty($validated['site_id'])
+                ? 1
+                : (array_key_exists('is_active', $validated) ? (int) $validated['is_active'] : $oldStatus);
+            if (Schema::hasColumn('sites', 'is_active')) {
+                $site->is_active = $newStatus;
+            }
+            $site->site_name = $validated['site_name'];
+            $site->site_address = $validated['site_address'];
+            $site->head_accounting_id = $validated['accounts_id'];
+            $site->subhead_accounting_id = $validated['subaccounts_id'];
+            $site->save();
+            if (Schema::hasColumn('sites', 'site_code') && empty($site->site_code)) {
+                $site->site_code = sprintf('SITE-%d-%06d', $selectedProjectId, $site->id);
+                $site->save();
+            }
+            if (Schema::hasColumn('sites', 'project_head_subhead_id')) {
+                DB::table('sites')->where('id', $site->id)->where('project_id', $selectedProjectId)
+                    ->update(['project_head_subhead_id' => $mapping->id]);
+            }
+            if ($oldStatus !== $newStatus) {
+                abort_unless(Schema::hasTable('account_definition_status_audits'), 409, 'Install the account status audit migration before changing a site status.');
+                app(\App\Services\Finance\AccountDefinitionStatusAudit::class)->record(
+                    'site', (int) $site->id, $oldStatus, $newStatus,
+                    (string) ($validated['status_reason'] ?? ''), Auth::id()
+                );
+            }
+        });
+        $sites = Site::where('project_id', $selectedProjectId)->orderBy('site_name')->get();
         $view = '';
         $view .= view('admin.labours.sites', compact('sites'))->render();
 
         return response()->json([
-            'success' => 'Site added successfully.',
+            'success' => 'Site saved successfully.',
             'view' => $view
         ]);
     }
     public function attendanceStore(Request $request)
     {
+        $selectedProjectId = (int) getSelectedTown();
+        abort_unless($selectedProjectId > 0, 422, 'Select a project before saving attendance.');
         $validated = $request->validate([
             'labour_id' => 'required|exists:labours,id',
             'site_id' => 'nullable|exists:sites,id',
@@ -428,6 +509,15 @@ class LabourController extends Controller
             'ratings' => 'nullable',
         ]);
 
+        $labour = Labour::where('project_id', $selectedProjectId)->findOrFail($validated['labour_id']);
+        if (!empty($validated['site_id'])) {
+            $siteQuery = Site::where('project_id', $selectedProjectId);
+            if (Schema::hasColumn('sites', 'is_active')) {
+                $siteQuery->where('is_active', true);
+            }
+            $siteQuery->findOrFail($validated['site_id']);
+        }
+
         // Auto-calculate amount if not provided
         if (empty($validated['amount']) && isset($validated['rate'])) {
             $hours = $validated['hours'] ?? 0;
@@ -438,17 +528,21 @@ class LabourController extends Controller
         }
 
         $validated['marked_by'] = auth()->id();
-        $validated['project_id'] = getSelectedTown();
-        // dd($validated);
-        // 🧠 Create or Update logic
-        $attendance = LabourAttendance::updateOrCreate(
-            [
-                'labour_id' => $validated['labour_id'],
-                'date' => $validated['date'],
-            ],
-            $validated
-        );
-        $labour = Labour::find($validated['labour_id']);
+        $validated['project_id'] = $selectedProjectId;
+        $attendance = DB::transaction(function () use ($validated, $selectedProjectId) {
+            $query = LabourAttendance::where('project_id', $selectedProjectId)
+                ->where('labour_id', $validated['labour_id'])
+                ->whereDate('date', $validated['date']);
+            if (empty($validated['site_id'])) {
+                $query->whereNull('site_id');
+            } else {
+                $query->where('site_id', $validated['site_id']);
+            }
+            $attendance = $query->lockForUpdate()->first() ?? new LabourAttendance();
+            $attendance->fill($validated);
+            $attendance->save();
+            return $attendance;
+        });
         $attendance['name'] = $labour->name;
         $attendance['role'] = $labour->role;
 
@@ -463,6 +557,8 @@ class LabourController extends Controller
 
     public function update(Request $request, Labour $labour)
     {
+        $selectedProjectId = (int) getSelectedTown();
+        abort_unless((int) $labour->project_id === $selectedProjectId, 404);
         $request->validate([
             'name' => 'required|string|max:255',
             'cnic' => 'required|string|max:20|unique:labours,cnic,' . $labour->id,
@@ -470,8 +566,8 @@ class LabourController extends Controller
             'daily_wage' => 'required|numeric',
         ]);
 
-        $labour->update($request->all());
-        $labours = Labour::get();
+        $labour->update($request->only(['name', 'father_name', 'cnic', 'phone', 'role', 'daily_wage']));
+        $labours = Labour::where('project_id', $selectedProjectId)->get();
         $view = '';
         $view .= view('admin.labours.labour', compact('labours'))->render();
 
@@ -483,7 +579,7 @@ class LabourController extends Controller
     }
     public function updateStatus($id)
     {
-        $labour = Labour::findOrFail($id);
+        $labour = Labour::where('project_id', (int) getSelectedTown())->findOrFail($id);
         $labour->status = $labour->status === 'active' ? 'inactive' : 'active';
         $labour->save();
 
@@ -493,6 +589,7 @@ class LabourController extends Controller
 
     public function destroy(Labour $labour)
     {
+        abort_unless((int) $labour->project_id === (int) getSelectedTown(), 404);
         $labour->delete();
 
         return redirect()->route('labours.index')->with('success', 'Labour deleted successfully.');
@@ -545,7 +642,7 @@ class LabourController extends Controller
         $x = $this->buildSiteWiseReport($request);
         $x['start'] = $request->start_date;
         $x['end'] = $request->end_date;
-        $x['site_name'] = Site::find($request->site_id)?->site_name;
+        $x['site_name'] = Site::where('project_id', (int) getSelectedTown())->find($request->site_id)?->site_name;
         // Render table partial
         return view('admin.labours.print-site-report', $x);
     }
@@ -560,7 +657,8 @@ class LabourController extends Controller
             $days[] = $startOfWeek->copy()->addDays($i)->format('Y-m-d');
         }
 
-        $reports = Labour::select('labours.id', 'labours.name', 'labours.father_name', 'labours.cnic', 'labours.phone as mobile', 'labours.role as designation')
+        $reports = Labour::where('labours.project_id', (int) $selectedProjectId)
+            ->select('labours.id', 'labours.name', 'labours.father_name', 'labours.cnic', 'labours.phone as mobile', 'labours.role as designation')
             ->with([
                 'attendances' => function ($query) use ($request, $days, $selectedProjectId) {
                     $query->whereIn('date', $days)
@@ -663,7 +761,7 @@ class LabourController extends Controller
     public function checkValidate(Request $request)
     {
         // dd($request->all());
-        $query = Labour::query();
+        $query = Labour::where('project_id', (int) getSelectedTown());
         if ($request->has('name') && $request->name)
             $query->where('name', $request->name);
         if ($request->has('cnic') && $request->cnic)
@@ -692,7 +790,7 @@ class LabourController extends Controller
         $x = $this->loadAttendance($request);
         $x['start'] = $request->start_date;
         $x['end'] = $request->end_date;
-        $x['site_name'] = Site::find($request->site_id)?->site_name;
+        $x['site_name'] = Site::where('project_id', (int) getSelectedTown())->find($request->site_id)?->site_name;
         return view('admin.labours.print-attn-board', $x);
     }
 
@@ -745,6 +843,7 @@ class LabourController extends Controller
             $data = $request->validate([
                 'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
                 'date' => ['required', 'date_format:Y-m-d'], 'site_id' => ['required', 'integer', 'min:1'],
+                'contractor_id' => ['nullable', 'integer', 'min:1'],
                 'start_date' => ['required', 'date_format:Y-m-d'], 'end_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:start_date'],
                 'attendance_ids' => ['required', 'string', 'regex:/^[1-9][0-9]*(?:,[1-9][0-9]*)*$/D'],
                 'amount' => ['required', 'regex:/^[0-9]{1,10}(?:\.[0-9]{1,2})?$/D'],
@@ -765,6 +864,7 @@ class LabourController extends Controller
         $authUserId = auth()->id();
         $siteId = $request->site_id;
         $selectedProjectId = getSelectedTown();
+        $contractorId = $request->input('contractor_id');
         $amountRaw = str_replace(',', '', (string) $request->amount);
         $amount = is_numeric($amountRaw) ? (string) $amountRaw : null;
         // Attendance IDs are financial source identities, not a free-form
@@ -845,6 +945,15 @@ class LabourController extends Controller
                 ], 422);
             }
 
+            $contractor = null;
+            if ($contractorId !== null && $contractorId !== '') {
+                $contractor = Contractor::where('project_id', $selectedProjectId)
+                    ->where('is_active', true)->find($contractorId);
+                if (!$contractor) {
+                    return response()->json(['success' => false, 'error_key' => 'invalid_contractor', 'message' => 'Select an active contractor from this project.'], 422);
+                }
+            }
+
             $labours = json_decode((string) $request->detail, true);
             if (!is_array($labours) || !array_is_list($labours) || !$labours ||
                 collect($labours)->contains(fn ($labour) =>
@@ -868,8 +977,9 @@ class LabourController extends Controller
                 'attendance_ids_count' => count($ids),
             ]);
 
-            $site = Site::find($siteId);
-            if (!$site || (int) $site->project_id !== (int) $selectedProjectId) {
+            $site = Site::where('project_id', $selectedProjectId)->find($siteId);
+            if (!$site || (int) $site->project_id !== (int) $selectedProjectId
+                || (Schema::hasColumn('sites', 'is_active') && !(bool) $site->is_active)) {
                 $errorKey = 'invalid_site';
                 $log->warning('labour.createVoucher.warn', [
                     'trace_id' => $traceId,
@@ -892,23 +1002,7 @@ class LabourController extends Controller
                 'selectedProjectId' => $selectedProjectId,
             ]);
 
-            $project_head_subheads_id = $site->subhead_accounting_id;
-            if (empty($project_head_subheads_id)) {
-                $errorKey = 'missing_site_subhead';
-                $log->warning('labour.createVoucher.warn', [
-                    'trace_id' => $traceId,
-                    'auth_user_id' => $authUserId,
-                    'site_id' => $siteId,
-                    'selectedProjectId' => $selectedProjectId,
-                    'error_key' => $errorKey,
-                ]);
-                return response()->json([
-                    'success' => false,
-                    'error_key' => $errorKey,
-                    'message' => 'Site subhead is not configured.',
-                    'trace_id' => $traceId,
-                ], 422);
-            }
+            $project_head_subheads_id = null;
 
             $labourNames = collect($labours)->map(function ($labour) {
                 return $labour['name']
@@ -935,10 +1029,10 @@ class LabourController extends Controller
             $start = $startParsed->format('d M Y');
             $end = $endParsed->format('d M Y');
 
-            $site = Site::find($request->site_id);
+            $site = Site::where('project_id', $selectedProjectId)->find($request->site_id);
             $siteName = $site?->site_name ?? 'Unknown Site';
-            $voucherDescription = "Labour payment for Site: {$siteName}";
-            $labourAccountDesc = "Labour payable for {$labourNames} ({$start} - {$end})";
+            $voucherDescription = "Labour payment for Site: {$siteName}" . ($contractor ? " | Contractor: {$contractor->name}" : '');
+            $labourAccountDesc = ($contractor ? "Contractor payable: {$contractor->name} | " : '') . "Labour payable for {$labourNames} ({$start} - {$end})";
             $siteAccountDesc = "Labour expense charged to Site: {$siteName}";
 
             // Voucher number is allocated only after the project lock below.
@@ -965,6 +1059,10 @@ class LabourController extends Controller
                 'created_by' => $authUserId,
                 'project_id' => $selectedProjectId,
             ];
+
+            if ($contractor && Schema::hasColumn('journal_vouchers', 'contractor_id')) {
+                $journalVoucherData['contractor_id'] = $contractor->id;
+            }
 
             if ($this->journalVoucherHasSiteIdColumn()) {
                 $journalVoucherData['site_id'] = $siteId;
@@ -1029,6 +1127,32 @@ class LabourController extends Controller
                 throw new \DomainException('LABOUR_ATTENDANCE_AMOUNT_CONFLICT');
             }
 
+            // Site.subhead_accounting_id is a definition ID, while both JV
+            // details and ledger legs require the project_head_subheads row ID.
+            // Resolve legacy sites only when their project/head/subhead tuple
+            // identifies exactly one active project mapping.
+            $lockedSite = Site::where('project_id', $selectedProjectId)->lockForUpdate()->findOrFail($siteId);
+            if (Schema::hasColumn('sites', 'is_active') && !$lockedSite->is_active) {
+                throw new \DomainException('LABOUR_SITE_ACCOUNT_MAPPING_CONFLICT');
+            }
+            $siteAccountQuery = ProjectHeadSubhead::availableForPosting()
+                ->where('project_id', $selectedProjectId);
+            if (Schema::hasColumn('sites', 'project_head_subhead_id') && $lockedSite->project_head_subhead_id) {
+                $siteAccountQuery->whereKey((int) $lockedSite->project_head_subhead_id);
+            } else {
+                $siteAccountQuery->where('head_accounting_id', (int) $lockedSite->head_accounting_id)
+                    ->where('subhead_accounting_id', (int) $lockedSite->subhead_accounting_id);
+            }
+            $siteAccounts = $siteAccountQuery->lockForUpdate()->limit(2)->get();
+            if ($siteAccounts->count() !== 1) {
+                throw new \DomainException('LABOUR_SITE_ACCOUNT_MAPPING_CONFLICT');
+            }
+            $project_head_subheads_id = (int) $siteAccounts->first()->id;
+            if (Schema::hasColumn('sites', 'project_head_subhead_id') && !$lockedSite->project_head_subhead_id) {
+                $lockedSite->project_head_subhead_id = $project_head_subheads_id;
+                $lockedSite->save();
+            }
+
             $journalVoucher = JournalVoucher::create($journalVoucherData);
             $voucherNumber = $journalVoucher->voucher_number;
             $voucherDate = $journalVoucher->date;
@@ -1041,7 +1165,9 @@ class LabourController extends Controller
             ]);
 
             try {
-                $headSubheadId = $this->systemHeadSubheadAccountId(
+                $headSubheadId = $contractor
+                    ? (int) $contractor->project_head_subhead_id
+                    : $this->systemHeadSubheadAccountId(
                     (int) $selectedProjectId,
                     'Labour',
                     'Labour Party',
@@ -1093,7 +1219,7 @@ class LabourController extends Controller
             // self-cancelling labour journals.
             $postingAccounts = [$headSubheadId, $project_head_subheads_id];
             if ((int) $headSubheadId === (int) $project_head_subheads_id ||
-                \App\Models\ProjectHeadSubhead::query()
+                \App\Models\ProjectHeadSubhead::availableForPosting()
                     ->where('project_id', $selectedProjectId)
                     ->whereIn('id', $postingAccounts)
                     ->distinct()
@@ -1222,6 +1348,7 @@ class LabourController extends Controller
                 'LABOUR_ATTENDANCE_AMOUNT_CONFLICT',
                 'LABOUR_JV_ACCOUNT_PROJECT_OR_BALANCE_CONFLICT',
                 'LABOUR_JV_PROJECT_NOT_FOUND',
+                'LABOUR_SITE_ACCOUNT_MAPPING_CONFLICT',
             ], true)) {
                 return response()->json([
                     'success' => false,
@@ -1317,11 +1444,14 @@ class LabourController extends Controller
                             $legacyQuery->whereNull('site_id')
                                 ->where('description', $siteVoucherDescription);
 
-                            if (!empty($site->subhead_accounting_id)) {
+                            if (!empty($site->project_head_subhead_id) || !empty($site->subhead_accounting_id)) {
 
                                 $legacyQuery->whereHas('details', function ($detailQuery) use ($site) {
 
-                                    $detailQuery->where('account_id', $site->subhead_accounting_id)
+                                    $detailQuery->whereIn('account_id', array_values(array_unique(array_filter([
+                                        $site->project_head_subhead_id ?? null,
+                                        $site->subhead_accounting_id ?? null,
+                                    ], fn ($id) => $id !== null))))
                                         ->where('credit', '>', 0);
                                 });
                             }
@@ -1331,11 +1461,14 @@ class LabourController extends Controller
 
                 $query->where('description', 'LIKE', 'Labour payment for Site:%');
 
-                if (!empty($site->subhead_accounting_id)) {
+                if (!empty($site->project_head_subhead_id) || !empty($site->subhead_accounting_id)) {
 
                     $query->whereHas('details', function ($detailQuery) use ($site) {
 
-                        $detailQuery->where('account_id', $site->subhead_accounting_id)
+                        $detailQuery->whereIn('account_id', array_values(array_unique(array_filter([
+                            $site->project_head_subhead_id ?? null,
+                            $site->subhead_accounting_id ?? null,
+                        ], fn ($id) => $id !== null))))
                             ->where('credit', '>', 0);
                     });
                 }
@@ -1379,6 +1512,9 @@ class LabourController extends Controller
         if (!$subhead) {
             throw new \Exception("System subhead not found: {$subheadName}");
         }
+        if (!$head || (int) $head->is_active !== 1 || (int) $subhead->is_active !== 1) {
+            throw new \DomainException('LABOUR_SYSTEM_ACCOUNT_INACTIVE');
+        }
 
         $phs = ProjectHeadSubhead::firstOrCreate(
             [
@@ -1390,10 +1526,15 @@ class LabourController extends Controller
             ]
         );
 
+        if (!ProjectHeadSubhead::availableForPosting()->whereKey($phs->id)->exists()) {
+            throw new \DomainException('LABOUR_SYSTEM_ACCOUNT_INACTIVE');
+        }
+
         return (int) $phs->id;
     }
     public function updateRate(Request $request)
     {
+        $selectedProjectId = (int) getSelectedTown();
         $request->validate([
             'labour_id'        => 'required|exists:labours,id',
             'daily_wage'       => 'required|numeric|min:0',
@@ -1402,11 +1543,11 @@ class LabourController extends Controller
 
         try {
 
-            DB::transaction(function () use ($request) {
+            DB::transaction(function () use ($request, $selectedProjectId) {
 
                 $labourId  = $request->labour_id;
                 $newRate   = $request->daily_wage;
-                $selectedProjectId = getSelectedTown();
+                $labour = Labour::where('project_id', $selectedProjectId)->lockForUpdate()->findOrFail($labourId);
 
                 $applyFrom = Carbon::parse($request->apply_from_date)->startOfDay();
                 $today     = Carbon::today()->endOfDay();
@@ -1436,7 +1577,8 @@ class LabourController extends Controller
                 /**
                  * ✅ Update Attendance
                  */
-                LabourAttendance::where('labour_id', $labourId)
+                LabourAttendance::where('project_id', $selectedProjectId)
+                    ->where('labour_id', $labourId)
                     ->where('status', 'present')
                     ->whereBetween('date', [
                         $applyFrom->toDateString(),
@@ -1464,8 +1606,7 @@ class LabourController extends Controller
                 /**
                  * ✅ Update Master Rate
                  */
-                Labour::where('id', $labourId)
-                    ->update(['daily_wage' => $newRate]);
+                $labour->update(['daily_wage' => $newRate]);
             });
             return response()->json([
                 'success' => true,
@@ -1492,7 +1633,8 @@ class LabourController extends Controller
             $days[] = $startOfWeek->copy()->addDays($i)->format('Y-m-d');
         }
         // LABOUR FILTER
-        $query = Labour::query();
+        $selectedProjectId = (int) getSelectedTown();
+        $query = Labour::where('project_id', $selectedProjectId);
 
         if ($request->has('search') && $request->search) {
             $search = $request->search;

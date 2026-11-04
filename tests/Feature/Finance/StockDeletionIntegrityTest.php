@@ -19,13 +19,22 @@ class StockDeletionIntegrityTest extends TestCase
         $this->assertSame(':memory:', DB::connection()->getDatabaseName());
         Schema::dropAllTables();
         foreach (['stock_items', 'stock_parties'] as $name) {
-            Schema::create($name, function (Blueprint $table): void {
+            Schema::create($name, function (Blueprint $table) use ($name): void {
                 $table->id();
+                if ($name === 'stock_items') {
+                    $table->string('name')->default('Item');
+                    $table->string('unit')->default('Unit');
+                    $table->unsignedBigInteger('default_rate_minor')->default(0);
+                    $table->boolean('is_active')->default(true);
+                }
                 $table->timestamps();
                 $table->softDeletes();
             });
             DB::table($name)->insert(['id' => 1]);
         }
+        Schema::create('projects', fn (Blueprint $table) => $table->id());
+        DB::table('projects')->insert([['id' => 1], ['id' => 2]]);
+        (require database_path('migrations/2026_11_03_000024_create_stock_project_item_definitions.php'))->up();
         foreach (['stock_entry_lines', 'stock_bill_lines', 'stock_movements', 'stock_item_balances'] as $name) {
             Schema::create($name, function (Blueprint $table): void {
                 $table->id();
@@ -69,8 +78,14 @@ class StockDeletionIntegrityTest extends TestCase
             $row['item_id'] = 1;
         }
         DB::table($history)->insert($row);
-        $response = (new StockController())->{$method}(Request::create('/', 'DELETE'), 1);
-        $this->assertSame(409, $response->getStatusCode());
+        $request = Request::create('/', 'DELETE', [], ['selected_action' => 1]);
+        $this->app->instance('request', $request);
+        $response = (new StockController())->{$method}($request, 1);
+        $this->assertSame($method === 'deleteItem' ? 200 : 409, $response->getStatusCode());
+        if ($method === 'deleteItem') {
+            $this->assertSoftDeleted('stock_project_item_definitions', ['project_id' => 1, 'item_id' => 1]);
+            $this->assertDatabaseHas('stock_project_item_definitions', ['project_id' => 2, 'item_id' => 1, 'deleted_at' => null]);
+        }
         $this->assertDatabaseHas($master, ['id' => 1]);
         $this->assertDatabaseHas($history, ['id' => 1, $foreignKey => 1]);
         $this->assertDatabaseHas('ledgers', ['id' => 1, 'reference' => 'STOCK-ENTRY:1', 'amount_in' => '125.50']);
@@ -79,11 +94,13 @@ class StockDeletionIntegrityTest extends TestCase
     public function test_unused_item_and_party_can_be_deleted_without_touching_ledger(): void
     {
         $controller = new StockController();
-        $this->assertSame(200, $controller->deleteItem(Request::create('/', 'DELETE'), 1)->getStatusCode());
+        $request = Request::create('/', 'DELETE', [], ['selected_action' => 1]);
+        $this->app->instance('request', $request);
+        $this->assertSame(200, $controller->deleteItem($request, 1)->getStatusCode());
         $this->assertSame(200, $controller->deleteParty(Request::create('/', 'DELETE'), 1)->getStatusCode());
-        $this->assertSoftDeleted('stock_items', ['id' => 1]);
+        $this->assertSoftDeleted('stock_project_item_definitions', ['project_id' => 1, 'item_id' => 1]);
         $this->assertSoftDeleted('stock_parties', ['id' => 1]);
-        $this->assertSame(0, \App\Models\StockItem::count());
+        $this->assertSame(1, \App\Models\StockItem::count());
         $this->assertSame(0, \App\Models\StockParty::count());
         $this->assertDatabaseHas('ledgers', ['id' => 1, 'amount_in' => '125.50']);
     }

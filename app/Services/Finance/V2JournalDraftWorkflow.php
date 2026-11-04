@@ -50,8 +50,11 @@ final class V2JournalDraftWorkflow
             foreach ($lines as $line) {
                 if (!is_array($line) || !isset($line['account_id'], $line['debit'], $line['credit'])
                     || !is_int($line['account_id'])
-                    || !DB::table('project_head_subheads')->where('id', $line['account_id'])
-                        ->where('project_id', $projectId)->exists()) {
+                    || !DB::table('project_head_subheads as account')
+                        ->join('head_accountings as head', 'head.id', '=', 'account.head_accounting_id')
+                        ->join('subhead_accountings as sub', 'sub.id', '=', 'account.subhead_accounting_id')
+                        ->where('account.id', $line['account_id'])->where('account.project_id', $projectId)
+                        ->where('head.is_active', 1)->where('sub.is_active', 1)->exists()) {
                     throw new \DomainException('V2_JV_DRAFT_INVALID_ACCOUNT');
                 }
                 $amounts = [];

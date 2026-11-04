@@ -57,7 +57,7 @@ class LedgerController extends Controller
                 'voucher_number' => ['required', 'same:voucher'],
                 'accounts_id' => ['required', 'integer'], 'subaccounts_id' => ['required', 'integer'],
             ]);
-            $account = ProjectHeadSubhead::query()->where('project_id', $project)
+            $account = ProjectHeadSubhead::availableForPosting()->where('project_id', $project)
                 ->where('head_accounting_id', $labels['accounts_id'])->where('subhead_accounting_id', $labels['subaccounts_id'])->first();
             abort_unless($account, 422, 'Selected account does not belong to this project.');
             if (str_starts_with($labels['voucher'], 'CP-') && in_array((int) $data['payment_type'], [2, 3], true)) {
@@ -176,7 +176,7 @@ class LedgerController extends Controller
         $amount_in = $effectiveVoucherType === 'CR' ? $cleanAmount : 0;
         $amount_out = $effectiveVoucherType === 'CP' ? $cleanAmount : 0;
 
-        $projectHeadSubhead = ProjectHeadSubhead::where('head_accounting_id', $request->accounts_id)
+        $projectHeadSubhead = ProjectHeadSubhead::availableForPosting()->where('head_accounting_id', $request->accounts_id)
             ->where('subhead_accounting_id', $request->subaccounts_id)
             ->where('project_id', $selectedProjectId)
             ->first();
@@ -289,7 +289,8 @@ class LedgerController extends Controller
                                 'customer_ledger_id' => $pendingCustomerLedger->id,
                                 'voucher_number' => $resolvedVoucherNumber,
                                 'type' => 'CP',
-                                'type_id' => ((int) getLastLedgerIdByType('CP')) + 1,
+                                'type_id' => app(\App\Services\Finance\ProjectVoucherAllocator::class)
+                                    ->nextLedgerId((int) $selectedProjectId, 'CP'),
                                 'project_head_subheads_id' => $projectHeadSubhead->id,
                                 'reference' => $clearanceReference,
                                 'amount_in' => 0.00,
@@ -674,7 +675,7 @@ class LedgerController extends Controller
                 $t_number = $request->input('t_number');
                 $bank_id = $request->input('bank_id');
             }
-            $projectHeadSubhead = ProjectHeadSubhead::where('head_accounting_id', $request->accounts_id)
+            $projectHeadSubhead = ProjectHeadSubhead::availableForPosting()->where('head_accounting_id', $request->accounts_id)
                 ->where('subhead_accounting_id', $request->subaccounts_id)
                 ->where('project_id', $selectedProjectId)
                 ->first();
@@ -1001,7 +1002,7 @@ class LedgerController extends Controller
         $ledger = Ledger::query()->whereKey((int) $data['id'])
             ->whereIn('type', ['CR', 'CP'])->whereNotNull('customer_ledger_id')
             ->whereHas('projectHeadSubhead', fn ($q) => $q->where('project_id', $projectId))->firstOrFail();
-        $account = ProjectHeadSubhead::query()->where('project_id', $projectId)
+        $account = ProjectHeadSubhead::availableForPosting()->where('project_id', $projectId)
             ->where('head_accounting_id', (int) $data['accounts_id'])
             ->where('subhead_accounting_id', (int) $data['subaccounts_id'])->firstOrFail();
         $amount = str_replace(',', '', $data['amount']);
@@ -1097,7 +1098,8 @@ class LedgerController extends Controller
                 throw new \DomainException('CASH_VOUCHER_SOURCE_CONFLICT');
             }
 
-            $projectHeadSubhead = ProjectHeadSubhead::where('head_accounting_id', $request->accounts_id)
+            $projectHeadSubhead = ProjectHeadSubhead::availableForPosting()
+                ->where('head_accounting_id', $request->accounts_id)
                 ->where('subhead_accounting_id', $request->subaccounts_id)
                 ->where('project_id', $selectedProjectId)
                 ->first();

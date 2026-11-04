@@ -396,6 +396,45 @@
         </div>
       </div>
 
+      @if(($legacyStockStatus['unassigned_entries'] ?? null) !== null && ($legacyStockStatus['unassigned_entries'] + $legacyStockStatus['unassigned_bills'] + $legacyStockStatus['unassigned_movements'] + $legacyStockStatus['legacy_balance_rows']) > 0)
+        <div class="alert alert-warning mb-3" role="status">
+          <strong>Legacy stock needs project reconciliation.</strong>
+          {{ $legacyStockStatus['unassigned_entries'] }} entries, {{ $legacyStockStatus['unassigned_bills'] }} bills, and {{ $legacyStockStatus['unassigned_movements'] }} movements could not be safely assigned automatically.
+          {{ $legacyStockStatus['legacy_balance_rows'] }} old global balance rows are preserved separately and are not used as a project's stock balance.
+        </div>
+      @endif
+
+      @if (session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
+      @if ($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
+      @if ($canReconcileLegacyStock && (count($legacyStockCandidates['entries']) + count($legacyStockCandidates['bills']) + count($legacyStockCandidates['movements']) > 0 || $legacyStockAudits->isNotEmpty()))
+        <div class="card border-warning mb-3">
+          <div class="card-header bg-light"><strong>Legacy stock project reconciliation</strong></div>
+          <div class="card-body">
+            <p class="text-muted">Assign only records whose party belongs to this project. Each assignment requires a reason and is audited. Linked lines and source movements are scoped together; quantities, rates and amounts are not edited. Review up to 50 candidates per section.</p>
+            @if (count($legacyStockCandidates['entries']))
+              <h6>Unassigned entries</h6><div class="table-responsive mb-3"><table class="table table-sm table-bordered"><thead><tr><th>Slip</th><th>Date</th><th>Flow</th><th>Party</th><th>Record state</th><th>Assignment reason</th></tr></thead><tbody>
+              @foreach ($legacyStockCandidates['entries'] as $candidate)<tr><td>{{ $candidate->slip_no }}</td><td>{{ $candidate->entry_date }}</td><td>{{ $candidate->flow }}</td><td>{{ $candidate->party_name }}</td><td>{{ $candidate->deleted_at ? 'Archived' : 'Active' }}</td><td><form method="POST" action="{{ route('stocks.legacy.reconcile') }}" class="d-flex" onsubmit="return confirm('Assign this entry and its linked history to the selected project? Its archive state will stay unchanged.')">@csrf<input type="hidden" name="kind" value="entry"><input type="hidden" name="record_id" value="{{ $candidate->id }}"><input class="form-control form-control-sm mr-2" name="reason" minlength="8" maxlength="500" placeholder="Why does this record belong to this project?" required><button class="btn btn-sm btn-warning">Assign</button></form></td></tr>@endforeach
+              </tbody></table></div>
+            @endif
+            @if (count($legacyStockCandidates['bills']))
+              <h6>Unassigned bills</h6><div class="table-responsive mb-3"><table class="table table-sm table-bordered"><thead><tr><th>Bill</th><th>Date</th><th>Type</th><th>Entry ID</th><th>Party</th><th>Record state</th><th>Assignment reason</th></tr></thead><tbody>
+              @foreach ($legacyStockCandidates['bills'] as $candidate)<tr><td>{{ $candidate->bill_no }}</td><td>{{ $candidate->bill_date }}</td><td>{{ $candidate->type }}</td><td>{{ $candidate->entry_id ?? '—' }}</td><td>{{ $candidate->party_name }}</td><td>{{ $candidate->deleted_at ? 'Archived' : 'Active' }}</td><td><form method="POST" action="{{ route('stocks.legacy.reconcile') }}" class="d-flex" onsubmit="return confirm('Assign this bill and its linked history to the selected project? Its archive state will stay unchanged.')">@csrf<input type="hidden" name="kind" value="bill"><input type="hidden" name="record_id" value="{{ $candidate->id }}"><input class="form-control form-control-sm mr-2" name="reason" minlength="8" maxlength="500" placeholder="Reason" required><button class="btn btn-sm btn-warning">Assign</button></form></td></tr>@endforeach
+              </tbody></table></div>
+            @endif
+            @if (count($legacyStockCandidates['movements']))
+              <h6>Unassigned standalone movements</h6><div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>ID</th><th>Date</th><th>Direction</th><th>Item ID</th><th>Quantity</th><th>Source</th><th>Party</th><th>Assignment reason</th></tr></thead><tbody>
+              @foreach ($legacyStockCandidates['movements'] as $candidate)<tr><td>{{ $candidate->id }}</td><td>{{ $candidate->movement_date }}</td><td>{{ $candidate->direction }}</td><td>{{ $candidate->item_id }}</td><td>{{ $candidate->qty }}</td><td>{{ $candidate->source_type }} #{{ $candidate->source_id }}</td><td>{{ $candidate->party_name }}</td><td><form method="POST" action="{{ route('stocks.legacy.reconcile') }}" class="d-flex" onsubmit="return confirm('Assign this standalone movement to the selected project?')">@csrf<input type="hidden" name="kind" value="movement"><input type="hidden" name="record_id" value="{{ $candidate->id }}"><input class="form-control form-control-sm mr-2" name="reason" minlength="8" maxlength="500" placeholder="Reason" required><button class="btn btn-sm btn-warning">Assign</button></form></td></tr>@endforeach
+              </tbody></table></div>
+            @endif
+            @if ($legacyStockAudits->isNotEmpty())
+              <h6 class="mt-3">Recent reconciliation audit</h6><div class="table-responsive"><table class="table table-sm table-striped"><thead><tr><th>When</th><th>Record</th><th>ID</th><th>Reason</th><th>By</th></tr></thead><tbody>
+              @foreach ($legacyStockAudits as $audit)<tr><td>{{ $audit->created_at }}</td><td>{{ str_replace('_', ' ', $audit->record_type) }}</td><td>{{ $audit->record_id }}</td><td>{{ $audit->reason }}</td><td>{{ $audit->actor_name ?? 'Unavailable user' }}</td></tr>@endforeach
+              </tbody></table></div>
+            @endif
+          </div>
+        </div>
+      @endif
+
       <!-- Views container -->
       <div id="pvViews">
         <!-- ===================== ENTRY VIEW (Purchase + Stock Out) ===================== -->
@@ -887,6 +926,32 @@
                   <span class="pv-chip" id="itemCountChip">0 total</span>
                 </div>
                 <div class="p-3">
+                  <div class="border rounded-3 bg-light p-3 mb-3">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                      <div>
+                        <strong>Excel import / export</strong>
+                        <div class="pv-small pv-muted">Excel (.xlsx) aur CSV import/export available hain. Existing items sirf stable Item ID se match honge; stock balances aur transaction history change nahi hogi.</div>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <a class="btn btn-outline-primary btn-sm" href="{{ route('stocks.items.export', ['format' => 'xlsx']) }}"><i class="bi bi-download me-1"></i>Export all Excel</a>
+                        <a class="btn btn-outline-primary btn-sm disabled" id="exportSelectedItems" href="{{ route('stocks.items.export', ['format' => 'xlsx']) }}" aria-disabled="true"><i class="bi bi-check2-square me-1"></i>Export selected Excel</a>
+                      </div>
+                    </div>
+                    <form id="itemImportForm" class="row g-2 align-items-end mt-2">
+                      <div class="col-md-8">
+                        <label class="form-label pv-small" for="itemImportFile">Import Excel or CSV</label>
+                        <input class="form-control form-control-sm" id="itemImportFile" name="file" type="file" accept=".xlsx,.csv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" required>
+                      </div>
+                      <div class="col-md-4 d-grid">
+                        <button class="btn btn-primary btn-sm" type="submit"><i class="bi bi-upload me-1"></i>Preview Import</button>
+                      </div>
+                    </form>
+                    <div id="itemImportPreview" class="mt-3" hidden></div>
+                  </div>
+                  <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2"><strong>Recent import history</strong><span class="pv-small pv-muted">Latest 25 uploads</span></div>
+                    <div class="table-responsive pv-scroll"><table class="table table-sm table-bordered align-middle mb-0"><thead><tr><th>Batch</th><th>Date</th><th>By</th><th>Status</th><th>Added / Updated / Errors</th><th></th></tr></thead><tbody id="itemImportHistoryBody"><tr><td colspan="6" class="text-muted text-center">Loading history...</td></tr></tbody></table></div>
+                  </div>
                   <div class="row g-2 mb-3">
                     <div class="col-md-8">
                       <input class="form-control" id="itemSearch" placeholder="Search items..." />
@@ -900,6 +965,7 @@
                     <table class="table table-hover align-middle mb-0">
                       <thead>
                         <tr>
+                          <th><input type="checkbox" id="selectAllStockItems" aria-label="Select all listed items"></th>
                           <th>Sr</th>
                           <th>Item</th>
                           <th>Unit</th>
@@ -1016,12 +1082,14 @@
                       <thead>
                         <tr>
                           <th>Sr</th>
+                          <th>Vendor Code</th>
                           <th>Name</th>
                           <th>Mobile</th>
                           <th>Address</th>
                           <th>Head</th>
                           <th>Sub Head</th>
                           <th>Type</th>
+                          <th>Status</th>
                           <th class="text-end">Actions</th>
                         </tr>
                       </thead>
@@ -1072,6 +1140,7 @@
 
 
   <script>
+    const partyAccountOptions = @json($partyAccountOptions ?? []);
     const endpoints = {
       meta: "{{ route('stocks.meta') }}",
       nextSlip: "{{ route('stocks.nextSlip') }}",
@@ -1082,13 +1151,20 @@
       bills: "{{ route('stocks.bills.index') }}",
       report: "{{ route('stocks.report') }}",
       storeItem: "{{ route('stocks.items.store') }}",
+      exportItems: "{{ route('stocks.items.export') }}",
       storeParty: "{{ route('stocks.parties.store') }}",
       storeEntry: "{{ route('stocks.entries.store') }}",
       storeBill: "{{ route('stocks.bills.store') }}",
       updateItem: "{{ route('stocks.items.update', ['item' => 0]) }}",
       deleteItem: "{{ route('stocks.items.delete', ['item' => 0]) }}",
       updateParty: "{{ route('stocks.parties.update', ['party' => 0]) }}",
+      partyStatus: "{{ route('stocks.parties.status', ['party' => 0]) }}",
       deleteParty: "{{ route('stocks.parties.delete', ['party' => 0]) }}",
+      stageItemImport: "{{ route('stocks.items.import.stage') }}",
+      applyItemImport: "{{ route('stocks.items.import.apply', ['batch' => 0]) }}",
+      itemImportErrors: "{{ route('stocks.items.import.errors', ['batch' => 0]) }}",
+      itemImportPreview: "{{ route('stocks.items.import.preview', ['batch' => 0]) }}",
+      itemImportHistory: "{{ route('stocks.items.import.history') }}",
     };
 
     const state = {
@@ -1153,6 +1229,79 @@
       if (!res.ok) throw { status: res.status, data };
       return data;
     }
+
+    const importHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+    }[char]));
+
+    document.getElementById("itemImportForm")?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const file = document.getElementById("itemImportFile")?.files?.[0];
+      if (!file) return;
+      const button = form.querySelector('button[type="submit"]');
+      const preview = document.getElementById("itemImportPreview");
+      button.disabled = true;
+      button.textContent = "Uploading and validating...";
+      preview.hidden = false;
+      preview.innerHTML = '<div class="placeholder-glow"><span class="placeholder col-12"></span><span class="placeholder col-7"></span></div>';
+      try {
+        const body = new FormData();
+        body.append("file", file);
+        const response = await fetch(endpoints.stageItemImport, {
+          method: "POST", headers: { Accept: "application/json", "X-CSRF-TOKEN": csrfToken || "" }, body
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw { status: response.status, data: result };
+        renderItemImportPreview(result.data);
+        await loadItemImportHistory();
+      } catch (error) {
+        const message = error?.data?.message || error?.data?.errors?.file?.[0] || "Could not stage this CSV import.";
+        preview.innerHTML = `<div class="alert alert-danger mb-0">${importHtml(message)}</div>`;
+      } finally {
+        button.disabled = false;
+        button.innerHTML = '<i class="bi bi-upload me-1"></i>Preview Import';
+      }
+    });
+
+    function renderItemImportPreview(data) {
+      const preview = document.getElementById("itemImportPreview");
+      const counts = data?.counts || {};
+      const rows = data?.rows || [];
+      const failed = Number(counts.failed || 0);
+      const rowsHtml = rows.map((row) => {
+        const errors = (row.errors || []).join("; ");
+        return `<tr><td>${Number(row.row_number) || ""}</td><td>${importHtml(row.item?.item_id || "New")}</td><td>${importHtml(row.item?.name)}</td><td>${importHtml(row.action)}</td><td class="text-danger">${importHtml(errors)}</td></tr>`;
+      }).join("");
+      const applyUrl = endpoints.applyItemImport.replace(/0(?=\D*$)/, encodeURIComponent(data.batch_id));
+      const errorsUrl = endpoints.itemImportErrors.replace(/0(?=\D*$)/, encodeURIComponent(data.batch_id));
+      preview.hidden = false;
+      preview.innerHTML = `
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+          <div><strong>Import preview</strong><div class="pv-small pv-muted">${Number(counts.total || 0)} rows · ${Number(counts.added || 0)} new · ${Number(counts.updated || 0)} updates · ${Number(counts.skipped || 0)} skipped · ${failed} errors</div></div>
+          <div class="d-flex gap-2">${failed ? `<a class="btn btn-outline-danger btn-sm" href="${errorsUrl}">Download errors</a>` : ""}<button class="btn btn-success btn-sm" id="applyItemImport" ${failed || data.status !== "staged" ? "disabled" : ""}>Confirm and apply</button></div>
+        </div>
+        <div class="table-responsive" style="max-height:280px"><table class="table table-sm table-bordered align-middle mb-0"><thead><tr><th>Row</th><th>Item ID</th><th>Name</th><th>Action</th><th>Validation</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+      document.getElementById("applyItemImport")?.addEventListener("click", async (event) => {
+        const button = event.currentTarget;
+        const confirmation = await Swal.fire({ icon: "warning", title: "Apply item import?", text: "Only item names, units and default rates will change. Stock balances and transaction history will remain unchanged.", showCancelButton: true, confirmButtonText: "Apply import" });
+        if (!confirmation.isConfirmed) return;
+        button.disabled = true;
+        button.textContent = "Applying...";
+        try {
+          const applied = await apiPost(applyUrl, { confirmed: true });
+          viewToast("success", "Import applied", `${applied.data?.added || 0} added, ${applied.data?.updated || 0} updated.`);
+          preview.innerHTML = '<div class="alert alert-success mb-0">Import applied. Item master refreshed; stock history was not changed.</div>';
+          await loadMeta();
+          await loadItemsTable();
+          await loadItemImportHistory();
+        } catch (error) {
+          handleApiError(error, "Unable to apply stock item import.");
+          button.disabled = false;
+          button.textContent = "Confirm and apply";
+        }
+      });
+    }
     $(document).on('change', '#accounts_id', function () {
       const accountID = $(this).val();
       const subAccountSelect = $('#subaccounts_id');
@@ -1166,6 +1315,7 @@
             projectID: {{ getSelectedTown() }}, // Replace with the dynamic project ID if applicable
             accountID: accountID,
             action: 'get_child',
+            active_only: true,
             _token: '{{ csrf_token() }}' // CSRF token for Laravel
           },
           success: function (response) {
@@ -1880,6 +2030,26 @@
       renderItems();
     }
 
+    async function loadItemImportHistory() {
+      const tbody = document.getElementById("itemImportHistoryBody");
+      try {
+        const result = await apiGet(endpoints.itemImportHistory);
+        const rows = result?.data?.rows || [];
+        tbody.innerHTML = rows.length ? rows.map((row) => `
+          <tr><td>#${Number(row.id)}</td><td>${importHtml(row.created_at || "")}</td><td>${importHtml(row.created_by || "-")}</td><td><span class="pv-pill ${row.status === "applied" ? "ok" : "warn"}">${importHtml(row.status)}</span></td><td>${Number(row.added)} / ${Number(row.updated)} / ${Number(row.failed)}</td><td><button type="button" class="btn btn-outline-primary btn-sm" data-import-preview="${Number(row.id)}">Preview</button></td></tr>`).join("") : '<tr><td colspan="6" class="text-muted text-center">No import batches yet.</td></tr>';
+        tbody.querySelectorAll("[data-import-preview]").forEach((button) => button.addEventListener("click", async () => {
+          try {
+            const url = endpoints.itemImportPreview.replace(/0(?=\D*$)/, encodeURIComponent(button.dataset.importPreview));
+            const detail = await apiGet(url);
+            renderItemImportPreview(detail.data);
+            document.getElementById("itemImportPreview").scrollIntoView({ behavior: "smooth", block: "nearest" });
+          } catch (error) { handleApiError(error, "Unable to load this import preview."); }
+        }));
+      } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-danger text-center">${importHtml(error?.data?.message || "Import history is unavailable until its migration is installed.")}</td></tr>`;
+      }
+    }
+
     async function loadPartiesTable() {
       const res = await apiGet(endpoints.parties, {
         q: document.getElementById("partySearch").value || null,
@@ -2046,6 +2216,7 @@
           "beforeend",
           `
             <tr>
+              <td><input type="checkbox" class="stock-item-select" value="${Number(it.id)}" aria-label="Select ${importHtml(it.name)}"></td>
               <td>${idx + 1}</td>
               <td>${it.name}</td>
               <td>${it.unit}</td>
@@ -2066,6 +2237,28 @@
       document.getElementById(
         "itemCountChip"
       ).textContent = `${state.itemsTable.total || 0} total`;
+
+      const exportSelected = document.getElementById("exportSelectedItems");
+      const selectAll = document.getElementById("selectAllStockItems");
+      if (selectAll) selectAll.checked = false;
+      const syncSelectedExport = () => {
+        const ids = Array.from(tbody.querySelectorAll(".stock-item-select:checked"), (input) => input.value);
+        const url = new URL(endpoints.exportItems, window.location.origin);
+        url.searchParams.set("format", "xlsx");
+        ids.forEach((id) => url.searchParams.append("item_ids[]", id));
+        exportSelected.href = url.toString();
+        exportSelected.classList.toggle("disabled", ids.length === 0);
+        exportSelected.setAttribute("aria-disabled", ids.length === 0 ? "true" : "false");
+      };
+      if (selectAll) selectAll.onchange = () => {
+        tbody.querySelectorAll(".stock-item-select").forEach((input) => { input.checked = selectAll.checked; });
+        syncSelectedExport();
+      };
+      tbody.querySelectorAll(".stock-item-select").forEach((input) => input.addEventListener("change", syncSelectedExport));
+      if (exportSelected) exportSelected.onclick = (event) => {
+        if (!tbody.querySelector(".stock-item-select:checked")) event.preventDefault();
+      };
+      syncSelectedExport();
 
       tbody.querySelectorAll("button[data-act]").forEach((btn) => {
         btn.addEventListener("click", async () => {
@@ -2139,6 +2332,7 @@
           `
             <tr>
               <td>${idx + 1}</td>
+              <td>${p.vendor_code || "â€”"}</td>
               <td>${p.name}</td>
               <td>${p.mobile || "—"}</td>
               <td class="text-truncate" style="max-width:160px;">${p.address || "—"
@@ -2146,12 +2340,16 @@
               <td>${p.head || "—"}</td>
               <td>${p.subhead || "—"}</td>
               <td><span class="pv-pill">${p.type}</span></td>
+              <td><span class="pv-pill ${p.is_active ? "ok" : "bad"}">${p.is_active ? "Active" : "Inactive"}</span></td>
               <td class="text-end pv-actions">
                 <button class="btn btn-outline-secondary btn-sm" data-act="edit">
                   <i class="bi bi-pencil"></i>
                 </button>
                 <button class="btn btn-outline-danger btn-sm" data-act="del">
                   <i class="bi bi-trash3"></i>
+                </button>
+                <button class="btn btn-outline-primary btn-sm" data-act="status" title="Change active status">
+                  ${p.is_active ? "Deactivate" : "Activate"}
                 </button>
               </td>
             </tr>
@@ -2169,6 +2367,32 @@
           const idx = Array.from(row.parentNode.children).indexOf(row);
           const p = state.partiesTable.rows[idx];
           if (!p) return;
+
+          if (btn.dataset.act === "status") {
+            const result = await Swal.fire({
+              icon: "question",
+              title: p.is_active ? "Deactivate party?" : "Activate party?",
+              input: "textarea",
+              inputLabel: "Reason (required)",
+              inputAttributes: { maxlength: 500 },
+              showCancelButton: true,
+              confirmButtonText: p.is_active ? "Deactivate" : "Activate",
+              inputValidator: (value) => !value?.trim() ? "Enter a reason to continue." : undefined,
+            });
+            if (!result.isConfirmed) return;
+            try {
+              await apiSend(withId(endpoints.partyStatus, p.id), "PATCH", {
+                is_active: p.is_active ? 0 : 1,
+                reason: result.value.trim(),
+              });
+              viewToast("success", "Updated", "Party status updated.");
+              await loadMeta();
+              await loadPartiesTable();
+            } catch (err) {
+              handleApiError(err, "Unable to update party status.");
+            }
+            return;
+          }
 
           if (btn.dataset.act === "edit") {
             openEditModal(
@@ -2188,8 +2412,16 @@
                 { label: "Name", name: "name", value: p.name },
                 { label: "Mobile", name: "mobile", value: p.mobile || "" },
                 { label: "Address", name: "address", value: p.address || "" },
-                { label: "Head", name: "head", value: p.head || "" },
-                { label: "Sub Head", name: "subhead", value: p.subhead || "" },
+                {
+                  label: "Project Account",
+                  name: "account_id",
+                  type: "select",
+                  value: p.account_id || "",
+                  options: [
+                    { value: "", label: "Keep existing / unassigned" },
+                    ...partyAccountOptions.map((account) => ({ value: account.id, label: account.label }))
+                  ],
+                },
               ],
               async (data) => {
                 try {
@@ -2198,8 +2430,7 @@
                     name: data.name || "",
                     mobile: data.mobile || "",
                     address: data.address || "",
-                    head: data.head || "",
-                    subhead: data.subhead || "",
+                    account_id: data.account_id || "",
                   });
                   viewToast("success", "Updated", "Party updated.");
                   editModal.hide();
@@ -2354,6 +2585,7 @@
           loadBills(),
           loadReport(),
           loadItemsTable(),
+          loadItemImportHistory(),
           loadPartiesTable(),
         ]);
       } catch (err) {

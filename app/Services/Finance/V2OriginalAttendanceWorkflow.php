@@ -13,6 +13,12 @@ final class V2OriginalAttendanceWorkflow
             DB::table('projects')->where('id', $projectId)->lockForUpdate()->firstOrFail();
             $site = DB::table('sites')->where('id', $data['site_id'])->where('project_id', $projectId)->lockForUpdate()->first();
             if (!$site) { throw new \DomainException('V2_ATTENDANCE_SITE_INVALID'); }
+            $contractor = null;
+            if (!empty($data['contractor_id'])) {
+                $contractor = DB::table('contractors')->where('id', $data['contractor_id'])
+                    ->where('project_id', $projectId)->where('is_active', true)->lockForUpdate()->first();
+                if (!$contractor) { throw new \DomainException('V2_ATTENDANCE_CONTRACTOR_INVALID'); }
+            }
             $rows = DB::table('labour_attendances')->whereIn('id', $ids)->where('project_id', $projectId)
                 ->where('site_id', $site->id)->where('status', 'present')->whereBetween('date', [$data['start_date'], $data['end_date']])
                 ->orderBy('id')->lockForUpdate()->get();
@@ -43,17 +49,25 @@ final class V2OriginalAttendanceWorkflow
             $input = ['date' => $data['date'], 'description' => 'Labour attendance for '.$site->site_name,
                 'reference' => 'LAB-ATT:'.hash('sha256', json_encode([$projectId, (int) $site->id, $rows->pluck('id')->all(), $data['start_date'], $data['end_date']])),
                 'accounts' => [], 'sub_accounts' => [], 'debit' => [], 'credit' => [], 'line_description' => []];
-            $debitTotal = $creditTotal = 0; $hasSiteAccount = false;
+            $debitTotal = $creditTotal = 0; $hasSiteAccount = false; $hasContractorAccount = $contractor === null;
             foreach ($data['posting_lines'] as $leg) {
-                $account = \App\Models\ProjectHeadSubhead::query()->whereKey($leg['account_id'])->where('project_id', $projectId)->lockForUpdate()->first();
+                $account = \App\Models\ProjectHeadSubhead::availableForPosting()
+                    ->whereKey($leg['account_id'])->where('project_id', $projectId)->lockForUpdate()->first();
                 if (!$account) { throw new \DomainException('V2_ATTENDANCE_ACCOUNT_INVALID'); }
                 $dr = V2OriginalCustomerWorkflow::money($leg['debit']); $cr = V2OriginalCustomerWorkflow::money($leg['credit']);
                 $debitTotal += (int) str_replace('.', '', $dr); $creditTotal += (int) str_replace('.', '', $cr);
                 $hasSiteAccount = $hasSiteAccount || ((int) $account->id === (int) $site->subhead_accounting_id && $cr === $amount && $dr === '0.00');
+                $hasContractorAccount = $hasContractorAccount || ((int) $account->id === (int) $contractor?->project_head_subhead_id && $dr === $amount && $cr === '0.00');
                 $input['accounts'][] = (int) $account->head_accounting_id; $input['sub_accounts'][] = (int) $account->id;
                 $input['debit'][] = $dr; $input['credit'][] = $cr; $input['line_description'][] = $input['description'];
             }
-            if (!$hasSiteAccount || $debitTotal !== $total || $creditTotal !== $total) { throw new \DomainException('V2_ATTENDANCE_ALLOCATION_INVALID'); }
+            if (!$hasSiteAccount || !$hasContractorAccount || $debitTotal !== $total || $creditTotal !== $total) { throw new \DomainException('V2_ATTENDANCE_ALLOCATION_INVALID'); }
+            if ($contractor) {
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('journal_vouchers', 'contractor_id')) {
+                    throw new \DomainException('V2_ATTENDANCE_CONTRACTOR_SCHEMA_MISSING');
+                }
+                $input['contractor_id'] = (int) $contractor->id;
+            }
             $journal = (new V2OriginalJournalWorkflow())->createAndPost($projectId, $data['request_key'], $input, $actor);
             if ($mapped->isEmpty()) {
                 foreach ($ids as $id) {

@@ -97,7 +97,7 @@ class CommissionVoucherController extends Controller
         $projects = Project::where('id', $selectedProjectId)->get();
         $x['projects'] = $projects;
 
-        $data_list = ProjectHeadSubhead::select('project_id', 'head_accounting_id')
+        $data_list = ProjectHeadSubhead::availableForPosting()->select('project_id', 'head_accounting_id')
             ->distinct()
             ->with('headAccounting')
             ->where(['project_id' => $selectedProjectId])
@@ -158,7 +158,7 @@ class CommissionVoucherController extends Controller
             abort(403, 'Select a project before creating a commission voucher.');
         }
         \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
-        $accounts = ProjectHeadSubhead::query()
+        $accounts = ProjectHeadSubhead::availableForPosting()
             ->where('project_id', $projectId)
             ->whereIn('id', $data['sub_accounts'])
             ->get(['id', 'head_accounting_id'])->keyBy('id');
@@ -271,7 +271,7 @@ class CommissionVoucherController extends Controller
 
         // Fetch projects and accounts
         $x['projects'] = Project::where('id', $selectedProjectId)->get();
-        $x['accounts'] = ProjectHeadSubhead::select('project_id', 'head_accounting_id')
+        $x['accounts'] = ProjectHeadSubhead::availableForPosting()->select('project_id', 'head_accounting_id')
             ->distinct()
             ->with('headAccounting')
             ->where('project_id', $selectedProjectId)
@@ -307,7 +307,7 @@ class CommissionVoucherController extends Controller
         }
         $projectId = (int) getSelectedTown();
         abort_if($projectId < 1, 403, 'Select a project.');
-        $accounts = ProjectHeadSubhead::query()->where('project_id', $projectId)
+        $accounts = ProjectHeadSubhead::availableForPosting()->where('project_id', $projectId)
             ->whereIn('id', $data['sub_accounts'])
             ->get(['id', 'head_accounting_id'])->keyBy('id');
         $lines = []; $totalDebitCents = 0; $totalCreditCents = 0;

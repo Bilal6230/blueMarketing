@@ -30,7 +30,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use RealRashid\SweetAlert\Facades\Alert;
 use App\Models\Role;
@@ -106,7 +108,9 @@ class BookingController extends Controller
         $projects = Project::where('id', getSelectedTown())->get();
         $x['projects'] = $projects;
         // Retrieve the joined data from project_head_subheads and subhead_accountings
-        $brokers = ProjectHeadSubhead::where('head_accounting_id', 6)
+        $brokers = ProjectHeadSubhead::availableForPosting()
+            ->where('project_id', (int) getSelectedTown())
+            ->where('head_accounting_id', 6)
             ->join('subhead_accountings', 'project_head_subheads.subhead_accounting_id', '=', 'subhead_accountings.id')
             ->get();
 
@@ -127,6 +131,12 @@ class BookingController extends Controller
             ->with('subheadAccounting')
             ->where('project_id', $booking->project_id)
             ->where('head_accounting_id', 6)
+            ->where(function ($query) use ($booking): void {
+                $query->availableForPosting();
+                if ($booking->broker_id !== null) {
+                    $query->orWhere('subhead_accounting_id', $booking->broker_id);
+                }
+            })
             ->get()
             ->pluck('subheadAccounting')
             ->filter()
@@ -206,7 +216,7 @@ class BookingController extends Controller
             return back()->withErrors(['booking' => match ($exception->getMessage()) {
                 'PAYMENT_ATTRIBUTION_REQUIRED' => 'Some historical payments cannot be linked safely to this booking. Please review payment attribution before changing the sale price.',
                 'STALE_BOOKING' => 'This booking was changed after you opened the page. Refresh and review the latest information before saving.',
-                'BROKER_NOT_IN_PROJECT' => 'The selected broker is not available for this project.',
+                'BROKER_NOT_IN_PROJECT', 'BROKER_NOT_AVAILABLE_IN_PROJECT' => 'The selected broker is inactive or is not available for this project.',
                 'AMENDMENT_REASON_REQUIRED' => 'A reason is required for a pricing amendment.',
                 'BROKER_PERMISSION_REQUIRED', 'METADATA_PERMISSION_REQUIRED', 'PRICING_PERMISSION_REQUIRED' => 'You do not have permission to make one or more of these changes.',
                 default => 'This booking cannot be amended right now.',
@@ -268,7 +278,7 @@ class BookingController extends Controller
         $x['installments'] = Installment::get();
         $projects = Project::where('id', getSelectedTown())->get();
         $x['projects'] = $projects;
-        $x['booking'] = $booking = Booking::findOrFail($id);
+        $x['booking'] = $booking = Booking::where('project_id', (int) getSelectedTown())->findOrFail($id);
         $x['customers'] = Lead::where('project_id', getSelectedTown())->get();
         $x['plots'] = Plot::whereDoesntHave('holdPlots')
             ->where('type', $booking->plot_type)
@@ -279,7 +289,9 @@ class BookingController extends Controller
             })
             ->get();
         // Retrieve the joined data from project_head_subheads and subhead_accountings
-        $brokers = ProjectHeadSubhead::where('head_accounting_id', 6)
+        $brokers = ProjectHeadSubhead::availableForPosting()
+            ->where('project_id', (int) getSelectedTown())
+            ->where('head_accounting_id', 6)
             ->join('subhead_accountings', 'project_head_subheads.subhead_accounting_id', '=', 'subhead_accountings.id')
             ->get();
 
@@ -297,15 +309,27 @@ class BookingController extends Controller
 
     public function store(Request $request)
     {
+        $projectId = (int) getSelectedTown();
+        foreach (['plot_rate', 'total_price', 'park_facing', 'carner_price', 'discount_value'] as $moneyField) {
+            if ($request->exists($moneyField)) {
+                $request->merge([$moneyField => str_replace(',', '', (string) $request->input($moneyField))]);
+            }
+        }
         // Validate the incoming request data
         $validator = Validator::make($request->all(), [
-            'project_id' => 'required|exists:projects,id',
-            'customer_id' => 'required|exists:leads,id',
-            'plot_id' => 'required|string',
+            'id' => ['prohibited'],
+            'project_id' => ['required', 'integer', Rule::in([$projectId])],
+            'customer_id' => ['required', 'integer', Rule::exists('leads', 'id')->where(fn ($query) => $query->where('project_id', $projectId))],
+            'plot_id' => ['required', 'integer', Rule::exists('plots', 'id')->where(fn ($query) => $query->where('project_id', $projectId)->where('sold', 0)->where('is_active', 1))],
             'plot_type' => 'required',
             'plot_size' => 'required',
-            'plot_rate' => 'required',
-            'total_price' => 'required',
+            'plot_rate' => ['required', 'numeric', 'min:0', 'max:999999999999.99'],
+            'total_price' => ['required', 'numeric', 'min:0', 'max:999999999999.99'],
+            'is_corner' => ['nullable', 'boolean'],
+            'is_park' => ['nullable', 'boolean'],
+            'park_facing' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
+            'carner_price' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
+            'discount_value' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
             'booking_date' => 'required|date',
             'status' => 'required|string|in:active,inactive',
         ]);
@@ -322,35 +346,53 @@ class BookingController extends Controller
         DB::beginTransaction();
 
         try {
-            // Create the booking
-            $booking = Booking::updateOrCreate(
-                ['id' => $request->id], // condition to check if booking exists
-                [
-                    'project_id' => $request->input('project_id'),
+            $plot = Plot::query()->whereKey((int) $request->input('plot_id'))
+                ->where('project_id', $projectId)->where('sold', 0)->where('is_active', 1)
+                ->lockForUpdate()->firstOrFail();
+            abort_unless(!$plot->holdPlots()->exists(), 409, 'This plot is on hold and cannot be booked.');
+            $customer = Lead::query()->whereKey((int) $request->input('customer_id'))
+                ->where('project_id', $projectId)->firstOrFail();
+            $bookingDate = Carbon::parse($request->input('booking_date'))->toDateString();
+            $configuredRate = $this->effectivePlotRate($projectId, $plot, $bookingDate);
+
+            $pricing = $this->calculateNewBookingPrice(
+                $projectId,
+                $bookingDate,
+                (string) $plot->size,
+                $configuredRate ?? (string) $request->input('plot_rate'),
+                (bool) $request->input('is_park'),
+                (bool) $request->input('is_corner'),
+                (string) ($request->input('park_facing') ?? '0'),
+                (string) ($request->input('carner_price') ?? '0'),
+                (string) ($request->input('discount_value') ?? '0')
+            );
+
+            // This route is create-only. Posted bookings are amended through
+            // the dedicated guarded workflow, never overwritten here.
+            $booking = Booking::create([
+                    'project_id' => $projectId,
                     'customer_id' => $request->input('customer_id'),
                     'plot_id' => $request->input('plot_id'),
                     'plot_type' => $request->input('plot_type'),
-                    'plot_size' => $request->input('plot_size'),
+                    'plot_size' => $plot->size,
                     'plot_rate' => str_replace(',', '', $request->input('plot_rate')),
                     'is_corner' => $request->input('is_corner') ?? 0,
                     'is_park' => $request->input('is_park') ?? 0,
-                    'park_facing' => $request->input('park_facing') ?? 0,
-                    'carner_price' => $request->input('carner_price') ?? 0,
-                    'dicount_value' => $request->input('discount_value') ?? 0,
-                    'total_price' => str_replace(',', '', $request->input('total_price')),
+                    'park_facing' => $pricing['park_facing'],
+                    'carner_price' => $pricing['carner_price'],
+                    'dicount_value' => $pricing['discount_value'],
+                    'total_price' => $pricing['total_price'],
                     'broker_id' => $request->input('broker_id'),
                     'booking_date' => $request->input('booking_date'),
                     'status' => $request->input('status'),
                     'user_id' => Auth::id(),
-                ]
-            );
+                ]);
 
             // Update the plot status
-            Plot::where('id', $booking->plot_id)->update(['sold' => 1]);
+            Plot::whereKey($plot->id)->where('project_id', $projectId)->update(['sold' => 1]);
 
             // Fetch plot and customer details
-            $plotName = Plot::where('id', $booking->plot_id)->value('name');
-            $customer = Lead::findOrFail($booking->customer_id);
+            $plotName = $plot->name;
 
             // Create customer ledger entry
             $customerLedger = CustomerLedger::create([
@@ -376,6 +418,8 @@ class BookingController extends Controller
                 'create_by' => Auth::user()->id,
             ]);
 
+            abort_unless(HeadAccounting::whereKey(16)->where('is_active', 1)->exists(), 409,
+                'Booking cannot be posted because its sales head account is inactive.');
             $pivot = ProjectHeadSubhead::create([
                 'project_id' => $booking->project_id,
                 'head_accounting_id' => 16,
@@ -411,7 +455,7 @@ class BookingController extends Controller
             ]);
 
             // Ensure credit account exists
-            $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', 16)
+            $creditAccountId = ProjectHeadSubhead::availableForPosting()->where('head_accounting_id', 16)
                 ->where('project_id', $booking->project_id)
                 ->where('subhead_accounting_id', 123)
                 ->value('id');
@@ -494,6 +538,10 @@ class BookingController extends Controller
             ]
         );
 
+        $head = HeadAccounting::whereKey(16)->first();
+        if (!$head || (int) $head->is_active !== 1 || (int) $sub->is_active !== 1) {
+            throw new \DomainException('BOOKING_SYSTEM_ACCOUNT_INACTIVE');
+        }
         $phs = ProjectHeadSubhead::firstOrCreate(
             [
                 'project_id' => $projectId,
@@ -856,14 +904,89 @@ class BookingController extends Controller
         return str_replace(',', '', (string) $value);
     }
 
-    private function nextSalesVoucherNumber(int $projectId): int
+    private function effectiveProjectChargeRates(int $projectId, string $date): ?array
     {
-        return ((int) JournalVoucher::query()
+        if (!Schema::hasTable('project_charge_revisions')) return null;
+        $revision = DB::table('project_charge_revisions')->where('project_id', $projectId)
+            ->whereDate('effective_from', '<=', $date)->orderByDesc('effective_from')->first();
+        if (!$revision) return null;
+        return [
+            'corner' => (string) $revision->corner_charge_percent,
+            'facing' => (string) $revision->facing_charge_percent,
+        ];
+    }
+
+    private function effectivePlotRate(int $projectId, Plot $plot, string $date): ?string
+    {
+        if (!Schema::hasTable('plot_definition_rate_revisions') || !$plot->plot_size_definition_id) {
+            return null;
+        }
+
+        return DB::table('plot_definition_rate_revisions')
             ->where('project_id', $projectId)
-            ->where('type', 'SV')
-            ->lockForUpdate()
-            ->orderByDesc('voucher_number')
-            ->value('voucher_number')) + 1;
+            ->where('plot_definition_id', $plot->plot_size_definition_id)
+            ->whereDate('effective_from', '<=', $date)
+            ->orderByDesc('effective_from')
+            ->value('rate_per_unit');
+    }
+
+    private function roundMoney(string $amount): string
+    {
+        $rounded = bcadd($amount, '0.005', 4);
+        if (!preg_match('/^-?\d+(?:\.\d{2})?/', $rounded, $match)) {
+            throw ValidationException::withMessages(['total_price' => 'The calculated booking amount is invalid.']);
+        }
+        $value = $match[0];
+        return str_contains($value, '.') ? $value : $value.'.00';
+    }
+
+    private function percentOf(string $amount, string $percent): string
+    {
+        $unrounded = bcdiv(bcmul($amount, $percent, 6), '100', 4);
+        return $this->roundMoney($unrounded);
+    }
+
+    private function calculateNewBookingPrice(
+        int $projectId,
+        string $bookingDate,
+        string $plotSize,
+        string $plotRate,
+        bool $isFacing,
+        bool $isCorner,
+        string $manualFacing,
+        string $manualCorner,
+        string $discount
+    ): array {
+        if (!function_exists('bcmul') || !function_exists('bcadd') || !function_exists('bcsub') || !function_exists('bccomp')) {
+            throw new \RuntimeException('The BCMath PHP extension is required for precise booking totals.');
+        }
+        foreach (['plotSize' => $plotSize, 'plotRate' => $plotRate, 'manualFacing' => $manualFacing,
+            'manualCorner' => $manualCorner, 'discount' => $discount] as $field => $value) {
+            if (!is_numeric($value) || (float) $value < 0) {
+                throw ValidationException::withMessages([$field === 'plotSize' ? 'plot_size' : $field => 'Enter a valid non-negative amount.']);
+            }
+        }
+        if ((float) $plotSize <= 0) {
+            throw ValidationException::withMessages(['plot_size' => 'The selected plot must have a valid positive size.']);
+        }
+        $rates = $this->effectiveProjectChargeRates($projectId, $bookingDate);
+        $base = $this->roundMoney(bcmul($plotSize, $plotRate, 4));
+        $facing = $isFacing
+            ? ($rates !== null ? $this->percentOf($base, $rates['facing']) : $this->roundMoney($manualFacing))
+            : '0.00';
+        $corner = $isCorner
+            ? ($rates !== null ? $this->percentOf($base, $rates['corner']) : $this->roundMoney($manualCorner))
+            : '0.00';
+        $discount = $this->roundMoney($discount);
+        $gross = bcadd(bcadd($base, $facing, 2), $corner, 2);
+        if (bccomp($discount, $gross, 2) === 1) {
+            throw ValidationException::withMessages(['discount_value' => 'Discount cannot exceed the plot price and configured charges.']);
+        }
+
+        return [
+            'park_facing' => $facing, 'carner_price' => $corner,
+            'discount_value' => $discount, 'total_price' => bcsub($gross, $discount, 2),
+        ];
     }
 
     private function createSalesVoucher(array $payload): JournalVoucher
@@ -892,7 +1015,8 @@ class BookingController extends Controller
         $description = trim((string) ($payload['description'] ?? 'Sales Voucher'));
 
         return JournalVoucher::create([
-            'voucher_number' => $this->nextSalesVoucherNumber($projectId),
+            'voucher_number' => app(\App\Services\Finance\ProjectVoucherAllocator::class)
+                ->nextSalesVoucher($projectId),
             'type' => 'SV',
             'reference' => $reference,
             'date' => $date,
@@ -1008,6 +1132,7 @@ class BookingController extends Controller
     }
     private function systemAccountIdBySubheadName(int $projectId, int $headId, string $subheadName, bool $createIfMissing = false): int
     {
+        $head = HeadAccounting::whereKey($headId)->first();
         $subhead = SubheadAccounting::where('name', $subheadName)->first();
 
         if (!$subhead && $createIfMissing) {
@@ -1018,8 +1143,11 @@ class BookingController extends Controller
             ]);
         }
 
-        if (!$subhead) {
+        if (!$head || !$subhead) {
             throw new \Exception("System subhead not found: {$subheadName}");
+        }
+        if ((int) $head->is_active !== 1 || (int) $subhead->is_active !== 1) {
+            throw new \DomainException('BOOKING_SYSTEM_ACCOUNT_INACTIVE');
         }
 
         $phs = ProjectHeadSubhead::firstOrCreate(
@@ -1032,6 +1160,10 @@ class BookingController extends Controller
             ]
         );
 
+        if (!ProjectHeadSubhead::availableForPosting()->whereKey($phs->id)->exists()) {
+            throw new \DomainException('BOOKING_SYSTEM_ACCOUNT_INACTIVE');
+        }
+
         return (int) $phs->id;
     }
 
@@ -1041,7 +1173,7 @@ class BookingController extends Controller
      */
     private function totalSaleAccountId(int $projectId): int
     {
-        $id = ProjectHeadSubhead::where('project_id', $projectId)
+        $id = ProjectHeadSubhead::availableForPosting()->where('project_id', $projectId)
             ->where('head_accounting_id', 16)
             ->where('subhead_accounting_id', 123)
             ->value('id');
@@ -1074,8 +1206,15 @@ class BookingController extends Controller
             ->where('customer_id', $customerId)
             ->first();
 
+        if ($existing && !ProjectHeadSubhead::availableForPosting()->whereKey($existing->id)->exists()) {
+            throw new \DomainException('BOOKING_CUSTOMER_ACCOUNT_INACTIVE');
+        }
         if ($existing)
             return $existing;
+
+        if (!HeadAccounting::whereKey($headAccountingId)->where('is_active', 1)->exists()) {
+            throw new \DomainException('BOOKING_HEAD_ACCOUNT_INACTIVE');
+        }
 
         $subheadAccounting = SubheadAccounting::create([
             'name' => $subheadName,
@@ -1853,13 +1992,37 @@ class BookingController extends Controller
 
     public function getPlots(Request $request)
     {
-        $plot_type = $request->input('plot_type');
-        $projectId = $request->input('project_id');
+        $projectId = (int) getSelectedTown();
+        $data = $request->validate(['plot_type' => ['required', 'integer', 'in:1,2'], 'booking_date' => ['nullable', 'date']]);
+        $effectiveDate = isset($data['booking_date'])
+            ? Carbon::parse($data['booking_date'])->toDateString()
+            : Carbon::today()->toDateString();
+        $chargeRates = $this->effectiveProjectChargeRates($projectId, $effectiveDate);
 
-        $customers = Plot::whereDoesntHave('holdPlots')->where('type', $plot_type)->where('project_id', $projectId)->where('sold', 0)->get();
+        $plots = Plot::with(['sizeDefinition' => fn ($query) => $query
+                ->where('project_id', $projectId)->where('kind', 'size')->where('is_active', true)])
+            ->whereDoesntHave('holdPlots')->where('type', $data['plot_type'])
+            ->where('project_id', $projectId)->where('sold', 0)->where('is_active', 1)->get();
 
-        // Return customers as JSON response
-        return response()->json($customers);
+        $rateByDefinition = collect();
+        if (Schema::hasTable('plot_definition_rate_revisions')) {
+            $definitionIds = $plots->pluck('sizeDefinition.id')->filter()->unique()->values();
+            if ($definitionIds->isNotEmpty()) {
+                $rateByDefinition = DB::table('plot_definition_rate_revisions')
+                    ->where('project_id', $projectId)->whereIn('plot_definition_id', $definitionIds)
+                    ->whereDate('effective_from', '<=', $effectiveDate)
+                    ->orderByDesc('effective_from')->get()->unique('plot_definition_id')->keyBy('plot_definition_id');
+            }
+        }
+
+        return response()->json($plots->map(fn (Plot $plot) => [
+            'id' => $plot->id, 'name' => $plot->name, 'size' => $plot->size, 'unit' => $plot->unit,
+            'suggested_rate' => $plot->sizeDefinition
+                ? ($rateByDefinition->get($plot->sizeDefinition->id)->rate_per_unit ?? null)
+                : null,
+            'corner_charge_percent' => $chargeRates['corner'] ?? null,
+            'facing_charge_percent' => $chargeRates['facing'] ?? null,
+        ])->values());
     }
 
     public function getCustomerPlots(Request $request)
@@ -2588,7 +2751,7 @@ class BookingController extends Controller
                             $displayVoucherNumber = $this->allocateNextBookingVoucherNumber($projectId, 'PPR');
                         }
 
-                        $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', 16)
+                        $creditAccountId = ProjectHeadSubhead::availableForPosting()->where('head_accounting_id', 16)
                             ->where('project_id', $projectId)
                             ->where('plot_id', $plotId)
                             ->where('customer_id', $customer_id)
@@ -2606,7 +2769,6 @@ class BookingController extends Controller
 
                         $ledgerType = 'PPR';
                         $voucherNumber = $displayVoucherNumber;
-                        $lastId = getLastLedgerIdByType($ledgerType);
 
                         // All ledger rows for the same PPR reference must be
                         // considered: a foreign or duplicated row cannot be
@@ -2655,7 +2817,8 @@ class BookingController extends Controller
                                 'customer_ledger_id' => $customerLedger->id,
                                 'type' => $ledgerType,
                                 'voucher_number' => $voucherNumber,
-                                'type_id' => ((int) $lastId) + 1,
+                                'type_id' => app(\App\Services\Finance\ProjectVoucherAllocator::class)
+                                    ->nextLedgerId((int) $projectId, $ledgerType),
                                 'project_head_subheads_id' => $creditAccountId,
                                 'reference' => $reference,
                                 'amount_in' => str_replace(',', '', $request->input('amount')),

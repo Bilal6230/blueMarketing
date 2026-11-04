@@ -177,6 +177,8 @@
                         var data = data.data;
                         $("#name").val(data.name);
                         $("#id").val(data.id);
+                        $('#modal-edit [name="is_active"]').val(String(data.is_active));
+                        $('#head_status_change_reason').val('');
                         $("#acct_type").val(data
                             .acct_type); // ✅ This sets the correct option selected
                         $('#modal-loading').modal('hide');
@@ -323,6 +325,15 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                        <div class="form-group mt-2">
+                            <label for="head_status_change_reason">Status change reason</label>
+                            <textarea id="head_status_change_reason" class="form-control @error('status_change_reason') is-invalid @enderror"
+                                name="status_change_reason" rows="2" maxlength="500"
+                                placeholder="Required only when changing Active/Inactive status"></textarea>
+                            @error('status_change_reason')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
                         <div class="modal-footer justify-content-between mt-2">
                             <input type="hidden" name="id" id="id">

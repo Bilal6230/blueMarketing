@@ -163,7 +163,7 @@ class DashboardController extends Controller
         $metrics = new ModuleMetrics();
         $x['finance_metrics'] = $metrics->finance($selectedProjectId, (float) $total_hand_balance, (float) -($Bankaccountdata->balance ?? 0));
         $x['plot_metrics'] = $metrics->plots($selectedProjectId);
-        $x['stock_metrics'] = $metrics->stock();
+        $x['stock_metrics'] = $metrics->stock((int) getSelectedTown());
         $x['labour_metrics'] = $metrics->labour($selectedProjectId);
         $x['approval_metrics'] = $metrics->approvals($selectedProjectId);
         $x['attendance_metrics'] = $metrics->attendance($selectedProjectId);

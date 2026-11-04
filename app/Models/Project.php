@@ -12,10 +12,23 @@ class Project extends Model
     protected $fillable = [
         'project',
         'address',
+        'project_code',
+        'location',
+        'opening_date',
+        'closing_date',
+        'corner_charge_percent',
+        'facing_charge_percent',
         'logo',
         'is_active',
         'create_by',
 
+    ];
+
+    protected $casts = [
+        'opening_date' => 'date',
+        'closing_date' => 'date',
+        'corner_charge_percent' => 'decimal:2',
+        'facing_charge_percent' => 'decimal:2',
     ];
 
     public function zones()

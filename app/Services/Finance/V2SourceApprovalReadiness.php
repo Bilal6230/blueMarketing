@@ -110,7 +110,7 @@ final class V2SourceApprovalReadiness
             $fk = $kind === 'stock_entry' ? 'stock_entry_id' : 'stock_bill_id';
             try {
                 $snapshot = DB::transaction(
-                    fn (): array => (new V2StockSourceSnapshot())->read($kind, $sourceId)
+                    fn (): array => (new V2StockSourceSnapshot())->read($kind, $sourceId, $projectId)
                 );
                 $approval = DB::table($approvalTable)
                     ->where($fk, $sourceId)->where('project_id', $projectId)

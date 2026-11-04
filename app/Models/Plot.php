@@ -22,6 +22,10 @@ class Plot extends Model
         'road_id',
         'facing_id',
         'is_active',
+        'plot_category_definition_id',
+        'plot_type_definition_id',
+        'plot_size_definition_id',
+        'plot_unit_definition_id',
         'sold',
         'plot_history',
         'create_by',
@@ -43,6 +47,26 @@ class Plot extends Model
     public function projectHeadSubheads()
     {
         return $this->hasMany(ProjectHeadSubhead::class, 'plot_id', 'id');
+    }
+
+    public function categoryDefinition()
+    {
+        return $this->belongsTo(PlotDefinition::class, 'plot_category_definition_id');
+    }
+
+    public function typeDefinition()
+    {
+        return $this->belongsTo(PlotDefinition::class, 'plot_type_definition_id');
+    }
+
+    public function sizeDefinition()
+    {
+        return $this->belongsTo(PlotDefinition::class, 'plot_size_definition_id');
+    }
+
+    public function unitDefinition()
+    {
+        return $this->belongsTo(PlotDefinition::class, 'plot_unit_definition_id');
     }
 
 }

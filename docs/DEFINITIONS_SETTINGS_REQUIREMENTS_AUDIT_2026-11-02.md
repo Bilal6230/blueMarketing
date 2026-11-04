@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-02  
 **Project:** BlueMarketing / Waqas ERP  
-**Status:** DEFERRED — implementation must not start until the current dashboard/sidebar work, known regressions, and pending bug fixes are closed.  
+**Status:** IN PROGRESS — implementation is continuing at the user's direction. Production migrations and data backfills still require an isolated rehearsal and reconciliation before deployment.
 **Source:** Client requirements for Definitions & Settings, Labour Contractor Accounts, and Store Inventory Excel Import/Export.
 
 ## 1. Purpose and scope
@@ -290,14 +290,7 @@ Every applicable definition should provide:
 
 ## 10. Delivery gate and current decision
 
-Implementation is intentionally paused. Before DS-00 begins:
-
-1. Resolve the current application bugs and dashboard/sidebar acceptance issues.
-2. Close or explicitly baseline the remaining regression-test failures.
-3. Commit and push the current stable work separately.
-4. Take a verified database backup and rehearse against a disposable/local clone.
-5. Confirm client terminology for Account Group vs Head/Sub-Head, Vendor vs Supplier, Employee vs User and Contractor vs Labour.
-6. Obtain sign-off on payroll policies and merge behavior.
+Implementation is in progress. Code and additive migrations may be prepared locally; no migration is to be run against production or a user database until the exact migration set has been reviewed, backed up, and rehearsed against an isolated copy with row-count and financial reconciliation. Where a backfill cannot identify one unambiguous project-scoped relationship, it must leave the record unchanged for review. Final payroll policy and account-merge acceptance remain client decisions before those workflows are enabled in production.
 
 No Definitions & Settings migration or production data mutation is authorized by this document alone.
 

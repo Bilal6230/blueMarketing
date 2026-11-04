@@ -40,7 +40,11 @@
                                         <tr>
                                             <th>#</th>
                                             <th>Name</th>
+                                            <th>Code</th>
                                             <th>Address</th>
+                                            <th>Location</th>
+                                            <th>Dates</th>
+                                            <th>Corner / Facing %</th>
                                             <th>Status</th>
                                             <th>Create at</th>
                                             @canany(['update project', 'delete project'])
@@ -53,7 +57,11 @@
                                             <tr>
                                                 <td>{{ $loop->iteration }}</td>
                                                 <td><a href="#" >{{ $i->project }}</a></td>
+                                                <td>{{ $i->project_code ?: 'Legacy' }}</td>
                                                 <td>{{ $i->address }}</td>
+                                                <td>{{ $i->location ?: '—' }}</td>
+                                                <td>{{ $i->opening_date?->format('d-M-Y') ?: '—' }} → {{ $i->closing_date?->format('d-M-Y') ?: '—' }}</td>
+                                                <td>{{ number_format((float) $i->corner_charge_percent, 2) }} / {{ number_format((float) $i->facing_charge_percent, 2) }}</td>
                                                 <td>{{ Setting::getStatus($i->is_active) }}</td>
                                                 <td>{{ $i->created_at }}</td>
                                             @canany(['update project', 'delete project'])
@@ -109,6 +117,12 @@
                         $("#project").val(data.project);
                         $("#old_project").val(data.project);
                         $("#address").val(data.address);
+                        $("#project_code").val(data.project_code || 'Assigned when saved');
+                        $("#location").val(data.location || '');
+                        $("#opening_date").val(data.opening_date ? data.opening_date.substring(0, 10) : '');
+                        $("#closing_date").val(data.closing_date ? data.closing_date.substring(0, 10) : '');
+                        $("#corner_charge_percent").val(data.corner_charge_percent || '0.00');
+                        $("#facing_charge_percent").val(data.facing_charge_percent || '0.00');
                         $("#is_active").val(data.is_active);
 
                         $("#id").val(data.id);
@@ -160,6 +174,15 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
+                        </div>
+                        <div class="input-group"><label>Location / Details</label><div class="input-group"><input type="text" class="form-control" name="location" value="{{ old('location') }}" maxlength="255"></div></div>
+                        <div class="form-row">
+                            <div class="col"><label>Opening Date</label><input type="date" class="form-control" name="opening_date" value="{{ old('opening_date') }}"></div>
+                            <div class="col"><label>Closing Date</label><input type="date" class="form-control" name="closing_date" value="{{ old('closing_date') }}"></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="col"><label>Corner Charge %</label><input type="number" class="form-control" name="corner_charge_percent" value="{{ old('corner_charge_percent', 0) }}" min="0" max="100" step="0.01"></div>
+                            <div class="col"><label>Facing Charge %</label><input type="number" class="form-control" name="facing_charge_percent" value="{{ old('facing_charge_percent', 0) }}" min="0" max="100" step="0.01"></div>
                         </div>
                         <div class="input-group">
                             <label>Status</label>
@@ -225,6 +248,17 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
+                        </div>
+                        <div class="input-group"><label>Project Code</label><div class="input-group"><input type="text" class="form-control" id="project_code" readonly></div></div>
+                        <div class="input-group"><label>Location / Details</label><div class="input-group"><input type="text" class="form-control" name="location" id="location" maxlength="255"></div></div>
+                        <div class="form-row">
+                            <div class="col"><label>Opening Date</label><input type="date" class="form-control" name="opening_date" id="opening_date"></div>
+                            <div class="col"><label>Closing Date</label><input type="date" class="form-control" name="closing_date" id="closing_date"></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="col"><label>Corner Charge %</label><input type="number" class="form-control" name="corner_charge_percent" id="corner_charge_percent" min="0" max="100" step="0.01"></div>
+                            <div class="col"><label>Facing Charge %</label><input type="number" class="form-control" name="facing_charge_percent" id="facing_charge_percent" min="0" max="100" step="0.01"></div>
+                            <div class="col"><label>Charges Effective From</label><input type="date" class="form-control" name="charge_effective_from" value="{{ now()->toDateString() }}"></div>
                         </div>
 
                         <div class="input-group">

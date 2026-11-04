@@ -12,6 +12,7 @@ class StockBill extends Model
     protected $table = 'stock_bills';
 
     protected $fillable = [
+        'project_id',
         'bill_no',
         'bill_date',
         'type',      // purchase | sale
@@ -25,6 +26,7 @@ class StockBill extends Model
     protected $casts = [
         'bill_date' => 'date',
         'party_id' => 'integer',
+        'project_id' => 'integer',
         'entry_id' => 'integer',
         'total_minor' => 'integer',
         'created_by' => 'integer',

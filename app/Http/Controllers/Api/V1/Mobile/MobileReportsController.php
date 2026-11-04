@@ -39,9 +39,8 @@ class MobileReportsController extends BaseMobileController
         $to = $validated['date_to'] ?? null;
         $itemId = !empty($validated['item_id']) ? (int) $validated['item_id'] : null;
 
-        // TODO: stock balances/movements are global; project_id is used for access context only.
         if (!$from || !$to) {
-            $rowsQuery = DB::table('stock_item_balances as b')
+            $rowsQuery = DB::table('stock_project_item_balances as b')
                 ->join('stock_items as i', 'i.id', '=', 'b.item_id')
                 ->select([
                     'i.id as item_id',
@@ -51,7 +50,7 @@ class MobileReportsController extends BaseMobileController
                     DB::raw('0 as out_qty'),
                     'b.on_hand_qty as available_qty',
                 ])
-                ->where('i.is_active', 1)
+                ->where('i.is_active', 1)->where('b.project_id', $projectId)
                 ->orderBy('i.name');
 
             if ($itemId) {
@@ -82,6 +81,7 @@ class MobileReportsController extends BaseMobileController
                 DB::raw("SUM(CASE WHEN m.direction='IN'  THEN m.qty ELSE 0 END) as in_qty"),
                 DB::raw("SUM(CASE WHEN m.direction='OUT' THEN m.qty ELSE 0 END) as out_qty"),
             ])
+            ->where('m.project_id', $projectId)
             ->whereBetween(DB::raw('DATE(m.movement_date)'), [$from, $to])
             ->where('i.is_active', 1)
             ->groupBy('m.item_id', 'i.name', 'i.unit')
@@ -91,7 +91,7 @@ class MobileReportsController extends BaseMobileController
             $movQuery->where('m.item_id', $itemId);
         }
 
-        $balances = DB::table('stock_item_balances')->pluck('on_hand_qty', 'item_id');
+        $balances = DB::table('stock_project_item_balances')->where('project_id', $projectId)->pluck('on_hand_qty', 'item_id');
         $rows = $movQuery->get()->map(function ($row) use ($balances) {
             $row->available_qty = $balances[$row->item_id] ?? 0;
 

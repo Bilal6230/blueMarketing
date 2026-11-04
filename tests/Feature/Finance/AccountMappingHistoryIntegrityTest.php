@@ -18,11 +18,24 @@ class AccountMappingHistoryIntegrityTest extends TestCase
         $this->assertSame(':memory:', DB::connection()->getDatabaseName());
         $this->app->instance('request', Request::create('/', 'GET', [], ['selected_action' => 5]));
         Schema::dropAllTables();
+        Schema::create('projects', function (Blueprint $t): void {
+            $t->id();
+        });
+        Schema::create('head_accountings', function (Blueprint $t): void {
+            $t->id(); $t->boolean('is_active');
+        });
+        Schema::create('subhead_accountings', function (Blueprint $t): void {
+            $t->id(); $t->boolean('is_active');
+        });
         Schema::create('project_head_subheads', function (Blueprint $t): void {
             $t->id(); $t->unsignedBigInteger('project_id');
             $t->unsignedBigInteger('head_accounting_id'); $t->unsignedBigInteger('subhead_accounting_id');
+            $t->unsignedBigInteger('plot_id')->nullable(); $t->unsignedBigInteger('customer_id')->nullable();
             $t->timestamps(); $t->softDeletes();
         });
+        DB::table('projects')->insert([['id' => 5], ['id' => 6]]);
+        DB::table('head_accountings')->insert([['id' => 10, 'is_active' => 1], ['id' => 30, 'is_active' => 1]]);
+        DB::table('subhead_accountings')->insert(['id' => 20, 'is_active' => 1]);
         DB::table('project_head_subheads')->insert([
             'id' => 1, 'project_id' => 5, 'head_accounting_id' => 10, 'subhead_accounting_id' => 20,
         ]);

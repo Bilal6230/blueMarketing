@@ -9,8 +9,11 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Schema;
 use App\Models\AttendanceDevice;
 use App\Models\User;
+use App\Models\ProjectBankAccount;
+use App\Models\ProjectHeadSubhead;
 use RealRashid\SweetAlert\Facades\Alert;
 use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Support\Facades\DB;
 
 class SettingController extends Controller
 {
@@ -19,6 +22,13 @@ class SettingController extends Controller
         $x['title']     = 'Settings';
         $x['types'] = Ledger::distinct()->pluck('type')->toArray();
         $x['category']  = Setting::where('type', '!=', 'toggle')->select('category')->groupBy('category')->get();
+        $categoryNames = $x['category']->pluck('category')->all();
+        $requestedTab = (string) request()->query('tab', '');
+        $x['activeSettingsTab'] = $requestedTab === ''
+            ? ($categoryNames[0] ?? null)
+            : (in_array($requestedTab, $categoryNames, true) ? $requestedTab : null);
+        $x['attendanceTabActive'] = $requestedTab === 'attendance-machine';
+        $x['financeSettingsTabActive'] = $requestedTab === 'bank-accounts';
         $projectId = (int) getSelectedTown();
         $isAttendanceAdmin = auth()->user()->hasAnyRole(['admin', 'superadmin']);
         if (!auth()->user()->hasRole('superadmin') && $projectId > 0) {
@@ -40,7 +50,175 @@ class SettingController extends Controller
             : collect();
         $x['attendanceProjectId'] = $projectId;
         $x['canManageAttendanceDevice'] = $isAttendanceAdmin;
+        $x['financeSettingsProjectId'] = $projectId;
+        $x['canManageFinanceSettings'] = $isAttendanceAdmin && auth()->user()->can('update setting') && $projectId > 0;
+        $financeSchemaReady = Schema::hasTable('project_bank_accounts') && Schema::hasTable('project_bank_account_audits');
+        $x['financeSettingsSchemaReady'] = $financeSchemaReady;
+        $defaultPaymentLabels = [1 => 'Cash', 2 => 'Online', 3 => 'Check'];
+        $x['projectPaymentMethodLabels'] = $projectId > 0 && Schema::hasTable('project_payment_method_labels')
+            ? collect($defaultPaymentLabels)->map(fn ($label, $code) => DB::table('project_payment_method_labels')
+                ->where('project_id', $projectId)->where('method_code', $code)->value('label') ?: $label)
+            : collect($defaultPaymentLabels);
+        $x['paymentMethodLabelsReady'] = Schema::hasTable('project_payment_method_labels') && Schema::hasTable('project_payment_method_label_audits');
+        $x['paymentMethodLabelAudits'] = $x['paymentMethodLabelsReady'] && $projectId > 0
+            ? DB::table('project_payment_method_label_audits as audit')->leftJoin('users as actor', 'actor.id', '=', 'audit.actor_id')
+                ->where('audit.project_id', $projectId)->orderByDesc('audit.created_at')->limit(100)
+                ->get(['audit.method_code', 'audit.old_label', 'audit.new_label', 'audit.created_at', 'actor.name as actor_name'])
+            : collect();
+        $x['projectBankAccounts'] = $financeSchemaReady && $projectId > 0
+            ? ProjectBankAccount::with(['accountMapping.headAccounting', 'accountMapping.subheadAccounting'])
+                ->where('project_id', $projectId)->orderByDesc('is_active')->orderBy('bank_name')->get()
+            : collect();
+        $x['projectBankAccount'] = $financeSchemaReady && $projectId > 0
+            ? ProjectBankAccount::where('project_id', $projectId)->when(request()->filled('bank_account_id'),
+                fn ($q) => $q->whereKey((int) request('bank_account_id')))->first()
+            : null;
+        $x['projectBankMappings'] = $financeSchemaReady && $projectId > 0
+            ? ProjectHeadSubhead::availableForPosting()->with(['headAccounting:id,name', 'subheadAccounting:id,name'])
+                ->where('project_id', $projectId)->whereNull('plot_id')->whereNull('customer_id')
+                ->orderBy('head_accounting_id')->orderBy('subhead_accounting_id')->get()
+            : collect();
+        $x['projectBankAccountAudits'] = $financeSchemaReady && $projectId > 0
+            ? DB::table('project_bank_account_audits as audit')
+                ->join('project_bank_accounts as bank', function ($join) { $join->on('bank.id', '=', 'audit.bank_account_id')->on('bank.project_id', '=', 'audit.project_id'); })
+                ->leftJoin('users as actor', 'actor.id', '=', 'audit.actor_id')
+                ->where('audit.project_id', $projectId)
+                ->orderByDesc('audit.created_at')->limit(100)
+                ->get(['audit.action', 'audit.old_values', 'audit.new_values', 'audit.created_at', 'bank.bank_name', 'bank.account_title', 'actor.name as actor_name'])
+            : collect();
+        if ($x['projectBankAccount'] && !$x['projectBankMappings']->contains('id', $x['projectBankAccount']->account_mapping_id)) {
+            $legacyMapping = ProjectHeadSubhead::with(['headAccounting:id,name', 'subheadAccounting:id,name'])
+                ->where('project_id', $projectId)->whereKey($x['projectBankAccount']->account_mapping_id)->first();
+            if ($legacyMapping) $x['projectBankMappings']->prepend($legacyMapping);
+        }
         return view('admin.setting', $x);
+    }
+
+    public function saveProjectBankAccount(Request $request)
+    {
+        abort_unless($request->user()->hasAnyRole(['admin', 'superadmin']) && $request->user()->can('update setting'), 403);
+        abort_unless(Schema::hasTable('project_bank_accounts') && Schema::hasTable('project_bank_account_audits'), 409,
+            'Project bank account migration is required.');
+        $projectId = (int) getSelectedTown();
+        abort_unless($projectId > 0, 400, 'Select a project first.');
+        if (!$request->user()->hasRole('superadmin')) abort_unless((int) $request->user()->project_id === $projectId, 403);
+
+        $data = $request->validate([
+            'bank_account_id' => ['nullable', 'integer', 'min:1'],
+            'account_mapping_id' => ['required', 'integer', 'min:1'],
+            'bank_name' => ['required', 'string', 'max:120'],
+            'account_title' => ['required', 'string', 'max:120'],
+            'branch' => ['nullable', 'string', 'max:120'],
+            'account_number' => ['nullable', 'string', 'max:255'],
+            'is_active' => ['required', 'boolean'],
+        ]);
+
+        try {
+            $accountId = DB::transaction(function () use ($request, $data, $projectId): int {
+                $account = !empty($data['bank_account_id'])
+                    ? ProjectBankAccount::where('project_id', $projectId)->lockForUpdate()->findOrFail((int) $data['bank_account_id'])
+                    : new ProjectBankAccount(['project_id' => $projectId, 'created_by' => $request->user()->id]);
+                $mappingQuery = ProjectHeadSubhead::where('project_id', $projectId)
+                    ->whereNull('plot_id')->whereNull('customer_id')
+                    ->whereKey((int) $data['account_mapping_id'])->lockForUpdate();
+                if ((int) $data['is_active'] !== 1) $mappingQuery->where(function ($q) use ($account, $data) {
+                    $q->whereHas('headAccounting', fn ($h) => $h->where('is_active', 1))
+                        ->whereHas('subheadAccounting', fn ($s) => $s->where('is_active', 1));
+                    if ($account->exists && (int) $account->account_mapping_id === (int) $data['account_mapping_id']) {
+                        $q->orWhereKey((int) $data['account_mapping_id']);
+                    }
+                });
+                else $mappingQuery->whereHas('headAccounting', fn ($h) => $h->where('is_active', 1))
+                    ->whereHas('subheadAccounting', fn ($s) => $s->where('is_active', 1));
+                $mapping = $mappingQuery->first();
+                abort_unless($mapping, 422, 'Select an active account mapping from this project. Inactive mappings can only remain linked to a deactivated bank account.');
+                if ($account->exists && (int) $account->account_mapping_id !== (int) $mapping->id) {
+                    try {
+                        app(\App\Services\Finance\AccountMappingHistoryGuard::class)
+                            ->assertNoFinancialHistory((int) $account->account_mapping_id);
+                    } catch (\DomainException $exception) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'account_mapping_id' => 'This bank account has posted financial history. Keep its existing accounting mapping and create a separate bank profile for another account.',
+                        ]);
+                    }
+                }
+                $old = $account->exists ? $this->bankAccountAuditValues($account) : null;
+                $account->fill([
+                    'account_mapping_id' => $mapping->id, 'bank_name' => trim($data['bank_name']),
+                    'account_title' => trim($data['account_title']), 'branch' => isset($data['branch']) ? trim($data['branch']) : null,
+                    'is_active' => (bool) $data['is_active'], 'updated_by' => $request->user()->id,
+                ]);
+                if (!$account->exists || trim((string) ($data['account_number'] ?? '')) !== '') {
+                    $account->account_number = trim((string) ($data['account_number'] ?? '')) ?: null;
+                }
+                $account->save();
+                DB::table('project_bank_account_audits')->insert([
+                    'project_id' => $projectId, 'bank_account_id' => $account->id,
+                    'action' => $old === null ? 'created' : 'updated',
+                    'old_values' => $old === null ? null : json_encode($old, JSON_THROW_ON_ERROR),
+                    'new_values' => json_encode($this->bankAccountAuditValues($account), JSON_THROW_ON_ERROR),
+                    'actor_id' => $request->user()->id, 'created_at' => now(),
+                ]);
+                return (int) $account->id;
+            }, 3);
+        } catch (\Illuminate\Database\QueryException $e) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'account_mapping_id' => 'This accounting mapping is already assigned to another bank account in this project.',
+            ]);
+        }
+
+        return redirect()->route('setting.index', ['tab' => 'bank-accounts'])
+            ->with('success', 'Project bank account settings saved. Existing transaction history was not changed.');
+    }
+
+    public function savePaymentMethodLabels(Request $request)
+    {
+        abort_unless($request->user()->hasAnyRole(['admin', 'superadmin']) && $request->user()->can('update setting'), 403);
+        abort_unless(Schema::hasTable('project_payment_method_labels') && Schema::hasTable('project_payment_method_label_audits'), 409,
+            'Payment method settings migration is required.');
+        $projectId = (int) getSelectedTown();
+        abort_unless($projectId > 0, 400, 'Select a project first.');
+        if (!$request->user()->hasRole('superadmin')) abort_unless((int) $request->user()->project_id === $projectId, 403);
+        $data = $request->validate([
+            'labels' => ['required', 'array'],
+            'labels.1' => ['required', 'string', 'max:40'],
+            'labels.2' => ['required', 'string', 'max:40'],
+            'labels.3' => ['required', 'string', 'max:40'],
+        ]);
+        DB::transaction(function () use ($data, $projectId, $request): void {
+            DB::table('projects')->where('id', $projectId)->lockForUpdate()->firstOrFail();
+            foreach ([1, 2, 3] as $code) {
+                $newLabel = trim($data['labels'][$code]);
+                abort_if($newLabel === '', 422, 'Payment method labels cannot be blank.');
+                $oldLabel = DB::table('project_payment_method_labels')->where('project_id', $projectId)
+                    ->where('method_code', $code)->lockForUpdate()->value('label');
+                if ($oldLabel === $newLabel) continue;
+                if ($oldLabel === null) {
+                    DB::table('project_payment_method_labels')->insert([
+                        'project_id' => $projectId, 'method_code' => $code, 'label' => $newLabel,
+                        'updated_by' => $request->user()->id, 'created_at' => now(), 'updated_at' => now(),
+                    ]);
+                } else {
+                    DB::table('project_payment_method_labels')->where('project_id', $projectId)->where('method_code', $code)
+                        ->update(['label' => $newLabel, 'updated_by' => $request->user()->id, 'updated_at' => now()]);
+                }
+                DB::table('project_payment_method_label_audits')->insert([
+                    'project_id' => $projectId, 'method_code' => $code, 'old_label' => $oldLabel,
+                    'new_label' => $newLabel, 'actor_id' => $request->user()->id, 'created_at' => now(),
+                ]);
+            }
+        }, 3);
+        return redirect()->route('setting.index', ['tab' => 'bank-accounts'])->with('success', 'Project payment method labels saved. Their accounting behavior and legacy codes are unchanged.');
+    }
+
+    private function bankAccountAuditValues(ProjectBankAccount $account): array
+    {
+        $number = (string) ($account->account_number ?? '');
+        return [
+            'account_mapping_id' => (int) $account->account_mapping_id, 'bank_name' => $account->bank_name,
+            'account_title' => $account->account_title, 'branch' => $account->branch,
+            'account_number_last4' => $number === '' ? null : substr($number, -4), 'is_active' => (bool) $account->is_active,
+        ];
     }
 
     public function store(Request $request)

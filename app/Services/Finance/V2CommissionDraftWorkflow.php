@@ -37,8 +37,11 @@ final class V2CommissionDraftWorkflow
                 || !is_int($line['account_id'])) {
                 throw new \DomainException('V2_CV_INVALID_LINE');
             }
-            if (!DB::table('project_head_subheads')->where('id', $line['account_id'])
-                ->where('project_id', $projectId)->exists()) {
+            if (!DB::table('project_head_subheads as account')
+                ->join('head_accountings as head', 'head.id', '=', 'account.head_accounting_id')
+                ->join('subhead_accountings as sub', 'sub.id', '=', 'account.subhead_accounting_id')
+                ->where('account.id', $line['account_id'])->where('account.project_id', $projectId)
+                ->where('head.is_active', 1)->where('sub.is_active', 1)->exists()) {
                 throw new \DomainException('V2_CV_FOREIGN_ACCOUNT');
             }
             $dr = $this->cents($line['debit']);

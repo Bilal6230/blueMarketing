@@ -1,4 +1,4 @@
-<div class="tab-pane {{ request('tab') === 'attendance-machine' ? 'active' : '' }}" id="attendance-machine">
+<div class="tab-pane {{ $attendanceTabActive ? 'active' : '' }}" id="attendance-machine">
     @if(!$attendanceTablesAvailable)
         <div class="alert alert-warning">Attendance device tables are not installed. Run <code>php artisan migrate --path=database/migrations/2026_11_03_000001_create_attendance_device_setup_tables.php</code>.</div>
     @elseif(!$canManageAttendanceDevice)

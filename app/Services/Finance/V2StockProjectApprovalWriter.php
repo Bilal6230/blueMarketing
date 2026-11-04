@@ -59,7 +59,7 @@ final class V2StockProjectApprovalWriter
                 || !DB::table('users')->where('id', $actor)->exists()) {
                 throw new \DomainException('V2_STOCK_APPROVAL_PROJECT_OR_USER_INVALID');
             }
-            $snapshot = (new V2StockSourceSnapshot())->read($kind, $sourceId);
+            $snapshot = (new V2StockSourceSnapshot())->read($kind, $sourceId, $projectId);
             $existing = DB::table($table)->where($fk, $sourceId)
                 ->lockForUpdate()->first();
             if ($existing) {

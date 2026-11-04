@@ -67,15 +67,17 @@ final class ModuleMetrics
             'cancelled' => $cancelled, 'available' => max(0, $total - $sold - $hold - $booked)];
     }
 
-    public function stock(): array
+    public function stock(int $projectId): array
     {
-        if (!Schema::hasTable('stock_items') || !Schema::hasTable('stock_item_balances')) {
+        if (!Schema::hasTable('stock_items') || !Schema::hasTable('stock_project_item_balances')) {
             return ['items' => 0, 'quantity' => 0, 'value' => 0, 'inward' => 0, 'outward' => 0];
         }
-        $inventory = DB::table('stock_items as i')->leftJoin('stock_item_balances as b', 'b.item_id', '=', 'i.id')
+        $inventory = DB::table('stock_items as i')->leftJoin('stock_project_item_balances as b', function ($join) use ($projectId) {
+            $join->on('b.item_id', '=', 'i.id')->where('b.project_id', '=', $projectId);
+        })
             ->whereNull('i.deleted_at')->where('i.is_active', 1)
             ->selectRaw('COUNT(i.id) items, COALESCE(SUM(b.on_hand_qty),0) quantity, COALESCE(SUM(b.on_hand_qty*i.default_rate_minor),0) value_minor')->first();
-        $today = Schema::hasTable('stock_movements') ? DB::table('stock_movements')->whereDate('movement_date', now()->toDateString())
+        $today = Schema::hasTable('stock_movements') ? DB::table('stock_movements')->where('project_id', $projectId)->whereDate('movement_date', now()->toDateString())
             ->groupBy('direction')->selectRaw('direction, COALESCE(SUM(qty),0) qty')->pluck('qty', 'direction') : collect();
         return ['items' => (int) $inventory->items, 'quantity' => (float) $inventory->quantity,
             'value' => (float) $inventory->value_minor / 100, 'inward' => (float) ($today['IN'] ?? 0),

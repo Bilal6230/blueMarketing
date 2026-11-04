@@ -14,6 +14,7 @@ class StockParty extends Model
 
     protected $fillable = [
         'type',      // Supplier | Consumer | Site
+        'vendor_code',
         'name',
         'mobile',
         'address',

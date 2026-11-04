@@ -19,6 +19,7 @@ use App\Models\AccountingExpense;
 use App\Models\SubheadAccounting;
 use App\Models\ProjectHeadSubhead;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use App\Models\Role;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -29,6 +30,16 @@ use App\Repository\Lead\LeadRepository as lead_repo;
 
 class VoucherController extends Controller
 {
+    private function projectAccountOptionRelations(): array
+    {
+        $relations = ['subheadAccounting'];
+        if (Schema::hasTable('project_bank_accounts')) {
+            $relations[] = 'projectBankAccount';
+        }
+
+        return $relations;
+    }
+
     private function typedCashData(Request $request, bool $incoming)
     {
         $project = (int) getSelectedTown();
@@ -288,12 +299,13 @@ class VoucherController extends Controller
         $selectedProjectId = getSelectedTown();
         $x['data'] = [];
 
-        $x['headaccounts'] = ProjectHeadSubhead::select('project_id', 'head_accounting_id')
+        $x['headaccounts'] = ProjectHeadSubhead::availableForPosting()
+            ->select('project_id', 'head_accounting_id')
             ->distinct()
             ->with('headAccounting')
             ->where(['project_id' => $selectedProjectId])
             ->get();
-        $x['partyaccounts'] = ProjectHeadSubhead::with('subheadAccounting')
+        $x['partyaccounts'] = ProjectHeadSubhead::availableForPosting()->with($this->projectAccountOptionRelations())
             ->withSum('ledgers as total_in', 'amount_in')
             ->withSum('ledgers as total_out', 'amount_out')
             ->whereIn('head_accounting_id', $x['headaccounts']->pluck('head_accounting_id'))
@@ -539,14 +551,14 @@ class VoucherController extends Controller
 
         // $x['data'] = $data;
         $x['data'] = [];
-        $x['headaccounts'] = ProjectHeadSubhead::query()->select('project_id', 'head_accounting_id')
+        $x['headaccounts'] = ProjectHeadSubhead::availableForPosting()->select('project_id', 'head_accounting_id')
             ->distinct()
             ->with(['headAccounting:id,name'])
             ->where('project_id', $selectedProjectId)
             ->get();
-        $x['partyaccounts'] = ProjectHeadSubhead::query()
-            ->select('project_id', 'head_accounting_id', 'subhead_accounting_id')
-            ->with(['subheadAccounting:id,name'])
+        $x['partyaccounts'] = ProjectHeadSubhead::availableForPosting()
+            ->select('id', 'project_id', 'head_accounting_id', 'subhead_accounting_id')
+            ->with($this->projectAccountOptionRelations())
             ->withSum('ledgers as total_in', 'amount_in')
             ->withSum('ledgers as total_out', 'amount_out')
             ->where('project_id', $selectedProjectId)
@@ -1003,7 +1015,7 @@ class VoucherController extends Controller
                         if (!$accountsId || !$subaccountsId) {
                             throw new \RuntimeException('Both account fields are required.');
                         }
-                        $creditAccountId = ProjectHeadSubhead::where('head_accounting_id', $accountsId)
+                        $creditAccountId = ProjectHeadSubhead::availableForPosting()->where('head_accounting_id', $accountsId)
                             ->where('subhead_accounting_id', $subaccountsId)
                             ->where('project_id', $selectedProjectId)
                             ->value('id');
@@ -1017,7 +1029,7 @@ class VoucherController extends Controller
                         // belongs to the currently selected project.
                         $fallbackAccountId = optional(optional($lockedLedger->ledger)->projectHeadSubhead)->id;
                         if ($fallbackAccountId) {
-                            $creditAccountId = ProjectHeadSubhead::query()
+                            $creditAccountId = ProjectHeadSubhead::availableForPosting()
                                 ->whereKey($fallbackAccountId)
                                 ->where('project_id', $selectedProjectId)
                                 ->value('id');
@@ -1083,13 +1095,12 @@ class VoucherController extends Controller
 
                     if ($existingClearance->isEmpty()) {
                         $voucherNumber = getVocuherNumber('BR');
-                        $lastId = getLastLedgerIdByType('BR');
-
                         Ledger::create([
                             'customer_ledger_id' => $lockedLedger->id,
                             'type' => 'BR',
                             'voucher_number' => $voucherNumber,
-                            'type_id' => ((int) $lastId) + 1,
+                            'type_id' => app(\App\Services\Finance\ProjectVoucherAllocator::class)
+                                ->nextLedgerId((int) $selectedProjectId, 'BR'),
                             'project_head_subheads_id' => $creditAccountId,
                             'reference' => $clearanceReference,
                             'amount_in' => 0.00,
@@ -1380,13 +1391,14 @@ class VoucherController extends Controller
         // ───────────────────────────────────────────────────────────────
         // Keep everything from here downward as-is
 
-        $x['headaccounts'] = ProjectHeadSubhead::select('project_id', 'head_accounting_id')
+        $x['headaccounts'] = ProjectHeadSubhead::availableForPosting()
+            ->select('project_id', 'head_accounting_id')
             ->distinct()
             ->with('headAccounting')
             ->where(['project_id' => $selectedProjectId])
             ->get();
 
-        $x['partyaccounts'] = ProjectHeadSubhead::with('subheadAccounting')
+        $x['partyaccounts'] = ProjectHeadSubhead::availableForPosting()->with($this->projectAccountOptionRelations())
             ->withSum('ledgers as total_in', 'amount_in')
             ->withSum('ledgers as total_out', 'amount_out')
             ->whereIn('head_accounting_id', $x['headaccounts']->pluck('head_accounting_id'))

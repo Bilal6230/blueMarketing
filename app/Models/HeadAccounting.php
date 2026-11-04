@@ -20,6 +20,12 @@ class HeadAccounting extends Model
     {
         return $this->hasMany(SubheadAccounting::class);
     }
+
+    public function accountGroup()
+    {
+        return $this->belongsToMany(AccountGroup::class, 'project_head_account_groups', 'head_accounting_id', 'account_group_id')
+            ->withPivot(['project_id', 'create_by'])->withTimestamps();
+    }
     public function subheadAccounting()
     {
         $selectedProjectId = getSelectedTown();

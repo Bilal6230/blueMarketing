@@ -24,7 +24,7 @@ final class V2OriginalJournalWorkflow
         }
         return DB::transaction(function () use ($projectId, $key, $input, $actorId): int {
             DB::table('projects')->where('id', $projectId)->lockForUpdate()->firstOrFail();
-            $accounts = \App\Models\ProjectHeadSubhead::query()->where('project_id', $projectId)
+            $accounts = \App\Models\ProjectHeadSubhead::availableForPosting()->where('project_id', $projectId)
                 ->whereIn('id', $input['sub_accounts'])->orderBy('id')->lockForUpdate()
                 ->get(['id', 'head_accounting_id'])->keyBy('id');
             foreach ($input['sub_accounts'] as $i => $accountId) {
@@ -57,7 +57,9 @@ final class V2OriginalJournalWorkflow
                     ])->all() : [];
                 if (!$header || (string) $header->date !== $input['date']
                     || (string) ($header->reference ?? '') !== (string) ($input['reference'] ?? '')
-                    || (string) $header->description !== $input['description'] || $stored !== $lines) {
+                    || (string) $header->description !== $input['description']
+                    || (int) ($header->contractor_id ?? 0) !== (int) ($input['contractor_id'] ?? 0)
+                    || $stored !== $lines) {
                     throw new \DomainException('V2_JV_REQUEST_CONFLICT');
                 }
                 (new V2PostingGateway())->postJournal($projectId, (int) $sourceId, $key, $actorId);
@@ -72,6 +74,9 @@ final class V2OriginalJournalWorkflow
                 'total_credit' => intdiv($credit, 100).'.'.str_pad((string) ($credit % 100), 2, '0', STR_PAD_LEFT),
                 'created_by' => $actorId, 'created_at' => now(), 'updated_at' => now(),
             ]);
+            if (array_key_exists('contractor_id', $input)) {
+                DB::table('journal_vouchers')->where('id', $id)->update(['contractor_id' => $input['contractor_id']]);
+            }
             foreach ($lines as $line) {
                 DB::table('journal_voucher_details')->insert($line + [
                     'journal_voucher_id' => $id, 'created_by' => $actorId,

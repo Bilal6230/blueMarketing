@@ -300,13 +300,21 @@
                     data: {
                         _token: '{{ csrf_token() }}', // Add CSRF token
                         plot_type: plot_type, // Pass project ID to server
-                        project_id: '{{ getSelectedTown() }}'
+                        project_id: '{{ getSelectedTown() }}',
+                        booking_date: $('input[name="booking_date"]').val()
                     },
                     success: function (data) {
                         $('#plot_id').empty();
                         $('#plot_id').append('<option value="">Select Plot</option>');
                         $.each(data, function (key, plot) {
-                            $('#plot_id').append('<option value="' + plot.id + '" data-size="' + plot.size + '" >' + plot.name + '</option>');
+                            $('#plot_id').append($('<option>', {
+                                value: plot.id,
+                                text: plot.name,
+                                'data-size': plot.size,
+                                'data-rate': plot.suggested_rate ?? '',
+                                'data-corner-percent': plot.corner_charge_percent ?? '',
+                                'data-facing-percent': plot.facing_charge_percent ?? ''
+                            }));
                         });
                     }
                 });
@@ -324,6 +332,11 @@
                     $('#plot_id').empty();
                     $('#plot_id').append('<option value="">Select Plot</option>');
                 }
+            });
+
+            $('input[name="booking_date"]').on('change', function () {
+                const plotType = $('#plot_type').val();
+                if (plotType) fetch_plot_list(plotType);
             });
 
             // Event listener for project dropdown change
@@ -348,11 +361,16 @@
                 // on change plot id get plot size from selected plot data-size and append it to plot size field
                 var selectedPlotSize = $(this).find(':selected').data('size'); // Get the data-size attribute of the selected plot
                 $('#plot_size').val(selectedPlotSize); // Set the value of the plot size input field to the selected plot's size
+                var suggestedRate = $(this).find(':selected').data('rate');
+                if (suggestedRate !== undefined && suggestedRate !== '') {
+                    $('#plot_rate').val(suggestedRate);
+                }
                 if (selectedPlotSize > 0) {
                     $('#plot_rate').prop('readonly', false); // Make plot_rate input field writable
                 } else {
                     $('#plot_rate').prop('readonly', true); // Make plot_rate input field readonly
                 }
+                updateConfiguredCharges();
 
 
             });
@@ -384,6 +402,7 @@
                     $('#park_facing').val('');
                     $('#park_facing').prop('readonly', true);
                 }
+                updateConfiguredCharges();
             });
 
             $('#is_corner').change(function () {
@@ -393,6 +412,7 @@
                     $('#carner_price').val('');
                     $('#carner_price').prop('readonly', true);
                 }
+                updateConfiguredCharges();
             });
 
             // Event listener for plot size and plot rate change
@@ -414,10 +434,28 @@
 
                     // Set the value of #total_price
                     $('#sub_total_price').val(formattedPrice);
+                    updateConfiguredCharges();
                     updateGrandTotal();
 
                 }
             });
+            function updateConfiguredCharges() {
+                const option = $('#plot_id').find(':selected');
+                const subtotal = parseFloat($('#sub_total_price').val().replace(/,/g, '')) || 0;
+                const facingPercent = option.attr('data-facing-percent');
+                const cornerPercent = option.attr('data-corner-percent');
+                if ($('#is_park').val() == 1 && facingPercent !== undefined && facingPercent !== '') {
+                    $('#park_facing').val((Math.round((subtotal * parseFloat(facingPercent) / 100 + Number.EPSILON) * 100) / 100).toFixed(2)).prop('readonly', true);
+                } else if ($('#is_park').val() == 0) {
+                    $('#park_facing').val('0').prop('readonly', true);
+                }
+                if ($('#is_corner').val() == 1 && cornerPercent !== undefined && cornerPercent !== '') {
+                    $('#carner_price').val((Math.round((subtotal * parseFloat(cornerPercent) / 100 + Number.EPSILON) * 100) / 100).toFixed(2)).prop('readonly', true);
+                } else if ($('#is_corner').val() == 0) {
+                    $('#carner_price').val('0').prop('readonly', true);
+                }
+                updateGrandTotal();
+            }
             function updateGrandTotal() {
                 var subTotalPrice = parseFloat($('#sub_total_price').val().replace(/,/g, '')) || 0;
                 var parkFacing = parseFloat($('#park_facing').val().replace(/,/g, '')) || 0;

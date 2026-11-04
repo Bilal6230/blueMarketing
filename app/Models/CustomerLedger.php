@@ -16,6 +16,7 @@ class CustomerLedger extends Model
     protected $fillable = [
         'id',
         'customer_id',
+        'contractor_id',
         'project_id',
         'plot_id',
         'type_id',

@@ -123,6 +123,10 @@ class ProjectController extends Controller
 
     public function bookingList(Request $request)
     {
+        $validated = $request->validate([
+            'project_id' => ['required', 'integer', 'min:1', 'exists:projects,id'],
+        ]);
+        $projectId = (int) $validated['project_id'];
         $today = Carbon::today()->toDateString();
 
         // Start the query builder
@@ -133,13 +137,9 @@ class ProjectController extends Controller
             // 'bookingDetails' => function ($query) use ($today) {
             //     $query->whereDate('due_date', '<=', $today);
             // }
-        ])->where('cancel_status', '0');
+        ])->where('cancel_status', '0')->where('project_id', $projectId);
 
         // Optional filters based on request parameters
-        if ($request->has('project_id')) {
-            $query->where('project_id', $request->input('project_id'));
-        }
-
         if ($request->has('customer_id')) {
             $query->where('customer_id', $request->input('customer_id'));
         }
@@ -218,9 +218,12 @@ class ProjectController extends Controller
         })
         ->values();
 
-        $brokers = ProjectHeadSubhead::where('head_accounting_id', 6)
-        ->join('subhead_accountings', 'project_head_subheads.subhead_accounting_id', '=', 'subhead_accountings.id')
-        ->get();
+        $brokers = ProjectHeadSubhead::availableForPosting()
+            ->where('project_head_subheads.project_id', $projectId)
+            ->where('project_head_subheads.head_accounting_id', 6)
+            ->join('subhead_accountings', 'project_head_subheads.subhead_accounting_id', '=', 'subhead_accountings.id')
+            ->select('project_head_subheads.*', 'subhead_accountings.name as name')
+            ->get();
 
 
         return response()->json([

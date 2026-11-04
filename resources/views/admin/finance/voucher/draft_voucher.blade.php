@@ -487,6 +487,7 @@
                         data: {
                             acct_type: acctType,
                             action: 'get_head',
+                            active_only: true,
                             _token: '{{ csrf_token() }}'
                         },
                         success: function(data) {
@@ -545,6 +546,7 @@
                         data: {
                             accountID: accountID,
                             action: 'get_child',
+                            active_only: true,
                             _token: '{{ csrf_token() }}'
                         },
                         success: function(data) {
@@ -730,6 +732,7 @@
                         data: {
                             acct_type: acctType,
                             action: 'get_head',
+                            active_only: true,
                             _token: '{{ csrf_token() }}'
                         },
                         success: function(data) {
@@ -790,6 +793,7 @@
                         data: {
                             accountID: accountID,
                             action: 'get_child',
+                            active_only: true,
                             _token: '{{ csrf_token() }}'
                         },
                         success: function(data) {
@@ -1204,7 +1208,11 @@
                                                                 $balance < 0 ? 'text-danger' : 'text-success';
                                                         @endphp
                                                         <option value="{{ $v->subhead_accounting_id }}">
-                                                            {{ $v->subheadAccounting->name ?? '' }} &
+                                                            {{ $v->subheadAccounting->name ?? '' }}
+                                                            @if ($v->projectBankAccount)
+                                                                — Bank: {{ $v->projectBankAccount->bank_name }} / {{ $v->projectBankAccount->account_title }}
+                                                            @endif
+                                                            &
                                                             Balance = <span
                                                                 class="{{ $balanceClass }}">{{ number_format($balance, 2) }}</span>
                                                         </option>

@@ -739,6 +739,7 @@
                             <button class="tab" data-tab="sites">Site List</button>
                             <button class="tab" data-tab="siteReport">Site Voucher</button>
                             <button class="tab" data-tab="personReport">Labour Payment</button>
+                            <a class="tab" href="{{ route('contractors.index') }}">Contractors</a>
                         </div>
                     </div>
         @php
@@ -866,9 +867,10 @@
                                     <small class="text-danger error"></small>
                                 </div>
                             </div>
+                            <div class="help">A unique project-specific Site Code is assigned automatically when saved.</div>
                             <div class="row" style="margin-top:10px">
                                 <button class="btn pri" id="btnAddSite">Add Site</button>
-                                <span class="help">Adds into DOM. Replace with AJAX to persist.</span>
+                                <span class="help">Site details are saved for the selected project.</span>
                             </div>
                         </form>
                     </div>
@@ -881,8 +883,10 @@
                         <table id="siteTable table">
                             <thead>
                                 <tr>
+                                    <th>Site Code</th>
                                     <th>Site</th>
                                     <th>Address</th>
+                                    <th>Status</th>
                                     <th>Edit</th>
                                 </tr>
                             </thead>
@@ -908,7 +912,9 @@
                             <select id="repSite" class=" js-tomselect" name="site_id">
                                 <option value="">All Sites</option>
                                 @foreach ($sites as $site)
-                                    <option value="{{ $site->id }}">{{ $site->site_name }}</option>
+                                    @if ($site->is_active ?? true)
+                                        <option value="{{ $site->id }}">{{ $site->site_name }}</option>
+                                    @endif
                                 @endforeach
                             </select>
                         </div>
@@ -937,6 +943,13 @@
                             <form action="" method="post" id="createVoucherForm">
                                 @csrf
                                 @include('admin.finance.voucher.typed_posting_fields', ['includePostingDate' => true])
+                                <label for="voucher_contractor_id" class="small fw-bold">Contractor (optional)</label>
+                                <select name="contractor_id" id="voucher_contractor_id" class="form-control form-control-sm mb-2">
+                                    <option value="">Default Labour Party account</option>
+                                    @foreach(($contractors ?? collect()) as $contractor)
+                                        <option value="{{ $contractor->id }}">{{ $contractor->code }} — {{ $contractor->name }}</option>
+                                    @endforeach
+                                </select>
                                 <input type="hidden" name="attendance_ids" id="attendance_ids" required>
                                 <input type="hidden" name="start_date" id="startDateV">
                                 <input type="hidden" name="end_date" id="endDateV">
@@ -1025,6 +1038,13 @@
 
                     </form>
                     <div class="site-report-actions">
+                        <label for="payroll_contractor_id" class="small fw-bold mb-0">Contractor</label>
+                        <select id="payroll_contractor_id" class="form-control form-control-sm" style="max-width:280px">
+                            <option value="">Default Labour Party</option>
+                            @foreach(($contractors ?? collect()) as $contractor)
+                                <option value="{{ $contractor->id }}">{{ $contractor->code }} — {{ $contractor->name }}</option>
+                            @endforeach
+                        </select>
                         <button class="btn" id="btnPersonRun">Run</button>
                         <button type="button" class="btn btn-sm btn-outline-primary" id="btnPersonExport">
                             Print Report
@@ -1079,7 +1099,9 @@
                             <select id="attnSiteFilter" name="site_id" class="js-tomselect">
                                 <option value="">All Sites</option>
                                 @foreach ($sites as $site)
-                                    <option value="{{ $site->id }}">{{ $site->site_name }}</option>
+                                    @if ($site->is_active ?? true)
+                                        <option value="{{ $site->id }}">{{ $site->site_name }}</option>
+                                    @endif
                                 @endforeach
                             </select>
                         </div>
@@ -1165,7 +1187,9 @@
                             <label>Site</label>
                             <select id="mSite" name="site_id">
                                 @foreach ($sites as $site)
-                                    <option value="{{ $site->id }}">{{ $site->site_name }}</option>
+                                    @if ($site->is_active ?? true)
+                                        <option value="{{ $site->id }}">{{ $site->site_name }}</option>
+                                    @endif
                                 @endforeach
                             </select>
                         </div>
@@ -1371,6 +1395,16 @@
                     </div>
                 </div>
                 <div class="row">
+                    <div class="col"><label>Site Code</label><input id="editSiteCode" readonly /></div>
+                    <div class="col"><label>Status</label>
+                        <select id="editSiteStatus" name="is_active">
+                            <option value="1">Active</option>
+                            <option value="0">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="col"><label>Status change reason</label><input id="editSiteStatusReason" name="status_reason" maxlength="500" /></div>
+                </div>
+                <div class="row">
                     <div class="col"><label>Site Name</label><input id="editSiteName" name="site_name"
                             placeholder="e.g., Green Villas" />
                         <small class="text-danger error"></small>
@@ -1382,7 +1416,7 @@
                 </div>
                 <div class="row" style="margin-top:10px">
                     <button class="btn pri" id="btnUpdateSite">Update Site</button>
-                    <span class="help">Adds into DOM. Replace with AJAX to persist.</span>
+                    <span class="help">Site details are saved for the selected project.</span>
                 </div>
             </form>
         </div>
@@ -1999,6 +2033,9 @@
 
                 // Fill fields
                 $('#edit_site_id').val(site.id);
+                $('#editSiteCode').val(site.site_code || 'Assigned when saved');
+                $('#editSiteStatus').val(site.is_active === false || site.is_active === 0 ? '0' : '1');
+                $('#editSiteStatusReason').val('');
                 $('#editSiteName').val(site.site_name);
                 $('#editSiteAddr').val(site.site_address);
                 $('#edit_accounts_id').val(site.head_accounting_id).trigger('change');
@@ -2251,6 +2288,8 @@
                 form.find('[name]').each(function() {
                     let field = $(this);
                     let value = field.val()?.trim();
+
+                    if (field.attr('name') === 'status_reason' && value === '') return;
 
                     if (value === '') {
                         field.siblings('.error').removeClass('d-none').text(
@@ -2667,6 +2706,7 @@
                             projectID: {{ getSelectedTown() }}, // Replace with the dynamic project ID if applicable
                             accountID: accountID,
                             action: 'get_child',
+                            active_only: true,
                             _token: '{{ csrf_token() }}' // CSRF token for Laravel
                         },
                         success: function(response) {
@@ -2708,6 +2748,7 @@
                             projectID: {{ getSelectedTown() }}, // Replace with the dynamic project ID if applicable
                             accountID: accountID,
                             action: 'get_child',
+                            active_only: true,
                             _token: '{{ csrf_token() }}' // CSRF token for Laravel
                         },
                         success: function(response) {
@@ -2848,6 +2889,7 @@
                                     return window.originalPostingPayload(form);
                                 })(),
                                 labours: allLabours,
+                                contractor_id: $('#payroll_contractor_id').val() || null,
                                 week: week,
                                 start_date: start_date,
                                 end_date: end_date,

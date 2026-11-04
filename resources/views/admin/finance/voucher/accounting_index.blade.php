@@ -349,6 +349,7 @@
                         data: {
                             projectID: projectID,
                             action: 'get_head',
+                            active_only: true,
                             _token: '{{ csrf_token() }}' // Include CSRF token for Laravel
                         },
                         success: function (data) {
@@ -391,6 +392,7 @@
                             projectID: projectID,
                             accountID: accountID,
                             action: 'get_child',
+                            active_only: true,
 
                             _token: '{{ csrf_token() }}' // Include CSRF token for Laravel
                         },
@@ -428,6 +430,7 @@
                         data: {
                             projectID: e_projectID,
                             action: 'get_head',
+                            active_only: true,
                             _token: '{{ csrf_token() }}' // Include CSRF token for Laravel
                         },
                         success: function (data) {
@@ -469,6 +472,7 @@
                             projectID: projectID,
                             accountID: accountID,
                             action: 'get_child',
+                            active_only: true,
 
                             _token: '{{ csrf_token() }}' // Include CSRF token for Laravel
                         },

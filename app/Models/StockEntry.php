@@ -13,6 +13,7 @@ class StockEntry extends Model
     protected $table = 'stock_entries';
 
     protected $fillable = [
+        'project_id',
         'slip_no',
         'entry_date',
         'flow',
@@ -29,6 +30,7 @@ class StockEntry extends Model
         'entry_date' => 'date',
         'billed_at' => 'datetime',
         'party_id' => 'integer',
+        'project_id' => 'integer',
         'created_by' => 'integer',
         'updated_by' => 'integer',
     ];

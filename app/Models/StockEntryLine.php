@@ -12,6 +12,7 @@ class StockEntryLine extends Model
     protected $table = 'stock_entry_lines';
 
     protected $fillable = [
+        'project_id',
         'entry_id',
         'item_id',
         'qty',
@@ -20,6 +21,7 @@ class StockEntryLine extends Model
     ];
 
     protected $casts = [
+        'project_id' => 'integer',
         'entry_id' => 'integer',
         'item_id' => 'integer',
         'rate_minor' => 'integer',

@@ -12,6 +12,8 @@ use App\Models\Role;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpFoundation\Response;
@@ -34,13 +36,28 @@ class ProjectController extends Controller
         return view('admin.projects.index', $x);
     }
 
+    private function requireProjectSetupSchema(): void
+    {
+        foreach (['project_code', 'location', 'opening_date', 'closing_date', 'corner_charge_percent', 'facing_charge_percent'] as $column) {
+            abort_unless(Schema::hasColumn('projects', $column), 409, 'Run the project setup migration before editing project definitions.');
+        }
+        abort_unless(Schema::hasTable('project_charge_revisions'), 409, 'Run the project setup migration before editing project definitions.');
+    }
+
 
     public function store(Request $request)
     {
+        $this->requireProjectSetupSchema();
         $validator = Validator::make($request->all(), [
-            'project'      => ['required', 'string', 'max:255' ,'unique:projects'],
-            'address'     => ['required', 'string',  'max:255'],
-            'logo'        => [ 'image', 'max:8192'], // Assuming max file size is 2MB
+            'project' => ['required', 'string', 'max:255', 'unique:projects,project'],
+            'address' => ['required', 'string', 'max:255'],
+            'location' => ['nullable', 'string', 'max:255'],
+            'opening_date' => ['nullable', 'date'],
+            'closing_date' => ['nullable', 'date', 'after_or_equal:opening_date'],
+            'corner_charge_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'facing_charge_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'is_active' => ['required', 'boolean'],
+            'logo' => ['nullable', 'image', 'max:8192'],
         ]);
 
         if ($validator->fails()) {
@@ -48,36 +65,63 @@ class ProjectController extends Controller
         }
 
         try {
-            $imageName = time().'.'.$request->logo->extension();
-            $request->logo->move(public_path('images/logo'), $imageName);
-
-            $data = Project::create([
-                'project'     => $request->project,
-                'address'     => $request->address,
-                'is_active'   => $request->is_active,
-                'create_by'   => Auth::user()->id,
-                'logo'        => $imageName, // Save the image name in the database
-            ]);
-
-            $pivot = ProjectHeadSubhead::create([
-                'project_id' => $data->id,
-                'head_accounting_id' => 16,
-                'subhead_accounting_id' => 123,
-            ]);
-            $subAccounts = [
-                'Labour' => 'Labour Party',
-                'Project Sale' => 'Deduction',
-                'Project Sale' => 'Resale Profit',
-                'Project Sale' => 'Party Profit',
-                'Old Project Sale' => null,
-            ];
-            foreach ($subAccounts as $key => $account) {
-                $this->systemHeadSubheadAccountId($data->id, $key, $account, true);
+            $imageName = null;
+            if ($request->hasFile('logo')) {
+                $imageName = time() . '.' . $request->logo->extension();
+                $request->logo->move(public_path('images/logo'), $imageName);
             }
+            $validated = $validator->validated();
+            $data = DB::transaction(function () use ($validated, $imageName) {
+                $attributes = [
+                    'project' => $validated['project'], 'address' => $validated['address'],
+                    'is_active' => $validated['is_active'], 'create_by' => Auth::id(),
+                    'location' => $validated['location'] ?? null,
+                    'opening_date' => $validated['opening_date'] ?? null,
+                    'closing_date' => $validated['closing_date'] ?? null,
+                    'corner_charge_percent' => $validated['corner_charge_percent'] ?? 0,
+                    'facing_charge_percent' => $validated['facing_charge_percent'] ?? 0,
+                ];
+                if ($imageName !== null && Schema::hasColumn('projects', 'logo')) $attributes['logo'] = $imageName;
+                $project = Project::create($attributes);
+                if (Schema::hasColumn('projects', 'project_code')) {
+                    $project->project_code = sprintf('PRJ-%06d', $project->id);
+                    $project->save();
+                }
+                $defaultHead = HeadAccounting::query()->whereKey(16)->where('is_active', 1)->firstOrFail();
+                $defaultSubhead = SubheadAccounting::query()->whereKey(123)->where('is_active', 1)->firstOrFail();
+                $defaultMapping = ProjectHeadSubhead::firstOrCreate([
+                    'project_id' => $project->id,
+                    'head_accounting_id' => $defaultHead->id,
+                    'subhead_accounting_id' => $defaultSubhead->id,
+                    'plot_id' => null,
+                    'customer_id' => null,
+                ]);
+                if (!ProjectHeadSubhead::availableForPosting()->whereKey($defaultMapping->id)->exists()) {
+                    throw new \DomainException('PROJECT_SYSTEM_ACCOUNT_INACTIVE');
+                }
+                foreach ([
+                    ['Labour', 'Labour Party'],
+                    ['Project Sale', 'Deduction'],
+                    ['Project Sale', 'Resale Profit'],
+                    ['Project Sale', 'Party Profit'],
+                    ['Old Project Sale', null],
+                ] as [$head, $subhead]) {
+                    if ($subhead !== null) $this->systemHeadSubheadAccountId($project->id, $head, $subhead, true);
+                }
+                if (Schema::hasTable('project_charge_revisions')) {
+                    DB::table('project_charge_revisions')->insert([
+                        'project_id' => $project->id,
+                        'corner_charge_percent' => $validated['corner_charge_percent'] ?? 0,
+                        'facing_charge_percent' => $validated['facing_charge_percent'] ?? 0,
+                        'effective_from' => $validated['opening_date'] ?? now()->toDateString(),
+                        'changed_by' => Auth::id(), 'created_at' => now(),
+                    ]);
+                }
+                return $project;
+            });
 
             Alert::success('Notification', 'Data <b>' . $data->project . '</b> saved successfully.')->toToast()->toHtml();
         } catch (\Throwable $th) {
-            DB::rollback();
             Alert::error('Notification', 'Data <b>' .  $th->getMessage() . '</b>')->toToast()->toHtml();
         }
 
@@ -104,22 +148,28 @@ class ProjectController extends Controller
             ]);
         }
 
-        if (!$subhead) {
+        if (!$head || !$subhead) {
             throw new \Exception("System subhead not found: {$subheadName}");
         }
-        if($head && $subhead){
-            ProjectHeadSubhead::firstOrCreate(
-                [
-                    'project_id' => $projectId,
-                    'head_accounting_id' => $head->id,
-                    'subhead_accounting_id' => $subhead->id,
-                    'plot_id' => null,
-                    'customer_id' => null,
-                ]
-            );
+        if ((int) $head->is_active !== 1 || (int) $subhead->is_active !== 1) {
+            throw new \DomainException('PROJECT_SYSTEM_ACCOUNT_INACTIVE');
         }
 
-        return true;
+        $mapping = ProjectHeadSubhead::firstOrCreate(
+            [
+                'project_id' => $projectId,
+                'head_accounting_id' => $head->id,
+                'subhead_accounting_id' => $subhead->id,
+                'plot_id' => null,
+                'customer_id' => null,
+            ]
+        );
+
+        if (!ProjectHeadSubhead::availableForPosting()->whereKey($mapping->id)->exists()) {
+            throw new \DomainException('PROJECT_SYSTEM_ACCOUNT_INACTIVE');
+        }
+
+        return (int) $mapping->id;
     }
 
     public function show(Request $request)
@@ -142,8 +192,17 @@ class ProjectController extends Controller
 
     public function update(Request $request, Project $project)
     {
+        $this->requireProjectSetupSchema();
         $rules = [
             'address' => ['required', 'string', 'max:255'],
+            'location' => ['nullable', 'string', 'max:255'],
+            'opening_date' => ['nullable', 'date'],
+            'closing_date' => ['nullable', 'date', 'after_or_equal:opening_date'],
+            'corner_charge_percent' => ['required', 'numeric', 'min:0', 'max:100'],
+            'facing_charge_percent' => ['required', 'numeric', 'min:0', 'max:100'],
+            'is_active' => ['required', 'boolean'],
+            'charge_effective_from' => ['nullable', 'date'],
+            'id' => ['required', 'integer', Rule::in([(int) $project->id])],
         ];
 
         // Add logo validation rules if a new logo is being uploaded
@@ -151,11 +210,7 @@ class ProjectController extends Controller
             $rules['logo'] = ['required', 'image', 'max:8192']; // Assuming max file size is 2MB
         }
 
-        if ($request->project != $request->old_project) {
-            $rules['project'] = ['required', 'string', 'max:255', 'unique:projects'];
-        } else {
-            $rules['project'] = ['required', 'string', 'max:255'];
-        }
+        $rules['project'] = ['required', 'string', 'max:255', Rule::unique('projects', 'project')->ignore($project->id)];
 
         $validator = Validator::make($request->all(), $rules);
 
@@ -163,11 +218,22 @@ class ProjectController extends Controller
             return back()->withErrors($validator)->withInput();
         }
 
+        $validated = $validator->validated();
+        $chargeChanged = (float) $project->corner_charge_percent !== (float) $validated['corner_charge_percent']
+            || (float) $project->facing_charge_percent !== (float) $validated['facing_charge_percent'];
+        if ($chargeChanged && empty($validated['charge_effective_from'])) {
+            return back()->withErrors(['charge_effective_from' => 'Select when the new charges take effect.'])->withInput();
+        }
+
         $data = [
             'project'   => $request->project,
             'address'   => $request->address,
+            'location' => $validated['location'] ?? null,
+            'opening_date' => $validated['opening_date'] ?? null,
+            'closing_date' => $validated['closing_date'] ?? null,
+            'corner_charge_percent' => $validated['corner_charge_percent'],
+            'facing_charge_percent' => $validated['facing_charge_percent'],
             'is_active' => $request->is_active,
-            'create_by' => Auth::user()->id,
         ];
 
         // Handle logo update
@@ -178,11 +244,29 @@ class ProjectController extends Controller
         }
 
         try {
-            $project->update($data);
+            DB::transaction(function () use ($project, $data, $chargeChanged, $validated) {
+                $project->update($data);
+                if (Schema::hasColumn('projects', 'project_code') && empty($project->project_code)) {
+                    $project->project_code = sprintf('PRJ-%06d', $project->id);
+                    $project->save();
+                }
+                if ($chargeChanged && Schema::hasTable('project_charge_revisions')) {
+                    $effectiveDate = $validated['charge_effective_from'];
+                    $exists = DB::table('project_charge_revisions')->where('project_id', $project->id)
+                        ->where('effective_from', $effectiveDate)->exists();
+                    if ($exists) throw new \DomainException('A charge revision already exists for that effective date.');
+                    DB::table('project_charge_revisions')->insert([
+                        'project_id' => $project->id,
+                        'corner_charge_percent' => $data['corner_charge_percent'],
+                        'facing_charge_percent' => $data['facing_charge_percent'],
+                        'effective_from' => $effectiveDate,
+                        'changed_by' => Auth::id(), 'created_at' => now(),
+                    ]);
+                }
+            });
             Alert::success('Notification', 'Data <b>' . $project->name . '</b> saved successfully')->toToast()->toHtml();
         } catch (\Throwable $th) {
-            DB::rollback();
-            Alert::error('Notification', 'Data <b>' . $project->name . '</b> failed to save : ' . $th->getMessage())->toToast()->toHtml();
+            Alert::error('Notification', 'Data <b>' . $project->project . '</b> failed to save : ' . $th->getMessage())->toToast()->toHtml();
         }
 
         return back();

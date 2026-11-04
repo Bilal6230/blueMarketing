@@ -140,7 +140,7 @@ final class V2ApprovedSourcePostingWriter
                     'details' => (string) $source->details,
                 ];
             } else {
-                $snapshot = (new V2StockSourceSnapshot())->read($kind, $sourceId);
+                $snapshot = (new V2StockSourceSnapshot())->read($kind, $sourceId, $projectId);
                 $approvalTable = $kind === 'stock_entry'
                     ? 'finance_stock_entry_project_approvals'
                     : 'finance_stock_bill_project_approvals';
@@ -184,7 +184,7 @@ final class V2ApprovedSourcePostingWriter
                     throw new \DomainException('V2_APPROVED_SOURCE_ACCOUNT_INVALID');
                 }
                 $account = (int) $rawId;
-                if (!\App\Models\ProjectHeadSubhead::query()
+                if (!\App\Models\ProjectHeadSubhead::availableForPosting()
                     ->where('id', $account)->where('project_id', $projectId)->lockForUpdate()->first(['id'])) {
                     throw new \DomainException('V2_APPROVED_SOURCE_CROSS_PROJECT_ACCOUNT');
                 }

@@ -117,7 +117,7 @@ class SettingHelper
         $companies = ["","Square Feet", "Marla", "Kanal"];
 
         if($plot_type){
-            return $companies[$plot_type];
+            return $companies[$plot_type] ?? (string) $plot_type;
         }
 
         return $companies;

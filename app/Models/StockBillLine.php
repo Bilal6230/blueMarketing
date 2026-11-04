@@ -12,6 +12,7 @@ class StockBillLine extends Model
     protected $table = 'stock_bill_lines';
 
     protected $fillable = [
+        'project_id',
         'bill_id',
         'item_id',
         'qty',
@@ -20,6 +21,7 @@ class StockBillLine extends Model
     ];
 
     protected $casts = [
+        'project_id' => 'integer',
         'bill_id' => 'integer',
         'item_id' => 'integer',
         'rate_minor' => 'integer',

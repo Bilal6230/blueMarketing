@@ -13,6 +13,9 @@ final class V2OriginalCustomerWorkflow
             'description', 'payment_type', 't_number', 'bank_id', 'passing_date'] as $field) {
             $values[$field] = isset($source->$field) ? (string) $source->$field : null;
         }
+        if (isset($source->contractor_id) && $source->contractor_id !== null) {
+            $values['contractor_id'] = (string) $source->contractor_id;
+        }
         $values['amount_in'] = self::money($source->amount_in); $values['amount_out'] = self::money($source->amount_out);
         return hash('sha256', json_encode($values, JSON_THROW_ON_ERROR));
     }
@@ -39,8 +42,13 @@ final class V2OriginalCustomerWorkflow
             throw new \DomainException('V2_SOURCE_DATE_OR_AMOUNT_INVALID');
         }
         $metadata = array_intersect_key($source, array_flip([
-            'reference', 'description', 'customer_id', 'plot_id', 'payment_type', 't_number', 'bank_id', 'passing_date',
+            'reference', 'description', 'customer_id', 'contractor_id', 'plot_id', 'payment_type', 't_number', 'bank_id', 'passing_date',
         ]));
+        if (empty($metadata['contractor_id'])) unset($metadata['contractor_id']);
+        if (!empty($metadata['contractor_id']) && !DB::table('contractors')->where('id', $metadata['contractor_id'])
+            ->where('project_id', $projectId)->where('is_active', true)->exists()) {
+            throw new \DomainException('V2_SOURCE_CONTRACTOR_INVALID');
+        }
         $paymentType = (int) ($metadata['payment_type'] ?? 1);
         if (!in_array($paymentType, [0, 1, 2, 3], true) || ($paymentType === 0 && $series !== 'EC')) {
             throw new \DomainException('V2_SOURCE_PAYMENT_INVALID');

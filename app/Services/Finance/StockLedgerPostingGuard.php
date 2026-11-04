@@ -42,8 +42,15 @@ class StockLedgerPostingGuard
         // A foreign/missing account cannot become a new financial leg.
         foreach ($expectedLegs as $leg) {
             $accountId = (int) ($leg['project_head_subheads_id'] ?? 0);
-            if ($accountId <= 0 ||
-                (int) DB::table('project_head_subheads')->where('id', $accountId)->value('project_id') !== $projectId) {
+            $accountIsPostable = $accountId > 0 && DB::table('project_head_subheads as account')
+                ->join('head_accountings as head', 'head.id', '=', 'account.head_accounting_id')
+                ->join('subhead_accountings as sub', 'sub.id', '=', 'account.subhead_accounting_id')
+                ->where('account.id', $accountId)
+                ->where('account.project_id', $projectId)
+                ->where('head.is_active', 1)
+                ->where('sub.is_active', 1)
+                ->exists();
+            if (!$accountIsPostable) {
                 throw new \DomainException('STOCK_LEDGER_EXPECTED_ACCOUNT_PROJECT_CONFLICT');
             }
             $this->minorUnits($leg['amount_in'] ?? null);

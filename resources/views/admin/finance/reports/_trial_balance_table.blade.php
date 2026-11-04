@@ -13,7 +13,9 @@
     <tbody>
     @forelse($hierarchy['types'] as $type)
         <tr class="head-row"><th colspan="9">{{ strtoupper($type['name']) }}</th></tr>
-        @foreach($type['heads'] as $head)
+        @php($typeHeads = array_values($type['heads']))
+        @foreach($typeHeads as $headIndex => $head)
+            @if(!empty($head['group_path']) && ($headIndex === 0 || ($typeHeads[$headIndex - 1]['group_key'] ?? null) !== ($head['group_key'] ?? null)))<tr class="group-row"><th colspan="9">{{ $head['group_path'] }}</th></tr>@endif
             <tr class="subhead-row"><th colspan="9">{{ strtoupper($head['name']) }}</th></tr>
             @foreach($head['accounts'] as $account)
                 <tr class="account-row">
@@ -23,6 +25,9 @@
                 </tr>
             @endforeach
             <tr class="subtotal"><th colspan="3">Total: {{ $head['name'] }}</th>{!! $amountCells($head['totals']) !!}</tr>
+            @if(!empty($head['group_key']) && ($headIndex === count($typeHeads) - 1 || ($typeHeads[$headIndex + 1]['group_key'] ?? null) !== $head['group_key']))
+                <tr class="group-total"><th colspan="3">Total: {{ $head['group_path'] }}</th>{!! $amountCells($head['group_totals']) !!}</tr>
+            @endif
         @endforeach
         <tr class="head-total"><th colspan="3">Total: {{ $type['name'] }}</th>{!! $amountCells($type['totals']) !!}</tr>
     @empty

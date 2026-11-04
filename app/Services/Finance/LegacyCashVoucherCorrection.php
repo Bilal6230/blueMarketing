@@ -25,11 +25,14 @@ final class LegacyCashVoucherCorrection
                 throw new \DomainException('CASH_VOUCHER_SINGLE_SOURCE_LEG_REQUIRED');
             }
             $oldLedger = $old->first();
-            $account = ProjectHeadSubhead::query()->whereKey($accountId)->where('project_id', $projectId)
+            $account = ProjectHeadSubhead::availableForPosting()->whereKey($accountId)->where('project_id', $projectId)
                 ->lockForUpdate()->firstOrFail();
             $type = (string) $source->transaction_type;
-            $next = (int) CustomerLedger::query()->where('project_id', $projectId)
-                ->where('transaction_type', $type)->lockForUpdate()->max('type_id') + 1;
+            $allocator = app(ProjectVoucherAllocator::class);
+            $next = $allocator->nextSourceId($projectId, $type);
+            $correctedSourceId = $allocator->nextSourceId($projectId, $type);
+            $reversalVoucherNumber = $allocator->next($projectId, $type);
+            $correctedVoucherNumber = $allocator->next($projectId, $type);
             $date = (string) $changes['date'];
             $reversalReference = 'REV-'.$type.'-'.$source->id.'-'.$next;
 
@@ -42,7 +45,7 @@ final class LegacyCashVoucherCorrection
                 'is_active' => 1,
             ]));
             $correctedSource = CustomerLedger::create(array_merge($base, $changes, [
-                'type_id' => $next + 1, 'project_id' => $projectId,
+                'type_id' => $correctedSourceId, 'project_id' => $projectId,
                 'customer_id' => $changes['customer_id'] ?? $account->customer_id ?? $source->customer_id,
                 'plot_id' => $changes['plot_id'] ?? $account->plot_id ?? $source->plot_id,
                 'transaction_type' => $type, 'is_active' => 1,
@@ -53,14 +56,14 @@ final class LegacyCashVoucherCorrection
                 'create_by' => $userId, 'is_active' => 1, 'status' => '0', 'date' => $date,
             ];
             $reversalLedger = Ledger::create(array_merge($common, [
-                'type_id' => $reversalSource->type_id, 'voucher_number' => $reversalSource->type_id,
+                'type_id' => $reversalSource->type_id, 'voucher_number' => $reversalVoucherNumber,
                 'customer_ledger_id' => $reversalSource->id, 'reference' => $reversalReference,
                 'amount_in' => $oldLedger->amount_out, 'amount_out' => $oldLedger->amount_in,
                 'detail' => $reversalSource->description,
             ]));
             $correctedLedger = Ledger::create([
                 'type' => $type, 'type_id' => $correctedSource->type_id,
-                'voucher_number' => $correctedSource->type_id, 'project_head_subheads_id' => $account->id,
+                'voucher_number' => $correctedVoucherNumber, 'project_head_subheads_id' => $account->id,
                 'customer_ledger_id' => $correctedSource->id, 'reference' => $correctedSource->reference,
                 'amount_in' => $correctedSource->amount_in, 'amount_out' => $correctedSource->amount_out,
                 'detail' => $correctedSource->description, 'create_by' => $userId,

@@ -32,6 +32,7 @@
                                         <a href="#" class="btn btn-sm btn-success btn-add-plot" data-toggle="modal"
                                             data-target="#modal-tambah" data-backdrop="static" data-keyboard="false"><i
                                                 class="fas fa-plus"></i> Add</a>
+                                        <a href="{{ route('project.plot-definitions.index') }}" class="btn btn-sm btn-outline-primary ml-1"><i class="fas fa-list-alt"></i> Plot Definitions</a>
                                     </h3>
                                 </div>
                             @endcan
@@ -41,6 +42,7 @@
                                     <thead>
                                         <tr>
                                             <th>#</th>
+                                            <th>Category</th>
                                             <th>Unit Type</th>
                                             <th>Unit Name</th>
                                             <th>Size</th>
@@ -57,14 +59,15 @@
                                         @foreach ($data as $i)
                                             <tr>
                                                 <td>{{ $loop->iteration }}</td>
-                                                <td>{{ Setting::getPlotType($i->type) }}</td>
+                                                <td>{{ $i->categoryDefinition?->name ?? '—' }}</td>
+                                                <td>{{ $i->typeDefinition?->name ?? Setting::getPlotType($i->type) }}</td>
                                                 <td>
                                                     <a href="{{ route('project.plot.history', $i->id) }}" target="_blank">
                                                         {{ $i->name }}
                                                     </a>
                                                 </td>
 
-                                                <td>{{ $i->size }} {{ Setting::getUnitTypes($i->unit) }}</td>
+                                                <td>{{ $i->size }} {{ $i->unitDefinition?->name ?? Setting::getUnitTypes($i->unit) }}</td>
                                                 <td>{{ number_format($i->amount ?? 0, 2) }}</td>
                                                 <td>{{ Setting::getRoadSide($i->road_id) }} </td>
                                                 <td>{{ Setting::sale_status($i->sold) }}</td>
@@ -150,6 +153,12 @@
                         $("#is_corner").val(data.is_corner);
                         $("#road_id").val(data.road_id);
                         $("#facing_id").val(data.facing_id);
+                        @if ($plotDefinitionsReady)
+                            $("#plot_category_definition_id").val(data.plot_category_definition_id || '');
+                            $("#plot_type_definition_id").val(data.plot_type_definition_id || '');
+                            $("#plot_size_definition_id").val(data.plot_size_definition_id || '');
+                            $("#plot_unit_definition_id").val(data.plot_unit_definition_id || '');
+                        @endif
 
                         $("#id").val(data.id);
                         $('#modal-loading').modal('hide');
@@ -164,7 +173,31 @@
 
             $(document).on("click", '.btn-add-plot', function() {
                 $("#amount").val('0.00');
+                @if ($plotDefinitionsReady)
+                    $('#modal-tambah form').find('[name$="_definition_id"]').val('');
+                @endif
             });
+
+            @if ($plotDefinitionsReady)
+                $(document).on('change', '.plot-type-definition', function() {
+                    const form = $(this).closest('form');
+                    const legacy = $(this).find(':selected').data('legacy');
+                    if (legacy) form.find('[name="type"]').val(legacy);
+                });
+                $(document).on('change', '.plot-size-definition', function() {
+                    const form = $(this).closest('form');
+                    const option = $(this).find(':selected');
+                    if (!option.val()) return;
+                    form.find('[name="size"]').val(option.data('size'));
+                    const unitId = String(option.data('unit-id'));
+                    form.find('.plot-unit-definition').val(unitId).trigger('change');
+                });
+                $(document).on('change', '.plot-unit-definition', function() {
+                    const form = $(this).closest('form');
+                    const legacy = $(this).find(':selected').data('legacy');
+                    if (legacy) form.find('[name="unit"]').val(String(legacy));
+                });
+            @endif
 
             $(document).on("click", '.btn-delete', function() {
                 let id = $(this).attr("data-id");
@@ -217,13 +250,20 @@
                                     <label class="fbox">Plot Type</label>
                                     <div class="input-group">
                                         <select class="form-control" name="type">
-                                            <option value="1">Residenational</option>
-                                            <option value="2">Commercial</option>
+                                            @if ($plotDefinitionsReady && $plotDefinitions->has('type'))
+                                                @foreach ($plotDefinitions->get('type') as $typeDefinition)<option value="{{ $typeDefinition->legacy_value }}">{{ $typeDefinition->name }}</option>@endforeach
+                                            @else
+                                                <option value="1">Residenational</option><option value="2">Commercial</option>
+                                            @endif
                                         </select>
                                         @error('type')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
+                                    @if ($plotDefinitionsReady)
+                                        <select class="form-control mt-1" name="plot_category_definition_id" @if ($plotDefinitions->get('category', collect())->isNotEmpty()) required @endif><option value="">Select category definition</option>@foreach ($plotDefinitions->get('category', collect()) as $definition)<option value="{{ $definition->id }}">{{ $definition->name }}</option>@endforeach</select>
+                                        <select class="form-control mt-1 plot-type-definition" name="plot_type_definition_id" @if ($plotDefinitions->get('type', collect())->isNotEmpty()) required @endif><option value="">Select type definition</option>@foreach ($plotDefinitions->get('type', collect()) as $definition)<option value="{{ $definition->id }}" data-legacy="{{ $definition->legacy_value }}">{{ $definition->name }}</option>@endforeach</select>
+                                    @endif
                                 </div>
                             </div>
                         </div>
@@ -249,6 +289,7 @@
                                     <div class="input-group">
                                         <input type="text" class="form-control @error('size') is-invalid @enderror"
                                             placeholder="Unit Size" name="size" value="{{ old('size') }}">
+                                        @if ($plotDefinitionsReady)<select class="form-control mt-1 plot-size-definition" name="plot_size_definition_id" @if ($plotDefinitions->get('size', collect())->isNotEmpty()) required @endif><option value="">Select saved size</option>@foreach ($plotDefinitions->get('size', collect()) as $definition)<option value="{{ $definition->id }}" data-size="{{ $definition->size_value }}" data-unit-id="{{ $definition->unit_definition_id }}">{{ $definition->name }} / {{ $definition->size_value }} {{ optional($plotDefinitions->get('unit', collect())->firstWhere('id', $definition->unit_definition_id))->unit_code }}</option>@endforeach</select>@endif
                                         @error('size')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
@@ -261,11 +302,14 @@
                                     <label class="fbox">Unit Value</label>
                                     <div class="input-group">
                                         <select class="form-control" name="unit">
-                                            <option value="1">Square Feet</option>
-                                            <option value="2">Marla</option>
-                                            <option value="3">Kanal</option>
+                                            @if ($plotDefinitionsReady && $plotDefinitions->has('unit'))
+                                                @foreach ($plotDefinitions->get('unit') as $unitDefinition)<option value="{{ $unitDefinition->legacy_value ?: $unitDefinition->unit_code }}">{{ $unitDefinition->name }}</option>@endforeach
+                                            @else
+                                                <option value="1">Square Feet</option><option value="2">Marla</option><option value="3">Kanal</option>
+                                            @endif
 
                                         </select>
+                                        @if ($plotDefinitionsReady)<select class="form-control mt-1 plot-unit-definition" name="plot_unit_definition_id" @if ($plotDefinitions->get('unit', collect())->isNotEmpty()) required @endif><option value="">Select saved unit</option>@foreach ($plotDefinitions->get('unit', collect()) as $definition)<option value="{{ $definition->id }}" data-legacy="{{ $definition->legacy_value ?: $definition->unit_code }}">{{ $definition->name }} ({{ $definition->unit_code }})</option>@endforeach</select>@endif
                                         @error('unit')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
@@ -411,13 +455,20 @@
                                     <label class="fbox">Plot Type</label>
                                     <div class="input-group">
                                         <select class="form-control" name="type" id="type">
-                                            <option value="1">Residenational</option>
-                                            <option value="2">Commercial</option>
+                                            @if ($plotDefinitionsReady && $plotDefinitions->has('type'))
+                                                @foreach ($plotDefinitions->get('type') as $typeDefinition)<option value="{{ $typeDefinition->legacy_value }}">{{ $typeDefinition->name }}</option>@endforeach
+                                            @else
+                                                <option value="1">Residenational</option><option value="2">Commercial</option>
+                                            @endif
                                         </select>
                                         @error('type')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
+                                    @if ($plotDefinitionsReady)
+                                        <select class="form-control mt-1" name="plot_category_definition_id" id="plot_category_definition_id"><option value="">No category change</option>@foreach ($plotDefinitions->get('category', collect()) as $definition)<option value="{{ $definition->id }}">{{ $definition->name }}</option>@endforeach</select>
+                                        <select class="form-control mt-1 plot-type-definition" name="plot_type_definition_id" id="plot_type_definition_id"><option value="">No type mapping change</option>@foreach ($plotDefinitions->get('type', collect()) as $definition)<option value="{{ $definition->id }}" data-legacy="{{ $definition->legacy_value }}">{{ $definition->name }}</option>@endforeach</select>
+                                    @endif
                                 </div>
                             </div>
                         </div>
@@ -445,6 +496,7 @@
                                         <input id="size" type="text"
                                             class="form-control @error('size') is-invalid @enderror"
                                             placeholder="Unit Size" name="size" value="{{ old('size') }}">
+                                        @if ($plotDefinitionsReady)<select class="form-control mt-1 plot-size-definition" name="plot_size_definition_id" id="plot_size_definition_id"><option value="">No size definition change</option>@foreach ($plotDefinitions->get('size', collect()) as $definition)<option value="{{ $definition->id }}" data-size="{{ $definition->size_value }}" data-unit-id="{{ $definition->unit_definition_id }}">{{ $definition->name }} / {{ $definition->size_value }} {{ optional($plotDefinitions->get('unit', collect())->firstWhere('id', $definition->unit_definition_id))->unit_code }}</option>@endforeach</select>@endif
                                         @error('size')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
@@ -457,11 +509,14 @@
                                     <label class="fbox">Unit Value</label>
                                     <div class="input-group">
                                         <select class="form-control" name="unit" id="unit">
-                                            <option value="1">Square Feet</option>
-                                            <option value="2">Marla</option>
-                                            <option value="3">Kanal</option>
+                                            @if ($plotDefinitionsReady && $plotDefinitions->has('unit'))
+                                                @foreach ($plotDefinitions->get('unit') as $unitDefinition)<option value="{{ $unitDefinition->legacy_value ?: $unitDefinition->unit_code }}">{{ $unitDefinition->name }}</option>@endforeach
+                                            @else
+                                                <option value="1">Square Feet</option><option value="2">Marla</option><option value="3">Kanal</option>
+                                            @endif
 
                                         </select>
+                                        @if ($plotDefinitionsReady)<select class="form-control mt-1 plot-unit-definition" name="plot_unit_definition_id" id="plot_unit_definition_id"><option value="">No unit definition change</option>@foreach ($plotDefinitions->get('unit', collect()) as $definition)<option value="{{ $definition->id }}" data-legacy="{{ $definition->legacy_value ?: $definition->unit_code }}">{{ $definition->name }} ({{ $definition->unit_code }})</option>@endforeach</select>@endif
                                         @error('unit')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror

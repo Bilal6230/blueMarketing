@@ -15,6 +15,9 @@ class PermissionSeeder extends Seeder
      */
     public function run()
     {
+        Permission::firstOrCreate(['name' => 'read payroll']);
+        Permission::firstOrCreate(['name' => 'create payroll']);
+        Permission::firstOrCreate(['name' => 'approve payroll']);
         Permission::create(['name' => 'filemanager']);
         Permission::create(['name' => 'read module']);
 
