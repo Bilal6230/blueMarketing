@@ -227,6 +227,20 @@
                                                         @enderror
                                                     </div>
 
+                                                    @if (isset($customPaymentMethods) && $customPaymentMethods->isNotEmpty())
+                                                        <div class="col-6 col-md-3 col-lg-2">
+                                                            <label class="fbox mb-1" for="custom_payment_method_id">Payment Method</label>
+                                                            <select class="form-select form-select-sm" name="custom_payment_method_id" id="custom_payment_method_id">
+                                                                <option value="">Standard method</option>
+                                                                @foreach ($customPaymentMethods as $customMethod)
+                                                                    <option value="{{ $customMethod->id }}" data-base-code="{{ $customMethod->base_method_code }}">
+                                                                        {{ $customMethod->name }}
+                                                                    </option>
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
+                                                    @endif
+
                                                     <div class="col-6 col-md-3 col-lg-2 bank_group" style="display: none">
                                                         <label class="fbox mb-1">Number</label>
                                                         <input id="t_number" type="text"
@@ -1405,6 +1419,16 @@
                         $('.bank_group').css('display', 'none');
                     }
                 @endif
+            });
+            $('#custom_payment_method_id').on('change', function() {
+                const baseCode = $(this).find(':selected').data('base-code');
+                if (!baseCode) return;
+                const paymentType = $('#payment_type')[0]?.tomselect;
+                if (paymentType) {
+                    paymentType.setValue(String(baseCode), true);
+                } else {
+                    $('#payment_type').val(String(baseCode)).trigger('change');
+                }
             });
             function normalizeDateForInput(value) {
                 if (!value) return '';

@@ -50,6 +50,9 @@ final class LegacyCashVoucherCorrection
                 'plot_id' => $changes['plot_id'] ?? $account->plot_id ?? $source->plot_id,
                 'transaction_type' => $type, 'is_active' => 1,
             ]));
+            $displayIdentity = app(ProjectVoucherDisplayIdentity::class);
+            $displayIdentity->assign($projectId, 'customer_ledger', (int) $reversalSource->id, $type, $date);
+            $displayIdentity->assign($projectId, 'customer_ledger', (int) $correctedSource->id, $type, $date);
 
             $common = [
                 'type' => $type, 'project_head_subheads_id' => $oldLedger->project_head_subheads_id,
@@ -66,12 +69,38 @@ final class LegacyCashVoucherCorrection
                 'voucher_number' => $correctedVoucherNumber, 'project_head_subheads_id' => $account->id,
                 'customer_ledger_id' => $correctedSource->id, 'reference' => $correctedSource->reference,
                 'amount_in' => $correctedSource->amount_in, 'amount_out' => $correctedSource->amount_out,
-                'detail' => $correctedSource->description, 'create_by' => $userId,
+                'detail' => $this->correctedDetail($correctedSource), 'create_by' => $userId,
                 'is_active' => 1, 'status' => '0', 'date' => $date,
             ]);
 
             return ['source' => $correctedSource, 'ledger' => $correctedLedger,
                 'reversal_source' => $reversalSource, 'reversal_ledger' => $reversalLedger];
         });
+    }
+
+    private function correctedDetail(CustomerLedger $source): string
+    {
+        if ($source->transaction_type !== 'PPR') return (string) ($source->description ?? '');
+
+        $source->loadMissing(['customer_list', 'plot_list']);
+        $plot = $source->plot_list;
+        $plotLabel = $plot
+            ? 'Plot '.(match ((int) $plot->type) { 1 => 'R-', 2 => 'C-', default => '' }).trim((string) $plot->name)
+            : 'Unknown Plot';
+        $customer = $source->customer_list;
+        $customerName = trim((string) ($customer?->first_name ?? '').' '.(string) ($customer?->last_name ?? ''));
+        $method = match ((int) $source->payment_type) { 2 => 'Online', 3 => 'Cheque', default => 'Cash' };
+        $parts = ['PPR', 'Plot: '.$plotLabel, 'Cust: '.($customerName ?: 'Unknown Customer'), 'Method: '.$method];
+        if (in_array((int) $source->payment_type, [2, 3], true)) {
+            $bankName = function_exists('getBankNameById') ? getBankNameById($source->bank_id) : null;
+            if ($bankName) $parts[] = 'Bank: '.$bankName;
+            $instrument = (int) $source->payment_type === 2 ? 'Txn' : 'Chq';
+            if (trim((string) $source->t_number) !== '') $parts[] = $instrument.': '.$source->t_number;
+            if ($source->passing_date) $parts[] = 'Pass: '.substr((string) $source->passing_date, 0, 10);
+        }
+        if (trim((string) $source->reference) !== '') $parts[] = 'Ref: '.$source->reference;
+        if ($source->date) $parts[] = 'Date: '.substr((string) $source->date, 0, 10);
+        if (trim((string) $source->description) !== '') $parts[] = 'Note: '.$source->description;
+        return implode(' | ', $parts);
     }
 }

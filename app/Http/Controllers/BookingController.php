@@ -354,12 +354,13 @@ class BookingController extends Controller
                 ->where('project_id', $projectId)->firstOrFail();
             $bookingDate = Carbon::parse($request->input('booking_date'))->toDateString();
             $configuredRate = $this->effectivePlotRate($projectId, $plot, $bookingDate);
+            $effectivePlotRate = $configuredRate ?? str_replace(',', '', (string) $request->input('plot_rate'));
 
             $pricing = $this->calculateNewBookingPrice(
                 $projectId,
                 $bookingDate,
                 (string) $plot->size,
-                $configuredRate ?? (string) $request->input('plot_rate'),
+                $effectivePlotRate,
                 (bool) $request->input('is_park'),
                 (bool) $request->input('is_corner'),
                 (string) ($request->input('park_facing') ?? '0'),
@@ -375,7 +376,9 @@ class BookingController extends Controller
                     'plot_id' => $request->input('plot_id'),
                     'plot_type' => $request->input('plot_type'),
                     'plot_size' => $plot->size,
-                    'plot_rate' => str_replace(',', '', $request->input('plot_rate')),
+                    // Persist the same effective, date-scoped rate used for
+                    // the total so later reports and amendments agree.
+                    'plot_rate' => $effectivePlotRate,
                     'is_corner' => $request->input('is_corner') ?? 0,
                     'is_park' => $request->input('is_park') ?? 0,
                     'park_facing' => $pricing['park_facing'],
@@ -395,19 +398,26 @@ class BookingController extends Controller
             $plotName = $plot->name;
 
             // Create customer ledger entry
-            $customerLedger = CustomerLedger::create([
-                'customer_id' => $booking->customer_id,
-                'transaction_type' => 'Bo',
-                'type_id' => get_new_typeID('Bo'),
-                'project_id' => $booking->project_id,
-                'plot_id' => $booking->plot_id,
-                'amount_in' => $booking->total_price,
-                'amount_out' => 0,
-                'description' => 'Booking for plot ' . $plotType . $plotName,
-                'date' => $booking->booking_date,
-                'is_approve' => 1,
-                'is_active' => 1,
-            ]);
+            $customerLedger = DB::transaction(function () use ($booking, $plotType, $plotName): CustomerLedger {
+                $source = CustomerLedger::create([
+                    'customer_id' => $booking->customer_id,
+                    'transaction_type' => 'Bo',
+                    'type_id' => get_new_typeID('Bo'),
+                    'project_id' => $booking->project_id,
+                    'plot_id' => $booking->plot_id,
+                    'amount_in' => $booking->total_price,
+                    'amount_out' => 0,
+                    'description' => 'Booking for plot ' . $plotType . $plotName,
+                    'date' => $booking->booking_date,
+                    'is_approve' => 1,
+                    'is_active' => 1,
+                ]);
+                app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->assign(
+                    (int) $booking->project_id, 'customer_ledger', (int) $source->id, 'BO',
+                    \Illuminate\Support\Carbon::parse($booking->booking_date)->format('Y-m-d')
+                );
+                return $source;
+            });
 
             // Create subhead accounting
             $subheadAccounting = SubheadAccounting::create([
@@ -1014,19 +1024,27 @@ class BookingController extends Controller
             : now()->format('Y-m-d');
         $description = trim((string) ($payload['description'] ?? 'Sales Voucher'));
 
-        return JournalVoucher::create([
-            'voucher_number' => app(\App\Services\Finance\ProjectVoucherAllocator::class)
-                ->nextSalesVoucher($projectId),
-            'type' => 'SV',
-            'reference' => $reference,
-            'date' => $date,
-            'description' => $description,
-            'total_debit' => $this->pvMoneyToDecimal2($payload['total_amount'] ?? 0),
-            'total_credit' => $this->pvMoneyToDecimal2($payload['total_amount'] ?? 0),
-            'project_id' => $projectId,
-            'created_by' => Auth::id(),
-            'status' => 'pending',
-        ]);
+        return DB::transaction(function () use ($projectId, $reference, $date, $description, $payload): JournalVoucher {
+            $voucher = JournalVoucher::create([
+                'voucher_number' => app(\App\Services\Finance\ProjectVoucherAllocator::class)
+                    ->nextSalesVoucher($projectId),
+                'type' => 'SV',
+                'reference' => $reference,
+                'date' => $date,
+                'description' => $description,
+                'total_debit' => $this->pvMoneyToDecimal2($payload['total_amount'] ?? 0),
+                'total_credit' => $this->pvMoneyToDecimal2($payload['total_amount'] ?? 0),
+                'project_id' => $projectId,
+                'created_by' => Auth::id(),
+                'status' => 'pending',
+            ]);
+
+            app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->assign(
+                $projectId, 'journal_voucher', (int) $voucher->id, 'SV', $date
+            );
+
+            return $voucher;
+        });
     }
 
     private function addSalesVoucherDetail(JournalVoucher $voucher, array $payload): JournalVoucherDetail
@@ -1339,6 +1357,9 @@ class BookingController extends Controller
             'is_approve' => 1,
             'is_active' => 1,
         ]);
+        app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->assign(
+            (int) $booking->project_id, 'customer_ledger', (int) $oldPrincipalCL->id, 'BO', $transferDate
+        );
         $this->recordSalesVoucherEntry($salesVoucher, [
             'account_id' => $oldCustomerPivot->id,
             'reference' => $booking->id,
@@ -1367,6 +1388,9 @@ class BookingController extends Controller
                 'is_approve' => 1,
                 'is_active' => 1,
             ]);
+            app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->assign(
+                (int) $booking->project_id, 'customer_ledger', (int) $oldProfitCL->id, 'BO', $transferDate
+            );
             $this->recordSalesVoucherEntry($salesVoucher, [
                 'account_id' => $oldCustomerPivot->id,
                 'reference' => $booking->id,
@@ -1400,6 +1424,9 @@ class BookingController extends Controller
             'is_approve' => 1,
             'is_active' => 1,
         ]);
+        app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->assign(
+            (int) $booking->project_id, 'customer_ledger', (int) $newCL->id, 'BO', $transferDate
+        );
         $this->recordSalesVoucherEntry($salesVoucher, [
             'account_id' => $newCustomerPivot->id,
             'reference' => $booking->id,
@@ -1480,6 +1507,9 @@ class BookingController extends Controller
                 'is_approve' => 0,
                 'passing_date' => $request->input('passing_date'),
             ]);
+            app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->assign(
+                (int) $booking->project_id, 'customer_ledger', (int) $feeCL->id, 'CP', $transferDate
+            );
 
             $this->recordSalesVoucherEntry($salesVoucher, [
                 'account_id' => $feePayerPivot->id,
@@ -2040,10 +2070,13 @@ class BookingController extends Controller
     }
     public function getPlotCustomer(Request $request)
     {
-        $plotId = $request->input('plot_id');
+        $plotId = $request->validate(['plot_id' => ['required', 'integer', 'min:1']])['plot_id'];
+        $projectId = (int) getSelectedTown();
+        abort_unless($projectId > 0, 403, 'Select a project before looking up a plot customer.');
 
         $customer = Plot::join('bookings', 'plots.id', '=', 'bookings.plot_id')
             ->join('leads', 'bookings.customer_id', '=', 'leads.id') // if you want customer data
+            ->where('plots.project_id', $projectId)
             ->where('plots.id', $plotId)
             ->select('leads.*') // select customer info only
             ->first(); // use `first()` for a single record
@@ -2247,7 +2280,12 @@ class BookingController extends Controller
         }
 
         $data = $query->orderByDesc('id')->get();
-        $data = $data->map(function ($item) {
+        $displayNumbers = Schema::hasTable('project_voucher_display_numbers')
+            ? DB::table('project_voucher_display_numbers')->where('project_id', (int) $selectedProjectId)
+                ->where('source_kind', 'customer_ledger')->whereIn('source_id', $data->pluck('customer_ledger_id'))
+                ->pluck('display_number', 'source_id')
+            : collect();
+        $data = $data->map(function ($item) use ($displayNumbers) {
             $pending = PendingUpdate::where('table_name', 'customer_ledger') // 👈 dynamic table name
                 ->where('record_id', $item->customer_ledger_id)
                 ->latest()
@@ -2256,6 +2294,7 @@ class BookingController extends Controller
             $item['new_values'] = $pending ? json_decode($pending->new_values, true) : '';
             $item['old_values'] = $pending ? json_decode($pending->old_values, true) : '';
             $item['status'] = $pending ? ucfirst($pending->status) : 'Approved';
+            $item['display_voucher_number'] = $displayNumbers[$item->customer_ledger_id] ?? null;
             return $item;
         });
         $x['data'] = $data;
@@ -2338,9 +2377,15 @@ class BookingController extends Controller
         abort_if($projectId < 1, 403, 'Select a project.');
         try {
             $source = CustomerLedger::query()->whereKey((int) $id)->where('project_id', $projectId)
-                ->whereIn('transaction_type', ['CR', 'PPR'])->firstOrFail();
+                ->whereIn('transaction_type', ['CR', 'PPR'])->first();
+            if (!$source) {
+                return back()->withErrors(['msg' => 'Receipt was not found in the selected project.'])->withInput();
+            }
             $oldLedger = Ledger::query()->where('customer_ledger_id', $source->id)
-                ->where('type', $source->transaction_type)->where('is_active', 1)->firstOrFail();
+                ->where('type', $source->transaction_type)->where('is_active', 1)->first();
+            if (!$oldLedger) {
+                return back()->withErrors(['msg' => 'Receipt posting is unavailable for correction.'])->withInput();
+            }
             $cash = (string) $validated['payment_type'] === '1';
             $result = app(\App\Services\Finance\LegacyCashVoucherCorrection::class)->correct(
                 $projectId, (int) $source->id, (int) $oldLedger->project_head_subheads_id,
@@ -2483,6 +2528,14 @@ class BookingController extends Controller
         $x['bg_voucher'] = 'info-cash-in';
         $projectId = getSelectedTown();
         $data = CustomerLedger::with('customer_list', 'plot_list')->whereIn('transaction_type', ['null', 'EC'])->where('is_active', '1')->where('project_id', getSelectedTown())->get();
+        $displayRows = Schema::hasTable('project_voucher_display_numbers')
+            ? DB::table('project_voucher_display_numbers')
+            ->where('project_id', $projectId)->where('source_kind', 'customer_ledger')
+            ->whereIn('source_id', $data->pluck('id')->map(fn ($id) => (int) $id)->all())
+            ->get(['source_id', 'display_number'])->keyBy('source_id') : collect();
+        $data->each(function ($item) use ($displayRows) {
+            $item->display_voucher_number = $displayRows->get($item->id)?->display_number;
+        });
         // Query the database to get unique customers associated with the project
         $x['customers'] = Lead::join('bookings', 'leads.id', '=', 'bookings.customer_id')
             ->where('leads.project_id', $projectId)
@@ -2508,6 +2561,14 @@ class BookingController extends Controller
             ->where('transaction_type', 'ECP')
             ->where('is_active', 1)
             ->get(['id', 'reference', 'amount_in', 'payment_type', 'passing_status']);
+        $paymentDisplayRows = Schema::hasTable('project_voucher_display_numbers')
+            ? DB::table('project_voucher_display_numbers')
+            ->where('project_id', $projectId)->where('source_kind', 'customer_ledger')
+            ->whereIn('source_id', $payments->pluck('id')->map(fn ($id) => (int) $id)->all())
+            ->get(['source_id', 'display_number'])->keyBy('source_id') : collect();
+        $payments->each(function ($payment) use ($paymentDisplayRows) {
+            $payment->display_voucher_number = $paymentDisplayRows->get($payment->id)?->display_number;
+        });
         $settlement = app(\App\Services\Finance\ExtraChargeBankSettlement::class);
         $data = $data->map(function ($item) use ($settlement) {
             if ($item->transaction_type === 'EC') {
@@ -2720,6 +2781,12 @@ class BookingController extends Controller
                             'passing_date' => $request->input('passing_date'),
                             'passing_status' => $isPendingBankPayment ? 0 : null,
                         ]);
+                        if (!$duplicateLedger) {
+                            app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->assign(
+                                $projectId, 'customer_ledger', (int) $customerLedger->id, 'PPR',
+                                Carbon::parse($request->input('date'))->format('Y-m-d')
+                            );
+                        }
                         if ($duplicateLedger && (int) $duplicateLedger->is_active !== 1) {
                             throw new \RuntimeException('Inactive PPR payment cannot be reused.');
                         }
@@ -2925,6 +2992,9 @@ class BookingController extends Controller
                             'description' => 'Extra Charge payment for EC source #' . $charge->id,
                             'is_active' => 1, 'is_approve' => 0,
                         ]);
+                        app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->assign(
+                            $projectId, 'customer_ledger', (int) $payment->id, 'ECP', $date
+                        );
                         foreach ([
                             [$cashId, $amount, '0.00'],
                             [(int) $mapping['debit_account_id'], '0.00', $amount],
@@ -2997,6 +3067,9 @@ class BookingController extends Controller
                             'description' => $request->input('detail'),
                             'is_active' => 1, 'is_approve' => 0,
                         ]);
+                        app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->assign(
+                            $projectId, 'customer_ledger', (int) $source->id, 'EC', $date
+                        );
                         $detail = 'EC | ChargeType:' . $chargeTypeId .
                             ' | Booking:' . $booking->first()->id .
                             ' | ' . trim((string) $request->input('detail'));
@@ -3436,6 +3509,10 @@ class BookingController extends Controller
             ->where('id', $id)
             ->where('project_id', getSelectedTown())
             ->firstOrFail();
+        $projectId = (int) getSelectedTown();
+        $x['displayNumber'] = app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)
+            ->lookup($projectId, 'customer_ledger', (int) $customerLedger->id)
+            ?: (($customerLedger->transaction_type ?: 'PPR') . '-' . ($customerLedger->type_id ?: $id));
 
         $today = Carbon::today()->toDateString();
 
@@ -4031,6 +4108,10 @@ class BookingController extends Controller
                     'amount_out' => 0,
                     'description' => "Plot Cancellation Refund {$plotPrefix}{$plotName}",
                 ]);
+                app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->assign(
+                    (int) $booking->project_id, 'customer_ledger', (int) $cl->id, 'CR',
+                    Carbon::parse($booking->booking_date)->toDateString()
+                );
                 $this->recordSalesVoucherEntry($salesVoucher, [
                     'account_id' => $phsCustomer->id,
                     'reference' => $booking->id,

@@ -19,19 +19,24 @@ return new class extends Migration {
         }
 
         if (!Schema::hasColumn('labour_ledgers', 'project_id')) {
-            Schema::table('labour_ledgers', function (Blueprint $table) use ($foreignKey): void {
+            Schema::table('labour_ledgers', function (Blueprint $table): void {
                 $table->unsignedBigInteger('project_id')->nullable()->after('labour_id');
             });
         }
 
-        DB::statement('UPDATE labour_ledgers AS ll INNER JOIN labours AS l ON l.id = ll.labour_id SET ll.project_id = l.project_id WHERE ll.project_id IS NULL');
+        if (DB::table('labour_ledgers')->whereNull('project_id')->exists()) {
+            DB::statement('UPDATE labour_ledgers AS ll INNER JOIN labours AS l ON l.id = ll.labour_id SET ll.project_id = l.project_id WHERE ll.project_id IS NULL');
+        }
         if (DB::table('labour_ledgers')->whereNull('project_id')->exists()) {
             throw new LogicException('Cannot scope labour ledger rows: one or more rows have no matching project-owned labour record. Reconcile those rows before retrying.');
         }
-        $misattributed = DB::table('labour_ledgers as ll')->join('labours as l', 'l.id', '=', 'll.labour_id')
-            ->whereColumn('ll.project_id', '<>', 'l.project_id')->exists();
+        $misattributed = DB::table('labour_ledgers as ll')->leftJoin('labours as l', 'l.id', '=', 'll.labour_id')
+            ->where(function ($query): void {
+                $query->whereNull('l.id')->orWhereNull('l.project_id')
+                    ->orWhereColumn('ll.project_id', '<>', 'l.project_id');
+            })->exists();
         if ($misattributed) {
-            throw new LogicException('Cannot scope labour ledger rows: existing rows have a project different from their labour record. Reconcile them before retrying.');
+            throw new LogicException('Cannot scope labour ledger rows: a labour master is missing, unscoped, or belongs to another project. Reconcile those records before retrying.');
         }
         Schema::table('labour_ledgers', function (Blueprint $table): void {
             $table->unsignedBigInteger('project_id')->nullable(false)->change();

@@ -25,11 +25,13 @@ return new class extends Migration
                 $table->timestamps();
                 $table->foreign('project_id', 'plot_definitions_project_fk')
                     ->references('id')->on('projects')->restrictOnDelete();
-                $table->foreign(['unit_definition_id', 'project_id'], 'plot_definitions_unit_project_fk')
-                    ->references(['id', 'project_id'])->on('plot_definitions')->restrictOnDelete();
                 $table->unique(['project_id', 'kind', 'code'], 'plot_definitions_project_kind_code_unique');
                 $table->unique(['id', 'project_id'], 'plot_definitions_id_project_unique');
                 $table->index(['project_id', 'kind', 'is_active'], 'plot_definitions_project_kind_active_idx');
+            });
+            Schema::table('plot_definitions', function (Blueprint $table): void {
+                $table->foreign(['unit_definition_id', 'project_id'], 'plot_definitions_unit_project_fk')
+                    ->references(['id', 'project_id'])->on('plot_definitions')->restrictOnDelete();
             });
         }
 

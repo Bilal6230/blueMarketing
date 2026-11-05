@@ -53,10 +53,16 @@ class CommissionVoucherController extends Controller
             $start = max(0, (int) $request->input('start', 0));
             $length = min(100, max(1, (int) $request->input('length', 10)));
             $vouchers = $query->orderByDesc('id')->skip($start)->take($length)->get();
-            $data = $vouchers->map(function ($voucher) {
+            $displayNumbers = \Illuminate\Support\Facades\Schema::hasTable('project_voucher_display_numbers')
+                ? DB::table('project_voucher_display_numbers')->where('project_id', (int) $selectedProjectId)
+                    ->where('source_kind', 'commission_voucher')->whereIn('source_id', $vouchers->pluck('id'))
+                    ->pluck('display_number', 'source_id')
+                : collect();
+            $data = $vouchers->map(function ($voucher) use ($displayNumbers) {
                 return [
                     'id' => $voucher->id,
-                    'voucher_number' => \App\Services\Finance\CommissionVoucherNumber::display($voucher->voucher_number),
+                    'voucher_number' => $displayNumbers[$voucher->id]
+                        ?? \App\Services\Finance\CommissionVoucherNumber::display($voucher->voucher_number),
                     'reference' => $voucher->reference,
                     'date' => $voucher->date,
                     'description' => $voucher->description,
@@ -419,7 +425,10 @@ class CommissionVoucherController extends Controller
     public function print($id)
     {
         $voucher = CommisionVoucher::with('details.account.headAccounting', 'details.account.subheadAccounting')->where('project_id', getSelectedTown())->findOrFail($id);
-        return view('admin.reports.vouchers.print_journal_voucher', ['voucher' => $voucher, 'sourceVoucherType' => 'CV']);
+        $voucherDisplayNumber = app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)
+            ->lookup((int) getSelectedTown(), 'commission_voucher', (int) $voucher->id)
+            ?: \App\Services\Finance\CommissionVoucherNumber::display($voucher->voucher_number);
+        return view('admin.reports.vouchers.print_journal_voucher', compact('voucher', 'voucherDisplayNumber') + ['sourceVoucherType' => 'CV']);
     }
 
     private function getCommonData($title, $type = 'CV')

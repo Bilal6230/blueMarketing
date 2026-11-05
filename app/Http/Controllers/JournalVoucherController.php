@@ -99,12 +99,17 @@ class JournalVoucherController extends Controller
             $recordsTotal = (clone $baseQuery)->count();
             $recordsFiltered = (clone $query)->count();
             $vouchers = $query->skip($start)->take($length)->get();
+            $displayNumbers = \Illuminate\Support\Facades\Schema::hasTable('project_voucher_display_numbers')
+                ? DB::table('project_voucher_display_numbers')->where('project_id', (int) getSelectedTown())
+                    ->where('source_kind', 'journal_voucher')->whereIn('source_id', $vouchers->pluck('id'))
+                    ->pluck('display_number', 'source_id')
+                : collect();
 
             // Prepare the data, including the "actions" column
-            $data = $vouchers->map(function ($voucher) {
+            $data = $vouchers->map(function ($voucher) use ($displayNumbers) {
                 return [
                     'id' => $voucher->id,
-                    'voucher_number' => 'JV-' . get_jv_number($voucher->voucher_number),
+                    'voucher_number' => $displayNumbers[$voucher->id] ?? ('JV-' . get_jv_number($voucher->voucher_number)),
                     'reference' => $voucher->reference,
                     'date' => $voucher->date,
                     'description' => $voucher->description,
@@ -223,12 +228,17 @@ class JournalVoucherController extends Controller
 
             $query->orderBy($orderColumn, $orderDirection);
             $vouchers = $query->skip($start)->take($length)->get();
+            $displayNumbers = \Illuminate\Support\Facades\Schema::hasTable('project_voucher_display_numbers')
+                ? DB::table('project_voucher_display_numbers')
+                    ->where('project_id', (int) getSelectedTown())->where('source_kind', 'journal_voucher')
+                    ->whereIn('source_id', $vouchers->pluck('id'))->pluck('display_number', 'source_id')
+                : collect();
 
             // Prepare the data, including the "actions" column
-            $data = $vouchers->map(function ($voucher) {
+            $data = $vouchers->map(function ($voucher) use ($displayNumbers) {
                 return [
                     'id' => $voucher->id,
-                    'voucher_number' => 'SV-' . (int) $voucher->voucher_number,
+                    'voucher_number' => $displayNumbers[$voucher->id] ?? ('SV-' . (int) $voucher->voucher_number),
                     'reference' => $voucher->reference,
                     'date' => $voucher->date,
                     'description' => $voucher->description,
@@ -477,6 +487,10 @@ class JournalVoucherController extends Controller
                 'created_by' => auth()->id(),
                 'project_id' => $selectedProjectId,
             ]);
+            app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->assign(
+                (int) $selectedProjectId, 'journal_voucher', (int) $journalVoucher->id,
+                'JV', (string) $validated['date']
+            );
 
             foreach ($validated['accounts'] as $index => $accountId) {
                 // Preserve exact validated decimal digits; do not round-trip through float.
@@ -797,7 +811,12 @@ class JournalVoucherController extends Controller
     public function print($id)
     {
         $voucher = JournalVoucher::with('details.account.headAccounting', 'details.account.subheadAccounting')->where('project_id', getSelectedTown())->findOrFail($id);
-        return view('admin.reports.vouchers.print_journal_voucher', compact('voucher'));
+        $voucherDisplayNumber = app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)
+            ->lookup((int) getSelectedTown(), 'journal_voucher', (int) $voucher->id)
+            ?: (($voucher->type ?: 'JV') === 'SV'
+                ? 'SV-' . (int) $voucher->voucher_number
+                : 'JV-' . get_jv_number($voucher->voucher_number));
+        return view('admin.reports.vouchers.print_journal_voucher', compact('voucher', 'voucherDisplayNumber'));
     }
 
     private function getCommonData($title, $type = 'JV')

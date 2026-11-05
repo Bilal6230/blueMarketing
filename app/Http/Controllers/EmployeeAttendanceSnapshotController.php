@@ -45,11 +45,13 @@ final class EmployeeAttendanceSnapshotController extends Controller
             ->where('project_id', $projectId)->whereBetween('work_date', [$start->toDateString(), $end->toDateString()]);
         $counts = (clone $query)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
         $records = $query->orderBy('work_date')->orderBy('employee_profile_id')->paginate(50)->withQueryString();
+        $hasProfiles = EmployeeProfile::where('project_id', $projectId)->exists();
 
         return view('admin.employees.attendance', [
             'title' => 'Employee Attendance Review', 'month' => $month, 'records' => $records,
             'counts' => $counts, 'projectId' => $projectId, 'canSnapshot' => auth()->user()->can('create attendance'),
             'canReview' => auth()->user()->can('update attendance'), 'unreviewed' => (int) ($counts['unreviewed'] ?? 0),
+            'hasProfiles' => $hasProfiles,
         ]);
     }
 
@@ -64,7 +66,10 @@ final class EmployeeAttendanceSnapshotController extends Controller
         $end = $start->endOfMonth()->min(now()->endOfDay());
         $profiles = EmployeeProfile::with(['revisions', 'user'])
             ->where('project_id', $projectId)->orderBy('id')->get();
-        abort_if($profiles->isEmpty(), 422, 'Create employee profiles before preparing attendance.');
+        if ($profiles->isEmpty()) {
+            return redirect()->route('employee-attendance.index', ['month' => $data['month']])
+                ->with('warning', 'Create employee profiles in Employee Setup before preparing attendance.');
+        }
 
         $punchesByUserDay = Punch::query()->where('project_id', $projectId)
             ->whereBetween('punch_in', [$start->startOfDay()->toDateTimeString(), $end->toDateTimeString()])

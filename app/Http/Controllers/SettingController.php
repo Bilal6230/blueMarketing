@@ -29,6 +29,7 @@ class SettingController extends Controller
             : (in_array($requestedTab, $categoryNames, true) ? $requestedTab : null);
         $x['attendanceTabActive'] = $requestedTab === 'attendance-machine';
         $x['financeSettingsTabActive'] = $requestedTab === 'bank-accounts';
+        $x['voucherSettingsTabActive'] = $requestedTab === 'voucher-settings';
         $projectId = (int) getSelectedTown();
         $isAttendanceAdmin = auth()->user()->hasAnyRole(['admin', 'superadmin']);
         if (!auth()->user()->hasRole('superadmin') && $projectId > 0) {
@@ -51,6 +52,14 @@ class SettingController extends Controller
         $x['attendanceProjectId'] = $projectId;
         $x['canManageAttendanceDevice'] = $isAttendanceAdmin;
         $x['financeSettingsProjectId'] = $projectId;
+        $x['voucherDisplaySettingsReady'] = Schema::hasTable('project_voucher_display_settings') && Schema::hasTable('project_voucher_display_setting_audits');
+        $x['customPaymentMethodsReady'] = Schema::hasTable('project_custom_payment_methods') && Schema::hasTable('project_custom_payment_method_audits');
+        $x['customPaymentMethods'] = $x['customPaymentMethodsReady'] && $projectId > 0
+            ? DB::table('project_custom_payment_methods')->where('project_id', $projectId)->orderBy('name')->get()
+            : collect();
+        $x['voucherDisplaySettings'] = $x['voucherDisplaySettingsReady'] && $projectId > 0
+            ? DB::table('project_voucher_display_settings')->where('project_id', $projectId)->pluck('prefix', 'series')
+            : collect();
         $x['canManageFinanceSettings'] = $isAttendanceAdmin && auth()->user()->can('update setting') && $projectId > 0;
         $financeSchemaReady = Schema::hasTable('project_bank_accounts') && Schema::hasTable('project_bank_account_audits');
         $x['financeSettingsSchemaReady'] = $financeSchemaReady;
@@ -92,6 +101,96 @@ class SettingController extends Controller
             if ($legacyMapping) $x['projectBankMappings']->prepend($legacyMapping);
         }
         return view('admin.setting', $x);
+    }
+
+    public function saveVoucherDisplaySettings(Request $request)
+    {
+        abort_unless($request->user()->hasAnyRole(['admin', 'superadmin']) && $request->user()->can('update setting'), 403);
+        abort_unless(Schema::hasTable('project_voucher_display_settings') && Schema::hasTable('project_voucher_display_setting_audits'), 409,
+            'Voucher display settings migration is required.');
+        $projectId = (int) getSelectedTown();
+        abort_unless($projectId > 0, 400, 'Select a project first.');
+        if (!$request->user()->hasRole('superadmin')) abort_unless((int) $request->user()->project_id === $projectId, 403);
+        $validator = Validator::make($request->all(), ['series' => ['required', 'in:CR,CP,JV,CV,BO,BR,PPR,SV,ECP'],
+            'prefix' => ['required', 'regex:/^[A-Z][A-Z0-9]{1,11}$/D']], [
+                'series.in' => 'Select a supported voucher type.',
+                'prefix.regex' => 'The voucher prefix format is invalid. Use 2–12 uppercase letters or numbers, starting with a letter.',
+                'prefix.required' => 'Enter a voucher prefix.',
+            ]);
+        if ($validator->fails()) {
+            return redirect()->route('setting.index', ['tab' => 'voucher-settings'])
+                ->withErrors($validator)->withInput();
+        }
+        $data = $validator->validated();
+        DB::transaction(function () use ($projectId, $data, $request): void {
+            DB::table('projects')->where('id', $projectId)->lockForUpdate()->firstOrFail();
+            $query = DB::table('project_voucher_display_settings')->where('project_id', $projectId)->where('series', $data['series']);
+            $old = $query->lockForUpdate()->value('prefix');
+            if ($old === $data['prefix']) return;
+            if ($old === null) {
+                $query->insert(['project_id' => $projectId, 'series' => $data['series'],
+                    'prefix' => $data['prefix'], 'financial_year_start_month' => 1,
+                    'updated_by' => $request->user()->id, 'created_at' => now(), 'updated_at' => now()]);
+            } else {
+                $query->update(['prefix' => $data['prefix'], 'updated_by' => $request->user()->id, 'updated_at' => now()]);
+            }
+            DB::table('project_voucher_display_setting_audits')->insert([
+                'project_id' => $projectId, 'series' => $data['series'], 'old_prefix' => $old,
+                'new_prefix' => $data['prefix'], 'actor_id' => $request->user()->id, 'created_at' => now(),
+            ]);
+        }, 3);
+        return redirect()->route('setting.index', ['tab' => 'voucher-settings'])->with('success', 'Voucher display prefix saved. Existing voucher IDs were not changed.');
+    }
+
+    public function saveCustomPaymentMethod(Request $request)
+    {
+        abort_unless($request->user()->hasAnyRole(['admin', 'superadmin']) && $request->user()->can('update setting'), 403);
+        abort_unless(Schema::hasTable('project_custom_payment_methods') && Schema::hasTable('project_custom_payment_method_audits'), 409,
+            'Custom payment method migration is required.');
+        $projectId = (int) getSelectedTown();
+        abort_unless($projectId > 0, 400, 'Select a project first.');
+        if (!$request->user()->hasRole('superadmin')) abort_unless((int) $request->user()->project_id === $projectId, 403);
+        $data = $request->validate([
+            'method_id' => ['nullable', 'integer', 'min:1'],
+            'code' => ['required', 'regex:/^[A-Z][A-Z0-9_]{1,19}$/D'],
+            'name' => ['required', 'string', 'max:80'],
+            'base_method_code' => ['required', 'integer', 'in:1,2,3'],
+            'is_active' => ['required', 'boolean'],
+        ], [
+            'code.regex' => 'The payment method code format is invalid. Use 2–20 uppercase letters, numbers, or underscores, starting with a letter.',
+            'code.required' => 'Enter a payment method code.',
+        ]);
+        DB::transaction(function () use ($projectId, $data, $request): void {
+            DB::table('projects')->where('id', $projectId)->lockForUpdate()->firstOrFail();
+            $query = DB::table('project_custom_payment_methods')->where('project_id', $projectId);
+            $existing = !empty($data['method_id']) ? (clone $query)->where('id', $data['method_id'])->lockForUpdate()->first() : null;
+            abort_if(!empty($data['method_id']) && !$existing, 404);
+            $duplicate = (clone $query)->where('code', $data['code'])
+                ->when($existing, fn ($q) => $q->where('id', '!=', $existing->id))->exists();
+            abort_if($duplicate, 422, 'This payment method code already exists in this project.');
+            if ($existing) {
+                abort_if((int) $existing->base_method_code !== (int) $data['base_method_code'], 422,
+                    'Payment method behavior cannot be changed. Create a new method instead.');
+                abort_if($existing->code !== $data['code'], 422,
+                    'Payment method code cannot be changed. Create a new method instead.');
+            }
+            $values = ['code' => $data['code'], 'name' => trim($data['name']),
+                'base_method_code' => (int) $data['base_method_code'], 'is_active' => (bool) $data['is_active']];
+            if ($existing) {
+                (clone $query)->where('id', $existing->id)->update($values + ['updated_by' => $request->user()->id, 'updated_at' => now()]);
+                $methodId = $existing->id;
+            } else {
+                $methodId = (clone $query)->insertGetId($values + ['project_id' => $projectId,
+                    'updated_by' => $request->user()->id, 'created_at' => now(), 'updated_at' => now()]);
+            }
+            DB::table('project_custom_payment_method_audits')->insert([
+                'project_id' => $projectId, 'method_id' => $methodId, 'action' => $existing ? 'updated' : 'created',
+                'old_values' => $existing ? json_encode($existing, JSON_THROW_ON_ERROR) : null,
+                'new_values' => json_encode($values, JSON_THROW_ON_ERROR), 'actor_id' => $request->user()->id,
+                'created_at' => now(),
+            ]);
+        }, 3);
+        return redirect()->route('setting.index', ['tab' => 'voucher-settings'])->with('success', 'Custom payment method saved.');
     }
 
     public function saveProjectBankAccount(Request $request)

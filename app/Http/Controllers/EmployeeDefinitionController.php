@@ -44,6 +44,15 @@ final class EmployeeDefinitionController extends Controller
         $definitions = EmployeeDefinition::where('project_id', $projectId)->orderBy('kind')->orderBy('name')->get()->groupBy('kind');
         $profiles = EmployeeProfile::with(['user', 'department', 'designation', 'category', 'revisions'])
             ->where('project_id', $projectId)->orderBy('employee_code')->get();
+        // Keep Blade templates simple: compiling an inline PHP closure inside
+        // @json() breaks the Blade parser on supported Laravel versions.
+        $profileFormData = $profiles->keyBy('user_id')->map(function ($profile) {
+            $revision = $profile->revisions->first();
+            return [
+                'identity' => $profile->only(['user_id', 'employee_code', 'joining_date', 'department_definition_id', 'designation_definition_id', 'employee_category_definition_id']),
+                'revision' => $revision?->only(['effective_from', 'basic_salary', 'allowances', 'payment_method', 'salary_status', 'salary_proration_method', 'duty_start', 'duty_end', 'break_minutes', 'daily_hours', 'working_days_per_week', 'weekly_off_days', 'grace_minutes', 'late_fine_policy', 'absence_deduction', 'leave_deduction', 'half_day_after_minutes', 'half_day_deduction', 'short_leave_minutes', 'short_leave_method', 'short_leave_deduction', 'early_departure_method', 'early_departure_deduction', 'overtime_method', 'overtime_rate', 'other_adjustments']),
+            ];
+        })->toArray();
         $users = User::where('project_id', $projectId)->orderBy('name')->get(['id', 'name', 'email']);
         $definitionAudits = DB::table('employee_definition_audits as audit')
             ->join('employee_definitions as definition', function ($join): void {
@@ -71,7 +80,7 @@ final class EmployeeDefinitionController extends Controller
                 'profile.employee_code', 'employee.name as employee_name', 'actor.name as actor_name',
             ]);
 
-        return view('admin.employees.definitions', compact('definitions', 'profiles', 'users', 'definitionAudits', 'profileAudits'))
+        return view('admin.employees.definitions', compact('definitions', 'profiles', 'users', 'definitionAudits', 'profileAudits', 'profileFormData'))
             ->with('title', 'Employee Setup');
     }
 

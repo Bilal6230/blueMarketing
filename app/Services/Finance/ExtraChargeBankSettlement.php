@@ -132,7 +132,7 @@ final class ExtraChargeBankSettlement
             throw new \DomainException('ECP_RESERVED_EXCEEDS_CHARGE');
         }
         $number = app(ProjectVoucherAllocator::class)->next($projectId, 'ECP');
-        CustomerLedger::create([
+        $payment = CustomerLedger::create([
             'project_id' => $projectId, 'customer_id' => $charge->customer_id,
             'plot_id' => $charge->plot_id, 'transaction_type' => 'ECP',
             'type_id' => $number, 'reference' => $identity,
@@ -143,6 +143,9 @@ final class ExtraChargeBankSettlement
             'description' => 'Pending bank Extra Charge payment for EC #' . $charge->id,
             'is_active' => 1, 'is_approve' => 0,
         ]);
+        app(ProjectVoucherDisplayIdentity::class)->assign(
+            $projectId, 'customer_ledger', (int) $payment->id, 'ECP', $date
+        );
     }
 
     public function resolve(Request $request, int $projectId): void

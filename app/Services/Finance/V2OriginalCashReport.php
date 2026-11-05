@@ -19,11 +19,13 @@ final class V2OriginalCashReport
             foreach ($group->unique('posting_batch_id') as $batch) { $sign += $batch['is_reversal'] ? -1 : 1; }
             if (abs($sign) > 1) { throw new \DomainException('V2_CASH_REPORT_DUPLICATE_SOURCE'); }
             $amount = $reader->money(max($source->amount_in, $source->amount_out));
+            $voucherNumber = app(ProjectVoucherDisplayIdentity::class)->lookup($project, 'customer_ledger', (int) $id)
+                ?: $first['display_voucher_number'];
             $minor = (int) str_replace('.', '', $amount) * $sign;
             $net = ($minor < 0 ? '-' : '').intdiv(abs($minor), 100).'.'.str_pad((string) (abs($minor) % 100), 2, '0', STR_PAD_LEFT);
             $result[] = [
                 'id' => 'SRC-'.$id, 'source_id' => (int) $id, 'type' => $source->transaction_type,
-                'date' => $group->max('date'), 'voucher_number' => $first['display_voucher_number'],
+                'date' => $group->max('date'), 'voucher_number' => $voucherNumber,
                 'project' => $first['project_name'], 'head' => $group->pluck('head_account_name')->unique()->implode(' / '),
                 'subhead' => $group->pluck('subhead_account_name')->unique()->implode(' / '),
                 'head_ids' => $group->pluck('head_accounting_id')->unique()->all(),

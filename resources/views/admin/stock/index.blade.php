@@ -20,11 +20,19 @@
       --pv-danger: #ef4444;
     }
 
-    body {
-      background: var(--pv-bg);
-      color: var(--pv-text);
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-    }
+    .stock-module-wrapper { background: var(--pv-bg); color: var(--pv-text); min-height: calc(100vh - 140px); overflow-x: hidden; }
+
+    /* Keep the ERP's actual navigation shell; this page owns only its compact toolbar. */
+    .pv-shell { display: block; min-height: auto; }
+    .pv-sidebar { display: none !important; }
+    .pv-main { padding: 20px clamp(12px, 2vw, 30px) 34px; max-width: 1900px; margin: 0 auto; }
+    .pv-topbar { border-radius: 16px; border-color: #e2eaf5; background: linear-gradient(115deg,#fff 0%,#f5f9ff 100%); }
+    .pv-tabbtn { border-radius: 11px; font-weight: 650; }
+    .pv-tabbtn.active { background: #eaf2ff; color: #175bd6; border-color: #bcd3ff; box-shadow: 0 5px 14px #2b6cff1a; }
+    .pv-main .form-control, .pv-main .form-select { border-radius: 10px; min-height: 40px; }
+    .pv-main .btn { border-radius: 10px; font-weight: 600; }
+    .pv-main .table thead th { background: #f0f5fc; color: #35506f; font-size: .76rem; letter-spacing: .045em; }
+    @media (max-width: 767.98px) { .pv-main { padding: 12px 10px 24px; } .pv-topbar { align-items: flex-start; flex-direction: column; } .pv-tabs { justify-content: flex-start; } }
 
     /* App shell (labour module-ish) */
     .pv-shell {
@@ -339,10 +347,21 @@
         max-height: 420px;
       }
     }
+    /* Override legacy mock shell styles: use the real sticky ERP sidebar and navbar. */
+    .pv-shell { display: block; min-height: auto; }
+    .pv-sidebar { display: none !important; }
+    .pv-main { display: block; width: 100%; padding: 20px clamp(12px, 2vw, 30px) 34px; max-width: 1900px; margin: 0 auto; }
+    .pv-topbar { border-radius: 16px; border-color: #e2eaf5; background: linear-gradient(115deg,#fff,#f5f9ff); }
+    .pv-tabbtn { border-radius: 11px; font-weight: 650; }
+    .pv-tabbtn.active { background: #eaf2ff; color: #175bd6; border-color: #bcd3ff; box-shadow: 0 5px 14px #2b6cff1a; }
+    .pv-main .form-control, .pv-main .form-select { border-radius: 10px; min-height: 40px; }
+    .pv-main .btn { border-radius: 10px; font-weight: 600; }
+    .pv-main .table thead th { background: #f0f5fc; color: #35506f; font-size: .76rem; letter-spacing: .045em; }
+    @media (max-width: 767.98px) { .pv-main { padding: 12px 10px 24px; } .pv-topbar { align-items: flex-start; flex-direction: column; } .pv-tabs { justify-content: flex-start; } }
   </style>
-  <div class="pv-shell">
+  <div class="content-wrapper stock-module-wrapper"><div class="pv-shell">
     <!-- Sidebar (visual only) -->
-    <aside class="pv-sidebar">
+    <aside class="pv-sidebar" aria-hidden="true">
       <div class="pv-brand" title="ERP">
         <i class="bi bi-boxes text-white"></i>
       </div>
@@ -373,7 +392,7 @@
             <i class="bi bi-box-seam me-1"></i> Stock Management Module
           </div>
           <div class="pv-small pv-muted d-none d-md-block">
-            UI only • Bootstrap • In-memory demo
+            Project-scoped stock, billing and material records
           </div>
         </div>
 
@@ -407,7 +426,7 @@
       @if (session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
       @if ($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
       @if ($canReconcileLegacyStock && (count($legacyStockCandidates['entries']) + count($legacyStockCandidates['bills']) + count($legacyStockCandidates['movements']) > 0 || $legacyStockAudits->isNotEmpty()))
-        <div class="card border-warning mb-3">
+        <div class="card border-warning mb-3" data-ajax-panel="stock-reconciliation-panel">
           <div class="card-header bg-light"><strong>Legacy stock project reconciliation</strong></div>
           <div class="card-body">
             <p class="text-muted">Assign only records whose party belongs to this project. Each assignment requires a reason and is audited. Linked lines and source movements are scoped together; quantities, rates and amounts are not edited. Review up to 50 candidates per section.</p>
@@ -484,7 +503,7 @@
 
                       <div class="col-12">
                         <label class="form-label pv-small" id="entryPartyLabel">Shop / Party</label>
-                        <select class="form-select" id="entryParty" required></select>
+                        <select class="form-select" id="entryParty" required><option value="">Select a Shop/Party or Site/Customer</option></select>
                       </div>
 
                       <div class="col-12">
@@ -517,8 +536,7 @@
                         <i class="bi bi-check2-circle me-1"></i> Save Entry
                       </button>
                       <div class="pv-small pv-muted mt-2">
-                        Demo mode: saves in memory, updates stock report
-                        instantly.
+                        Saves to this project's stock records. Entries refresh here without a page reload.
                       </div>
                     </div>
                   </form>
@@ -576,7 +594,6 @@
                           <th>Rate</th>
                           <th>Amount</th>
                           <th>Billing</th>
-                          <th class="text-end">Actions</th>
                         </tr>
                       </thead>
                       <tbody id="entryTbody"></tbody>
@@ -652,7 +669,7 @@
 
                       <div class="col-12">
                         <label class="form-label pv-small" id="billPartyLabel">Supplier / Site Name</label>
-                        <select class="form-select" id="billParty" required></select>
+                        <select class="form-select" id="billParty" required><option value="">Select a Supplier or Site</option></select>
                       </div>
 
                       <div class="col-md-6">
@@ -736,7 +753,6 @@
                           <th>Name</th>
                           <th>Details</th>
                           <th>Amount</th>
-                          <th class="text-end">Actions</th>
                         </tr>
                       </thead>
                       <tbody id="billTbody"></tbody>
@@ -1104,7 +1120,7 @@
       </div>
       <!-- /pvViews -->
     </main>
-  </div>
+  </div></div>
 
   <!-- Modals (edit item/party) -->
   <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
@@ -1114,7 +1130,7 @@
           <div>
             <h2 id="editModalTitle">Edit</h2>
             <div class="pv-small pv-muted" id="editModalSub">
-              Update fields (demo only).
+              Edit this project's record. Existing linked history is preserved.
             </div>
           </div>
           <button type="button" class="btn btn-light" data-bs-dismiss="modal" aria-label="Close"
@@ -1128,7 +1144,7 @@
       </div>
     </div>
   </div>
-  {{-- In-memory attendance records stored as JSON in DOM for demo. Initially empty (seeded below by JS). --}}
+  {{-- Attendance and stock data are loaded from the project-scoped APIs below. --}}
   <script type="application/json" id="initial-attendance">[]</script>
 @endsection
 
@@ -1466,9 +1482,10 @@
   SELECTS POPULATION
   =========================== */
     function fillPartySelect(sel, withAll = false) {
-      sel.innerHTML = "";
+      const placeholder = withAll ? "All" : (sel.id === "billParty" ? "Select a Supplier or Site" : "Select a Shop/Party or Site/Customer");
+      sel.innerHTML = `<option value="">${placeholder}</option>`;
       if (withAll)
-        sel.insertAdjacentHTML("beforeend", `<option value="">All</option>`);
+        sel.options[0].textContent = "All";
       state.parties.forEach((p) => {
         sel.insertAdjacentHTML(
           "beforeend",
@@ -1679,8 +1696,8 @@
       if (!entryParty.value) {
         Swal.fire({
           icon: "error",
-          title: "Missing Party",
-          text: "Please select Shop/Party or Site/Customer.",
+          title: state.parties.length ? "Select a party" : "No parties configured",
+          text: state.parties.length ? "Choose a Shop/Party or Site/Customer from the list." : "Open Stock → Parties and add an active party for this project first.",
         });
         return;
       }
@@ -1832,7 +1849,7 @@
 
 
     /* ===========================
-  ITEMS + PARTIES CRUD (demo)
+  PROJECT-SCOPED ITEMS + PARTIES MANAGEMENT
   =========================== */
     const editModalEl = document.getElementById("editModal");
     const editModal = new bootstrap.Modal(editModalEl);
@@ -2089,11 +2106,6 @@
               <td>${fmtPKR(en.rate || 0)}</td>
               <td>${fmtPKR(en.amount || 0)}</td>
               <td>${billingPill}</td>
-              <td class="text-end pv-actions">
-                <button class="btn btn-outline-secondary btn-sm" data-act="print">
-                  <i class="bi bi-printer"></i>
-                </button>
-              </td>
             </tr>
           `
         );
@@ -2113,11 +2125,6 @@
         kpi.line_count || 0
       );
 
-      tbody.querySelectorAll("button[data-act]").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          viewToast("info", "Print", "Print action not available.");
-        });
-      });
     }
 
     function renderBillTable() {
@@ -2136,11 +2143,6 @@
               <td class="text-truncate" style="max-width:260px;">${b.bill_no || ""}${b.entry_no ? " • Entry: " + b.entry_no : ""
           }</td>
               <td>${fmtPKR(b.total || 0)}</td>
-              <td class="text-end pv-actions">
-                <button class="btn btn-outline-secondary btn-sm" data-act="print">
-                  <i class="bi bi-printer"></i>
-                </button>
-              </td>
             </tr>
           `
         );
@@ -2160,11 +2162,6 @@
         kpi.total_amount || 0
       );
 
-      tbody.querySelectorAll("button[data-act]").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          viewToast("info", "Print", "Print action not available.");
-        });
-      });
     }
 
     function renderStock() {
@@ -2303,15 +2300,15 @@
           if (btn.dataset.act === "del") {
             const ok = await Swal.fire({
               icon: "warning",
-              title: "Delete item?",
-              text: "This will remove related entries/bills that reference this item.",
+              title: "Archive item from this project?",
+              text: "It will be hidden from new entries. Existing stock and billing history will remain preserved.",
               showCancelButton: true,
-              confirmButtonText: "Delete",
+              confirmButtonText: "Archive item",
             });
             if (!ok.isConfirmed) return;
             try {
               await apiSend(withId(endpoints.deleteItem, it.id), "DELETE");
-              viewToast("success", "Deleted", "Item deleted.");
+              viewToast("success", "Archived", "Item archived for this project; history was preserved.");
               await loadMeta();
               await loadItemsTable();
               await Promise.all([loadEntries(), loadBills(), loadReport()]);
@@ -2448,15 +2445,15 @@
           if (btn.dataset.act === "del") {
             const ok = await Swal.fire({
               icon: "warning",
-              title: "Delete party?",
-              text: "This will remove related entries/bills that reference this party.",
+              title: "Archive party?",
+              text: "Parties with transaction history cannot be archived. Parties without history are soft-archived; records are never hard-deleted.",
               showCancelButton: true,
-              confirmButtonText: "Delete",
+              confirmButtonText: "Archive party",
             });
             if (!ok.isConfirmed) return;
             try {
               await apiSend(withId(endpoints.deleteParty, p.id), "DELETE");
-              viewToast("success", "Deleted", "Party deleted.");
+              viewToast("success", "Archived", "Party archived; existing history was preserved.");
               await loadMeta();
               await loadPartiesTable();
               await Promise.all([loadEntries(), loadBills(), loadReport()]);

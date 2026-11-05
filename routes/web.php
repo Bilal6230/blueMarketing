@@ -107,6 +107,8 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         ->middleware('permission:approve payroll')->name('employee-payroll.approve');
     Route::get('employee-payroll/snapshots/{runId}', [App\Http\Controllers\EmployeePayrollPreviewController::class, 'showRun'])
         ->middleware('permission:read payroll')->name('employee-payroll.run');
+    Route::post('employee-payroll/snapshots/{runId}/payments', [App\Http\Controllers\EmployeePayrollPreviewController::class, 'linkPayment'])
+        ->middleware('permission:approve payroll')->name('employee-payroll.payment.link');
 
     Route::controller(RoleController::class)->group(function () {
         Route::get('role', 'index')->middleware(['permission:read role'])->name('role.index');
@@ -136,6 +138,8 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::put('setting', 'update')->middleware(['permission:update setting'])->name('setting.update');
         Route::post('setting/bank-account', 'saveProjectBankAccount')->middleware(['permission:update setting'])->name('setting.bank-account.save');
         Route::post('setting/payment-method-labels', 'savePaymentMethodLabels')->middleware(['permission:update setting'])->name('setting.payment-method-labels.save');
+        Route::post('setting/voucher-display', 'saveVoucherDisplaySettings')->middleware(['permission:update setting'])->name('setting.voucher-display.save');
+        Route::post('setting/custom-payment-method', 'saveCustomPaymentMethod')->middleware(['permission:update setting'])->name('setting.custom-payment-method.save');
         Route::delete('setting', 'destroy')->middleware(['permission:delete setting'])->name('setting.destroy');
     });
 

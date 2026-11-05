@@ -22,6 +22,7 @@ class CustomerLedger extends Model
         'type_id',
         'reference',
         'payment_type',
+        'custom_payment_method_id',
         't_number',
         'bank_id',
         'passing_date',

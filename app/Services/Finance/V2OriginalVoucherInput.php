@@ -29,6 +29,7 @@ final class V2OriginalVoucherInput
             'detail' => ['required', 'string', 'max:1000'],
             'reference' => ['nullable', 'string', 'max:255'],
             'payment_type' => ['required', 'integer', 'in:0,1,2,3'],
+            'custom_payment_method_id' => ['nullable', 'integer', 'min:1'],
             't_number' => ['required_if:payment_type,2,3', 'nullable', 'string', 'max:255'],
             'bank_id' => ['required_if:payment_type,2,3', 'nullable', 'integer', 'min:1'],
             'passing_date' => ['required_if:payment_type,2,3', 'nullable', 'date_format:Y-m-d'],
@@ -42,6 +43,6 @@ final class V2OriginalVoucherInput
     public static function source(array $data): array
     {
         return ['date' => $data['date'], 'amount' => $data['amount'], 'description' => $data['detail']]
-            + array_intersect_key($data, array_flip(['reference', 'payment_type', 't_number', 'bank_id', 'passing_date']));
+            + array_intersect_key($data, array_flip(['reference', 'payment_type', 'custom_payment_method_id', 't_number', 'bank_id', 'passing_date']));
     }
 }

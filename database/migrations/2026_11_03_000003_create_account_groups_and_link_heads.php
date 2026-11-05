@@ -19,11 +19,15 @@ return new class extends Migration
             $table->unsignedBigInteger('create_by')->nullable();
             $table->timestamps();
             $table->foreign('project_id')->references('id')->on('projects')->restrictOnDelete();
-            $table->foreign(['parent_id', 'project_id'], 'account_groups_parent_project_fk')
-                ->references(['id', 'project_id'])->on('account_groups')->restrictOnDelete();
             $table->unique(['project_id', 'code'], 'account_groups_project_code_uq');
             $table->unique(['id', 'project_id'], 'account_groups_id_project_uq');
             $table->index(['project_id', 'parent_id', 'is_active'], 'account_groups_project_parent_active_idx');
+        });
+        // MySQL requires the referenced composite unique key to exist before
+        // adding a self-referencing foreign key.
+        Schema::table('account_groups', function (Blueprint $table): void {
+            $table->foreign(['parent_id', 'project_id'], 'account_groups_parent_project_fk')
+                ->references(['id', 'project_id'])->on('account_groups')->restrictOnDelete();
         });
 
         Schema::create('project_head_account_groups', function (Blueprint $table) {

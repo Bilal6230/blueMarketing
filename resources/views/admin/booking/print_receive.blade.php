@@ -265,7 +265,7 @@
             return (string) $number;
         };
 
-        $receiptNo = optional($ledger)->voucher_number ?? (optional($ledger)->voucher ?? '-');
+        $receiptNo = $displayNumber ?? (optional($ledger)->voucher_number ?? (optional($ledger)->voucher ?? '-'));
 
         $customerName = trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? ''));
         if ($customerName === '') {

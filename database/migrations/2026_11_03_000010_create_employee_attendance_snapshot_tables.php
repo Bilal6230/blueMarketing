@@ -34,6 +34,7 @@ return new class extends Migration
                 $table->foreign(['employee_profile_id', 'user_id', 'project_id'], 'employee_att_profile_user_project_fk')
                     ->references(['id', 'user_id', 'project_id'])->on('employee_profiles')->restrictOnDelete();
                 $table->unique(['employee_profile_id', 'work_date'], 'employee_att_profile_day_uq');
+                $table->unique(['id', 'project_id'], 'employee_att_record_project_uq');
                 $table->index(['project_id', 'work_date', 'status'], 'employee_att_project_day_status_idx');
                 $table->index(['project_id', 'snapshot_batch_id'], 'employee_att_snapshot_batch_idx');
             });

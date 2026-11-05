@@ -48,7 +48,7 @@
                 <span><b>Print Date:</b></span> {{ $today }} <span></span>
             </div>
             <div style="display: flex; justify-content: space-between; border-bottom:1px solid #aaa">
-                <span><b>Booking Number:</b></span> BO-{{ get_new_booking_number($data->id) }} <span></span>
+                <span><b>Booking Number:</b></span> {{ get_new_booking_number($data->id) }} <span></span>
             </div>
         </td>
     </tr>

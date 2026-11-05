@@ -369,6 +369,9 @@
 
                                                     </td>
                                                     <td>
+                                                        @if ($i->display_voucher_number)
+                                                            <strong>{{ $i->display_voucher_number }}</strong><br>
+                                                        @endif
                                                         {{ $i->reference ?? '' }}
 
                                                     </td>
@@ -525,7 +528,11 @@
                                     <h5>Extra Charge Online / Cheque Pending Clearance</h5>
                                     @foreach ($ecPendingPayments as $pending)
                                         <div class="border rounded p-2 mb-2">
-                                            <strong>{{ $pending->reference }}</strong> — Rs. {{ Setting::roundformatAmount($pending->amount_in) }}
+                                            <strong>{{ $pending->display_voucher_number ?: $pending->reference }}</strong>
+                                            @if ($pending->display_voucher_number)
+                                                <small class="text-muted">({{ $pending->reference }})</small>
+                                            @endif
+                                            — Rs. {{ Setting::roundformatAmount($pending->amount_in) }}
                                             @can('can approve')
                                                 <form method="POST" action="{{ route('booking.customer.deposit') }}" class="mt-2">
                                                     @csrf

@@ -252,7 +252,7 @@ class ReportController extends Controller
 
                 if (!$alreadyPosted) {
                     $voucherNumber = getVocuherNumber('BR');
-                    Ledger::create([
+                    $clearance = Ledger::create([
                         'customer_ledger_id' => $result->id,
                         'type' => 'BR',
                         'voucher_number' => $voucherNumber,
@@ -269,6 +269,10 @@ class ReportController extends Controller
                         'create_by' => Auth::user()->id,
                         'status' => 0,
                     ]);
+                    app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->assign(
+                        (int) $selectedProjectId, 'ledger', (int) $clearance->id, 'BR',
+                        substr((string) $request->bank_post_at, 0, 10)
+                    );
                 }
             }
 

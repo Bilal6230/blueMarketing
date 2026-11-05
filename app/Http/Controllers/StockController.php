@@ -1924,6 +1924,9 @@ class StockController extends Controller
                 'is_active' => 1,
                 'is_approve' => 0,
             ]);
+            app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->assign(
+                $projectId, 'customer_ledger', (int) $customerLedger->id, $ledgerType, $entryDate
+            );
         }
 
         $voucherNumber = app(\App\Services\Finance\ProjectVoucherAllocator::class)
@@ -2086,6 +2089,9 @@ class StockController extends Controller
                 'is_active' => 1,
                 'is_approve' => 0,
             ]);
+            app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->assign(
+                $projectId, 'customer_ledger', (int) $customerLedger->id, $ledgerType, $billDate
+            );
         }
 
         $voucherNumber = app(\App\Services\Finance\ProjectVoucherAllocator::class)

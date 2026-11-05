@@ -82,12 +82,15 @@ class VoucherController extends Controller
         $project = (int) getSelectedTown();
         \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($project);
         $source = CustomerLedger::query()->whereKey($customerLedger)->where('project_id', $project)->firstOrFail();
+        $displayNumber = app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)
+            ->lookup($project, 'customer_ledger', (int) $source->id)
+            ?: ($source->transaction_type . '-' . $source->type_id);
         try {
             $lines = collect((new \App\Services\Finance\V2OriginalLedgerReport())->rows($project, null, null))
                 ->where('source_kind', 'cash')->where('source_id', $source->id)->values();
         } catch (\DomainException $e) { abort(409, 'Voucher print integrity checks failed.'); }
         abort_if($lines->isEmpty(), 404);
-        return view('admin.finance.voucher.typed_print', compact('source', 'lines'));
+        return view('admin.finance.voucher.typed_print', compact('source', 'lines', 'displayNumber'));
     }
     private array $allowedPendingUpdateTables = ['ledgers', 'draft_ledgers', 'customer_ledger', 'leads'];
     private array $financePendingUpdateTables = ['ledgers', 'draft_ledgers', 'customer_ledger'];
@@ -297,6 +300,9 @@ class VoucherController extends Controller
             : '#B11226';
 
         $selectedProjectId = getSelectedTown();
+        $x['customPaymentMethods'] = \Illuminate\Support\Facades\Schema::hasTable('project_custom_payment_methods')
+            ? DB::table('project_custom_payment_methods')->where('project_id', $selectedProjectId)->where('is_active', 1)->orderBy('name')->get()
+            : collect();
         $x['data'] = [];
 
         $x['headaccounts'] = ProjectHeadSubhead::availableForPosting()
@@ -356,7 +362,17 @@ class VoucherController extends Controller
 
     public function print($id)
     {
-        $x['voucher'] = Ledger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting')->findOrFail($id);
+        $projectId = (int) getSelectedTown();
+        $x['voucher'] = Ledger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting')
+            ->whereKey($id)->whereHas('projectHeadSubhead', fn ($query) => $query->where('project_id', $projectId))
+            ->firstOrFail();
+        $sourceId = (int) ($x['voucher']->customer_ledger_id ?? 0);
+        $x['displayNumber'] = $sourceId > 0
+            ? app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)
+                ->lookup($projectId, 'customer_ledger', $sourceId)
+            : null;
+        $x['displayNumber'] ??= app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)
+            ->lookup($projectId, 'ledger', (int) $x['voucher']->id);
         return view('admin.finance.voucher.print-eng', $x);
     }
     public function approve($id, Request $request)
@@ -525,6 +541,9 @@ class VoucherController extends Controller
 
         // Get selected town's project_id
         $selectedProjectId = getSelectedTown();
+        $x['customPaymentMethods'] = \Illuminate\Support\Facades\Schema::hasTable('project_custom_payment_methods')
+            ? DB::table('project_custom_payment_methods')->where('project_id', $selectedProjectId)->where('is_active', 1)->orderBy('name')->get()
+            : collect();
 
 
         // $data = Ledger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project')
@@ -750,7 +769,17 @@ class VoucherController extends Controller
         $rows = (clone $filteredQuery)->orderByDesc('id')->skip($start)->take($length)->get();
 
         // Transform result set
-        $data = $rows->map(function ($i) {
+        $displayNumbers = Schema::hasTable('project_voucher_display_numbers')
+            ? DB::table('project_voucher_display_numbers')->where('project_id', $selectedProjectId)
+                ->where('source_kind', 'customer_ledger')->whereIn('source_id', $rows->pluck('customer_ledger_id')->filter()->unique())
+                ->pluck('display_number', 'source_id')
+            : collect();
+        $ledgerDisplayNumbers = Schema::hasTable('project_voucher_display_numbers')
+            ? DB::table('project_voucher_display_numbers')->where('project_id', $selectedProjectId)
+                ->where('source_kind', 'ledger')->whereIn('source_id', $rows->pluck('id'))
+                ->pluck('display_number', 'source_id')
+            : collect();
+        $data = $rows->map(function ($i) use ($displayNumbers, $ledgerDisplayNumbers) {
             $amount = $i->type === 'CP' ? (float) $i->amount_out : (float) $i->amount_in;
 
             // Latest pending update (if any)
@@ -780,7 +809,7 @@ class VoucherController extends Controller
 
             return [
                 'date' => $i->date,
-                'voucher_number' => $i->type . '-' . $i->voucher_number,
+                'voucher_number' => $displayNumbers[$i->customer_ledger_id] ?? $ledgerDisplayNumbers[$i->id] ?? ($i->type . '-' . $i->voucher_number),
                 'voucher_number_raw' => (int) $i->voucher_number,
                 'project' => optional($i->projectHeadSubhead->project)->project ?? '',
                 'head' => optional($i->projectHeadSubhead->headAccounting)->name ?? '',
@@ -839,7 +868,17 @@ class VoucherController extends Controller
         $rows = $q->orderByDesc('id')->skip($start)->take($length)->get();
 
         // Transform the result set
-        $data = $rows->map(function ($i) {
+        $displayNumbers = Schema::hasTable('project_voucher_display_numbers')
+            ? DB::table('project_voucher_display_numbers')->where('project_id', $selectedProjectId)
+                ->where('source_kind', 'customer_ledger')->whereIn('source_id', $rows->pluck('customer_ledger_id')->filter()->unique())
+                ->pluck('display_number', 'source_id')
+            : collect();
+        $ledgerDisplayNumbers = Schema::hasTable('project_voucher_display_numbers')
+            ? DB::table('project_voucher_display_numbers')->where('project_id', $selectedProjectId)
+                ->where('source_kind', 'ledger')->whereIn('source_id', $rows->pluck('id'))
+                ->pluck('display_number', 'source_id')
+            : collect();
+        $data = $rows->map(function ($i) use ($displayNumbers, $ledgerDisplayNumbers) {
             $amount = $i->type === 'CP' ? (float) $i->amount_out : (float) $i->amount_in;
 
             // Use preloaded relation if available or define relation in Ledger for latestPendingUpdate
@@ -897,8 +936,14 @@ class VoucherController extends Controller
             $query->where('payment_type', (int) $request->input('payment_type'));
         }
 
-        $pendingRows = $query->get()
-            ->map(function (CustomerLedger $item) {
+        $pendingSources = $query->get();
+        $displayNumbers = Schema::hasTable('project_voucher_display_numbers')
+            ? DB::table('project_voucher_display_numbers')->where('project_id', $selectedProjectId)
+                ->where('source_kind', 'customer_ledger')->whereIn('source_id', $pendingSources->pluck('id'))
+                ->pluck('display_number', 'source_id')
+            : collect();
+        $pendingRows = $pendingSources
+            ->map(function (CustomerLedger $item) use ($displayNumbers) {
                 $ledgerType = trim((string) optional($item->ledger)->type);
                 $ledgerVoucherNumber = trim((string) optional($item->ledger)->voucher_number);
                 $bookingVoucherSeries = trim((string) optional($item->bookingVoucher)->voucher_series);
@@ -921,6 +966,7 @@ class VoucherController extends Controller
                 } else {
                     $voucherNumberDisplay = 'Pending #' . $item->id;
                 }
+                $voucherNumberDisplay = $displayNumbers[$item->id] ?? $voucherNumberDisplay;
 
                 return [
                     'id' => $item->id,
@@ -1095,7 +1141,7 @@ class VoucherController extends Controller
 
                     if ($existingClearance->isEmpty()) {
                         $voucherNumber = getVocuherNumber('BR');
-                        Ledger::create([
+                        $clearance = Ledger::create([
                             'customer_ledger_id' => $lockedLedger->id,
                             'type' => 'BR',
                             'voucher_number' => $voucherNumber,
@@ -1112,6 +1158,10 @@ class VoucherController extends Controller
                             'create_by' => Auth::id(),
                             'status' => 0,
                         ]);
+                        app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->assign(
+                            (int) $selectedProjectId, 'ledger', (int) $clearance->id, 'BR',
+                            substr((string) $validated['bank_post_at'], 0, 10)
+                        );
                     }
                 }
             });
@@ -1270,7 +1320,12 @@ class VoucherController extends Controller
         $rows = (clone $filteredQuery)->orderByDesc('id')->skip($start)->take($length)->get();
 
         // Transform the result set
-        $data = $rows->map(function ($i) {
+        $displayNumbers = Schema::hasTable('project_voucher_display_numbers')
+            ? DB::table('project_voucher_display_numbers')->where('project_id', $selectedProjectId)
+                ->where('source_kind', 'customer_ledger')->whereIn('source_id', $rows->pluck('customer_ledger_id')->filter()->unique())
+                ->pluck('display_number', 'source_id')
+            : collect();
+        $data = $rows->map(function ($i) use ($displayNumbers) {
             $amount = $i->type === 'CP' ? (float) $i->amount_out : (float) $i->amount_in;
 
             $p = $i->latestPendingUpdate ?? PendingUpdate::where('table_name', 'ledgers')
@@ -1280,7 +1335,7 @@ class VoucherController extends Controller
 
             return [
                 'date' => $i->date,
-                'voucher_number' => $i->type . '-' . $i->voucher_number,
+                'voucher_number' => $displayNumbers[$i->customer_ledger_id] ?? $ledgerDisplayNumbers[$i->id] ?? ($i->type . '-' . $i->voucher_number),
                 'voucher_number_raw' => (int) $i->voucher_number,
                 'project' => $i->projectHeadSubhead->project->project ?? '',
                 'head' => $i->projectHeadSubhead->headAccounting->name ?? '',

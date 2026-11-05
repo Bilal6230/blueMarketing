@@ -532,6 +532,7 @@ class AccountingController extends Controller
             'parent_id' => ['nullable', 'integer', 'exists:account_groups,id'],
         ]);
         DB::transaction(function () use ($data, $projectId) {
+            $this->lockAccountGroupProject($projectId);
             if (!empty($data['parent_id'])) {
                 $parent = AccountGroup::where('project_id', $projectId)->whereKey($data['parent_id'])->lockForUpdate()->firstOrFail();
                 abort_unless($parent->is_active, 422, 'Select an active parent group.');
@@ -558,6 +559,7 @@ class AccountingController extends Controller
         ]);
 
         DB::transaction(function () use ($group, $data, $projectId) {
+            $this->lockAccountGroupProject($projectId);
             // Serialize hierarchy edits so concurrent requests cannot create a cycle.
             AccountGroup::where('project_id', $projectId)->orderBy('id')->lockForUpdate()->get(['id']);
             $locked = AccountGroup::where('project_id', $projectId)->whereKey($group->id)->lockForUpdate()->firstOrFail();
@@ -591,6 +593,7 @@ class AccountingController extends Controller
         $projectId = (int) getSelectedTown();
         abort_unless((int) $group->project_id === $projectId, 404);
         DB::transaction(function () use ($group, $data, $projectId) {
+            $this->lockAccountGroupProject($projectId);
             $lockedGroup = AccountGroup::where('project_id', $projectId)->whereKey($group->id)->where('is_active', 1)->lockForUpdate()->firstOrFail();
             $head = HeadAccounting::whereKey($data['head_id'])->where('is_active', 1)->lockForUpdate()->firstOrFail();
             abort_unless($head->projects()->where('projects.id', $projectId)->exists(), 422,
@@ -623,6 +626,7 @@ class AccountingController extends Controller
         abort_unless((int) $group->project_id === $projectId, 404);
 
         DB::transaction(function () use ($group, $data, $projectId) {
+            $this->lockAccountGroupProject($projectId);
             AccountGroup::where('project_id', $projectId)->orderBy('id')->lockForUpdate()->get(['id']);
             $source = AccountGroup::where('project_id', $projectId)->whereKey($group->id)->lockForUpdate()->firstOrFail();
             $target = AccountGroup::where('project_id', $projectId)->whereKey($data['target_group_id'])->lockForUpdate()->firstOrFail();
@@ -686,6 +690,12 @@ class AccountingController extends Controller
             'amount_in_cents' => $toCents($amountIn),
             'amount_out_cents' => $toCents($amountOut),
         ];
+    }
+
+    private function lockAccountGroupProject(int $projectId): void
+    {
+        abort_unless(DB::table('projects')->where('id', $projectId)->lockForUpdate()->first(), 404,
+            'Selected project no longer exists.');
     }
 
     private function accountGroupDescendants(int $groupId, int $projectId): \Illuminate\Support\Collection

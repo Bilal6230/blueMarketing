@@ -142,6 +142,19 @@ class CashInDataTest extends TestCase
                 'updated_at' => now(),
             ],
         ]);
+        Schema::create('project_voucher_display_numbers', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('project_id');
+            $table->string('source_kind');
+            $table->unsignedBigInteger('source_id');
+            $table->string('display_number');
+        });
+        DB::table('project_voucher_display_numbers')->insert([
+            'project_id' => $selectedProjectId,
+            'source_kind' => 'customer_ledger',
+            'source_id' => 10,
+            'display_number' => 'PPR-2026-0001',
+        ]);
 
         $request = Request::create(
             '/finance/voucher/data/in',
@@ -163,7 +176,7 @@ class CashInDataTest extends TestCase
         $this->assertContains('PPR', $types);
         $this->assertNotContains('CP', $types);
         $this->assertContains('CR-1001', $voucherNumbers);
-        $this->assertContains('PPR-1002', $voucherNumbers);
+        $this->assertContains('PPR-2026-0001', $voucherNumbers);
         $this->assertNotContains('PPR-1004', $voucherNumbers);
     }
 

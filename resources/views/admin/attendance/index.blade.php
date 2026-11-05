@@ -9,10 +9,10 @@
                 <a href="{{ route('setting.index', ['tab'=>'attendance-machine']) }}" class="btn btn-outline-primary"><i class="fas fa-cog mr-1"></i> Attendance Machine Settings</a>
             </div>
             @php($canManage = auth()->user()->hasAnyRole(['admin', 'superadmin']))
-            <div class="card attendance-records">
+            <div class="card attendance-records" data-ajax-panel="attendance-records-panel">
                 <div class="card-header"><h3 class="card-title"><i class="fas fa-calendar-check mr-2"></i>Attendance Records</h3><span class="badge badge-primary float-right">{{ number_format($punches->total()) }} records</span></div>
                 <div class="card-body">
-                    <form method="GET" class="form-row align-items-end mb-3">
+                    <form data-ajax-form method="GET" class="form-row align-items-end mb-3">
                         <div class="form-group col-sm-4 col-lg-2"><label>From</label><input type="date" name="from" class="form-control" value="{{ $from }}" required></div>
                         <div class="form-group col-sm-4 col-lg-2"><label>To</label><input type="date" name="to" class="form-control" value="{{ $to }}" required></div>
                         @if($canManage)<div class="form-group col-sm-8 col-lg-4"><label>Employee</label><select name="user_id" class="form-control"><option value="">All employees</option>@foreach($employees as $employee)<option value="{{ $employee->id }}" @selected((string)request('user_id') === (string)$employee->id)>{{ $employee->name }}</option>@endforeach</select></div>@endif

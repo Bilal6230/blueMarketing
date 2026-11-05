@@ -250,6 +250,9 @@ class LabourController extends Controller
                     'is_active' => 1,
                     'is_approve' => 0,
                 ]);
+                app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->assign(
+                    (int) $selectedProjectId, 'customer_ledger', (int) $customerLedger->id, 'CP', now()->toDateString()
+                );
 
 
                 /** ------------------------
@@ -1154,6 +1157,10 @@ class LabourController extends Controller
             }
 
             $journalVoucher = JournalVoucher::create($journalVoucherData);
+            app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->assign(
+                (int) $selectedProjectId, 'journal_voucher', (int) $journalVoucher->id,
+                'JV', substr((string) $journalVoucher->date, 0, 10)
+            );
             $voucherNumber = $journalVoucher->voucher_number;
             $voucherDate = $journalVoucher->date;
             $log->info('labour.createVoucher.journal_voucher_created', [

@@ -604,6 +604,37 @@
 
 
 
+    <script>
+    (() => {
+        const getPanel = (form) => form.closest('[data-ajax-panel]') || form.closest('.tab-pane');
+        const getSelector = (panel) => panel?.hasAttribute('data-ajax-panel') ? `[data-ajax-panel="${CSS.escape(panel.getAttribute('data-ajax-panel'))}"]` : panel?.id ? `#${CSS.escape(panel.id)}` : null;
+        const swapPanel = (panel, doc, selector) => { const fresh = doc.querySelector(selector); if (!fresh) throw new Error('Updated section not found. Reload and try again.'); panel.replaceWith(fresh); return fresh; };
+        document.addEventListener('submit', async (event) => {
+            const form = event.target; if (!(form instanceof HTMLFormElement) || form.dataset.ajax === 'off') return;
+            const panel = getPanel(form), selector = getSelector(panel); if (!selector) return;
+            event.preventDefault(); if (form.dataset.confirm && !confirm(form.dataset.confirm)) return;
+            const buttons = [...form.querySelectorAll('button[type="submit"],button:not([type])')]; buttons.forEach((b) => { b.disabled = true; b.dataset.ajaxBusy = '1'; }); panel.classList.add('ajax-panel-loading');
+            try {
+                const method = (form.method || 'GET').toUpperCase(), url = new URL(form.action || location.href, location.href);
+                const options = { method, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html' } };
+                if (method === 'GET') new FormData(form).forEach((v,k) => url.searchParams.set(k,v));
+                else { options.body = new FormData(form); if (event.submitter?.name) options.body.append(event.submitter.name,event.submitter.value); }
+                const response = await fetch(url,options), doc = new DOMParser().parseFromString(await response.text(),'text/html');
+                if (!response.ok && response.status !== 422) throw new Error(`Request failed (${response.status}).`);
+                const updated = swapPanel(panel,doc,selector); if (response.url) history.replaceState({},'',response.url);
+                (form.dataset.ajaxRefresh || '').split(',').map((v) => v.trim()).filter(Boolean).forEach((name) => {
+                    const target = document.querySelector(`[data-ajax-panel="${CSS.escape(name)}"]`), fresh = doc.querySelector(`[data-ajax-panel="${CSS.escape(name)}"]`);
+                    if (target && fresh) target.replaceWith(fresh);
+                });
+                const alert = doc.querySelector('.alert-danger,.alert-success,.alert-warning'); if (alert && !updated.contains(alert)) updated.prepend(alert.cloneNode(true));
+                updated.classList.remove('ajax-panel-loading'); document.dispatchEvent(new CustomEvent('ajax:panel-updated',{detail:{panel:updated}}));
+            } catch (error) { panel.classList.remove('ajax-panel-loading'); let n=panel.querySelector('.ajax-error'); if(!n){n=document.createElement('div');n.className='alert alert-danger ajax-error';panel.prepend(n)} n.textContent=error.message||'Unable to save changes.'; }
+            finally { document.querySelectorAll('[data-ajax-busy="1"]').forEach((b)=>{b.disabled=false;delete b.dataset.ajaxBusy}) }
+        });
+        document.addEventListener('click',async(event)=>{const link=event.target.closest('[data-ajax-link],[data-ajax-panel] .pagination a');if(!link)return;const panel=link.closest('[data-ajax-panel],.tab-pane'),selector=getSelector(panel);if(!selector)return;event.preventDefault();panel.classList.add('ajax-panel-loading');try{const response=await fetch(link.href,{credentials:'same-origin',headers:{'X-Requested-With':'XMLHttpRequest','Accept':'text/html'}}),doc=new DOMParser().parseFromString(await response.text(),'text/html');if(!response.ok)throw new Error();const updated=swapPanel(panel,doc,selector);history.replaceState({},'',response.url);updated.classList.remove('ajax-panel-loading');document.dispatchEvent(new CustomEvent('ajax:panel-updated',{detail:{panel:updated}}))}catch(_){panel.classList.remove('ajax-panel-loading')}});
+    })();
+    </script>
+    <style>[data-ajax-panel],.tab-pane{transition:opacity .15s ease}.ajax-panel-loading{opacity:.58;pointer-events:none;position:relative}.ajax-panel-loading:after{content:'Saving…';position:absolute;z-index:20;top:12px;right:14px;padding:6px 12px;border-radius:999px;background:#14243a;color:#fff;font-size:12px;box-shadow:0 5px 18px #10243a33}</style>
     @stack('script')
 </body>
 

@@ -504,3 +504,55 @@ Updated local estimates: `DS-01 account-status enforcement` **87%**; overall Def
 - Verification: stock deletion/import/Excel/posting guard suite 49 passed, 126 assertions; targeted project isolation update/archive suite 9 passed, 79 assertions. PHP lint passed. Isolated SQLite memory only; local/live migration has not run.
 - Next: calendar-year voucher display/sequence policy, remaining Definitions & Settings integration, isolated migration rehearsal.
 - Broader --filter=Stock suite exposes an older OriginalVoucherV2WorkflowHttpTest fixture gap: it omits stock_project_item_balances and stock_party_project_accounts required by current posting code. The fixture was not changed; this broader test is not counted as passed. The focused project-stock suite passed. Add a complete fixture before using this workflow test as an acceptance gate.
+
+## 2026-11-04 stock import cross-project update checkpoint
+- Extended import acceptance: a staged update to an existing item changes only the selected project definition. Another project definition and global historical identity remain unchanged. The fixture also verifies a forged edit of an unowned project item is rejected.
+- StockItemImportStagingTest: 1 passed, 25 assertions on SQLite :memory:. No application database migration or business-row write.
+- Engineering milestone DS-09 remains pending mobile HTTP fixture, permission/large-file gates, and migration rehearsal.
+
+## 2026-11-04 DS-01 write-path gate
+- Added direct write-path regression: forged inactive or foreign-project accounting mappings cannot create an AccountingExpense. Status change rolls back when audit persistence fails.
+- InactiveAccountingWriteTest: 2 passed, 7 assertions on SQLite :memory:. No application database migration or business-row write.
+- Remaining DS-01: broaden these gates to remaining posting families and rehearse the additive status-audit migration.
+
+## 2026-11-04 DS-07 payroll payment evidence gate
+
+- Approved immutable payroll slips can be linked to existing approved, active, posted CP sources in the same project. Links store amount and audit evidence without editing CP, payroll snapshots, or ledgers. Replays are idempotent; changed replays and overpayment of either slip or CP are rejected.
+- The run screen shows paid and remaining amount per employee and permits authorized payment links. Route requires `approve payroll` and selected-project access.
+- EmployeePayrollPaymentLinkerTest: 1 passed, 12 assertions on SQLite :memory:; link route registered. No application database migration or business-row write. The additive payment-link migration is required before deployment use.
+- DS-07 engineering exit criteria met locally. Next: DS-08 voucher settings and identity controls.
+
+## 2026-11-04 DS-09 inventory acceptance gate
+
+- The import fixture now proves an unauthorized user and a file above 5 MB cannot stage a batch. Existing project-isolated import/update/apply/replay checks still pass: StockItemImportStagingTest 1 passed, 29 assertions.
+- Updated the older V2 workflow fixture to include current account-status and project stock definitions/balances/mapping. Web and mobile stock creation, finance approval, replay and rollback now pass: 6 tests, 45 assertions.
+- DS-09 focused engineering gate is complete locally. Production migration/application still belongs to DS-10 and deployment. Browser QA is assigned to the client.
+- Repaired the remaining V2 fixture drift (active account dimensions, project-scoped stock rows and payroll contractor column). Full OriginalVoucherV2WorkflowHttpTest now passes: 46 tests, 352 assertions on SQLite :memory:. This is the broad pilot workflow regression gate, not production database migration evidence.
+
+## 2026-11-04 DS-08 allocator safety checkpoint
+
+- Legacy getVocuherNumber fallback now counts retained customer_ledger source IDs as reserved as well as ledger voucher numbers, including when the counter migration is absent. This prevents reuse after an old ledger leg is missing. Existing numeric identifiers and displayed prefixes are unchanged.
+- ProjectVoucherAllocatorTest passes with a source-only CP number: 1 test, 5 assertions. DS-08 is still open for configurable custom methods, prefixes, and calendar-year display/sequence migration across all voucher writers.
+- Combined account/stock/payroll/allocator focused gate: 13 passed, 87 assertions. Full isolated V2 pilot workflow suite: 46 passed, 352 assertions.
+
+## 2026-11-04 DS-08 configuration checkpoint
+
+- User decisions: January calendar year, custom methods map to Cash/Online/Cheque, voucher display pattern TYPE-YEAR-0001.
+- Added project-scoped voucher prefix settings with audit trail, custom payment method metadata with fixed base behavior, and project/series/year sequence allocation service. Legacy numeric voucher identities and ledger rows are not modified by these settings.
+- ProjectVoucherDisplayTest and ProjectVoucherFiscalSequenceTest: 2 passed, 10 assertions. Settings routes registered and Blade compiled. The UI explicitly says custom methods are not offered in voucher forms yet.
+- DS-08 remains open: persist each allocated display number against its actual voucher source, make supported writers select custom method identity and resolve its base behavior, verify bank-account identity and migrations. New settings tables require isolated migration rehearsal before deployment.
+- Local MySQL client exists, but localhost:3306 refused the connection, so the isolated MySQL clone rehearsal is not yet possible. No application database migration/write was run.
+
+## 2026-11-04 isolated MySQL rehearsal checkpoint
+
+- Restored 2026-10-31 supplied local rehearsal SQL into disposable codex_ds_rehearsal_20261104; app database and .env were untouched.
+- DS migrations 000001-000013 reached completion after fixing MySQL DDL order for account_groups and plot_definitions self-referencing FKs, adding the missing attendance (id,project_id) key, and removing a journal_vouchers.site_id placement assumption.
+- DS-14 stopped on historical data: 165 labours have NULL project_id; 627 labour_ledgers reference those labours. Migration now reports this explicitly before attempting the FK. No inferred project backfill was performed.
+- Independent DS-08 additive migrations 2026_11_04_000002 through 000004 passed on the clone. Existing ledgers and customer_ledger row counts and exact in/out totals were unchanged. MySQL full migration chain, dependent payroll/stock migration rehearsal, and all-table reconciliation remain open.
+
+## 2026-11-04 conditional full-clone rehearsal result
+
+- In disposable clone only, 151 labour masters were assigned the one project appearing in all their linked labour-ledger rows. The remaining 14 unlinked masters were left unchanged. This was test data repair, not an application database write or production repair policy.
+- With that evidence-based clone mapping, DS-14 through DS-24 and payroll payment-link migration passed. Together with earlier runs, all 29 DS migrations completed on the clone. Financial ledger/customer-ledger row counts and exact in/out sums matched the pre-migration baseline.
+- Stock project definitions: 12 rows, no duplicate project/item pair or missing project/item owner. Payroll payment links: 0. New settings tables have expected project FKs. Historical stock and other table totals were not captured before import, so the full reconciliation gate remains incomplete.
+- Focused regression after migration fixes: 7 tests, 79 assertions passed. DS-08 still needs voucher-writer integration for immutable fiscal display identities and custom payment method selection. Client browser QA remains excluded by request.

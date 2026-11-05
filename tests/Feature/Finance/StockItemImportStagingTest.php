@@ -36,6 +36,34 @@ class StockItemImportStagingTest extends TestCase
         $user->id = 7;
         $user->shouldReceive('can')->andReturn(true);
         auth()->setUser($user);
+        $denied = \Mockery::mock(User::class)->makePartial();
+        $denied->id = 8;
+        $denied->shouldReceive('can')->andReturn(false);
+        $denied->shouldReceive('hasAnyRole')->andReturn(false);
+        auth()->setUser($denied);
+        $deniedRequest = Request::create('/', 'POST', [], ['selected_action' => 5], [
+            'file' => UploadedFile::fake()->createWithContent('denied.csv', "item_id,name,unit,default_rate_minor\n,Denied,Bag,1\n"),
+        ]);
+        $this->app->instance('request', $deniedRequest);
+        try {
+            (new StockController())->stageItemImport($deniedRequest);
+            $this->fail('Unauthorized stock import was staged.');
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
+            $this->assertSame(403, $exception->getStatusCode());
+        }
+        $this->assertDatabaseCount('stock_item_import_batches', 0);
+        auth()->setUser($user);
+        $oversized = Request::create('/', 'POST', [], ['selected_action' => 5], [
+            'file' => UploadedFile::fake()->create('large.csv', 5121, 'text/csv'),
+        ]);
+        $this->app->instance('request', $oversized);
+        try {
+            (new StockController())->stageItemImport($oversized);
+            $this->fail('Oversized stock import was staged.');
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $this->assertArrayHasKey('file', $exception->errors());
+        }
+        $this->assertDatabaseCount('stock_item_import_batches', 0);
         $request = Request::create('/', 'POST', [], ['selected_action' => 5], [
             'file' => UploadedFile::fake()->createWithContent('items.csv', "item_id,name,unit,default_rate_minor\n,Concrete,Bag,100\n"),
         ]);
@@ -112,6 +140,18 @@ class StockItemImportStagingTest extends TestCase
         $this->app->instance('request', $update);
         $this->assertSame(200, (new StockController())->updateItem($update, $itemId)->getStatusCode());
         $this->assertDatabaseHas('stock_project_item_definitions', ['project_id' => 5, 'item_id' => $itemId, 'name' => 'Cement']);
+        $this->assertDatabaseHas('stock_project_item_definitions', ['project_id' => 6, 'item_id' => $itemId, 'name' => 'Other project name']);
+        $this->assertDatabaseHas('stock_items', ['id' => $itemId, 'name' => 'Concrete']);
+        $updateImport = Request::create('/', 'POST', [], ['selected_action' => 5], [
+            'file' => UploadedFile::fake()->createWithContent('update.csv',
+                "item_id,name,unit,default_rate_minor\n{$itemId},Fine Cement,Bag,175\n"),
+        ]);
+        $this->app->instance('request', $updateImport);
+        $updateBatch = (new StockController())->stageItemImport($updateImport)->getData(true)['data']['batch_id'];
+        $applyUpdate = Request::create('/', 'POST', ['confirmed' => '1'], ['selected_action' => 5]);
+        $this->app->instance('request', $applyUpdate);
+        $this->assertSame(1, (new StockController())->applyItemImport($applyUpdate, $updateBatch)->getData(true)['data']['updated']);
+        $this->assertDatabaseHas('stock_project_item_definitions', ['project_id' => 5, 'item_id' => $itemId, 'name' => 'Fine Cement']);
         $this->assertDatabaseHas('stock_project_item_definitions', ['project_id' => 6, 'item_id' => $itemId, 'name' => 'Other project name']);
         $this->assertDatabaseHas('stock_items', ['id' => $itemId, 'name' => 'Concrete']);
         $replayed = (new StockController())->applyItemImport($confirm, $batchId)->getData(true);

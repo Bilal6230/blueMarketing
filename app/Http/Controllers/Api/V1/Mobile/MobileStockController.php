@@ -1053,6 +1053,9 @@ class MobileStockController extends BaseMobileController
                 'is_active' => 1,
                 'is_approve' => 0,
             ]);
+            app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->assign(
+                $projectId, 'customer_ledger', (int) $customerLedger->id, $ledgerType, $entryDate
+            );
         }
 
         $voucherNumber = getVocuherNumber($ledgerType);

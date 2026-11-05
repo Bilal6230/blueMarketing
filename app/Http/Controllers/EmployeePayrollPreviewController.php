@@ -213,13 +213,39 @@ final class EmployeePayrollPreviewController extends Controller
             return true;
         })->values();
 
+        $paymentLinks = Schema::hasTable('employee_payroll_payment_links')
+            ? DB::table('employee_payroll_payment_links')->where('project_id', $projectId)
+                ->where('payroll_run_id', $runId)->orderBy('id')->get()->groupBy('payroll_run_item_id')
+            : collect();
+
         return view('admin.employees.payroll-run', [
             'title' => 'Payroll Run #'.$run->run_number, 'projectId' => $projectId, 'run' => $run,
             'items' => $filtered, 'employees' => $items->map(fn ($item) => [
                 'id' => $item->employee_profile_id, 'name' => ($item->data['employee'] ?? '').' ('.($item->data['code'] ?? '').')',
             ])->values(), 'departments' => $departments, 'designations' => $designations,
-            'filters' => $filters,
+            'filters' => $filters, 'paymentLinks' => $paymentLinks,
+            'canLinkPayment' => $request->user()->can('approve payroll')
+                && $run->status === 'approved' && Schema::hasTable('employee_payroll_payment_links'),
         ]);
+    }
+
+    public function linkPayment(Request $request, int $runId)
+    {
+        abort_unless($request->user()->can('approve payroll'), 403);
+        $projectId = (int) getSelectedTown();
+        abort_unless($projectId > 0, 400, 'Select a project first.');
+        if (!$request->user()->hasRole('superadmin')) abort_unless((int) $request->user()->project_id === $projectId, 403);
+        $data = $request->validate([
+            'payroll_run_item_id' => ['required', 'integer', 'min:1'],
+            'customer_ledger_id' => ['required', 'integer', 'min:1'],
+            'amount' => ['required', 'regex:/^\d{1,12}(?:\.\d{1,2})?$/D'],
+        ]);
+        app(\App\Services\Finance\EmployeePayrollPaymentLinker::class)->link(
+            $projectId, $runId, (int) $data['payroll_run_item_id'],
+            (int) $data['customer_ledger_id'], $data['amount'], $request->user()->id
+        );
+        return redirect()->route('employee-payroll.run', ['runId' => $runId])
+            ->with('success', 'Posted CP payment linked to the approved payroll item.');
     }
 
     private function snapshotPayload(array $row): array

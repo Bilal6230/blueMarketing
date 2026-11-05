@@ -2,6 +2,7 @@
 
 @section('content')
 <style>
+body:has([data-ajax-panel="payroll-preview-panel"]) .content-wrapper .card,body:has([data-ajax-panel="payroll-preview-panel"]) .small-box{border:1px solid #e3eaf4;border-radius:15px;box-shadow:0 8px 24px rgba(26,48,83,.06);overflow:hidden}body:has([data-ajax-panel="payroll-preview-panel"]) .content-wrapper .card-header{background:linear-gradient(110deg,#f5f9ff,#fff)}body:has([data-ajax-panel="payroll-preview-panel"]) .form-control{border-radius:9px}body:has([data-ajax-panel="payroll-preview-panel"]) .table thead{background:#eff5fc;color:#304a6c}
 @media print {
     .main-sidebar, .main-header, .main-footer, .payroll-actions, .payroll-filter, .control-sidebar { display: none !important; }
     .content-wrapper { margin-left: 0 !important; min-height: 0 !important; padding-top: 0 !important; }
@@ -20,7 +21,7 @@
             <a class="btn btn-outline-primary" href="{{ route('employee-attendance.index', ['month' => $month]) }}">Attendance review</a>
         </div>
     </div></section>
-    <section class="content"><div class="container-fluid">
+    <section class="content"><div class="container-fluid" data-ajax-panel="payroll-preview-panel">
         @if ($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
         @if (session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
         <div class="alert alert-info"><strong>Calculation scope:</strong> salary proration follows each effective revision's selected calendar-day or scheduled-workday policy. Late-fine percentage uses the configured daily-basic-salary base; early departure supports fixed-per-day or per-minute deduction; overtime supports fixed-per-day, hourly, or basic-hourly-rate multiplier. Reviewed attendance is required; scheduled weekly offs are accepted from the effective schedule. Missing punch data or required multiplier inputs keeps the employee marked for review.</div>
@@ -49,7 +50,7 @@
                     <tr><td>#{{ $run->run_number }}</td><td><span class="badge badge-{{ $run->status === 'approved' ? 'success' : 'warning' }}">{{ ucfirst(str_replace('_', ' ', $run->status)) }}</span></td><td>{{ $run->employee_count }}</td><td>{{ number_format((float) $run->gross_total, 2) }}</td><td>{{ number_format((float) $run->net_total, 2) }}</td><td>{{ $run->created_at }}</td><td>
                         <a class="btn btn-sm btn-outline-primary mb-1" href="{{ route('employee-payroll.run', $run->id) }}">View slips</a>
                         @if ($run->status === 'pending_approval' && $canApprovePayroll)
-                            <form method="POST" action="{{ route('employee-payroll.approve', $run->id) }}" onsubmit="return confirm('Approve this locked payroll snapshot? No payment will be posted.');">@csrf<button class="btn btn-sm btn-success">Approve and lock</button></form>
+                            <form data-ajax="off" method="POST" action="{{ route('employee-payroll.approve', $run->id) }}" onsubmit="return confirm('Approve this locked payroll snapshot? No payment will be posted.');">@csrf<button class="btn btn-sm btn-success">Approve and lock</button></form>
                         @elseif ($run->status === 'approved')<span class="text-muted">Locked</span>@else<span class="text-muted">Awaiting approver</span>@endif
                     </td></tr>
                 @endforeach

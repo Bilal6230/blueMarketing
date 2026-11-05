@@ -341,6 +341,12 @@ function getVocuherNumber($type)
         ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $projectId))
         ->where('voucher_number', '>', 0)
         ->max('voucher_number');
+    // A posted source can outlive its ledger legs (for example after a
+    // historical repair). It must still reserve its original number.
+    $sourceLastNumber = DB::table('customer_ledger')
+        ->where('project_id', $projectId)->where('transaction_type', (string) $type)
+        ->max('type_id');
+    $lastNumber = max((int) $lastNumber, (int) $sourceLastNumber);
 
     // Posting call sites execute inside their transaction. Serializing on the
     // counter row serializes normal writes; the project row protects the
@@ -402,6 +408,45 @@ if (!function_exists('get_new_booking_number')) {
 
         $lastId = $query->value('id');
 
+        // The booking form is a preview only; do not reserve a sequence here.
+        // The immutable BO identity is assigned atomically when booking posts.
+        if ($id === null
+            && \Illuminate\Support\Facades\Schema::hasTable('project_voucher_display_numbers')
+            && \Illuminate\Support\Facades\Schema::hasTable('project_voucher_fiscal_sequences')
+            && function_exists('getSelectedTown')) {
+            $projectId = (int) getSelectedTown();
+            if ($projectId > 0) {
+                $year = (int) now()->format('Y');
+                $lastDisplayNumber = (int) \Illuminate\Support\Facades\DB::table('project_voucher_fiscal_sequences')
+                    ->where('project_id', $projectId)->where('series', 'BO')->where('financial_year', $year)
+                    ->value('last_number');
+
+                return app(\App\Services\Finance\ProjectVoucherDisplay::class)
+                    ->format($projectId, 'BO', $lastDisplayNumber + 1, now()->toDateString());
+            }
+        }
+
+        if ($id !== null && $lastId !== null) {
+            $booking = App\Models\Booking::query()->whereKey($id)->first();
+            if ($booking && \Illuminate\Support\Facades\Schema::hasTable('project_voucher_display_numbers')) {
+                $sourceId = \Illuminate\Support\Facades\DB::table('customer_ledger')
+                    ->where('project_id', $booking->project_id)
+                    ->where('customer_id', $booking->customer_id)
+                    ->where('plot_id', $booking->plot_id)
+                    ->where('transaction_type', 'Bo')
+                    ->whereDate('date', $booking->booking_date)
+                    ->where('description', 'like', 'Booking for plot %')
+                    ->orderBy('id')->value('id');
+                if ($sourceId) {
+                    $displayNumber = app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)
+                        ->lookup((int) $booking->project_id, 'customer_ledger', (int) $sourceId);
+                    if ($displayNumber) {
+                        return $displayNumber;
+                    }
+                }
+            }
+        }
+
         if ($id === null) {
             $newId = $lastId + 1;
         } else {
@@ -409,7 +454,7 @@ if (!function_exists('get_new_booking_number')) {
         }
 
         $paddedValue = str_pad($newId, 7, '0', STR_PAD_LEFT);
-        return $paddedValue;
+        return $id === null ? $paddedValue : 'BO-' . $paddedValue;
     }
 }
 

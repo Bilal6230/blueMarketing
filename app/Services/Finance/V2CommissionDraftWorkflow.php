@@ -95,6 +95,7 @@ final class V2CommissionDraftWorkflow
                 'status' => 'draft', 'created_by' => $actorId,
                 'created_at' => now(), 'updated_at' => now(),
             ]);
+            app(ProjectVoucherDisplayIdentity::class)->assign($projectId, 'commission_voucher', (int) $id, 'CV', $date);
             foreach ($prepared as $line) {
                 DB::table('commision_voucher_details')->insert($line + [
                     'commision_voucher_id' => $id, 'created_at' => now(), 'updated_at' => now(),

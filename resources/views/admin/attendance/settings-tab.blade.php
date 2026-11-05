@@ -20,7 +20,7 @@
                     <div class="card-header"><h3 class="card-title">Device Configuration</h3><span class="badge badge-warning float-right">{{ $attendanceDevice ? 'Saved · Not connected' : 'New device' }}</span></div>
                     <div class="card-body">
                         <p class="text-muted">Configure any supported attendance device. Connection and sync become available after its protocol and event format are implemented and verified.</p>
-                        <form method="POST" action="{{ route('attendance.device.save') }}" class="row">@csrf
+                        <form data-ajax-form method="POST" action="{{ route('attendance.device.save') }}" class="row">@csrf
                             @if($attendanceDevice)<input type="hidden" name="device_id" value="{{ $attendanceDevice->id }}">@endif
                             <div class="form-group col-md-6"><label>Device name</label><input name="name" class="form-control" maxlength="120" required value="{{ old('name', $attendanceDevice->name ?? '') }}" placeholder="Main office terminal"></div>
                             <div class="form-group col-md-6"><label>Vendor</label><input name="vendor" class="form-control" maxlength="120" value="{{ old('vendor', $attendanceDevice->vendor ?? '') }}" placeholder="Manufacturer"></div>
@@ -43,7 +43,7 @@
                     <div class="card-body">
                         @if($attendanceDevice)
                             <p class="text-muted">Link device employee numbers to employees in this project.</p>
-                            <form method="POST" action="{{ route('attendance.mapping.save') }}" class="form-row align-items-end">@csrf<input type="hidden" name="device_id" value="{{ $attendanceDevice->id }}">
+                            <form data-ajax-form method="POST" action="{{ route('attendance.mapping.save') }}" class="form-row align-items-end">@csrf<input type="hidden" name="device_id" value="{{ $attendanceDevice->id }}">
                                 <div class="form-group col-md-6"><label>Employee</label><select name="user_id" class="form-control" required><option value="">Select employee</option>@foreach($attendanceEmployees as $employee)<option value="{{ $employee->id }}">{{ $employee->name }}</option>@endforeach</select></div>
                                 <div class="form-group col-md-4"><label>Device user ID</label><input name="device_user_id" class="form-control" maxlength="100" required></div>
                                 <div class="form-group col-md-2"><button class="btn btn-info btn-block">Save</button></div>

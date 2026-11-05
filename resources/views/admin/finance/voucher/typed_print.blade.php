@@ -2,7 +2,7 @@
 <html lang="en"><head><meta charset="utf-8"><title>{{ $source->transaction_type }} — source {{ $source->id }}</title>
 <style>body{font-family:Arial,sans-serif;margin:32px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #bbb;padding:8px;text-align:left}</style></head>
 <body>
-    <h1>{{ $source->transaction_type }} — source #{{ $source->id }}</h1>
+    <h1>{{ $displayNumber }}</h1>
     <p>Document date: {{ $source->date }} · Reference: {{ $source->reference }}</p>
     <p>{{ $source->description }}</p>
     <table><thead><tr><th>Posting date</th><th>Account</th><th>Detail</th><th>Debit</th><th>Credit</th></tr></thead><tbody>

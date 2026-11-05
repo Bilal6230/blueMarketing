@@ -48,6 +48,20 @@ class LedgerController extends Controller
 
     public function store(Request $request)
     {
+        $customPaymentMethodId = $request->input('custom_payment_method_id');
+        if ($customPaymentMethodId !== null && $customPaymentMethodId !== '') {
+            $projectForMethod = (int) getSelectedTown();
+            abort_unless(DB::getSchemaBuilder()->hasTable('project_custom_payment_methods')
+                && DB::getSchemaBuilder()->hasColumn('customer_ledger', 'custom_payment_method_id'), 409,
+                'Custom payment method migration is required.');
+            $customMethod = DB::table('project_custom_payment_methods')->where('project_id', $projectForMethod)
+                ->where('id', $customPaymentMethodId)->where('is_active', 1)->first();
+            abort_unless($customMethod && (int) $customMethod->base_method_code === (int) $request->input('payment_type'), 422,
+                'Select a valid payment method for this project.');
+            $request->merge(['custom_payment_method_id' => (int) $customMethod->id]);
+        } else {
+            $request->merge(['custom_payment_method_id' => null]);
+        }
         if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
             $project = (int) getSelectedTown();
             \App\Services\Finance\V2OriginalWorkflowAccess::authorize($project);
@@ -108,6 +122,7 @@ class LedgerController extends Controller
             'accounts_id' => ['required', 'integer'],
             'subaccounts_id' => ['required', 'integer'],
             'payment_type' => ['required', 'integer', 'in:1,2,3'],
+            'custom_payment_method_id' => ['nullable', 'integer', 'min:1'],
             'date' => ['required', 'date'],
             'voucher' => ['required', 'string', 'regex:/^(CR|CP)-\d+$/'],
             'voucher_number' => ['required', 'string', 'regex:/^(CR|CP)-\d+$/'],
@@ -368,6 +383,7 @@ class LedgerController extends Controller
                     'description' => $request->input('detail'),
                     'date' => $request->input('date'),
                     'payment_type' => $paymentType,
+                    'custom_payment_method_id' => $request->input('custom_payment_method_id') ?: null,
                     't_number' => $t_number,
                     'bank_id' => $bank_id,
                     'is_active' => 1,
@@ -375,6 +391,10 @@ class LedgerController extends Controller
                     'passing_date' => $request->input('passing_date'),
                     'passing_status' => $isPendingCashInBankPayment ? 0 : null,
                 ]);
+                $displayNumber = app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->assign(
+                    (int) $selectedProjectId, 'customer_ledger', (int) $customerLedger->id,
+                    $effectiveVoucherType, \Carbon\Carbon::parse($request->input('date'))->toDateString()
+                );
 
                 if ($t_number != null) {
                     $check_slip = $customerLedger->transaction_type . '-' . $customerLedger->reference;
@@ -452,7 +472,7 @@ class LedgerController extends Controller
                     'data' => $data,
                     'customer_ledger_id' => $customerLedger->id,
                     'voucher_number' => $resolvedVoucherNumber,
-                    'voucher_display' => $effectiveVoucherType . '-' . $resolvedVoucherNumber,
+                    'voucher_display' => $displayNumber ?: ($effectiveVoucherType . '-' . $resolvedVoucherNumber),
                 ];
             });
 
@@ -818,6 +838,8 @@ class LedgerController extends Controller
         $headAccountingId = $ledger->projectHeadSubhead->head_accounting_id ?? null;
         $subheadAccountingId = $ledger->projectHeadSubhead->subhead_accounting_id ?? null;
         $amountDisplay = $ledger->type === 'CP' ? (float) ($ledger->amount_out ?? 0) : (float) ($ledger->amount_in ?? 0);
+        $displayNumber = app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)
+            ->lookup((int) getSelectedTown(), 'customer_ledger', (int) $customerLedger?->id);
 
         return response()->json([
             'status' => Response::HTTP_OK,
@@ -825,7 +847,7 @@ class LedgerController extends Controller
                 'id' => $ledger->id,
                 'type' => $ledger->type,
                 'voucher_number' => $ledger->voucher_number,
-                'voucher_number_display' => ($ledger->type ?? '') . '-' . ($ledger->voucher_number ?? ''),
+                'voucher_number_display' => $displayNumber ?: (($ledger->type ?? '') . '-' . ($ledger->voucher_number ?? '')),
                 'date' => $ledger->date,
                 'detail' => $ledger->detail,
                 'amount_in' => (float) ($ledger->amount_in ?? 0),

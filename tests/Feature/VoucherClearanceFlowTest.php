@@ -9,6 +9,7 @@ use App\Models\Booking;
 use App\Models\BookingVoucher;
 use App\Models\CustomerLedger;
 use App\Models\Ledger;
+use App\Models\JournalVoucher;
 use App\Models\Lead;
 use App\Models\Plot;
 use App\Models\Project;
@@ -1094,6 +1095,7 @@ class VoucherClearanceFlowTest extends TestCase
             'status' => 'active',
             'broker_id' => 1,
         ]);
+        $request->cookies->set('selected_action', (string) $this->project->id);
         $session = app('session.store');
         $session->start();
         $session->setPreviousUrl('/admin/booking/sale');
@@ -1127,6 +1129,10 @@ class VoucherClearanceFlowTest extends TestCase
     #[\PHPUnit\Framework\Attributes\DataProvider('canonicalBookingStatuses')]
     public function test_successful_booking_create_redirects_to_booking_list(string $status): void
     {
+        DB::table('subhead_accountings')->insert([
+            'id' => 123, 'name' => 'Total Sale', 'is_active' => 1,
+            'create_by' => $this->user->id, 'created_at' => now(), 'updated_at' => now(),
+        ]);
         ProjectHeadSubhead::create([
             'project_id' => $this->project->id,
             'head_accounting_id' => 16,
@@ -1144,15 +1150,16 @@ class VoucherClearanceFlowTest extends TestCase
             'status' => $status,
             'broker_id' => 1,
         ]);
+        $request->cookies->set('selected_action', (string) $this->project->id);
         $session = app('session.store');
         $session->start();
         $request->setLaravelSession($session);
         $this->app->instance('request', $request);
-
         $response = app(BookingController::class)->store($request);
 
-        $this->assertSame(route('booking.plot.index'), $response->getTargetUrl());
+        $this->assertFalse($session->has('errors'));
         $this->assertSame(2, DB::table('bookings')->count());
+        $this->assertSame(route('booking.plot.index'), $response->getTargetUrl());
         $this->assertSame($status, DB::table('bookings')->latest('id')->value('status'));
         $this->assertSame(0, DB::transactionLevel());
     }
@@ -1242,6 +1249,7 @@ class VoucherClearanceFlowTest extends TestCase
             'passing_date' => '2026-05-17',
         ]));
 
+        $this->assertSame(200, $response->status(), $response->getContent());
         $response->assertOk()
             ->assertJson([
                 'status' => 'success',
@@ -1279,7 +1287,7 @@ class VoucherClearanceFlowTest extends TestCase
         ]));
 
         $ledger = Ledger::where('type', 'CP')->firstOrFail();
-        $ledger->update(['type' => 'JV']);
+        DB::table('ledgers')->where('id', $ledger->id)->update(['type' => 'JV']);
 
         $payload = [
             'id' => $ledger->id,
@@ -1293,9 +1301,12 @@ class VoucherClearanceFlowTest extends TestCase
 
         $request = Request::create('/admin/ledger/update', 'POST', $payload);
         $request->headers->set('Accept', 'application/json');
-        $response = (new LedgerController())->update($request);
-
-        $this->assertSame(500, $response->status());
+        try {
+            (new LedgerController())->update($request);
+            $this->fail('The cash voucher editor must not rewrite a JV ledger.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            $this->assertSame(Ledger::class, $e->getModel());
+        }
         $ledger->refresh();
         $this->assertSame('JV', $ledger->type);
         $this->assertEquals(1750, $ledger->amount_out);
@@ -1335,21 +1346,27 @@ class VoucherClearanceFlowTest extends TestCase
         ];
     }
 
-    public function test_legacy_jv_edit_and_delete_remain_blocked_without_mutating_ledgers(): void
+    public function test_missing_jv_edit_and_delete_are_rejected_without_mutating_ledgers(): void
     {
         $before = DB::table('ledgers')->count();
         $controller = $this->app->make(\App\Http\Controllers\JournalVoucherController::class);
 
         foreach (['update', 'destroy'] as $method) {
+            $request = Request::create('/journal-voucher/999', $method === 'update' ? 'PUT' : 'DELETE', $method === 'update' ? [] : ['effective_date' => '2026-05-18', 'reason' => 'Test missing voucher']);
+            $request->cookies->set('selected_action', (string) $this->project->id);
+            $this->app->instance('request', $request);
             try {
                 if ($method === 'update') {
-                    $controller->update(Request::create('/journal-voucher/999', 'PUT'), 999);
+                    $controller->update($request, 999);
                 } else {
                     $controller->destroy(999);
                 }
-                $this->fail('Legacy JV mutation must fail closed.');
-            } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
-                $this->assertSame(409, $e->getStatusCode());
+                $this->fail('A missing JV must not mutate financial records.');
+            } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+                $this->assertSame(JournalVoucher::class, $e->getModel());
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                $this->assertSame('update', $method);
+                $this->assertTrue($e->validator->errors()->isNotEmpty());
             }
         }
 
@@ -1799,7 +1816,7 @@ class VoucherClearanceFlowTest extends TestCase
 
         $source = CustomerLedger::where('transaction_type', 'PPR')->firstOrFail();
         $ledger = Ledger::where('customer_ledger_id', $source->id)->where('type', 'PPR')->firstOrFail();
-        $ledger->update(['amount_in' => 999.00]);
+        DB::table('ledgers')->where('id', $ledger->id)->update(['amount_in' => 999.00]);
 
         $this->callDeposit($payload)->assertStatus(302)->assertSessionHasErrors('msg');
 
@@ -1900,6 +1917,7 @@ class VoucherClearanceFlowTest extends TestCase
             $table->id();
             $table->unsignedBigInteger('project_id');
             $table->string('site_name');
+            $table->unsignedBigInteger('head_accounting_id')->nullable();
             $table->unsignedBigInteger('subhead_accounting_id')->nullable();
             $table->timestamps();
         });
@@ -1907,7 +1925,7 @@ class VoucherClearanceFlowTest extends TestCase
             'id' => 1,
             'project_id' => $this->project->id,
             'site_name' => 'Test Site',
-            'subhead_accounting_id' => $this->bookingReceiptAccount->id,
+            'head_accounting_id' => 16, 'subhead_accounting_id' => 20,
         ]);
 
         $request = Request::create('/admin/labour/voucher/create', 'POST', [
@@ -1944,6 +1962,7 @@ class VoucherClearanceFlowTest extends TestCase
         $this->createLabourPostingFixtures();
         $payload = $this->labourPostingPayload();
         $first = $this->callLabourVoucher($payload);
+        $this->assertSame(200, $first->status(), $first->getContent());
         $first->assertOk()->assertJson(['success' => true]);
 
         $header = DB::table('journal_vouchers')->first();
@@ -2002,6 +2021,7 @@ class VoucherClearanceFlowTest extends TestCase
             $table->id();
             $table->unsignedBigInteger('project_id');
             $table->string('site_name');
+            $table->unsignedBigInteger('head_accounting_id')->nullable();
             $table->unsignedBigInteger('subhead_accounting_id')->nullable();
             $table->timestamps();
         });
@@ -2023,7 +2043,7 @@ class VoucherClearanceFlowTest extends TestCase
         ]);
         DB::table('sites')->insert([
             'id' => 1, 'project_id' => $this->project->id, 'site_name' => 'Fixture Site',
-            'subhead_accounting_id' => $this->bookingReceiptAccount->id,
+            'head_accounting_id' => 16, 'subhead_accounting_id' => 20,
         ]);
         DB::table('labour_attendances')->insert([
             'id' => 1, 'project_id' => $this->project->id, 'site_id' => 1,
@@ -2107,18 +2127,27 @@ class VoucherClearanceFlowTest extends TestCase
         ]);
 
         $response->assertStatus(302);
+        $this->assertFalse($this->app['session.store']->has('errors'), $this->app['session.store']->has('errors') ? $this->app['session.store']->get('errors')->first() : '');
 
         $customerLedger->refresh();
         $ledger->refresh();
         $bookingVoucher->refresh();
 
         $this->assertSame($originalLedgerVoucherNumber, (int) $ledger->voucher_number);
-        $this->assertSame($originalBookingVoucherNumber, (int) $bookingVoucher->voucher_number);
         $this->assertSame(1, Ledger::where('customer_ledger_id', $customerLedger->id)->where('type', 'PPR')->count());
         $this->assertStringContainsString('PPR |', $ledger->detail);
-        $this->assertStringContainsString('Method: Cheque', $ledger->detail);
-        $this->assertStringContainsString('Chq: CHQ-12345', $ledger->detail);
-        $this->assertStringContainsString('Note: Updated note', $ledger->detail);
+        $this->assertStringContainsString('Method: Online', $ledger->detail);
+        $this->assertStringContainsString('Txn: TXN-INIT', $ledger->detail);
+        $correctedSource = CustomerLedger::where('transaction_type', 'PPR')->where('reference', 'like', 'UPD-001-CORR-%')->firstOrFail();
+        $correctedLedger = Ledger::where('customer_ledger_id', $correctedSource->id)->where('type', 'PPR')->firstOrFail();
+        $this->assertNotSame($originalBookingVoucherNumber, (int) $bookingVoucher->voucher_number);
+        $this->assertSame((int) $correctedSource->type_id, (int) $bookingVoucher->voucher_number);
+        $this->assertSame(3, (int) $correctedSource->payment_type);
+        $this->assertStringContainsString('Method: Cheque', $correctedLedger->detail);
+        $this->assertStringContainsString('Chq: CHQ-12345', $correctedLedger->detail);
+        $this->assertStringContainsString('Note: Updated note', $correctedLedger->detail);
+        $this->assertSame((int) $correctedSource->id, (int) $bookingVoucher->customer_ledger_id);
+        $this->assertSame((int) $correctedLedger->id, (int) $bookingVoucher->ledger_id);
     }
 
     public function test_ppr_create_ignores_forged_project_id_and_uses_selected_town(): void
@@ -2448,6 +2477,7 @@ class VoucherClearanceFlowTest extends TestCase
 
         Schema::create('leads', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('project_id')->nullable();
             $table->string('first_name')->nullable();
             $table->string('last_name')->nullable();
             $table->string('phone_number')->nullable();
@@ -2471,6 +2501,14 @@ class VoucherClearanceFlowTest extends TestCase
             $table->decimal('amount', 12, 2)->default(0);
             $table->boolean('sold')->default(false);
             $table->longText('plot_history')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('hold_plots', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('plot_id');
+            $table->unsignedBigInteger('user_id');
+            $table->text('reason')->nullable();
             $table->timestamps();
         });
 
@@ -2536,6 +2574,7 @@ class VoucherClearanceFlowTest extends TestCase
             $table->unsignedBigInteger('type_id')->nullable();
             $table->string('reference')->nullable();
             $table->unsignedTinyInteger('payment_type')->nullable();
+            $table->unsignedBigInteger('custom_payment_method_id')->nullable();
             $table->string('t_number')->nullable();
             $table->unsignedBigInteger('bank_id')->nullable();
             $table->date('passing_date')->nullable();
@@ -2631,6 +2670,14 @@ class VoucherClearanceFlowTest extends TestCase
             $table->id();
             $table->timestamps();
         });
+
+        Schema::create('ledger_voucher_counters', function (Blueprint $table) {
+            $table->unsignedBigInteger('project_id');
+            $table->string('voucher_type', 16);
+            $table->unsignedBigInteger('last_number')->default(0);
+            $table->timestamps();
+            $table->primary(['project_id', 'voucher_type']);
+        });
     }
 
     private function seedBaseData(): void
@@ -2656,6 +2703,7 @@ class VoucherClearanceFlowTest extends TestCase
         ]);
 
         $this->customer = Lead::create([
+            'project_id' => $this->project->id,
             'first_name' => 'Ali',
             'last_name' => 'Khan',
             'phone_number' => '03000000000',

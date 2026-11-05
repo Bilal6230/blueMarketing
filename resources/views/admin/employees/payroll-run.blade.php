@@ -6,6 +6,8 @@
 </style>
 <div class="content-wrapper"><section class="content-header"><div class="container-fluid d-flex justify-content-between align-items-center flex-wrap"><div><h1>Payroll Run #{{ $run->run_number }}</h1><div class="text-muted">Project {{ $projectId }} · {{ $run->payroll_month }} · {{ ucfirst(str_replace('_', ' ', $run->status)) }}</div></div><div class="payroll-actions"><a class="btn btn-outline-primary" href="{{ route('employee-payroll.preview', ['month' => $run->payroll_month]) }}">Back to payroll</a> <button class="btn btn-secondary" onclick="window.print()">Print slips</button></div></div></section>
 <section class="content"><div class="container-fluid">
+    @if(session('success'))<div class="alert alert-success payroll-actions">{{ session('success') }}</div>@endif
+    @if($errors->any())<div class="alert alert-danger payroll-actions">{{ $errors->first() }}</div>@endif
     <div class="card payroll-filter"><div class="card-body"><form method="GET" class="form-row align-items-end">
         <div class="form-group col-md-4"><label>Employee</label><select class="form-control" name="employee"><option value="">All employees</option>@foreach($employees as $employee)<option value="{{ $employee['id'] }}" @selected((string)($filters['employee'] ?? '') === (string)$employee['id'])>{{ $employee['name'] }}</option>@endforeach</select></div>
         <div class="form-group col-md-3"><label>Department</label><select class="form-control" name="department"><option value="">All departments</option>@foreach($departments as $department)<option value="{{ $department }}" @selected(($filters['department'] ?? '') === $department)>{{ $department }}</option>@endforeach</select></div>
@@ -21,6 +23,19 @@
                 <tr><th>Early departure</th><td class="text-right">{{ number_format($s['early_departure_deduction'] / 100, 2) }}</td><th>Other deductions</th><td class="text-right">{{ number_format($s['other_deductions'] / 100, 2) }}</td></tr>
                 <tr><th>Gross</th><td class="text-right">{{ number_format($s['gross'] / 100, 2) }}</td><th>Net salary</th><td class="text-right payroll-slip__totals">{{ number_format($s['net'] / 100, 2) }}</td></tr>
             </tbody></table></div><small class="text-muted">Attendance: @foreach($s['counts'] as $status => $count){{ ucfirst(str_replace('_',' ',$status)) }} {{ $count }}@if(!$loop->last) · @endif @endforeach</small>
+            @php($links = $paymentLinks->get($item->id, collect()))
+            @php($paidCents = $links->sum(fn ($link) => (int) round((float) $link->amount * 100)))
+            <div class="mt-3 payroll-actions"><strong>Paid: {{ number_format($paidCents / 100, 2) }}</strong> · Remaining: {{ number_format(max(0, (int) $s['net'] - $paidCents) / 100, 2) }}
+                @foreach($links as $link)<div class="small text-muted">CP source #{{ $link->customer_ledger_id }} · {{ number_format((float) $link->amount, 2) }} · {{ $link->created_at }}</div>@endforeach
+                @if($canLinkPayment && $paidCents < (int) $s['net'])
+                    <form class="form-row align-items-end mt-2" method="POST" action="{{ route('employee-payroll.payment.link', ['runId' => $run->id]) }}">@csrf
+                        <input type="hidden" name="payroll_run_item_id" value="{{ $item->id }}">
+                        <div class="form-group col-md-4"><label for="cp-{{ $item->id }}">Posted CP source ID</label><input id="cp-{{ $item->id }}" class="form-control" type="number" min="1" name="customer_ledger_id" required></div>
+                        <div class="form-group col-md-4"><label for="amount-{{ $item->id }}">Amount</label><input id="amount-{{ $item->id }}" class="form-control" type="number" min="0.01" step="0.01" max="{{ number_format(((int) $s['net'] - $paidCents) / 100, 2, '.', '') }}" name="amount" required></div>
+                        <div class="form-group col-md-4"><button class="btn btn-primary">Link CP payment</button></div>
+                    </form>
+                @endif
+            </div>
         </div></article>
     @empty<div class="alert alert-info">No payroll slips match these filters.</div>@endforelse
 </div></section></div>

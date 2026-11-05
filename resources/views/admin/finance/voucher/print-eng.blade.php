@@ -123,8 +123,8 @@
 
         <!-- Voucher Details -->
         <div style="display: flex; justify-content: space-between;">
-                        <div style="text-align:center; font-size:16px; font-weight:bold;">Voucher No: <span
-                    class="under-line">{{ $voucher->voucher_number }}</span> (
+                    <div style="text-align:center; font-size:16px; font-weight:bold;">Voucher No: <span
+                    class="under-line">{{ $displayNumber ?: ($voucher->type.'-'.$voucher->voucher_number) }}</span> (
                 {{ $voucher->projectHeadSubhead->headAccounting->name }} )</div>
 
             <div style="text-align:center;  font-size:16px; font-weight:bold;">Date :<span

@@ -51,7 +51,7 @@ return new class extends Migration {
 
         if (Schema::hasTable('journal_vouchers') && !Schema::hasColumn('journal_vouchers', 'contractor_id')) {
             Schema::table('journal_vouchers', function (Blueprint $table): void {
-                $table->unsignedBigInteger('contractor_id')->nullable()->after('site_id');
+                $table->unsignedBigInteger('contractor_id')->nullable();
                 $table->index(['contractor_id', 'project_id'], 'journal_vouchers_contractor_project_idx');
             });
             Schema::table('journal_vouchers', function (Blueprint $table): void {

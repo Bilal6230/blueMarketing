@@ -1,6 +1,7 @@
 @extends('admin.layouts.master')
 
 @section('content')
+<style>.employee-definition-card,[data-ajax-panel="employee-profile-panel"],[data-ajax-panel="employee-profiles-panel"]{border:1px solid #e4ebf4;border-radius:16px;box-shadow:0 10px 30px rgba(25,45,78,.07);overflow:visible}.employee-definition-card>.card-header,[data-ajax-panel="employee-profiles-panel"]>.card-header{background:linear-gradient(110deg,#f6f9ff,#fff);padding:15px 18px}.employee-definition-card .form-control,[data-ajax-panel="employee-profile-panel"] .form-control{border-radius:9px;min-height:36px;font-size:.9rem}.employee-definition-card button,[data-ajax-panel="employee-profile-panel"] button{border-radius:9px;font-weight:600}.employee-definition-card hr{border-color:#edf1f7}#employeeProfileModal .modal-body{max-height:78vh;overflow:auto}#employeeProfileModal h5{font-size:1rem;border-bottom:1px solid #e8edf5;padding-bottom:7px;margin:8px 0 14px}#employeeProfileModal .alert{padding:8px 12px;font-size:.85rem}.dynamic-policy-row{border:1px solid #e7edf5;border-radius:10px;padding:8px 8px 0;margin:0 0 8px}.employee-history-scroll{max-height:380px;overflow:auto}.employee-setup-tabs>.nav-pills{background:#fff;border:1px solid #e5ebf4;border-radius:12px;padding:6px;gap:4px}.employee-setup-tabs .nav-link{border-radius:9px;font-weight:600}.employee-setup-tabs .tab-pane{min-height:220px}</style>
 <div class="content-wrapper">
     <section class="content-header"><div class="container-fluid d-flex justify-content-between align-items-center">
         <div><h1>Employee Setup</h1><div class="text-muted">Project {{ getSelectedTown() }} · definitions and effective-dated employment settings</div></div>
@@ -12,7 +13,7 @@
         @if (!$users->count())<div class="alert alert-warning">There are no user accounts assigned to the selected project.</div>@endif
         <div class="row">
             @foreach (['department' => 'Departments', 'designation' => 'Designations', 'category' => 'Employee Categories'] as $kind => $heading)
-                <div class="col-xl-4 mb-3"><div class="card h-100">
+                <div class="col-xl-4 mb-3"><div class="card h-100 employee-definition-card" data-ajax-panel="employee-definition-{{ $kind }}">
                     <div class="card-header"><strong>{{ $heading }}</strong></div><div class="card-body">
                         @can('create user')
                         <form method="POST" action="{{ route('employee-definitions.store') }}" class="form-row">@csrf
@@ -39,10 +40,11 @@
             @endforeach
         </div>
 
-        <div class="card mb-3"><div class="card-header"><strong>Employee Profile & Employment Settings</strong></div><div class="card-body">
+        <div class="card mb-3" data-ajax-panel="employee-profile-panel"><div class="card-header d-flex justify-content-between align-items-center"><strong>Employee Profile & Employment Settings</strong>@canany(['create user', 'update user'])<button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#employeeProfileModal">Add employee profile</button>@endcanany</div>
+        <div class="modal fade" id="employeeProfileModal" tabindex="-1" role="dialog" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-scrollable" role="document"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Employee Profile & Employment Settings</h5><button type="button" class="close" data-dismiss="modal"><span>&times;</span></button></div><div class="modal-body">
             <div class="alert alert-info">Only this project's user accounts can be selected. Every save creates a dated revision; existing payroll/history is not recalculated.</div>
             @canany(['create user', 'update user'])
-            <form id="employee-profile-form" method="POST" action="{{ route('employee-profiles.store') }}">@csrf
+            <form data-ajax-form data-ajax-refresh="employee-profiles-panel" id="employee-profile-form" method="POST" action="{{ route('employee-profiles.store') }}">@csrf
                 <h5>Employee identity</h5><div class="form-row">
                     <div class="form-group col-md-4"><label>Employee user</label><select class="form-control" name="user_id" required><option value="">Select employee</option>@foreach ($users as $user)<option value="{{ $user->id }}">{{ $user->name }} · {{ $user->email }}</option>@endforeach</select></div>
                     <div class="form-group col-md-2"><label>Employee code</label><input class="form-control" name="employee_code" maxlength="40" required></div>
@@ -57,11 +59,8 @@
                     <div class="form-group col-md-3"><label>Payment method</label><input class="form-control" name="payment_method" maxlength="40" placeholder="Cash / bank / other" required></div>
                     <div class="form-group col-md-3"><label>Salary status</label><select class="form-control" name="salary_status"><option value="active">Active</option><option value="hold">Hold</option></select></div>
                     <div class="form-group col-md-4"><label>Salary proration</label><select class="form-control" name="salary_proration_method"><option value="manual_review">Require review (not configured)</option><option value="calendar_days">Calendar days</option><option value="scheduled_days">Scheduled workdays</option></select><small class="text-muted">Used for joining dates and salary changes within a month.</small></div>
-                    <div class="form-group col-md-12"><label>Allowances / additions</label></div>
-                    @foreach ([0, 1, 2, 3] as $allowance)
-                        <div class="form-group col-md-3"><label>Allowance name</label><input class="form-control" name="allowances[{{ $allowance }}][name]" maxlength="80"></div>
-                        <div class="form-group col-md-3"><label>Amount</label><input class="form-control" type="number" min="0" step="0.01" name="allowances[{{ $allowance }}][amount]"></div>
-                    @endforeach
+                    <div class="form-group col-12 d-flex justify-content-between align-items-center"><label class="mb-0">Allowances / additions</label><button type="button" class="btn btn-outline-primary btn-sm" data-add-row="allowance">+ Add allowance</button></div>
+                    <div class="col-12" id="allowanceRows"><div class="form-row dynamic-policy-row"><div class="form-group col-md-5"><label>Allowance name</label><input class="form-control" name="allowances[0][name]" maxlength="80"></div><div class="form-group col-md-5"><label>Amount</label><input class="form-control" type="number" min="0" step="0.01" name="allowances[0][amount]"></div><div class="form-group col-md-2 d-flex align-items-end"><button type="button" class="btn btn-outline-danger btn-sm" data-remove-row>Remove</button></div></div></div>
                     <div class="form-group col-md-3"><label>Duty start</label><input class="form-control" type="time" name="duty_start"></div>
                     <div class="form-group col-md-3"><label>Duty end</label><input class="form-control" type="time" name="duty_end"></div>
                     <div class="form-group col-md-2"><label>Break minutes</label><input class="form-control" type="number" min="0" max="1440" name="break_minutes" value="0" required></div>
@@ -74,12 +73,8 @@
                     <div class="form-group col-md-3"><label>Percentage fine base</label><select class="form-control" name="late_fine_policy[base]"><option value="">Select base if percentage</option><option value="daily_basic_salary">Daily basic salary</option></select></div>
                     <div class="form-group col-md-3"><label>Late fine daily cap</label><input class="form-control" type="number" min="0" step="0.01" name="late_fine_policy[daily_cap]"></div>
                     <div class="form-group col-md-3"><label>Late fine monthly cap</label><input class="form-control" type="number" min="0" step="0.01" name="late_fine_policy[monthly_cap]"></div>
-                    <div class="form-group col-md-12"><label>Late-fine ranges (used when method is Slab/range)</label></div>
-                    @foreach ([0, 1, 2] as $range)
-                        <div class="form-group col-md-2"><label>Range {{ $range + 1 }} from (min)</label><input class="form-control" type="number" min="0" max="1440" name="late_fine_policy[ranges][{{ $range }}][from_minutes]"></div>
-                        <div class="form-group col-md-2"><label>To (min)</label><input class="form-control" type="number" min="0" max="1440" name="late_fine_policy[ranges][{{ $range }}][to_minutes]"></div>
-                        <div class="form-group col-md-2"><label>Fine amount</label><input class="form-control" type="number" min="0" step="0.01" name="late_fine_policy[ranges][{{ $range }}][amount]"></div>
-                    @endforeach
+                    <div class="form-group col-12 d-flex justify-content-between align-items-center"><label class="mb-0">Late-fine ranges (optional)</label><button type="button" class="btn btn-outline-primary btn-sm" data-add-row="range">+ Add range</button></div>
+                    <div class="col-12" id="lateFineRangeRows"><div class="form-row dynamic-policy-row"><div class="form-group col-md-3"><label>From (min)</label><input class="form-control" type="number" min="0" max="1440" name="late_fine_policy[ranges][0][from_minutes]"></div><div class="form-group col-md-3"><label>To (min)</label><input class="form-control" type="number" min="0" max="1440" name="late_fine_policy[ranges][0][to_minutes]"></div><div class="form-group col-md-3"><label>Fine amount</label><input class="form-control" type="number" min="0" step="0.01" name="late_fine_policy[ranges][0][amount]"></div><div class="form-group col-md-3 d-flex align-items-end"><button type="button" class="btn btn-outline-danger btn-sm" data-remove-row>Remove</button></div></div></div>
                     <div class="form-group col-md-3"><label>Absence deduction</label><input class="form-control" type="number" min="0" step="0.01" name="absence_deduction" value="0" required></div>
                     <div class="form-group col-md-3"><label>Leave deduction</label><input class="form-control" type="number" min="0" step="0.01" name="leave_deduction" value="0" required></div>
                     <div class="form-group col-md-3"><label>Half-day after (minutes)</label><input class="form-control" type="number" min="0" max="1440" name="half_day_after_minutes"></div>
@@ -101,12 +96,12 @@
                 <button class="btn btn-primary">Save profile and revision</button>
             </form>
             @endcanany
-        </div></div>
+        </div></div></div></div></div>
 
         <div class="row">
             <div class="col-xl-6 mb-3"><div class="card h-100">
                 <div class="card-header"><strong>Definition Change History</strong><small class="text-muted float-right">Latest {{ $definitionAudits->count() }} entries</small></div>
-                <div class="card-body table-responsive p-0"><table class="table table-sm table-striped mb-0">
+                <div class="card-body table-responsive p-0 employee-history-scroll"><table class="table table-sm table-striped mb-0">
                     <thead><tr><th>When / Who</th><th>Definition</th><th>Change / Reason</th></tr></thead><tbody>
                     @forelse ($definitionAudits as $audit)
                         <tr><td>{{ $audit->created_at }}<br>{{ $audit->actor_name ?? 'Former user' }}</td>
@@ -120,7 +115,7 @@
             </div></div>
             <div class="col-xl-6 mb-3"><div class="card h-100">
                 <div class="card-header"><strong>Employee Profile Change History</strong><small class="text-muted float-right">Latest {{ $profileAudits->count() }} entries</small></div>
-                <div class="card-body table-responsive p-0"><table class="table table-sm table-striped mb-0">
+                <div class="card-body table-responsive p-0 employee-history-scroll"><table class="table table-sm table-striped mb-0">
                     <thead><tr><th>When / Who</th><th>Employee</th><th>Change / Reason</th></tr></thead><tbody>
                     @forelse ($profileAudits as $audit)
                         <tr><td>{{ $audit->created_at }}<br>{{ $audit->actor_name ?? 'Former user' }}</td>
@@ -132,7 +127,7 @@
             </div></div>
         </div>
 
-        <div class="card"><div class="card-header"><strong>Saved Employee Profiles</strong></div><div class="card-body table-responsive"><table class="table table-bordered table-striped">
+        <div class="card" data-ajax-panel="employee-profiles-panel"><div class="card-header"><strong>Saved Employee Profiles</strong></div><div class="card-body table-responsive employee-history-scroll"><table class="table table-bordered table-striped">
             <thead><tr><th>Employee</th><th>Code</th><th>Joining</th><th>Department</th><th>Designation</th><th>Category</th><th>Current terms / history</th><th>Form</th></tr></thead><tbody>
             @forelse ($profiles as $profile)
                 @php($revision = $profile->revisions->first())
@@ -159,7 +154,7 @@
                             </details>
                         @else No employment revision @endif
                     </td>
-                    <td>@canany(['create user', 'update user'])<button type="button" class="btn btn-sm btn-outline-primary load-employee-setup" data-user-id="{{ $profile->user_id }}">Edit setup</button>@endcanany</td>
+                    <td>@canany(['create user', 'update user'])<button type="button" class="btn btn-sm btn-outline-primary load-employee-setup" data-setup="{{ json_encode($profileFormData[$profile->user_id] ?? [], JSON_HEX_APOS | JSON_HEX_QUOT) }}">Edit setup</button>@endcanany</td>
                 </tr>
             @empty <tr><td colspan="8" class="text-center text-muted">No profiles assigned yet. Existing accounts remain unchanged until assigned.</td></tr> @endforelse
             </tbody></table></div></div>
@@ -168,20 +163,77 @@
 @canany(['create user', 'update user'])
 <script>
 (() => {
-    const form = document.getElementById('employee-profile-form');
-    if (!form) return;
-    const saved = @json($profiles->keyBy('user_id')->map(function ($profile) {
-        $revision = $profile->revisions->first();
-        return [
-            'identity' => $profile->only(['user_id', 'employee_code', 'joining_date', 'department_definition_id', 'designation_definition_id', 'employee_category_definition_id']),
-            'revision' => $revision?->only(['effective_from', 'basic_salary', 'allowances', 'payment_method', 'salary_status', 'salary_proration_method', 'duty_start', 'duty_end', 'break_minutes', 'daily_hours', 'working_days_per_week', 'weekly_off_days', 'grace_minutes', 'late_fine_policy', 'absence_deduction', 'leave_deduction', 'half_day_after_minutes', 'half_day_deduction', 'short_leave_minutes', 'short_leave_method', 'short_leave_deduction', 'early_departure_method', 'early_departure_deduction', 'overtime_method', 'overtime_rate', 'other_adjustments']),
-        ];
-    }));
+    function modalizeDefinitionForms(root = document) {
+        root.querySelectorAll('[data-ajax-panel^="employee-definition-"] form:not([data-definition-modalized])').forEach((form) => {
+            const create = !!form.querySelector('input[name="code"]');
+            const card = form.closest('.employee-definition-card'); if (!card) return;
+            const id = `employeeDefinitionModal${Math.random().toString(36).slice(2, 9)}`;
+            const modal = document.createElement('div'); modal.className='modal fade'; modal.id=id; modal.tabIndex=-1;
+            modal.innerHTML=`<div class="modal-dialog modal-md"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">${create?'Add':'Edit'} definition</h5><button type="button" class="close" data-dismiss="modal"><span>&times;</span></button></div><div class="modal-body"></div></div></div>`;
+            const trigger=document.createElement('button'); trigger.type='button'; trigger.className=create?'btn btn-primary btn-sm':'btn btn-sm btn-outline-primary'; trigger.dataset.toggle='modal'; trigger.dataset.target=`#${id}`; trigger.textContent=create?'Add definition':'Edit';
+            if (create) { form.querySelector('button[type="submit"],button:not([type])')?.remove(); card.querySelector('.card-header')?.appendChild(trigger); form.insertAdjacentHTML('beforeend','<button type="submit" class="btn btn-primary btn-sm">Save definition</button>'); }
+            else { form.querySelector('.d-flex')?.appendChild(trigger); form.style.display='none'; }
+            modal.querySelector('.modal-body').appendChild(form); card.appendChild(modal); form.dataset.definitionModalized='1';
+            if (card.querySelector('.alert-danger')) window.jQuery?.(modal).modal('show');
+        });
+    }
+    function buildEmployeeTabs() {
+        const content=document.querySelector('.content-wrapper > section.content .container-fluid'); if(!content||content.querySelector('.employee-setup-tabs')) return;
+        const definitionRow=content.querySelector('.employee-definition-card')?.closest('.row');
+        const profileFormPanel=content.querySelector('[data-ajax-panel="employee-profile-panel"]');
+        const historyRow=profileFormPanel?.nextElementSibling;
+        const profileList=historyRow?.nextElementSibling;
+        if(!definitionRow||!profileFormPanel||!historyRow||!profileList) return;
+        const root=document.createElement('div'); root.className='employee-setup-tabs';
+        root.innerHTML='<ul class="nav nav-pills mb-3"><li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#employee-profiles-tab">Saved profiles</a></li><li class="nav-item"><a class="nav-link" data-toggle="tab" href="#employee-definitions-tab">Departments & roles</a></li><li class="nav-item"><a class="nav-link" data-toggle="tab" href="#employee-history-tab">Change history</a></li></ul><div class="tab-content"><div class="tab-pane active" id="employee-profiles-tab"></div><div class="tab-pane" id="employee-definitions-tab"></div><div class="tab-pane" id="employee-history-tab"></div></div>';
+        definitionRow.before(root);
+        root.querySelector('#employee-definitions-tab').append(definitionRow);
+        root.querySelector('#employee-profiles-tab').append(profileFormPanel,profileList);
+        root.querySelector('#employee-history-tab').append(historyRow);
+    }
+    function toastFlashMessages(root=document) {
+        root.querySelectorAll('.alert-success,.alert-danger').forEach((alert)=>{
+            const message=alert.innerText.trim(); if(!message) return;
+            if(window.toastr){ if(alert.classList.contains('alert-success')) toastr.success(message); else toastr.error(message); alert.remove(); }
+        });
+    }
+    document.addEventListener('DOMContentLoaded',()=>modalizeDefinitionForms());
+    document.addEventListener('DOMContentLoaded',()=>{ buildEmployeeTabs(); toastFlashMessages(); });
+    document.addEventListener('ajax:panel-updated',(event)=>{modalizeDefinitionForms(event.detail?.panel||document);toastFlashMessages(event.detail?.panel||document)});
+    const rowCollections = { allowance: ['#allowanceRows', 'allowances', 100], range: ['#lateFineRangeRows', 'late_fine_policy[ranges]', 10] };
+    const makePolicyRow = (kind, index) => {
+        const wrap = document.createElement('div'); wrap.className = 'form-row dynamic-policy-row';
+        const defs = kind === 'allowance'
+            ? [['name','Allowance name','text'],['amount','Amount','number']]
+            : [['from_minutes','From (min)','number'],['to_minutes','To (min)','number'],['amount','Fine amount','number']];
+        defs.forEach(([key,label,type]) => { const col=document.createElement('div'); col.className=`form-group ${kind==='allowance'?'col-md-5':'col-md-3'}`; const input=document.createElement('input'); input.className='form-control'; input.type=type; input.name=kind==='allowance'?`allowances[${index}][${key}]`:`late_fine_policy[ranges][${index}][${key}]`; input.maxLength=type==='text'?80:null; if(type==='number'){input.min='0';if(key==='from_minutes'||key==='to_minutes')input.max='1440';else input.step='0.01'} col.innerHTML=`<label>${label}</label>`; col.appendChild(input); wrap.appendChild(col); });
+        const action=document.createElement('div'); action.className=`form-group ${kind==='allowance'?'col-md-2':'col-md-3'} d-flex align-items-end`; action.innerHTML='<button type="button" class="btn btn-outline-danger btn-sm" data-remove-row>Remove</button>'; wrap.appendChild(action); return wrap;
+    };
+    const addPolicyRow = (kind) => { const [selector,,max]=rowCollections[kind], list=document.querySelector(selector); if(!list || list.children.length>=max) return; list.appendChild(makePolicyRow(kind,list.children.length)); };
+    const resetDynamicRows = () => {
+        document.querySelectorAll('#allowanceRows .dynamic-policy-row,#lateFineRangeRows .dynamic-policy-row').forEach((row) => row.remove());
+    };
+    const prepareDynamicRows = (setup) => {
+        resetDynamicRows();
+        const allowances = Array.isArray(setup?.revision?.allowances) ? setup.revision.allowances : [];
+        const ranges = Array.isArray(setup?.revision?.late_fine_policy?.ranges) ? setup.revision.late_fine_policy.ranges : [];
+        for (let i = 0; i < Math.min(allowances.length, rowCollections.allowance[2]); i++) addPolicyRow('allowance');
+        for (let i = 0; i < Math.min(ranges.length, rowCollections.range[2]); i++) addPolicyRow('range');
+    };
+    document.addEventListener('click', (event) => {
+        const add=event.target.closest('[data-add-row]'); if(add){addPolicyRow(add.dataset.addRow);return;}
+        const remove=event.target.closest('[data-remove-row]'); if(remove){const row=remove.closest('.dynamic-policy-row'), list=row?.parentElement; row?.remove(); if(list){[...list.children].forEach((item,index)=>item.querySelectorAll('input').forEach(input=>{input.name=input.name.replace(/\[\d+\]/,`[${index}]`)}))} return;}
+        const newButton=event.target.closest('[data-target="#employeeProfileModal"]'); if(newButton){const form=document.getElementById('employee-profile-form'); if(form){form.reset(); prepareDynamicRows(null); form.dataset.editing='0';}}
+    });
     const assign = (name, value) => {
+        const form = document.getElementById('employee-profile-form');
+        if (!form) return;
         const field = Array.from(form.elements).find((item) => item.name === name);
         if (field) field.value = value ?? '';
     };
     const fill = (prefix, value) => {
+        const form = document.getElementById('employee-profile-form');
+        if (!form) return;
         if (Array.isArray(value)) {
             if (value.every((item) => typeof item !== 'object' || item === null)) {
                 const boxes = Array.from(form.querySelectorAll(`[name="${prefix}[]"]`));
@@ -197,10 +249,16 @@
         }
         assign(prefix, value);
     };
-    document.querySelectorAll('.load-employee-setup').forEach((button) => button.addEventListener('click', () => {
-        const setup = saved[button.dataset.userId];
+    document.addEventListener('click', (event) => {
+      const button = event.target.closest('.load-employee-setup');
+      if (button) {
+        let setup = null;
+        try { setup = JSON.parse(button.dataset.setup || 'null'); } catch (_) {}
         if (!setup) return;
+        const form = document.getElementById('employee-profile-form');
+        if (!form) return;
         form.reset();
+        prepareDynamicRows(setup);
         fill('', setup.identity);
         fill('', setup.revision || {});
         if (setup.revision?.effective_from) {
@@ -209,8 +267,11 @@
             assign('effective_from', `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`);
         }
         assign('reason', '');
-        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }));
+        form.dataset.editing='1';
+        if (window.jQuery) window.jQuery('#employeeProfileModal').modal('show');
+      }
+    });
+    document.addEventListener('ajax:panel-updated', () => {});
 })();
 </script>
 @endcanany

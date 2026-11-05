@@ -10,7 +10,7 @@ final class V2OriginalCustomerWorkflow
     {
         $values = [];
         foreach (['project_id', 'transaction_type', 'type_id', 'date', 'customer_id', 'plot_id', 'reference',
-            'description', 'payment_type', 't_number', 'bank_id', 'passing_date'] as $field) {
+            'description', 'payment_type', 'custom_payment_method_id', 't_number', 'bank_id', 'passing_date'] as $field) {
             $values[$field] = isset($source->$field) ? (string) $source->$field : null;
         }
         if (isset($source->contractor_id) && $source->contractor_id !== null) {
@@ -42,7 +42,7 @@ final class V2OriginalCustomerWorkflow
             throw new \DomainException('V2_SOURCE_DATE_OR_AMOUNT_INVALID');
         }
         $metadata = array_intersect_key($source, array_flip([
-            'reference', 'description', 'customer_id', 'contractor_id', 'plot_id', 'payment_type', 't_number', 'bank_id', 'passing_date',
+            'reference', 'description', 'customer_id', 'contractor_id', 'plot_id', 'payment_type', 'custom_payment_method_id', 't_number', 'bank_id', 'passing_date',
         ]));
         if (empty($metadata['contractor_id'])) unset($metadata['contractor_id']);
         if (!empty($metadata['contractor_id']) && !DB::table('contractors')->where('id', $metadata['contractor_id'])
@@ -50,6 +50,13 @@ final class V2OriginalCustomerWorkflow
             throw new \DomainException('V2_SOURCE_CONTRACTOR_INVALID');
         }
         $paymentType = (int) ($metadata['payment_type'] ?? 1);
+        if (!empty($metadata['custom_payment_method_id'])) {
+            $custom = DB::table('project_custom_payment_methods')->where('id', $metadata['custom_payment_method_id'])
+                ->where('project_id', $projectId)->where('is_active', 1)->first();
+            if (!$custom || (int) $custom->base_method_code !== $paymentType) {
+                throw new \DomainException('V2_SOURCE_CUSTOM_PAYMENT_METHOD_INVALID');
+            }
+        }
         if (!in_array($paymentType, [0, 1, 2, 3], true) || ($paymentType === 0 && $series !== 'EC')) {
             throw new \DomainException('V2_SOURCE_PAYMENT_INVALID');
         }
@@ -87,10 +94,14 @@ final class V2OriginalCustomerWorkflow
                     }
                 }
                 $batch = DB::table('finance_posting_cash_sources')->where('customer_ledger_id', $row->id)->value('posting_batch_id');
+                $displayNumber = app(ProjectVoucherDisplayIdentity::class)->assign(
+                    $projectId, 'customer_ledger', (int) $row->id, $series, (string) $row->date
+                );
                 if (!$pending) {
                     $batch = $this->post($projectId, (int) $row->id, $series, $key, $legs, $actor);
                 }
                 return ['source_id' => (int) $row->id, 'posting_batch_id' => $batch ? (int) $batch : null,
+                    'display_number' => $displayNumber,
                     'pending_bank' => $pending && (int) $row->passing_status === 0 && !$batch, 'replayed' => true];
             }
             if (DB::table('finance_posting_batches')->where('project_id', $projectId)->where('request_key', $key)->exists()) {
@@ -112,13 +123,17 @@ final class V2OriginalCustomerWorkflow
                 'is_active' => 1, 'is_approve' => $pending ? 0 : 1,
                 'passing_status' => $pending ? 0 : null, 'created_at' => now(), 'updated_at' => now(),
             ]);
+            $displayNumber = app(ProjectVoucherDisplayIdentity::class)->assign(
+                $projectId, 'customer_ledger', (int) $id, $series, $source['date']
+            );
             DB::table('finance_original_customer_requests')->insert([
                 'project_id' => $projectId, 'request_key' => $key, 'payload_sha256' => $hash,
                 'source_sha256' => self::fingerprint(DB::table('customer_ledger')->where('id', $id)->first()),
                 'customer_ledger_id' => $id, 'created_at' => now(), 'updated_at' => now(),
             ]);
             $batch = $pending ? null : $this->post($projectId, (int) $id, $series, $key, $legs, $actor);
-            return ['source_id' => (int) $id, 'posting_batch_id' => $batch, 'pending_bank' => $pending, 'replayed' => false];
+            return ['source_id' => (int) $id, 'posting_batch_id' => $batch, 'display_number' => $displayNumber,
+                'pending_bank' => $pending, 'replayed' => false];
         }, 3);
     }
 

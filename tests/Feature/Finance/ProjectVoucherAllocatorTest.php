@@ -41,5 +41,8 @@ class ProjectVoucherAllocatorTest extends TestCase
         $this->assertSame([13, 14], $numbers);
         $this->assertDatabaseHas('ledger_voucher_counters', ['project_id' => 5, 'voucher_type' => 'CR', 'last_number' => 14]);
         $this->assertDatabaseMissing('ledger_voucher_counters', ['project_id' => 6, 'voucher_type' => 'CR']);
+        DB::table('customer_ledger')->insert(['project_id' => 5, 'transaction_type' => 'CP', 'type_id' => 41]);
+        request()->cookies->set('selected_action', '5');
+        $this->assertSame(42, getVocuherNumber('CP'));
     }
 }

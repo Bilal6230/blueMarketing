@@ -244,19 +244,56 @@ class ProjectController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($project, $data, $chargeChanged, $validated) {
-                $project->update($data);
-                if (Schema::hasColumn('projects', 'project_code') && empty($project->project_code)) {
-                    $project->project_code = sprintf('PRJ-%06d', $project->id);
-                    $project->save();
+            DB::transaction(function () use ($project, $data, $validated) {
+                // Re-read under a row lock so concurrent edits cannot compare
+                // against stale charge values or create conflicting history.
+                $lockedProject = Project::query()->whereKey($project->id)->lockForUpdate()->firstOrFail();
+                $chargeChanged = (float) $lockedProject->corner_charge_percent !== (float) $data['corner_charge_percent']
+                    || (float) $lockedProject->facing_charge_percent !== (float) $data['facing_charge_percent'];
+
+                if ($chargeChanged && empty($validated['charge_effective_from'])) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'charge_effective_from' => 'Select when the new charges take effect.',
+                    ]);
+                }
+
+                if ($chargeChanged && Schema::hasTable('project_charge_revisions')) {
+                    $hasHistory = DB::table('project_charge_revisions')->where('project_id', $lockedProject->id)->exists();
+                    if (!$hasHistory) {
+                        // Older projects may predate revision history. Snapshot
+                        // their current rates before recording the new revision.
+                        $baselineDate = $lockedProject->opening_date?->toDateString()
+                            ?? optional($lockedProject->created_at)->toDateString()
+                            ?? now()->toDateString();
+                        if ($validated['charge_effective_from'] < $baselineDate) {
+                            throw \Illuminate\Validation\ValidationException::withMessages([
+                                'charge_effective_from' => 'The new charge date cannot be earlier than this project’s rate history.',
+                            ]);
+                        }
+                        if ($validated['charge_effective_from'] > $baselineDate) {
+                            DB::table('project_charge_revisions')->insert([
+                                'project_id' => $lockedProject->id,
+                                'corner_charge_percent' => $lockedProject->corner_charge_percent,
+                                'facing_charge_percent' => $lockedProject->facing_charge_percent,
+                                'effective_from' => $baselineDate,
+                                'changed_by' => Auth::id(), 'created_at' => now(),
+                            ]);
+                        }
+                    }
+                }
+
+                $lockedProject->update($data);
+                if (Schema::hasColumn('projects', 'project_code') && empty($lockedProject->project_code)) {
+                    $lockedProject->project_code = sprintf('PRJ-%06d', $lockedProject->id);
+                    $lockedProject->save();
                 }
                 if ($chargeChanged && Schema::hasTable('project_charge_revisions')) {
                     $effectiveDate = $validated['charge_effective_from'];
-                    $exists = DB::table('project_charge_revisions')->where('project_id', $project->id)
+                    $exists = DB::table('project_charge_revisions')->where('project_id', $lockedProject->id)
                         ->where('effective_from', $effectiveDate)->exists();
                     if ($exists) throw new \DomainException('A charge revision already exists for that effective date.');
                     DB::table('project_charge_revisions')->insert([
-                        'project_id' => $project->id,
+                        'project_id' => $lockedProject->id,
                         'corner_charge_percent' => $data['corner_charge_percent'],
                         'facing_charge_percent' => $data['facing_charge_percent'],
                         'effective_from' => $effectiveDate,
@@ -265,6 +302,8 @@ class ProjectController extends Controller
                 }
             });
             Alert::success('Notification', 'Data <b>' . $project->name . '</b> saved successfully')->toToast()->toHtml();
+        } catch (\Illuminate\Validation\ValidationException $th) {
+            throw $th;
         } catch (\Throwable $th) {
             Alert::error('Notification', 'Data <b>' . $project->project . '</b> failed to save : ' . $th->getMessage())->toToast()->toHtml();
         }

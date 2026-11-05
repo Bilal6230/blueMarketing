@@ -60,9 +60,10 @@
             'SV' => 'General Sales Voucher',
             default => 'General Journal Voucher',
         };
-        $voucherDisplayNumber = $voucherType === 'SV'
-            ? (int) $voucher->voucher_number
-            : get_jv_number($voucher->voucher_number);
+        $voucherDisplayNumber = $voucherDisplayNumber ?? ($voucherType === 'CV'
+            ? \App\Services\Finance\CommissionVoucherNumber::display($voucher->voucher_number)
+            : ($voucherType === 'SV' ? 'SV-' . (int) $voucher->voucher_number
+                : 'JV-' . get_jv_number($voucher->voucher_number)));
     @endphp
     <div class="voucher-container">
         <!-- Voucher Header -->
@@ -74,7 +75,7 @@
         <table class="table table-bordered voucher-details">
             <tr>
                 <th>Voucher No.</th>
-                <td>{{ $voucherType === 'CV' ? \App\Services\Finance\CommissionVoucherNumber::display($voucher->voucher_number) : $voucherType.'-'.$voucherDisplayNumber }}</td>
+                <td>{{ $voucherDisplayNumber }}</td>
                 <th>Date</th>
                 <td>{{ $voucher->date }}</td>
             </tr>

@@ -430,11 +430,11 @@
                                                         $plotName = ($plotSource && !empty($plotSource->name))
                                                             ? Setting::getPlotTypeShort($plotSource->type) . '-' . $plotSource->name
                                                             : ($plotLabels[$fallbackPlotId] ?? '-');
-                                                        $voucherNumber = !empty($i->voucher_series) && !empty($i->voucher_number)
+                                                        $voucherNumber = $i->display_voucher_number ?: (!empty($i->voucher_series) && !empty($i->voucher_number)
                                                             ? $i->voucher_series . '-' . $i->voucher_number
                                                             : ((optional($ledger)->type && (optional($ledger)->voucher_number ?? optional($ledger)->voucher))
                                                                 ? optional($ledger)->type . '-' . (optional($ledger)->voucher_number ?? optional($ledger)->voucher)
-                                                                : '-');
+                                                                : '-'));
                                                         $referenceValue = $i->slip_reference
                                                             ?? optional($customerLedger)->reference
                                                             ?? optional($ledger)->reference
@@ -458,7 +458,7 @@
                                                             {{ $i->slip_reference ?? $i->reference ?? optional($customerLedger)->reference ?? '-' }}
                                                         </td>
                                                         <td>
-                                                            {{ (!empty($i->voucher_series) && !empty($i->voucher_number)) ? $i->voucher_series . '-' . $i->voucher_number : ($voucherNumber ?: '-') }}
+                                                            {{ $i->display_voucher_number ?: ((!empty($i->voucher_series) && !empty($i->voucher_number)) ? $i->voucher_series . '-' . $i->voucher_number : ($voucherNumber ?: '-')) }}
 
                                                         </td>
                                                         <td>

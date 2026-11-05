@@ -30,7 +30,9 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
             Schema::create($name, function (Blueprint $t) use ($key): void { $t->unsignedBigInteger($key); $t->string('model_type'); $t->unsignedBigInteger('model_id'); });
         }
         Schema::create('role_has_permissions', function (Blueprint $t): void { $t->unsignedBigInteger('role_id'); $t->unsignedBigInteger('permission_id'); });
-        Schema::create('project_head_subheads', function (Blueprint $t): void { $t->id(); $t->integer('project_id'); $t->integer('head_accounting_id'); });
+        Schema::create('head_accountings', function (Blueprint $t): void { $t->id(); $t->string('name'); $t->integer('acct_type'); $t->integer('is_active')->default(1); });
+        Schema::create('subhead_accountings', function (Blueprint $t): void { $t->id(); $t->string('name'); $t->integer('is_active')->default(1); });
+        Schema::create('project_head_subheads', function (Blueprint $t): void { $t->id(); $t->integer('project_id'); $t->integer('head_accounting_id'); $t->integer('subhead_accounting_id')->nullable(); });
         Schema::create('ledgers', function (Blueprint $t): void {
             $t->id(); $t->string('type'); $t->integer('voucher_number'); $t->integer('project_head_subheads_id'); $t->integer('customer_ledger_id')->nullable();
             $t->integer('type_id')->nullable();
@@ -60,12 +62,17 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
         (require base_path('database/v2_migrations/2026_10_30_000100_create_v2_finance_posting_core.php'))->up();
         (require base_path('database/v2_migrations/2026_10_31_000110_create_v2_commission_detail_links.php'))->up();
         DB::table('projects')->insert([['id' => 1, 'is_active' => 1], ['id' => 2, 'is_active' => 1]]);
+        DB::table('head_accountings')->insert([['id' => 10, 'name' => 'Cash', 'acct_type' => 1], ['id' => 20, 'name' => 'Party', 'acct_type' => 2]]);
+        DB::table('subhead_accountings')->insert([['id' => 100, 'name' => 'Cash account'], ['id' => 200, 'name' => 'Party account']]);
         DB::table('users')->insert(['id' => 1, 'project_id' => 1, 'status_id' => 1]);
         DB::table('project_head_subheads')->insert([
             ['id' => 101, 'project_id' => 1, 'head_accounting_id' => 10],
             ['id' => 102, 'project_id' => 1, 'head_accounting_id' => 20],
             ['id' => 201, 'project_id' => 2, 'head_accounting_id' => 10],
         ]);
+        DB::table('project_head_subheads')->where('id', 101)->update(['subhead_accounting_id' => 100]);
+        DB::table('project_head_subheads')->where('id', 102)->update(['subhead_accounting_id' => 200]);
+        DB::table('project_head_subheads')->where('id', 201)->update(['subhead_accounting_id' => 100]);
         app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
         $user = User::findOrFail(1);
         foreach (['create jv', 'can approve'] as $name) {
@@ -88,14 +95,26 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
         Schema::create('labour_attendances', fn (Blueprint $t) => $t->id());
         Schema::create('bookings', fn (Blueprint $t) => $t->id());
         Schema::create('charge_types', fn (Blueprint $t) => $t->id());
-        Schema::table('project_head_subheads', function (Blueprint $t): void { $t->integer('subhead_accounting_id')->nullable(); });
-        DB::table('project_head_subheads')->where('id', 101)->update(['subhead_accounting_id' => 100]);
         Schema::table('customer_ledger', function (Blueprint $t): void {
             $t->string('reference')->nullable(); $t->text('description')->nullable();
             $t->integer('customer_id')->nullable(); $t->integer('plot_id')->nullable();
             $t->integer('payment_type')->default(1); $t->string('t_number')->nullable(); $t->integer('bank_id')->nullable();
+            $t->unsignedBigInteger('custom_payment_method_id')->nullable();
             $t->date('passing_date')->nullable(); $t->integer('passing_status')->nullable();
             $t->dateTime('bank_post_at')->nullable(); $t->text('note')->nullable();
+        });
+        Schema::create('project_custom_payment_methods', function (Blueprint $t): void {
+            $t->id(); $t->integer('project_id'); $t->string('name'); $t->unsignedTinyInteger('base_method_code'); $t->integer('is_active')->default(1);
+        });
+        Schema::create('project_voucher_display_settings', function (Blueprint $t): void {
+            $t->id(); $t->integer('project_id'); $t->string('series'); $t->string('prefix');
+        });
+        Schema::create('project_voucher_fiscal_sequences', function (Blueprint $t): void {
+            $t->id(); $t->integer('project_id'); $t->string('series'); $t->integer('financial_year'); $t->integer('last_number'); $t->timestamps();
+        });
+        Schema::create('project_voucher_display_numbers', function (Blueprint $t): void {
+            $t->id(); $t->integer('project_id'); $t->string('source_kind'); $t->integer('source_id');
+            $t->string('series'); $t->integer('financial_year'); $t->string('display_number'); $t->timestamp('created_at');
         });
         (require base_path('database/workflow_migrations/2026_10_31_000010_create_original_workflow_custody.php'))->up();
         $user = User::findOrFail(1);
@@ -126,6 +145,33 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
         $this->assertDatabaseCount('customer_ledger', 1);
         $this->assertDatabaseCount('finance_posting_batches', 1);
         $this->assertDatabaseCount('ledgers', 0);
+    }
+
+    public function test_project_custom_payment_method_is_saved_with_its_existing_base_behavior(): void
+    {
+        $this->workflowSchema();
+        DB::table('project_custom_payment_methods')->insert([
+            'id' => 7, 'project_id' => 1, 'name' => 'Bank Transfer', 'base_method_code' => 2, 'is_active' => 1,
+        ]);
+        $input = $this->cashInput(2);
+        $input['custom_payment_method_id'] = 7;
+        $url = route('ledger.store', [], false);
+        $response = $this->withCookie('selected_action', '1')->postJson($url, $input)
+            ->assertOk()->assertJsonPath('data.display_number', 'CR-2026-0001');
+        $id = $response->json('data.source_id');
+        $this->withCookie('selected_action', '1')->postJson($url, $input)
+            ->assertOk()->assertJsonPath('data.source_id', $id)->assertJsonPath('data.display_number', 'CR-2026-0001');
+        $this->assertDatabaseHas('customer_ledger', [
+            'id' => $id, 'project_id' => 1, 'payment_type' => 2, 'custom_payment_method_id' => 7,
+            'passing_status' => 0,
+        ]);
+        $this->assertDatabaseHas('project_voucher_display_numbers', [
+            'project_id' => 1, 'source_kind' => 'customer_ledger', 'source_id' => $id,
+            'series' => 'CR', 'financial_year' => 2026, 'display_number' => 'CR-2026-0001',
+        ]);
+        $this->assertDatabaseHas('project_voucher_fiscal_sequences', [
+            'project_id' => 1, 'series' => 'CR', 'financial_year' => 2026, 'last_number' => 1,
+        ]);
     }
 
     public function test_pending_bank_source_posts_only_on_clearance_date_and_replays_without_duplicate(): void
@@ -232,7 +278,7 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
         Schema::create('labours', function (Blueprint $t): void { $t->id(); $t->integer('project_id'); $t->softDeletes(); });
         Schema::table('labour_ledgers', function (Blueprint $t): void {
             $t->integer('project_id'); $t->integer('labour_id'); $t->decimal('amount', 15, 2);
-            $t->date('date'); $t->text('details'); $t->timestamps();
+            $t->date('date'); $t->unsignedBigInteger('contractor_id')->nullable(); $t->text('details'); $t->timestamps();
         });
         DB::table('labours')->insert([['id' => 1, 'project_id' => 1], ['id' => 2, 'project_id' => 1], ['id' => 3, 'project_id' => 2]]);
     }
@@ -283,11 +329,7 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
         $this->workflowSchema();
         Schema::table('users', function (Blueprint $t): void { $t->string('name')->default('Synthetic operator'); });
         Schema::table('projects', function (Blueprint $t): void { $t->string('project')->default('Synthetic project'); });
-        Schema::create('head_accountings', function (Blueprint $t): void { $t->id(); $t->string('name'); $t->integer('acct_type'); });
-        Schema::create('subhead_accountings', function (Blueprint $t): void { $t->id(); $t->string('name'); });
         Schema::create('account_types', function (Blueprint $t): void { $t->id(); $t->string('name'); $t->integer('status')->default(1); });
-        DB::table('head_accountings')->insert([['id' => 10, 'name' => 'Cash', 'acct_type' => 1], ['id' => 20, 'name' => 'Party', 'acct_type' => 2]]);
-        DB::table('subhead_accountings')->insert([['id' => 100, 'name' => 'Cash account'], ['id' => 200, 'name' => 'Party account']]);
         DB::table('account_types')->insert([['id' => 1, 'name' => 'Assets'], ['id' => 2, 'name' => 'Liabilities']]);
         DB::table('project_head_subheads')->where('id', 102)->update(['subhead_accounting_id' => 200]);
         $user = User::findOrFail(1);
@@ -386,6 +428,11 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
         $this->assertDatabaseCount('customer_ledger', 1);
         $this->assertDatabaseCount('booking_vouchers', 1);
         $this->assertDatabaseHas('booking_vouchers', ['booking_id' => 13, 'customer_ledger_id' => 1, 'ledger_id' => null, 'is_approve' => 1]);
+        $this->assertDatabaseHas('project_voucher_display_numbers', [
+            'project_id' => 1, 'source_kind' => 'customer_ledger', 'source_id' => 1,
+            'series' => 'PPR', 'financial_year' => 2026, 'display_number' => 'PPR-2026-0001',
+        ]);
+        $this->assertDatabaseCount('project_voucher_display_numbers', 1);
         $this->assertDatabaseCount('finance_posting_batches', 1);
         $input['request_key'] = 'BOOKING-DUPLICATE-REFERENCE-01';
         $this->withCookie('selected_action', '1')->postJson($url, $input)->assertStatus(409);
@@ -491,10 +538,12 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
         $url = route('voucher.cash_in.data', [], false);
         $response = $this->withCookie('selected_action', '1')->getJson($url.'?length=-1')->assertOk()
             ->assertJsonPath('recordsTotal', 1)->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', 'SRC-'.$id)
+            ->assertJsonPath('data.0.voucher_number', 'CR-2026-0001')
             ->assertJsonPath('data.0.amount', '30.00')->assertJsonPath('data.0.detail', '&lt;script&gt;alert(1)&lt;/script&gt;');
         $print = route('finance.voucher.source.print', ['customerLedger' => $id], false);
         $this->assertStringEndsWith($print, $response->json('data.0.print_url'));
-        $this->withCookie('selected_action', '1')->get($print)->assertOk()->assertSee('<script>alert(1)</script>');
+        $this->withCookie('selected_action', '1')->get($print)->assertOk()
+            ->assertSee('CR-2026-0001')->assertSee('<script>alert(1)</script>');
         $this->withCookie('selected_action', '2')->getJson($print)->assertForbidden();
         $batch = (int) DB::table('finance_posting_batches')->value('id');
         (new \App\Services\Finance\V2PostingGateway())->reversePostedBatch(1, $batch, 'CASH-REPORT-REVERSAL-001', '2026-11-02', 'Verified correction', 1);
@@ -788,28 +837,37 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
                 $t->timestamps();
             });
         }
+        Schema::table('stock_entries', fn (Blueprint $t) => $t->unsignedBigInteger('project_id')->nullable());
+        Schema::table('stock_bills', fn (Blueprint $t) => $t->unsignedBigInteger('project_id')->nullable());
+        Schema::table('stock_entry_lines', fn (Blueprint $t) => $t->unsignedBigInteger('project_id')->nullable());
+        Schema::table('stock_bill_lines', fn (Blueprint $t) => $t->unsignedBigInteger('project_id')->nullable());
         (require base_path('database/v2_migrations/2026_10_31_000120_create_v2_stock_project_approvals.php'))->up();
-        DB::table('stock_entries')->insert(['id' => 70, 'entry_date' => '2026-10-31', 'slip_no' => '70', 'flow' => 'IN', 'party_id' => 1]);
-        DB::table('stock_bills')->insert(['id' => 80, 'bill_date' => '2026-10-31', 'bill_no' => '80', 'type' => 'purchase', 'party_id' => 1, 'total_minor' => 3000]);
-        DB::table('stock_entry_lines')->insert(['entry_id' => 70, 'item_id' => 1, 'qty' => '1.000', 'rate_minor' => 3000, 'amount_minor' => 3000]);
-        DB::table('stock_bill_lines')->insert(['bill_id' => 80, 'item_id' => 1, 'qty' => '1.000', 'rate_minor' => 3000, 'amount_minor' => 3000]);
+        DB::table('stock_entries')->insert(['id' => 70, 'project_id' => 1, 'entry_date' => '2026-10-31', 'slip_no' => '70', 'flow' => 'IN', 'party_id' => 1]);
+        DB::table('stock_bills')->insert(['id' => 80, 'project_id' => 1, 'bill_date' => '2026-10-31', 'bill_no' => '80', 'type' => 'purchase', 'party_id' => 1, 'total_minor' => 3000]);
+        DB::table('stock_entry_lines')->insert(['project_id' => 1, 'entry_id' => 70, 'item_id' => 1, 'qty' => '1.000', 'rate_minor' => 3000, 'amount_minor' => 3000]);
+        DB::table('stock_bill_lines')->insert(['project_id' => 1, 'bill_id' => 80, 'item_id' => 1, 'qty' => '1.000', 'rate_minor' => 3000, 'amount_minor' => 3000]);
         Gate::define('approve-v2-stock-finance', fn ($user) => true);
     }
 
     private function inventorySchema(): void
     {
         $this->stockSources();
-        Schema::create('stock_items', function (Blueprint $t): void { $t->id(); $t->string('name'); $t->string('unit'); $t->softDeletes(); $t->timestamps(); });
-        Schema::create('stock_parties', function (Blueprint $t): void { $t->id(); $t->string('name'); $t->string('type'); $t->softDeletes(); $t->timestamps(); });
+        Schema::create('stock_items', function (Blueprint $t): void { $t->id(); $t->string('name'); $t->string('unit'); $t->unsignedBigInteger('default_rate_minor')->default(0); $t->boolean('is_active')->default(1); $t->softDeletes(); $t->timestamps(); });
+        Schema::create('stock_parties', function (Blueprint $t): void { $t->id(); $t->string('name'); $t->string('type'); $t->boolean('is_active')->default(1); $t->softDeletes(); $t->timestamps(); });
         Schema::create('stock_counters', function (Blueprint $t): void { $t->string('key')->primary(); $t->integer('next_number'); $t->timestamps(); });
         Schema::create('stock_item_balances', function (Blueprint $t): void { $t->integer('item_id')->primary(); $t->decimal('on_hand_qty', 18, 3); $t->timestamps(); });
+        Schema::create('stock_project_item_balances', function (Blueprint $t): void { $t->unsignedBigInteger('project_id'); $t->unsignedBigInteger('item_id'); $t->decimal('on_hand_qty', 18, 3)->default(0); $t->timestamps(); $t->primary(['project_id', 'item_id']); });
+        Schema::create('stock_party_project_accounts', function (Blueprint $t): void { $t->id(); $t->unsignedBigInteger('project_id'); $t->unsignedBigInteger('stock_party_id'); $t->unsignedBigInteger('project_head_subhead_id'); $t->timestamps(); });
+        Schema::create('stock_project_item_definitions', function (Blueprint $t): void { $t->unsignedBigInteger('project_id'); $t->unsignedBigInteger('item_id'); $t->string('name'); $t->string('unit'); $t->unsignedBigInteger('default_rate_minor')->default(0); $t->boolean('is_active')->default(1); $t->softDeletes(); $t->timestamps(); $t->primary(['project_id', 'item_id']); });
         Schema::create('stock_movements', function (Blueprint $t): void {
-            $t->id(); $t->date('movement_date'); $t->string('direction'); $t->integer('item_id'); $t->decimal('qty', 18, 3);
+            $t->id(); $t->unsignedBigInteger('project_id')->nullable(); $t->date('movement_date'); $t->string('direction'); $t->integer('item_id'); $t->decimal('qty', 18, 3);
             $t->integer('rate_minor'); $t->integer('amount_minor'); $t->string('source_type'); $t->integer('source_id');
             $t->integer('source_line_id'); $t->integer('party_id'); $t->integer('created_by'); $t->timestamps();
         });
         DB::table('stock_items')->insert(['id' => 1, 'name' => 'Cement', 'unit' => 'bag']);
         DB::table('stock_parties')->insert(['id' => 1, 'name' => 'Supplier', 'type' => 'Supplier']);
+        DB::table('stock_party_project_accounts')->insert(['project_id' => 1, 'stock_party_id' => 1, 'project_head_subhead_id' => 101]);
+        DB::table('stock_project_item_definitions')->insert(['project_id' => 1, 'item_id' => 1, 'name' => 'Cement', 'unit' => 'bag', 'default_rate_minor' => 0, 'is_active' => 1]);
     }
 
     public function test_original_stock_create_keeps_inventory_pending_then_explicit_approval_posts_finance(): void
@@ -822,7 +880,7 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
         $this->assertDatabaseCount('finance_posting_batches', 0);
         $this->assertDatabaseCount('ledgers', 0);
         $payload = ['request_key' => 'ORIGINAL-STOCK-CREATED-001', 'evidence_reference' => 'OWNER-DOC-CREATED-2026', 'posting_lines' => $this->approval()['posting_lines']];
-        $this->assertSame('2026-10-31', (new \App\Services\Finance\V2StockSourceSnapshot())->read('stock_entry', $id)['date']);
+        $this->assertSame('2026-10-31', (new \App\Services\Finance\V2StockSourceSnapshot())->read('stock_entry', $id, 1)['date']);
         $this->withCookie('selected_action', '1')->postJson(route('stocks.finance.approve', ['kind' => 'stock_entry', 'id' => $id], false), $payload)->assertOk();
         $this->assertDatabaseHas('finance_posting_stock_entry_sources', ['stock_entry_id' => $id]);
         $this->assertDatabaseCount('finance_posting_batches', 1);
@@ -845,9 +903,6 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
     {
         $this->inventorySchema();
         Schema::table('projects', function (Blueprint $t): void { $t->string('project')->default('Synthetic project'); });
-        foreach (['stock_items', 'stock_parties'] as $name) {
-            Schema::table($name, function (Blueprint $t): void { $t->integer('is_active')->default(1); });
-        }
         $user = User::findOrFail(1);
         $user->givePermissionTo(Permission::create(['name' => 'create stock', 'guard_name' => 'web']));
         $this->actingAs($user, 'sanctum');
