@@ -14,7 +14,10 @@
     .daily-voucher-shortcuts{display:flex;flex-wrap:wrap;gap:.5rem}
     .daily-voucher-table-card{flex:1 1 0;min-height:0;display:flex;flex-direction:column;margin-bottom:0!important}
     .daily-voucher-table-wrap{flex:1 1 0;min-height:0;overflow:auto}.daily-voucher-table{min-width:1100px;table-layout:fixed}
-    .daily-voucher-table th:nth-child(1){width:96px}.daily-voucher-table th:nth-child(2){width:112px}.daily-voucher-table th:nth-child(3){width:165px}.daily-voucher-table th:nth-child(4){width:190px}.daily-voucher-table th:nth-child(5){width:105px}.daily-voucher-table th:nth-child(6){width:82px}.daily-voucher-table th:nth-child(7){width:220px}.daily-voucher-table th:nth-child(8){width:165px}
+    /* Fixed column tracks prevent spare table width from enlarging Actions. Details absorbs the rest. */
+    .daily-voucher-table{width:100%}
+    .daily-voucher-table col.dv-col-actions{width:170px}
+    .daily-voucher-table th:last-child,.daily-voucher-table td:last-child{width:170px;max-width:170px}
     .daily-voucher-table td:last-child{padding:.25rem .3rem;white-space:nowrap}
     .daily-voucher-table td:last-child .btn{padding:.2rem .32rem;font-size:.72rem;line-height:1.35;margin-right:2px}
     .daily-voucher-table td:last-child .btn:last-child{margin-right:0}
@@ -72,7 +75,9 @@
             </div>
         </div></div>
         <div class="card daily-voucher-card daily-voucher-table-card">
-            <div class="daily-voucher-table-wrap" id="dv-table-wrap"><table class="table table-sm table-hover mb-0 daily-voucher-table"><thead>
+            <div class="daily-voucher-table-wrap" id="dv-table-wrap"><table class="table table-sm table-hover mb-0 daily-voucher-table">
+                <colgroup><col style="width:96px"><col style="width:112px"><col style="width:165px"><col style="width:190px"><col style="width:105px"><col style="width:82px"><col><col class="dv-col-actions"></colgroup>
+                <thead>
                 <tr><th>Date</th><th>Voucher #</th><th>Reference</th><th>Account / Customer</th><th class="text-right">Amount</th><th>Status</th><th>Details</th><th>Actions</th></tr>
                 <tr class="dv-column-filters">
                     @foreach(['date'=>'Date','number'=>'Voucher #','reference'=>'Reference','account'=>'Account / Customer','amount'=>'Amount','status'=>'Status','detail'=>'Details'] as $key=>$label)
