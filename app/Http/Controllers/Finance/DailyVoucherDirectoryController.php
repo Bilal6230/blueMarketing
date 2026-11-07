@@ -244,6 +244,8 @@ final class DailyVoucherDirectoryController extends Controller
                         'Updated at' => $voucher->updated_at ?? null,
                     ], fn ($value) => $value !== null && $value !== ''),
                     'url' => auth()->user()?->can('print jv') ? route($printRoute, ['id' => $voucher->id]) : null,
+                    'edit_url' => auth()->user()?->can('edit jv') ? route($type === 'JV' ? 'journal.voucher.edit' : 'commision.voucher.edit', ['id' => $voucher->id]) : null,
+                    'delete_url' => auth()->user()?->can('delete jv') ? route($type === 'JV' ? 'journal.voucher.delete' : 'commision.voucher.delete', ['id' => $voucher->id]) : null,
                 ]);
             }
         }
