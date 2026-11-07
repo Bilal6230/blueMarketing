@@ -83,7 +83,7 @@
     </div></section>
 </div>
 <div class="modal fade" id="dv-detail-modal" tabindex="-1" role="dialog" aria-labelledby="dv-detail-title" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-scrollable" role="document"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="dv-detail-title">Voucher details</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div><div class="modal-body"><dl class="row mb-0" id="dv-detail-fields"></dl><div id="dv-detail-lines-wrap" class="mt-3 d-none"><h6>Voucher lines</h6><div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>Account</th><th>Description</th><th class="text-right">Debit</th><th class="text-right">Credit</th></tr></thead><tbody id="dv-detail-lines"></tbody></table></div></div><div id="dv-detail-prints-wrap" class="mt-3 d-none"><h6>Plot receipt print views</h6><div id="dv-detail-prints" class="d-flex flex-wrap" style="gap:.5rem"></div></div><div id="dv-detail-audit-wrap" class="mt-3 d-none"><h6>Payment and audit information</h6><dl class="row mb-0" id="dv-detail-audit"></dl></div></div><div class="modal-footer"><a id="dv-detail-print" class="btn btn-primary" target="_blank" rel="noopener"><i class="fas fa-print mr-1"></i> Open print view</a><span id="dv-no-print" class="small text-muted d-none">No posted print record is available.</span><button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button></div></div></div></div>
-<div class="modal fade" id="dv-entry-modal" tabindex="-1" role="dialog" aria-labelledby="dv-entry-title" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-scrollable" role="document"><div class="modal-content"><div class="modal-header py-2"><h5 class="modal-title" id="dv-entry-title">New voucher</h5><div id="dv-bank-method-wrap" class="ml-auto mr-3 d-none"><label class="small mb-0 mr-2" for="dv-bank-method">Payment</label><select id="dv-bank-method" class="form-control form-control-sm d-inline-block" style="width:auto"><option value="online">Online</option><option value="cheque">Cheque</option></select></div><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div><div class="modal-body p-0 position-relative"><div id="dv-entry-loader" class="d-flex align-items-center justify-content-center flex-column text-muted" style="position:absolute;inset:0;z-index:2;background:#fff;min-height:220px"><div id="dv-entry-spinner" class="spinner-border text-primary mb-2" role="status"></div><span id="dv-entry-loader-text">Loading voucher form...</span><a id="dv-entry-fallback" class="btn btn-sm btn-outline-primary mt-3 d-none" target="_blank" rel="noopener">Open form in new tab</a></div><iframe id="dv-entry-frame" title="Voucher entry" style="display:block;width:100%;height:78vh;border:0"></iframe></div></div></div></div>
+<div class="modal fade" id="dv-entry-modal" tabindex="-1" role="dialog" aria-labelledby="dv-entry-title" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-scrollable" role="document"><div class="modal-content"><div class="modal-header py-2"><h5 class="modal-title" id="dv-entry-title">New voucher</h5><div id="dv-bank-method-wrap" class="ml-auto mr-3 d-none"><label class="small mb-0 mr-2" for="dv-bank-method">Payment</label><select id="dv-bank-method" class="form-control form-control-sm d-inline-block" style="width:auto"><option value="online">Online</option><option value="cheque">Cheque</option></select></div><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div><div class="modal-body p-0 position-relative"><div id="dv-entry-loader" class="d-flex align-items-center justify-content-center flex-column text-muted" style="position:absolute;top:0;left:0;right:0;z-index:2;background:rgba(255,255,255,.94);padding:.65rem;border-bottom:1px solid #e3e8f0;min-height:58px"><div id="dv-entry-spinner" class="spinner-border text-primary mb-2" role="status"></div><span id="dv-entry-loader-text">Loading voucher form...</span><a id="dv-entry-fallback" class="btn btn-sm btn-outline-primary mt-3 d-none" target="_blank" rel="noopener">Open form in new tab</a></div><iframe id="dv-entry-frame" title="Voucher entry" style="display:block;width:100%;height:78vh;border:0" referrerpolicy="same-origin"></iframe></div></div></div></div>
 <script>
 (() => {
     document.documentElement.classList.add('daily-voucher-directory-active');
@@ -128,7 +128,10 @@
         entryLoader.classList.remove('d-none');
         entrySpinner.classList.remove('d-none'); loaderText.textContent='Loading voucher form...'; fallback.classList.add('d-none'); fallback.href=url;
         clearEntryTimers();
-        entryLoadTimer=setTimeout(()=>{clearInterval(entryFormCheck);showEntryError('The voucher form is taking too long. Open it in a new tab to see the error or continue.');},12000);
+        entryLoadTimer=setTimeout(()=>{
+            clearInterval(entryFormCheck);
+            showEntryError('Voucher form has not responded. Check the embedded page below or open it in a separate tab.');
+        },15000);
         entryFrame.src=url;
         // The embedded voucher page loads many scripts from the main layout.
         // Its window load event can be delayed even though the form is already
@@ -150,7 +153,10 @@
         try {
             const doc=entryFrame.contentDocument;
             if(doc?.querySelector('#voucherForm'))entryReady();
-            else showEntryError('Voucher form is unavailable (permission denied, redirect, or server error). Open the form in a new tab to see the response.');
+            else {
+                const message=doc?.querySelector('.alert-danger,.exception-message,h1')?.textContent?.trim();
+                showEntryError(message ? 'Voucher form could not open: '+message.slice(0,160) : 'Voucher form missing from server response. Verify create-voucher permission and open the page below.');
+            }
         } catch(error) {
             showEntryError('Cannot access the voucher form inside this window. Open the form in a new tab.');
         }
