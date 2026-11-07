@@ -109,7 +109,7 @@
                     <span id="dv-entry-error-text"></span>
                     <a id="dv-entry-fallback" class="alert-link ml-2" target="_blank" rel="noopener">Open voucher form</a>
                 </div>
-                <iframe id="dv-entry-frame" title="Voucher entry" style="display:block;width:100%;height:78vh;border:0" referrerpolicy="same-origin"></iframe>
+                <iframe id="dv-entry-frame" title="Voucher entry" style="display:block;width:100%;height:78vh;border:0;visibility:hidden" referrerpolicy="same-origin"></iframe>
             </div>
         </div>
     </div>
@@ -143,7 +143,12 @@
     const entryErrorText=document.getElementById('dv-entry-error-text');
     const fallback=document.getElementById('dv-entry-fallback');
     let requestedEntryUrl='';
+    function revealEntry(){
+        if(!requestedEntryUrl)return;
+        entryFrame.style.visibility='visible';
+    }
     function showEntryError(message,url=requestedEntryUrl){
+        entryFrame.style.visibility='hidden';
         entryErrorText.textContent=message;
         fallback.href=url||'#';
         fallback.classList.toggle('d-none',!url);
@@ -151,6 +156,7 @@
     }
     function loadEntry(url){
         requestedEntryUrl=url;
+        entryFrame.style.visibility='hidden';
         entryError.classList.add('d-none');
         entryFrame.src=url||'about:blank';
         if(!url)showEntryError('No voucher entry form is available for this type.');
@@ -159,7 +165,11 @@
         if(!requestedEntryUrl || entryFrame.src==='about:blank')return;
         try{
             const doc=entryFrame.contentDocument;
-            if(doc?.querySelector('#voucherForm'))return;
+            if(doc?.querySelector('#voucherForm')){
+                // The iframe load event is a fallback for a missed child ready message.
+                requestAnimationFrame(()=>requestAnimationFrame(revealEntry));
+                return;
+            }
             const message=doc?.querySelector('.alert-danger,.exception-message,h1')?.textContent?.trim();
             showEntryError(message ? 'Voucher form unavailable: '+message.slice(0,180) : 'Voucher form unavailable. Check your create permission or the server response.');
         }catch(error){
@@ -206,10 +216,13 @@
         }
         target.click();
     });
-    if(window.jQuery){window.jQuery('#dv-entry-modal').on('hidden.bs.modal',()=>{requestedEntryUrl='';entryError.classList.add('d-none');entryFrame.src='about:blank';});}
+    if(window.jQuery){window.jQuery('#dv-entry-modal').on('hidden.bs.modal',()=>{requestedEntryUrl='';entryError.classList.add('d-none');entryFrame.style.visibility='hidden';entryFrame.src='about:blank';});}
     window.addEventListener('message',event=>{
         if(event.origin!==window.location.origin || event.source!==entryFrame.contentWindow)return;
-        if(event.data?.type==='daily-voucher-form-ready')return;
+        if(event.data?.type==='daily-voucher-form-ready'){
+            requestAnimationFrame(()=>requestAnimationFrame(revealEntry));
+            return;
+        }
         if(event.data?.type!=='daily-voucher-saved')return;
         if(window.jQuery)window.jQuery('#dv-entry-modal').modal('hide');
         document.getElementById('dv-entry-frame').src='about:blank';start=0;load();
