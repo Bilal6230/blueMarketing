@@ -162,7 +162,13 @@
                     const overlay = document.getElementById('load_screen');
                     if (overlay) overlay.remove();
                     if (window.parent !== window) {
-                        window.parent.postMessage({type:'daily-voucher-form-ready'}, window.location.origin);
+                        // Let the DOM-ready tab initialization, workspace relocation,
+                        // and two layout/paint frames complete before revealing the iframe.
+                        requestAnimationFrame(function () {
+                            requestAnimationFrame(function () {
+                                window.parent.postMessage({type:'daily-voucher-form-ready'}, window.location.origin);
+                            });
+                        });
                     }
                 }
                 if (document.readyState === 'loading') {
