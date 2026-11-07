@@ -172,6 +172,19 @@
     document.getElementById('dv-create-voucher').addEventListener('click',()=>{
         const selected=document.getElementById('dv-type').value;
         const seriesMap={CR:'CR',DR:'DR',CP:'DR',CCR:'CCR',CDR:'CDR',BOR:'BOR',BOP:'BOP'};
+        const dedicatedRoutes={
+            JV:@json(route('journal.voucher.create')),
+            CV:@json(route('commision.voucher.create')),
+            PR:@json(route('finance.voucher.plot-receipt.workspace')),
+            PP:@json(route('finance.voucher.plot-purchase.workspace')),
+            PPR:@json(route('finance.voucher.plot-receipt.workspace')),
+            BD:@json(route('finance.voucher.transfer.workspace',['kind'=>'deposit'])),
+            BW:@json(route('finance.voucher.transfer.workspace',['kind'=>'withdrawal']))
+        };
+        if(dedicatedRoutes[selected]){
+            window.location.assign(dedicatedRoutes[selected]);
+            return;
+        }
         const series=seriesMap[selected];
         const target=series ? document.querySelector(`.dv-create[data-series="${series}"]`) : null;
         if(!target){
