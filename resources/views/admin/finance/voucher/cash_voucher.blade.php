@@ -26,7 +26,27 @@
         html body.daily-voucher-embedded .preloader,
         html body.daily-voucher-embedded .pace,
         html body.daily-voucher-embedded .pace-active { display:none !important; pointer-events:none !important; }
-        html body.daily-voucher-embedded { overflow:auto !important; }
+        html.daily-voucher-embedded, html body.daily-voucher-embedded {
+            width:100% !important; max-width:100% !important;
+            overflow-x:hidden !important; overflow-y:auto !important;
+        }
+        body.daily-voucher-embedded *, body.daily-voucher-embedded *::before, body.daily-voucher-embedded *::after {
+            box-sizing:border-box;
+        }
+        body.daily-voucher-embedded .wrapper,
+        body.daily-voucher-embedded .main-content,
+        body.daily-voucher-embedded .page-content,
+        body.daily-voucher-embedded .content-wrapper,
+        body.daily-voucher-embedded .content,
+        body.daily-voucher-embedded .custom_card,
+        body.daily-voucher-embedded #voucherForm {
+            min-width:0 !important; max-width:100% !important;
+            overflow-x:clip !important;
+        }
+        body.daily-voucher-embedded .content-wrapper .row { max-width:100% !important; }
+        body.daily-voucher-embedded #voucherForm > .row {
+            margin-left:0 !important; margin-right:0 !important; width:100% !important;
+        }
         body.daily-voucher-embedded .main-header, body.daily-voucher-embedded .main-sidebar,
         body.daily-voucher-embedded .main-footer, body.daily-voucher-embedded .content-header,
         body.daily-voucher-embedded #toggleFilters, body.daily-voucher-embedded #filtersSection,
@@ -53,7 +73,10 @@
         body.daily-voucher-embedded #voucherForm > .row > .col-2 { flex:0 0 100% !important; max-width:100% !important; width:100% !important; }
         body.daily-voucher-embedded #voucherForm > .row > .col-2 { margin-top:18px; }
         body.daily-voucher-embedded #voucherForm > .row > .col-2 > .col-md-12 { padding:0; }
-        body.daily-voucher-embedded #voucherForm > .row > .col-10 > .row { margin-left:-8px; margin-right:-8px; }
+        body.daily-voucher-embedded #voucherForm > .row > .col-10 > .row {
+            margin-left:0 !important; margin-right:0 !important;
+            width:100% !important; max-width:100% !important;
+        }
         body.daily-voucher-embedded #voucherForm > .row > .col-10 > .row > [class*="col-"]:not(.d-none) {
             flex:0 0 33.333333% !important; max-width:33.333333% !important;
             padding:0 8px !important; margin-top:0 !important; margin-bottom:14px;
