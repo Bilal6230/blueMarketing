@@ -21,6 +21,12 @@
     @endphp
     <style>
         @if($embeddedVoucher ?? false)
+        /* The master layout's full-screen preloader must never cover an embedded voucher form. */
+        html body.daily-voucher-embedded #load_screen,
+        html body.daily-voucher-embedded .preloader,
+        html body.daily-voucher-embedded .pace,
+        html body.daily-voucher-embedded .pace-active { display:none !important; pointer-events:none !important; }
+        html body.daily-voucher-embedded { overflow:auto !important; }
         body.daily-voucher-embedded .main-header, body.daily-voucher-embedded .main-sidebar,
         body.daily-voucher-embedded .main-footer, body.daily-voucher-embedded .content-header,
         body.daily-voucher-embedded #toggleFilters, body.daily-voucher-embedded #filtersSection,
@@ -37,7 +43,26 @@
         }
     </style>
     @if($embeddedVoucher ?? false)
-        <script>document.body.classList.add('daily-voucher-embedded');</script>
+        <script>
+            document.body.classList.add('daily-voucher-embedded');
+            // Inform the parent when the actual form exists, rather than waiting for
+            // the master layout's external assets and window.load event.
+            (function () {
+                function ready() {
+                    if (!document.getElementById('voucherForm')) return;
+                    const overlay = document.getElementById('load_screen');
+                    if (overlay) overlay.remove();
+                    if (window.parent !== window) {
+                        window.parent.postMessage({type:'daily-voucher-form-ready'}, window.location.origin);
+                    }
+                }
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', ready, {once:true});
+                } else {
+                    ready();
+                }
+            })();
+        </script>
     @endif
 
     <div class="content-wrapper">
