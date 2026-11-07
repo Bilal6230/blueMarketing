@@ -21,103 +21,84 @@
     @endphp
     <style>
         @if($embeddedVoucher ?? false)
-        /* The master layout's full-screen preloader must never cover an embedded voucher form. */
-        html body.daily-voucher-embedded #load_screen,
-        html body.daily-voucher-embedded .preloader,
-        html body.daily-voucher-embedded .pace,
-        html body.daily-voucher-embedded .pace-active { display:none !important; pointer-events:none !important; }
-        html.daily-voucher-embedded, html body.daily-voucher-embedded {
-            width:100% !important; max-width:100% !important;
-            overflow-x:hidden !important; overflow-y:auto !important;
-        }
-        body.daily-voucher-embedded *, body.daily-voucher-embedded *::before, body.daily-voucher-embedded *::after {
-            box-sizing:border-box;
-        }
-        /* Reset the outer admin page offsets inside the iframe, not just its inner grid. */
-        body.daily-voucher-embedded .wrapper,
-        body.daily-voucher-embedded .main-content.page-content,
-        body.daily-voucher-embedded .content-wrapper,
-        body.daily-voucher-embedded .content,
-        body.daily-voucher-embedded .content > .container-fluid,
-        body.daily-voucher-embedded .custom_card,
-        body.daily-voucher-embedded #voucherForm {
-            box-sizing:border-box !important;
-            min-width:0 !important; width:100% !important; max-width:100% !important;
-            margin-left:0 !important; margin-right:0 !important;
-            padding-left:0 !important; padding-right:0 !important;
-            left:auto !important; right:auto !important; transform:none !important;
-        }
-        body.daily-voucher-embedded .main-content.page-content {
-            position:static !important; float:none !important;
-            margin:0 !important; padding:0 !important;
-            display:block !important; overflow:visible !important;
-        }
-        body.daily-voucher-embedded .content-wrapper .custom_card > .card-body {
-            width:100% !important; max-width:100% !important;
-        }
-        body.daily-voucher-embedded #voucherForm > .row > .col-10,
-        body.daily-voucher-embedded #voucherForm > .row > .col-2 {
-            padding-left:0 !important; padding-right:0 !important; min-width:0 !important;
-        }
-        body.daily-voucher-embedded .content-wrapper .row { max-width:100% !important; }
-        body.daily-voucher-embedded #voucherForm > .row {
-            margin-left:0 !important; margin-right:0 !important; width:100% !important;
-        }
-        body.daily-voucher-embedded .main-header, body.daily-voucher-embedded .main-sidebar,
-        body.daily-voucher-embedded .main-footer, body.daily-voucher-embedded .content-header,
-        body.daily-voucher-embedded #toggleFilters, body.daily-voucher-embedded #filtersSection,
-        body.daily-voucher-embedded #vouchersTable, body.daily-voucher-embedded #vouchersTable_wrapper,
-        body.daily-voucher-embedded .dataTables_wrapper { display:none !important; }
-        body.daily-voucher-embedded .content-wrapper { margin-left:0 !important; margin-top:0 !important; min-height:0 !important; padding:0 !important; }
-        body.daily-voucher-embedded .content { padding:0 !important; }
-        body.daily-voucher-embedded .container-fluid { padding:0 !important; max-width:none !important; }
-        body.daily-voucher-embedded .main-content,
-        body.daily-voucher-embedded .page-content,
-        body.daily-voucher-embedded .content-wrapper,
-        body.daily-voucher-embedded .content,
-        body.daily-voucher-embedded .content > .container-fluid,
-        body.daily-voucher-embedded .content .row > .col-12 { margin:0 !important; width:100% !important; max-width:100% !important; }
-        body.daily-voucher-embedded .content .row > .col-12 { padding:0 !important; }
+        /* One isolated layout for voucher entry inside the Daily Entries modal. */
+        body.daily-voucher-embedded { margin:0 !important; padding:0 !important; overflow-x:hidden; background:#fff; }
+        body.daily-voucher-embedded #load_screen,
+        body.daily-voucher-embedded .preloader,
+        body.daily-voucher-embedded .main-header,
+        body.daily-voucher-embedded .main-sidebar,
+        body.daily-voucher-embedded .main-footer,
+        body.daily-voucher-embedded .content-header,
+        body.daily-voucher-embedded #toggleFilters,
+        body.daily-voucher-embedded #filtersSection,
+        body.daily-voucher-embedded #vouchersTable,
+        body.daily-voucher-embedded #vouchersTable_wrapper,
+        body.daily-voucher-embedded .dataTables_wrapper,
         body.daily-voucher-embedded .content-wrapper .buttons,
         body.daily-voucher-embedded #voucher-loader,
         body.daily-voucher-embedded #form-card-loader { display:none !important; }
-        body.daily-voucher-embedded .content-wrapper .custom_card { border:0 !important; box-shadow:none !important; margin:0 !important; }
-        body.daily-voucher-embedded .content-wrapper .custom_card > .card-body { padding:18px 22px 12px !important; background:#fff !important; min-height:0 !important; }
-        body.daily-voucher-embedded .custom_card > .card-body > .mb-3 { margin:0 0 18px !important; }
-        body.daily-voucher-embedded .custom_card > .card-body > .mb-3 h5 { font-size:1.05rem; margin:0; color:#263a50; }
-        body.daily-voucher-embedded #voucherForm > .row > .col-10,
-        body.daily-voucher-embedded #voucherForm > .row > .col-2 { flex:0 0 100% !important; max-width:100% !important; width:100% !important; }
-        body.daily-voucher-embedded #voucherForm > .row > .col-2 { margin-top:18px; }
-        body.daily-voucher-embedded #voucherForm > .row > .col-2 > .col-md-12 { padding:0; }
-        body.daily-voucher-embedded #voucherForm > .row > .col-10 > .row {
-            margin-left:0 !important; margin-right:0 !important;
+        body.daily-voucher-embedded > .content-wrapper {
+            position:static !important; display:block !important;
+            float:none !important; transform:none !important;
             width:100% !important; max-width:100% !important;
+            margin:0 !important; padding:0 !important; min-height:0 !important;
+            background:#fff;
         }
-        body.daily-voucher-embedded #voucherForm > .row > .col-10 > .row > [class*="col-"]:not(.d-none) {
-            flex:0 0 33.333333% !important; max-width:33.333333% !important;
-            padding:0 8px !important; margin-top:0 !important; margin-bottom:14px;
+        body.daily-voucher-embedded > .content-wrapper > .content,
+        body.daily-voucher-embedded > .content-wrapper > .content > .container-fluid {
+            width:100%; max-width:100%; margin:0; padding:0;
         }
-        body.daily-voucher-embedded #voucherForm > .row > .col-10 > .row > [class*="col-"].col-12:not(.d-none) {
-            flex:0 0 100% !important; max-width:100% !important;
+        body.daily-voucher-embedded > .content-wrapper > .content > .container-fluid > .row {
+            display:block; margin:0;
         }
+        body.daily-voucher-embedded > .content-wrapper > .content > .container-fluid > .row > .col-12 {
+            max-width:100%; padding:0; margin:0;
+        }
+        body.daily-voucher-embedded .custom_card { border:0; box-shadow:none; margin:0; width:100%; }
+        body.daily-voucher-embedded .custom_card > .card-body { padding:18px 22px !important; background:#fff !important; }
+        body.daily-voucher-embedded .custom_card > .card-body > .mb-3 { margin-bottom:16px !important; }
+        body.daily-voucher-embedded .custom_card > .card-body h5 { font-size:1.05rem; color:#263a50; }
+        body.daily-voucher-embedded #voucherForm { display:block; width:100%; }
+        body.daily-voucher-embedded #voucherForm > .row { display:block; margin:0; }
+        body.daily-voucher-embedded #voucherForm > .row > .col-10,
+        body.daily-voucher-embedded #voucherForm > .row > .col-2 {
+            flex:none; width:100%; max-width:100%; padding:0; margin:0;
+        }
+        body.daily-voucher-embedded #voucherForm > .row > .col-10 > .row {
+            display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
+            gap:14px 16px; margin:0; align-items:end; width:100%;
+        }
+        body.daily-voucher-embedded #voucherForm > .row > .col-10 > .row > [class*="col-"] {
+            width:auto; max-width:none; min-width:0; flex:none; padding:0; margin:0 !important;
+        }
+        body.daily-voucher-embedded #voucherForm > .row > .col-10 > .row > .col-12 { grid-column:1/-1; }
         body.daily-voucher-embedded #voucherForm label { display:block; font-size:.83rem; font-weight:600; margin-bottom:5px !important; color:#34465a; }
         body.daily-voucher-embedded #voucherForm input.form-control,
         body.daily-voucher-embedded #voucherForm select,
-        body.daily-voucher-embedded #voucherForm .ts-control { min-height:38px; height:auto; border-radius:6px; width:100%; font-size:.875rem; }
-        body.daily-voucher-embedded #voucherForm textarea { min-height:100px; width:100%; border-radius:6px; resize:vertical; }
+        body.daily-voucher-embedded #voucherForm .ts-control {
+            width:100%; min-width:0; min-height:38px; height:auto;
+            border-radius:6px; font-size:.875rem; box-sizing:border-box;
+        }
+        body.daily-voucher-embedded #voucherForm textarea { width:100%; min-height:100px; border-radius:6px; resize:vertical; }
+        body.daily-voucher-embedded #voucherForm > .row > .col-2 { margin-top:18px; }
+        body.daily-voucher-embedded #voucherForm > .row > .col-2 > .col-md-12 { padding:0; }
         body.daily-voucher-embedded #voucherForm .info-card { width:100%; max-width:none; padding:14px 16px; box-sizing:border-box; }
         body.daily-voucher-embedded #voucherForm .info-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
         body.daily-voucher-embedded #voucherForm .info-item,
-        body.daily-voucher-embedded #voucherForm .info-value { min-width:0; overflow-wrap:anywhere; word-break:normal; }
-        body.daily-voucher-embedded #dv-embedded-actions { display:flex; justify-content:flex-end; align-items:center; flex-wrap:wrap; gap:10px; border-top:1px solid #e6ebf2; margin-top:16px; padding:16px 0 4px; }
+        body.daily-voucher-embedded #voucherForm .info-value { min-width:0; overflow-wrap:anywhere; }
+        body.daily-voucher-embedded #dv-embedded-actions {
+            display:flex; justify-content:flex-end; align-items:center;
+            flex-wrap:wrap; gap:10px; border-top:1px solid #e6ebf2;
+            margin-top:16px; padding:16px 0 4px;
+        }
         body.daily-voucher-embedded #dv-embedded-actions .btn { min-width:135px; padding:9px 17px; }
         @media(max-width:767px){
-            body.daily-voucher-embedded #voucherForm > .row > .col-10 > .row > [class*="col-"]:not(.d-none) { flex:0 0 50% !important;max-width:50% !important; }
-            body.daily-voucher-embedded #voucherForm .info-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
-            body.daily-voucher-embedded .content-wrapper .custom_card > .card-body {padding:14px !important;}
+            body.daily-voucher-embedded #voucherForm > .row > .col-10 > .row { grid-template-columns:repeat(2,minmax(0,1fr)); }
+            body.daily-voucher-embedded #voucherForm .info-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
         }
         @media(max-width:480px){
-            body.daily-voucher-embedded #voucherForm > .row > .col-10 > .row > [class*="col-"]:not(.d-none) { flex:0 0 100% !important;max-width:100% !important; }
+            body.daily-voucher-embedded #voucherForm > .row > .col-10 > .row { grid-template-columns:minmax(0,1fr); }
+            body.daily-voucher-embedded .custom_card > .card-body { padding:14px !important; }
         }
         @endif
         .page-item.active .page-link {
@@ -130,6 +111,10 @@
         <script>
             document.body.classList.add('daily-voucher-embedded');
             document.addEventListener('DOMContentLoaded', function () {
+                // The admin layout reserves sidebar space even when hidden.
+                // Detach only the embedded entry workspace from that layout.
+                const workspace=document.querySelector('.main-content.page-content > .content-wrapper');
+                if(workspace) document.body.appendChild(workspace);
                 // Move the original buttons; do not clone them or change their save/draft handlers.
                 const footer=document.getElementById('dv-embedded-actions');
                 const save=document.getElementById('submit-button');
