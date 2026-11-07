@@ -4,12 +4,25 @@
         $voucherType = is_string($type) && in_array($type, ['CR', 'CP'], true) ? $type : '';
     @endphp
     <style>
+        @if($embeddedVoucher ?? false)
+        body.daily-voucher-embedded .main-header, body.daily-voucher-embedded .main-sidebar,
+        body.daily-voucher-embedded .main-footer, body.daily-voucher-embedded .content-header,
+        body.daily-voucher-embedded #toggleFilters, body.daily-voucher-embedded #filtersSection,
+        body.daily-voucher-embedded #vouchersTable, body.daily-voucher-embedded #vouchersTable_wrapper,
+        body.daily-voucher-embedded .dataTables_wrapper { display:none !important; }
+        body.daily-voucher-embedded .content-wrapper { margin-left:0 !important; margin-top:0 !important; min-height:0 !important; padding:0 !important; }
+        body.daily-voucher-embedded .content { padding:0 !important; }
+        body.daily-voucher-embedded .container-fluid { padding-left:.5rem !important; padding-right:.5rem !important; }
+        @endif
         .page-item.active .page-link {
             background-color: {{ $pagination_color }} !important;
             color: #ffffff !important;
             border: 1px solid {{ $pagination_color }} !important;
         }
     </style>
+    @if($embeddedVoucher ?? false)
+        <script>document.body.classList.add('daily-voucher-embedded');</script>
+    @endif
 
     <div class="content-wrapper">
         <div class="content-header">
@@ -84,9 +97,10 @@
 
 
                                 @can('create voucher')
-                                    <form action="{{ route('ledger.store') }}" method="POST" enctype="multipart/form-data"
+                                    <form action="{{ $fixedPaymentType !== null ? route('ledger.store.fixed_method', ['paymentType' => $fixedPaymentType]) : route('ledger.store') }}" method="POST" enctype="multipart/form-data"
                                         id="voucherForm">
                                         @csrf
+                                        @if(!empty($displaySeries))<input type="hidden" name="display_series" value="{{ $displaySeries }}">@endif
  @include('admin.finance.voucher.typed_posting_fields')
                                         <div class="row">
                                             <div class="col-10">
@@ -213,14 +227,14 @@
                                                         @enderror
                                                     </div>
 
-                                                    <div class="col-6 col-md-3 col-lg-2">
+                                                    <div class="col-6 col-md-3 col-lg-2 {{ $fixedPaymentType !== null ? 'd-none' : '' }}">
 
                                                         <label class="fbox mb-1">Payment Type</label>
                                                         <select class="js-tomselect form-select form-select-sm"
                                                             placeholder=" " name="payment_type" id="payment_type">
-                                                            <option value="1">Cash</option>
-                                                            <option value="2">Online</option>
-                                                            <option value="3">Check</option>
+                                                            <option value="1" {{ $fixedPaymentType === 1 ? 'selected' : '' }}>Cash</option>
+                                                            <option value="2" {{ $fixedPaymentType === 2 ? 'selected' : '' }}>Online</option>
+                                                            <option value="3" {{ $fixedPaymentType === 3 ? 'selected' : '' }}>Check</option>
                                                         </select>
                                                         @error('payment_type')
                                                             <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -271,6 +285,11 @@
                                                             <div class="invalid-feedback d-block">{{ $message }}</div>
                                                         @enderror
                                                     </div>
+                                                    <div class="col-12 col-md-6 col-lg-4 cheque-purpose-group" style="display:none">
+                                                        <label class="fbox mb-1" for="cheque_purpose">Cheque purpose</label>
+                                                        <input type="text" name="cheque_purpose" id="cheque_purpose" maxlength="500"
+                                                            class="form-control form-control-sm" placeholder="Purpose of this cheque">
+                                                    </div>
                                                     @if ($voucherType === 'CP')
                                                         <div class="col-6 col-md-3 col-lg-2 bank_group pending_status_group"
                                                             style="display: none">
@@ -304,6 +323,19 @@
                                                                     </div>
                                                                     <input type="hidden" id="selected_pending_payment_id"
                                                                         name="selected_pending_payment_id" value="">
+                                                                    @if(\App\Services\Finance\V2OriginalWorkflowAccess::enabled())
+                                                                        <div class="row g-2 mb-2">
+                                                                            <div class="col-md-5">
+                                                                                <label for="bank_account_id" class="form-label mb-1">Project bank account for posting</label>
+                                                                                <select id="bank_account_id" name="bank_account_id" class="form-control" data-bank-settlement-account disabled>
+                                                                                    <option value="">Select configured bank account</option>
+                                                                                    @foreach(($bankSettlementAccounts ?? collect()) as $bankAccount)
+                                                                                        <option value="{{ $bankAccount->id }}" data-account-mapping-id="{{ $bankAccount->account_mapping_id }}">{{ $bankAccount->bank_name }} - {{ $bankAccount->account_title }}</option>
+                                                                                    @endforeach
+                                                                                </select>
+                                                                            </div>
+                                                                        </div>
+                                                                    @endif
                                                                     <div class="table-responsive mb-2">
                                                                         <table class="table table-sm table-bordered mb-0"
                                                                             id="pendingPaymentsTable">
@@ -625,7 +657,7 @@
     <script>
         function saveAsDraft() {
             const form = document.getElementById('voucherForm');
-            form.action = "{{ route('ledger.save_as_draft') }}";
+            form.action = "{{ $fixedPaymentType !== null ? route('ledger.save_as_draft.fixed_method', ['paymentType' => $fixedPaymentType]) : route('ledger.save_as_draft') }}";
         }
 
 
@@ -1271,6 +1303,9 @@
                         clearAmountWords();
                     }
                     syncPendingAmountLock(null, clearAmount);
+                    const isNewCheque = String($('#payment_type').val() || '') === '3';
+                    $('.cheque-purpose-group').toggle(isNewCheque);
+                    $('#cheque_purpose').prop('required', isNewCheque);
                 }
 
                 function removeProcessedPendingRow(response) {
@@ -1389,6 +1424,8 @@
                 $(document).on('change', 'input[name="selected_pending_payment"]', function() {
                     const selectedId = $(this).val();
                     $('#selected_pending_payment_id').val(selectedId);
+                    $('.cheque-purpose-group').hide();
+                    $('#cheque_purpose').prop('required', false);
                     $('#pendingPaymentsTable tbody tr').removeClass('table-active');
                     $(this).closest('tr').addClass('table-active');
                     const selected = window.pendingRowsCache.find((row) => String(row.id) === String(selectedId));
@@ -1408,6 +1445,10 @@
             $('#payment_type').change(function(e) {
 
                 e.preventDefault();
+                const isCheque = String($(this).val()) === '3';
+                const pendingClearance = isCheque && String($('#selected_pending_payment_id').val() || '').trim() !== '';
+                $('.cheque-purpose-group').toggle(isCheque && !pendingClearance);
+                $('#cheque_purpose').prop('required', isCheque && !pendingClearance);
                 @if ($voucherType === 'CP')
                     if (typeof window.syncPendingPanelFromPaymentType === 'function') {
                         window.syncPendingPanelFromPaymentType();
@@ -1430,6 +1471,7 @@
                     $('#payment_type').val(String(baseCode)).trigger('change');
                 }
             });
+            $('#payment_type').trigger('change');
             function normalizeDateForInput(value) {
                 if (!value) return '';
                 const raw = String(value).trim();
@@ -1508,6 +1550,7 @@
                 $('#edit_amount').val('');
                 $('#edit_detail').val('');
                 $('#edit_t_number').val('');
+                $('#edit_cheque_purpose').val('');
                 setDateInputValue('#edit_passing_date', '');
                 $('#edit_passing_status').val('');
                 $('#edit_t_number_label').text('Number');
@@ -1530,6 +1573,8 @@
                 const hasStatusValue = passingStatus !== null && passingStatus !== undefined && String(passingStatus) !== '';
                 const showBankFields = type === 2 || type === 3;
                 $('.edit-bank-field').toggle(showBankFields);
+                $('#edit-cheque-purpose-group').toggle(type === 3);
+                $('#edit_cheque_purpose').prop('required', type === 3);
                 if (type === 2) {
                     $('#edit_t_number_label').text('Transaction Number');
                 } else if (type === 3) {
@@ -1755,6 +1800,7 @@
                                     eTypeSelect.setValue(String(paymentType), true);
                                 }
                                 $('#edit_t_number').val(cl.t_number || '');
+                                $('#edit_cheque_purpose').val(cl.cheque_purpose || '');
                                 setDateInputValue('#edit_passing_date', cl.passing_date);
                                 console.log('edit modal date mapping', {
                                     voucher_date: d.date,
@@ -1782,6 +1828,7 @@
                                 eTypeSelect.setValue(String(paymentType), true);
                             }
                             $('#edit_t_number').val(cl.t_number || '');
+                            $('#edit_cheque_purpose').val(cl.cheque_purpose || '');
                             setDateInputValue('#edit_passing_date', cl.passing_date);
                             console.log('edit modal date mapping', {
                                 voucher_date: d.date,
@@ -1941,6 +1988,7 @@
                     t_number: $('#edit_t_number').val(),
                     bank_id: $('#edit_bank_id').val(),
                     passing_date: $('#edit_passing_date').val(),
+                    cheque_purpose: $('#edit_cheque_purpose').val(),
                     passing_status: $('#edit_passing_status').val()
                 };
                 if (!payload.passing_status && payload.passing_status !== 0) {
@@ -1975,10 +2023,14 @@
                     });
                     return;
                 }
+                if (paymentType === '3' && !String(payload.cheque_purpose || '').trim()) {
+                    Swal.fire({ icon: 'warning', title: 'Validation error', text: 'Cheque purpose is required.' });
+                    return;
+                }
 
                 $btn.prop('disabled', true).text('Updating...');
                 $.ajax({
-                    url: "{{ route('ledger.update') }}",
+                    url: "{{ $fixedPaymentType !== null ? route('ledger.update.fixed_method', ['paymentType' => $fixedPaymentType]) : route('ledger.update') }}",
                     type: "POST",
                     dataType: "JSON",
                     data: payload,
@@ -2950,6 +3002,11 @@
                             title: 'Saved!',
                             text: response?.message || 'Voucher saved successfully.'
                         });
+                        @if($embeddedVoucher ?? false)
+                            if (window.parent && window.parent !== window) {
+                                window.parent.postMessage({ type: 'daily-voucher-saved' }, window.location.origin);
+                            }
+                        @endif
                         // $form.trigger('reset');
 
                         // Optional: clear TomSelect selections visually
@@ -3101,8 +3158,8 @@
                                     }
 
                                     // Create dynamic print URL
-                                    let printUrl = "{{ route('finance.voucher.print', ':id') }}";
-                                    printUrl = printUrl.replace(':id', row.id);
+                                    let printUrl = "{{ $fixedPaymentType !== null ? route('finance.voucher.print.method', ['id' => '__VOUCHER_ID__', 'method' => $fixedPaymentType === 1 ? 'cash' : ($fixedPaymentType === 2 ? 'online' : 'cheque')]) : route('finance.voucher.print', '__VOUCHER_ID__') }}";
+                                    printUrl = printUrl.replace('__VOUCHER_ID__', row.id);
 
                                     let buttons = `<div class="btn-group">`;
 
@@ -3421,6 +3478,10 @@
                                         @enderror
                                     </div>
                                 </div>
+                            </div>
+                            <div class="mb-3 col-sm-6" id="edit-cheque-purpose-group" style="display:none">
+                                <label class="fbox" for="edit_cheque_purpose">Cheque purpose</label>
+                                <input id="edit_cheque_purpose" type="text" class="form-control" maxlength="500" placeholder="Purpose of this cheque">
                             </div>
                             <div class="mb-3 col-sm-3">
                                 <div class="input-group" id="edit_passing_status_group" style="display: none">

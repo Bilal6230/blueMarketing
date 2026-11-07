@@ -545,6 +545,13 @@
                                                     <input type="hidden" name="reference" value="{{ $pending->reference }}">
                                                     <input type="hidden" name="payment_type" value="{{ $pending->payment_type }}">
                                                     <input type="hidden" name="detail" value="Extra Charge clearance decision">
+                                                    <label class="small mb-1" for="ec-bank-account-{{ $pending->id }}">Project bank account</label>
+                                                    <select id="ec-bank-account-{{ $pending->id }}" name="bank_account_id" class="form-control form-control-sm mb-2" data-bank-settlement-account required>
+                                                        <option value="">Select the account receiving this payment</option>
+                                                        @foreach(($bankSettlementAccounts ?? collect()) as $bankAccount)
+                                                            <option value="{{ $bankAccount->id }}" data-account-mapping-id="{{ $bankAccount->account_mapping_id }}">{{ $bankAccount->bank_name }} — {{ $bankAccount->account_title }}</option>
+                                                        @endforeach
+                                                    </select>
                                                     <input type="date" name="bank_post_at" class="form-control form-control-sm">
                                                     <input type="text" name="note" maxlength="255" placeholder="Decision note" class="form-control form-control-sm">
                                                     <button type="submit" name="passing_status" value="1" class="btn btn-sm btn-success" @if (!$ecBankReady) disabled @endif>Clear</button>

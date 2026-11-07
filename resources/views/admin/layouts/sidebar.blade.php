@@ -212,29 +212,31 @@
 
                 @canany(['read voucher', 'read slip', 'add slip', 'read jv'])
                     <li class="nav-item">
-                        <a href="#" class="nav-link {{ request()->routeIs('finance.voucher*') ? 'active' : '' }}">
+                        <a href="#" class="nav-link {{ request()->routeIs('finance.voucher*', 'finance.daily-vouchers.*') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-ticket-alt"></i>
                             <p>Vouchers<i class="right fas fa-angle-left"></i></p>
                         </a>
                         <ul class="nav nav-treeview"
-                            style="display: {{ request()->routeIs('finance.voucher*') ? 'block' : 'none' }};">
+                            style="display: {{ request()->routeIs('finance.voucher*', 'finance.daily-vouchers.*') ? 'block' : 'none' }};">
 
 
                             @can('read voucher')
                                 <li class="nav-item">
-                                    <a href="{{ route('finance.voucher.in') }}"
-                                        class="nav-link {{ request()->routeIs('finance.voucher.in') ? 'active' : '' }}">
-                                        <i class="far fa-circle nav-icon"></i>
-                                        <p>Cash In</p>
+                                    <a href="{{ route('finance.daily-vouchers.index') }}" class="nav-link {{ request()->routeIs('finance.daily-vouchers.*') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i><p>Daily Voucher Directory</p>
                                     </a>
                                 </li>
+                                @if(\App\Http\Controllers\Finance\VoucherController::canAccessFinanceApprovalsForUser(auth()->user()))
                                 <li class="nav-item">
-                                    <a href="{{ route('finance.voucher.out') }}"
-                                        class="nav-link {{ request()->routeIs('finance.voucher.out') ? 'active' : '' }}">
-                                        <i class="far fa-circle nav-icon"></i>
-                                        <p>Cash out</p>
+                                    <a href="{{ route('finance.daily-vouchers.approvals.index') }}" class="nav-link {{ request()->routeIs('finance.daily-vouchers.approvals.*') ? 'active' : '' }}">
+                                        <i class="far fa-circle nav-icon"></i><p>Voucher Approvals</p>
                                     </a>
                                 </li>
+                                @endif
+                                <li class="nav-item"><a href="{{ route('finance.voucher.transfer.workspace', ['kind' => 'deposit']) }}" class="nav-link {{ request()->routeIs('finance.voucher.transfer.workspace') && request()->route('kind') === 'deposit' ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Bank Deposit</p></a></li>
+                                <li class="nav-item"><a href="{{ route('finance.voucher.transfer.workspace', ['kind' => 'withdrawal']) }}" class="nav-link {{ request()->routeIs('finance.voucher.transfer.workspace') && request()->route('kind') === 'withdrawal' ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Bank Withdrawal</p></a></li>
+                                <li class="nav-item"><a href="{{ route('finance.voucher.plot-receipt.workspace') }}" class="nav-link {{ request()->routeIs('finance.voucher.plot-receipt.*') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Plot Receive Payment</p></a></li>
+                                <li class="nav-item"><a href="{{ route('finance.voucher.plot-purchase.workspace') }}" class="nav-link {{ request()->routeIs('finance.voucher.plot-purchase.*') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Plot Purchase Voucher</p></a></li>
                                 <li class="nav-item">
                                     <a href="{{ route('finance.voucher.draft') }}"
                                         class="nav-link {{ request()->routeIs('finance.voucher.draft') ? 'active' : '' }}">

@@ -48,6 +48,11 @@ class LedgerController extends Controller
 
     public function store(Request $request)
     {
+        $fixedPaymentType = $request->route('paymentType');
+        if ($fixedPaymentType !== null) {
+            abort_unless((int) $request->input('payment_type') === (int) $fixedPaymentType, 422,
+                'Payment method does not match this voucher screen.');
+        }
         $customPaymentMethodId = $request->input('custom_payment_method_id');
         if ($customPaymentMethodId !== null && $customPaymentMethodId !== '') {
             $projectForMethod = (int) getSelectedTown();
@@ -71,6 +76,8 @@ class LedgerController extends Controller
                 'voucher_number' => ['required', 'same:voucher'],
                 'accounts_id' => ['required', 'integer'], 'subaccounts_id' => ['required', 'integer'],
             ]);
+            abort_unless(!app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)->policy($project, substr($labels['voucher'], 0, 2)), 409,
+                'This voucher has an approval policy; posting through the isolated pilot is disabled.');
             $account = ProjectHeadSubhead::availableForPosting()->where('project_id', $project)
                 ->where('head_accounting_id', $labels['accounts_id'])->where('subhead_accounting_id', $labels['subaccounts_id'])->first();
             abort_unless($account, 422, 'Selected account does not belong to this project.');
@@ -79,6 +86,7 @@ class LedgerController extends Controller
                 $settlement = $request->validate([
                     'selected_pending_payment_id' => ['required', 'integer', 'min:1'],
                     'pending_status' => ['required', 'integer', 'in:1,2,3'],
+                    'bank_account_id' => ['required_if:pending_status,1', 'nullable', 'integer', 'min:1'],
                     'posting_lines' => ['required_if:pending_status,1', 'array', 'min:2', 'max:100'],
                 ]);
                 $receipt = CustomerLedger::query()->whereKey($settlement['selected_pending_payment_id'])
@@ -90,7 +98,8 @@ class LedgerController extends Controller
                 try {
                     $result = (new \App\Services\Finance\V2OriginalBankWorkflow())->settle(
                         $project, (int) $receipt->id, (int) $settlement['pending_status'], $data['request_key'],
-                        $data['passing_date'], $data['detail'], $data['posting_lines'] ?? [], (int) Auth::id()
+                        $data['passing_date'], $data['detail'], $data['posting_lines'] ?? [], (int) Auth::id(),
+                        isset($settlement['bank_account_id']) ? (int) $settlement['bank_account_id'] : null
                     );
                 } catch (\DomainException $e) { abort(409, 'Cash-out bank clearance could not be posted.'); }
                 return response()->json(['status' => 'success', 'data' => $result + ['settled_existing_receipt' => true]]);
@@ -122,6 +131,7 @@ class LedgerController extends Controller
             'accounts_id' => ['required', 'integer'],
             'subaccounts_id' => ['required', 'integer'],
             'payment_type' => ['required', 'integer', 'in:1,2,3'],
+            'display_series' => ['nullable', 'string', 'in:CR,CP,CCR,CDR,BOR,BOP'],
             'custom_payment_method_id' => ['nullable', 'integer', 'min:1'],
             'date' => ['required', 'date'],
             'voucher' => ['required', 'string', 'regex:/^(CR|CP)-\d+$/'],
@@ -129,6 +139,11 @@ class LedgerController extends Controller
             't_number' => ['required_if:payment_type,2,3', 'nullable', 'string', 'max:255'],
             'bank_id' => ['required_if:payment_type,2,3', 'nullable', 'integer'],
             'passing_date' => ['required_if:payment_type,2,3', 'nullable', 'date'],
+            'cheque_purpose' => [
+                'nullable', 'string', 'max:500',
+                \Illuminate\Validation\Rule::requiredIf(fn () => (int) $request->input('payment_type') === 3
+                    && !$request->filled('selected_pending_payment_id')),
+            ],
         ]);
 
         if ($validator->fails()) {
@@ -281,6 +296,8 @@ class LedgerController extends Controller
                     $pendingCustomerLedger->refresh();
 
                     $cashOutClearanceLedger = null;
+                    $clearanceApprovalPending = false;
+                    $createdClearanceLedger = false;
                     if ($pendingStatus === 1) {
                         $cashOutClearanceLedger = Ledger::where('customer_ledger_id', $pendingCustomerLedger->id)
                             ->where('type', 'CP')
@@ -324,6 +341,20 @@ class LedgerController extends Controller
                                 'create_by' => Auth::id(),
                                 'status' => 0,
                             ]);
+                            $createdClearanceLedger = true;
+                        }
+
+                        $approvalWorkflow = app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class);
+                        if ($approvalWorkflow->policy((int) $selectedProjectId, 'CP')) {
+                            if (!$createdClearanceLedger) {
+                                throw new \DomainException('Existing clearance ledger cannot be safely placed into a new approval policy.');
+                            }
+                            $clearanceApprovalPending = $approvalWorkflow->submitIfRequired(
+                                (int) $selectedProjectId, 'CP', 'ledgers', (int) $cashOutClearanceLedger->id, (int) Auth::id()
+                            );
+                            if ($clearanceApprovalPending) {
+                                DB::table('ledgers')->where('id', $cashOutClearanceLedger->id)->update(['is_active' => 0]);
+                            }
                         }
                     }
 
@@ -335,8 +366,10 @@ class LedgerController extends Controller
 
                     return [
                         'status' => 'success',
-                        'flow_type' => 'pending_payment_status_updated',
-                        'message' => 'Payment status updated successfully.',
+                        'flow_type' => $clearanceApprovalPending ? 'pending_approval' : 'pending_payment_status_updated',
+                        'message' => $clearanceApprovalPending
+                            ? 'Bank clearance submitted for approval. Its accounting entry remains inactive until approved.'
+                            : 'Payment status updated successfully.',
                         'data' => $cashOutClearanceLedger,
                         'customer_ledger_id' => $pendingCustomerLedger->id,
                         'selected_pending_payment_id' => $pendingCustomerLedger->id,
@@ -390,10 +423,34 @@ class LedgerController extends Controller
                     'is_approve' => 0,
                     'passing_date' => $request->input('passing_date'),
                     'passing_status' => $isPendingCashInBankPayment ? 0 : null,
+                    'cheque_purpose' => $paymentType === 3 ? trim((string) $request->input('cheque_purpose')) : null,
                 ]);
+                $displaySeries = match ([$effectiveVoucherType, $paymentType]) {
+                    ['CR', 1] => 'CCR', ['CP', 1] => 'CDR',
+                    ['CR', 2] => 'BOR', ['CP', 2] => 'BOP',
+                    ['CR', 3] => 'BOR', ['CP', 3] => 'BOP',
+                    default => $effectiveVoucherType,
+                };
+                $requestedDisplaySeries = strtoupper(trim((string) $request->input('display_series')));
+                if ($requestedDisplaySeries !== '') {
+                    $seriesMapping = [
+                        'CR' => ['CR', 1], 'CCR' => ['CR', 1],
+                        'BOR' => ['CR', 2], 'BOP' => ['CP', 2],
+                        'CP' => ['CP', 1], 'CDR' => ['CP', 1],
+                    ];
+                    $seriesAllowed = match ($requestedDisplaySeries) {
+                        'BOR' => $effectiveVoucherType === 'CR' && in_array($paymentType, [2, 3], true),
+                        'BOP' => $effectiveVoucherType === 'CP' && in_array($paymentType, [2, 3], true),
+                        default => isset($seriesMapping[$requestedDisplaySeries])
+                            && $seriesMapping[$requestedDisplaySeries] === [$effectiveVoucherType, $paymentType],
+                    };
+                    abort_unless($seriesAllowed,
+                        422, 'Voucher series does not match its direction and payment method.');
+                    $displaySeries = $requestedDisplaySeries;
+                }
                 $displayNumber = app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->assign(
                     (int) $selectedProjectId, 'customer_ledger', (int) $customerLedger->id,
-                    $effectiveVoucherType, \Carbon\Carbon::parse($request->input('date'))->toDateString()
+                    $displaySeries, \Carbon\Carbon::parse($request->input('date'))->toDateString()
                 );
 
                 if ($t_number != null) {
@@ -454,16 +511,30 @@ class LedgerController extends Controller
                     'status' => 0,
                 ]);
 
+                $approvalPending = app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
+                    ->submitIfRequired((int) $selectedProjectId, $effectiveVoucherType, 'customer_ledger', (int) $customerLedger->id, (int) Auth::id());
+                if ($approvalPending) {
+                    // The source and ledger leg are retained for review, but excluded
+                    // from posting reports until the assigned approver accepts them.
+                    DB::table('customer_ledger')->where('id', $customerLedger->id)
+                        ->where('project_id', $selectedProjectId)->update(['is_active' => 0, 'is_approve' => 0]);
+                    DB::table('ledgers')->where('id', $data->id)
+                        ->whereIn('project_head_subheads_id', DB::table('project_head_subheads')->select('id')->where('project_id', $selectedProjectId))
+                        ->update(['is_active' => 0]);
+                }
+
                 session(['last_submit_date' => $request->date]);
 
                 if ($request->id) {
                     DraftLedger::find($request->input('id'))?->delete();
                 }
 
-                $flowType = $isPendingCashInBankPayment ? 'posted_pending_clearance' : 'posted';
-                $successMessage = $isPendingCashInBankPayment
+                $flowType = $approvalPending ? 'pending_approval' : ($isPendingCashInBankPayment ? 'posted_pending_clearance' : 'posted');
+                $successMessage = $approvalPending
+                    ? 'Voucher submitted for approval. It is not posted until the assigned approver accepts it.'
+                    : ($isPendingCashInBankPayment
                     ? 'Voucher saved successfully. Payment status is pending clearance.'
-                    : 'Data saved successfully.';
+                    : 'Data saved successfully.');
 
                 return [
                     'status' => 'success',
@@ -673,6 +744,11 @@ class LedgerController extends Controller
 
     public function saveAsDraft(Request $request)
     {
+        $fixedPaymentType = $request->route('paymentType');
+        if ($fixedPaymentType !== null) {
+            abort_unless((int) $request->input('payment_type') === (int) $fixedPaymentType, 422,
+                'Payment method does not match this voucher screen.');
+        }
         $selectedProjectId = getSelectedTown();
         $action = $request->input('action');
         $customer_id = $request->input('customer_id');
@@ -703,7 +779,14 @@ class LedgerController extends Controller
             // if (!$projectHeadSubhead) {
             //     throw new \Exception('Credit account ID not found.');
             // }
-            $draftLedger = DraftLedger::find($request->input('id'));
+            $draftLedger = $request->filled('id')
+                ? DraftLedger::query()->whereKey((int) $request->input('id'))
+                    ->where('project_id', $selectedProjectId)->firstOrFail()
+                : null;
+            if ($fixedPaymentType !== null && $draftLedger) {
+                abort_unless((int) $draftLedger->payment_type === (int) $fixedPaymentType, 422,
+                    'This draft belongs to a different payment method.');
+            }
 
             $newValues = [
                 // Customer Ledger Fields
@@ -768,6 +851,9 @@ class LedgerController extends Controller
                 DraftLedger::create($newValues);
             }
             DB::commit();
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $th) {
+            DB::rollBack();
+            throw $th;
         } catch (\Throwable $th) {
             DB::rollBack();
             Alert::error('Notification', 'Unable to save draft right now.')->toToast()->toHtml();
@@ -867,6 +953,7 @@ class LedgerController extends Controller
                     'bank_name' => $customerLedger->bank_id ? getBankNameById($customerLedger->bank_id) : null,
                     'passing_date' => $customerLedger->passing_date,
                     'passing_status' => $customerLedger->passing_status !== null ? (int) $customerLedger->passing_status : null,
+                    'cheque_purpose' => $customerLedger->cheque_purpose,
                     'note' => $customerLedger->note,
                     'bank_post_at' => $customerLedger->bank_post_at,
                 ] : null,
@@ -1007,7 +1094,7 @@ class LedgerController extends Controller
         return back();
     }
 
-    public function update(Request $request)
+    public function update(Request $request, ?int $paymentType = null)
     {
         $data = $request->validate([
             'id' => ['required', 'integer'], 'amount' => ['required', 'regex:/^\d[\d,]*(?:\.\d{1,2})?$/D'],
@@ -1017,6 +1104,7 @@ class LedgerController extends Controller
             't_number' => ['required_if:payment_type,2,3', 'nullable', 'string', 'max:255'],
             'bank_id' => ['required_if:payment_type,2,3', 'nullable', 'integer'],
             'passing_date' => ['required_if:payment_type,2,3', 'nullable', 'date_format:Y-m-d'],
+            'cheque_purpose' => ['required_if:payment_type,3', 'nullable', 'string', 'max:500'],
             'passing_status' => ['nullable', 'integer', 'in:0,1,2,3'],
         ]);
         $projectId = (int) getSelectedTown();
@@ -1024,6 +1112,11 @@ class LedgerController extends Controller
         $ledger = Ledger::query()->whereKey((int) $data['id'])
             ->whereIn('type', ['CR', 'CP'])->whereNotNull('customer_ledger_id')
             ->whereHas('projectHeadSubhead', fn ($q) => $q->where('project_id', $projectId))->firstOrFail();
+        if ($paymentType !== null) {
+            abort_unless((int) $data['payment_type'] === $paymentType
+                && (int) optional($ledger->customerLedger)->payment_type === $paymentType,
+                422, 'Payment method does not match this voucher screen.');
+        }
         $account = ProjectHeadSubhead::availableForPosting()->where('project_id', $projectId)
             ->where('head_accounting_id', (int) $data['accounts_id'])
             ->where('subhead_accounting_id', (int) $data['subaccounts_id'])->firstOrFail();
@@ -1039,6 +1132,7 @@ class LedgerController extends Controller
                     'amount_out' => $ledger->type === 'CP' ? $amount : 0,
                     'payment_type' => $data['payment_type'], 't_number' => $cash ? null : $data['t_number'],
                     'bank_id' => $cash ? null : $data['bank_id'], 'passing_date' => $cash ? null : $data['passing_date'],
+                    'cheque_purpose' => $cash ? null : ($data['cheque_purpose'] ?? null),
                     'passing_status' => $data['passing_status'] ?? 0,
                 ], (int) Auth::id()
             );
@@ -1070,6 +1164,7 @@ class LedgerController extends Controller
             't_number' => ['required_if:payment_type,2,3', 'nullable', 'string', 'max:255'],
             'bank_id' => ['required_if:payment_type,2,3', 'nullable', 'integer'],
             'passing_date' => ['required_if:payment_type,2,3', 'nullable', 'date'],
+            'cheque_purpose' => ['required_if:payment_type,3', 'nullable', 'string', 'max:500'],
             'passing_status' => ['nullable', 'integer', 'in:0,1,2,3'],
         ]);
 

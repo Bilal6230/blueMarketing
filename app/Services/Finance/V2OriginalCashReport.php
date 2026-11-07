@@ -25,6 +25,7 @@ final class V2OriginalCashReport
             $net = ($minor < 0 ? '-' : '').intdiv(abs($minor), 100).'.'.str_pad((string) (abs($minor) % 100), 2, '0', STR_PAD_LEFT);
             $result[] = [
                 'id' => 'SRC-'.$id, 'source_id' => (int) $id, 'type' => $source->transaction_type,
+                'payment_type' => (int) $source->payment_type,
                 'date' => $group->max('date'), 'voucher_number' => $voucherNumber,
                 'project' => $first['project_name'], 'head' => $group->pluck('head_account_name')->unique()->implode(' / '),
                 'subhead' => $group->pluck('subhead_account_name')->unique()->implode(' / '),

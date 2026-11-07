@@ -116,7 +116,16 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
             $t->id(); $t->integer('project_id'); $t->string('source_kind'); $t->integer('source_id');
             $t->string('series'); $t->integer('financial_year'); $t->string('display_number'); $t->timestamp('created_at');
         });
+        Schema::create('project_bank_accounts', function (Blueprint $t): void {
+            $t->id(); $t->unsignedBigInteger('project_id'); $t->unsignedBigInteger('account_mapping_id');
+            $t->string('bank_name'); $t->string('account_title'); $t->boolean('is_active')->default(true);
+            $t->unique(['id', 'project_id']);
+        });
         (require base_path('database/workflow_migrations/2026_10_31_000010_create_original_workflow_custody.php'))->up();
+        (require base_path('database/migrations/2026_11_05_000004_add_bank_account_to_settlement_events.php'))->up();
+        (require base_path('database/v2_migrations/2026_11_05_000200_create_v2_bank_transfer_sources.php'))->up();
+        DB::table('project_bank_accounts')->insert(['id' => 1, 'project_id' => 1, 'account_mapping_id' => 101,
+            'bank_name' => 'Test Bank', 'account_title' => 'Project account', 'is_active' => 1]);
         $user = User::findOrFail(1);
         foreach (['create voucher', 'pass cheque'] as $name) {
             $user->givePermissionTo(Permission::create(['name' => $name, 'guard_name' => 'web']));
@@ -181,12 +190,23 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
             ->assertOk()->assertJsonPath('data.pending_bank', true)->json('data.source_id');
         $this->assertDatabaseCount('finance_posting_batches', 0);
         $payload = ['request_key' => 'ORIGINAL-BANK-CLEARANCE-001', 'passing_status' => 1, 'bank_post_at' => '2026-11-02',
-            'note' => 'Bank statement verified', 'posting_lines' => $this->approval()['posting_lines']];
+            'note' => 'Bank statement verified', 'bank_account_id' => 1, 'posting_lines' => $this->approval()['posting_lines']];
         $url = route('finance.voucher.pending_bank_payments.status', ['customerLedger' => $id], false);
         $this->assertSame('BANK_CLEARANCE_REQUIRED', (new \App\Services\Finance\V2SourceApprovalReadiness())->inspect(1, 'cash', $id)['reason_code']);
         foreach ([1, 2] as $_) { $this->withCookie('selected_action', '1')->postJson($url, $payload)->assertOk(); }
         $this->assertTrue((new \App\Services\Finance\V2SourceApprovalReadiness())->inspect(1, 'cash', $id)['eligible']);
         $this->assertDatabaseHas('finance_posting_batches', ['effective_date' => '2026-11-02']);
+        $bankLine = DB::table('finance_posting_lines')
+            ->where('posting_batch_id', DB::table('finance_posting_batches')->value('id'))
+            ->where('project_head_subhead_id', 101)->first();
+        $this->assertSame('30.00', number_format((float) $bankLine->debit, 2, '.', ''));
+        $this->assertSame('0.00', number_format((float) $bankLine->credit, 2, '.', ''));
+        $this->assertDatabaseHas('finance_bank_settlement_events', ['bank_account_id' => 1, 'customer_ledger_id' => $id]);
+        $this->assertDatabaseHas('finance_bank_transfer_sources', [
+            'posting_batch_id' => DB::table('finance_posting_batches')->value('id'),
+            'project_id' => 1, 'bank_account_id' => 1, 'linked_customer_ledger_id' => $id,
+            'transfer_kind' => 'receipt', 'amount' => '30.00', 'narration' => 'Bank statement verified',
+        ]);
         $this->assertDatabaseHas('customer_ledger', ['id' => $id, 'date' => '2026-10-31', 'passing_status' => 1]);
         $this->assertDatabaseCount('finance_posting_batches', 1);
         $payload['bank_post_at'] = '2026-11-03';
@@ -199,7 +219,7 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
         $id = $this->withCookie('selected_action', '1')->postJson(route('ledger.store', [], false), $this->cashInput(2))->assertOk()->json('data.source_id');
         $url = route('finance.voucher.pending_bank_payments.status', ['customerLedger' => $id], false);
         $payload = ['request_key' => 'ORIGINAL-BANK-FAILURE-001', 'passing_status' => 1, 'bank_post_at' => '2026-11-02',
-            'note' => 'Bank statement verified', 'posting_lines' => $this->approval()['posting_lines']];
+            'note' => 'Bank statement verified', 'bank_account_id' => 1, 'posting_lines' => $this->approval()['posting_lines']];
         $payload['posting_lines'][1]['account_id'] = 201;
         $this->withCookie('selected_action', '1')->postJson($url, $payload)->assertStatus(409);
         $this->assertDatabaseHas('customer_ledger', ['id' => $id, 'passing_status' => 0, 'is_approve' => 0]);
@@ -220,7 +240,7 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
         $this->withCookie('selected_action', '1')->postJson($url, $memo)->assertOk();
         $this->withCookie('selected_action', '1')->postJson($url, [
             'request_key' => 'BANK-MEMO-PASS-00000001', 'passing_status' => 1, 'note' => 'Re-presented and cleared',
-            'bank_post_at' => '2026-11-02', 'posting_lines' => $this->approval()['posting_lines'],
+            'bank_post_at' => '2026-11-02', 'bank_account_id' => 1, 'posting_lines' => $this->approval()['posting_lines'],
         ])->assertOk();
         $this->withCookie('selected_action', '1')->postJson($url, $memo)->assertOk()->assertJsonPath('data.current_status', 1);
         $this->assertDatabaseHas('customer_ledger', ['id' => $id, 'passing_status' => 1]);
@@ -236,7 +256,7 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
         $id = $this->withCookie('selected_action', '1')->postJson($url, $this->cashInput(2))->assertOk()->json('data.source_id');
         $input = $this->cashInput(2); $input['voucher'] = $input['voucher_number'] = 'CP-1';
         $input['request_key'] = 'CASH-OUT-RECEIPT-CLEARANCE-01'; $input['selected_pending_payment_id'] = $id;
-        $input['pending_status'] = 1; $input['passing_date'] = '2026-11-02'; $input['posting_lines'] = $this->approval()['posting_lines'];
+        $input['pending_status'] = 1; $input['passing_date'] = '2026-11-02'; $input['bank_account_id'] = 1; $input['posting_lines'] = $this->approval()['posting_lines'];
         $this->withCookie('selected_action', '1')->postJson($url, $input)->assertOk()->assertJsonPath('data.settled_existing_receipt', true);
         $this->assertDatabaseCount('customer_ledger', 1);
         $this->assertDatabaseHas('finance_posting_cash_sources', ['customer_ledger_id' => $id]);
@@ -249,9 +269,9 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
         $this->workflowSchema();
         $id = $this->withCookie('selected_action', '1')->postJson(route('ledger.store', [], false), $this->cashInput(2))->assertOk()->json('data.source_id');
         DB::table('customer_ledger')->where('id', $id)->update(['amount_in' => '99.00']);
-        $this->withCookie('selected_action', '1')->postJson(route('finance.voucher.pending_bank_payments.status', ['customerLedger' => $id], false), [
+        $clearanceResponse = $this->withCookie('selected_action', '1')->postJson(route('finance.voucher.pending_bank_payments.status', ['customerLedger' => $id], false), [
             'request_key' => 'TAMPERED-BANK-CLEARANCE-001', 'passing_status' => 1, 'bank_post_at' => '2026-11-02',
-            'note' => 'Forged source value', 'posting_lines' => $this->approval()['posting_lines'],
+            'note' => 'Forged source value', 'bank_account_id' => 1, 'posting_lines' => $this->approval()['posting_lines'],
         ])->assertStatus(409);
         $this->assertDatabaseCount('finance_posting_batches', 0);
         $this->assertDatabaseHas('customer_ledger', ['id' => $id, 'passing_status' => 0]);
@@ -447,6 +467,7 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
         $this->assertDatabaseHas('booking_vouchers', ['customer_ledger_id' => $id, 'is_approve' => 0, 't_number' => 'BOOKING-CHEQUE']);
         $this->withCookie('selected_action', '1')->postJson(route('finance.voucher.pending_bank_payments.status', ['customerLedger' => $id], false), [
             'request_key' => 'BOOKING-BANK-CLEARANCE-01', 'passing_status' => 1, 'bank_post_at' => '2026-11-02', 'note' => 'Verified statement',
+            'bank_account_id' => 1,
             'posting_lines' => $this->approval()['posting_lines'],
         ])->assertOk();
         $this->assertDatabaseHas('booking_vouchers', ['customer_ledger_id' => $id, 'is_approve' => 1]);
@@ -487,6 +508,7 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
         $this->withCookie('selected_action', '1')->postJson($url, [
             'action' => 'extra_charge_clearance', 'extra_charge_payment_id' => $paymentId,
             'request_key' => 'ORIGINAL-ECP-CLEARANCE-01', 'passing_status' => 1, 'bank_post_at' => '2026-11-02', 'note' => 'Verified bank statement',
+            'bank_account_id' => 1,
             'posting_lines' => $this->depositInput('extra_charge_payment', '20.00')['posting_lines'],
         ])->assertOk();
         $balance = (new \App\Services\Finance\ExtraChargeBankSettlement())->balances(\App\Models\CustomerLedger::findOrFail($id));

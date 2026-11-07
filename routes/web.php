@@ -300,10 +300,35 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::post('approvals/finance/{pending}/reject', 'rejectFinancePending')->middleware(['permission:read voucher'])->name('approvals.finance.reject');
         Route::get('finance/voucher/in', 'cash_in')->middleware(['permission:read voucher'])->name('finance.voucher.in');
         Route::get('finance/voucher/out', 'cash_out')->middleware(['permission:read voucher'])->name('finance.voucher.out');
+        Route::get('finance/voucher/in/{method}', 'cash_in')->where('method', 'cash|online|cheque')->middleware(['permission:read voucher'])->name('finance.voucher.in.method');
+        Route::get('finance/voucher/out/{method}', 'cash_out')->where('method', 'cash|online|cheque')->middleware(['permission:read voucher'])->name('finance.voucher.out.method');
         Route::get('finance/voucher/pending-bank-payments', 'pendingBankPayments')->middleware(['permission:read voucher'])->name('finance.voucher.pending_bank_payments');
         Route::post('finance/voucher/pending-bank-payments/{customerLedger}/status', 'updatePendingBankPaymentStatus')->middleware(['permission:pass cheque'])->name('finance.voucher.pending_bank_payments.status');
+        Route::get('finance/voucher/bank/{direction}', 'bankVoucherWorkspace')->where('direction', 'receipt|payment')->middleware(['permission:read voucher'])->name('finance.voucher.bank.workspace');
+        Route::get('finance/voucher/bank/{direction}/sources', 'bankVoucherSources')->where('direction', 'receipt|payment')->middleware(['permission:read voucher'])->name('finance.voucher.bank.sources');
+        Route::get('finance/voucher/bank/{direction}/history', 'bankVoucherHistory')->where('direction', 'receipt|payment')->middleware(['permission:read voucher'])->name('finance.voucher.bank.history');
+        Route::get('finance/voucher/bank/{direction}/{postingBatch}/print', 'printBankVoucher')->where(['direction' => 'receipt|payment', 'postingBatch' => '[0-9]+'])->middleware(['permission:read voucher'])->name('finance.voucher.bank.print');
+        Route::get('finance/voucher/bank-transfer/{kind}', 'transferVoucherWorkspace')->where('kind', 'deposit|withdrawal')->middleware(['permission:read voucher'])->name('finance.voucher.transfer.workspace');
+        Route::get('finance/voucher/bank-transfer/{kind}/sources', 'transferVoucherSources')->where('kind', 'deposit|withdrawal')->middleware(['permission:read voucher'])->name('finance.voucher.transfer.sources');
+        Route::get('finance/voucher/bank-transfer/{kind}/history', 'transferVoucherHistory')->where('kind', 'deposit|withdrawal')->middleware(['permission:read voucher'])->name('finance.voucher.transfer.history');
+        Route::post('finance/voucher/bank-transfer/{kind}', 'postTransferVoucher')->where('kind', 'deposit|withdrawal')->middleware(['permission:read voucher'])->name('finance.voucher.transfer.post');
+        Route::get('finance/voucher/bank-transfer/{kind}/{postingBatch}/print', 'printTransferVoucher')->where(['kind' => 'deposit|withdrawal', 'postingBatch' => '[0-9]+'])->middleware(['permission:read voucher'])->name('finance.voucher.transfer.print');
+        Route::get('finance/voucher/plot-receipt', 'plotReceiptWorkspace')->middleware(['permission:read voucher'])->name('finance.voucher.plot-receipt.workspace');
+        Route::get('finance/voucher/plot-receipt/options', 'plotReceiptOptions')->middleware(['permission:read voucher'])->name('finance.voucher.plot-receipt.options');
+        Route::get('finance/voucher/plot-receipt/history', 'plotReceiptHistory')->middleware(['permission:read voucher'])->name('finance.voucher.plot-receipt.history');
+        Route::post('finance/voucher/plot-receipt', 'postPlotReceipt')->middleware(['permission:read voucher'])->name('finance.voucher.plot-receipt.post');
+        Route::get('finance/voucher/plot-receipt/{receiptId}', 'plotReceiptDetails')->whereNumber('receiptId')->middleware(['permission:read voucher'])->name('finance.voucher.plot-receipt.details');
+        Route::get('finance/voucher/plot-receipt/{receiptId}/plots/{plotId}/print', 'printPlotReceipt')->whereNumber('receiptId')->whereNumber('plotId')->middleware(['permission:read voucher'])->name('finance.voucher.plot-receipt.print');
+        Route::get('finance/voucher/plot-purchase', 'plotPurchaseWorkspace')->middleware(['permission:read voucher'])->name('finance.voucher.plot-purchase.workspace');
+        Route::get('finance/voucher/plot-purchase/options', 'plotPurchaseOptions')->middleware(['permission:read voucher'])->name('finance.voucher.plot-purchase.options');
+        Route::get('finance/voucher/plot-purchase/history', 'plotPurchaseHistory')->middleware(['permission:read voucher'])->name('finance.voucher.plot-purchase.history');
+        Route::post('finance/voucher/plot-purchase', 'postPlotPurchase')->middleware(['permission:read voucher'])->name('finance.voucher.plot-purchase.post');
+        Route::get('finance/voucher/plot-purchase/{purchaseId}/print', 'printPlotPurchase')->whereNumber('purchaseId')->middleware(['permission:read voucher'])->name('finance.voucher.plot-purchase.print');
+        Route::get('finance/voucher/plot-purchase/{purchaseId}', 'plotPurchaseDetails')->whereNumber('purchaseId')->middleware(['permission:read voucher'])->name('finance.voucher.plot-purchase.details');
         Route::get('finance/voucher/data', 'cash_out_data')->middleware(['permission:read voucher'])->name('voucher.cash_out.data');
         Route::get('finance/voucher/data/in', 'cash_in_data')->middleware(['permission:read voucher'])->name('voucher.cash_in.data');
+        Route::get('finance/voucher/data/in/{method}', 'cash_in_data')->where('method', 'cash|online|cheque')->middleware(['permission:read voucher'])->name('voucher.cash_in.method.data');
+        Route::get('finance/voucher/data/out/{method}', 'cash_out_data')->where('method', 'cash|online|cheque')->middleware(['permission:read voucher'])->name('voucher.cash_out.method.data');
         Route::get('finance/voucher/draft', 'cash_draft')->middleware(['permission:read voucher'])->name('finance.voucher.draft');
         Route::post('finance/voucher/{id}/approve', 'approve')->middleware(['permission:read voucher'])->name('finance.voucher.approve');
         Route::post('finance/voucher/{id}/reject', 'reject')->middleware(['permission:read voucher'])->name('finance.voucher.reject');
@@ -311,9 +336,22 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::post('finance/voucher/{id}/rejectadmin', 'rejectAdmin')->middleware(['permission:read voucher'])->name('finance.voucher.rejectadmin');
         Route::post('finance/voucher/getcomment', 'GetComment')->middleware(['permission:read voucher'])->name('finance.voucher.getcomment');
         Route::get('finance/voucher/print/{id}', 'print')->middleware(['permission:read voucher'])->name('finance.voucher.print');
+        Route::get('finance/voucher/print/{id}/method/{method}', 'print')->where('method', 'cash|online|cheque')->middleware(['permission:read voucher'])->name('finance.voucher.print.method');
         Route::get('finance/voucher/source/{customerLedger}/print', 'printTypedSource')->whereNumber('customerLedger')
             ->middleware(['permission:read voucher'])->name('finance.voucher.source.print');
     });
+
+    Route::controller(App\Http\Controllers\Finance\DailyVoucherDirectoryController::class)->middleware(['permission:read voucher'])->prefix('finance/daily-vouchers')->name('finance.daily-vouchers.')->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/data', 'data')->name('data');
+        Route::get('/sources/{customerLedger}/print', 'printSource')->whereNumber('customerLedger')->name('source.print');
+    });
+    Route::middleware(['permission:read voucher'])->prefix('finance/daily-vouchers/approvals')->name('finance.daily-vouchers.approvals.')
+        ->controller(App\Http\Controllers\Finance\DailyVoucherApprovalController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::post('/policy', 'savePolicy')->name('policy');
+            Route::post('/{approval}/{decision}', 'decide')->whereNumber('approval')->name('decide');
+        });
 
     Route::controller(App\Http\Controllers\Finance\PaymentClearanceController::class)->group(function () {
         Route::get('finance/payment-clearance', 'index')->middleware(['permission:read voucher'])->name('finance.payment_clearance.index');
@@ -412,8 +450,11 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::post('accounting/customer/ledger/show', 'customerLedgerShow')->name('customer.ledger.show');
         Route::post('accounting/draft/ledger/show', 'draftShow')->name('draft.ledger.show');
         Route::post('accounting/ledger/store', 'store')->middleware(['permission:create voucher'])->name('ledger.store');
+        Route::post('accounting/ledger/store/method/{paymentType}', 'store')->where('paymentType', '1|2|3')->middleware(['permission:create voucher'])->name('ledger.store.fixed_method');
         Route::post('accounting/ledger/save_as_draft', 'saveAsDraft')->middleware(['permission:create voucher'])->name('ledger.save_as_draft');
+        Route::post('accounting/ledger/save_as_draft/method/{paymentType}', 'saveAsDraft')->where('paymentType', '1|2|3')->middleware(['permission:create voucher'])->name('ledger.save_as_draft.fixed_method');
         Route::put('accounting/ledger/update', 'update')->middleware(['permission:update voucher'])->name('ledger.update');
+        Route::put('accounting/ledger/update/method/{paymentType}', 'update')->where('paymentType', '1|2|3')->middleware(['permission:update voucher'])->name('ledger.update.fixed_method');
         Route::put('accounting/draf/ledger/update', 'draftUpdate')->middleware(['permission:update voucher'])->name('draft.ledger.update');
         Route::delete('accounting/ledger/destroy', 'destroy')->middleware(['permission:delete voucher'])->name('ledger.destroy');
         Route::delete('accounting/draft/ledger/destroy', 'draftDestroy')->middleware(['permission:delete voucher'])->name('draft.ledger.destroy');

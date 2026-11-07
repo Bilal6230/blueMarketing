@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Plot Receipt {{ $receipt->receipt_number }}</title>
+    <style>
+        *{box-sizing:border-box}body{margin:0;padding:28px;background:#eef2f7;color:#182433;font:14px Arial,sans-serif}
+        .receipt{max-width:760px;margin:auto;padding:32px;background:#fff;border:1px solid #dbe3ed;border-radius:12px}
+        h1{margin:0 0 5px;text-align:center;font-size:24px}h2{margin:4px 0 24px;text-align:center;font-size:17px;color:#526174}
+        .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{padding:12px;border:1px solid #e1e7ef;border-radius:8px}
+        .label{display:block;margin-bottom:5px;color:#68778a;font-size:11px;text-transform:uppercase}.value{font-weight:600}
+        .amount{margin-top:16px;padding:18px;background:#eff6ff;border-radius:8px;text-align:center;font-size:22px;font-weight:700}
+        .actions{max-width:760px;margin:12px auto;text-align:right}.actions button{padding:9px 18px;border:0;border-radius:6px;background:#1677ff;color:#fff;cursor:pointer}
+        @media print{body{padding:0;background:#fff}.receipt{border:0;border-radius:0}.actions{display:none}}
+    </style>
+</head>
+<body>
+<main class="receipt">
+    <h1>Plot Payment Receipt</h1>
+    <h2>{{ $allocation->plot_name }}</h2>
+    <section class="grid">
+        <div class="field"><span class="label">Receipt number</span><span class="value">{{ $receipt->receipt_number }}</span></div>
+        <div class="field"><span class="label">Date</span><span class="value">{{ $receipt->receipt_date }}</span></div>
+        <div class="field"><span class="label">Customer</span><span class="value">{{ trim(($allocation->first_name ?? '').' '.($allocation->last_name ?? '')) ?: ($allocation->business ?? 'Customer') }}</span></div>
+        <div class="field"><span class="label">Booking</span><span class="value">#{{ $allocation->booking_id }}</span></div>
+    </section>
+    <div class="amount">Allocated amount: {{ number_format((float) $allocation->amount, 2) }}</div>
+    <p>{{ $receipt->narration }}</p>
+</main>
+<div class="actions"><button type="button" onclick="window.print()">Print receipt</button></div>
+</body>
+</html>

@@ -214,6 +214,9 @@ final class V2PostingReportReader
             'cash' => ['finance_posting_cash_sources', 'customer_ledger_id'],
             'booking' => ['finance_posting_booking_sources', 'booking_voucher_id'],
             'labour' => ['finance_posting_labour_sources', 'labour_ledger_id'],
+            'bank_transfer' => ['finance_bank_transfer_sources', 'posting_batch_id'],
+            'plot_receipt' => ['finance_plot_receipt_postings', 'source_id'],
+            'plot_purchase' => ['finance_plot_purchase_postings', 'source_id'],
         ];
         $wanted = [];
         foreach ($lines as $line) {

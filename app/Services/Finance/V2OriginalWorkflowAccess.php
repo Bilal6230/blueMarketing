@@ -32,7 +32,12 @@ final class V2OriginalWorkflowAccess
 
     public static function authorizeRead(int $projectId): void
     {
-        abort_unless(in_array(config('app.env'), ['local', 'testing'], true) && config('finance.v2_pilot_api_enabled'), 409);
+        abort_unless(
+            in_array(config('app.env'), ['local', 'testing'], true)
+                && config('finance.v2_pilot_api_enabled'),
+            409,
+            'New voucher workspaces are disabled until an isolated local V2 finance database is configured.'
+        );
         V2IsolatedConnectionGuard::assertAllowed();
         $user = Auth::user();
         abort_unless($user && $projectId > 0 && Gate::has('v2-finance-read'), 403);

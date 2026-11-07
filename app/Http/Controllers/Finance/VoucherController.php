@@ -40,7 +40,7 @@ class VoucherController extends Controller
         return $relations;
     }
 
-    private function typedCashData(Request $request, bool $incoming)
+    private function typedCashData(Request $request, bool $incoming, ?int $paymentType = null)
     {
         $project = (int) getSelectedTown();
         \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($project);
@@ -51,6 +51,9 @@ class VoucherController extends Controller
         try {
             $rows = collect((new \App\Services\Finance\V2OriginalCashReport())->documents($project, $incoming, $data['date_from'] ?? null, $data['date_to'] ?? null));
         } catch (\DomainException $e) { abort(409, 'Cash report integrity checks failed.'); }
+        if ($paymentType !== null) {
+            $rows = $rows->filter(fn ($row) => (int) ($row['payment_type'] ?? 0) === $paymentType);
+        }
         $total = $rows->count();
         foreach (['head_account' => 'head_ids', 'subhead_account' => 'subhead_ids'] as $input => $field) {
             $ids = array_filter(array_map('strval', (array) $request->input($input, [])), fn ($value) => $value !== '');
@@ -82,6 +85,11 @@ class VoucherController extends Controller
         $project = (int) getSelectedTown();
         \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($project);
         $source = CustomerLedger::query()->whereKey($customerLedger)->where('project_id', $project)->firstOrFail();
+        $incoming = in_array((string) $source->transaction_type, ['CR', 'PPR', 'ECP'], true);
+        $paymentType = (int) $source->payment_type;
+        $voucherTitle = in_array($paymentType, [1, 2, 3], true)
+            ? $this->cashVoucherTitle($incoming, $paymentType)
+            : ($incoming ? 'Cash Receipt Voucher' : 'Cash Payment Voucher');
         $displayNumber = app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)
             ->lookup($project, 'customer_ledger', (int) $source->id)
             ?: ($source->transaction_type . '-' . $source->type_id);
@@ -90,7 +98,7 @@ class VoucherController extends Controller
                 ->where('source_kind', 'cash')->where('source_id', $source->id)->values();
         } catch (\DomainException $e) { abort(409, 'Voucher print integrity checks failed.'); }
         abort_if($lines->isEmpty(), 404);
-        return view('admin.finance.voucher.typed_print', compact('source', 'lines', 'displayNumber'));
+        return view('admin.finance.voucher.typed_print', compact('source', 'lines', 'displayNumber', 'voucherTitle'));
     }
     private array $allowedPendingUpdateTables = ['ledgers', 'draft_ledgers', 'customer_ledger', 'leads'];
     private array $financePendingUpdateTables = ['ledgers', 'draft_ledgers', 'customer_ledger'];
@@ -277,10 +285,63 @@ class VoucherController extends Controller
         return back()->with('success', 'Voucher rejected.');
     }
 
-    public function cash_in()
+    private function cashVoucherPaymentType(?string $method): ?int
     {
+        if ($method === null) {
+            return null;
+        }
+
+        return match (strtolower($method)) {
+            'cash' => 1,
+            'online' => 2,
+            'cheque' => 3,
+            default => abort(404),
+        };
+    }
+
+    private function cashVoucherDisplaySeries(Request $request, bool $incoming, ?int $paymentType): ?string
+    {
+        $series = strtoupper((string) $request->query('series', ''));
+        if ($series === '') {
+            return $paymentType === null ? null : match ([$incoming, $paymentType]) {
+                [true, 1] => 'CCR', [false, 1] => 'CDR',
+                [true, 2] => 'BOR', [false, 2] => 'BOP',
+                [true, 3] => 'BOR', [false, 3] => 'BOP',
+            };
+        }
+
+        $allowed = [
+            'CR' => [true, 1], 'CCR' => [true, 1], 'BOR' => [true, [2, 3]],
+            'CP' => [false, 1], 'CDR' => [false, 1], 'BOP' => [false, [2, 3]],
+        ];
+        abort_unless(isset($allowed[$series]) && $allowed[$series][0] === $incoming
+            && ($paymentType === null || (is_array($allowed[$series][1])
+                ? in_array($paymentType, $allowed[$series][1], true)
+                : $allowed[$series][1] === $paymentType)), 404);
+        return $series;
+    }
+
+    private function cashVoucherTitle(bool $incoming, int $paymentType): string
+    {
+        $direction = $incoming ? 'Receipt' : 'Payment';
+        $method = match ($paymentType) {
+            1 => 'Cash',
+            2 => 'Bank Online',
+            3 => 'Cheque',
+        };
+
+        return $method . ' ' . $direction . ' Voucher';
+    }
+
+    public function cash_in(Request $request, ?string $method = null)
+    {
+        $fixedPaymentType = $this->cashVoucherPaymentType($method);
+        $displaySeries = $this->cashVoucherDisplaySeries($request, true, $fixedPaymentType);
         $power = Auth::user()->roles[0]->name;
-        $x['title'] = 'Cash In Voucher';
+        $x['title'] = $fixedPaymentType === null ? 'Cash In Voucher' : $this->cashVoucherTitle(true, $fixedPaymentType);
+        $x['fixedPaymentType'] = $fixedPaymentType;
+        $x['displaySeries'] = $displaySeries;
+        $x['embeddedVoucher'] = $request->boolean('embed');
         $x['role'] = Role::get();
         $x['users'] = User::get();
         $x['power'] = $power;
@@ -300,9 +361,14 @@ class VoucherController extends Controller
             : '#B11226';
 
         $selectedProjectId = getSelectedTown();
-        $x['customPaymentMethods'] = \Illuminate\Support\Facades\Schema::hasTable('project_custom_payment_methods')
-            ? DB::table('project_custom_payment_methods')->where('project_id', $selectedProjectId)->where('is_active', 1)->orderBy('name')->get()
-            : collect();
+        $x['customPaymentMethods'] = collect();
+        if (\Illuminate\Support\Facades\Schema::hasTable('project_custom_payment_methods')) {
+            $customMethods = DB::table('project_custom_payment_methods')->where('project_id', $selectedProjectId)->where('is_active', 1);
+            if ($fixedPaymentType !== null) {
+                $customMethods->where('base_method_code', $fixedPaymentType);
+            }
+            $x['customPaymentMethods'] = $customMethods->orderBy('name')->get();
+        }
         $x['data'] = [];
 
         $x['headaccounts'] = ProjectHeadSubhead::availableForPosting()
@@ -333,7 +399,9 @@ class VoucherController extends Controller
         $x['selectedProjectId'] = $selectedProjectId;
         $projects = Project::where('id', $selectedProjectId)->get();
         $x['projects'] = $projects;
-        $x['table_data_route'] = route('voucher.cash_in.data');
+        $x['table_data_route'] = $fixedPaymentType === null
+            ? route('voucher.cash_in.data')
+            : route('voucher.cash_in.method.data', ['method' => $method]);
         $numbers = Ledger::where('type', 'CR')
             ->where('voucher_number', '>', 0)
             ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
@@ -360,12 +428,20 @@ class VoucherController extends Controller
         return view('admin.finance.voucher.cash_voucher', $x);
     }
 
-    public function print($id)
+    public function print($id, ?string $method = null)
     {
         $projectId = (int) getSelectedTown();
         $x['voucher'] = Ledger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting')
             ->whereKey($id)->whereHas('projectHeadSubhead', fn ($query) => $query->where('project_id', $projectId))
             ->firstOrFail();
+        if ($method !== null) {
+            $paymentType = $this->cashVoucherPaymentType($method);
+            abort_unless(in_array((string) $x['voucher']->type, ['CR', 'CP'], true), 404);
+            $source = CustomerLedger::query()->whereKey($x['voucher']->customer_ledger_id)
+                ->where('project_id', $projectId)->firstOrFail();
+            abort_unless((int) $source->payment_type === $paymentType, 404);
+            $x['voucherTitle'] = $this->cashVoucherTitle($x['voucher']->type === 'CR', $paymentType);
+        }
         $sourceId = (int) ($x['voucher']->customer_ledger_id ?? 0);
         $x['displayNumber'] = $sourceId > 0
             ? app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)
@@ -373,6 +449,11 @@ class VoucherController extends Controller
             : null;
         $x['displayNumber'] ??= app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)
             ->lookup($projectId, 'ledger', (int) $x['voucher']->id);
+        $x['voucherTitle'] ??= match ((string) $x['voucher']->type) {
+            'CR' => 'Cash Receipt Voucher',
+            'CP' => 'Cash Payment Voucher',
+            default => (string) $x['voucher']->type . ' Voucher',
+        };
         return view('admin.finance.voucher.print-eng', $x);
     }
     public function approve($id, Request $request)
@@ -517,10 +598,15 @@ class VoucherController extends Controller
     }
 
 
-    public function cash_out()
+    public function cash_out(Request $request, ?string $method = null)
     {
+        $fixedPaymentType = $this->cashVoucherPaymentType($method);
+        $displaySeries = $this->cashVoucherDisplaySeries($request, false, $fixedPaymentType);
         $power = Auth::user()->roles[0]->name;
-        $x['title'] = 'Cash Out Voucher';
+        $x['title'] = $fixedPaymentType === null ? 'Cash Out Voucher' : $this->cashVoucherTitle(false, $fixedPaymentType);
+        $x['fixedPaymentType'] = $fixedPaymentType;
+        $x['displaySeries'] = $displaySeries;
+        $x['embeddedVoucher'] = $request->boolean('embed');
         $x['role'] = Role::get();
         $x['users'] = User::get();
         $x['power'] = $power;
@@ -541,9 +627,18 @@ class VoucherController extends Controller
 
         // Get selected town's project_id
         $selectedProjectId = getSelectedTown();
-        $x['customPaymentMethods'] = \Illuminate\Support\Facades\Schema::hasTable('project_custom_payment_methods')
-            ? DB::table('project_custom_payment_methods')->where('project_id', $selectedProjectId)->where('is_active', 1)->orderBy('name')->get()
+        $x['bankSettlementAccounts'] = \Illuminate\Support\Facades\Schema::hasTable('project_bank_accounts')
+            ? DB::table('project_bank_accounts')->where('project_id', $selectedProjectId)->where('is_active', 1)
+                ->orderBy('bank_name')->orderBy('account_title')->get(['id', 'account_mapping_id', 'bank_name', 'account_title'])
             : collect();
+        $x['customPaymentMethods'] = collect();
+        if (\Illuminate\Support\Facades\Schema::hasTable('project_custom_payment_methods')) {
+            $customMethods = DB::table('project_custom_payment_methods')->where('project_id', $selectedProjectId)->where('is_active', 1);
+            if ($fixedPaymentType !== null) {
+                $customMethods->where('base_method_code', $fixedPaymentType);
+            }
+            $x['customPaymentMethods'] = $customMethods->orderBy('name')->get();
+        }
 
 
         // $data = Ledger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project')
@@ -604,7 +699,9 @@ class VoucherController extends Controller
         $x['selectedProjectId'] = $selectedProjectId;
 
         $x['projects'] = Project::query()->select('id', 'project')->where('id', $selectedProjectId)->get();
-        $x['table_data_route'] = route('voucher.cash_out.data');
+        $x['table_data_route'] = $fixedPaymentType === null
+            ? route('voucher.cash_out.data')
+            : route('voucher.cash_out.method.data', ['method' => $method]);
         $numbers = Ledger::where('type', 'CP')
             ->where('voucher_number', '>', 0)
             ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
@@ -631,9 +728,10 @@ class VoucherController extends Controller
         return view('admin.finance.voucher.cash_voucher', $x);
     }
 
-    public function cash_out_data(Request $request)
+    public function cash_out_data(Request $request, ?string $method = null)
     {
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) { return $this->typedCashData($request, false); }
+        $paymentType = $this->cashVoucherPaymentType($method);
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) { return $this->typedCashData($request, false, $paymentType); }
         $selectedProjectId = getSelectedTown();
 
         // Build base query with only the necessary relationships and columns
@@ -659,10 +757,13 @@ class VoucherController extends Controller
             },
         ])
             ->where('is_active', 1)
-            ->whereIn('type', ['CP', 'BO'])
+            ->whereIn('type', $paymentType === null ? ['CP', 'BO'] : ['CP'])
             ->whereHas('projectHeadSubhead', function ($q) use ($selectedProjectId) {
                 $q->where('project_id', $selectedProjectId);
             });
+        if ($paymentType !== null) {
+            $q->whereHas('customerLedger', fn ($source) => $source->where('payment_type', $paymentType));
+        }
         // Apply filters only if user has selected them
         $headIds = $request->input('head_account'); // from ajax: d.head_account = $('#filter_head_account').val()
 
@@ -693,8 +794,8 @@ class VoucherController extends Controller
                 });
             }
         }
-        if ($request->has('voucher_number') && $request->voucher_number) {
-            $q->where('voucher_number', 'like', '%' . $request->voucher_number . '%');
+        if ($request->filled('voucher_number')) {
+            $this->applyVoucherDisplayNumberFilter($q, (int) $selectedProjectId, (string) $request->input('voucher_number'));
         }
 
         // ----------------------------
@@ -997,6 +1098,456 @@ class VoucherController extends Controller
         ]);
     }
 
+    private function unavailableV2Workspace(int $projectId, string $title)
+    {
+        abort_unless($projectId > 0 && DB::table('projects')->where('id', $projectId)->where('is_active', 1)->exists(), 404);
+        $user = Auth::user();
+        abort_unless($user && ($user->hasRole('superadmin') || (int) $user->project_id === $projectId), 403);
+
+        return response()->view('admin.finance.voucher.v2_unavailable', compact('title', 'projectId'));
+    }
+
+    /** Dedicated linked bank receipt/payment workspace for the isolated V2 pilot. */
+    public function bankVoucherWorkspace(string $direction)
+    {
+        abort_unless(in_array($direction, ['receipt', 'payment'], true), 404);
+        $projectId = (int) getSelectedTown();
+        if (!\App\Services\Finance\V2IsolatedConnectionGuard::isAllowed()) {
+            return $this->unavailableV2Workspace($projectId, $direction === 'receipt' ? 'Bank Online / Cheque Credit (BOR)' : 'Bank Online / Cheque Debit (BOP)');
+        }
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
+
+        $bankAccounts = DB::table('project_bank_accounts')
+            ->where('project_id', $projectId)->where('is_active', 1)->orderBy('bank_name')->get();
+        $accounts = ProjectHeadSubhead::availableForPosting()->with(['headAccounting:id,name', 'subheadAccounting:id,name'])
+            ->where('project_id', $projectId)->orderBy('id')->get();
+
+        return view('admin.finance.voucher.bank_linked_workspace', compact('direction', 'bankAccounts', 'accounts'));
+    }
+
+    /** Dedicated cash-to-bank deposit/withdrawal entry and register. */
+    public function transferVoucherWorkspace(string $kind)
+    {
+        abort_unless(in_array($kind, ['deposit', 'withdrawal'], true), 404);
+        $projectId = (int) getSelectedTown();
+        if (!\App\Services\Finance\V2IsolatedConnectionGuard::isAllowed()) {
+            return $this->unavailableV2Workspace($projectId, $kind === 'deposit' ? 'Bank Deposit' : 'Bank Withdrawal');
+        }
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
+        $bankAccounts = DB::table('project_bank_accounts')->where('project_id', $projectId)->where('is_active', 1)->orderBy('bank_name')->get();
+        $cashAccounts = ProjectHeadSubhead::availableForPosting()->with(['headAccounting:id,name', 'subheadAccounting:id,name'])
+            ->where('project_id', $projectId)->whereHas('headAccounting', fn ($q) => $q->where('name', 'LIKE', '%cash%'))
+            ->orderBy('id')->get();
+        return view('admin.finance.voucher.bank_transfer_workspace', compact('kind', 'bankAccounts', 'cashAccounts'));
+    }
+
+    /** Multi-plot receipt entry, project scoped to the selected project. */
+    public function plotReceiptWorkspace()
+    {
+        $projectId = (int) getSelectedTown();
+        if (!\App\Services\Finance\V2IsolatedConnectionGuard::isAllowed()) {
+            return $this->unavailableV2Workspace($projectId, 'Plot Receive Payment');
+        }
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
+        $accounts = ProjectHeadSubhead::availableForPosting()->with(['headAccounting:id,name', 'subheadAccounting:id,name'])
+            ->where('project_id', $projectId)
+            ->where(fn ($q) => $q->whereHas('headAccounting', fn ($h) => $h->where('name', 'LIKE', '%cash%')->orWhere('name', 'LIKE', '%bank%'))
+                ->orWhereHas('subheadAccounting', fn ($s) => $s->where('name', 'LIKE', '%cash%')->orWhere('name', 'LIKE', '%bank%')))
+            ->orderBy('id')->get();
+        return view('admin.finance.voucher.plot_receipt_workspace', compact('accounts'));
+    }
+
+    public function plotReceiptOptions(Request $request)
+    {
+        $projectId = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
+        $data = $request->validate(['q' => ['nullable', 'string', 'max:100']]);
+        $accountMap = ProjectHeadSubhead::availableForPosting()->where('project_id', $projectId)
+            ->whereNotNull('customer_id')->whereNotNull('plot_id')
+            ->selectRaw('customer_id, plot_id, MIN(id) as id')->groupBy('customer_id', 'plot_id');
+        $query = DB::table('bookings as booking')->join('plots as plot', function ($join) use ($projectId) {
+                $join->on('plot.id', '=', 'booking.plot_id')->where('plot.project_id', '=', $projectId);
+            })->join('leads as customer', function ($join) use ($projectId) {
+                $join->on('customer.id', '=', 'booking.customer_id')->where('customer.project_id', '=', $projectId);
+            })->leftJoinSub($accountMap, 'account', function ($join) {
+                $join->on('account.customer_id', '=', 'booking.customer_id')->on('account.plot_id', '=', 'booking.plot_id');
+            })->where('booking.project_id', $projectId)->where('booking.status', 'active')->where('booking.cancel_status', '0');
+        if (!empty($data['q'])) {
+            $term = '%'.trim($data['q']).'%';
+            $query->where(fn ($q) => $q->where('customer.first_name', 'like', $term)->orWhere('customer.last_name', 'like', $term)
+                ->orWhere('customer.business', 'like', $term)->orWhere('plot.name', 'like', $term));
+        }
+        $rows = $query->orderBy('customer.first_name')->orderBy('plot.name')->limit(500)
+            ->get(['booking.id as booking_id', 'booking.customer_id', 'booking.plot_id', 'plot.name as plot_name',
+                'customer.first_name', 'customer.last_name', 'customer.business', 'account.id as receivable_account_id']);
+        return response()->json(['data' => $rows->map(fn ($row) => [
+            'booking_id' => (int) $row->booking_id, 'customer_id' => (int) $row->customer_id, 'plot_id' => (int) $row->plot_id,
+            'plot' => (string) $row->plot_name,
+            'customer' => trim((string) $row->first_name.' '.(string) $row->last_name) ?: (string) ($row->business ?? 'Customer'),
+            'receivable_account_id' => $row->receivable_account_id ? (int) $row->receivable_account_id : null,
+        ])]);
+    }
+
+    public function postPlotReceipt(Request $request)
+    {
+        $projectId = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+        $data = $request->validate([
+            'customer_id' => ['required', 'integer', 'min:1'], 'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
+            'receipt_number' => ['required', 'string', 'max:64'], 'date' => ['required', 'date_format:Y-m-d'],
+            'amount' => ['required', 'regex:/^(0|[1-9][0-9]{0,13})(?:\.[0-9]{1,2})?$/D'],
+            'cash_account_id' => ['required', 'integer', 'min:1'], 'narration' => ['required', 'string', 'max:2000'],
+            'allocations' => ['required', 'array', 'min:2', 'max:100'],
+            'allocations.*.booking_id' => ['required', 'integer', 'min:1'], 'allocations.*.plot_id' => ['required', 'integer', 'min:1'],
+            'allocations.*.receivable_account_id' => ['required', 'integer', 'min:1'],
+            'allocations.*.amount' => ['required', 'regex:/^(0|[1-9][0-9]{0,13})(?:\.[0-9]{1,2})?$/D'],
+        ]);
+        $result = (new \App\Services\Finance\V2PlotEntryWriter())->receive($projectId, (int) $data['customer_id'],
+            $data['request_key'], $data, auth()->id());
+        return response()->json(['status' => 'success', 'data' => $result], $result['replayed'] ? 200 : 201);
+    }
+
+    public function plotReceiptHistory()
+    {
+        $projectId = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
+        abort_unless(Schema::hasTable('finance_plot_receipts'), 409, 'Plot receipt storage is not installed.');
+        $rows = DB::table('finance_plot_receipts as receipt')->leftJoin('leads as customer', 'customer.id', '=', 'receipt.customer_id')
+            ->where('receipt.project_id', $projectId)->orderByDesc('receipt.receipt_date')->orderByDesc('receipt.id')
+            ->limit(250)->get(['receipt.id', 'receipt.receipt_number', 'receipt.receipt_date', 'receipt.amount', 'receipt.narration',
+                'customer.first_name', 'customer.last_name', 'customer.business']);
+        return response()->json(['data' => $rows->map(fn ($row) => [
+            'id' => (int) $row->id, 'number' => (string) $row->receipt_number, 'date' => substr((string) $row->receipt_date, 0, 10),
+            'customer' => trim((string) $row->first_name.' '.(string) $row->last_name) ?: (string) ($row->business ?? 'Customer'),
+            'amount' => (string) $row->amount, 'narration' => (string) $row->narration,
+        ])]);
+    }
+
+    public function plotReceiptDetails(int $receiptId)
+    {
+        $projectId = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
+        try { $details = (new \App\Services\Finance\V2PlotEntryWriter())->receipt($projectId, $receiptId); }
+        catch (\DomainException $error) { abort(404); }
+        $customer = $details['allocations']->first();
+        return response()->json(['receipt' => array_merge((array) $details['receipt'], [
+            'customer' => $customer ? (trim((string) $customer->first_name.' '.(string) $customer->last_name) ?: (string) ($customer->business ?? 'Customer')) : 'Customer',
+        ]), 'allocations' => $details['allocations']]);
+    }
+
+    public function printPlotReceipt(int $receiptId, int $plotId)
+    {
+        $projectId = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
+        try { $details = (new \App\Services\Finance\V2PlotEntryWriter())->receipt($projectId, $receiptId); }
+        catch (\DomainException $error) { abort(404); }
+        $allocation = $details['allocations']->firstWhere('plot_id', $plotId);
+        abort_unless($allocation, 404);
+        return view('admin.finance.voucher.plot_receipt_print', ['receipt' => $details['receipt'], 'allocation' => $allocation]);
+    }
+
+    /** Dedicated project-scoped Plot Purchase entry and inventory register. */
+    public function plotPurchaseWorkspace()
+    {
+        $projectId = (int) getSelectedTown();
+        if (!\App\Services\Finance\V2IsolatedConnectionGuard::isAllowed()) {
+            return $this->unavailableV2Workspace($projectId, 'Plot Purchase Voucher');
+        }
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
+        $accounts = ProjectHeadSubhead::availableForPosting()->with(['headAccounting:id,name', 'subheadAccounting:id,name'])
+            ->where('project_id', $projectId)->orderBy('id')->get();
+        return view('admin.finance.voucher.plot_purchase_workspace', compact('accounts'));
+    }
+
+    public function plotPurchaseOptions()
+    {
+        $projectId = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
+        abort_unless(Schema::hasTable('finance_plot_purchases'), 409, 'Plot purchase storage is not installed.');
+        $definitions = Schema::hasTable('plot_definitions')
+            ? DB::table('plot_definitions')->where('project_id', $projectId)->where('is_active', 1)->orderBy('kind')->orderBy('name')
+                ->get(['id', 'kind', 'code', 'name', 'size_value', 'unit_code', 'unit_definition_id', 'legacy_value'])
+            : collect();
+        return response()->json([
+            'roads' => DB::table('roads')->where('is_active', 1)->orderBy('name')->get(['id', 'name']),
+            'facings' => DB::table('facings')->where('is_active', 1)->orderBy('name')->get(['id', 'name']),
+            'definitions' => $definitions,
+        ]);
+    }
+
+    public function postPlotPurchase(Request $request)
+    {
+        $projectId = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+        $data = $request->validate([
+            'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
+            'purchase_number' => ['required', 'string', 'max:64'], 'date' => ['required', 'date_format:Y-m-d'],
+            'seller_account_id' => ['required', 'integer', 'min:1'], 'narration' => ['required', 'string', 'max:2000'],
+            'items' => ['required', 'array', 'min:1', 'max:100'],
+            'items.*.plot_code' => ['required', 'string', 'max:64'], 'items.*.description' => ['required', 'string', 'max:255'],
+            'items.*.area' => ['required', 'regex:/^(0|[1-9][0-9]{0,13})(?:\\.[0-9]{1,4})?$/D'],
+            'items.*.unit' => ['required', 'string', 'max:24'], 'items.*.type' => ['required', 'integer', \Illuminate\Validation\Rule::in([1, 2])],
+            'items.*.road_id' => ['required', 'integer', 'min:1'], 'items.*.facing_id' => ['required', 'integer', 'min:1'],
+            'items.*.is_corner' => ['sometimes', 'boolean'],
+            'items.*.plot_category_definition_id' => ['nullable', 'integer', 'min:1'],
+            'items.*.plot_type_definition_id' => ['nullable', 'integer', 'min:1'],
+            'items.*.plot_size_definition_id' => ['nullable', 'integer', 'min:1'],
+            'items.*.plot_unit_definition_id' => ['nullable', 'integer', 'min:1'],
+            'items.*.unit_rate' => ['required', 'regex:/^(0|[1-9][0-9]{0,13})(?:\\.[0-9]{1,2})?$/D'],
+            'items.*.inventory_account_id' => ['required', 'integer', 'min:1'],
+        ]);
+        try {
+            $result = (new \App\Services\Finance\V2PlotEntryWriter())->purchase($projectId, $data['request_key'], $data, auth()->id());
+        } catch (\DomainException $error) {
+            return response()->json(['message' => $error->getMessage()], 422);
+        }
+        return response()->json(['status' => 'success', 'data' => $result], $result['replayed'] ? 200 : 201);
+    }
+
+    public function plotPurchaseHistory()
+    {
+        $projectId = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
+        abort_unless(Schema::hasTable('finance_plot_purchases'), 409, 'Plot purchase storage is not installed.');
+        $rows = DB::table('finance_plot_purchases as purchase')->join('project_head_subheads as seller', function ($join) use ($projectId) {
+            $join->on('seller.id', '=', 'purchase.seller_account_id')->where('seller.project_id', '=', $projectId);
+        })->leftJoin('subhead_accountings as sub', 'sub.id', '=', 'seller.subhead_accounting_id')
+            ->where('purchase.project_id', $projectId)->orderByDesc('purchase.purchase_date')->orderByDesc('purchase.id')->limit(250)
+            ->get(['purchase.id', 'purchase.purchase_number', 'purchase.purchase_date', 'purchase.amount', 'purchase.narration', 'sub.name as seller']);
+        return response()->json(['data' => $rows->map(fn ($row) => [
+            'id' => (int) $row->id, 'number' => (string) $row->purchase_number, 'date' => substr((string) $row->purchase_date, 0, 10),
+            'seller' => (string) ($row->seller ?? 'Seller account'), 'amount' => (string) $row->amount, 'narration' => (string) $row->narration,
+            'items' => (int) DB::table('finance_plot_purchase_items')->where('purchase_id', $row->id)->count(),
+        ])]);
+    }
+
+    public function plotPurchaseDetails(int $purchaseId)
+    {
+        $projectId = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
+        try { $details = (new \App\Services\Finance\V2PlotEntryWriter())->purchaseDetails($projectId, $purchaseId); }
+        catch (\DomainException $error) { abort(404); }
+        $details['purchase']->seller = DB::table('project_head_subheads as account')->leftJoin('subhead_accountings as sub', 'sub.id', '=', 'account.subhead_accounting_id')
+            ->where('account.project_id', $projectId)->where('account.id', $details['purchase']->seller_account_id)->value('sub.name');
+        return response()->json($details);
+    }
+
+    public function printPlotPurchase(int $purchaseId)
+    {
+        $projectId = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
+        try { $details = (new \App\Services\Finance\V2PlotEntryWriter())->purchaseDetails($projectId, $purchaseId); }
+        catch (\DomainException $error) { abort(404); }
+        $details['purchase']->seller = DB::table('project_head_subheads as account')->leftJoin('subhead_accountings as sub', 'sub.id', '=', 'account.subhead_accounting_id')
+            ->where('account.project_id', $projectId)->where('account.id', $details['purchase']->seller_account_id)->value('sub.name');
+        return view('admin.finance.voucher.plot_purchase_print', $details);
+    }
+
+    public function transferVoucherSources(string $kind)
+    {
+        abort_unless($kind === 'withdrawal', 404);
+        $projectId = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
+        abort_unless(Schema::hasTable('finance_original_customer_requests'), 409, 'Verified cheque source records are not installed.');
+        $rows = DB::table('customer_ledger as source')
+            ->join('finance_original_customer_requests as custody', function ($join) use ($projectId) {
+                $join->on('custody.customer_ledger_id', '=', 'source.id')->where('custody.project_id', '=', $projectId);
+            })->leftJoin('leads as customer', 'customer.id', '=', 'source.customer_id')
+            ->where('source.project_id', $projectId)->where('source.transaction_type', 'CP')->where('source.payment_type', 3)
+            ->where('source.is_active', 1)->where('source.passing_status', 1)
+            ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('finance_bank_transfer_sources as link')->whereColumn('link.linked_customer_ledger_id', 'source.id'))
+            ->orderByDesc('source.date')->orderByDesc('source.id')->get(['source.*', 'customer.first_name', 'customer.last_name', 'custody.source_sha256'])
+            ->filter(fn ($s) => hash_equals((string) $s->source_sha256, \App\Services\Finance\V2OriginalCustomerWorkflow::fingerprint($s)))
+            ->map(fn ($s) => ['id' => (int) $s->id, 'voucher' => 'CP-'.(string) $s->type_id, 'date' => substr((string) $s->date, 0, 10),
+                'party' => trim((string) $s->first_name.' '.(string) $s->last_name), 'reference' => (string) ($s->t_number ?? ''),
+                'amount' => number_format(max((float) $s->amount_in, (float) $s->amount_out), 2, '.', '')])->values();
+        return response()->json(['data' => $rows, 'count' => $rows->count()]);
+    }
+
+    public function postTransferVoucher(Request $request, string $kind)
+    {
+        abort_unless(in_array($kind, ['deposit', 'withdrawal'], true), 404);
+        $projectId = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+        $data = $request->validate([
+            'bank_account_id' => ['required', 'integer', 'min:1'], 'cash_account_id' => ['required', 'integer', 'min:1'],
+            'date' => ['required', 'date_format:Y-m-d'], 'amount' => ['required', 'numeric', 'gt:0', 'max:999999999999.99'],
+            'reference' => ['nullable', 'string', 'max:120'], 'description' => ['required', 'string', 'max:2000'],
+            'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
+            'cheque_source_id' => ['nullable', 'integer', 'min:1'],
+        ]);
+        abort_unless($kind === 'withdrawal' || empty($data['cheque_source_id']), 422, 'A cheque source can only be linked to a withdrawal.');
+        $narration = trim(($data['reference'] ?? '') !== '' ? 'Ref: '.$data['reference'].' | ' : '').$data['description'];
+        $result = (new \App\Services\Finance\V2BankTransferWriter())->post($projectId, (int) $data['bank_account_id'], $kind,
+            $data['request_key'], $data['date'], (string) $data['amount'], $narration,
+            [['account_id' => (int) $data['cash_account_id'], 'amount' => (string) $data['amount']]], auth()->id(),
+            isset($data['cheque_source_id']) ? (int) $data['cheque_source_id'] : null);
+        return response()->json(['status' => 'success', 'data' => $result], $result['replayed'] ? 200 : 201);
+    }
+
+    public function transferVoucherHistory(string $kind)
+    {
+        abort_unless(in_array($kind, ['deposit', 'withdrawal'], true), 404);
+        $projectId = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
+        $rows = DB::table('finance_bank_transfer_sources as transfer')
+            ->join('finance_posting_batches as batch', 'batch.id', '=', 'transfer.posting_batch_id')
+            ->join('project_bank_accounts as bank', function ($j) use ($projectId) { $j->on('bank.id', '=', 'transfer.bank_account_id')->where('bank.project_id', '=', $projectId); })
+            ->join('finance_posting_lines as cash_line', function ($j) use ($kind) {
+                $j->on('cash_line.posting_batch_id', '=', 'batch.id')->where('cash_line.debit', $kind === 'withdrawal' ? '>' : '=', $kind === 'withdrawal' ? 0 : 0);
+            })->join('project_head_subheads as cash_account', 'cash_account.id', '=', 'cash_line.project_head_subhead_id')
+            ->join('head_accountings as cash_head', 'cash_head.id', '=', 'cash_account.head_accounting_id')
+            ->leftJoin('customer_ledger as cheque', 'cheque.id', '=', 'transfer.linked_customer_ledger_id')
+            ->where('transfer.project_id', $projectId)->where('transfer.transfer_kind', $kind)
+            ->where('cash_head.name', 'LIKE', '%cash%')->orderByDesc('batch.effective_date')->orderByDesc('batch.id')
+            ->get(['transfer.posting_batch_id', 'transfer.amount', 'transfer.narration', 'bank.bank_name', 'bank.account_title',
+                'batch.voucher_series', 'batch.voucher_number', 'batch.effective_date', 'cash_head.name as cash_name', 'cheque.type_id as cheque_number', 'cheque.t_number as cheque_reference'])
+            ->unique('posting_batch_id')->values()->map(fn ($r) => ['posting_batch_id' => (int) $r->posting_batch_id,
+                'voucher' => trim((string) $r->voucher_series.'-'.(string) $r->voucher_number, '-'), 'date' => substr((string) $r->effective_date, 0, 10),
+                'cash_account' => (string) $r->cash_name, 'bank' => trim((string) $r->bank_name.' / '.(string) $r->account_title, ' /'),
+                'cheque' => $r->cheque_number ? 'CP-'.$r->cheque_number.' / '.(string) $r->cheque_reference : '', 'amount' => (string) $r->amount, 'narration' => (string) $r->narration]);
+        return response()->json(['data' => $rows]);
+    }
+
+    public function printTransferVoucher(string $kind, int $postingBatch)
+    {
+        abort_unless(in_array($kind, ['deposit', 'withdrawal'], true), 404);
+        $projectId = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
+        $source = DB::table('finance_bank_transfer_sources as transfer')->join('finance_posting_batches as batch', 'batch.id', '=', 'transfer.posting_batch_id')
+            ->join('project_bank_accounts as bank', function ($j) use ($projectId) { $j->on('bank.id', '=', 'transfer.bank_account_id')->where('bank.project_id', '=', $projectId); })
+            ->leftJoin('customer_ledger as cheque', 'cheque.id', '=', 'transfer.linked_customer_ledger_id')
+            ->where('transfer.project_id', $projectId)->where('transfer.transfer_kind', $kind)->where('transfer.posting_batch_id', $postingBatch)
+            ->first(['transfer.*', 'batch.voucher_series', 'batch.voucher_number', 'batch.effective_date', 'bank.bank_name', 'bank.account_title',
+                'cheque.type_id as cheque_number', 'cheque.t_number as cheque_reference']);
+        abort_unless($source, 404);
+        $lines = DB::table('finance_posting_lines as line')->join('project_head_subheads as account', function ($j) use ($projectId) {
+            $j->on('account.id', '=', 'line.project_head_subhead_id')->where('account.project_id', '=', $projectId);
+        })->leftJoin('head_accountings as head', 'head.id', '=', 'account.head_accounting_id')
+            ->leftJoin('subhead_accountings as sub', 'sub.id', '=', 'account.subhead_accounting_id')->where('line.posting_batch_id', $postingBatch)
+            ->orderBy('line.id')->get(['head.name as head_name', 'sub.name as subhead_name', 'line.debit', 'line.credit']);
+        abort_unless($lines->count() === 2, 404);
+        return view('admin.finance.voucher.bank_transfer_print', compact('kind', 'source', 'lines'));
+    }
+
+    /** JSON source list: only verified, active, unposted, pending bank sources in this project. */
+    public function bankVoucherSources(Request $request, string $direction)
+    {
+        abort_unless(in_array($direction, ['receipt', 'payment'], true), 404);
+        $projectId = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
+        abort_unless(\Illuminate\Support\Facades\Schema::hasTable('finance_original_customer_requests'), 409,
+            'Verified isolated voucher sources are not installed.');
+
+        $types = $direction === 'receipt' ? ['CR', 'PPR', 'ECP'] : ['CP'];
+        abort_unless(\Illuminate\Support\Facades\Schema::hasTable('finance_bank_transfer_sources'), 409,
+            'Bank transfer source records are not installed.');
+        $sources = DB::table('customer_ledger as source')
+            ->leftJoin('leads as customer', 'customer.id', '=', 'source.customer_id')
+            ->leftJoin('plots as plot', 'plot.id', '=', 'source.plot_id')
+            ->join('finance_original_customer_requests as custody', function ($join) use ($projectId) {
+                $join->on('custody.customer_ledger_id', '=', 'source.id')->where('custody.project_id', '=', $projectId);
+            })
+            ->where('source.project_id', $projectId)->where('source.is_active', 1)
+            ->whereIn('source.transaction_type', $types)->whereIn('source.payment_type', [2, 3])
+            ->whereIn('source.passing_status', [0, 2])
+            ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('ledgers as ledger')->whereColumn('ledger.customer_ledger_id', 'source.id'))
+            ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('finance_bank_transfer_sources as link')->whereColumn('link.linked_customer_ledger_id', 'source.id'))
+            ->orderByDesc('source.date')->orderByDesc('source.id')
+            ->get(['source.*', 'customer.first_name', 'customer.last_name', 'plot.name as plot_name', 'custody.source_sha256']);
+
+        $data = $sources->filter(function ($source) {
+            return hash_equals((string) $source->source_sha256, \App\Services\Finance\V2OriginalCustomerWorkflow::fingerprint($source));
+        })->map(function ($source) {
+            return [
+                'id' => (int) $source->id, 'date' => substr((string) $source->date, 0, 10),
+                'voucher' => (string) $source->transaction_type . '-' . (string) $source->type_id,
+                'source_type' => (string) $source->transaction_type,
+                'method' => (int) $source->payment_type === 3 ? 'Cheque' : 'Online',
+                'transaction_number' => (string) ($source->t_number ?? ''),
+                'bank' => $source->bank_id ? (string) getBankNameById($source->bank_id) : '',
+                'party' => trim((string) $source->first_name . ' ' . (string) $source->last_name) ?: (string) ($source->plot_name ?? ''),
+                'amount' => number_format(max((float) $source->amount_in, (float) $source->amount_out), 2, '.', ''),
+                'status' => (int) $source->passing_status === 2 ? 'Returned / rejected' : 'Pending confirmation',
+            ];
+        })->values();
+
+        return response()->json(['data' => $data, 'count' => $data->count()]);
+    }
+
+    /** Project-scoped list of linked Bank Receipt / Bank Payment postings. */
+    public function bankVoucherHistory(string $direction)
+    {
+        abort_unless(in_array($direction, ['receipt', 'payment'], true), 404);
+        $projectId = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
+        abort_unless(Schema::hasTable('finance_bank_transfer_sources'), 409,
+            'Bank transfer source records are not installed.');
+
+        $kind = $direction;
+        $rows = DB::table('finance_bank_transfer_sources as transfer')
+            ->join('finance_posting_batches as batch', 'batch.id', '=', 'transfer.posting_batch_id')
+            ->join('project_bank_accounts as bank', function ($join) use ($projectId) {
+                $join->on('bank.id', '=', 'transfer.bank_account_id')->where('bank.project_id', '=', $projectId);
+            })
+            ->leftJoin('customer_ledger as source', 'source.id', '=', 'transfer.linked_customer_ledger_id')
+            ->leftJoin('leads as customer', 'customer.id', '=', 'source.customer_id')
+            ->leftJoin('plots as plot', 'plot.id', '=', 'source.plot_id')
+            ->where('transfer.project_id', $projectId)->where('transfer.transfer_kind', $kind)
+            ->orderByDesc('batch.effective_date')->orderByDesc('batch.id')
+            ->get(['transfer.posting_batch_id', 'transfer.amount', 'transfer.narration', 'bank.bank_name',
+                'bank.account_title', 'batch.voucher_series', 'batch.voucher_number', 'batch.effective_date',
+                'source.id as source_id', 'source.transaction_type as source_type', 'source.type_id as source_number',
+                'source.payment_type', 'source.t_number', 'customer.first_name', 'customer.last_name', 'plot.name as plot_name']);
+
+        return response()->json(['data' => $rows->map(fn ($row) => [
+            'posting_batch_id' => (int) $row->posting_batch_id,
+            'voucher' => trim((string) $row->voucher_series . '-' . (string) $row->voucher_number, '-'),
+            'date' => substr((string) $row->effective_date, 0, 10),
+            'source' => $row->source_id ? trim((string) $row->source_type . '-' . (string) $row->source_number, '-') : 'Bank transfer',
+            'party' => trim((string) $row->first_name . ' ' . (string) $row->last_name) ?: (string) ($row->plot_name ?? ''),
+            'method' => (int) $row->payment_type === 3 ? 'Cheque' : ((int) $row->payment_type === 2 ? 'Online' : 'Bank transfer'),
+            'transaction_number' => (string) ($row->t_number ?? ''),
+            'bank' => trim((string) $row->bank_name . ' / ' . (string) $row->account_title, ' /'),
+            'amount' => (string) $row->amount,
+            'narration' => (string) $row->narration,
+        ])]);
+    }
+
+    /** Printable, project-scoped details for one linked bank posting. */
+    public function printBankVoucher(string $direction, int $postingBatch)
+    {
+        abort_unless(in_array($direction, ['receipt', 'payment'], true), 404);
+        $projectId = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
+        $source = DB::table('finance_bank_transfer_sources as transfer')
+            ->join('finance_posting_batches as batch', 'batch.id', '=', 'transfer.posting_batch_id')
+            ->join('project_bank_accounts as bank', function ($join) use ($projectId) {
+                $join->on('bank.id', '=', 'transfer.bank_account_id')->where('bank.project_id', '=', $projectId);
+            })
+            ->leftJoin('customer_ledger as customer_source', 'customer_source.id', '=', 'transfer.linked_customer_ledger_id')
+            ->leftJoin('leads as customer', 'customer.id', '=', 'customer_source.customer_id')
+            ->leftJoin('plots as plot', 'plot.id', '=', 'customer_source.plot_id')
+            ->where('transfer.project_id', $projectId)->where('transfer.transfer_kind', $direction)
+            ->where('transfer.posting_batch_id', $postingBatch)
+            ->first(['transfer.*', 'batch.voucher_series', 'batch.voucher_number', 'batch.effective_date',
+                'bank.bank_name', 'bank.account_title', 'customer_source.transaction_type as source_type',
+                'customer_source.type_id as source_number', 'customer_source.payment_type', 'customer_source.t_number',
+                'customer.first_name', 'customer.last_name', 'plot.name as plot_name']);
+        abort_unless($source, 404);
+        $lines = DB::table('finance_posting_lines as line')
+            ->join('project_head_subheads as account', function ($join) use ($projectId) {
+                $join->on('account.id', '=', 'line.project_head_subhead_id')->where('account.project_id', '=', $projectId);
+            })
+            ->leftJoin('head_accountings as head', 'head.id', '=', 'account.head_accounting_id')
+            ->leftJoin('subhead_accountings as sub', 'sub.id', '=', 'account.subhead_accounting_id')
+            ->where('line.posting_batch_id', $postingBatch)->orderBy('line.id')
+            ->get(['head.name as head_name', 'sub.name as subhead_name', 'line.debit', 'line.credit']);
+        abort_unless($lines->isNotEmpty(), 404);
+
+        return view('admin.finance.voucher.bank_linked_print', compact('direction', 'source', 'lines'));
+    }
+
     public function updatePendingBankPaymentStatus(Request $request, $customerLedger)
     {
         if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
@@ -1007,6 +1558,7 @@ class VoucherController extends Controller
                 'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
                 'bank_post_at' => ['required_if:passing_status,1', 'nullable', 'date_format:Y-m-d'],
                 'note' => ['required', 'string', 'max:1000'],
+                'bank_account_id' => ['required_if:passing_status,1', 'nullable', 'integer', 'min:1'],
                 'posting_lines' => ['required_if:passing_status,1', 'array', 'min:2', 'max:100'],
                 'posting_lines.*.account_id' => ['required', 'integer', 'min:1'],
                 'posting_lines.*.debit' => ['required', 'regex:/^[0-9]{1,10}(?:\.[0-9]{1,2})?$/D'],
@@ -1015,7 +1567,8 @@ class VoucherController extends Controller
             try {
                 $result = (new \App\Services\Finance\V2OriginalBankWorkflow())->settle(
                     $project, (int) $customerLedger, (int) $data['passing_status'], $data['request_key'],
-                    $data['bank_post_at'] ?? '', $data['note'], $data['posting_lines'] ?? [], (int) Auth::id()
+                    $data['bank_post_at'] ?? '', $data['note'], $data['posting_lines'] ?? [], (int) Auth::id(),
+                    isset($data['bank_account_id']) ? (int) $data['bank_account_id'] : null
                 );
             } catch (\DomainException $e) { abort(409, 'Bank settlement could not be posted.'); }
             return response()->json(['status' => 'success', 'data' => $result]);
@@ -1187,9 +1740,10 @@ class VoucherController extends Controller
         ]);
     }
 
-    public function cash_in_data(Request $request)
+    public function cash_in_data(Request $request, ?string $method = null)
     {
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) { return $this->typedCashData($request, true); }
+        $paymentType = $this->cashVoucherPaymentType($method);
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) { return $this->typedCashData($request, true, $paymentType); }
         $selectedProjectId = getSelectedTown();
 
         $q = Ledger::with([
@@ -1198,8 +1752,11 @@ class VoucherController extends Controller
             'projectHeadSubhead.project:id,project'
         ])
             ->where('is_active', 1)
-            ->whereIn('type', ['CR', 'PPR'])
+            ->whereIn('type', $paymentType === null ? ['CR', 'PPR'] : ['CR'])
             ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId));
+        if ($paymentType !== null) {
+            $q->whereHas('customerLedger', fn ($source) => $source->where('payment_type', $paymentType));
+        }
 
         // ----------------------------
         // Head Account filter (IDs)
@@ -1236,12 +1793,9 @@ class VoucherController extends Controller
             }
         }
 
-        // ----------------------------
-        // Voucher Number filter (optional)
-        // ----------------------------
-        // if ($request->filled('voucher_number')) {
-        //     $q->where('voucher_number', 'like', '%' . $request->voucher_number . '%');
-        // }
+        if ($request->filled('voucher_number')) {
+            $this->applyVoucherDisplayNumberFilter($q, (int) $selectedProjectId, (string) $request->input('voucher_number'));
+        }
 
         // ----------------------------
         // Amount filters (NEW: min/max)
@@ -1325,7 +1879,12 @@ class VoucherController extends Controller
                 ->where('source_kind', 'customer_ledger')->whereIn('source_id', $rows->pluck('customer_ledger_id')->filter()->unique())
                 ->pluck('display_number', 'source_id')
             : collect();
-        $data = $rows->map(function ($i) use ($displayNumbers) {
+        $ledgerDisplayNumbers = Schema::hasTable('project_voucher_display_numbers')
+            ? DB::table('project_voucher_display_numbers')->where('project_id', $selectedProjectId)
+                ->where('source_kind', 'ledger')->whereIn('source_id', $rows->pluck('id'))
+                ->pluck('display_number', 'source_id')
+            : collect();
+        $data = $rows->map(function ($i) use ($displayNumbers, $ledgerDisplayNumbers) {
             $amount = $i->type === 'CP' ? (float) $i->amount_out : (float) $i->amount_in;
 
             $p = $i->latestPendingUpdate ?? PendingUpdate::where('table_name', 'ledgers')
@@ -1533,5 +2092,33 @@ class VoucherController extends Controller
         });
 
         return $query;
+    }
+
+    private function applyVoucherDisplayNumberFilter(Builder $query, int $projectId, string $search): void
+    {
+        $search = trim($search);
+        $query->where(function (Builder $matches) use ($projectId, $search): void {
+            $matches->where('voucher_number', 'like', "%{$search}%");
+
+            if (!Schema::hasTable('project_voucher_display_numbers')) {
+                return;
+            }
+
+            $displayNumbers = DB::table('project_voucher_display_numbers')
+                ->where('project_id', $projectId)
+                ->where('display_number', 'like', "%{$search}%")
+                ->get(['source_kind', 'source_id'])
+                ->groupBy('source_kind');
+
+            $ledgerIds = $displayNumbers->get('ledger', collect())->pluck('source_id')->all();
+            $sourceIds = $displayNumbers->get('customer_ledger', collect())->pluck('source_id')->all();
+
+            if ($ledgerIds !== []) {
+                $matches->orWhereIn('id', $ledgerIds);
+            }
+            if ($sourceIds !== []) {
+                $matches->orWhereIn('customer_ledger_id', $sourceIds);
+            }
+        });
     }
 }

@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $title . ' - ' . Setting::getValue('app_name') }}</title>
+    <title>{{ trim($__env->yieldContent('title', $title ?? 'Dashboard')) . ' - ' . Setting::getValue('app_name') }}</title>
     <link rel="icon" href="{{ asset(Setting::getValue('app_favicon')) }}" type="image/png" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="icon" type="image/png" href="{{ asset('images/logo/blue-marketing-logo.png') }}">
@@ -309,13 +309,13 @@
     <script src="{{ asset('template/admin/plugins/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
     <!-- overlayScrollbars -->
     <script src="{{ asset('template/admin/plugins/overlayScrollbars/js/jquery.overlayScrollbars.min.js') }}"></script>
-    <!-- AdminLTE App -->
-    <script src="{{ asset('template/admin/dist/js/adminlte.js') }}"></script>
+    @unless($embeddedVoucher ?? false)
+        <!-- AdminLTE App -->
+        <script src="{{ asset('template/admin/dist/js/adminlte.js') }}"></script>
 
-    <!-- AdminLTE for demo purposes -->
-    {{-- <script src="{{ asset('template/admin/dist/js/demo.js') }}"></script> --}}
-    <!-- AdminLTE dashboard demo (This is only for demo purposes) -->
-    <script src="{{ asset('template/admin/dist/js/pages/dashboard2.js') }}"></script>
+        <!-- AdminLTE dashboard demo (This is only for demo purposes) -->
+        <script src="{{ asset('template/admin/dist/js/pages/dashboard2.js') }}"></script>
+    @endunless
     <script src="https://cdn.jsdelivr.net/npm/number-to-words@1.2.4/numberToWords.js"></script>
 
 

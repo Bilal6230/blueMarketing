@@ -441,6 +441,8 @@ class JournalVoucherController extends Controller
 
         if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
             \App\Services\Finance\V2OriginalWorkflowAccess::authorize((int) $selectedProjectId);
+            abort_unless(!app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)->policy((int) $selectedProjectId, 'JV'), 409,
+                'This voucher has an approval policy; posting through the isolated pilot is disabled.');
             $request->validate(['date' => ['required', 'date_format:Y-m-d']]);
             try {
                 (new \App\Services\Finance\V2OriginalJournalWorkflow())->createAndPost(
@@ -529,6 +531,13 @@ class JournalVoucherController extends Controller
                         ->recordNewPosting((int) $ledger->id, (int) $selectedProjectId,
                             'journal_voucher', (int) $journalVoucher->id);
                 }
+            }
+            app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
+                ->submitIfRequired((int) $selectedProjectId, 'JV', 'journal_vouchers', (int) $journalVoucher->id, (int) auth()->id());
+            if (app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)->policy((int) $selectedProjectId, 'JV')) {
+                DB::table('ledgers')->where('type', 'JV')->where('type_id', $journalVoucher->id)
+                    ->whereIn('project_head_subheads_id', DB::table('project_head_subheads')->select('id')->where('project_id', $selectedProjectId))
+                    ->update(['is_active' => 0]);
             }
             return (int) $journalVoucher->id;
         };

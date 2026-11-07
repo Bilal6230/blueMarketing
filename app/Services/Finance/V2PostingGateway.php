@@ -51,6 +51,17 @@ final class V2PostingGateway
         );
     }
 
+    public function postBankTransfer(
+        int $projectId, int $bankAccountId, string $kind, string $idempotencyKey,
+        string $date, string $amount, string $narration, array $allocations,
+        ?int $actorId = null
+    ): array {
+        return (new V2BankTransferWriter())->post(
+            $projectId, $bankAccountId, $kind, $idempotencyKey,
+            $date, $amount, $narration, $allocations, $actorId
+        );
+    }
+
     public function postCommission(
         int $projectId,
         int $commissionVoucherId,

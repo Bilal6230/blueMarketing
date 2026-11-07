@@ -111,7 +111,7 @@ class SettingController extends Controller
         $projectId = (int) getSelectedTown();
         abort_unless($projectId > 0, 400, 'Select a project first.');
         if (!$request->user()->hasRole('superadmin')) abort_unless((int) $request->user()->project_id === $projectId, 403);
-        $validator = Validator::make($request->all(), ['series' => ['required', 'in:CR,CP,JV,CV,BO,BR,PPR,SV,ECP'],
+        $validator = Validator::make($request->all(), ['series' => ['required', 'in:CR,CP,CCR,CDR,BOR,BOP,CHR,CHP,JV,CV,BO,BR,PPR,SV,EC,ECP'],
             'prefix' => ['required', 'regex:/^[A-Z][A-Z0-9]{1,11}$/D']], [
                 'series.in' => 'Select a supported voucher type.',
                 'prefix.regex' => 'The voucher prefix format is invalid. Use 2–12 uppercase letters or numbers, starting with a letter.',

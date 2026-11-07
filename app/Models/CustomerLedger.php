@@ -27,6 +27,7 @@ class CustomerLedger extends Model
         'bank_id',
         'passing_date',
         'passing_status',
+        'cheque_purpose',
         'check_history',
         'date',
         'transaction_type',
@@ -60,6 +61,25 @@ class CustomerLedger extends Model
             }
         });
 
+        static::created(function (self $source): void {
+            if ((int) $source->payment_type === 2) {
+                app(\App\Services\Finance\OnlineLifecycleHistory::class)->record(
+                    $source, 'captured', null,
+                    $source->passing_status !== null ? (int) $source->passing_status : 0,
+                    'Online payment captured.'
+                );
+            }
+            if ((int) $source->payment_type === 3) {
+                $directWithdrawal = (string) $source->transaction_type === 'CP'
+                    && (int) $source->passing_status === 1;
+                app(\App\Services\Finance\ChequeLifecycleHistory::class)->record(
+                    $source, $directWithdrawal ? 'direct_withdrawal' : 'received', null,
+                    $source->passing_status !== null ? (int) $source->passing_status : 0,
+                    $directWithdrawal ? 'Cheque recorded as direct withdrawal.' : 'Cheque received.'
+                );
+            }
+        });
+
         static::updating(function (self $source): void {
             if (!Schema::hasTable('ledgers') || !Ledger::query()
                 ->where('customer_ledger_id', $source->getKey())->exists()) {
@@ -72,7 +92,7 @@ class CustomerLedger extends Model
             $immutable = [
                 'project_id', 'customer_id', 'plot_id', 'type_id', 'reference',
                 'date', 'transaction_type', 'amount_in', 'amount_out',
-                'payment_type', 't_number', 'bank_id', 'passing_date',
+                'payment_type', 't_number', 'bank_id', 'passing_date', 'cheque_purpose',
             ];
             if (array_intersect(array_keys($source->getDirty()), $immutable) !== []) {
                 throw new \DomainException('FINANCIAL_SOURCE_UPDATE_REQUIRES_REVERSAL');
@@ -99,9 +119,35 @@ class CustomerLedger extends Model
             'updated_at' => now(), // Record the update timestamp
         ];
 
-        // Save the updated history back to the database
+        $previous = $currentHistory !== [] ? end($currentHistory) : null;
+        $fromStatus = is_array($previous) && isset($previous['passing_status']) ? (int) $previous['passing_status'] : 0;
+        $toStatus = isset($checkDetails['passing_status']) ? (int) $checkDetails['passing_status'] : null;
+
+        // Save the legacy compatibility snapshot and append immutable lifecycle event.
         $this->check_history = $currentHistory;
         $this->save();
+        if ($toStatus !== null) {
+            if ((int) $this->payment_type === 2) {
+                $event = match ($toStatus) {
+                    1 => 'confirmed', 2 => 'rejected', 3 => 'cancelled',
+                    default => 'status_updated',
+                };
+                app(\App\Services\Finance\OnlineLifecycleHistory::class)->record(
+                    $this, $event, $fromStatus, $toStatus,
+                    (string) ($checkDetails['description_note'] ?? '')
+                );
+                return;
+            }
+            $event = match ($toStatus) {
+                1 => in_array((string) $this->transaction_type, ['CR', 'PPR'], true) ? 'cleared' : 'passed',
+                2 => 'returned',
+                3 => 'rejected',
+                default => 'status_updated',
+            };
+            app(\App\Services\Finance\ChequeLifecycleHistory::class)->record(
+                $this, $event, $fromStatus, $toStatus, (string) ($checkDetails['description_note'] ?? '')
+            );
+        }
     }
 
 

@@ -10,7 +10,7 @@ final class V2OriginalCustomerWorkflow
     {
         $values = [];
         foreach (['project_id', 'transaction_type', 'type_id', 'date', 'customer_id', 'plot_id', 'reference',
-            'description', 'payment_type', 'custom_payment_method_id', 't_number', 'bank_id', 'passing_date'] as $field) {
+            'description', 'payment_type', 'custom_payment_method_id', 't_number', 'bank_id', 'passing_date', 'cheque_purpose'] as $field) {
             $values[$field] = isset($source->$field) ? (string) $source->$field : null;
         }
         if (isset($source->contractor_id) && $source->contractor_id !== null) {
@@ -42,7 +42,7 @@ final class V2OriginalCustomerWorkflow
             throw new \DomainException('V2_SOURCE_DATE_OR_AMOUNT_INVALID');
         }
         $metadata = array_intersect_key($source, array_flip([
-            'reference', 'description', 'customer_id', 'contractor_id', 'plot_id', 'payment_type', 'custom_payment_method_id', 't_number', 'bank_id', 'passing_date',
+            'reference', 'description', 'customer_id', 'contractor_id', 'plot_id', 'payment_type', 'custom_payment_method_id', 't_number', 'bank_id', 'passing_date', 'cheque_purpose',
         ]));
         if (empty($metadata['contractor_id'])) unset($metadata['contractor_id']);
         if (!empty($metadata['contractor_id']) && !DB::table('contractors')->where('id', $metadata['contractor_id'])

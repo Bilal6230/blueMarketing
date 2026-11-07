@@ -7,7 +7,9 @@ use Illuminate\Support\Facades\Schema;
 
 final class ProjectVoucherDisplay
 {
-    public const SERIES = ['CR', 'CP', 'JV', 'CV', 'BO', 'BR', 'PPR', 'SV', 'EC', 'ECP'];
+    // Cheque is a payment method under the bank voucher series, not a separate
+    // numbered voucher series. Keep CHR/CHP decoding at legacy read sites only.
+    public const SERIES = ['CR', 'CP', 'CCR', 'CDR', 'BOR', 'BOP', 'JV', 'CV', 'BO', 'BR', 'PPR', 'SV', 'EC', 'ECP'];
 
     public function format(int $projectId, string $series, int $number, string $date): string
     {
@@ -16,10 +18,13 @@ final class ProjectVoucherDisplay
             || !checkdate((int) $parts[1], (int) $parts[2], (int) substr($date, 0, 4))) {
             throw new \DomainException('INVALID_VOUCHER_DISPLAY_INPUT');
         }
-        $prefix = $series;
+        // CP remains the immutable legacy source series, while its user-facing
+        // voucher label is DR. Existing stored identities are not rewritten.
+        $prefix = $series === 'CP' ? 'DR' : $series;
         if (Schema::hasTable('project_voucher_display_settings')) {
             $prefix = DB::table('project_voucher_display_settings')
-                ->where('project_id', $projectId)->where('series', $series)->value('prefix') ?: $series;
+                ->where('project_id', $projectId)->where('series', $series)->value('prefix') ?: $prefix;
+            if ($series === 'CP' && $prefix === 'CP') $prefix = 'DR';
         }
         return $prefix.'-'.substr($date, 0, 4).'-'.str_pad((string) $number, 4, '0', STR_PAD_LEFT);
     }

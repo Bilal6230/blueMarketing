@@ -159,6 +159,18 @@ if (in_array(config('app.env'), ['local', 'testing'], true)
             Route::get('accounts/{accountId}/statement', [$controller, 'accountStatement'])
                 ->whereNumber('projectId')->whereNumber('accountId');
             Route::post('postings', [$controller, 'post'])->whereNumber('projectId');
+            Route::post('bank-transfers', [$controller, 'bankTransfer'])->whereNumber('projectId');
+            Route::post('plot-receipts', [$controller, 'plotReceipt'])->whereNumber('projectId');
+            Route::get('plot-receipts/{receiptId}', [$controller, 'plotReceipt'])
+                ->whereNumber('projectId')->whereNumber('receiptId');
+            Route::get('plot-receipts/{receiptId}/plots/{plotId}/print', [$controller, 'plotReceiptPrint'])
+                ->whereNumber('projectId')->whereNumber('receiptId')->whereNumber('plotId');
+            Route::post('plot-purchases', [$controller, 'plotPurchase'])->whereNumber('projectId');
+            Route::get('plot-purchases/{purchaseId}', [$controller, 'plotPurchase'])
+                ->whereNumber('projectId')->whereNumber('purchaseId');
+            Route::post('plot-vouchers/{kind}/{sourceId}/void', [$controller, 'voidPlotVoucher'])
+                ->whereNumber('projectId')->whereNumber('sourceId')
+                ->where('kind', 'plot_receipt|plot_purchase');
             Route::post('reversals', [$controller, 'reverse'])->whereNumber('projectId');
             Route::post('commission-drafts/{action}/{sourceId?}', [$controller, 'commissionDraft'])
                 ->whereNumber('projectId')->whereNumber('sourceId')

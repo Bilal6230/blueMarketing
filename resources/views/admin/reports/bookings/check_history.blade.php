@@ -25,6 +25,24 @@
                 </div>
             </div>
 
+            <section class="mb-4">
+                <h5>Cheque purpose</h5>
+                <p>{{ $ledger->cheque_purpose ?: 'Not recorded for this cheque.' }}</p>
+                <h5>Lifecycle events</h5>
+                @if(isset($lifecycleEvents) && $lifecycleEvents->isNotEmpty())
+                    <div class="table-responsive"><table class="table table-sm table-striped table-bordered">
+                        <thead><tr><th>Date</th><th>Event</th><th>Transition</th><th>Purpose</th><th>Note</th></tr></thead>
+                        <tbody>@foreach($lifecycleEvents as $event)
+                            <tr><td>{{ $event->created_at }}</td><td>{{ ucwords(str_replace('_', ' ', $event->event_type)) }}</td>
+                                <td>{{ $event->from_status ?? '—' }} → {{ $event->to_status ?? '—' }}</td>
+                                <td>{{ $event->purpose ?: '—' }}</td><td>{{ $event->note ?: '—' }}</td></tr>
+                        @endforeach</tbody>
+                    </table></div>
+                @else
+                    <p class="text-muted">No lifecycle events recorded yet.</p>
+                @endif
+            </section>
+
             <!-- Customer & Plot Information -->
             <div class="row mb-4">
                 <div class="col-md-6">

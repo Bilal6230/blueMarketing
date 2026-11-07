@@ -2372,6 +2372,7 @@ class BookingController extends Controller
             't_number' => ['required_if:payment_type,2,3', 'nullable', 'string', 'max:255'],
             'bank_id' => ['required_if:payment_type,2,3', 'nullable', 'integer'],
             'passing_date' => ['required_if:payment_type,2,3', 'nullable', 'date_format:Y-m-d'],
+            'cheque_purpose' => ['required_if:payment_type,3', 'nullable', 'string', 'max:500'],
         ]);
         $projectId = (int) getSelectedTown();
         abort_if($projectId < 1, 403, 'Select a project.');
@@ -2395,6 +2396,7 @@ class BookingController extends Controller
                     'amount_in' => str_replace(',', '', $validated['amount_out']), 'amount_out' => 0,
                     'payment_type' => $validated['payment_type'], 't_number' => $cash ? null : $validated['t_number'],
                     'bank_id' => $cash ? null : $validated['bank_id'], 'passing_date' => $cash ? null : $validated['passing_date'],
+                    'cheque_purpose' => $cash ? null : ($validated['cheque_purpose'] ?? null),
                     'passing_status' => 0,
                 ], (int) Auth::id()
             );
@@ -2594,6 +2596,9 @@ class BookingController extends Controller
         // when posting, rather than configured with guessed chart IDs.
         $x['ecBankReady'] = true;
         $x['ecCashReady'] = true;
+        $x['bankSettlementAccounts'] = \Illuminate\Support\Facades\Schema::hasTable('project_bank_accounts')
+            ? \App\Models\ProjectBankAccount::query()->where('project_id', $projectId)->where('is_active', 1)->orderBy('bank_name')->orderBy('account_title')->get()
+            : collect();
 
         $chargeTypes = ChargeType::get();
         $x['chargeTypes'] = $chargeTypes;
@@ -2636,7 +2641,8 @@ class BookingController extends Controller
                 try {
                     $result = (new \App\Services\Finance\V2OriginalBankWorkflow())->settle(
                         $project, $id, (int) $decision['passing_status'], $decision['request_key'],
-                        $decision['bank_post_at'] ?? '', $decision['note'], $decision['posting_lines'] ?? [], (int) Auth::id()
+                        $decision['bank_post_at'] ?? '', $decision['note'], $decision['posting_lines'] ?? [], (int) Auth::id(),
+                        isset($decision['bank_account_id']) ? (int) $decision['bank_account_id'] : null
                     );
                 } catch (\DomainException $e) { abort(409, 'Extra charge bank settlement could not be posted.'); }
                 return $request->expectsJson() ? response()->json(['status' => 'success', 'data' => $result]) : back()->with('success', 'Bank decision saved.');
@@ -2669,7 +2675,8 @@ class BookingController extends Controller
             'plot_id' => 'required',
             'amount' => 'required',
             'detail' => 'required',
-            'payment_type' => 'required',
+            'payment_type' => 'required|in:1,2,3',
+            'cheque_purpose' => 'required_if:payment_type,3|nullable|string|max:500',
             'reference' => 'required',
 
         ]);;
@@ -2780,6 +2787,7 @@ class BookingController extends Controller
                             'is_approve' => 0,
                             'passing_date' => $request->input('passing_date'),
                             'passing_status' => $isPendingBankPayment ? 0 : null,
+                        'cheque_purpose' => (int) $payment_type === 3 ? trim((string) $request->input('cheque_purpose')) : null,
                         ]);
                         if (!$duplicateLedger) {
                             app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->assign(

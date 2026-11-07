@@ -10,8 +10,17 @@ final class ProjectVoucherDisplayIdentity
     public function lookup(int $projectId, string $sourceKind, int $sourceId): ?string
     {
         if ($projectId < 1 || $sourceId < 1 || !Schema::hasTable('project_voucher_display_numbers')) return null;
-        return DB::table('project_voucher_display_numbers')->where('project_id', $projectId)
+        $number = DB::table('project_voucher_display_numbers')->where('project_id', $projectId)
             ->where('source_kind', $sourceKind)->where('source_id', $sourceId)->value('display_number') ?: null;
+        // CP is the immutable legacy source type; show its user-facing label as DR.
+        return $number ? preg_replace('/^CP-/', 'DR-', (string) $number) : null;
+    }
+
+    public function series(int $projectId, string $sourceKind, int $sourceId): ?string
+    {
+        if ($projectId < 1 || $sourceId < 1 || !Schema::hasTable('project_voucher_display_numbers')) return null;
+        return DB::table('project_voucher_display_numbers')->where('project_id', $projectId)
+            ->where('source_kind', $sourceKind)->where('source_id', $sourceId)->value('series') ?: null;
     }
 
     public function assign(int $projectId, string $sourceKind, int $sourceId, string $series, string $date): ?string

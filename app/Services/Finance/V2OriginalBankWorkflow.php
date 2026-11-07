@@ -6,7 +6,20 @@ use Illuminate\Support\Facades\DB;
 
 final class V2OriginalBankWorkflow
 {
-    public function settle(int $projectId, int $id, int $status, string $key, string $date, string $note, array $legs, ?int $actor): array
+    private function cents(mixed $value): int
+    {
+        $value = (string) $value;
+        if (!preg_match('/^(0|[1-9][0-9]{0,13})(?:\.([0-9]{1,2}))?$/D', $value, $m)) {
+            throw new \DomainException('V2_BANK_AMOUNT_INVALID');
+        }
+        return (int) $m[1] * 100 + (int) str_pad($m[2] ?? '', 2, '0');
+    }
+
+    private function money(int $cents): string
+    {
+        return intdiv($cents, 100).'.'.str_pad((string) ($cents % 100), 2, '0', STR_PAD_LEFT);
+    }
+    public function settle(int $projectId, int $id, int $status, string $key, string $date, string $note, array $legs, ?int $actor, ?int $bankAccountId = null): array
     {
         V2IsolatedConnectionGuard::assertAllowed();
         if (!in_array($status, [1, 2, 3], true) || trim($note) === '' || !preg_match('/^[A-Za-z0-9_-]{16,128}$/D', $key)) { throw new \DomainException('V2_BANK_INPUT_INVALID'); }
@@ -14,8 +27,9 @@ final class V2OriginalBankWorkflow
             $calendar = \DateTimeImmutable::createFromFormat('!Y-m-d', $date);
             if (!$calendar || $calendar->format('Y-m-d') !== $date) { throw new \DomainException('V2_BANK_DATE_INVALID'); }
         }
-        $hash = hash('sha256', json_encode([$id, $status, $status === 1 ? $date : null, $note, $legs], JSON_THROW_ON_ERROR));
-        return DB::transaction(function () use ($projectId, $id, $status, $key, $date, $note, $legs, $actor, $hash): array {
+        if ($status === 1 && (!$bankAccountId || $bankAccountId < 1)) { throw new \DomainException('V2_BANK_ACCOUNT_REQUIRED'); }
+        $hash = hash('sha256', json_encode([$id, $status, $status === 1 ? $date : null, $note, $legs, $bankAccountId], JSON_THROW_ON_ERROR));
+        return DB::transaction(function () use ($projectId, $id, $status, $key, $date, $note, $legs, $actor, $hash, $bankAccountId): array {
             DB::table('projects')->where('id', $projectId)->lockForUpdate()->firstOrFail();
             $source = DB::table('customer_ledger')->where('id', $id)->where('project_id', $projectId)->lockForUpdate()->first();
             $custody = DB::table('finance_original_customer_requests')->where('customer_ledger_id', $id)->where('project_id', $projectId)->first();
@@ -26,6 +40,39 @@ final class V2OriginalBankWorkflow
             }
             if (DB::table('ledgers')->where('customer_ledger_id', $id)->exists()) {
                 throw new \DomainException('V2_BANK_LEGACY_POSTING_EXISTS');
+            }
+            if ($status === 1) {
+                $bank = DB::table('project_bank_accounts')->where('id', $bankAccountId)
+                    ->where('project_id', $projectId)->where('is_active', 1)->lockForUpdate()->first();
+                if (!$bank) { throw new \DomainException('V2_BANK_ACCOUNT_PROJECT_MISMATCH'); }
+                $sourceDebit = $this->cents($source->amount_in);
+                $sourceCredit = $this->cents($source->amount_out);
+                if (($sourceDebit > 0) === ($sourceCredit > 0)) {
+                    throw new \DomainException('V2_BANK_SOURCE_AMOUNT_INVALID');
+                }
+                $sourceAmount = max($sourceDebit, $sourceCredit);
+                // Customer-ledger sides describe the customer account, not
+                // the bank account. Receipt series debit bank; payment series
+                // credit bank. In particular, booking PPR receipts are stored
+                // in amount_out because they reduce the customer's balance.
+                $bankDebit = in_array($source->transaction_type, ['CR', 'PPR', 'ECP'], true);
+                $debit = 0; $credit = 0; $bankLegs = 0;
+                foreach ($legs as $leg) {
+                    $d = $this->cents($leg['debit'] ?? ''); $c = $this->cents($leg['credit'] ?? '');
+                    $isBankAccount = (int) ($leg['account_id'] ?? 0) === (int) $bank->account_mapping_id;
+                    if ($isBankAccount) {
+                        $bankLegs++;
+                        if (($bankDebit && ($d !== $sourceAmount || $c !== 0))
+                            || (!$bankDebit && ($c !== $sourceAmount || $d !== 0))) {
+                            throw new \DomainException('V2_BANK_AMOUNT_OR_DIRECTION_MISMATCH');
+                        }
+                    }
+                    $debit += $d;
+                    $credit += $c;
+                }
+                if ($bankLegs !== 1 || $debit !== $credit || $debit !== $sourceAmount) {
+                    throw new \DomainException('V2_BANK_ALLOCATION_TOTAL_MISMATCH');
+                }
             }
             $event = DB::table('finance_bank_settlement_events')->where('project_id', $projectId)->where('request_key', $key)->first();
             if ($event) {
@@ -55,6 +102,22 @@ final class V2OriginalBankWorkflow
             $batch = $status === 1 ? (new V2OriginalCustomerWorkflow())->post(
                 $projectId, $id, $source->transaction_type, $key, $legs, $actor
             ) : null;
+            // Preserve a unique, project-scoped bank source link for the
+            // isolated posting/reporting schema when it has been installed.
+            if ($batch !== null && $bankAccountId !== null
+                && \Illuminate\Support\Facades\Schema::hasTable('finance_bank_transfer_sources')) {
+                DB::table('finance_bank_transfer_sources')->insert([
+                    'posting_batch_id' => $batch,
+                    'project_id' => $projectId,
+                    'bank_account_id' => $bankAccountId,
+                    'linked_customer_ledger_id' => $id,
+                    'transfer_kind' => in_array($source->transaction_type, ['CR', 'PPR', 'ECP'], true) ? 'receipt' : 'payment',
+                    'amount' => $this->money($sourceAmount),
+                    'narration' => $note,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
             if (DB::getSchemaBuilder()->hasColumn('booking_vouchers', 'customer_ledger_id')) {
                 if (DB::table('booking_vouchers')->where('customer_ledger_id', $id)->where('project_id', '!=', $projectId)->exists()) {
                     throw new \DomainException('V2_BANK_RECEIPT_PROJECT_CONFLICT');
@@ -69,11 +132,36 @@ final class V2OriginalBankWorkflow
                 if (!$charge) { throw new \DomainException('V2_BANK_CHARGE_CUSTODY_MISSING'); }
                 (new V2ExtraChargeBalance())->read($charge);
             }
-            DB::table('finance_bank_settlement_events')->insert([
+            $event = [
                 'project_id' => $projectId, 'customer_ledger_id' => $id, 'actor_id' => $actor, 'posting_batch_id' => $batch,
                 'request_key' => $key, 'payload_sha256' => $hash, 'from_status' => $current, 'to_status' => $status,
                 'effective_date' => $status === 1 ? $date : null, 'note' => $note, 'created_at' => now(),
-            ]);
+            ];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('finance_bank_settlement_events', 'bank_account_id')) {
+                $event['bank_account_id'] = $status === 1 ? $bankAccountId : null;
+            }
+            DB::table('finance_bank_settlement_events')->insert($event);
+            if ((int) $source->payment_type === 3) {
+                $cheque = \App\Models\CustomerLedger::query()
+                    ->whereKey($id)->where('project_id', $projectId)->firstOrFail();
+                app(ChequeLifecycleHistory::class)->record(
+                    $cheque,
+                    match ($status) { 1 => 'cleared', 2 => 'returned', 3 => 'rejected' },
+                    $current,
+                    $status,
+                    $note
+                );
+            } elseif ((int) $source->payment_type === 2) {
+                $online = \App\Models\CustomerLedger::query()
+                    ->whereKey($id)->where('project_id', $projectId)->firstOrFail();
+                app(OnlineLifecycleHistory::class)->record(
+                    $online,
+                    match ($status) { 1 => 'confirmed', 2 => 'rejected', 3 => 'cancelled' },
+                    $current,
+                    $status,
+                    $note
+                );
+            }
             return ['source_id' => $id, 'posting_batch_id' => $batch, 'passing_status' => $status, 'replayed' => false];
         }, 3);
     }

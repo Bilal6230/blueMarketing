@@ -289,13 +289,15 @@ class ReportController extends Controller
 
     public function checkHistory($id)
     {
-        $ledger = CustomerLedger::with(['customer_list', 'plot_list'])->findOrFail($id);
+        $projectId = (int) getSelectedTown();
+        $ledger = CustomerLedger::with(['customer_list', 'plot_list'])->where('project_id', $projectId)->findOrFail($id);
         $title = 'Customer Check Report';
 
         // Retrieve check history from the model
         $checkHistory = $ledger->check_history;
+        $lifecycleEvents = app(\App\Services\Finance\ChequeLifecycleHistory::class)->events($projectId, (int) $ledger->id);
 
-        return view('admin.reports.bookings.check_history', compact('ledger', 'checkHistory', 'title'));
+        return view('admin.reports.bookings.check_history', compact('ledger', 'checkHistory', 'lifecycleEvents', 'title'));
     }
 
 

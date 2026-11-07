@@ -12,6 +12,7 @@ final class V2OriginalVoucherInput
             'passing_status' => ['required', 'integer', 'in:1,2,3'],
             'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
             'bank_post_at' => ['required_if:passing_status,1', 'nullable', 'date_format:Y-m-d'],
+            'bank_account_id' => ['required_if:passing_status,1', 'nullable', 'integer', 'min:1'],
             'note' => ['required', 'string', 'max:1000'],
             'posting_lines' => ['required_if:passing_status,1', 'array', 'min:2', 'max:100'],
             'posting_lines.*.account_id' => ['required', 'integer', 'min:1'],
@@ -33,6 +34,11 @@ final class V2OriginalVoucherInput
             't_number' => ['required_if:payment_type,2,3', 'nullable', 'string', 'max:255'],
             'bank_id' => ['required_if:payment_type,2,3', 'nullable', 'integer', 'min:1'],
             'passing_date' => ['required_if:payment_type,2,3', 'nullable', 'date_format:Y-m-d'],
+            'cheque_purpose' => [
+                'nullable', 'string', 'max:500',
+                \Illuminate\Validation\Rule::requiredIf(fn () => (int) $request->input('payment_type') === 3
+                    && !$request->filled('selected_pending_payment_id')),
+            ],
             'posting_lines' => ['required_unless:payment_type,2,3', 'array', 'min:2', 'max:100'],
             'posting_lines.*.account_id' => ['required', 'integer', 'min:1'],
             'posting_lines.*.debit' => ['required', 'regex:/^[0-9]{1,10}(?:\.[0-9]{1,2})?$/D'],
@@ -43,6 +49,6 @@ final class V2OriginalVoucherInput
     public static function source(array $data): array
     {
         return ['date' => $data['date'], 'amount' => $data['amount'], 'description' => $data['detail']]
-            + array_intersect_key($data, array_flip(['reference', 'payment_type', 'custom_payment_method_id', 't_number', 'bank_id', 'passing_date']));
+            + array_intersect_key($data, array_flip(['reference', 'payment_type', 'custom_payment_method_id', 't_number', 'bank_id', 'passing_date', 'cheque_purpose']));
     }
 }

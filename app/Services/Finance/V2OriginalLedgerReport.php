@@ -24,7 +24,9 @@ final class V2OriginalLedgerReport
         $actors = \App\Models\User::withTrashed()->whereIn('id', $batches->pluck('posted_by')->filter())->get()->keyBy('id');
         $documents = [];
         foreach (['journal' => 'journal_vouchers', 'commission' => 'commision_vouchers', 'cash' => 'customer_ledger',
-            'booking' => 'booking_vouchers', 'labour' => 'labour_ledgers', 'stock_entry' => 'stock_entries', 'stock_bill' => 'stock_bills'] as $kind => $table) {
+            'booking' => 'booking_vouchers', 'labour' => 'labour_ledgers', 'stock_entry' => 'stock_entries', 'stock_bill' => 'stock_bills',
+            'bank_transfer' => 'finance_bank_transfer_sources', 'plot_receipt' => 'finance_plot_receipts',
+            'plot_purchase' => 'finance_plot_purchases'] as $kind => $table) {
             $ids = array_column(array_filter($lines, fn ($line) => $line['source_kind'] === $kind), 'source_id');
             if ($ids) { $documents[$kind] = DB::table($table)->whereIn('id', $ids)->get()->keyBy('id'); }
         }
@@ -34,15 +36,21 @@ final class V2OriginalLedgerReport
             $series = (string) $line['voucher_series'];
             $number = $line['voucher_number'] ?? '#'.$line['source_id'];
             $source = ($documents[$line['source_kind']] ?? collect())->get($line['source_id']);
+            $documentNumber = match ($line['source_kind']) {
+                'plot_receipt' => $source->receipt_number ?? null,
+                'plot_purchase' => $source->purchase_number ?? null,
+                default => null,
+            };
             $display = $line['is_reversal'] ? 'REV-'.$line['posting_batch_id']
-                : ($series === 'CV' ? CommissionVoucherNumber::display($number) : $series.'-'.$number);
+                : ($documentNumber ?: ($series === 'CV' ? CommissionVoucherNumber::display($number) : $series.'-'.$number));
             return [
                 'id' => 'V2-'.$line['posting_line_id'], 'posting_line_id' => (int) $line['posting_line_id'],
                 'display_voucher_number' => $display, 'voucher_number' => $display,
                 'date' => $line['effective_date'], 'type' => $series,
                 'amount_in' => $this->money($line['debit']),
                 'amount_out' => $this->money($line['credit']),
-                'detail' => $line['description'] ?? ($source->description ?? ''), 'reference' => $source->reference ?? '',
+                'detail' => $line['description'] ?? ($source->narration ?? $source->description ?? ''),
+                'reference' => $source->reference ?? $source->receipt_number ?? $source->purchase_number ?? '',
                 'project_name' => $account?->project?->project ?? '',
                 'accountent_name' => $actors->get($batch->posted_by)?->name ?? '',
                 'head_account_name' => $account?->headAccounting?->name ?? '',

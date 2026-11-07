@@ -53,6 +53,11 @@
                     const bank = ['2', '3'].includes(payment);
                     const clearing = form.querySelector('[name="action"]')?.value === 'extra_charge_clearance' || !!form.querySelector('[name="selected_pending_payment_id"]')?.value;
                     const enabled = !bank || (clearing && status === '1');
+                    const bankAccount = form.querySelector('[data-bank-settlement-account]');
+                    if (bankAccount) {
+                        bankAccount.disabled = !enabled;
+                        bankAccount.required = enabled && bank;
+                    }
                     const amount = normalized(form.querySelector('[name="amount"]')?.value) || '0.00';
                     fieldset.querySelectorAll('[data-posting-allocation]').forEach(input => {
                         input.disabled = !enabled;
@@ -69,6 +74,16 @@
                 };
                 document.addEventListener('input', event => window.syncOriginalPostingForm(event.target.form), true);
                 document.addEventListener('change', event => window.syncOriginalPostingForm(event.target.form), true);
+                document.addEventListener('change', event => {
+                    const field = event.target.closest('[data-bank-settlement-account]');
+                    if (!field) return;
+                    const mapping = field.selectedOptions[0]?.dataset.accountMappingId;
+                    const account = field.form?.querySelector('[name="posting_lines[0][account_id]"]');
+                    if (mapping && account) {
+                        account.value = mapping;
+                        account.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }, true);
                 document.addEventListener('click', event => {
                     const button = event.target.closest('button[name="passing_status"]');
                     if (button?.form) {

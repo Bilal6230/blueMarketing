@@ -78,6 +78,9 @@ final class V2PostingReversalWriter
                 'stock_bill' => 'finance_posting_stock_bill_sources',
                 'booking' => 'finance_posting_booking_sources',
                 'labour' => 'finance_posting_labour_sources',
+                'bank_transfer' => 'finance_bank_transfer_sources',
+                'plot_receipt' => 'finance_plot_receipt_postings',
+                'plot_purchase' => 'finance_plot_purchase_postings',
             ];
             if (!$claim || !isset($sourceTables[$claim->source_kind])
                 || !DB::table($sourceTables[$claim->source_kind])

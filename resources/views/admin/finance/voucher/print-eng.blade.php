@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Credit Voucher</title>
+    <title>{{ $voucherTitle ?? 'Voucher' }}</title>
 
     <style>
         @page {
@@ -98,7 +98,9 @@
     @php
         $branding = getProjectPrintBranding(optional(optional($voucher)->projectHeadSubhead)->project);
         $voucherBadge = '';
-        if ($voucher->type == 'CR') {
+        if (isset($voucherTitle) && in_array($voucher->type, ['CR', 'CP'], true)) {
+            $voucherBadge = '<div class="voucher-name">' . e(strtoupper($voucherTitle)) . '</div>';
+        } elseif ($voucher->type == 'CR') {
             $voucherBadge = '<div class="voucher-name">CREDIT VOUCHER</div>';
         } elseif ($voucher->type == 'CP' || $voucher->type == 'BO') {
             $voucherBadge = '<div class="voucher-name">PAYMENT VOUCHER</div>';

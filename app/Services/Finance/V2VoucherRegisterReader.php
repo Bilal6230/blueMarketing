@@ -19,6 +19,9 @@ final class V2VoucherRegisterReader
         'labour' => ['labour_ledgers', 'id'],
         'stock_entry' => ['stock_entries', 'slip_no'],
         'stock_bill' => ['stock_bills', 'bill_no'],
+        'bank_transfer' => ['finance_bank_transfer_sources', 'posting_batch_id', 'posting_batch_id'],
+        'plot_receipt' => ['finance_plot_receipts', 'receipt_number'],
+        'plot_purchase' => ['finance_plot_purchases', 'purchase_number'],
     ];
 
     private function cents(mixed $v): int
@@ -85,9 +88,9 @@ final class V2VoucherRegisterReader
         }
         $labels = [];
         foreach ($references as $kind => $ids) {
-            [$table, $column] = self::DISPLAY[$kind];
+            [$table, $column, $key] = array_pad(self::DISPLAY[$kind], 3, 'id');
             $labels[$kind] = DB::table($table)
-                ->whereIn('id', array_keys($ids))->pluck($column, 'id')->all();
+                ->whereIn($key, array_keys($ids))->pluck($column, $key)->all();
             if (count($labels[$kind]) !== count($ids)) {
                 throw new \DomainException('V2_REGISTER_SOURCE_DISPLAY_MISSING');
             }
@@ -101,8 +104,11 @@ final class V2VoucherRegisterReader
             $sourceId = $batch['source_id'];
             $kind = $batch['source_kind'];
             $label = $labels[$kind][$sourceId] ?? null;
-            if ($kind === 'cash' && ($label === null || $label === '')) {
+            if (in_array($kind, ['cash', 'bank_transfer'], true) && ($label === null || $label === '')) {
                 // Actual customer_ledger PK, not reused type_id.
+                $label = $batch['voucher_series'] . '-' . $sourceId;
+            }
+            if ($kind === 'bank_transfer' && !$batch['is_reversal']) {
                 $label = $batch['voucher_series'] . '-' . $sourceId;
             }
             $results[] = [

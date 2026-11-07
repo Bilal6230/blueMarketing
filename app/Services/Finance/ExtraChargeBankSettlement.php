@@ -183,8 +183,18 @@ final class ExtraChargeBankSettlement
             throw new \DomainException('ECP_CLEARANCE_EARLY_OR_DUPLICATE_LEDGER');
         }
         if ($status === 2) {
+            $fromStatus = (int) $payment->passing_status;
             $payment->update(['passing_status' => 2,
                 'note' => 'Bank payment rejected: ' . trim((string) $request->input('note'))]);
+            if ((int) $payment->payment_type === 2) {
+                app(OnlineLifecycleHistory::class)->record(
+                    $payment, 'rejected', $fromStatus, 2, (string) $payment->note
+                );
+            } else {
+                app(ChequeLifecycleHistory::class)->record(
+                    $payment, 'returned', $fromStatus, 2, (string) $payment->note
+                );
+            }
             return;
         }
         $mapping = app(ExtraChargeAccounts::class)->forProject(
@@ -231,7 +241,17 @@ final class ExtraChargeBankSettlement
                 'create_by' => Auth::id(), 'update_by' => Auth::id(),
             ]);
         }
+        $fromStatus = (int) $payment->passing_status;
         $payment->update(['passing_status' => 1, 'bank_post_at' => $date,
             'note' => 'EC bank payment cleared']);
+        if ((int) $payment->payment_type === 2) {
+            app(OnlineLifecycleHistory::class)->record(
+                $payment, 'confirmed', $fromStatus, 1, (string) $payment->note
+            );
+        } else {
+            app(ChequeLifecycleHistory::class)->record(
+                $payment, 'cleared', $fromStatus, 1, (string) $payment->note
+            );
+        }
     }
 }

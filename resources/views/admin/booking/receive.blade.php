@@ -223,6 +223,11 @@
                                                             </div>
                                                         </div>
                                                     </div>
+                                                    <div class="col-sm-6 cheque-purpose-group" style="display:none">
+                                                        <label class="fbox" for="cheque_purpose">Cheque purpose</label>
+                                                        <input type="text" name="cheque_purpose" id="cheque_purpose" maxlength="500"
+                                                            class="form-control" placeholder="Purpose of this cheque">
+                                                    </div>
 
 
                                                 </div>
@@ -960,6 +965,9 @@
             $(document).ready(function() {
                 $('#payment_type').change(function(e) {
                     e.preventDefault();
+                    const isCheque = String($(this).val()) === '3';
+                    $('.cheque-purpose-group').toggle(isCheque);
+                    $('#cheque_purpose').prop('required', isCheque);
 
                     if ($(this).val() != '1') {
                         $('.bank_group').css('display', 'block');
@@ -967,6 +975,7 @@
                         $('.bank_group').css('display', 'none');
                     }
                 });
+                $('#payment_type').trigger('change');
 
                 function toggleEditBankGroup(paymentType) {
                     if (paymentType && paymentType !== '1') {
