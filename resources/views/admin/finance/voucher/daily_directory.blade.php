@@ -111,6 +111,10 @@
     const loaderText=document.getElementById('dv-entry-loader-text'), fallback=document.getElementById('dv-entry-fallback'), entrySpinner=document.getElementById('dv-entry-spinner');
     let entryLoadTimer, entryFormCheck, requestedEntryUrl='';
     function clearEntryTimers(){clearTimeout(entryLoadTimer);clearInterval(entryFormCheck);}
+    function entryReady(){
+        clearEntryTimers();
+        entryLoader.classList.add('d-none');
+    }
     function showEntryError(message,url=requestedEntryUrl){
         loaderText.textContent=message;
         entrySpinner.classList.add('d-none');
@@ -133,9 +137,7 @@
             if(requestedEntryUrl!==url)return clearInterval(entryFormCheck);
             try {
                 if(entryFrame.contentDocument?.querySelector('#voucherForm')){
-                    clearInterval(entryFormCheck);
-                    clearTimeout(entryLoadTimer);
-                    entryLoader.classList.add('d-none');
+                    entryReady();
                 }
             } catch(error) {
                 // Keep waiting for the same-origin document to become readable.
@@ -147,7 +149,7 @@
         clearEntryTimers();
         try {
             const doc=entryFrame.contentDocument;
-            if(doc?.querySelector('#voucherForm'))entryLoader.classList.add('d-none');
+            if(doc?.querySelector('#voucherForm'))entryReady();
             else showEntryError('Voucher form is unavailable (permission denied, redirect, or server error). Open the form in a new tab to see the response.');
         } catch(error) {
             showEntryError('Cannot access the voucher form inside this window. Open the form in a new tab.');
@@ -199,7 +201,12 @@
     });
     if(window.jQuery){window.jQuery('#dv-entry-modal').on('hidden.bs.modal',()=>{clearEntryTimers();requestedEntryUrl='';entryLoader.classList.add('d-none');entryFrame.src='about:blank';});}
     window.addEventListener('message',event=>{
-        if(event.origin!==window.location.origin||event.data?.type!=='daily-voucher-saved')return;
+        if(event.origin!==window.location.origin || event.source!==entryFrame.contentWindow)return;
+        if(event.data?.type==='daily-voucher-form-ready'){
+            if(requestedEntryUrl)entryReady();
+            return;
+        }
+        if(event.data?.type!=='daily-voucher-saved')return;
         if(window.jQuery)window.jQuery('#dv-entry-modal').modal('hide');
         document.getElementById('dv-entry-frame').src='about:blank';start=0;load();
     });
