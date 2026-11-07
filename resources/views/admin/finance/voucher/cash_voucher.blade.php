@@ -33,15 +33,31 @@
         body.daily-voucher-embedded *, body.daily-voucher-embedded *::before, body.daily-voucher-embedded *::after {
             box-sizing:border-box;
         }
+        /* Reset the outer admin page offsets inside the iframe, not just its inner grid. */
         body.daily-voucher-embedded .wrapper,
-        body.daily-voucher-embedded .main-content,
-        body.daily-voucher-embedded .page-content,
+        body.daily-voucher-embedded .main-content.page-content,
         body.daily-voucher-embedded .content-wrapper,
         body.daily-voucher-embedded .content,
+        body.daily-voucher-embedded .content > .container-fluid,
         body.daily-voucher-embedded .custom_card,
         body.daily-voucher-embedded #voucherForm {
-            min-width:0 !important; max-width:100% !important;
-            overflow-x:clip !important;
+            box-sizing:border-box !important;
+            min-width:0 !important; width:100% !important; max-width:100% !important;
+            margin-left:0 !important; margin-right:0 !important;
+            padding-left:0 !important; padding-right:0 !important;
+            left:auto !important; right:auto !important; transform:none !important;
+        }
+        body.daily-voucher-embedded .main-content.page-content {
+            position:static !important; float:none !important;
+            margin:0 !important; padding:0 !important;
+            display:block !important; overflow:visible !important;
+        }
+        body.daily-voucher-embedded .content-wrapper .custom_card > .card-body {
+            width:100% !important; max-width:100% !important;
+        }
+        body.daily-voucher-embedded #voucherForm > .row > .col-10,
+        body.daily-voucher-embedded #voucherForm > .row > .col-2 {
+            padding-left:0 !important; padding-right:0 !important; min-width:0 !important;
         }
         body.daily-voucher-embedded .content-wrapper .row { max-width:100% !important; }
         body.daily-voucher-embedded #voucherForm > .row {
