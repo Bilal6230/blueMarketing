@@ -98,7 +98,7 @@
             const response=await fetch(@json(route('finance.daily-vouchers.data'))+'?'+params.toString(),{headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}});
             if(!response.ok) throw new Error('Unable to load voucher history.');
             const result=await response.json(); filtered=Number(result.recordsFiltered||0);
-            body.innerHTML=result.data.length?result.data.map(row=>`<tr><td>${esc(row.date)}</td><td class="font-weight-bold">${esc(row.number)}</td><td>${esc(row.reference)||'—'}</td><td>${esc(row.account)||'—'}</td><td class="text-right">${Number(row.amount||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td>${esc(row.status)}</td><td class="text-truncate" style="max-width:260px" title="${esc(row.detail)}">${esc(row.detail)||'—'}</td><td class="text-nowrap"><button type="button" class="btn btn-sm btn-outline-secondary dv-details" data-row="${esc(JSON.stringify(row))}">Details</button> ${row.url?`<a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" href="${esc(row.url)}" aria-label="Print ${esc(row.number)}"><i class="fas fa-print"></i></a>`:'<span class="small text-muted">—</span>'}</td></tr>`).join(''):'<tr><td colspan="8" class="text-center text-muted p-4">No vouchers match these filters.</td></tr>';
+            body.innerHTML=result.data.length?result.data.map(row=>`<tr><td>${esc(row.date)}</td><td class="font-weight-bold">${esc(row.number)}</td><td>${esc(row.reference)||'—'}</td><td>${esc(row.account)||'—'}</td><td class="text-right">${Number(row.amount||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td>${esc(row.status)}</td><td class="text-truncate" style="max-width:260px" title="${esc(row.detail)}">${esc(row.detail)||'—'}</td><td class="text-nowrap"><button type="button" class="btn btn-sm btn-outline-secondary dv-details" data-row="${esc(JSON.stringify(row))}">Details</button> ${row.edit_url?`<a class="btn btn-sm btn-outline-primary" href="${esc(row.edit_url)}"><i class="fas fa-edit"></i> Edit</a>`:''} ${row.delete_url?`<button type="button" class="btn btn-sm btn-outline-danger dv-delete" data-url="${esc(row.delete_url)}" data-number="${esc(row.number)}"><i class="fas fa-trash-alt"></i> Delete</button>`:''} ${row.url?`<a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" href="${esc(row.url)}" aria-label="Print ${esc(row.number)}"><i class="fas fa-print"></i></a>`:'<span class="small text-muted">—</span>'}</td></tr>`).join(''):'<tr><td colspan="8" class="text-center text-muted p-4">No vouchers match these filters.</td></tr>';
         } catch(error){body.innerHTML=`<tr><td colspan="8" class="text-center text-danger p-4">${esc(error.message)}</td></tr>`;}
         finally{wrap.classList.remove('daily-voucher-loading');}
     }
@@ -189,6 +189,19 @@
         if(event.origin!==window.location.origin||event.data?.type!=='daily-voucher-saved')return;
         if(window.jQuery)window.jQuery('#dv-entry-modal').modal('hide');
         document.getElementById('dv-entry-frame').src='about:blank';start=0;load();
+    });
+    body.addEventListener('click',event=>{
+        const button=event.target.closest('.dv-delete');
+        if(!button)return;
+        if(!window.confirm('Delete voucher '+button.dataset.number+'? This action is subject to the existing voucher authorization and accounting safety rules.'))return;
+        const deletion=document.createElement('form');
+        deletion.method='POST';
+        deletion.action=button.dataset.url;
+        deletion.style.display='none';
+        for(const [name,value] of [['_token',@json(csrf_token())],['_method','DELETE']]){
+            const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;deletion.appendChild(input);
+        }
+        document.body.appendChild(deletion);deletion.submit();
     });
     body.addEventListener('click',event=>{
         const button=event.target.closest('.dv-details'); if(!button)return;
