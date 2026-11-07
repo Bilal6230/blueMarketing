@@ -206,12 +206,18 @@
     body.addEventListener('click',event=>{
         const button=event.target.closest('.dv-delete');
         if(!button)return;
-        if(!window.confirm('Delete voucher '+button.dataset.number+'? This action is subject to the existing voucher authorization and accounting safety rules.'))return;
+        const reason=window.prompt('Reason for reversing/deleting voucher '+button.dataset.number+' (required):');
+        if(!reason || !reason.trim())return;
+        if(reason.trim().length>200){window.alert('Reason cannot exceed 200 characters.');return;}
+        const effectiveDate=window.prompt('Effective reversal date (YYYY-MM-DD):',new Date().toISOString().slice(0,10));
+        if(!effectiveDate || !/^\\d{4}-\\d{2}-\\d{2}$/.test(effectiveDate)){window.alert('Enter a valid date in YYYY-MM-DD format.');return;}
+        if(!window.confirm('Confirm reversal request for '+button.dataset.number+'? The finance workflow may create reversing ledger entries.'))return;
         const deletion=document.createElement('form');
         deletion.method='POST';
         deletion.action=button.dataset.url;
         deletion.style.display='none';
-        for(const [name,value] of [['_token',@json(csrf_token())],['_method','DELETE']]){
+        const requestKey=window.crypto?.randomUUID ? window.crypto.randomUUID().replace(/-/g,'') : String(Date.now())+String(Math.random()).slice(2);
+        for(const [name,value] of [['_token',@json(csrf_token())],['_method','DELETE'],['reason',reason.trim()],['effective_date',effectiveDate],['request_key',requestKey]]){
             const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;deletion.appendChild(input);
         }
         document.body.appendChild(deletion);deletion.submit();
