@@ -1,5 +1,21 @@
 @extends('admin.layouts.master')
 @section('content')
+    @if(request()->filled('edit_ledger_id') && auth()->user()?->can('update voucher'))
+        <script>
+            // Reuse the existing project-scoped correction editor when linked from Daily Entries.
+            window.addEventListener('load', function () {
+                const ledgerId = @json((int) request()->query('edit_ledger_id'));
+                const voucherType = @json((string) request()->query('edit_voucher_type', ''));
+                if (!ledgerId || !['CR', 'CP'].includes(voucherType) || !window.jQuery) return;
+                const editTrigger = window.jQuery('<button type="button" class="btn-edit" style="display:none"></button>')
+                    .attr('data-id', ledgerId)
+                    .attr('data-voucher-type', voucherType)
+                    .appendTo('body');
+                editTrigger.trigger('click');
+                editTrigger.remove();
+            });
+        </script>
+    @endif
     @php
         $voucherType = is_string($type) && in_array($type, ['CR', 'CP'], true) ? $type : '';
     @endphp
