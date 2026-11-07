@@ -83,7 +83,29 @@
     </div></section>
 </div>
 <div class="modal fade" id="dv-detail-modal" tabindex="-1" role="dialog" aria-labelledby="dv-detail-title" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-scrollable" role="document"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="dv-detail-title">Voucher details</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div><div class="modal-body"><dl class="row mb-0" id="dv-detail-fields"></dl><div id="dv-detail-lines-wrap" class="mt-3 d-none"><h6>Voucher lines</h6><div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>Account</th><th>Description</th><th class="text-right">Debit</th><th class="text-right">Credit</th></tr></thead><tbody id="dv-detail-lines"></tbody></table></div></div><div id="dv-detail-prints-wrap" class="mt-3 d-none"><h6>Plot receipt print views</h6><div id="dv-detail-prints" class="d-flex flex-wrap" style="gap:.5rem"></div></div><div id="dv-detail-audit-wrap" class="mt-3 d-none"><h6>Payment and audit information</h6><dl class="row mb-0" id="dv-detail-audit"></dl></div></div><div class="modal-footer"><a id="dv-detail-print" class="btn btn-primary" target="_blank" rel="noopener"><i class="fas fa-print mr-1"></i> Open print view</a><span id="dv-no-print" class="small text-muted d-none">No posted print record is available.</span><button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button></div></div></div></div>
-<div class="modal fade" id="dv-entry-modal" tabindex="-1" role="dialog" aria-labelledby="dv-entry-title" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-scrollable" role="document"><div class="modal-content"><div class="modal-header py-2"><h5 class="modal-title" id="dv-entry-title">New voucher</h5><div id="dv-bank-method-wrap" class="ml-auto mr-3 d-none"><label class="small mb-0 mr-2" for="dv-bank-method">Payment</label><select id="dv-bank-method" class="form-control form-control-sm d-inline-block" style="width:auto"><option value="online">Online</option><option value="cheque">Cheque</option></select></div><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div><div class="modal-body p-0 position-relative"><div id="dv-entry-loader" class="d-flex align-items-center justify-content-center flex-column text-muted" style="position:absolute;top:0;left:0;right:0;z-index:2;background:rgba(255,255,255,.94);padding:.65rem;border-bottom:1px solid #e3e8f0;min-height:58px"><div id="dv-entry-spinner" class="spinner-border text-primary mb-2" role="status"></div><span id="dv-entry-loader-text">Loading voucher form...</span><a id="dv-entry-fallback" class="btn btn-sm btn-outline-primary mt-3 d-none" target="_blank" rel="noopener">Open form in new tab</a></div><iframe id="dv-entry-frame" title="Voucher entry" style="display:block;width:100%;height:78vh;border:0" referrerpolicy="same-origin"></iframe></div></div></div></div>
+<div class="modal fade" id="dv-entry-modal" tabindex="-1" role="dialog" aria-labelledby="dv-entry-title" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h5 class="modal-title" id="dv-entry-title">New voucher</h5>
+                <div id="dv-bank-method-wrap" class="ml-auto mr-3 d-none">
+                    <label class="small mb-0 mr-2" for="dv-bank-method">Payment</label>
+                    <select id="dv-bank-method" class="form-control form-control-sm d-inline-block" style="width:auto">
+                        <option value="online">Online</option><option value="cheque">Cheque</option>
+                    </select>
+                </div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="dv-entry-error" class="alert alert-danger m-3 d-none" role="alert">
+                    <span id="dv-entry-error-text"></span>
+                    <a id="dv-entry-fallback" class="alert-link ml-2" target="_blank" rel="noopener">Open voucher form</a>
+                </div>
+                <iframe id="dv-entry-frame" title="Voucher entry" style="display:block;width:100%;height:78vh;border:0" referrerpolicy="same-origin"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
 <script>
 (() => {
     document.documentElement.classList.add('daily-voucher-directory-active');
@@ -107,58 +129,33 @@
     document.getElementById('dv-next').addEventListener('click',()=>{if(start+length<filtered){start+=length;load();}});
     document.getElementById('dv-search').addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(()=>{start=0;load();},300);});
     document.querySelectorAll('.dv-column-filter').forEach(input=>input.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(()=>{start=0;load();},250);}));
-    const entryFrame=document.getElementById('dv-entry-frame'), entryLoader=document.getElementById('dv-entry-loader');
-    const loaderText=document.getElementById('dv-entry-loader-text'), fallback=document.getElementById('dv-entry-fallback'), entrySpinner=document.getElementById('dv-entry-spinner');
-    let entryLoadTimer, entryFormCheck, requestedEntryUrl='';
-    function clearEntryTimers(){clearTimeout(entryLoadTimer);clearInterval(entryFormCheck);}
-    function entryReady(){
-        clearEntryTimers();
-        entryLoader.classList.add('d-none');
-    }
+    // The modal contains the real voucher form. No overlay, spinner or polling.
+    const entryFrame=document.getElementById('dv-entry-frame');
+    const entryError=document.getElementById('dv-entry-error');
+    const entryErrorText=document.getElementById('dv-entry-error-text');
+    const fallback=document.getElementById('dv-entry-fallback');
+    let requestedEntryUrl='';
     function showEntryError(message,url=requestedEntryUrl){
-        loaderText.textContent=message;
-        entrySpinner.classList.add('d-none');
-        fallback.href=url;
-        fallback.classList.remove('d-none');
-        entryLoader.classList.remove('d-none');
+        entryErrorText.textContent=message;
+        fallback.href=url||'#';
+        fallback.classList.toggle('d-none',!url);
+        entryError.classList.remove('d-none');
     }
     function loadEntry(url){
-        if(!url){showEntryError('This voucher type does not have an entry form configured.');return;}
         requestedEntryUrl=url;
-        entryLoader.classList.remove('d-none');
-        entrySpinner.classList.remove('d-none'); loaderText.textContent='Loading voucher form...'; fallback.classList.add('d-none'); fallback.href=url;
-        clearEntryTimers();
-        entryLoadTimer=setTimeout(()=>{
-            clearInterval(entryFormCheck);
-            showEntryError('Voucher form has not responded. Check the embedded page below or open it in a separate tab.');
-        },15000);
-        entryFrame.src=url;
-        // The embedded voucher page loads many scripts from the main layout.
-        // Its window load event can be delayed even though the form is already
-        // in the document, so detect the actual form independently.
-        entryFormCheck=setInterval(()=>{
-            if(requestedEntryUrl!==url)return clearInterval(entryFormCheck);
-            try {
-                if(entryFrame.contentDocument?.querySelector('#voucherForm')){
-                    entryReady();
-                }
-            } catch(error) {
-                // Keep waiting for the same-origin document to become readable.
-            }
-        },150);
+        entryError.classList.add('d-none');
+        entryFrame.src=url||'about:blank';
+        if(!url)showEntryError('No voucher entry form is available for this type.');
     }
     entryFrame.addEventListener('load',()=>{
         if(!requestedEntryUrl || entryFrame.src==='about:blank')return;
-        clearEntryTimers();
-        try {
+        try{
             const doc=entryFrame.contentDocument;
-            if(doc?.querySelector('#voucherForm'))entryReady();
-            else {
-                const message=doc?.querySelector('.alert-danger,.exception-message,h1')?.textContent?.trim();
-                showEntryError(message ? 'Voucher form could not open: '+message.slice(0,160) : 'Voucher form missing from server response. Verify create-voucher permission and open the page below.');
-            }
-        } catch(error) {
-            showEntryError('Cannot access the voucher form inside this window. Open the form in a new tab.');
+            if(doc?.querySelector('#voucherForm'))return;
+            const message=doc?.querySelector('.alert-danger,.exception-message,h1')?.textContent?.trim();
+            showEntryError(message ? 'Voucher form unavailable: '+message.slice(0,180) : 'Voucher form unavailable. Check your create permission or the server response.');
+        }catch(error){
+            showEntryError('Voucher form is blocked inside the modal. Open it in a separate tab.');
         }
     });
     document.querySelectorAll('.dv-create').forEach(button=>button.addEventListener('click',()=>{
@@ -168,8 +165,6 @@
         document.getElementById('dv-bank-method').value='online';
         methodWrap.dataset.onlineUrl=button.dataset.url;
         methodWrap.dataset.chequeUrl=button.dataset.chequeUrl;
-        // Start loading directly; relying only on Bootstrap's shown event can
-        // leave the overlay spinning when the modal event is missed.
         loadEntry(button.dataset.url);
         if(window.jQuery)window.jQuery('#dv-entry-modal').modal('show');
     }));
@@ -196,22 +191,17 @@
         const series=seriesMap[selected];
         const target=series ? document.querySelector(`.dv-create[data-series="${series}"]`) : null;
         if(!target){
-            requestedEntryUrl='';
-            entryFrame.src='about:blank';
+            loadEntry('');
             showEntryError('This voucher type uses a separate entry workflow. Use its dedicated page to create a voucher.', '');
-            fallback.classList.add('d-none');
             if(window.jQuery)window.jQuery('#dv-entry-modal').modal('show');
             return;
         }
         target.click();
     });
-    if(window.jQuery){window.jQuery('#dv-entry-modal').on('hidden.bs.modal',()=>{clearEntryTimers();requestedEntryUrl='';entryLoader.classList.add('d-none');entryFrame.src='about:blank';});}
+    if(window.jQuery){window.jQuery('#dv-entry-modal').on('hidden.bs.modal',()=>{requestedEntryUrl='';entryError.classList.add('d-none');entryFrame.src='about:blank';});}
     window.addEventListener('message',event=>{
         if(event.origin!==window.location.origin || event.source!==entryFrame.contentWindow)return;
-        if(event.data?.type==='daily-voucher-form-ready'){
-            if(requestedEntryUrl)entryReady();
-            return;
-        }
+        if(event.data?.type==='daily-voucher-form-ready')return;
         if(event.data?.type!=='daily-voucher-saved')return;
         if(window.jQuery)window.jQuery('#dv-entry-modal').modal('hide');
         document.getElementById('dv-entry-frame').src='about:blank';start=0;load();
