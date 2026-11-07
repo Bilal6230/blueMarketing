@@ -34,7 +34,6 @@
         body.daily-voucher-embedded #vouchersTable,
         body.daily-voucher-embedded #vouchersTable_wrapper,
         body.daily-voucher-embedded .dataTables_wrapper,
-        body.daily-voucher-embedded .content-wrapper .buttons,
         body.daily-voucher-embedded #voucher-loader,
         body.daily-voucher-embedded #form-card-loader { display:none !important; }
         body.daily-voucher-embedded > .content-wrapper {
@@ -54,6 +53,29 @@
         body.daily-voucher-embedded > .content-wrapper > .content > .container-fluid > .row > .col-12 {
             max-width:100%; padding:0; margin:0;
         }
+        /* The global sidebar-collapse rule uses !important on margin-left.
+           Match it only inside the embedded iframe, preserving the parent page. */
+        body.daily-voucher-embedded > .content-wrapper,
+        body.daily-voucher-embedded .content-wrapper,
+        body.daily-voucher-embedded .main-content.page-content {
+            margin-left:0 !important; margin-right:0 !important;
+            width:100% !important; max-width:100% !important;
+            padding-left:0 !important; padding-right:0 !important;
+        }
+        body.daily-voucher-embedded .content-wrapper .buttons {
+            display:flex !important; align-items:center !important;
+            gap:12px; padding:12px 22px 0; margin:0;
+            background:#fff;
+        }
+        body.daily-voucher-embedded #voucher-tabs-container {
+            min-width:0; max-width:calc(100% - 80px);
+            margin-bottom:0 !important; flex-wrap:wrap;
+            align-items:center; gap:8px !important;
+        }
+        body.daily-voucher-embedded #voucher-tabs {
+            display:flex; flex-wrap:wrap; gap:8px !important;
+        }
+        body.daily-voucher-embedded #clear-vouchers { flex-shrink:0; }
         body.daily-voucher-embedded .custom_card { border:0; box-shadow:none; margin:0; width:100%; }
         body.daily-voucher-embedded .custom_card > .card-body { padding:18px 22px !important; background:#fff !important; }
         body.daily-voucher-embedded .custom_card > .card-body > .mb-3 { margin-bottom:16px !important; }
@@ -114,7 +136,15 @@
                 // The admin layout reserves sidebar space even when hidden.
                 // Detach only the embedded entry workspace from that layout.
                 const workspace=document.querySelector('.main-content.page-content > .content-wrapper');
-                if(workspace) document.body.appendChild(workspace);
+                if(workspace) {
+                    document.body.appendChild(workspace);
+                    // Inline important beats the old global sidebar offset regardless
+                    // of stylesheet order, while the parent directory is untouched.
+                    workspace.style.setProperty('margin-left','0','important');
+                    workspace.style.setProperty('margin-right','0','important');
+                    workspace.style.setProperty('width','100%','important');
+                    workspace.style.setProperty('max-width','100%','important');
+                }
                 // Move the original buttons; do not clone them or change their save/draft handlers.
                 const footer=document.getElementById('dv-embedded-actions');
                 const save=document.getElementById('submit-button');
