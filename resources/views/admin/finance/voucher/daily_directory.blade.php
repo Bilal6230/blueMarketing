@@ -13,8 +13,11 @@
     .daily-voucher-actions{display:flex;gap:.4rem;align-items:center;white-space:nowrap}
     .daily-voucher-shortcuts{display:flex;flex-wrap:wrap;gap:.5rem}
     .daily-voucher-table-card{flex:1 1 0;min-height:0;display:flex;flex-direction:column;margin-bottom:0!important}
-    .daily-voucher-table-wrap{flex:1 1 0;min-height:0;overflow:auto}.daily-voucher-table{min-width:1250px;table-layout:fixed}
-    .daily-voucher-table th:nth-child(1){width:105px}.daily-voucher-table th:nth-child(2){width:145px}.daily-voucher-table th:nth-child(3){width:190px}.daily-voucher-table th:nth-child(4){width:220px}.daily-voucher-table th:nth-child(5){width:115px}.daily-voucher-table th:nth-child(6){width:100px}.daily-voucher-table th:nth-child(7){width:230px}.daily-voucher-table th:nth-child(8){width:220px}
+    .daily-voucher-table-wrap{flex:1 1 0;min-height:0;overflow:auto}.daily-voucher-table{min-width:1100px;table-layout:fixed}
+    .daily-voucher-table th:nth-child(1){width:96px}.daily-voucher-table th:nth-child(2){width:112px}.daily-voucher-table th:nth-child(3){width:165px}.daily-voucher-table th:nth-child(4){width:190px}.daily-voucher-table th:nth-child(5){width:105px}.daily-voucher-table th:nth-child(6){width:82px}.daily-voucher-table th:nth-child(7){width:220px}.daily-voucher-table th:nth-child(8){width:165px}
+    .daily-voucher-table td:last-child{padding:.25rem .3rem;white-space:nowrap}
+    .daily-voucher-table td:last-child .btn{padding:.2rem .32rem;font-size:.72rem;line-height:1.35;margin-right:2px}
+    .daily-voucher-table td:last-child .btn:last-child{margin-right:0}
     .daily-voucher-table thead th{position:sticky;top:0;z-index:2;background:#edf4fc}.daily-voucher-table td{vertical-align:middle}
     .daily-voucher-table thead .dv-column-filters th{top:38px;background:#fff;z-index:3;padding:.3rem}
     .daily-voucher-table thead .dv-column-filters input{min-width:72px;font-size:.75rem;padding:.25rem .4rem;height:30px}
