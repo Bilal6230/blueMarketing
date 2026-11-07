@@ -171,6 +171,15 @@ final class DailyVoucherDirectoryController extends Controller
                         'Bank passing date' => (int) ($source->payment_type ?? 0) === 2 ? $source->passing_date : null,
                         'Bank status' => (int) ($source->payment_type ?? 0) === 2 ? $source->passing_status : null,
                     ], fn ($value) => $value !== null && $value !== ''),
+                    'edit_url' => $ledgerId && auth()->user()?->can('update voucher')
+                        ? route(in_array($displayType, ['CR', 'CCR', 'BOR'], true) ? 'finance.voucher.in.method' : 'finance.voucher.out.method', [
+                            'method' => in_array((int) ($source->payment_type ?? 1), [2, 3], true)
+                                ? ((int) $source->payment_type === 3 ? 'cheque' : 'online') : 'cash',
+                            'series' => $series ?: $displayType,
+                            'edit_ledger_id' => $ledgerId,
+                            'edit_voucher_type' => (string) $source->transaction_type,
+                        ])
+                        : null,
                     'url' => $ledgerId
                         ? route('finance.voucher.print', ['id' => $ledgerId])
                         : route('finance.daily-vouchers.source.print', ['customerLedger' => $source->id]),
