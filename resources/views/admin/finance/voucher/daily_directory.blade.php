@@ -13,8 +13,8 @@
     .daily-voucher-actions{display:flex;gap:.4rem;align-items:center;white-space:nowrap}
     .daily-voucher-shortcuts{display:flex;flex-wrap:wrap;gap:.5rem}
     .daily-voucher-table-card{flex:1 1 0;min-height:0;display:flex;flex-direction:column;margin-bottom:0!important}
-    .daily-voucher-table-wrap{flex:1 1 0;min-height:0;overflow:auto}.daily-voucher-table{min-width:980px;table-layout:fixed}
-    .daily-voucher-table th:nth-child(1){width:105px}.daily-voucher-table th:nth-child(2){width:145px}.daily-voucher-table th:nth-child(3){width:190px}.daily-voucher-table th:nth-child(4){width:220px}.daily-voucher-table th:nth-child(5){width:115px}.daily-voucher-table th:nth-child(6){width:100px}.daily-voucher-table th:nth-child(7){width:230px}.daily-voucher-table th:nth-child(8){width:115px}
+    .daily-voucher-table-wrap{flex:1 1 0;min-height:0;overflow:auto}.daily-voucher-table{min-width:1250px;table-layout:fixed}
+    .daily-voucher-table th:nth-child(1){width:105px}.daily-voucher-table th:nth-child(2){width:145px}.daily-voucher-table th:nth-child(3){width:190px}.daily-voucher-table th:nth-child(4){width:220px}.daily-voucher-table th:nth-child(5){width:115px}.daily-voucher-table th:nth-child(6){width:100px}.daily-voucher-table th:nth-child(7){width:230px}.daily-voucher-table th:nth-child(8){width:220px}
     .daily-voucher-table thead th{position:sticky;top:0;z-index:2;background:#edf4fc}.daily-voucher-table td{vertical-align:middle}
     .daily-voucher-table thead .dv-column-filters th{top:38px;background:#fff;z-index:3;padding:.3rem}
     .daily-voucher-table thead .dv-column-filters input{min-width:72px;font-size:.75rem;padding:.25rem .4rem;height:30px}
@@ -110,6 +110,7 @@
     const entryFrame=document.getElementById('dv-entry-frame'), entryLoader=document.getElementById('dv-entry-loader');
     const loaderText=document.getElementById('dv-entry-loader-text'), fallback=document.getElementById('dv-entry-fallback'), entrySpinner=document.getElementById('dv-entry-spinner');
     let entryLoadTimer, entryFormCheck, requestedEntryUrl='';
+    function clearEntryTimers(){clearTimeout(entryLoadTimer);clearInterval(entryFormCheck);}
     function showEntryError(message,url=requestedEntryUrl){
         loaderText.textContent=message;
         entrySpinner.classList.add('d-none');
@@ -122,9 +123,8 @@
         requestedEntryUrl=url;
         entryLoader.classList.remove('d-none');
         entrySpinner.classList.remove('d-none'); loaderText.textContent='Loading voucher form...'; fallback.classList.add('d-none'); fallback.href=url;
-        clearInterval(entryFormCheck);
-        clearTimeout(entryLoadTimer);
-        entryLoadTimer=setTimeout(()=>{clearInterval(entryFormCheck);showEntryError('The voucher form did not load. Open it separately to view the server response.');},12000);
+        clearEntryTimers();
+        entryLoadTimer=setTimeout(()=>{clearInterval(entryFormCheck);showEntryError('The voucher form is taking too long. Open it in a new tab to see the error or continue.');},12000);
         entryFrame.src=url;
         // The embedded voucher page loads many scripts from the main layout.
         // Its window load event can be delayed even though the form is already
@@ -144,13 +144,13 @@
     }
     entryFrame.addEventListener('load',()=>{
         if(!requestedEntryUrl || entryFrame.src==='about:blank')return;
-        clearTimeout(entryLoadTimer);
-        clearInterval(entryFormCheck);
+        clearEntryTimers();
         try {
-            if(entryFrame.contentDocument?.querySelector('#voucherForm'))entryLoader.classList.add('d-none');
-            else showEntryError('Response mein voucher form nahi mila. Server response dekhne ke liye form alag tab mein kholen.');
+            const doc=entryFrame.contentDocument;
+            if(doc?.querySelector('#voucherForm'))entryLoader.classList.add('d-none');
+            else showEntryError('Voucher form is unavailable (permission denied, redirect, or server error). Open the form in a new tab to see the response.');
         } catch(error) {
-            showEntryError('Voucher form ka response read nahi ho saka. Form alag tab mein kholen.');
+            showEntryError('Cannot access the voucher form inside this window. Open the form in a new tab.');
         }
     });
     document.querySelectorAll('.dv-create').forEach(button=>button.addEventListener('click',()=>{
@@ -172,12 +172,19 @@
     document.getElementById('dv-create-voucher').addEventListener('click',()=>{
         const selected=document.getElementById('dv-type').value;
         const seriesMap={CR:'CR',DR:'DR',CP:'DR',CCR:'CCR',CDR:'CDR',BOR:'BOR',BOP:'BOP'};
-        const series=seriesMap[selected] || 'CR';
-        const target=document.querySelector(`.dv-create[data-series="${series}"]`);
-        if(!target){showEntryError('No entry form is configured for this voucher type.');if(window.jQuery)window.jQuery('#dv-entry-modal').modal('show');return;}
+        const series=seriesMap[selected];
+        const target=series ? document.querySelector(`.dv-create[data-series="${series}"]`) : null;
+        if(!target){
+            requestedEntryUrl='';
+            entryFrame.src='about:blank';
+            showEntryError('This voucher type uses a separate entry workflow. Use its dedicated page to create a voucher.', '');
+            fallback.classList.add('d-none');
+            if(window.jQuery)window.jQuery('#dv-entry-modal').modal('show');
+            return;
+        }
         target.click();
     });
-    if(window.jQuery){window.jQuery('#dv-entry-modal').on('hidden.bs.modal',()=>{clearTimeout(entryLoadTimer);clearInterval(entryFormCheck);requestedEntryUrl='';entryLoader.classList.add('d-none');entryFrame.src='about:blank';});}
+    if(window.jQuery){window.jQuery('#dv-entry-modal').on('hidden.bs.modal',()=>{clearEntryTimers();requestedEntryUrl='';entryLoader.classList.add('d-none');entryFrame.src='about:blank';});}
     window.addEventListener('message',event=>{
         if(event.origin!==window.location.origin||event.data?.type!=='daily-voucher-saved')return;
         if(window.jQuery)window.jQuery('#dv-entry-modal').modal('hide');
