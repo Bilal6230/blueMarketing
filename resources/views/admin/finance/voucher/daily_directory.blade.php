@@ -105,6 +105,24 @@
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
             </div>
             <div class="modal-body p-0">
+                <div id="dv-entry-choose" class="p-4 d-none">
+                    <label for="dv-entry-type" class="font-weight-bold mb-2">Choose voucher type</label>
+                    <select id="dv-entry-type" class="form-control" aria-label="Choose a voucher to create">
+                        <option value="">Select voucher type</option>
+                        <option value="CR">Credit Voucher (CR)</option>
+                        <option value="DR">Debit Voucher (DR)</option>
+                        <option value="CCR">Cash Credit (CCR)</option>
+                        <option value="CDR">Cash Debit (CDR)</option>
+                        <option value="BOR">Bank Credit (BOR)</option>
+                        <option value="BOP">Bank Debit (BOP)</option>
+                        <option value="JV">Journal Voucher (JV)</option>
+                        <option value="CV">Commission Voucher (CV)</option>
+                        <option value="PR">Plot Receive Payment (PR)</option>
+                        <option value="PP">Plot Purchase Voucher (PP)</option>
+                        <option value="BD">Bank Deposit (BD)</option>
+                        <option value="BW">Bank Withdrawal (BW)</option>
+                    </select>
+                </div>
                 <div id="dv-entry-error" class="alert alert-danger m-3 d-none" role="alert">
                     <span id="dv-entry-error-text"></span>
                     <a id="dv-entry-fallback" class="alert-link ml-2" target="_blank" rel="noopener">Open voucher form</a>
@@ -128,7 +146,7 @@
             const response=await fetch(@json(route('finance.daily-vouchers.data'))+'?'+params.toString(),{headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}});
             if(!response.ok) throw new Error('Unable to load voucher history.');
             const result=await response.json(); filtered=Number(result.recordsFiltered||0);
-            body.innerHTML=result.data.length?result.data.map(row=>`<tr><td>${esc(row.date)}</td><td class="font-weight-bold">${esc(row.number)}</td><td>${esc(row.reference)||'—'}</td><td>${esc(row.account)||'—'}</td><td class="text-right">${Number(row.amount||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td>${esc(row.status)}</td><td class="text-truncate" style="max-width:260px" title="${esc(row.detail)}">${esc(row.detail)||'—'}</td><td class="text-nowrap"><button type="button" class="btn btn-sm btn-outline-secondary dv-details" data-row="${esc(JSON.stringify(row))}">Details</button> ${row.edit_url?`<a class="btn btn-sm btn-outline-primary" href="${esc(row.edit_url)}"><i class="fas fa-edit"></i> Edit</a>`:''} ${row.delete_url?`<button type="button" class="btn btn-sm btn-outline-danger dv-delete" data-url="${esc(row.delete_url)}" data-number="${esc(row.number)}"><i class="fas fa-trash-alt"></i> Delete</button>`:''} ${row.url?`<a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" href="${esc(row.url)}" aria-label="Print ${esc(row.number)}"><i class="fas fa-print"></i></a>`:'<span class="small text-muted">—</span>'}</td></tr>`).join(''):'<tr><td colspan="8" class="text-center text-muted p-4">No vouchers match these filters.</td></tr>';
+            body.innerHTML=result.data.length?result.data.map(row=>`<tr><td>${esc(row.date)}</td><td class="font-weight-bold">${esc(row.number)}</td><td>${esc(row.reference)||'—'}</td><td>${esc(row.account)||'—'}</td><td class="text-right">${Number(row.amount||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td>${esc(row.status)}</td><td class="text-truncate" style="max-width:260px" title="${esc(row.detail)}">${esc(row.detail)||'—'}</td><td class="text-nowrap"><button type="button" class="btn btn-sm btn-outline-secondary dv-details" data-row="${esc(JSON.stringify(row))}">Details</button> ${row.edit_url?`<a class="btn btn-sm btn-outline-primary" href="${esc(row.edit_url)}" title="Edit voucher" aria-label="Edit voucher ${esc(row.number)}"><i class="fas fa-edit" aria-hidden="true"></i></a>`:''} ${row.delete_url?`<button type="button" class="btn btn-sm btn-outline-danger dv-delete" title="Delete voucher" aria-label="Delete voucher ${esc(row.number)}" data-url="${esc(row.delete_url)}" data-number="${esc(row.number)}"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>`:''} ${row.url?`<a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" href="${esc(row.url)}" aria-label="Print ${esc(row.number)}"><i class="fas fa-print"></i></a>`:'<span class="small text-muted">—</span>'}</td></tr>`).join(''):'<tr><td colspan="8" class="text-center text-muted p-4">No vouchers match these filters.</td></tr>';
         } catch(error){body.innerHTML=`<tr><td colspan="8" class="text-center text-danger p-4">${esc(error.message)}</td></tr>`;}
         finally{wrap.classList.remove('daily-voucher-loading');}
     }
@@ -176,47 +194,61 @@
             showEntryError('Voucher form is blocked inside the modal. Open it in a separate tab.');
         }
     });
-    document.querySelectorAll('.dv-create').forEach(button=>button.addEventListener('click',()=>{
+    const entryChoose=document.getElementById('dv-entry-choose');
+    const entryType=document.getElementById('dv-entry-type');
+    const methodWrap=document.getElementById('dv-bank-method-wrap');
+    const seriesMap={CR:'CR',DR:'DR',CP:'DR',CCR:'CCR',CDR:'CDR',BOR:'BOR',BOP:'BOP'};
+    const dedicatedRoutes={
+        JV:@json(route('journal.voucher.create')),
+        CV:@json(route('commision.voucher.create')),
+        PR:@json(route('finance.voucher.plot-receipt.workspace')),
+        PP:@json(route('finance.voucher.plot-purchase.workspace')),
+        PPR:@json(route('finance.voucher.plot-receipt.workspace')),
+        BD:@json(route('finance.voucher.transfer.workspace',['kind'=>'deposit'])),
+        BW:@json(route('finance.voucher.transfer.workspace',['kind'=>'withdrawal']))
+    };
+    function chooseVoucher(){
+        requestedEntryUrl='';
+        entryFrame.src='about:blank';
+        entryFrame.style.display='none';
+        entryFrame.style.visibility='hidden';
+        entryError.classList.add('d-none');
+        methodWrap.classList.add('d-none');
+        entryType.value='';
+        entryChoose.classList.remove('d-none');
+        document.getElementById('dv-entry-title').textContent='New voucher';
+        if(window.jQuery)window.jQuery('#dv-entry-modal').modal('show');
+    }
+    function openVoucherType(selected){
+        if(dedicatedRoutes[selected]){
+            window.location.assign(dedicatedRoutes[selected]);
+            return;
+        }
+        const series=seriesMap[selected];
+        const button=series ? document.querySelector(`.dv-create[data-series="${series}"]`) : null;
+        if(!button){chooseVoucher();return;}
+        entryChoose.classList.add('d-none');
+        entryFrame.style.display='block';
         document.getElementById('dv-entry-title').textContent=button.dataset.title;
-        const methodWrap=document.getElementById('dv-bank-method-wrap');
         methodWrap.classList.toggle('d-none',!button.dataset.chequeUrl);
         document.getElementById('dv-bank-method').value='online';
         methodWrap.dataset.onlineUrl=button.dataset.url;
         methodWrap.dataset.chequeUrl=button.dataset.chequeUrl;
         loadEntry(button.dataset.url);
         if(window.jQuery)window.jQuery('#dv-entry-modal').modal('show');
-    }));
+    }
+    entryType.addEventListener('change',event=>{
+        if(event.target.value)openVoucherType(event.target.value);
+    });
     document.getElementById('dv-bank-method').addEventListener('change',event=>{
-        const methodWrap=document.getElementById('dv-bank-method-wrap');
         loadEntry(event.target.value==='cheque'?methodWrap.dataset.chequeUrl:methodWrap.dataset.onlineUrl);
     });
     document.getElementById('dv-create-voucher').addEventListener('click',()=>{
         const selected=document.getElementById('dv-type').value;
-        const seriesMap={CR:'CR',DR:'DR',CP:'DR',CCR:'CCR',CDR:'CDR',BOR:'BOR',BOP:'BOP'};
-        const dedicatedRoutes={
-            JV:@json(route('journal.voucher.create')),
-            CV:@json(route('commision.voucher.create')),
-            PR:@json(route('finance.voucher.plot-receipt.workspace')),
-            PP:@json(route('finance.voucher.plot-purchase.workspace')),
-            PPR:@json(route('finance.voucher.plot-receipt.workspace')),
-            BD:@json(route('finance.voucher.transfer.workspace',['kind'=>'deposit'])),
-            BW:@json(route('finance.voucher.transfer.workspace',['kind'=>'withdrawal']))
-        };
-        if(dedicatedRoutes[selected]){
-            window.location.assign(dedicatedRoutes[selected]);
-            return;
-        }
-        const series=seriesMap[selected];
-        const target=series ? document.querySelector(`.dv-create[data-series="${series}"]`) : null;
-        if(!target){
-            loadEntry('');
-            showEntryError('This voucher type uses a separate entry workflow. Use its dedicated page to create a voucher.', '');
-            if(window.jQuery)window.jQuery('#dv-entry-modal').modal('show');
-            return;
-        }
-        target.click();
+        if(!selected || (!seriesMap[selected] && !dedicatedRoutes[selected]))chooseVoucher();
+        else openVoucherType(selected);
     });
-    if(window.jQuery){window.jQuery('#dv-entry-modal').on('hidden.bs.modal',()=>{requestedEntryUrl='';entryError.classList.add('d-none');entryFrame.style.visibility='hidden';entryFrame.src='about:blank';});}
+    if(window.jQuery){window.jQuery('#dv-entry-modal').on('hidden.bs.modal',()=>{requestedEntryUrl='';entryError.classList.add('d-none');entryChoose.classList.add('d-none');entryFrame.style.visibility='hidden';entryFrame.src='about:blank';});}
     window.addEventListener('message',event=>{
         if(event.origin!==window.location.origin || event.source!==entryFrame.contentWindow)return;
         if(event.data?.type==='daily-voucher-form-ready'){
