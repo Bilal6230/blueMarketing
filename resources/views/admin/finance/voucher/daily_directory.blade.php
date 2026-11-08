@@ -264,7 +264,7 @@
             filtered=Number(result.recordsFiltered||0);
             total=Number(result.recordsTotal||0);
             renderPagination();
-            body.innerHTML=result.data.length?result.data.map((row,index)=>`<tr><td>${start+index+1}</td><td>${esc(row.date)}</td><td class="font-weight-bold">${esc(row.number)}</td><td>${esc(row.head)||'—'}</td><td>${esc(row.subhead)||'—'}</td><td class="text-truncate" style="max-width:420px" title="${esc(row.detail)}">${esc(row.detail)||'—'}</td><td class="text-right">${Number(row.amount||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td class="text-nowrap"><button type="button" class="btn btn-sm btn-outline-secondary dv-details" data-row="${esc(JSON.stringify(row))}">Details</button> ${row.edit_url?`<button type="button" class="btn btn-sm btn-outline-primary dv-edit" data-url="${esc(row.edit_url)}" data-number="${esc(row.number)}" title="Edit voucher" aria-label="Edit voucher ${esc(row.number)}"><i class="fas fa-edit" aria-hidden="true"></i></button>`:''} ${row.delete_url?`<button type="button" class="btn btn-sm btn-outline-danger dv-delete" title="Delete voucher" aria-label="Delete voucher ${esc(row.number)}" data-url="${esc(row.delete_url)}" data-number="${esc(row.number)}"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>`:''} ${row.url?`<a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" href="${esc(row.url)}" aria-label="Print ${esc(row.number)}"><i class="fas fa-print"></i></a>`:'<span class="small text-muted">—</span>'}</td></tr>`).join(''):'<tr><td colspan="8" class="text-center text-muted p-4">No vouchers match these filters.</td></tr>';
+            body.innerHTML=result.data.length?result.data.map((row,index)=>`<tr><td>${start+index+1}</td><td>${esc(row.date)}</td><td class="font-weight-bold">${esc(row.number)}</td><td>${esc(row.head)||'—'}</td><td>${esc(row.subhead)||'—'}</td><td class="text-truncate" style="max-width:420px" title="${esc(row.detail)}">${esc(row.detail)||'—'}</td><td class="text-right">${Number(row.amount||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td class="text-nowrap"><button type="button" class="btn btn-sm btn-outline-secondary dv-details" data-row="${esc(JSON.stringify(row))}">Details</button> ${row.edit_url?`<button type="button" class="btn btn-sm btn-outline-primary dv-edit" data-url="${esc(row.edit_url)}" data-number="${esc(row.number)}" title="Edit voucher" aria-label="Edit voucher ${esc(row.number)}"><i class="fas fa-edit" aria-hidden="true"></i></button>`:''} ${row.delete_url?`<button type="button" class="btn btn-sm btn-outline-danger dv-delete" title="Delete voucher" aria-label="Delete voucher ${esc(row.number)}" data-url="${esc(row.delete_url)}" data-id="${esc(row.delete_id||'')}" data-number="${esc(row.number)}"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>`:''} ${row.url?`<a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" href="${esc(row.url)}" aria-label="Print ${esc(row.number)}"><i class="fas fa-print"></i></a>`:'<span class="small text-muted">—</span>'}</td></tr>`).join(''):'<tr><td colspan="8" class="text-center text-muted p-4">No vouchers match these filters.</td></tr>';
         } catch(error){
             if(requestId!==activeRequest)return;
             body.innerHTML=`<tr><td colspan="8" class="text-center text-danger p-4">${esc(error.message)}</td></tr>`;
@@ -426,24 +426,36 @@
         loadEntry(url.toString(),'edit');
         if(window.jQuery)window.jQuery('#dv-entry-modal').modal('show');
     });
-    body.addEventListener('click',event=>{
+    body.addEventListener('click',async event=>{
         const button=event.target.closest('.dv-delete');
         if(!button)return;
-        const reason=window.prompt('Reason for reversing/deleting voucher '+button.dataset.number+' (required):');
+        const reason=window.prompt('Reason for deactivating '+button.dataset.number+' (required):');
         if(!reason || !reason.trim())return;
-        if(reason.trim().length>200){window.alert('Reason cannot exceed 200 characters.');return;}
-        const effectiveDate=window.prompt('Effective reversal date (YYYY-MM-DD):',new Date().toISOString().slice(0,10));
-        if(!effectiveDate || !/^\\d{4}-\\d{2}-\\d{2}$/.test(effectiveDate)){window.alert('Enter a valid date in YYYY-MM-DD format.');return;}
-        if(!window.confirm('Confirm reversal request for '+button.dataset.number+'? The finance workflow may create reversing ledger entries.'))return;
-        const deletion=document.createElement('form');
-        deletion.method='POST';
-        deletion.action=button.dataset.url;
-        deletion.style.display='none';
-        const requestKey=window.crypto?.randomUUID ? window.crypto.randomUUID().replace(/-/g,'') : String(Date.now())+String(Math.random()).slice(2);
-        for(const [name,value] of [['_token',@json(csrf_token())],['_method','DELETE'],['reason',reason.trim()],['effective_date',effectiveDate],['request_key',requestKey]]){
-            const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;deletion.appendChild(input);
+        if(reason.trim().length>500){window.alert('Reason cannot exceed 500 characters.');return;}
+        if(!window.confirm('Deactivate '+button.dataset.number+'? No ledger record will be physically deleted.'))return;
+        // JV/CV use their independent authorized reversal workflow.
+        if(!button.dataset.id){
+            const deletion=document.createElement('form');deletion.method='POST';deletion.action=button.dataset.url;
+            for(const [name,value] of [['_token',@json(csrf_token())],['_method','DELETE'],['reason',reason.trim()],['effective_date',new Date().toISOString().slice(0,10)],['request_key',String(Date.now())]]){
+                const field=document.createElement('input');field.type='hidden';field.name=name;field.value=value;deletion.appendChild(field);
+            }
+            document.body.appendChild(deletion);deletion.submit();return;
         }
-        document.body.appendChild(deletion);deletion.submit();
+        button.disabled=true;
+        try{
+            const formData=new URLSearchParams();
+            formData.set('_token',@json(csrf_token()));formData.set('_method','DELETE');
+            formData.set('id',button.dataset.id);formData.set('delete_reason',reason.trim());
+            const response=await fetch(button.dataset.url,{
+                method:'POST',credentials:'same-origin',
+                headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest','Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+                body:formData.toString()
+            });
+            const payload=await response.json().catch(()=>({}));
+            if(!response.ok)throw new Error(payload.message||'Unable to deactivate voucher.');
+            start=Math.max(0,start-length);load();
+        }catch(error){window.alert(error.message||'Unable to deactivate voucher.');}
+        finally{button.disabled=false;}
     });
     body.addEventListener('click',event=>{
         const button=event.target.closest('.dv-details'); if(!button)return;
