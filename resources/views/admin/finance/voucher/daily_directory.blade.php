@@ -1,4 +1,5 @@
 @extends('admin.layouts.master')
+@section('title', $presetType ? $presetType.' Vouchers' : 'Voucher Directory')
 
 @section('content')
 <style>
@@ -9,6 +10,19 @@
     .daily-voucher-page>.content{flex:1 1 auto;min-height:0;overflow:hidden;padding:0}
     .daily-voucher-page>.content>.container-fluid{height:100%;min-height:0;display:flex;flex-direction:column;padding:0}
     .daily-voucher-card{border:0;border-radius:14px;box-shadow:0 8px 24px rgba(16,36,64,.08);overflow:hidden}
+    /* Applied only to the selected voucher directory, never to the global sidebar. */
+    .daily-voucher-page{--dv-accent:#2463eb;--dv-pale:#eff5ff}
+    .daily-voucher-page.dv-theme-credit{--dv-accent:#128044;--dv-pale:#e9f8ef}
+    .daily-voucher-page.dv-theme-debit{--dv-accent:#bd3140;--dv-pale:#fff0f1}
+    .daily-voucher-page .content-header h1{color:var(--dv-accent);font-weight:650}
+    .daily-voucher-page .daily-voucher-card{border-top:3px solid var(--dv-accent)}
+    .daily-voucher-page .daily-voucher-table thead tr:first-child th{background:var(--dv-pale);border-bottom:2px solid var(--dv-accent)}
+    .daily-voucher-page .daily-voucher-actions .btn-primary,.daily-voucher-page .daily-voucher-actions .btn-success{background:var(--dv-accent);border-color:var(--dv-accent);color:#fff}
+    .daily-voucher-page .daily-voucher-actions .btn:hover{filter:brightness(.93)}
+    .daily-voucher-page .daily-voucher-table td:nth-child(2){color:var(--dv-accent)}
+    #dv-entry-loading{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;gap:.75rem;background:#fff;color:#48556b}
+    #dv-entry-loading.d-none{display:none!important}
+    #dv-entry-loading .spinner-border{width:1.4rem;height:1.4rem;border-width:.18em}
     .daily-voucher-filters{display:grid;grid-template-columns:repeat(5,minmax(115px,1fr)) auto;gap:.6rem;align-items:end}
     .daily-voucher-actions{display:flex;gap:.4rem;align-items:center;white-space:nowrap}
     .daily-voucher-shortcuts{display:flex;flex-wrap:wrap;gap:.5rem}
@@ -29,7 +43,7 @@
     @media(max-width:900px){.daily-voucher-filters{grid-template-columns:repeat(2,minmax(130px,1fr))}.daily-voucher-actions{grid-column:1/-1;justify-content:flex-end}}
     @media(max-width:520px){.daily-voucher-filters{grid-template-columns:1fr}.daily-voucher-page .daily-voucher-actions{grid-column:1;justify-content:flex-end}.content-wrapper.daily-voucher-page{padding:.35rem!important}}
 </style>
-<div class="content-wrapper daily-voucher-page">
+<div class="content-wrapper daily-voucher-page {{ in_array($presetType, ['CR','CCR','BOR'], true) ? 'dv-theme-credit' : (in_array($presetType, ['DR','CDR','BOP','CP'], true) ? 'dv-theme-debit' : '') }}" id="dv-page">
     <section class="content-header"><div class="container-fluid d-flex justify-content-between align-items-center">
         <div>
             <h1 class="h3 mb-1">
@@ -104,7 +118,8 @@
                 </div>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
             </div>
-            <div class="modal-body p-0">
+            <div class="modal-body p-0 position-relative">
+                <div id="dv-entry-loading" class="d-none" role="status" aria-live="polite"><span class="spinner-border text-primary" aria-hidden="true"></span><span>Loading voucher form...</span></div>
                 <div id="dv-entry-choose" class="p-4 d-none">
                     <label for="dv-entry-type" class="font-weight-bold mb-2">Choose voucher type</label>
                     <select id="dv-entry-type" class="form-control" aria-label="Choose a voucher to create">
@@ -160,12 +175,26 @@
     const entryError=document.getElementById('dv-entry-error');
     const entryErrorText=document.getElementById('dv-entry-error-text');
     const fallback=document.getElementById('dv-entry-fallback');
+    const entryLoading=document.getElementById('dv-entry-loading');
+    const dvPage=document.getElementById('dv-page');
+    const voucherTypeLabels={CR:'Credit Voucher (CR)',DR:'Debit Voucher (DR)',CCR:'Cash Credit (CCR)',CDR:'Cash Debit (CDR)',BOR:'Bank Credit (BOR)',BOP:'Bank Debit (BOP)'};
+    function updateDirectoryTheme(type){
+        dvPage.classList.toggle('dv-theme-credit',['CR','CCR','BOR'].includes(type));
+        dvPage.classList.toggle('dv-theme-debit',['DR','CDR','BOP','CP'].includes(type));
+        const heading=dvPage.querySelector('.content-header h1');
+        const label=type ? type+' Vouchers' : 'Voucher Directory';
+        if(heading)heading.textContent=label;
+        document.title=label+' - '+@json(Setting::getValue('app_name'));
+    }
+    document.getElementById('dv-type').addEventListener('change',event=>updateDirectoryTheme(event.target.value));
     let requestedEntryUrl='';
     function revealEntry(){
         if(!requestedEntryUrl)return;
         entryFrame.style.visibility='visible';
+        entryLoading.classList.add('d-none');
     }
     function showEntryError(message,url=requestedEntryUrl){
+        entryLoading.classList.add('d-none');
         entryFrame.style.visibility='hidden';
         entryErrorText.textContent=message;
         fallback.href=url||'#';
@@ -174,6 +203,7 @@
     }
     function loadEntry(url){
         requestedEntryUrl=url;
+        entryLoading.classList.toggle('d-none',!url);
         entryFrame.style.visibility='hidden';
         entryError.classList.add('d-none');
         entryFrame.src=url||'about:blank';
@@ -209,6 +239,7 @@
     };
     function chooseVoucher(){
         requestedEntryUrl='';
+        entryLoading.classList.add('d-none');
         entryFrame.src='about:blank';
         entryFrame.style.display='none';
         entryFrame.style.visibility='hidden';
@@ -248,7 +279,7 @@
         if(!selected || (!seriesMap[selected] && !dedicatedRoutes[selected]))chooseVoucher();
         else openVoucherType(selected);
     });
-    if(window.jQuery){window.jQuery('#dv-entry-modal').on('hidden.bs.modal',()=>{requestedEntryUrl='';entryError.classList.add('d-none');entryChoose.classList.add('d-none');entryFrame.style.visibility='hidden';entryFrame.src='about:blank';});}
+    if(window.jQuery){window.jQuery('#dv-entry-modal').on('hidden.bs.modal',()=>{requestedEntryUrl='';entryLoading.classList.add('d-none');entryError.classList.add('d-none');entryChoose.classList.add('d-none');entryFrame.style.visibility='hidden';entryFrame.src='about:blank';});}
     window.addEventListener('message',event=>{
         if(event.origin!==window.location.origin || event.source!==entryFrame.contentWindow)return;
         if(event.data?.type==='daily-voucher-form-ready'){
