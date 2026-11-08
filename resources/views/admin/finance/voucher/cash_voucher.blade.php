@@ -3373,8 +3373,8 @@
                                     @can('delete voucher')
                                         buttons +=
                                             `
-                                                                                                                            <button class="btn btn-sm btn-danger btn-delete" data-id="${row.id}">
-                                                                                                                                <i class="fas fa-trash"></i>
+                                                                                                                            <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="Posted vouchers cannot be deleted. Use the authorized reversal workflow." aria-label="Posted voucher deletion unavailable">
+                                                                                                                                <i class="fas fa-trash" aria-hidden="true"></i>
                                                                                                                             </button>
                                                                                                                         `;
                                     @endcan
