@@ -1023,41 +1023,79 @@ class LedgerController extends Controller
 
     public function destroy(Request $request)
     {
-        // Posted financial ledger entries must remain immutable. Reversals must
-        // be handled by a separate authorized, auditable workflow.
-        $selectedProjectId = getSelectedTown();
-        $ledger = Ledger::query()
-            ->whereKey($request->input('id'))
-            ->whereHas('projectHeadSubhead', fn ($query) => $query->where('project_id', $selectedProjectId))
-            ->first();
-
+        // Administrative soft-deactivation: preserve the posted voucher and
+        // all of its accounting rows. A linked source must be inactive too,
+        // otherwise customer-ledger reports would retain an active posting.
+        $validated = $request->validate([
+            'id' => ['required', 'integer', 'min:1'],
+            'delete_reason' => ['required', 'string', 'max:500'],
+        ]);
+        $projectId = (int) getSelectedTown();
+        abort_if($projectId < 1, 403, 'Select a project first.');
         $expectsJson = $request->expectsJson() || $request->ajax();
 
-        if (!$ledger) {
-            if ($expectsJson) {
-                return response()->json([
-                    'status' => 'error',
-                    'error_key' => 'not_found',
-                    'message' => 'Voucher not found for the selected project.',
-                ], 404);
-            }
+        try {
+            $changed = DB::transaction(function () use ($validated, $projectId): bool {
+                $ledger = Ledger::query()->whereKey((int) $validated['id'])
+                    ->whereIn('type', ['CR', 'CP'])
+                    ->whereHas('projectHeadSubhead', fn ($query) => $query->where('project_id', $projectId))
+                    ->lockForUpdate()->firstOrFail();
 
-            Alert::error('Notification', 'Voucher not found for the selected project.')->toToast()->toHtml();
+                if ((int) $ledger->is_active === 0) return false;
+
+                $reason = trim((string) $validated['delete_reason']);
+                if ($ledger->customer_ledger_id !== null) {
+                    $source = \App\Models\CustomerLedger::query()
+                        ->whereKey((int) $ledger->customer_ledger_id)
+                        ->where('project_id', $projectId)
+                        ->where('transaction_type', $ledger->type)
+                        ->lockForUpdate()->firstOrFail();
+
+                    // A voucher's linked accounting legs must be deactivated
+                    // together, never just one side of a multi-leg posting.
+                    $linked = Ledger::query()->where('customer_ledger_id', $source->id)
+                        ->lockForUpdate()->get();
+                    if ($linked->isEmpty()) {
+                        throw new \DomainException('Voucher accounting legs were not found.');
+                    }
+                    foreach ($linked as $leg) {
+                        if (!$leg->projectHeadSubhead || (int) $leg->projectHeadSubhead->project_id !== $projectId) {
+                            throw new \DomainException('Voucher contains a ledger entry outside this project.');
+                        }
+                        if ((int) $leg->is_active === 1) {
+                            $leg->is_active = 0;
+                            $leg->delete_reason = $reason;
+                            $leg->update_by = auth()->id();
+                            $leg->save();
+                        }
+                    }
+                    if ((int) $source->is_active === 1) {
+                        $source->is_active = 0;
+                        $source->delete_reason = $reason;
+                        $source->save();
+                    }
+                } else {
+                    $ledger->is_active = 0;
+                    $ledger->delete_reason = $reason;
+                    $ledger->update_by = auth()->id();
+                    $ledger->save();
+                }
+                return true;
+            });
+
+            $message = $changed ? 'Voucher deactivated successfully. No ledger rows were deleted.' : 'Voucher is already inactive.';
+            if ($expectsJson) return response()->json(['status' => 'success', 'message' => $message]);
+            Alert::success('Voucher Updated', $message)->toToast()->toHtml();
+            return back();
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
+            if ($expectsJson) return response()->json(['status' => 'error', 'message' => 'Voucher not found in this project.'], 404);
+            Alert::error('Voucher not found', 'Voucher not found in this project.')->toToast()->toHtml();
+            return back();
+        } catch (\DomainException $exception) {
+            if ($expectsJson) return response()->json(['status' => 'error', 'message' => $exception->getMessage()], 422);
+            Alert::error('Cannot deactivate', $exception->getMessage())->toToast()->toHtml();
             return back();
         }
-
-        if ($expectsJson) {
-            return response()->json([
-                'status' => 'error',
-                'error_key' => 'voucher_posted_to_ledger',
-                'message' => 'Cannot delete this voucher because it has already been posted to the ledger.',
-            ], 422);
-        }
-
-        Alert::warning('Cannot Delete', 'Cannot delete this voucher because it has already been posted to the ledger.')
-            ->toToast()->toHtml();
-
-        return back();
     }
 
     public function draftDestroy(Request $request)
