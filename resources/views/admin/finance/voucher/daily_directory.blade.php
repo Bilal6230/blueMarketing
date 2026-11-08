@@ -19,7 +19,7 @@
     .daily-voucher-page .daily-voucher-table thead tr:first-child th{background:var(--dv-pale);border-bottom:2px solid var(--dv-accent)}
     .daily-voucher-page .daily-voucher-actions .btn-primary,.daily-voucher-page .daily-voucher-actions .btn-success{background:var(--dv-accent);border-color:var(--dv-accent);color:#fff}
     .daily-voucher-page .daily-voucher-actions .btn:hover{filter:brightness(.93)}
-    .daily-voucher-page .daily-voucher-table td:nth-child(2){color:var(--dv-accent)}
+    .daily-voucher-page .daily-voucher-table td:nth-child(3){color:var(--dv-accent)}
     .daily-voucher-page.dv-theme-credit,.daily-voucher-page.dv-theme-debit{background:var(--dv-pale)!important}
     .daily-voucher-page .daily-voucher-card{background:color-mix(in srgb,var(--dv-pale) 18%,white)}
     .daily-voucher-page #dv-type{background-color:var(--dv-pale);border:1px solid var(--dv-accent);color:var(--dv-accent);font-weight:600}
@@ -49,8 +49,8 @@
     .daily-voucher-table-wrap{flex:1 1 0;min-height:0;overflow:auto}.daily-voucher-table{min-width:1100px;table-layout:fixed}
     /* Fixed column tracks prevent spare table width from enlarging Actions. Details absorbs the rest. */
     .daily-voucher-table{width:100%}
-    .daily-voucher-table col.dv-col-actions{width:170px}
-    .daily-voucher-table th:last-child,.daily-voucher-table td:last-child{width:170px;max-width:170px}
+    .daily-voucher-table col.dv-col-actions{width:148px}
+    .daily-voucher-table th:last-child,.daily-voucher-table td:last-child{width:148px;max-width:148px}
     .daily-voucher-table td:last-child{padding:.25rem .3rem;white-space:nowrap}
     .daily-voucher-table td:last-child .btn{padding:.2rem .32rem;font-size:.72rem;line-height:1.35;margin-right:2px}
     .daily-voucher-table td:last-child .btn:last-child{margin-right:0}
@@ -120,11 +120,12 @@
                 <label for="dv-table-search">Search: <input id="dv-table-search" class="form-control form-control-sm" type="search" placeholder="Search vouchers" autocomplete="off"></label>
             </div>
             <div class="daily-voucher-table-wrap" id="dv-table-wrap"><table class="table table-sm table-hover mb-0 daily-voucher-table">
-                <colgroup><col style="width:96px"><col style="width:112px"><col style="width:165px"><col style="width:190px"><col style="width:105px"><col style="width:82px"><col><col class="dv-col-actions"></colgroup>
+                <colgroup><col style="width:48px"><col style="width:100px"><col style="width:125px"><col style="width:160px"><col style="width:180px"><col><col style="width:115px"><col class="dv-col-actions"></colgroup>
                 <thead>
-                <tr><th class="dv-sortable" data-sort="date" tabindex="0" role="button">Date<span class="dv-sort-indicator">↕</span></th><th class="dv-sortable" data-sort="number" tabindex="0" role="button">Voucher #<span class="dv-sort-indicator">↕</span></th><th class="dv-sortable" data-sort="reference" tabindex="0" role="button">Reference<span class="dv-sort-indicator">↕</span></th><th class="dv-sortable" data-sort="account" tabindex="0" role="button">Account / Customer<span class="dv-sort-indicator">↕</span></th><th class="dv-sortable text-right" data-sort="amount" tabindex="0" role="button">Amount<span class="dv-sort-indicator">↕</span></th><th class="dv-sortable" data-sort="status" tabindex="0" role="button">Status<span class="dv-sort-indicator">↕</span></th><th class="dv-sortable" data-sort="detail" tabindex="0" role="button">Details<span class="dv-sort-indicator">↕</span></th><th>Actions</th></tr>
+                <tr><th>#</th><th class="dv-sortable" data-sort="date" tabindex="0" role="button">Date<span class="dv-sort-indicator">↕</span></th><th class="dv-sortable" data-sort="number" tabindex="0" role="button">Voucher #<span class="dv-sort-indicator">↕</span></th><th class="dv-sortable" data-sort="head" tabindex="0" role="button">Head<span class="dv-sort-indicator">↕</span></th><th class="dv-sortable" data-sort="subhead" tabindex="0" role="button">Sub Head<span class="dv-sort-indicator">↕</span></th><th class="dv-sortable" data-sort="detail" tabindex="0" role="button">Details<span class="dv-sort-indicator">↕</span></th><th class="dv-sortable text-right" data-sort="amount" tabindex="0" role="button">Amount<span class="dv-sort-indicator">↕</span></th><th>Actions</th></tr>
                 <tr class="dv-column-filters">
-                    @foreach(['date'=>'Date','number'=>'Voucher #','reference'=>'Reference','account'=>'Account / Customer','amount'=>'Amount','status'=>'Status','detail'=>'Details'] as $key=>$label)
+                    <th></th>
+                    @foreach(['date'=>'Date','number'=>'Voucher #','head'=>'Head','subhead'=>'Sub Head','detail'=>'Details','amount'=>'Amount'] as $key=>$label)
                         <th><input type="search" class="form-control form-control-sm dv-column-filter" data-column="{{$key}}" aria-label="Filter {{$label}}" placeholder="Filter"></th>
                     @endforeach
                     <th></th>
@@ -263,7 +264,7 @@
             filtered=Number(result.recordsFiltered||0);
             total=Number(result.recordsTotal||0);
             renderPagination();
-            body.innerHTML=result.data.length?result.data.map(row=>`<tr><td>${esc(row.date)}</td><td class="font-weight-bold">${esc(row.number)}</td><td>${esc(row.reference)||'—'}</td><td>${esc(row.account)||'—'}</td><td class="text-right">${Number(row.amount||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td>${esc(row.status)}</td><td class="text-truncate" style="max-width:260px" title="${esc(row.detail)}">${esc(row.detail)||'—'}</td><td class="text-nowrap"><button type="button" class="btn btn-sm btn-outline-secondary dv-details" data-row="${esc(JSON.stringify(row))}">Details</button> ${row.edit_url?`<button type="button" class="btn btn-sm btn-outline-primary dv-edit" data-url="${esc(row.edit_url)}" data-number="${esc(row.number)}" title="Edit voucher" aria-label="Edit voucher ${esc(row.number)}"><i class="fas fa-edit" aria-hidden="true"></i></button>`:''} ${row.delete_url?`<button type="button" class="btn btn-sm btn-outline-danger dv-delete" title="Delete voucher" aria-label="Delete voucher ${esc(row.number)}" data-url="${esc(row.delete_url)}" data-number="${esc(row.number)}"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>`:''} ${row.url?`<a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" href="${esc(row.url)}" aria-label="Print ${esc(row.number)}"><i class="fas fa-print"></i></a>`:'<span class="small text-muted">—</span>'}</td></tr>`).join(''):'<tr><td colspan="8" class="text-center text-muted p-4">No vouchers match these filters.</td></tr>';
+            body.innerHTML=result.data.length?result.data.map((row,index)=>`<tr><td>${start+index+1}</td><td>${esc(row.date)}</td><td class="font-weight-bold">${esc(row.number)}</td><td>${esc(row.head)||'—'}</td><td>${esc(row.subhead)||'—'}</td><td class="text-truncate" style="max-width:420px" title="${esc(row.detail)}">${esc(row.detail)||'—'}</td><td class="text-right">${Number(row.amount||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td class="text-nowrap"><button type="button" class="btn btn-sm btn-outline-secondary dv-details" data-row="${esc(JSON.stringify(row))}">Details</button> ${row.edit_url?`<button type="button" class="btn btn-sm btn-outline-primary dv-edit" data-url="${esc(row.edit_url)}" data-number="${esc(row.number)}" title="Edit voucher" aria-label="Edit voucher ${esc(row.number)}"><i class="fas fa-edit" aria-hidden="true"></i></button>`:''} ${row.delete_url?`<button type="button" class="btn btn-sm btn-outline-danger dv-delete" title="Delete voucher" aria-label="Delete voucher ${esc(row.number)}" data-url="${esc(row.delete_url)}" data-number="${esc(row.number)}"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>`:''} ${row.url?`<a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" href="${esc(row.url)}" aria-label="Print ${esc(row.number)}"><i class="fas fa-print"></i></a>`:'<span class="small text-muted">—</span>'}</td></tr>`).join(''):'<tr><td colspan="8" class="text-center text-muted p-4">No vouchers match these filters.</td></tr>';
         } catch(error){
             if(requestId!==activeRequest)return;
             body.innerHTML=`<tr><td colspan="8" class="text-center text-danger p-4">${esc(error.message)}</td></tr>`;
