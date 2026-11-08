@@ -453,7 +453,7 @@
             });
             const payload=await response.json().catch(()=>({}));
             if(!response.ok)throw new Error(payload.message||'Unable to deactivate voucher.');
-            start=Math.max(0,start-length);load();
+            load();
         }catch(error){window.alert(error.message||'Unable to deactivate voucher.');}
         finally{button.disabled=false;}
     });
