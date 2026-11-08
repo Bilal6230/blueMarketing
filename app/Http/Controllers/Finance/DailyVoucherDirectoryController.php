@@ -44,6 +44,8 @@ final class DailyVoucherDirectoryController extends Controller
             'column_detail' => ['nullable', 'string', 'max:100'],
             'start' => ['sometimes', 'integer', 'min:0', 'max:50000'],
             'length' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'sort_column' => ['sometimes','string','in:date,number,reference,account,amount,status,detail'],
+            'sort_direction' => ['sometimes','string','in:asc,desc'],
         ]);
         $rows = collect();
         $total = 0;
@@ -57,7 +59,10 @@ final class DailyVoucherDirectoryController extends Controller
         // A merged page needs the first (offset + size) rows from every source.
         // Cross-source column filters require a bounded complete candidate set.
         $filterCandidateLimit = 5000;
-        $window = $columnFilters ? $filterCandidateLimit : $start + $length;
+        $sortColumn = (string) ($filters['sort_column'] ?? 'date');
+        $sortDirection = (string) ($filters['sort_direction'] ?? 'desc');
+        $requiresFullCandidateSet = (bool) $columnFilters || $sortColumn !== 'date' || $sortDirection !== 'desc';
+        $window = $requiresFullCandidateSet ? $filterCandidateLimit : $start + $length;
         $identities = app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class);
 
         if (Schema::hasTable('customer_ledger')) {
@@ -396,13 +401,26 @@ final class DailyVoucherDirectoryController extends Controller
             }
         }
 
-        $rows = $rows->sortByDesc(fn ($row) => [$row['date'], $row['number']])->values();
-        if ($columnFilters) {
-            if ($total > $filterCandidateLimit) {
-                return response()->json([
-                    'message' => 'Too many vouchers for a complete column filter. Select a narrower date range or voucher type first.',
-                ], 422);
+        if ($requiresFullCandidateSet && $total > $filterCandidateLimit) {
+            return response()->json([
+                'message' => 'Too many vouchers to sort or filter completely. Select a narrower date range first.',
+            ], 422);
+        }
+        // Sort AFTER combining the voucher sources, so ASC/DESC acts on the
+        // actual displayed column instead of on one source table alone.
+        $rows = $rows->sort(function (array $a, array $b) use ($sortColumn, $sortDirection) {
+            $aValue = $a[$sortColumn] ?? '';
+            $bValue = $b[$sortColumn] ?? '';
+            $comparison = $sortColumn === 'amount'
+                ? ((float) $aValue <=> (float) $bValue)
+                : strnatcasecmp((string) $aValue, (string) $bValue);
+            if ($comparison === 0) {
+                $comparison = strcmp((string) ($a['date'] ?? ''), (string) ($b['date'] ?? ''))
+                    ?: strnatcasecmp((string) ($a['number'] ?? ''), (string) ($b['number'] ?? ''));
             }
+            return $sortDirection === 'asc' ? $comparison : -$comparison;
+        })->values();
+        if ($columnFilters) {
             $keys = [
                 'column_date' => 'date', 'column_type' => 'type', 'column_number' => 'number',
                 'column_reference' => 'reference', 'column_account' => 'account',
