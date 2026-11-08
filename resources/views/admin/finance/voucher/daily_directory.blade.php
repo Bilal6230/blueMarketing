@@ -34,7 +34,7 @@
     #dv-entry-loading{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;gap:.75rem;background:#fff;color:#48556b}
     #dv-entry-loading.d-none{display:none!important}
     #dv-entry-loading .spinner-border{width:1.4rem;height:1.4rem;border-width:.18em}
-    .daily-voucher-filters{display:grid;grid-template-columns:repeat(5,minmax(115px,1fr)) auto;gap:.6rem;align-items:end}
+    .daily-voucher-filters{display:grid;grid-template-columns:repeat(4,minmax(130px,1fr)) auto;gap:.6rem;align-items:end}
     .daily-voucher-actions{display:flex;gap:.4rem;align-items:center;white-space:nowrap}
     .daily-voucher-shortcuts{display:flex;flex-wrap:wrap;gap:.5rem}
     .daily-voucher-table-card{flex:1 1 0;min-height:0;display:flex;flex-direction:column;margin-bottom:0!important}
@@ -49,7 +49,14 @@
     .daily-voucher-table thead th{position:sticky;top:0;z-index:2;background:#edf4fc}.daily-voucher-table td{vertical-align:middle}
     .daily-voucher-table thead .dv-column-filters th{top:38px;background:#fff;z-index:3;padding:.3rem}
     .daily-voucher-table thead .dv-column-filters input{min-width:72px;font-size:.75rem;padding:.25rem .4rem;height:30px}
-    .daily-voucher-muted{color:#70819a;font-size:.85rem}.daily-voucher-loading{opacity:.48;pointer-events:none}
+    .daily-voucher-muted{color:#70819a;font-size:.85rem}
+    .daily-voucher-loading #dv-rows{pointer-events:none}
+    .dv-skeleton-bar{height:12px;border-radius:5px;background:linear-gradient(90deg,#e7ecf1 22%,#f5f7fa 42%,#e7ecf1 67%);background-size:220% 100%;animation:dv-skeleton-pulse 1.3s ease-in-out infinite}
+    .daily-voucher-page.dv-theme-credit .dv-skeleton-bar{background-image:linear-gradient(90deg,#daeee2 22%,#f3fbf6 42%,#daeee2 67%)}
+    .daily-voucher-page.dv-theme-debit .dv-skeleton-bar{background-image:linear-gradient(90deg,#f2dce0 22%,#fff5f6 42%,#f2dce0 67%)}
+    .daily-voucher-table tbody tr.dv-skeleton-row td{height:44px;vertical-align:middle;padding:.65rem .45rem}
+    @keyframes dv-skeleton-pulse{0%{background-position:100% 0}100%{background-position:-100% 0}}
+    @media(prefers-reduced-motion:reduce){.dv-skeleton-bar{animation:none}}
     @media(max-width:1200px){.daily-voucher-filters{grid-template-columns:repeat(3,minmax(115px,1fr))}.daily-voucher-actions{grid-column:1/-1;justify-content:flex-end}}
     @media(max-width:900px){.daily-voucher-filters{grid-template-columns:repeat(2,minmax(130px,1fr))}.daily-voucher-actions{grid-column:1/-1;justify-content:flex-end}}
     @media(max-width:520px){.daily-voucher-filters{grid-template-columns:1fr}.daily-voucher-page .daily-voucher-actions{grid-column:1;justify-content:flex-end}.content-wrapper.daily-voucher-page{padding:.35rem!important}}
@@ -78,7 +85,7 @@
             <form id="daily-voucher-filters" class="daily-voucher-filters">
                 <div><label for="dv-from">From</label><input id="dv-from" name="from" type="date" class="form-control"></div>
                 <div><label for="dv-to">To</label><input id="dv-to" name="to" type="date" class="form-control"></div>
-                <div><label for="dv-type">Voucher type</label><select id="dv-type" name="type" class="form-control"><option value="">All types</option>@foreach(['CR','DR','CCR','CDR','BOR','BOP','CP','PPR','JV','CV','D','C','BR','BO','BW','BD','PR','PP'] as $type)<option value="{{ $type }}" @selected($presetType === $type)>{{ $type }}</option>@endforeach</select></div>
+                <input id="dv-type" name="type" type="hidden" value="{{ $presetType }}">
                 <div><label for="dv-account">Account</label><select id="dv-account" name="account" class="form-control"><option value="">All accounts</option>@foreach($accounts as $account)<option value="{{ $account->id }}">{{ $account->head_name }}{{ $account->sub_name ? ' · '.$account->sub_name : '' }}</option>@endforeach</select></div>
                 <div><label for="dv-search">Search</label><input id="dv-search" name="search" class="form-control" maxlength="100" placeholder="Number, reference, account or detail"></div>
                 <div class="daily-voucher-actions">
@@ -110,7 +117,7 @@
                     @endforeach
                     <th></th>
                 </tr>
-            </thead><tbody id="dv-rows"><tr><td colspan="8" class="text-center p-4">Loading voucher history…</td></tr></tbody></table></div>
+            </thead><tbody id="dv-rows"></tbody></table></div>
             <div class="card-footer dv-pagination-footer">
                 <div id="dv-record-summary" class="dv-total-records" aria-live="polite">Loading records...</div>
                 <nav id="dv-pages" aria-label="Voucher pagination"></nav>
@@ -166,7 +173,17 @@
     document.documentElement.classList.add('daily-voucher-directory-active');
     document.body.classList.add('daily-voucher-directory-active');
     const form=document.getElementById('daily-voucher-filters'), body=document.getElementById('dv-rows'), wrap=document.getElementById('dv-table-wrap');
-    let start=0, length=25, filtered=0, total=0, timer, activeRequest=0;
+    let start=0, length=25, filtered=0, total=0, timer, activeRequest=0, activeController=null;
+    const scheduleLoad=()=>{clearTimeout(timer);timer=setTimeout(()=>{start=0;load();},300);};
+    function showTableSkeleton(){
+        const widths=[68,62,79,87,58,65,91,70];
+        body.innerHTML=Array.from({length:10},(_,row)=>'<tr class="dv-skeleton-row" aria-hidden="true">'+
+            widths.map((width,column)=>'<td><div class="dv-skeleton-bar" style="width:'+Math.max(25,width-((row+column)%3)*10)+'%"></div></td>').join('')+
+            '</tr>').join('');
+        wrap.setAttribute('aria-busy','true');
+        recordSummary.textContent='Loading records...';
+        pager.replaceChildren();
+    }
     const pager=document.getElementById('dv-pages');
     const recordSummary=document.getElementById('dv-record-summary');
     function renderPagination(){
@@ -198,10 +215,14 @@
     const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
     async function load(){
         const requestId=++activeRequest;
-        wrap.classList.add('daily-voucher-loading'); const params=new URLSearchParams(new FormData(form)); params.set('start',start); params.set('length',length);
+        if(activeController)activeController.abort();
+        activeController=new AbortController();
+        wrap.classList.add('daily-voucher-loading');
+        showTableSkeleton();
+        const params=new URLSearchParams(new FormData(form)); params.set('start',start); params.set('length',length);
         document.querySelectorAll('.dv-column-filter').forEach(input=>{if(input.value.trim())params.set('column_'+input.dataset.column,input.value.trim());});
         try {
-            const response=await fetch(@json(route('finance.daily-vouchers.data'))+'?'+params.toString(),{headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}});
+            const response=await fetch(@json(route('finance.daily-vouchers.data'))+'?'+params.toString(),{headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'},signal:activeController.signal});
             if(!response.ok){
                 const errorBody=await response.json().catch(()=>({}));
                 throw new Error(errorBody.message||'Unable to load voucher history.');
@@ -218,11 +239,15 @@
             pager.replaceChildren();
             recordSummary.textContent='Unable to load records';
         }
-        finally{if(requestId===activeRequest)wrap.classList.remove('daily-voucher-loading');}
+        finally{if(requestId===activeRequest){wrap.classList.remove('daily-voucher-loading');wrap.removeAttribute('aria-busy');activeController=null;}}
     }
     form.addEventListener('submit',event=>{event.preventDefault();start=0;load();});
-    document.getElementById('dv-search').addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(()=>{start=0;load();},300);});
-    document.querySelectorAll('.dv-column-filter').forEach(input=>input.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(()=>{start=0;load();},250);}));
+    document.getElementById('dv-search').addEventListener('input',scheduleLoad);
+    document.querySelectorAll('.dv-column-filter').forEach(input=>{
+        input.addEventListener('input',scheduleLoad);
+        input.addEventListener('search',scheduleLoad);
+        input.addEventListener('keydown',event=>{if(event.key==='Enter')event.preventDefault();});
+    });
     // The modal contains the real voucher form. No overlay, spinner or polling.
     const entryFrame=document.getElementById('dv-entry-frame');
     const entryError=document.getElementById('dv-entry-error');
@@ -239,7 +264,7 @@
         if(heading)heading.textContent=label;
         document.title=label+' - '+@json(Setting::getValue('app_name'));
     }
-    document.getElementById('dv-type').addEventListener('change',event=>updateDirectoryTheme(event.target.value));
+    // The voucher type comes from the page URL; individual pages never switch series.
     let requestedEntryUrl='';
     function revealEntry(){
         if(!requestedEntryUrl)return;
