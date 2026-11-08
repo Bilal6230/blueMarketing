@@ -54,7 +54,10 @@ final class DailyVoucherDirectoryController extends Controller
             'column_account', 'column_amount', 'column_status', 'column_detail',
         ])), fn ($value) => trim((string) $value) !== '');
         // Load a bounded recent window before applying cross-source column filters.
-        $window = $columnFilters ? 5000 : $start + $length;
+        // A merged page needs the first (offset + size) rows from every source.
+        // Cross-source column filters require a bounded complete candidate set.
+        $filterCandidateLimit = 5000;
+        $window = $columnFilters ? $filterCandidateLimit : $start + $length;
         $identities = app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class);
 
         if (Schema::hasTable('customer_ledger')) {
@@ -193,6 +196,7 @@ final class DailyVoucherDirectoryController extends Controller
         }
 
         foreach ([['journal_vouchers', 'JV', 'journal_voucher', 'journal.voucher.print'], ['commision_vouchers', 'CV', 'commission_voucher', 'commision.voucher.print']] as [$table, $type, $kind, $printRoute]) {
+            if (!empty($filters['type']) && $filters['type'] !== $type) continue;
             if (!auth()->user()?->can('read jv')) continue;
             if (!Schema::hasTable($table) || !Schema::hasColumn($table, 'project_id')) continue;
             $query = DB::table($table)->where('project_id', $projectId);
@@ -394,6 +398,11 @@ final class DailyVoucherDirectoryController extends Controller
 
         $rows = $rows->sortByDesc(fn ($row) => [$row['date'], $row['number']])->values();
         if ($columnFilters) {
+            if ($total > $filterCandidateLimit) {
+                return response()->json([
+                    'message' => 'Too many vouchers for a complete column filter. Select a narrower date range or voucher type first.',
+                ], 422);
+            }
             $keys = [
                 'column_date' => 'date', 'column_type' => 'type', 'column_number' => 'number',
                 'column_reference' => 'reference', 'column_account' => 'account',
@@ -402,18 +411,20 @@ final class DailyVoucherDirectoryController extends Controller
             $rows = $rows->filter(function (array $row) use ($columnFilters, $keys) {
                 foreach ($columnFilters as $filter => $needle) {
                     $value = $row[$keys[$filter]] ?? '';
+                    $searchValue = trim((string) $needle);
                     if ($filter === 'column_amount') {
                         $value = number_format((float) $value, 2, '.', '');
+                        $searchValue = str_replace([',', ' '], '', $searchValue);
                     }
-                    if (stripos((string) $value, trim((string) $needle)) === false) return false;
+                    if (stripos((string) $value, $searchValue) === false) return false;
                 }
                 return true;
             })->values();
-            $total = $rows->count();
         }
+        $filteredTotal = $columnFilters ? $rows->count() : $total;
         return response()->json([
             'draw' => (int) $request->input('draw', 1), 'recordsTotal' => $total,
-            'recordsFiltered' => $total, 'data' => $rows->slice($start, $length)->values(),
+            'recordsFiltered' => $filteredTotal, 'data' => $rows->slice($start, $length)->values(),
         ]);
     }
 
