@@ -3,7 +3,20 @@
 @section('content')
     @if(request()->filled('edit_ledger_id') && auth()->user()?->can('update voucher'))
         <script>
-            // Reuse the existing project-scoped correction editor when linked from Daily Entries.
+            // Reuse the existing correction editor without navigating away from Daily Entries.
+            document.addEventListener('DOMContentLoaded', function () {
+                if (@json(request()->boolean('embed')) && window.jQuery) {
+                    window.jQuery('#modal-edit').on('shown.bs.modal', function () {
+                        const editor=this;
+                        // The form and its account choices are fully loaded at this point.
+                        requestAnimationFrame(function () {
+                            requestAnimationFrame(function () {
+                                if (window.parent !== window) window.parent.postMessage({type:'daily-voucher-edit-ready'},window.location.origin);
+                            });
+                        });
+                    });
+                }
+            });
             window.addEventListener('load', function () {
                 const ledgerId = @json((int) request()->query('edit_ledger_id'));
                 const voucherType = @json((string) request()->query('edit_voucher_type', ''));
@@ -22,6 +35,24 @@
     @endphp
     <style>
         @if($embeddedVoucher ?? false)
+        /* Embedded correction editor is displayed directly within the parent modal;
+           no nested overlay or old voucher listing is visible. */
+        @if(request()->filled('edit_ledger_id'))
+        html body.daily-voucher-embedded .content-wrapper,
+        html body.daily-voucher-embedded .main-content.page-content { display:none !important; }
+        html body.daily-voucher-embedded #modal-edit {
+            position:static !important; inset:auto !important; display:block;
+            height:auto; width:100%; overflow:visible; opacity:1; padding:0 !important;
+        }
+        html body.daily-voucher-embedded #modal-edit .modal-dialog {
+            margin:0; width:100%; max-width:100%; transform:none !important;
+        }
+        html body.daily-voucher-embedded #modal-edit .modal-content {border:0;box-shadow:none;border-radius:0}
+        html body.daily-voucher-embedded #modal-edit .modal-header {padding:12px 18px}
+        html body.daily-voucher-embedded #modal-edit .modal-body {padding:18px}
+        html body.daily-voucher-embedded .modal-backdrop {display:none !important}
+        html body.daily-voucher-embedded.modal-open {overflow:auto !important;padding-right:0 !important}
+        @endif
         /* One isolated layout for voucher entry inside the Daily Entries modal. */
         body.daily-voucher-embedded { margin:0 !important; padding:0 !important; overflow-x:hidden; background:#fff; }
         body.daily-voucher-embedded #load_screen,
@@ -137,7 +168,7 @@
                 // The admin layout reserves sidebar space even when hidden.
                 // Detach only the embedded entry workspace from that layout.
                 const workspace=document.querySelector('.main-content.page-content > .content-wrapper');
-                if(workspace) {
+                if(workspace && !@json(request()->filled('edit_ledger_id'))) {
                     document.body.appendChild(workspace);
                     // Inline important beats the old global sidebar offset regardless
                     // of stylesheet order, while the parent directory is untouched.
@@ -162,7 +193,7 @@
                     if (!document.getElementById('voucherForm')) return;
                     const overlay = document.getElementById('load_screen');
                     if (overlay) overlay.remove();
-                    if (window.parent !== window) {
+                    if (window.parent !== window && !@json(request()->filled('edit_ledger_id'))) {
                         // Let the DOM-ready tab initialization, workspace relocation,
                         // and two layout/paint frames complete before revealing the iframe.
                         requestAnimationFrame(function () {
