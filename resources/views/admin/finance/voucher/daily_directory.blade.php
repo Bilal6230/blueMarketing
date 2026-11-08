@@ -38,6 +38,14 @@
     .daily-voucher-actions{display:flex;gap:.4rem;align-items:center;white-space:nowrap}
     .daily-voucher-shortcuts{display:flex;flex-wrap:wrap;gap:.5rem}
     .daily-voucher-table-card{flex:1 1 0;min-height:0;display:flex;flex-direction:column;margin-bottom:0!important}
+    .dv-table-tools{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:.6rem .75rem;background:#fff}
+    .dv-table-tools label{display:flex;align-items:center;gap:7px;margin:0;font-size:.88rem}
+    .dv-table-tools select{width:72px}
+    .dv-table-tools input{width:220px;max-width:45vw}
+    .daily-voucher-table th.dv-sortable{cursor:pointer;user-select:none}
+    .daily-voucher-table th.dv-sortable:hover{color:var(--dv-accent)}
+    .dv-sort-indicator{margin-left:5px;color:var(--dv-accent);font-size:.75em}
+    .dv-sortable:focus-visible{outline:2px solid var(--dv-accent);outline-offset:-2px}
     .daily-voucher-table-wrap{flex:1 1 0;min-height:0;overflow:auto}.daily-voucher-table{min-width:1100px;table-layout:fixed}
     /* Fixed column tracks prevent spare table width from enlarging Actions. Details absorbs the rest. */
     .daily-voucher-table{width:100%}
@@ -107,10 +115,14 @@
             </div>
         </div></div>
         <div class="card daily-voucher-card daily-voucher-table-card">
+            <div class="dv-table-tools">
+                <label for="dv-page-length">Show <select class="form-control form-control-sm" id="dv-page-length"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option></select> entries</label>
+                <label for="dv-table-search">Search: <input id="dv-table-search" class="form-control form-control-sm" type="search" placeholder="Search vouchers" autocomplete="off"></label>
+            </div>
             <div class="daily-voucher-table-wrap" id="dv-table-wrap"><table class="table table-sm table-hover mb-0 daily-voucher-table">
                 <colgroup><col style="width:96px"><col style="width:112px"><col style="width:165px"><col style="width:190px"><col style="width:105px"><col style="width:82px"><col><col class="dv-col-actions"></colgroup>
                 <thead>
-                <tr><th>Date</th><th>Voucher #</th><th>Reference</th><th>Account / Customer</th><th class="text-right">Amount</th><th>Status</th><th>Details</th><th>Actions</th></tr>
+                <tr><th class="dv-sortable" data-sort="date" tabindex="0" role="button">Date<span class="dv-sort-indicator">↕</span></th><th class="dv-sortable" data-sort="number" tabindex="0" role="button">Voucher #<span class="dv-sort-indicator">↕</span></th><th class="dv-sortable" data-sort="reference" tabindex="0" role="button">Reference<span class="dv-sort-indicator">↕</span></th><th class="dv-sortable" data-sort="account" tabindex="0" role="button">Account / Customer<span class="dv-sort-indicator">↕</span></th><th class="dv-sortable text-right" data-sort="amount" tabindex="0" role="button">Amount<span class="dv-sort-indicator">↕</span></th><th class="dv-sortable" data-sort="status" tabindex="0" role="button">Status<span class="dv-sort-indicator">↕</span></th><th class="dv-sortable" data-sort="detail" tabindex="0" role="button">Details<span class="dv-sort-indicator">↕</span></th><th>Actions</th></tr>
                 <tr class="dv-column-filters">
                     @foreach(['date'=>'Date','number'=>'Voucher #','reference'=>'Reference','account'=>'Account / Customer','amount'=>'Amount','status'=>'Status','detail'=>'Details'] as $key=>$label)
                         <th><input type="search" class="form-control form-control-sm dv-column-filter" data-column="{{$key}}" aria-label="Filter {{$label}}" placeholder="Filter"></th>
@@ -174,6 +186,23 @@
     document.body.classList.add('daily-voucher-directory-active');
     const form=document.getElementById('daily-voucher-filters'), body=document.getElementById('dv-rows'), wrap=document.getElementById('dv-table-wrap');
     let start=0, length=25, filtered=0, total=0, timer, activeRequest=0, activeController=null;
+    let sortColumn='date',sortDirection='desc';
+    const tableSearch=document.getElementById('dv-table-search');
+    document.getElementById('dv-page-length').addEventListener('change',event=>{length=Number(event.target.value);start=0;load();});
+    tableSearch.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(()=>{start=0;load();},300);});
+    function updateSortArrows(){
+        document.querySelectorAll('.daily-voucher-table th.dv-sortable').forEach(th=>{
+            const isActive=th.dataset.sort===sortColumn;
+            th.querySelector('.dv-sort-indicator').textContent=isActive?(sortDirection==='asc'?'↑':'↓'):'↕';
+            th.setAttribute('aria-sort',isActive?(sortDirection==='asc'?'ascending':'descending'):'none');
+        });
+    }
+    document.querySelectorAll('.daily-voucher-table th.dv-sortable').forEach(th=>{
+        const sort=()=>{sortDirection=sortColumn===th.dataset.sort?(sortDirection==='asc'?'desc':'asc'):'asc';sortColumn=th.dataset.sort;start=0;updateSortArrows();load();};
+        th.addEventListener('click',sort);
+        th.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();sort();}});
+    });
+    updateSortArrows();
     const scheduleLoad=()=>{clearTimeout(timer);timer=setTimeout(()=>{start=0;load();},300);};
     function showTableSkeleton(){
         const widths=[68,62,79,87,58,65,91,70];
@@ -220,6 +249,8 @@
         wrap.classList.add('daily-voucher-loading');
         showTableSkeleton();
         const params=new URLSearchParams(new FormData(form)); params.set('start',start); params.set('length',length);
+        params.set('sort_column',sortColumn);params.set('sort_direction',sortDirection);
+        if(tableSearch.value.trim())params.set('search',tableSearch.value.trim());
         document.querySelectorAll('.dv-column-filter').forEach(input=>{if(input.value.trim())params.set('column_'+input.dataset.column,input.value.trim());});
         try {
             const response=await fetch(@json(route('finance.daily-vouchers.data'))+'?'+params.toString(),{headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'},signal:activeController.signal});
@@ -232,7 +263,7 @@
             filtered=Number(result.recordsFiltered||0);
             total=Number(result.recordsTotal||0);
             renderPagination();
-            body.innerHTML=result.data.length?result.data.map(row=>`<tr><td>${esc(row.date)}</td><td class="font-weight-bold">${esc(row.number)}</td><td>${esc(row.reference)||'—'}</td><td>${esc(row.account)||'—'}</td><td class="text-right">${Number(row.amount||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td>${esc(row.status)}</td><td class="text-truncate" style="max-width:260px" title="${esc(row.detail)}">${esc(row.detail)||'—'}</td><td class="text-nowrap"><button type="button" class="btn btn-sm btn-outline-secondary dv-details" data-row="${esc(JSON.stringify(row))}">Details</button> ${row.edit_url?`<a class="btn btn-sm btn-outline-primary" href="${esc(row.edit_url)}" title="Edit voucher" aria-label="Edit voucher ${esc(row.number)}"><i class="fas fa-edit" aria-hidden="true"></i></a>`:''} ${row.delete_url?`<button type="button" class="btn btn-sm btn-outline-danger dv-delete" title="Delete voucher" aria-label="Delete voucher ${esc(row.number)}" data-url="${esc(row.delete_url)}" data-number="${esc(row.number)}"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>`:''} ${row.url?`<a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" href="${esc(row.url)}" aria-label="Print ${esc(row.number)}"><i class="fas fa-print"></i></a>`:'<span class="small text-muted">—</span>'}</td></tr>`).join(''):'<tr><td colspan="8" class="text-center text-muted p-4">No vouchers match these filters.</td></tr>';
+            body.innerHTML=result.data.length?result.data.map(row=>`<tr><td>${esc(row.date)}</td><td class="font-weight-bold">${esc(row.number)}</td><td>${esc(row.reference)||'—'}</td><td>${esc(row.account)||'—'}</td><td class="text-right">${Number(row.amount||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td>${esc(row.status)}</td><td class="text-truncate" style="max-width:260px" title="${esc(row.detail)}">${esc(row.detail)||'—'}</td><td class="text-nowrap"><button type="button" class="btn btn-sm btn-outline-secondary dv-details" data-row="${esc(JSON.stringify(row))}">Details</button> ${row.edit_url?`<button type="button" class="btn btn-sm btn-outline-primary dv-edit" data-url="${esc(row.edit_url)}" data-number="${esc(row.number)}" title="Edit voucher" aria-label="Edit voucher ${esc(row.number)}"><i class="fas fa-edit" aria-hidden="true"></i></button>`:''} ${row.delete_url?`<button type="button" class="btn btn-sm btn-outline-danger dv-delete" title="Delete voucher" aria-label="Delete voucher ${esc(row.number)}" data-url="${esc(row.delete_url)}" data-number="${esc(row.number)}"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>`:''} ${row.url?`<a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" href="${esc(row.url)}" aria-label="Print ${esc(row.number)}"><i class="fas fa-print"></i></a>`:'<span class="small text-muted">—</span>'}</td></tr>`).join(''):'<tr><td colspan="8" class="text-center text-muted p-4">No vouchers match these filters.</td></tr>';
         } catch(error){
             if(requestId!==activeRequest)return;
             body.innerHTML=`<tr><td colspan="8" class="text-center text-danger p-4">${esc(error.message)}</td></tr>`;
@@ -265,7 +296,7 @@
         document.title=label+' - '+@json(Setting::getValue('app_name'));
     }
     // The voucher type comes from the page URL; individual pages never switch series.
-    let requestedEntryUrl='';
+    let requestedEntryUrl='',entryMode='create';
     function revealEntry(){
         if(!requestedEntryUrl)return;
         entryFrame.style.visibility='visible';
@@ -279,7 +310,8 @@
         fallback.classList.toggle('d-none',!url);
         entryError.classList.remove('d-none');
     }
-    function loadEntry(url){
+    function loadEntry(url,mode='create'){
+        entryMode=mode;
         requestedEntryUrl=url;
         entryLoading.classList.toggle('d-none',!url);
         entryFrame.style.visibility='hidden';
@@ -291,6 +323,7 @@
         if(!requestedEntryUrl || entryFrame.src==='about:blank')return;
         try{
             const doc=entryFrame.contentDocument;
+            if(entryMode==='edit')return;
             if(doc?.querySelector('#voucherForm')){
                 // The iframe load event is a fallback for a missed child ready message.
                 requestAnimationFrame(()=>requestAnimationFrame(revealEntry));
@@ -360,13 +393,28 @@
     if(window.jQuery){window.jQuery('#dv-entry-modal').on('hidden.bs.modal',()=>{requestedEntryUrl='';entryLoading.classList.add('d-none');entryError.classList.add('d-none');entryChoose.classList.add('d-none');entryFrame.style.visibility='hidden';entryFrame.src='about:blank';});}
     window.addEventListener('message',event=>{
         if(event.origin!==window.location.origin || event.source!==entryFrame.contentWindow)return;
-        if(event.data?.type==='daily-voucher-form-ready'){
+        if(event.data?.type==='daily-voucher-form-ready' && entryMode==='create'){
+            requestAnimationFrame(()=>requestAnimationFrame(revealEntry));
+            return;
+        }
+        if(event.data?.type==='daily-voucher-edit-ready' && entryMode==='edit'){
             requestAnimationFrame(()=>requestAnimationFrame(revealEntry));
             return;
         }
         if(event.data?.type!=='daily-voucher-saved')return;
         if(window.jQuery)window.jQuery('#dv-entry-modal').modal('hide');
         document.getElementById('dv-entry-frame').src='about:blank';start=0;load();
+    });
+    body.addEventListener('click',event=>{
+        const button=event.target.closest('.dv-edit');if(!button)return;
+        const url=new URL(button.dataset.url,window.location.href);
+        url.searchParams.set('embed','1');
+        entryChoose.classList.add('d-none');
+        methodWrap.classList.add('d-none');
+        entryFrame.style.display='block';
+        document.getElementById('dv-entry-title').textContent='Edit '+button.dataset.number;
+        loadEntry(url.toString(),'edit');
+        if(window.jQuery)window.jQuery('#dv-entry-modal').modal('show');
     });
     body.addEventListener('click',event=>{
         const button=event.target.closest('.dv-delete');
