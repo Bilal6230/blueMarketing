@@ -1,4 +1,5 @@
 @extends('admin.layouts.master')
+@section('title', $title ?? 'Cash Voucher')
 @section('content')
     @if(request()->filled('edit_ledger_id') && auth()->user()?->can('update voucher'))
         <script>
