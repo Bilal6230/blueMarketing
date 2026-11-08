@@ -38,13 +38,15 @@ final class DailyVoucherDirectoryController extends Controller
             'column_type' => ['nullable', 'string', 'max:100'],
             'column_number' => ['nullable', 'string', 'max:100'],
             'column_reference' => ['nullable', 'string', 'max:100'],
+            'column_head' => ['nullable', 'string', 'max:100'],
+            'column_subhead' => ['nullable', 'string', 'max:100'],
             'column_account' => ['nullable', 'string', 'max:100'],
             'column_amount' => ['nullable', 'string', 'max:100'],
             'column_status' => ['nullable', 'string', 'max:100'],
             'column_detail' => ['nullable', 'string', 'max:100'],
             'start' => ['sometimes', 'integer', 'min:0', 'max:50000'],
             'length' => ['sometimes', 'integer', 'min:1', 'max:100'],
-            'sort_column' => ['sometimes','string','in:date,number,reference,account,amount,status,detail'],
+            'sort_column' => ['sometimes','string','in:date,number,head,subhead,amount,detail'],
             'sort_direction' => ['sometimes','string','in:asc,desc'],
         ]);
         $rows = collect();
@@ -53,7 +55,7 @@ final class DailyVoucherDirectoryController extends Controller
         $length = (int) ($filters['length'] ?? 25);
         $columnFilters = array_filter(array_intersect_key($filters, array_flip([
             'column_date', 'column_type', 'column_number', 'column_reference',
-            'column_account', 'column_amount', 'column_status', 'column_detail',
+            'column_account', 'column_head', 'column_subhead', 'column_amount', 'column_status', 'column_detail',
         ])), fn ($value) => trim((string) $value) !== '');
         // Load a bounded recent window before applying cross-source column filters.
         // A merged page needs the first (offset + size) rows from every source.
@@ -160,6 +162,8 @@ final class DailyVoucherDirectoryController extends Controller
                 $rows->push([
                     'date' => (string) $source->date, 'type' => $displayType,
                     'number' => $display, 'reference' => (string) ($source->reference ?? ''),
+                    'head' => (string) ($linkedLines->first()->head_name ?? '—'),
+                    'subhead' => (string) ($linkedLines->first()->subhead_name ?? '—'),
                     'account' => $leadNames->get($source->customer_id)
                         ?: ($linkedLines->first()
                             ? trim(($linkedLines->first()->head_name ? $linkedLines->first()->head_name.' / ' : '').($linkedLines->first()->subhead_name ?: 'Account #'.$linkedLines->first()->account_id))
@@ -241,6 +245,8 @@ final class DailyVoucherDirectoryController extends Controller
                         ->get(['a.id as account_id', 'h.name as head_name', 's.name as subhead_name', 'vd.debit', 'vd.credit', 'vd.description'])
                         ->map(fn ($line) => [
                             'account_id' => $line->account_id,
+                            'head' => (string) ($line->head_name ?? '—'),
+                            'subhead' => (string) ($line->subhead_name ?? '—'),
                             'account' => $line->account_id
                                 ? trim(($line->head_name ? $line->head_name.' / ' : '').($line->subhead_name ?: 'Account #'.$line->account_id))
                                 : 'Unavailable account',
@@ -252,6 +258,7 @@ final class DailyVoucherDirectoryController extends Controller
                     'date' => (string) $voucher->date, 'type' => $actualType,
                     'number' => $identities->lookup($projectId, $kind, (int) $voucher->id) ?: (string) $voucher->voucher_number,
                     'reference' => (string) ($voucher->reference ?? ''), 'account' => $lines[0]['account'] ?? '—',
+                    'head' => $lines[0]['head'] ?? '—', 'subhead' => $lines[0]['subhead'] ?? '—',
                     'amount' => (float) ($voucher->total_debit ?? 0), 'status' => ucfirst((string) ($voucher->status ?? 'posted')),
                     'detail' => (string) ($voucher->description ?? ''),
                     'lines' => $lines,
@@ -273,6 +280,8 @@ final class DailyVoucherDirectoryController extends Controller
         // parent vouchers are represented by their own records.
         if (Schema::hasTable('ledgers') && Schema::hasTable('project_head_subheads')) {
             $query = DB::table('ledgers as l')->join('project_head_subheads as account', 'account.id', '=', 'l.project_head_subheads_id')
+                ->leftJoin('head_accountings as head', 'head.id', '=', 'account.head_accounting_id')
+                ->leftJoin('subhead_accountings as subhead', 'subhead.id', '=', 'account.subhead_accounting_id')
                 ->where('account.project_id', $projectId)->whereNull('l.customer_ledger_id');
             $query->whereNotIn(DB::raw('UPPER(l.type)'), ['JV', 'CV']);
             if (Schema::hasColumn('ledgers', 'is_active')) $query->where('l.is_active', 1);
@@ -284,7 +293,7 @@ final class DailyVoucherDirectoryController extends Controller
                 $term = '%'.addcslashes($filters['search'], '%_\\').'%';
                 $query->where(function ($q) use ($term) { $q->where('l.voucher_number', 'like', $term)->orWhere('l.reference', 'like', $term)->orWhere('l.detail', 'like', $term); });
             }
-            $ledgerColumns = ['l.id','l.date','l.type','l.voucher_number','l.reference','l.detail','l.amount_in','l.amount_out','account.subhead_accounting_id'];
+            $ledgerColumns = ['l.id','l.date','l.type','l.voucher_number','l.reference','l.detail','l.amount_in','l.amount_out','account.subhead_accounting_id', 'head.name as head_name', 'subhead.name as subhead_name'];
             foreach (['create_by', 'update_by'] as $auditColumn) {
                 if (Schema::hasColumn('ledgers', $auditColumn)) $ledgerColumns[] = 'l.'.$auditColumn;
             }
@@ -299,6 +308,7 @@ final class DailyVoucherDirectoryController extends Controller
                     'date' => (string) $ledger->date, 'type' => (string) $ledger->type,
                     'number' => $identities->lookup($projectId, 'ledger', (int) $ledger->id) ?: trim((string) $ledger->type.'-'.(string) $ledger->voucher_number, '-'),
                     'reference' => (string) ($ledger->reference ?? ''), 'account' => $subheadNames->get($ledger->subhead_accounting_id) ?: '—',
+                    'head' => (string) ($ledger->head_name ?? '—'), 'subhead' => (string) ($ledger->subhead_name ?? '—'),
                     'amount' => (float) max((float) $ledger->amount_in, (float) $ledger->amount_out), 'status' => 'Posted',
                     'detail' => (string) ($ledger->detail ?? ''),
                     'lines' => [],
@@ -345,6 +355,7 @@ final class DailyVoucherDirectoryController extends Controller
                     'number' => trim((string) $source->voucher_series.'-'.(string) $source->voucher_number, '-'),
                     'reference' => '', 'account' => ucfirst((string) $source->transfer_kind), 'amount' => (float) $source->amount,
                     'status' => 'Posted', 'detail' => (string) $source->narration, 'lines' => $lines,
+                    'head' => $lines[0]['head'] ?? '—', 'subhead' => $lines[0]['subhead'] ?? '—',
                     'audit' => [], 'url' => route('finance.voucher.transfer.print', ['kind' => $source->transfer_kind, 'postingBatch' => $batchId]),
                 ]);
             }
@@ -382,6 +393,7 @@ final class DailyVoucherDirectoryController extends Controller
                     'reference' => '', 'account' => $typed['kind'] === 'receipt' ? 'Plot receipt' : 'Plot purchase',
                     'amount' => (float) $source->amount, 'status' => 'Posted', 'detail' => (string) $source->narration,
                     'lines' => $lines, 'audit' => ['Prepared by user ID' => $source->created_by ?? null],
+                    'head' => $lines[0]['head'] ?? '—', 'subhead' => $lines[0]['subhead'] ?? '—',
                     'url' => $typed['kind'] === 'purchase'
                         ? route('finance.voucher.plot-purchase.print', ['purchaseId' => $source->id]) : null,
                 ];
@@ -424,6 +436,7 @@ final class DailyVoucherDirectoryController extends Controller
             $keys = [
                 'column_date' => 'date', 'column_type' => 'type', 'column_number' => 'number',
                 'column_reference' => 'reference', 'column_account' => 'account',
+                'column_head' => 'head', 'column_subhead' => 'subhead',
                 'column_amount' => 'amount', 'column_status' => 'status', 'column_detail' => 'detail',
             ];
             $rows = $rows->filter(function (array $row) use ($columnFilters, $keys) {
@@ -458,6 +471,8 @@ final class DailyVoucherDirectoryController extends Controller
             ->get(['account.id as account_id', 'head.name as head_name', 'sub.name as subhead_name', 'line.debit', 'line.credit', 'line.description'])
             ->map(fn ($line) => [
                 'account' => trim(($line->head_name ? $line->head_name.' / ' : '').($line->subhead_name ?: 'Account #'.$line->account_id)),
+                'head' => (string) ($line->head_name ?? '—'),
+                'subhead' => (string) ($line->subhead_name ?? '—'),
                 'description' => (string) ($line->description ?? ''), 'debit' => (float) $line->debit, 'credit' => (float) $line->credit,
             ])->all();
     }
