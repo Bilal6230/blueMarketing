@@ -49,6 +49,9 @@ class Ledger extends Model
             // A posted voucher may be administratively deactivated without
             // changing amounts, ownership, source links, or deleting history.
             $allowed = ['detail', 'update_by', 'updated_at', 'is_active', 'delete_reason'];
+            if ($ledger->isDirty('is_active') && (int) $ledger->is_active !== 0) {
+                throw new \DomainException('FINANCIAL_HISTORY_REACTIVATION_FORBIDDEN');
+            }
             $forbidden = array_diff(array_keys($ledger->getDirty()), $allowed);
             if ($forbidden !== []) {
                 throw new \DomainException('FINANCIAL_HISTORY_UPDATE_REQUIRES_REVERSAL');
