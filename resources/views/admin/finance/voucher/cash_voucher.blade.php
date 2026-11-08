@@ -6,6 +6,9 @@
             // Reuse the existing correction editor without navigating away from Daily Entries.
             document.addEventListener('DOMContentLoaded', function () {
                 if (@json(request()->boolean('embed')) && window.jQuery) {
+                    window.jQuery('#modal-edit').on('hidden.bs.modal', function () {
+                        if (window.parent !== window) window.parent.postMessage({type:'daily-voucher-edit-cancelled'},window.location.origin);
+                    });
                     window.jQuery('#modal-edit').on('shown.bs.modal', function () {
                         const editor=this;
                         // The form and its account choices are fully loaded at this point.
@@ -2226,6 +2229,10 @@
                     dataType: "JSON",
                     data: payload,
                     success: function(response) {
+                        if (@json($embeddedVoucher ?? false) && window.parent !== window) {
+                            window.parent.postMessage({type:'daily-voucher-edit-saved',message:response?.message || 'Voucher updated successfully.'},window.location.origin);
+                            return;
+                        }
                         $('#modal-edit').modal('hide');
                         $('#table-data').DataTable().ajax.reload(null, false);
                         Swal.fire({
