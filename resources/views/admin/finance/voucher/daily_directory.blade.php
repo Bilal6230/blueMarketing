@@ -20,6 +20,17 @@
     .daily-voucher-page .daily-voucher-actions .btn-primary,.daily-voucher-page .daily-voucher-actions .btn-success{background:var(--dv-accent);border-color:var(--dv-accent);color:#fff}
     .daily-voucher-page .daily-voucher-actions .btn:hover{filter:brightness(.93)}
     .daily-voucher-page .daily-voucher-table td:nth-child(2){color:var(--dv-accent)}
+    .daily-voucher-page.dv-theme-credit,.daily-voucher-page.dv-theme-debit{background:var(--dv-pale)!important}
+    .daily-voucher-page .daily-voucher-card{background:color-mix(in srgb,var(--dv-pale) 18%,white)}
+    .daily-voucher-page #dv-type{background-color:var(--dv-pale);border:1px solid var(--dv-accent);color:var(--dv-accent);font-weight:600}
+    .daily-voucher-page .dv-column-filters input:focus{border-color:var(--dv-accent);box-shadow:0 0 0 .15rem color-mix(in srgb,var(--dv-accent) 15%,transparent)}
+    .daily-voucher-page .dv-page-btn{border:1px solid var(--dv-accent);background:#fff;color:var(--dv-accent);font-weight:500;border-radius:5px;min-width:31px;height:30px;padding:3px 7px}
+    .daily-voucher-page .dv-page-btn.active{background:var(--dv-accent);color:#fff}
+    .daily-voucher-page .dv-page-btn:disabled{opacity:.4;cursor:not-allowed}
+    .daily-voucher-page .dv-page-ellipsis{padding:0 .2rem;color:#6f7c8a}
+    .daily-voucher-page #dv-pages{display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+    .daily-voucher-page .dv-pagination-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .daily-voucher-page .dv-total-records{font-size:.81rem;color:#596476;font-weight:500}
     #dv-entry-loading{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;gap:.75rem;background:#fff;color:#48556b}
     #dv-entry-loading.d-none{display:none!important}
     #dv-entry-loading .spinner-border{width:1.4rem;height:1.4rem;border-width:.18em}
@@ -100,7 +111,10 @@
                     <th></th>
                 </tr>
             </thead><tbody id="dv-rows"><tr><td colspan="8" class="text-center p-4">Loading voucher history…</td></tr></tbody></table></div>
-            <div class="card-footer d-flex justify-content-end align-items-center"><div><button type="button" class="btn btn-sm btn-outline-secondary" id="dv-prev">Previous</button> <button type="button" class="btn btn-sm btn-outline-secondary" id="dv-next">Next</button></div></div>
+            <div class="card-footer dv-pagination-footer">
+                <div id="dv-record-summary" class="dv-total-records" aria-live="polite">Loading records...</div>
+                <nav id="dv-pages" aria-label="Voucher pagination"></nav>
+            </div>
         </div>
     </div></section>
 </div>
@@ -152,22 +166,61 @@
     document.documentElement.classList.add('daily-voucher-directory-active');
     document.body.classList.add('daily-voucher-directory-active');
     const form=document.getElementById('daily-voucher-filters'), body=document.getElementById('dv-rows'), wrap=document.getElementById('dv-table-wrap');
-    let start=0, length=25, filtered=0, timer;
+    let start=0, length=25, filtered=0, total=0, timer, activeRequest=0;
+    const pager=document.getElementById('dv-pages');
+    const recordSummary=document.getElementById('dv-record-summary');
+    function renderPagination(){
+        const pages=Math.ceil(filtered/length);
+        const current=Math.floor(start/length)+1;
+        const renderButton=(label,page,disabled=false,active=false)=>{
+            const button=document.createElement('button');
+            button.type='button';button.className='dv-page-btn'+(active?' active':'');
+            button.textContent=label;button.disabled=disabled;button.setAttribute('aria-label',label==='Previous'||label==='Next'?label+' page':'Page '+label);
+            if(active)button.setAttribute('aria-current','page');
+            if(!disabled)button.addEventListener('click',()=>{start=(page-1)*length;load();wrap.scrollTop=0;});
+            pager.appendChild(button);
+        };
+        pager.replaceChildren();
+        renderButton('Previous',current-1,current<=1);
+        const shown=new Set([1,2,3,4,5,6,pages-1,pages]);
+        for(let offset=-2;offset<=2;offset++)shown.add(current+offset);
+        let previous=0;
+        [...shown].filter(page=>page>=1&&page<=pages).sort((a,b)=>a-b).forEach(page=>{
+            if(previous&&page>previous+1){
+                const dots=document.createElement('span');dots.className='dv-page-ellipsis';dots.textContent='…';pager.appendChild(dots);
+            }
+            renderButton(String(page),page,false,page===current);previous=page;
+        });
+        renderButton('Next',current+1,current>=pages);
+        const first=filtered?start+1:0, last=Math.min(start+length,filtered);
+        recordSummary.textContent='Showing '+first+'–'+last+' of '+filtered.toLocaleString()+' records'+(total!==filtered?' (from '+total.toLocaleString()+' total)':'');
+    }
     const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
     async function load(){
+        const requestId=++activeRequest;
         wrap.classList.add('daily-voucher-loading'); const params=new URLSearchParams(new FormData(form)); params.set('start',start); params.set('length',length);
         document.querySelectorAll('.dv-column-filter').forEach(input=>{if(input.value.trim())params.set('column_'+input.dataset.column,input.value.trim());});
         try {
             const response=await fetch(@json(route('finance.daily-vouchers.data'))+'?'+params.toString(),{headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}});
-            if(!response.ok) throw new Error('Unable to load voucher history.');
-            const result=await response.json(); filtered=Number(result.recordsFiltered||0);
+            if(!response.ok){
+                const errorBody=await response.json().catch(()=>({}));
+                throw new Error(errorBody.message||'Unable to load voucher history.');
+            }
+            const result=await response.json();
+            if(requestId!==activeRequest)return;
+            filtered=Number(result.recordsFiltered||0);
+            total=Number(result.recordsTotal||0);
+            renderPagination();
             body.innerHTML=result.data.length?result.data.map(row=>`<tr><td>${esc(row.date)}</td><td class="font-weight-bold">${esc(row.number)}</td><td>${esc(row.reference)||'—'}</td><td>${esc(row.account)||'—'}</td><td class="text-right">${Number(row.amount||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td>${esc(row.status)}</td><td class="text-truncate" style="max-width:260px" title="${esc(row.detail)}">${esc(row.detail)||'—'}</td><td class="text-nowrap"><button type="button" class="btn btn-sm btn-outline-secondary dv-details" data-row="${esc(JSON.stringify(row))}">Details</button> ${row.edit_url?`<a class="btn btn-sm btn-outline-primary" href="${esc(row.edit_url)}" title="Edit voucher" aria-label="Edit voucher ${esc(row.number)}"><i class="fas fa-edit" aria-hidden="true"></i></a>`:''} ${row.delete_url?`<button type="button" class="btn btn-sm btn-outline-danger dv-delete" title="Delete voucher" aria-label="Delete voucher ${esc(row.number)}" data-url="${esc(row.delete_url)}" data-number="${esc(row.number)}"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>`:''} ${row.url?`<a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" href="${esc(row.url)}" aria-label="Print ${esc(row.number)}"><i class="fas fa-print"></i></a>`:'<span class="small text-muted">—</span>'}</td></tr>`).join(''):'<tr><td colspan="8" class="text-center text-muted p-4">No vouchers match these filters.</td></tr>';
-        } catch(error){body.innerHTML=`<tr><td colspan="8" class="text-center text-danger p-4">${esc(error.message)}</td></tr>`;}
-        finally{wrap.classList.remove('daily-voucher-loading');}
+        } catch(error){
+            if(requestId!==activeRequest)return;
+            body.innerHTML=`<tr><td colspan="8" class="text-center text-danger p-4">${esc(error.message)}</td></tr>`;
+            pager.replaceChildren();
+            recordSummary.textContent='Unable to load records';
+        }
+        finally{if(requestId===activeRequest)wrap.classList.remove('daily-voucher-loading');}
     }
     form.addEventListener('submit',event=>{event.preventDefault();start=0;load();});
-    document.getElementById('dv-prev').addEventListener('click',()=>{start=Math.max(0,start-length);load();});
-    document.getElementById('dv-next').addEventListener('click',()=>{if(start+length<filtered){start+=length;load();}});
     document.getElementById('dv-search').addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(()=>{start=0;load();},300);});
     document.querySelectorAll('.dv-column-filter').forEach(input=>input.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(()=>{start=0;load();},250);}));
     // The modal contains the real voucher form. No overlay, spinner or polling.
