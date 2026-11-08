@@ -2124,8 +2124,8 @@
                         $('#modal-delete').modal('hide');
                         Swal.fire({
                             icon: 'success',
-                            title: 'Deleted',
-                            text: response?.message || 'Voucher deleted successfully.'
+                            title: 'Deactivated',
+                            text: response?.message || 'Voucher deactivated successfully.'
                         });
 
                         if ($.fn.DataTable.isDataTable('#table-data')) {
@@ -3373,7 +3373,7 @@
                                     @can('delete voucher')
                                         buttons +=
                                             `
-                                                                                                                            <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="Posted vouchers cannot be deleted. Use the authorized reversal workflow." aria-label="Posted voucher deletion unavailable">
+                                                                                                                            <button type="button" class="btn btn-sm btn-danger btn-delete" data-id="${row.id}" title="Deactivate voucher (no hard delete)" aria-label="Deactivate voucher">
                                                                                                                                 <i class="fas fa-trash" aria-hidden="true"></i>
                                                                                                                             </button>
                                                                                                                         `;
@@ -3741,8 +3741,9 @@
                         id="cashVoucherDeleteForm">
                         @csrf
                         @method('DELETE')
-                        <p class="modal-text" data-default-text="Are you sure you want to delete?">Are you sure you want to delete? <b id="delete-data"></b></p>
-                        <textarea name="delete_reason" id="" cols="60"></textarea>
+                        <p class="modal-text" data-default-text="Deactivate this voucher? Ledger history will not be physically deleted.">Deactivate this voucher? Ledger history will not be physically deleted. <b id="delete-data"></b></p>
+                        <label for="cash-voucher-delete-reason">Reason (required)</label>
+                        <textarea name="delete_reason" id="cash-voucher-delete-reason" class="form-control" rows="3" maxlength="500" required></textarea>
                         <input type="hidden" name="id" id="did">
                 </div>
                 <div class="modal-footer justify-content-between">
