@@ -401,6 +401,15 @@
             requestAnimationFrame(()=>requestAnimationFrame(revealEntry));
             return;
         }
+        if(event.data?.type==='daily-voucher-edit-saved' && entryMode==='edit'){
+            if(window.jQuery)window.jQuery('#dv-entry-modal').modal('hide');
+            start=0;load();
+            return;
+        }
+        if(event.data?.type==='daily-voucher-edit-cancelled' && entryMode==='edit'){
+            if(window.jQuery)window.jQuery('#dv-entry-modal').modal('hide');
+            return;
+        }
         if(event.data?.type!=='daily-voucher-saved')return;
         if(window.jQuery)window.jQuery('#dv-entry-modal').modal('hide');
         document.getElementById('dv-entry-frame').src='about:blank';start=0;load();
