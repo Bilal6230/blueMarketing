@@ -223,7 +223,7 @@
 
                         // Skip adding input for the "ID" column
                         if (column.index() == 1 || column.index() == 5) {
-                            var input = document.createElement("input");
+                            var input = $('<input>')[0];
                             $(input).addClass('form-control').appendTo($(column.header())).on('keyup change',
                                 function () {
                                     column.search($(this).val()).draw();
