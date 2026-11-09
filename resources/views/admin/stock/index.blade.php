@@ -1243,7 +1243,7 @@
       button.disabled = true;
       button.textContent = "Uploading and validating...";
       preview.hidden = false;
-      preview.innerHTML = '<div class="placeholder-glow"><span class="placeholder col-12"></span><span class="placeholder col-7"></span></div>';
+      $(preview).html('<div class="placeholder-glow"><span class="placeholder col-12"></span><span class="placeholder col-7"></span></div>');
       try {
         const body = new FormData();
         body.append("file", file);
@@ -1261,10 +1261,10 @@
         await loadItemImportHistory();
       } catch (error) {
         const message = error?.data?.message || error?.data?.errors?.file?.[0] || "Could not stage this CSV import.";
-        preview.innerHTML = `<div class="alert alert-danger mb-0">${importHtml(message)}</div>`;
+        $(preview).html(`<div class="alert alert-danger mb-0">${importHtml(message)}</div>`);
       } finally {
         button.disabled = false;
-        button.innerHTML = '<i class="bi bi-upload me-1"></i>Preview Import';
+        $(button).html('<i class="bi bi-upload me-1"></i>Preview Import');
       }
     });
 
@@ -1280,12 +1280,12 @@
       const applyUrl = endpoints.applyItemImport.replace(/0(?=\D*$)/, encodeURIComponent(data.batch_id));
       const errorsUrl = endpoints.itemImportErrors.replace(/0(?=\D*$)/, encodeURIComponent(data.batch_id));
       preview.hidden = false;
-      preview.innerHTML = `
+      $(preview).html(`
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
           <div><strong>Import preview</strong><div class="pv-small pv-muted">${Number(counts.total || 0)} rows · ${Number(counts.added || 0)} new · ${Number(counts.updated || 0)} updates · ${Number(counts.skipped || 0)} skipped · ${failed} errors</div></div>
           <div class="d-flex gap-2">${failed ? `<a class="btn btn-outline-danger btn-sm" href="${errorsUrl}">Download errors</a>` : ""}<button class="btn btn-success btn-sm" id="applyItemImport" ${failed || data.status !== "staged" ? "disabled" : ""}>Confirm and apply</button></div>
         </div>
-        <div class="table-responsive" style="max-height:280px"><table class="table table-sm table-bordered align-middle mb-0"><thead><tr><th>Row</th><th>Item ID</th><th>Name</th><th>Action</th><th>Validation</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+        <div class="table-responsive" style="max-height:280px"><table class="table table-sm table-bordered align-middle mb-0"><thead><tr><th>Row</th><th>Item ID</th><th>Name</th><th>Action</th><th>Validation</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`);
       $('#applyItemImport').on("click", async (event) => {
         const button = event.currentTarget;
         const confirmation = await Swal.fire({ icon: "warning", title: "Apply item import?", text: "Only item names, units and default rates will change. Stock balances and transaction history will remain unchanged.", showCancelButton: true, confirmButtonText: "Apply import" });
@@ -1295,7 +1295,7 @@
         try {
           const applied = await apiPost(applyUrl, { confirmed: true });
           viewToast("success", "Import applied", `${applied.data?.added || 0} added, ${applied.data?.updated || 0} updated.`);
-          preview.innerHTML = '<div class="alert alert-success mb-0">Import applied. Item master refreshed; stock history was not changed.</div>';
+          $(preview).html('<div class="alert alert-success mb-0">Import applied. Item master refreshed; stock history was not changed.</div>');
           await loadMeta();
           await loadItemsTable();
           await loadItemImportHistory();
@@ -1471,7 +1471,7 @@
   =========================== */
     function fillPartySelect(sel, withAll = false) {
       const placeholder = withAll ? "All" : (sel.id === "billParty" ? "Select a Supplier or Site" : "Select a Shop/Party or Site/Customer");
-      sel.innerHTML = `<option value="">${placeholder}</option>`;
+      $(sel).html(`<option value="">${placeholder}</option>`);
       if (withAll)
         sel.options[0].textContent = "All";
       state.parties.forEach((p) => {
@@ -1482,7 +1482,7 @@
       });
     }
     function fillItemSelect(sel, withAll = false) {
-      sel.innerHTML = "";
+      $(sel).html("");
       if (withAll)
         sel.insertAdjacentHTML("beforeend", `<option value="">All</option>`);
       state.items.forEach((i) => {
@@ -1578,7 +1578,7 @@
         `;
 
       const temp = $('<div>')[0];
-      temp.innerHTML = html.trim();
+      $(temp).html(html.trim());
       const row = temp.firstElementChild;
 
       const itemSel = $(row).find(".line-item")[0];
@@ -1718,7 +1718,7 @@
         entryReason.value = "";
         entryVehicle.value = "";
         entryDriver.value = "";
-        entryLinesWrap.innerHTML = "";
+        $(entryLinesWrap).html("");
         entryLinesWrap.appendChild(makeLineRow("entry", 1));
         recalcEntryTotal();
 
@@ -1817,7 +1817,7 @@
         );
 
         billEntryNo.value = "";
-        billLinesWrap.innerHTML = "";
+        $(billLinesWrap).html("");
         billLinesWrap.appendChild(makeBillLineRow(1));
         recalcBillTotal();
 
@@ -1841,7 +1841,7 @@
       $('#editModalTitle')[0].textContent = title;
 
       const form = $('#editForm')[0];
-      form.innerHTML = "";
+      $(form).html("");
 
       fields.forEach((f) => {
         form.insertAdjacentHTML(
@@ -2035,8 +2035,8 @@
       try {
         const result = await apiGet(endpoints.itemImportHistory);
         const rows = result?.data?.rows || [];
-        tbody.innerHTML = rows.length ? rows.map((row) => `
-          <tr><td>#${Number(row.id)}</td><td>${importHtml(row.created_at || "")}</td><td>${importHtml(row.created_by || "-")}</td><td><span class="pv-pill ${row.status === "applied" ? "ok" : "warn"}">${importHtml(row.status)}</span></td><td>${Number(row.added)} / ${Number(row.updated)} / ${Number(row.failed)}</td><td><button type="button" class="btn btn-outline-primary btn-sm" data-import-preview="${Number(row.id)}">Preview</button></td></tr>`).join("") : '<tr><td colspan="6" class="text-muted text-center">No import batches yet.</td></tr>';
+        $(tbody).html(rows.length ? rows.map((row) => `
+          <tr><td>#${Number(row.id)}</td><td>${importHtml(row.created_at || "")}</td><td>${importHtml(row.created_by || "-")}</td><td><span class="pv-pill ${row.status === "applied" ? "ok" : "warn"}">${importHtml(row.status)}</span></td><td>${Number(row.added)} / ${Number(row.updated)} / ${Number(row.failed)}</td><td><button type="button" class="btn btn-outline-primary btn-sm" data-import-preview="${Number(row.id)}">Preview</button></td></tr>`).join("") : '<tr><td colspan="6" class="text-muted text-center">No import batches yet.</td></tr>');
         $(tbody).find("[data-import-preview]").toArray().forEach((button) => $(button).on("click", async () => {
           try {
             const url = endpoints.itemImportPreview.replace(/0(?=\D*$)/, encodeURIComponent(button.dataset.importPreview));
@@ -2046,7 +2046,7 @@
           } catch (error) { handleApiError(error, "Unable to load this import preview."); }
         }));
       } catch (error) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-danger text-center">${importHtml(error?.data?.message || "Import history is unavailable until its migration is installed.")}</td></tr>`;
+        $(tbody).html(`<tr><td colspan="6" class="text-danger text-center">${importHtml(error?.data?.message || "Import history is unavailable until its migration is installed.")}</td></tr>`);
       }
     }
 
@@ -2064,7 +2064,7 @@
   =========================== */
     function renderEntryTable() {
       const tbody = $('#entryTbody')[0];
-      tbody.innerHTML = "";
+      $(tbody).html("");
       (state.entries.rows || []).forEach((en, idx) => {
         const billingPill = en.billed_at
           ? `<span class="pv-pill ok">Billed</span>`
@@ -2112,7 +2112,7 @@
 
     function renderBillTable() {
       const tbody = $('#billTbody')[0];
-      tbody.innerHTML = "";
+      $(tbody).html("");
       (state.bills.rows || []).forEach((b, idx) => {
         tbody.insertAdjacentHTML(
           "beforeend",
@@ -2152,7 +2152,7 @@
       const to = $('#stockTo')[0].value;
       const rows = state.report.rows || [];
       const tbody = $('#stockTbody')[0];
-      tbody.innerHTML = "";
+      $(tbody).html("");
 
       rows.forEach((r) => {
         tbody.insertAdjacentHTML(
@@ -2190,7 +2190,7 @@
 
     function renderItems() {
       const tbody = $('#itemTbody')[0];
-      tbody.innerHTML = "";
+      $(tbody).html("");
       (state.itemsTable.rows || []).forEach((it, idx) => {
         tbody.insertAdjacentHTML(
           "beforeend",
@@ -2303,7 +2303,7 @@
 
     function renderParties() {
       const tbody = $('#partyTbody')[0];
-      tbody.innerHTML = "";
+      $(tbody).html("");
       (state.partiesTable.rows || []).forEach((p, idx) => {
         tbody.insertAdjacentHTML(
           "beforeend",
@@ -2453,11 +2453,11 @@
       $('#stockFrom')[0].value = daysAgoISO(30);
       $('#stockTo')[0].value = todayISO();
 
-      entryLinesWrap.innerHTML = "";
+      $(entryLinesWrap).html("");
       entryLinesWrap.appendChild(makeLineRow("entry", 1));
       recalcEntryTotal();
 
-      billLinesWrap.innerHTML = "";
+      $(billLinesWrap).html("");
       billLinesWrap.appendChild(makeBillLineRow(1));
       recalcBillTotal();
 
