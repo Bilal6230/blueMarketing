@@ -228,8 +228,9 @@
         </tbody>
     </table>
 
-    <script>
-        window.addEventListener('load', () => {
+    <script src="{{ asset('template/admin/plugins/jquery/jquery.min.js') }}"></script>
+<script>
+        $(window).on('load', () => {
             setTimeout(() => window.print(), 500);
         });
     </script>
