@@ -554,7 +554,7 @@
 
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        $(function() {
             flatpickr('.date', {
                 enableTime: false, // Set to true if you want to include time
                 dateFormat: "Y-m-d", // Set the desired date format
