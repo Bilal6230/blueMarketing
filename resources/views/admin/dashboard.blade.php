@@ -625,7 +625,7 @@ html::-webkit-scrollbar,body::-webkit-scrollbar{width:11px}html::-webkit-scrollb
  }
  async function search(){
    const number=input.value.replace(/\D/g,'').slice(0,11);input.value=number;
-   if(number.length<11){last='';if(number.length)state('Enter complete 11-digit mobile number.','loading');else output.textContent='';return;}
+   if(number.length<11){last='';if(number.length)state('Enter complete 11-digit mobile number.','loading');else $(output).empty();return;}
    if(number===last)return;last=number;
    if(request)request.abort();state('Searching lead…','loading');button.disabled=true;
    try{
