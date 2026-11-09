@@ -140,7 +140,7 @@
 
                     // Skip adding input for the "ID" column
                     if (column.index() !== 0) {
-                        var input = document.createElement("input");
+                        var input = $('<input>')[0];
                         $(input).appendTo($(column.header())).on('keyup change', function () {
                             column.search($(this).val()).draw();
                         }).css('width', '150px'); // Adjust the width as needed
