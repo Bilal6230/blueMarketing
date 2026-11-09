@@ -2228,10 +2228,10 @@
         $(exportSelected).toggleClass("disabled", ids.length === 0);
         exportSelected.setAttribute("aria-disabled", ids.length === 0 ? "true" : "false");
       };
-      if (selectAll) selectAll.onchange = () => {
-        $(tbody).find(".stock-item-select").toArray().forEach((input) => { input.checked = selectAll.checked; });
+      if (selectAll) $(selectAll).off('change.stockExport').on('change.stockExport', () => {
+        $(tbody).find('.stock-item-select').prop('checked',$(selectAll).prop('checked'));
         syncSelectedExport();
-      };
+      });
       $(tbody).find(".stock-item-select").toArray().forEach((input) => $(input).on("change", syncSelectedExport));
       if (exportSelected) $(exportSelected).on('click', (event) => {
         if (!$(tbody).find(".stock-item-select:checked")[0]) event.preventDefault();
