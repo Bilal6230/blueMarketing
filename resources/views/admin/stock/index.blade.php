@@ -1197,53 +1197,36 @@
       partiesTable: { rows: [], total: 0 },
     };
 
-    const csrfToken = document
-      .querySelector('meta[name="csrf-token"]')
-      ?.getAttribute("content");
+    const csrfToken = $('meta[name="csrf-token"]').attr('content');
 
     async function apiGet(url, params = {}) {
-      const qs = new URLSearchParams(
-        Object.entries(params).filter(([, v]) => v !== null && v !== "")
-      ).toString();
-      const res = await fetch(qs ? `${url}?${qs}` : url, {
-        headers: { Accept: "application/json" },
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw { status: res.status, data };
-      return data;
+      try {
+        return await $.ajax({
+          url, method: 'GET', dataType: 'json',
+          data: Object.fromEntries(Object.entries(params).filter(([,v])=>v!==null&&v!=='')),
+          headers: {Accept:'application/json'}
+        });
+      } catch(xhr) {
+        throw {status:xhr.status, data:xhr.responseJSON || {}};
+      }
     }
 
     async function apiPost(url, payload = {}) {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          "X-CSRF-TOKEN": csrfToken || "",
-        },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw { status: res.status, data };
-      return data;
+      return apiSend(url, 'POST', payload);
     }
 
     async function apiSend(url, method, payload = null) {
-      const opts = {
-        method,
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          "X-CSRF-TOKEN": csrfToken || "",
-        },
-      };
-      if (payload) {
-        opts.body = JSON.stringify(payload);
+      try {
+        return await $.ajax({
+          url, method, dataType:'json',
+          data: payload === null ? undefined : JSON.stringify(payload),
+          processData:false,
+          contentType:'application/json',
+          headers: {Accept:'application/json','X-CSRF-TOKEN':csrfToken || ''}
+        });
+      } catch(xhr) {
+        throw {status:xhr.status, data:xhr.responseJSON || {}};
       }
-      const res = await fetch(url, opts);
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw { status: res.status, data };
-      return data;
     }
 
     const importHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
@@ -1264,11 +1247,16 @@
       try {
         const body = new FormData();
         body.append("file", file);
-        const response = await fetch(endpoints.stageItemImport, {
-          method: "POST", headers: { Accept: "application/json", "X-CSRF-TOKEN": csrfToken || "" }, body
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw { status: response.status, data: result };
+        let result;
+        try {
+          result = await $.ajax({
+            url:endpoints.stageItemImport, method:'POST',
+            data:body, dataType:'json', contentType:false, processData:false,
+            headers:{Accept:'application/json','X-CSRF-TOKEN':csrfToken || ''}
+          });
+        } catch(xhr) {
+          throw {status:xhr.status,data:xhr.responseJSON || {}};
+        }
         renderItemImportPreview(result.data);
         await loadItemImportHistory();
       } catch (error) {
