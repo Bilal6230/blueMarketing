@@ -247,7 +247,7 @@
     function load(){
         const requestId=++activeRequest;
         if(activeController)activeController.abort();
-        wrap.classList.add('daily-voucher-loading');
+        $(wrap).addClass('daily-voucher-loading');
         showTableSkeleton();
         const params=new URLSearchParams($('#daily-voucher-filters').serialize()); params.set('start',start); params.set('length',length);
         params.set('sort_column',sortColumn);params.set('sort_direction',sortDirection);
@@ -289,8 +289,8 @@
     const dvPage=document.getElementById('dv-page');
     const voucherTypeLabels={CR:'Credit Voucher (CR)',DR:'Debit Voucher (DR)',CCR:'Cash Credit (CCR)',CDR:'Cash Debit (CDR)',BOR:'Bank Credit (BOR)',BOP:'Bank Debit (BOP)'};
     function updateDirectoryTheme(type){
-        dvPage.classList.toggle('dv-theme-credit',['CR','CCR','BOR'].includes(type));
-        dvPage.classList.toggle('dv-theme-debit',['DR','CDR','BOP','CP'].includes(type));
+        $(dvPage).toggleClass('dv-theme-credit',['CR','CCR','BOR'].includes(type));
+        $(dvPage).toggleClass('dv-theme-debit',['DR','CDR','BOP','CP'].includes(type));
         const heading=dvPage.querySelector('.content-header h1');
         const label=type ? type+' Vouchers' : 'Voucher Directory';
         if(heading)heading.textContent=label;
@@ -301,22 +301,22 @@
     function revealEntry(){
         if(!requestedEntryUrl)return;
         entryFrame.style.visibility='visible';
-        entryLoading.classList.add('d-none');
+        $(entryLoading).addClass('d-none');
     }
     function showEntryError(message,url=requestedEntryUrl){
-        entryLoading.classList.add('d-none');
+        $(entryLoading).addClass('d-none');
         entryFrame.style.visibility='hidden';
         entryErrorText.textContent=message;
         fallback.href=url||'#';
-        fallback.classList.toggle('d-none',!url);
-        entryError.classList.remove('d-none');
+        $(fallback).toggleClass('d-none',!url);
+        $(entryError).removeClass('d-none');
     }
     function loadEntry(url,mode='create'){
         entryMode=mode;
         requestedEntryUrl=url;
-        entryLoading.classList.toggle('d-none',!url);
+        $(entryLoading).toggleClass('d-none',!url);
         entryFrame.style.visibility='hidden';
-        entryError.classList.add('d-none');
+        $(entryError).addClass('d-none');
         entryFrame.src=url||'about:blank';
         if(!url)showEntryError('No voucher entry form is available for this type.');
     }
@@ -351,14 +351,14 @@
     };
     function chooseVoucher(){
         requestedEntryUrl='';
-        entryLoading.classList.add('d-none');
+        $(entryLoading).addClass('d-none');
         entryFrame.src='about:blank';
         entryFrame.style.display='none';
         entryFrame.style.visibility='hidden';
-        entryError.classList.add('d-none');
-        methodWrap.classList.add('d-none');
+        $(entryError).addClass('d-none');
+        $(methodWrap).addClass('d-none');
         entryType.value='';
-        entryChoose.classList.remove('d-none');
+        $(entryChoose).removeClass('d-none');
         document.getElementById('dv-entry-title').textContent='New voucher';
         $('#dv-entry-modal').modal('show');
     }
@@ -370,10 +370,10 @@
         const series=seriesMap[selected];
         const button=series ? document.querySelector(`.dv-create[data-series="${series}"]`) : null;
         if(!button){chooseVoucher();return;}
-        entryChoose.classList.add('d-none');
+        $(entryChoose).addClass('d-none');
         entryFrame.style.display='block';
         document.getElementById('dv-entry-title').textContent=button.dataset.title;
-        methodWrap.classList.toggle('d-none',!button.dataset.chequeUrl);
+        $(methodWrap).toggleClass('d-none',!button.dataset.chequeUrl);
         document.getElementById('dv-bank-method').value='online';
         $('#dv-bank-method-wrap').data('onlineUrl',button.dataset.url).data('chequeUrl',button.dataset.chequeUrl);
         loadEntry(button.dataset.url);
@@ -390,7 +390,7 @@
         if(!selected || (!seriesMap[selected] && !dedicatedRoutes[selected]))chooseVoucher();
         else openVoucherType(selected);
     });
-    $('#dv-entry-modal').on('hidden.bs.modal',()=>{requestedEntryUrl='';entryLoading.classList.add('d-none');entryError.classList.add('d-none');entryChoose.classList.add('d-none');entryFrame.style.visibility='hidden';entryFrame.src='about:blank';});
+    $('#dv-entry-modal').on('hidden.bs.modal',()=>{requestedEntryUrl='';$(entryLoading).addClass('d-none');$(entryError).addClass('d-none');$(entryChoose).addClass('d-none');entryFrame.style.visibility='hidden';entryFrame.src='about:blank';});
     $(window).on('message',messageEvent=>{
         const event=messageEvent.originalEvent;
         if(event.origin!==window.location.origin || event.source!==entryFrame.contentWindow)return;
@@ -419,8 +419,8 @@
         const button=this;
         const url=new URL(button.dataset.url,window.location.href);
         url.searchParams.set('embed','1');
-        entryChoose.classList.add('d-none');
-        methodWrap.classList.add('d-none');
+        $(entryChoose).addClass('d-none');
+        $(methodWrap).addClass('d-none');
         entryFrame.style.display='block';
         document.getElementById('dv-entry-title').textContent='Edit '+button.dataset.number;
         loadEntry(url.toString(),'edit');
@@ -464,17 +464,17 @@
         const audit=document.getElementById('dv-detail-audit'), auditWrap=document.getElementById('dv-detail-audit-wrap');
         audit.replaceChildren();
         Object.entries(row.audit||{}).forEach(([label,value])=>{if(value===null||value===undefined||value==='')return;const term=document.createElement('dt'),description=document.createElement('dd');term.className='col-sm-4';description.className='col-sm-8';term.textContent=label;description.textContent=typeof value==='object'?JSON.stringify(value):String(value);audit.append(term,description);});
-        auditWrap.classList.toggle('d-none',!audit.children.length);
+        $(auditWrap).toggleClass('d-none',!audit.children.length);
         const lineWrap=document.getElementById('dv-detail-lines-wrap'), lineBody=document.getElementById('dv-detail-lines');
         lineBody.replaceChildren();
         (row.lines||[]).forEach(line=>{const tr=document.createElement('tr');[line.account,line.description,Number(line.debit||0).toLocaleString(),Number(line.credit||0).toLocaleString()].forEach((value,index)=>{const td=document.createElement('td');td.textContent=value||'—';if(index>1)td.className='text-right';tr.append(td);});lineBody.append(tr);});
-        lineWrap.classList.toggle('d-none',!(row.lines||[]).length);
+        $(lineWrap).toggleClass('d-none',!(row.lines||[]).length);
         const printsWrap=document.getElementById('dv-detail-prints-wrap'), prints=document.getElementById('dv-detail-prints');
         prints.replaceChildren();
         (row.prints||[]).forEach(item=>{const link=document.createElement('a');link.className='btn btn-sm btn-outline-primary';link.href=item.url;link.target='_blank';link.rel='noopener';link.textContent=item.label;prints.append(link);});
-        printsWrap.classList.toggle('d-none',!(row.prints||[]).length);
+        $(printsWrap).toggleClass('d-none',!(row.prints||[]).length);
         const printLink=document.getElementById('dv-detail-print'), noPrint=document.getElementById('dv-no-print');
-        printLink.classList.toggle('d-none',!row.url); noPrint.classList.toggle('d-none',!!row.url);
+        $(printLink).toggleClass('d-none',!row.url); $(noPrint).toggleClass('d-none',!!row.url);
         if(row.url) printLink.href=row.url;
         $('#dv-detail-modal').modal('show');
     });
