@@ -271,8 +271,8 @@
                     message.remove();
                 });
             }
-            document.addEventListener('DOMContentLoaded', () => modalizeSettingsForms());
-            document.addEventListener('ajax:panel-updated', (event) => modalizeSettingsForms(event.detail?.panel || document));
+            $(modalizeSettingsForms);
+            $(document).on('ajax:panel-updated', (_event, detail) => modalizeSettingsForms(detail?.panel || document));
         })();
     </script>
     <script>
