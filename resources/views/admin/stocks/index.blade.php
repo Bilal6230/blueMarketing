@@ -185,7 +185,7 @@
     </script>
     @if ($errors->any())
         <script>
-            $(document).on('DOMContentLoaded', function () {
+            $(function () {
                 Swal.fire({
                     toast: true,
                     position: 'top-end', // top right
@@ -201,7 +201,7 @@
 
     @if (session('success'))
         <script>
-            $(document).on('DOMContentLoaded', function () {
+            $(function () {
                 Swal.fire({
                     toast: true,
                     position: 'top-end',
@@ -227,7 +227,7 @@
                 cancelButtonText: 'Cancel'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    document.getElementById('delete-form-' + stockId).submit();
+                    $('#delete-form-' + stockId)[0]?.submit();
                 }
             });
         }
@@ -782,7 +782,7 @@
           - If endpoint not built yet -> show placeholder row
         =========================== */
         function showNotImplemented(tbodyId, message) {
-            const tbody = document.getElementById(tbodyId);
+            const tbody = $('#'+$.escapeSelector(tbodyId))[0];
             if (!tbody) return;
             tbody.innerHTML = `
         <tr>
@@ -1125,7 +1125,7 @@
             await renderAll();
         }
 
-        $(document).on("DOMContentLoaded", async () => {
+        $(async function () {
             try {
                 await initUI();
             } catch (e) {
