@@ -173,27 +173,46 @@
 @endsection
 @section('js')
 <script>
-(function(){
- const tabs=document.querySelectorAll('.lp-nav [data-tab]');
+$(function(){
+ const $tabs=$('.lp-nav [data-tab]');
  function activate(id){
-  tabs.forEach(b=>{const active=b.dataset.tab===id;b.classList.toggle('active',active);b.setAttribute('aria-selected',active?'true':'false');document.getElementById('lp-tab-'+b.dataset.tab).hidden=!active});
+  $tabs.each(function(){
+   const $tab=$(this),active=$tab.data('tab')===id;
+   $tab.toggleClass('active',active).attr('aria-selected',active?'true':'false');
+   $('#lp-tab-'+$.escapeSelector($tab.data('tab'))).prop('hidden',!active);
+  });
   sessionStorage.setItem('landing-editor-tab',id);
  }
- tabs.forEach(b=>b.addEventListener('click',()=>activate(b.dataset.tab)));
- const initial=new URLSearchParams(location.search).get('tab') || sessionStorage.getItem('landing-editor-tab') || 'design';
- activate([...tabs].some(b=>b.dataset.tab===initial)?initial:'design');
- document.querySelectorAll('.reset-image').forEach(btn=>btn.addEventListener('click',()=>{const input=document.getElementById(btn.dataset.target);if(input){input.value='';input.dispatchEvent(new Event('change',{bubbles:true}))}}));
- const list=document.getElementById('landing-section-list');let dragging=null;
- if(list){
-  list.addEventListener('click',e=>{
-   const b=e.target.closest('button');if(!b)return;const row=b.closest('.section-sort-row');
-   if(b.classList.contains('move-up')&&row.previousElementSibling)list.insertBefore(row,row.previousElementSibling);
-   if(b.classList.contains('move-down')&&row.nextElementSibling)list.insertBefore(row.nextElementSibling,row);
-  });
-  list.addEventListener('dragstart',e=>{dragging=e.target.closest('.section-sort-row');if(dragging){dragging.classList.add('dragging');e.dataTransfer.effectAllowed='move'}});
-  list.addEventListener('dragover',e=>{e.preventDefault();const row=e.target.closest('.section-sort-row');if(row&&dragging&&row!==dragging){const rect=row.getBoundingClientRect();list.insertBefore(dragging,e.clientY<rect.top+rect.height/2?row:row.nextSibling)}});
-  list.addEventListener('dragend',()=>{if(dragging)dragging.classList.remove('dragging');dragging=null});
- }
-})();
+ $tabs.on('click',function(){activate($(this).data('tab'));});
+ const initial=new URLSearchParams(location.search).get('tab')||sessionStorage.getItem('landing-editor-tab')||'design';
+ activate($tabs.filter(function(){return $(this).data('tab')===initial;}).length?initial:'design');
+ $('.reset-image').on('click',function(){
+  const target=$(this).data('target');
+  if(target)$('#'+$.escapeSelector(target)).val('').trigger('change');
+ });
+ const $list=$('#landing-section-list');
+ let $dragging=null;
+ $list.on('click','button',function(){
+  const $button=$(this),$row=$button.closest('.section-sort-row');
+  if($button.hasClass('move-up')&&$row.prev().length)$row.insertBefore($row.prev());
+  if($button.hasClass('move-down')&&$row.next().length)$row.insertAfter($row.next());
+ });
+ $list.on('dragstart','.section-sort-row',function(event){
+  $dragging=$(this).addClass('dragging');
+  if(event.originalEvent?.dataTransfer)event.originalEvent.dataTransfer.effectAllowed='move';
+ });
+ $list.on('dragover','.section-sort-row',function(event){
+  event.preventDefault();
+  const $row=$(this);
+  if(!$dragging||$row.is($dragging))return;
+  const midpoint=$row.offset().top+$row.outerHeight()/2;
+  if(event.originalEvent.clientY<midpoint)$dragging.insertBefore($row);
+  else $dragging.insertAfter($row);
+ });
+ $list.on('dragend','.section-sort-row',function(){
+  if($dragging)$dragging.removeClass('dragging');
+  $dragging=null;
+ });
+});
 </script>
 @endsection
