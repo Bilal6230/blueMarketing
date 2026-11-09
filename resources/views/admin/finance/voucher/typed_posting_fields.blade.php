@@ -26,82 +26,85 @@
         <small>Choose the accounts before posting. Pending bank receipts are posted when cleared.</small>
     </fieldset>
     @once
-        <script>
-            (() => {
-                const normalized = value => {
-                    const raw = String(value ?? '').replaceAll(',', '').trim();
-                    if (!/^[0-9]{1,10}(?:\.[0-9]{1,2})?$/.test(raw)) return null;
-                    const parts = raw.split('.');
-                    return String(BigInt(parts[0])) + '.' + (parts[1] || '').padEnd(2, '0');
-                };
-                window.originalPostingTotal = values => {
-                    let cents = 0n;
-                    for (const value of values) {
-                        const amount = normalized(value);
-                        if (amount === null) return null;
-                        cents += BigInt(amount.replace('.', ''));
-                    }
-                    return String(cents / 100n) + '.' + String(cents % 100n).padStart(2, '0');
-                };
-                window.syncOriginalPostingForm = form => {
-                    if (!form) return;
-                    const fieldset = form.querySelector('[data-original-posting-fields]');
-                    if (!fieldset) return;
-                    const payment = form.querySelector('[name="payment_type"]')?.value;
-                    const statusField = form.querySelector('select[name="passing_status"], input[name="passing_status"], [name="pending_status"]');
-                    const status = form.dataset.postingDecision || statusField?.value;
-                    const bank = ['2', '3'].includes(payment);
-                    const clearing = form.querySelector('[name="action"]')?.value === 'extra_charge_clearance' || !!form.querySelector('[name="selected_pending_payment_id"]')?.value;
-                    const enabled = !bank || (clearing && status === '1');
-                    const bankAccount = form.querySelector('[data-bank-settlement-account]');
-                    if (bankAccount) {
-                        bankAccount.disabled = !enabled;
-                        bankAccount.required = enabled && bank;
-                    }
-                    const amount = normalized(form.querySelector('[name="amount"]')?.value) || '0.00';
-                    fieldset.querySelectorAll('[data-posting-allocation]').forEach(input => {
-                        input.disabled = !enabled;
-                        if (input.dataset.postingSide) input.value = input.dataset.postingSide === 'amount' ? amount : '0.00';
-                    });
-                };
-                window.originalPostingPayload = form => {
-                    window.syncOriginalPostingForm(form);
-                    return Object.fromEntries(new FormData(form).entries());
-                };
-                window.refreshOriginalPostingKey = form => {
-                    const key = form?.querySelector('[name="request_key"]');
-                    if (key) key.value = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
-                };
-                document.addEventListener('input', event => window.syncOriginalPostingForm(event.target.form), true);
-                document.addEventListener('change', event => window.syncOriginalPostingForm(event.target.form), true);
-                document.addEventListener('change', event => {
-                    const field = event.target.closest('[data-bank-settlement-account]');
-                    if (!field) return;
-                    const mapping = field.selectedOptions[0]?.dataset.accountMappingId;
-                    const account = field.form?.querySelector('[name="posting_lines[0][account_id]"]');
-                    if (mapping && account) {
-                        account.value = mapping;
-                        account.dispatchEvent(new Event('change', { bubbles: true }));
-                    }
-                }, true);
-                document.addEventListener('click', event => {
-                    const button = event.target.closest('button[name="passing_status"]');
-                    if (button?.form) {
-                        button.form.dataset.postingDecision = button.value;
-                        window.syncOriginalPostingForm(button.form);
-                    }
-                    const submit = event.target.closest('button[type="submit"], input[type="submit"], button:not([type])');
-                    if (submit?.form) window.syncOriginalPostingForm(submit.form);
-                }, true);
-                document.addEventListener('reset', event => queueMicrotask(() => {
-                    window.refreshOriginalPostingKey(event.target);
-                    window.syncOriginalPostingForm(event.target);
-                }), true);
-                document.addEventListener('submit', event => window.syncOriginalPostingForm(event.target), true);
-                const initialize = () => document.querySelectorAll('[data-original-posting-fields]').forEach(el => window.syncOriginalPostingForm(el.closest('form')));
-                if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initialize);
-                else queueMicrotask(initialize);
-            })();
-        </script>
+        @push('script')
+<script>
+$(function(){
+    const normalized=value=>{
+        const raw=String(value??'').replaceAll(',','').trim();
+        if(!/^[0-9]{1,10}(?:\.[0-9]{1,2})?$/.test(raw))return null;
+        const parts=raw.split('.');
+        return String(BigInt(parts[0]))+'.'+(parts[1]||'').padEnd(2,'0');
+    };
+    window.originalPostingTotal=values=>{
+        let cents=0n;
+        for(const value of values){
+            const amount=normalized(value);
+            if(amount===null)return null;
+            cents+=BigInt(amount.replace('.',''));
+        }
+        return String(cents/100n)+'.'+String(cents%100n).padStart(2,'0');
+    };
+    window.syncOriginalPostingForm=form=>{
+        const $form=$(form);
+        if(!$form.length||!$form.find('[data-original-posting-fields]').length)return;
+        const payment=String($form.find('[name="payment_type"]').val()||'');
+        const $status=$form.find('select[name="passing_status"],input[name="passing_status"],[name="pending_status"]').first();
+        const status=$form.attr('data-posting-decision')||$status.val();
+        const bank=['2','3'].includes(payment);
+        const clearing=$form.find('[name="action"]').val()==='extra_charge_clearance'||
+            !!$form.find('[name="selected_pending_payment_id"]').val();
+        const enabled=!bank||(clearing&&status==='1');
+        $form.find('[data-bank-settlement-account]')
+            .prop('disabled',!enabled).prop('required',enabled&&bank);
+        const amount=normalized($form.find('[name="amount"]').val())||'0.00';
+        $form.find('[data-posting-allocation]').each(function(){
+            const $input=$(this);
+            $input.prop('disabled',!enabled);
+            const side=$input.attr('data-posting-side');
+            if(side)$input.val(side==='amount'?amount:'0.00');
+        });
+    };
+    window.originalPostingPayload=form=>{
+        window.syncOriginalPostingForm(form);
+        return Object.fromEntries(new FormData(form).entries());
+    };
+    window.refreshOriginalPostingKey=form=>{
+        const $key=$(form).find('[name="request_key"]');
+        if($key.length)$key.val(Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join(''));
+    };
+    $(document).on('input.originalPosting change.originalPosting','input,select,textarea',function(){
+        window.syncOriginalPostingForm(this.form);
+    });
+    $(document).on('change.originalPosting','[data-bank-settlement-account]',function(){
+        const $field=$(this),mapping=$field.find('option:selected').attr('data-account-mapping-id');
+        const $account=$field.closest('form').find('[name="posting_lines[0][account_id]"]');
+        if(mapping&&$account.length)$account.val(mapping).trigger('change');
+    });
+    $(document).on('click.originalPosting','button[name="passing_status"],button[type="submit"],input[type="submit"],button:not([type])',function(){
+        if(!this.form)return;
+        if($(this).is('button[name="passing_status"]'))$(this.form).attr('data-posting-decision',$(this).val());
+        window.syncOriginalPostingForm(this.form);
+    });
+    $(document).on('reset.originalPosting','form',function(){
+        const form=this;
+        queueMicrotask(()=>{
+            window.refreshOriginalPostingKey(form);
+            window.syncOriginalPostingForm(form);
+        });
+    });
+    $(document).on('submit.originalPosting','form',function(){
+        window.syncOriginalPostingForm(this);
+    });
+    $('[data-original-posting-fields]').each(function(){
+        window.syncOriginalPostingForm($(this).closest('form')[0]);
+    });
+    $(document).on('ajax:panel-updated.originalPosting',function(_event,detail){
+        $(detail?.panel||document).find('[data-original-posting-fields]').each(function(){
+            window.syncOriginalPostingForm($(this).closest('form')[0]);
+        });
+    });
+});
+</script>
+@endpush
     @endonce
 @endif
