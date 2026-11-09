@@ -956,7 +956,7 @@
 
     <script>
         function submitForm() {
-            document.getElementById('voucherForm').submit();
+            $('#voucherForm').trigger('submit');
         }
 
 
@@ -1436,7 +1436,7 @@
 
         function convertToWords() {
             // Get the value entered in the input field
-            var numberInput = document.getElementById('numberInput').value;
+            var numberInput = $('#numberInput').val();
 
             // Remove commas for thousands separator
             var numericValue = numberInput.replace(/,/g, '');
@@ -1445,7 +1445,7 @@
             var wordingAmount = numberToWords.toWords(numericValue);
 
             // Display the English wording amount in the container
-            document.getElementById('wordingAmount').innerText = wordingAmount;
+            $('#wordingAmount').text(wordingAmount);
         }
 
         function formatAmount(input) {
