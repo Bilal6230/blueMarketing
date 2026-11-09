@@ -271,43 +271,29 @@
         }
 
         async function apiFetch(url, { method = 'GET', body = null } = {}) {
-            const headers = {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-            };
-            if (method !== 'GET') {
-                headers['Content-Type'] = 'application/json';
-                headers['X-CSRF-TOKEN'] = csrfToken();
-            }
-
-            const res = await fetch(url, {
-                method,
-                headers,
-                body: body ? JSON.stringify(body) : null,
-                credentials: 'same-origin',
-            });
-
-            // Try JSON, else fallback
-            const ct = res.headers.get('content-type') || '';
-            const isJson = ct.includes('application/json');
-            const payload = isJson ? await res.json().catch(() => null) : await res.text().catch(() => null);
-
-            if (!res.ok) {
-                const msg =
-                    (payload && payload.message) ||
-                    (payload && payload.error) ||
-                    (typeof payload === 'string' ? payload : null) ||
-                    'Request failed.';
-                const err = new Error(msg);
-                err.status = res.status;
-                err.payload = payload;
+            try {
+                const payload = await $.ajax({
+                    url,method,data:body===null?undefined:JSON.stringify(body),
+                    processData:false,
+                    contentType:method==='GET'?undefined:'application/json',
+                    dataType:'json',
+                    headers:{
+                        'Accept':'application/json',
+                        'X-Requested-With':'XMLHttpRequest',
+                        ...(method!=='GET'?{'X-CSRF-TOKEN':csrfToken()}: {})
+                    }
+                });
+                return payload;
+            } catch(xhr) {
+                const payload=xhr.responseJSON || xhr.responseText || null;
+                const msg=(payload&&payload.message)||(payload&&payload.error)||
+                    (typeof payload==='string'?payload:null)||'Request failed.';
+                const err=new Error(msg);err.status=xhr.status;err.payload=payload;
                 throw err;
             }
-
-            return payload;
         }
 
-        /* ===========================
+                /* ===========================
           UTIL
         =========================== */
         const fmtInt = (n) =>
