@@ -343,8 +343,8 @@
                 let bookingId = $(this).data("id");
                 $("#cancel_booking_id").val(bookingId);
                 let total = $(this).data("total");
-                document.getElementById('sale_amount').value = total;
-                pvFormatAmountNoDecimal(document.getElementById('sale_amount'));
+                $('#sale_amount')[0].value = total;
+                pvFormatAmountNoDecimal($('#sale_amount')[0]);
                 pvRecalcCancellationPreview();
 
             });
@@ -483,19 +483,19 @@
             return v ? (parseInt(v, 10) || 0) : 0;
         }
         function pvRecalcCancellationPreview() {
-            const sale = pvParseIntAmount(document.getElementById('sale_amount')?.value);
-            const amount = pvParseIntAmount(document.getElementById('deduction_amount')?.value); // same input used for both
-            const effect = document.getElementById('cancel_effect')?.value || 'charge_customer';
+            const sale = pvParseIntAmount($('#sale_amount')[0]?.value);
+            const amount = pvParseIntAmount($('#deduction_amount')[0]?.value); // same input used for both
+            const effect = $('#cancel_effect')[0]?.value || 'charge_customer';
 
             if (!sale) {
-                const txt = document.getElementById('pv_preview_text');
-                const badge = document.getElementById('pv_preview_badge');
+                const txt = $('#pv_preview_text')[0];
+                const badge = $('#pv_preview_badge')[0];
                 if (txt) txt.textContent = 'Sale amount not loaded yet.';
                 if (badge) {
                     badge.className = 'badge badge-secondary';
                     badge.textContent = 'Pending';
                 }
-                const netEl = document.getElementById('net_amount');
+                const netEl = $('#net_amount')[0];
                 if (netEl) netEl.value = '';
                 return;
             }
@@ -508,14 +508,14 @@
 
             const netFormatted = netRaw.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
-            const netEl = document.getElementById('net_amount');
+            const netEl = $('#net_amount')[0];
             if (netEl) netEl.value = netFormatted;
 
             const amtFormatted = amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
             const saleFormatted = sale.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
-            const txt = document.getElementById('pv_preview_text');
-            const badge = document.getElementById('pv_preview_badge');
+            const txt = $('#pv_preview_text')[0];
+            const badge = $('#pv_preview_badge')[0];
 
             if (effect === 'charge_customer') {
                 if (txt) txt.textContent = `Charge mode → Sale: ${saleFormatted}, Deduction: ${amtFormatted} → Net: ${netFormatted}`;
@@ -532,9 +532,9 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', function () {
-            const effectEl = document.getElementById('cancel_effect');
-            if (effectEl) effectEl.addEventListener('change', pvRecalcCancellationPreview);
+        $(function() {
+            const effectEl = $('#cancel_effect')[0];
+            if (effectEl) $(effectEl).on('change', pvRecalcCancellationPreview);
 
             $('#actionBookingModal').on('shown.bs.modal', function () {
                 ['sale_amount', 'deduction_amount', 'net_amount'].forEach(id => {
