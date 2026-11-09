@@ -161,6 +161,7 @@
     </div></section>
 </div>
 @canany(['create user', 'update user'])
+@push('script')
 <script>
 (() => {
     function modalizeDefinitionForms(root = document) {
@@ -168,9 +169,9 @@
             const create = !!form.querySelector('input[name="code"]');
             const card = form.closest('.employee-definition-card'); if (!card) return;
             const id = `employeeDefinitionModal${Math.random().toString(36).slice(2, 9)}`;
-            const modal = document.createElement('div'); modal.className='modal fade'; modal.id=id; modal.tabIndex=-1;
+            const modal = $('<div>')[0]; modal.className='modal fade'; modal.id=id; modal.tabIndex=-1;
             modal.innerHTML=`<div class="modal-dialog modal-md"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">${create?'Add':'Edit'} definition</h5><button type="button" class="close" data-dismiss="modal"><span>&times;</span></button></div><div class="modal-body"></div></div></div>`;
-            const trigger=document.createElement('button'); trigger.type='button'; trigger.className=create?'btn btn-primary btn-sm':'btn btn-sm btn-outline-primary'; trigger.dataset.toggle='modal'; trigger.dataset.target=`#${id}`; trigger.textContent=create?'Add definition':'Edit';
+            const trigger=$('<button>')[0]; trigger.type='button'; trigger.className=create?'btn btn-primary btn-sm':'btn btn-sm btn-outline-primary'; trigger.dataset.toggle='modal'; trigger.dataset.target=`#${id}`; trigger.textContent=create?'Add definition':'Edit';
             if (create) { form.querySelector('button[type="submit"],button:not([type])')?.remove(); card.querySelector('.card-header')?.appendChild(trigger); form.insertAdjacentHTML('beforeend','<button type="submit" class="btn btn-primary btn-sm">Save definition</button>'); }
             else { form.querySelector('.d-flex')?.appendChild(trigger); form.style.display='none'; }
             modal.querySelector('.modal-body').appendChild(form); card.appendChild(modal); form.dataset.definitionModalized='1';
@@ -178,13 +179,13 @@
         });
     }
     function buildEmployeeTabs() {
-        const content=document.querySelector('.content-wrapper > section.content .container-fluid'); if(!content||content.querySelector('.employee-setup-tabs')) return;
+        const content=$('.content-wrapper > section.content .container-fluid')[0]; if(!content||content.querySelector('.employee-setup-tabs')) return;
         const definitionRow=content.querySelector('.employee-definition-card')?.closest('.row');
         const profileFormPanel=content.querySelector('[data-ajax-panel="employee-profile-panel"]');
         const historyRow=profileFormPanel?.nextElementSibling;
         const profileList=historyRow?.nextElementSibling;
         if(!definitionRow||!profileFormPanel||!historyRow||!profileList) return;
-        const root=document.createElement('div'); root.className='employee-setup-tabs';
+        const root=$('<div>')[0]; root.className='employee-setup-tabs';
         root.innerHTML='<ul class="nav nav-pills mb-3"><li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#employee-profiles-tab">Saved profiles</a></li><li class="nav-item"><a class="nav-link" data-toggle="tab" href="#employee-definitions-tab">Departments & roles</a></li><li class="nav-item"><a class="nav-link" data-toggle="tab" href="#employee-history-tab">Change history</a></li></ul><div class="tab-content"><div class="tab-pane active" id="employee-profiles-tab"></div><div class="tab-pane" id="employee-definitions-tab"></div><div class="tab-pane" id="employee-history-tab"></div></div>';
         definitionRow.before(root);
         root.querySelector('#employee-definitions-tab').append(definitionRow);
@@ -197,17 +198,17 @@
             if(window.toastr){ if(alert.classList.contains('alert-success')) toastr.success(message); else toastr.error(message); alert.remove(); }
         });
     }
-    document.addEventListener('DOMContentLoaded',()=>modalizeDefinitionForms());
-    document.addEventListener('DOMContentLoaded',()=>{ buildEmployeeTabs(); toastFlashMessages(); });
+    $(modalizeDefinitionForms);
+    $(function(){ buildEmployeeTabs(); toastFlashMessages(); });
     document.addEventListener('ajax:panel-updated',(event)=>{modalizeDefinitionForms(event.detail?.panel||document);toastFlashMessages(event.detail?.panel||document)});
     const rowCollections = { allowance: ['#allowanceRows', 'allowances', 100], range: ['#lateFineRangeRows', 'late_fine_policy[ranges]', 10] };
     const makePolicyRow = (kind, index) => {
-        const wrap = document.createElement('div'); wrap.className = 'form-row dynamic-policy-row';
+        const wrap = $('<div>')[0]; wrap.className = 'form-row dynamic-policy-row';
         const defs = kind === 'allowance'
             ? [['name','Allowance name','text'],['amount','Amount','number']]
             : [['from_minutes','From (min)','number'],['to_minutes','To (min)','number'],['amount','Fine amount','number']];
-        defs.forEach(([key,label,type]) => { const col=document.createElement('div'); col.className=`form-group ${kind==='allowance'?'col-md-5':'col-md-3'}`; const input=document.createElement('input'); input.className='form-control'; input.type=type; input.name=kind==='allowance'?`allowances[${index}][${key}]`:`late_fine_policy[ranges][${index}][${key}]`; input.maxLength=type==='text'?80:null; if(type==='number'){input.min='0';if(key==='from_minutes'||key==='to_minutes')input.max='1440';else input.step='0.01'} col.innerHTML=`<label>${label}</label>`; col.appendChild(input); wrap.appendChild(col); });
-        const action=document.createElement('div'); action.className=`form-group ${kind==='allowance'?'col-md-2':'col-md-3'} d-flex align-items-end`; action.innerHTML='<button type="button" class="btn btn-outline-danger btn-sm" data-remove-row>Remove</button>'; wrap.appendChild(action); return wrap;
+        defs.forEach(([key,label,type]) => { const col=$('<div>')[0]; col.className=`form-group ${kind==='allowance'?'col-md-5':'col-md-3'}`; const input=$('<input>')[0]; input.className='form-control'; input.type=type; input.name=kind==='allowance'?`allowances[${index}][${key}]`:`late_fine_policy[ranges][${index}][${key}]`; input.maxLength=type==='text'?80:null; if(type==='number'){input.min='0';if(key==='from_minutes'||key==='to_minutes')input.max='1440';else input.step='0.01'} col.innerHTML=`<label>${label}</label>`; col.appendChild(input); wrap.appendChild(col); });
+        const action=$('<div>')[0]; action.className=`form-group ${kind==='allowance'?'col-md-2':'col-md-3'} d-flex align-items-end`; action.innerHTML='<button type="button" class="btn btn-outline-danger btn-sm" data-remove-row>Remove</button>'; wrap.appendChild(action); return wrap;
     };
     const addPolicyRow = (kind) => { const [selector,,max]=rowCollections[kind], list=document.querySelector(selector); if(!list || list.children.length>=max) return; list.appendChild(makePolicyRow(kind,list.children.length)); };
     const resetDynamicRows = () => {
@@ -220,19 +221,19 @@
         for (let i = 0; i < Math.min(allowances.length, rowCollections.allowance[2]); i++) addPolicyRow('allowance');
         for (let i = 0; i < Math.min(ranges.length, rowCollections.range[2]); i++) addPolicyRow('range');
     };
-    document.addEventListener('click', (event) => {
+    $(document).on('click', (event) => {
         const add=event.target.closest('[data-add-row]'); if(add){addPolicyRow(add.dataset.addRow);return;}
         const remove=event.target.closest('[data-remove-row]'); if(remove){const row=remove.closest('.dynamic-policy-row'), list=row?.parentElement; row?.remove(); if(list){[...list.children].forEach((item,index)=>item.querySelectorAll('input').forEach(input=>{input.name=input.name.replace(/\[\d+\]/,`[${index}]`)}))} return;}
-        const newButton=event.target.closest('[data-target="#employeeProfileModal"]'); if(newButton){const form=document.getElementById('employee-profile-form'); if(form){form.reset(); prepareDynamicRows(null); form.dataset.editing='0';}}
+        const newButton=event.target.closest('[data-target="#employeeProfileModal"]'); if(newButton){const form=$('#employee-profile-form')[0]; if(form){form.reset(); prepareDynamicRows(null); form.dataset.editing='0';}}
     });
     const assign = (name, value) => {
-        const form = document.getElementById('employee-profile-form');
+        const form = $('#employee-profile-form')[0];
         if (!form) return;
         const field = Array.from(form.elements).find((item) => item.name === name);
         if (field) field.value = value ?? '';
     };
     const fill = (prefix, value) => {
-        const form = document.getElementById('employee-profile-form');
+        const form = $('#employee-profile-form')[0];
         if (!form) return;
         if (Array.isArray(value)) {
             if (value.every((item) => typeof item !== 'object' || item === null)) {
@@ -249,13 +250,13 @@
         }
         assign(prefix, value);
     };
-    document.addEventListener('click', (event) => {
+    $(document).on('click', (event) => {
       const button = event.target.closest('.load-employee-setup');
       if (button) {
         let setup = null;
         try { setup = JSON.parse(button.dataset.setup || 'null'); } catch (_) {}
         if (!setup) return;
-        const form = document.getElementById('employee-profile-form');
+        const form = $('#employee-profile-form')[0];
         if (!form) return;
         form.reset();
         prepareDynamicRows(setup);
@@ -271,8 +272,9 @@
         if (window.jQuery) window.jQuery('#employeeProfileModal').modal('show');
       }
     });
-    document.addEventListener('ajax:panel-updated', () => {});
+    
 })();
 </script>
+@endpush
 @endcanany
 @endsection
