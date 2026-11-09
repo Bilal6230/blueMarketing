@@ -200,7 +200,7 @@
     }
     $(modalizeDefinitionForms);
     $(function(){ buildEmployeeTabs(); toastFlashMessages(); });
-    document.addEventListener('ajax:panel-updated',(event)=>{modalizeDefinitionForms(event.detail?.panel||document);toastFlashMessages(event.detail?.panel||document)});
+    $(document).on('ajax:panel-updated',(_event,detail)=>{modalizeDefinitionForms(detail?.panel||document);toastFlashMessages(detail?.panel||document)});
     const rowCollections = { allowance: ['#allowanceRows', 'allowances', 100], range: ['#lateFineRangeRows', 'late_fine_policy[ranges]', 10] };
     const makePolicyRow = (kind, index) => {
         const wrap = $('<div>')[0]; wrap.className = 'form-row dynamic-policy-row';
@@ -210,9 +210,9 @@
         defs.forEach(([key,label,type]) => { const col=$('<div>')[0]; col.className=`form-group ${kind==='allowance'?'col-md-5':'col-md-3'}`; const input=$('<input>')[0]; input.className='form-control'; input.type=type; input.name=kind==='allowance'?`allowances[${index}][${key}]`:`late_fine_policy[ranges][${index}][${key}]`; input.maxLength=type==='text'?80:null; if(type==='number'){input.min='0';if(key==='from_minutes'||key==='to_minutes')input.max='1440';else input.step='0.01'} col.innerHTML=`<label>${label}</label>`; col.appendChild(input); wrap.appendChild(col); });
         const action=$('<div>')[0]; action.className=`form-group ${kind==='allowance'?'col-md-2':'col-md-3'} d-flex align-items-end`; action.innerHTML='<button type="button" class="btn btn-outline-danger btn-sm" data-remove-row>Remove</button>'; wrap.appendChild(action); return wrap;
     };
-    const addPolicyRow = (kind) => { const [selector,,max]=rowCollections[kind], list=document.querySelector(selector); if(!list || list.children.length>=max) return; list.appendChild(makePolicyRow(kind,list.children.length)); };
+    const addPolicyRow = (kind) => { const [selector,,max]=rowCollections[kind], list=$(selector)[0]; if(!list || list.children.length>=max) return; list.appendChild(makePolicyRow(kind,list.children.length)); };
     const resetDynamicRows = () => {
-        document.querySelectorAll('#allowanceRows .dynamic-policy-row,#lateFineRangeRows .dynamic-policy-row').forEach((row) => row.remove());
+        $('#allowanceRows .dynamic-policy-row,#lateFineRangeRows .dynamic-policy-row').remove();
     };
     const prepareDynamicRows = (setup) => {
         resetDynamicRows();
