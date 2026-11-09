@@ -613,15 +613,15 @@ html::-webkit-scrollbar,body::-webkit-scrollbar{width:11px}html::-webkit-scrollb
  const output=$('#bm-lead-result')[0];
  let timer=null,request=null,last='';
  const escape=value=>String(value??'').replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[char]));
- function state(message,type){output.innerHTML='<div class="bm-lead-state '+type+'">'+escape(message)+'</div>';}
+ function state(message,type){$(output).html('<div class="bm-lead-state '+type+'">'+escape(message)+'</div>');}
  function render(data){
    const assigned=Array.isArray(data.assignTo)&&data.assignTo.length?data.assignTo.map(user=>user.name).join(', '):'Unassigned';
    const allowed=root.dataset.superAdmin==='1'||(data.assignTo||[]).some(user=>String(user.id)===root.dataset.currentUser);
    const action=allowed?'<a class="btn btn-primary" href="'+escape(root.dataset.editUrl)+'"><i class="fas fa-edit"></i> Open Lead</a>':'';
-   output.innerHTML='<article class="bm-lead-result">'+
+   $(output).html('<article class="bm-lead-result">'+
     '<div class="bm-lead-result-head"><div class="bm-lead-avatar"><i class="fas fa-user"></i></div><div><strong>'+escape(data.name||'Unnamed Lead')+'</strong><small>'+escape(data.active||'Lead record')+'</small></div></div>'+
     '<div class="bm-lead-result-grid"><div><span>Project</span><b>'+escape(data.project||'No Project')+'</b></div><div><span>Follow-up Status</span><b>'+escape(data.follow_status||'Not set')+'</b></div><div><span>Assigned To</span><b>'+escape(assigned)+'</b></div><div><span>Last Updated</span><b>'+escape(data.updated_at||'—')+'</b></div></div>'+
-    (action?'<div class="bm-lead-result-actions">'+action+'</div>':'')+'</article>';
+    (action?'<div class="bm-lead-result-actions">'+action+'</div>':'')+'</article>');
  }
  async function search(){
    const number=input.value.replace(/\D/g,'').slice(0,11);input.value=number;
