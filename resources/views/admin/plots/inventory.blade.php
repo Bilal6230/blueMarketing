@@ -415,7 +415,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         function createPieChart(canvasId, labels, data, colors, options = {}) {
-            new Chart(document.getElementById(canvasId), {
+            new Chart($('#'+$.escapeSelector(canvasId))[0], {
                 type: 'pie',
                 data: {
                     labels: labels,
@@ -489,8 +489,8 @@
                     money: true
                 });
         } else {
-            document.getElementById('inventoryValueChart').style.display = 'none';
-            document.getElementById('inventoryValueChartEmpty').style.display = 'block';
+            $('#inventoryValueChart').hide();
+            $('#inventoryValueChartEmpty').show();
         }
     </script>
 @endsection
