@@ -453,14 +453,14 @@
             temp.innerHTML = html;
             const row = temp.firstElementChild;
 
-            const itemSel = row.querySelector(".line-item");
+            const itemSel = $(row).find(".line-item")[0];
             fillItemSelect(itemSel, false);
             if (PV.state.items.length) itemSel.value = PV.state.items[0].id;
 
-            const unitEl = row.querySelector(".line-unit");
-            const qtyEl = row.querySelector(".line-qty");
-            const rateEl = row.querySelector(".line-rate");
-            const amtEl = row.querySelector(".line-amount");
+            const unitEl = $(row).find(".line-unit")[0];
+            const qtyEl = $(row).find(".line-qty")[0];
+            const rateEl = $(row).find(".line-rate")[0];
+            const amtEl = $(row).find(".line-amount")[0];
 
             function syncFromItem() {
                 const it = findItem(itemSel.value);
@@ -505,18 +505,18 @@
 
         function recalcEntryTotal() {
             let total = 0;
-            entryLinesWrap.querySelectorAll(".pv-line").forEach((row) => {
-                const qty = pvParseIntAmount(row.querySelector(".line-qty").value);
-                const rate = pvParseIntAmount(row.querySelector(".line-rate").value);
+            $(entryLinesWrap).find(".pv-line").toArray().forEach((row) => {
+                const qty = pvParseIntAmount($(row).find(".line-qty")[0].value);
+                const rate = pvParseIntAmount($(row).find(".line-rate")[0].value);
                 total += qty * rate;
             });
             entryTotalEl.textContent = fmtPKR(total);
         }
         function recalcBillTotal() {
             let total = 0;
-            billLinesWrap.querySelectorAll(".pv-line").forEach((row) => {
-                const qty = pvParseIntAmount(row.querySelector(".line-qty").value);
-                const rate = pvParseIntAmount(row.querySelector(".line-rate").value);
+            $(billLinesWrap).find(".pv-line").toArray().forEach((row) => {
+                const qty = pvParseIntAmount($(row).find(".line-qty")[0].value);
+                const rate = pvParseIntAmount($(row).find(".line-rate")[0].value);
                 total += qty * rate;
             });
             billTotalEl.textContent = fmtPKR(total);
@@ -563,8 +563,8 @@
             fillPartySelect($('#billFilterParty')[0], true);
 
             // refresh existing line item dropdowns too
-            entryLinesWrap.querySelectorAll('.line-item').forEach(sel => fillItemSelect(sel, false));
-            billLinesWrap.querySelectorAll('.line-item').forEach(sel => fillItemSelect(sel, false));
+            $(entryLinesWrap).find('.line-item').toArray().forEach(sel => fillItemSelect(sel, false));
+            $(billLinesWrap).find('.line-item').toArray().forEach(sel => fillItemSelect(sel, false));
         }
 
         async function refreshSlipNo() {
@@ -586,10 +586,10 @@
         =========================== */
         function collectLines(wrap) {
             const lines = [];
-            wrap.querySelectorAll(".pv-line").forEach((row) => {
-                const itemId = Number(row.querySelector(".line-item").value);
-                const qty = pvParseIntAmount(row.querySelector(".line-qty").value);
-                const rate = pvParseIntAmount(row.querySelector(".line-rate").value);
+            $(wrap).find(".pv-line").toArray().forEach((row) => {
+                const itemId = Number($(row).find(".line-item")[0].value);
+                const qty = pvParseIntAmount($(row).find(".line-qty")[0].value);
+                const rate = pvParseIntAmount($(row).find(".line-rate")[0].value);
                 if (!itemId || qty <= 0) return;
                 lines.push({ item_id: itemId, qty, rate });
             });
