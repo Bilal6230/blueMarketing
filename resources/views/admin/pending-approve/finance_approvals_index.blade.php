@@ -106,7 +106,7 @@
             const csrfToken = '{{ csrf_token() }}';
 
             function parsePayloadScript(scriptId, fallbackValue) {
-                const script = document.getElementById(scriptId);
+                const script = $('#'+$.escapeSelector(scriptId))[0];
                 if (!script) {
                     return fallbackValue;
                 }
