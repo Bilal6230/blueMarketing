@@ -367,14 +367,14 @@
           SELECT POPULATION
         =========================== */
         function fillPartySelect(sel, withAll = false) {
-            sel.innerHTML = "";
+            $(sel).html("");
             if (withAll) sel.insertAdjacentHTML("beforeend", `<option value="">All</option>`);
             PV.state.parties.forEach((p) => {
                 sel.insertAdjacentHTML("beforeend", `<option value="${p.id}">${p.name} • ${p.type}</option>`);
             });
         }
         function fillItemSelect(sel, withAll = false) {
-            sel.innerHTML = "";
+            $(sel).html("");
             if (withAll) sel.insertAdjacentHTML("beforeend", `<option value="">All</option>`);
             PV.state.items.forEach((i) => {
                 sel.insertAdjacentHTML("beforeend", `<option value="${i.id}">${i.name} (${i.unit})</option>`);
@@ -450,7 +450,7 @@
       `.trim();
 
             const temp = $('<div>')[0];
-            temp.innerHTML = html;
+            $(temp).html(html);
             const row = temp.firstElementChild;
 
             const itemSel = $(row).find(".line-item")[0];
@@ -637,7 +637,7 @@
                 $('#entryReason')[0].value = "";
                 $('#entryVehicle')[0].value = "";
                 $('#entryDriver')[0].value = "";
-                entryLinesWrap.innerHTML = "";
+                $(entryLinesWrap).html("");
                 entryLinesWrap.appendChild(makeLineRow('entry'));
                 recalcEntryTotal();
                 await refreshSlipNo();
@@ -691,7 +691,7 @@
                 viewToast("success", "Saved", `${type.toUpperCase()} bill saved.`);
                 // reset
                 $('#billEntryNo')[0].value = "";
-                billLinesWrap.innerHTML = "";
+                $(billLinesWrap).html("");
                 billLinesWrap.appendChild(makeLineRow('bill'));
                 recalcBillTotal();
                 await refreshBillNo();
@@ -783,13 +783,13 @@
         function showNotImplemented(tbodyId, message) {
             const tbody = $('#'+$.escapeSelector(tbodyId))[0];
             if (!tbody) return;
-            tbody.innerHTML = `
+            $(tbody).html(`
         <tr>
           <td colspan="20">
             <div class="pv-pill warn">${message}</div>
           </td>
         </tr>
-      `;
+      `);
         }
 
         async function renderEntryTable() {
@@ -807,9 +807,9 @@
                 const rows = res.data?.rows ?? res.rows ?? res.data ?? [];
                 const total = res.data?.total ?? res.total ?? rows.length;
 
-                tbody.innerHTML = "";
+                $(tbody).html("");
                 if (!rows.length) {
-                    tbody.innerHTML = `<tr><td colspan="20"><span class="pv-pill">No entries found</span></td></tr>`;
+                    $(tbody).html(`<tr><td colspan="20"><span class="pv-pill">No entries found</span></td></tr>`);
                 } else {
                     rows.forEach((r, idx) => {
                         const flowPill = r.flow === 'IN'
@@ -883,9 +883,9 @@
                 const rows = res.data?.rows ?? res.rows ?? res.data ?? [];
                 const total = res.data?.total ?? res.total ?? rows.length;
 
-                tbody.innerHTML = "";
+                $(tbody).html("");
                 if (!rows.length) {
-                    tbody.innerHTML = `<tr><td colspan="20"><span class="pv-pill">No bills found</span></td></tr>`;
+                    $(tbody).html(`<tr><td colspan="20"><span class="pv-pill">No bills found</span></td></tr>`);
                 } else {
                     rows.forEach((r, idx) => {
                         const pill = r.type === 'purchase' ? 'ok' : 'warn';
@@ -941,9 +941,9 @@
                 const res = await apiFetch(url);
                 const rows = res.data?.rows ?? res.rows ?? res.data ?? [];
 
-                tbody.innerHTML = "";
+                $(tbody).html("");
                 if (!rows.length) {
-                    tbody.innerHTML = `<tr><td colspan="10"><span class="pv-pill">No stock rows</span></td></tr>`;
+                    $(tbody).html(`<tr><td colspan="10"><span class="pv-pill">No stock rows</span></td></tr>`);
                 } else {
                     rows.forEach(r => {
                         const avail = Number(r.available ?? r.avail ?? 0);
@@ -990,9 +990,9 @@
                 const res = await apiFetch(url);
                 const rows = res.data?.rows ?? res.rows ?? res.data ?? [];
 
-                tbody.innerHTML = "";
+                $(tbody).html("");
                 if (!rows.length) {
-                    tbody.innerHTML = `<tr><td colspan="10"><span class="pv-pill">No items</span></td></tr>`;
+                    $(tbody).html(`<tr><td colspan="10"><span class="pv-pill">No items</span></td></tr>`);
                 } else {
                     rows.forEach((it, idx) => {
                         tbody.insertAdjacentHTML("beforeend", `
@@ -1028,9 +1028,9 @@
                 const res = await apiFetch(url);
                 const rows = res.data?.rows ?? res.rows ?? res.data ?? [];
 
-                tbody.innerHTML = "";
+                $(tbody).html("");
                 if (!rows.length) {
-                    tbody.innerHTML = `<tr><td colspan="20"><span class="pv-pill">No parties</span></td></tr>`;
+                    $(tbody).html(`<tr><td colspan="20"><span class="pv-pill">No parties</span></td></tr>`);
                 } else {
                     rows.forEach((p, idx) => {
                         tbody.insertAdjacentHTML("beforeend", `
@@ -1105,11 +1105,11 @@
             await loadMeta();
 
             // Initial rows
-            entryLinesWrap.innerHTML = "";
+            $(entryLinesWrap).html("");
             entryLinesWrap.appendChild(makeLineRow('entry'));
             recalcEntryTotal();
 
-            billLinesWrap.innerHTML = "";
+            $(billLinesWrap).html("");
             billLinesWrap.appendChild(makeLineRow('bill'));
             recalcBillTotal();
 
