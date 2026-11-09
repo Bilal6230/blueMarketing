@@ -691,7 +691,7 @@ html::-webkit-scrollbar,body::-webkit-scrollbar{width:11px}html::-webkit-scrollb
  const host=$('#bm-financial-widget')[0];
  if(!host)return;
  const tooltip=$('#bm-finance-tooltip')[0];
- document.body.appendChild(tooltip); // Escape clipped dashboard panel for visible hover values.
+ document.$(body).append(tooltip); // Escape clipped dashboard panel for visible hover values.
  const number=(v)=>Number(v).toLocaleString('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2});
  function current(){
    const hand=Number(host.dataset.hand)||0,bank=Number(host.dataset.bank)||0;
