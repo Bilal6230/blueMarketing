@@ -844,9 +844,9 @@
 
             if (textarea && charCount) {
                 $(textarea).on('input', function() {
-                    charCount.textContent = this.value.length;
+                    $(charCount).text($(this).val().length);
                 });
-                charCount.textContent = textarea.value.length;
+                $(charCount).text($(textarea).val().length);
             }
         });
     </script>
