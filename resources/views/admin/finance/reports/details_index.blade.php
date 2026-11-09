@@ -218,9 +218,9 @@
         });
     </script>
     <script>
-        window.addEventListener("load", function() {
-            const fInput = document.querySelector("input[name='fdate']"); // original input
-            const hiddenFrom = document.getElementById('hiddenFromDate');
+        $(window).on("load", function() {
+            const fInput = $("input[name='fdate']")[0]; // original input
+            const hiddenFrom = $('#hiddenFromDate')[0];
 
             // Use the value from hidden input if exists, otherwise 6 months ago
             const fromValue = hiddenFrom.value || new Date(new Date().setMonth(new Date().getMonth() - 6));
@@ -235,8 +235,8 @@
             });
 
             // TO DATE
-            const tInput = document.querySelector("input[name='tdate']");
-            const hiddenTo = document.getElementById('hiddenToDate');
+            const tInput = $("input[name='tdate']")[0];
+            const hiddenTo = $('#hiddenToDate')[0];
             const toValue = hiddenTo.value || new Date();
 
             flatpickr(tInput, {
