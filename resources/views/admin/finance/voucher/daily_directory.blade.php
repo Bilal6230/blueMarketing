@@ -183,25 +183,26 @@
 </div>
 <script>
 (() => {
-    document.documentElement.classList.add('daily-voucher-directory-active');
-    document.body.classList.add('daily-voucher-directory-active');
+    $('html, body').addClass('daily-voucher-directory-active');
     const form=document.getElementById('daily-voucher-filters'), body=document.getElementById('dv-rows'), wrap=document.getElementById('dv-table-wrap');
     let start=0, length=25, filtered=0, total=0, timer, activeRequest=0, activeController=null;
     let sortColumn='date',sortDirection='desc';
     const tableSearch=document.getElementById('dv-table-search');
-    document.getElementById('dv-page-length').addEventListener('change',event=>{length=Number(event.target.value);start=0;load();});
-    tableSearch.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(()=>{start=0;load();},300);});
+    $('#dv-page-length').on('change',function(){length=Number($(this).val());start=0;load();});
+    $('#dv-table-search').on('input',()=>{clearTimeout(timer);timer=setTimeout(()=>{start=0;load();},300);});
     function updateSortArrows(){
-        document.querySelectorAll('.daily-voucher-table th.dv-sortable').forEach(th=>{
-            const isActive=th.dataset.sort===sortColumn;
-            th.querySelector('.dv-sort-indicator').textContent=isActive?(sortDirection==='asc'?'↑':'↓'):'↕';
-            th.setAttribute('aria-sort',isActive?(sortDirection==='asc'?'ascending':'descending'):'none');
+        $('.daily-voucher-table th.dv-sortable').each(function(){
+            const $th=$(this),isActive=$th.data('sort')===sortColumn;
+            $th.find('.dv-sort-indicator').text(isActive?(sortDirection==='asc'?'↑':'↓'):'↕');
+            $th.attr('aria-sort',isActive?(sortDirection==='asc'?'ascending':'descending'):'none');
         });
     }
-    document.querySelectorAll('.daily-voucher-table th.dv-sortable').forEach(th=>{
-        const sort=()=>{sortDirection=sortColumn===th.dataset.sort?(sortDirection==='asc'?'desc':'asc'):'asc';sortColumn=th.dataset.sort;start=0;updateSortArrows();load();};
-        th.addEventListener('click',sort);
-        th.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();sort();}});
+    $('.daily-voucher-table th.dv-sortable').on('click',function(){
+        const column=$(this).data('sort');
+        sortDirection=sortColumn===column?(sortDirection==='asc'?'desc':'asc'):'asc';
+        sortColumn=column;start=0;updateSortArrows();load();
+    }).on('keydown',function(event){
+        if(event.key==='Enter'||event.key===' '){event.preventDefault();$(this).trigger('click');}
     });
     updateSortArrows();
     const scheduleLoad=()=>{clearTimeout(timer);timer=setTimeout(()=>{start=0;load();},300);};
@@ -249,10 +250,10 @@
         activeController=new AbortController();
         wrap.classList.add('daily-voucher-loading');
         showTableSkeleton();
-        const params=new URLSearchParams(new FormData(form)); params.set('start',start); params.set('length',length);
+        const params=new URLSearchParams($('#daily-voucher-filters').serialize()); params.set('start',start); params.set('length',length);
         params.set('sort_column',sortColumn);params.set('sort_direction',sortDirection);
         if(tableSearch.value.trim())params.set('search',tableSearch.value.trim());
-        document.querySelectorAll('.dv-column-filter').forEach(input=>{if(input.value.trim())params.set('column_'+input.dataset.column,input.value.trim());});
+        $('.dv-column-filter').each(function(){const value=$.trim($(this).val());if(value)params.set('column_'+$(this).data('column'),value);});
         try {
             const response=await fetch(@json(route('finance.daily-vouchers.data'))+'?'+params.toString(),{headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'},signal:activeController.signal});
             if(!response.ok){
@@ -273,12 +274,10 @@
         }
         finally{if(requestId===activeRequest){wrap.classList.remove('daily-voucher-loading');wrap.removeAttribute('aria-busy');activeController=null;}}
     }
-    form.addEventListener('submit',event=>{event.preventDefault();start=0;load();});
-    document.getElementById('dv-search').addEventListener('input',scheduleLoad);
-    document.querySelectorAll('.dv-column-filter').forEach(input=>{
-        input.addEventListener('input',scheduleLoad);
-        input.addEventListener('search',scheduleLoad);
-        input.addEventListener('keydown',event=>{if(event.key==='Enter')event.preventDefault();});
+    $('#daily-voucher-filters').on('submit',event=>{event.preventDefault();start=0;load();});
+    $('#dv-search').on('input',scheduleLoad);
+    $('.dv-column-filter').on('input search',scheduleLoad).on('keydown',event=>{
+        if(event.key==='Enter')event.preventDefault();
     });
     // The modal contains the real voucher form. No overlay, spinner or polling.
     const entryFrame=document.getElementById('dv-entry-frame');
