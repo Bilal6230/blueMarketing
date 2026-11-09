@@ -84,6 +84,14 @@ Execution:
 
 Do not prematurely stop a large implementation merely because it involves multiple files.
 
+## Frontend rule — jQuery only for application DOM and AJAX
+
+- For all new or modified first-party frontend code, use jQuery `$(...)`, `.on(...)`, `.val()`, `.text()`, `.html()`, `.addClass()`, `.removeClass()`, `.toggleClass()`, and `$.ajax()` for DOM events, manipulation, and HTTP requests.
+- Do not introduce raw `document.getElementById`, `document.querySelector`, `addEventListener`, `classList`, `innerHTML`, `createElement`, or native `fetch` in first-party Blade scripts and JS source.
+- Plain JavaScript syntax for computation, arrays, objects, dates, and browser integrations without equivalent jQuery APIs (for example `postMessage`) may still be necessary. jQuery is a library built on JavaScript, not a different language.
+- Do not rewrite vendor libraries, minified distributions, compiled bundles, bootstrap infrastructure, or third-party plugins. Edit their application-level integration instead.
+- Preserve existing server-side validation, event behavior, modal lifecycle, accessibility, and finance posting safety; run regression and browser checks after each conversion batch.
+
 ## 4. Investigation and Performance
 
 - Keep investigations proportional to task complexity.
