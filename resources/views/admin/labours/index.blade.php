@@ -2882,7 +2882,7 @@
                             type: "POST",
                             data: {
                                 ...(() => {
-                                    const form = document.getElementById('typedPayrollFields');
+                                    const form = $('#typedPayrollFields')[0];
                                     if (!form || !window.originalPostingPayload) return {};
                                     const total = window.originalPostingTotal(allLabours.map(worker => worker.amount));
                                     form.querySelector('[name="amount"]').value = total || '';
@@ -2927,7 +2927,7 @@
                                     $('#personAllBody').html(res.view);
                                 } else if (res.data?.posting_batch_id) {
                                     $('#btnPersonRun').trigger('click');
-                                    window.refreshOriginalPostingKey?.(document.getElementById('typedPayrollFields'));
+                                    window.refreshOriginalPostingKey?.($('#typedPayrollFields')[0]);
                                 }
 
                                 $('.labour_amount').val('');
