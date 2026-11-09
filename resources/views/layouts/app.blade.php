@@ -10,6 +10,7 @@
     <title>{{ config('app.name', 'Laravel') }}</title>
 
     <!-- Scripts -->
+    <script src="{{ asset('template/admin/plugins/jquery/jquery.min.js') }}"></script>
     <script src="{{ asset('js/app.js') }}" defer></script>
 
     <!-- Fonts -->
@@ -58,9 +59,7 @@
                                 </a>
 
                                 <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                    <a class="dropdown-item" href="{{ route('logout') }}"
-                                       onclick="event.preventDefault();
-                                                     document.getElementById('logout-form').submit();">
+                                    <a class="dropdown-item js-logout-link" href="{{ route('logout') }}">
                                         {{ __('Logout') }}
                                     </a>
 
@@ -79,5 +78,13 @@
             @yield('content')
         </main>
     </div>
+    <script>
+    $(function(){
+        $('.js-logout-link').on('click',function(event){
+            event.preventDefault();
+            $('#logout-form')[0]?.submit();
+        });
+    });
+    </script>
 </body>
 </html>
