@@ -5,8 +5,8 @@
 <style>
     html.daily-voucher-directory-active,body.daily-voucher-directory-active{height:100%;overflow:hidden!important}
     body.daily-voucher-directory-active .main-footer{display:none!important}
-    .main-content.page-content:has(> .daily-voucher-page){height:calc(100dvh - 57px);min-height:0;overflow:hidden}
-    .content-wrapper.daily-voucher-page{height:100%!important;max-height:100%!important;min-height:0!important;overflow:hidden!important;display:flex;flex-direction:column;padding:.3rem .65rem!important}
+    .main-content.page-content:has(> .daily-voucher-page){height:auto!important;min-height:0!important;overflow:visible!important;padding-bottom:0!important}
+    .content-wrapper.daily-voucher-page{height:var(--dv-viewport-height,calc(100dvh - 110px))!important;max-height:var(--dv-viewport-height,calc(100dvh - 110px))!important;min-height:0!important;overflow:hidden!important;display:flex;flex-direction:column;padding:.3rem .65rem!important}
     .daily-voucher-page .content-header{flex:0 0 auto;padding:.1rem 0 .25rem}
     .daily-voucher-page .content-header h1{font-size:1.4rem;margin-bottom:.1rem!important}
     .daily-voucher-page .daily-voucher-card.mb-3{margin-bottom:.55rem!important}
@@ -45,7 +45,8 @@
     .daily-voucher-shortcuts{display:flex;flex-wrap:wrap;gap:.5rem}
     .daily-voucher-table-card{flex:1 1 0;min-height:0;display:flex;flex-direction:column;margin-bottom:0!important}
     .dv-table-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:.35rem .65rem;background:#fff}
-    .daily-voucher-page .dv-pagination-footer{padding:.35rem .65rem}
+    .daily-voucher-page .dv-pagination-footer{flex:0 0 auto;position:relative;z-index:4;min-height:40px;padding:.35rem .65rem;background:#fff}
+    .daily-voucher-page .dv-table-tools{flex:0 0 auto}
     .dv-table-tools label{display:flex;align-items:center;gap:7px;margin:0;font-size:.88rem}
     .dv-table-tools select{width:72px}
     .dv-table-tools input{width:220px;max-width:45vw}
@@ -192,6 +193,14 @@
 <script>
 (() => {
     $('html, body').addClass('daily-voucher-directory-active');
+    // Size the directory to the actual space below the navbar so its footer never gets clipped.
+    function fitDirectoryToViewport(){
+        const $page=$('#dv-page');
+        const available=Math.max(280,$(window).height()-$page.offset().top-8);
+        $page.css('--dv-viewport-height',available+'px');
+    }
+    fitDirectoryToViewport();
+    $(window).on('resize.dailyVoucherDirectory',fitDirectoryToViewport);
     const form=$('#daily-voucher-filters')[0], body=$('#dv-rows')[0], wrap=$('#dv-table-wrap')[0];
     let start=0, length=25, filtered=0, total=0, timer, activeRequest=0, activeController=null;
     let sortColumn='date',sortDirection='desc';
