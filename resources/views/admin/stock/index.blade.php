@@ -1233,13 +1233,13 @@
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
     }[char]));
 
-    document.getElementById("itemImportForm")?.addEventListener("submit", async (event) => {
+    $('#itemImportForm').on("submit", async (event) => {
       event.preventDefault();
       const form = event.currentTarget;
-      const file = document.getElementById("itemImportFile")?.files?.[0];
+      const file = $('#itemImportFile')[0]?.files?.[0];
       if (!file) return;
       const button = form.querySelector('button[type="submit"]');
-      const preview = document.getElementById("itemImportPreview");
+      const preview = $('#itemImportPreview')[0];
       button.disabled = true;
       button.textContent = "Uploading and validating...";
       preview.hidden = false;
@@ -1269,7 +1269,7 @@
     });
 
     function renderItemImportPreview(data) {
-      const preview = document.getElementById("itemImportPreview");
+      const preview = $('#itemImportPreview')[0];
       const counts = data?.counts || {};
       const rows = data?.rows || [];
       const failed = Number(counts.failed || 0);
@@ -1286,7 +1286,7 @@
           <div class="d-flex gap-2">${failed ? `<a class="btn btn-outline-danger btn-sm" href="${errorsUrl}">Download errors</a>` : ""}<button class="btn btn-success btn-sm" id="applyItemImport" ${failed || data.status !== "staged" ? "disabled" : ""}>Confirm and apply</button></div>
         </div>
         <div class="table-responsive" style="max-height:280px"><table class="table table-sm table-bordered align-middle mb-0"><thead><tr><th>Row</th><th>Item ID</th><th>Name</th><th>Action</th><th>Validation</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
-      document.getElementById("applyItemImport")?.addEventListener("click", async (event) => {
+      $('#applyItemImport').on("click", async (event) => {
         const button = event.currentTarget;
         const confirmation = await Swal.fire({ icon: "warning", title: "Apply item import?", text: "Only item names, units and default rates will change. Stock balances and transaction history will remain unchanged.", showCancelButton: true, confirmButtonText: "Apply import" });
         if (!confirmation.isConfirmed) return;
@@ -1451,18 +1451,18 @@
   =========================== */
     const tabBtns = Array.from(document.querySelectorAll(".pv-tabbtn"));
     const views = {
-      entry: document.getElementById("view-entry"),
-      billing: document.getElementById("view-billing"),
-      stock: document.getElementById("view-stock"),
-      items: document.getElementById("view-items"),
-      parties: document.getElementById("view-parties"),
+      entry: $('#view-entry')[0],
+      billing: $('#view-billing')[0],
+      stock: $('#view-stock')[0],
+      items: $('#view-items')[0],
+      parties: $('#view-parties')[0],
     };
     function setView(name) {
       tabBtns.forEach((b) =>
-        b.classList.toggle("active", b.dataset.view === name)
+        $(b).toggleClass("active", b.dataset.view === name)
       );
       Object.entries(views).forEach(([k, el]) =>
-        el.classList.toggle("d-none", k !== name)
+        $(el).toggleClass("d-none", k !== name)
       );
     }
 
@@ -1509,11 +1509,11 @@
   ENTRY MODE (Purchase / Stock Out)
   =========================== */
     let entryMode = "purchase"; // purchase | stockout
-    const entryTitle = document.getElementById("entryTitle");
-    const entryPartyLabel = document.getElementById("entryPartyLabel");
-    const entryReasonLabel = document.getElementById("entryReasonLabel");
-    const btnPurchaseMode = document.getElementById("btnPurchaseMode");
-    const btnStockOutMode = document.getElementById("btnStockOutMode");
+    const entryTitle = $('#entryTitle')[0];
+    const entryPartyLabel = $('#entryPartyLabel')[0];
+    const entryReasonLabel = $('#entryReasonLabel')[0];
+    const btnPurchaseMode = $('#btnPurchaseMode')[0];
+    const btnStockOutMode = $('#btnStockOutMode')[0];
 
     function setEntryMode(mode) {
       entryMode = mode;
@@ -1527,19 +1527,19 @@
       entryReasonLabel.textContent = isPurchase
         ? "Purchase Reason Details"
         : "Using Reason Details";
-      btnPurchaseMode.classList.toggle("btn-outline-primary", !isPurchase);
-      btnPurchaseMode.classList.toggle("btn-primary", isPurchase);
-      btnStockOutMode.classList.toggle("btn-outline-secondary", isPurchase);
-      btnStockOutMode.classList.toggle("btn-secondary", !isPurchase);
+      $(btnPurchaseMode).toggleClass("btn-outline-primary", !isPurchase);
+      $(btnPurchaseMode).toggleClass("btn-primary", isPurchase);
+      $(btnStockOutMode).toggleClass("btn-outline-secondary", isPurchase);
+      $(btnStockOutMode).toggleClass("btn-secondary", !isPurchase);
     }
-    btnPurchaseMode.addEventListener("click", () => setEntryMode("purchase"));
-    btnStockOutMode.addEventListener("click", () => setEntryMode("stockout"));
+    $(btnPurchaseMode).on("click", () => setEntryMode("purchase"));
+    $(btnStockOutMode).on("click", () => setEntryMode("stockout"));
 
     /* ===========================
   ENTRY LINES
   =========================== */
-    const entryLinesWrap = document.getElementById("entryLines");
-    const entryTotalEl = document.getElementById("entryTotal");
+    const entryLinesWrap = $('#entryLines')[0];
+    const entryTotalEl = $('#entryTotal')[0];
 
     function makeLineRow(prefix, idx) {
       const lineId = `${prefix}_line_${idx}_${Math.random()
@@ -1577,7 +1577,7 @@
           </div>
         `;
 
-      const temp = document.createElement("div");
+      const temp = $('<div>')[0];
       temp.innerHTML = html.trim();
       const row = temp.firstElementChild;
 
@@ -1611,16 +1611,16 @@
         if (prefix === "bill") recalcBillTotal();
       }
 
-      itemSel.addEventListener("change", syncFromItem);
-      qtyEl.addEventListener("input", () => {
+      $(itemSel).on("change", syncFromItem);
+      $(qtyEl).on("input", () => {
         qtyEl.value = qtyEl.value.replace(/[^0-9]/g, "");
         recalc();
       });
-      rateEl.addEventListener("input", () => {
+      $(rateEl).on("input", () => {
         pvFormatAmountNoDecimal(rateEl);
         recalc();
       });
-      row.querySelector("button").addEventListener("click", () => {
+      $(row).find("button").on("click", () => {
         row.remove();
         recalcEntryTotal();
       });
@@ -1641,7 +1641,7 @@
       entryTotalEl.textContent = fmtPKR(total);
     }
 
-    document.getElementById("btnAddLine").addEventListener("click", () => {
+    $('#btnAddLine').on("click", () => {
       entryLinesWrap.appendChild(
         makeLineRow("entry", entryLinesWrap.children.length + 1)
       );
@@ -1650,13 +1650,13 @@
     /* ===========================
   ENTRY SUBMIT
   =========================== */
-    const entryForm = document.getElementById("entryForm");
-    const entrySlipNo = document.getElementById("entrySlipNo");
-    const entryDate = document.getElementById("entryDate");
-    const entryParty = document.getElementById("entryParty");
-    const entryReason = document.getElementById("entryReason");
-    const entryVehicle = document.getElementById("entryVehicle");
-    const entryDriver = document.getElementById("entryDriver");
+    const entryForm = $('#entryForm')[0];
+    const entrySlipNo = $('#entrySlipNo')[0];
+    const entryDate = $('#entryDate')[0];
+    const entryParty = $('#entryParty')[0];
+    const entryReason = $('#entryReason')[0];
+    const entryVehicle = $('#entryVehicle')[0];
+    const entryDriver = $('#entryDriver')[0];
 
 
     function collectLines(wrap) {
@@ -1678,7 +1678,7 @@
       return mode === "purchase" ? "IN" : "OUT";
     }
 
-    entryForm.addEventListener("submit", async (e) => {
+    $(entryForm).on("submit", async (e) => {
       e.preventDefault();
 
       if (!entryParty.value) {
@@ -1700,7 +1700,7 @@
         return;
       }
 
-      document.getElementById("entrySubmitBtn").disabled = true;
+      $('#entrySubmitBtn')[0].disabled = true;
       try {
         const res = await apiPost(endpoints.storeEntry, {
           date: entryDate.value,
@@ -1727,7 +1727,7 @@
       } catch (err) {
         handleApiError(err, "Unable to save entry.");
       } finally {
-        document.getElementById("entrySubmitBtn").disabled = false;
+        $('#entrySubmitBtn')[0].disabled = false;
       }
     });
 
@@ -1735,15 +1735,15 @@
     /* ===========================
   BILLING LINES + SUBMIT
   =========================== */
-    const billForm = document.getElementById("billForm");
-    const billType = document.getElementById("billType");
-    const billDate = document.getElementById("billDate");
-    const billParty = document.getElementById("billParty");
-    const billNo = document.getElementById("billNo");
-    const billNoChip = document.getElementById("billNoChip");
-    const billEntryNo = document.getElementById("billEntryNo");
-    const billLinesWrap = document.getElementById("billLines");
-    const billTotalEl = document.getElementById("billTotal");
+    const billForm = $('#billForm')[0];
+    const billType = $('#billType')[0];
+    const billDate = $('#billDate')[0];
+    const billParty = $('#billParty')[0];
+    const billNo = $('#billNo')[0];
+    const billNoChip = $('#billNoChip')[0];
+    const billEntryNo = $('#billEntryNo')[0];
+    const billLinesWrap = $('#billLines')[0];
+    const billTotalEl = $('#billTotal')[0];
 
     function makeBillLineRow(idx) {
       const row = makeLineRow("bill", idx);
@@ -1765,25 +1765,23 @@
       billTotalEl.textContent = fmtPKR(total);
     }
 
-    billLinesWrap.addEventListener("input", (e) => {
+    $(billLinesWrap).on("input", (e) => {
       if (
-        e.target.classList.contains("line-qty") ||
-        e.target.classList.contains("line-rate")
+        e.$(target).hasClass("line-qty") ||
+        e.$(target).hasClass("line-rate")
       ) {
         recalcBillTotal();
       }
     });
 
-    document
-      .getElementById("btnAddBillLine")
-      .addEventListener("click", () => {
+    $('#btnAddBillLine').on("click", () => {
         billLinesWrap.appendChild(
           makeBillLineRow(billLinesWrap.children.length + 1)
         );
         recalcBillTotal();
       });
 
-    billForm.addEventListener("submit", async (e) => {
+    $(billForm).on("submit", async (e) => {
       e.preventDefault();
 
       if (!billParty.value) {
@@ -1839,13 +1837,13 @@
     /* ===========================
   PROJECT-SCOPED ITEMS + PARTIES MANAGEMENT
   =========================== */
-    const editModalEl = document.getElementById("editModal");
+    const editModalEl = $('#editModal')[0];
     const editModal = new bootstrap.Modal(editModalEl);
 
     function openEditModal(title, fields, onSave) {
-      document.getElementById("editModalTitle").textContent = title;
+      $('#editModalTitle')[0].textContent = title;
 
-      const form = document.getElementById("editForm");
+      const form = $('#editForm')[0];
       form.innerHTML = "";
 
       fields.forEach((f) => {
@@ -1888,11 +1886,11 @@
 
       form.querySelectorAll(".pv-money").forEach((el) => {
         pvFormatAmountNoDecimal(el);
-        el.addEventListener("input", () => pvFormatAmountNoDecimal(el));
+        $(el).on("input", () => pvFormatAmountNoDecimal(el));
       });
 
       if (onSave) {
-        form.querySelector("#editSaveBtn").addEventListener("click", () => {
+        $(form).find("#editSaveBtn").on("click", () => {
           const data = Object.fromEntries(new FormData(form).entries());
           onSave(data);
         });
@@ -1902,12 +1900,12 @@
     }
 
     /* Items */
-    document.getElementById("itemForm").addEventListener("submit", async (e) => {
+    $('#itemForm').on("submit", async (e) => {
       e.preventDefault();
-      const name = document.getElementById("itemName").value.trim();
-      const unit = document.getElementById("itemUnit").value.trim();
+      const name = $('#itemName')[0].value.trim();
+      const unit = $('#itemUnit')[0].value.trim();
       const rate = pvParseIntAmount(
-        document.getElementById("itemRate").value
+        $('#itemRate')[0].value
       );
 
       if (!name || !unit) return;
@@ -1920,9 +1918,9 @@
         });
         viewToast("success", "Added", "Item created.");
 
-        document.getElementById("itemName").value = "";
-        document.getElementById("itemUnit").value = "";
-        document.getElementById("itemRate").value = "";
+        $('#itemName')[0].value = "";
+        $('#itemUnit')[0].value = "";
+        $('#itemRate')[0].value = "";
 
         await loadMeta();
         await loadItemsTable();
@@ -1933,29 +1931,29 @@
 
 
     /* Parties */
-    document.getElementById("partyForm").addEventListener("submit", async (e) => {
+    $('#partyForm').on("submit", async (e) => {
       e.preventDefault();
-      const type = document.getElementById("partyType").value;
-      const name = document.getElementById("partyName").value.trim();
+      const type = $('#partyType')[0].value;
+      const name = $('#partyName')[0].value.trim();
       if (!name) return;
 
       try {
         await apiPost(endpoints.storeParty, {
           type,
           name,
-          mobile: document.getElementById("partyMobile").value.trim(),
-          address: document.getElementById("partyAddress").value.trim(),
-          head: document.getElementById("accounts_id").value.trim(),
-          subhead: document.getElementById("subaccounts_id").value.trim(),
+          mobile: $('#partyMobile')[0].value.trim(),
+          address: $('#partyAddress')[0].value.trim(),
+          head: $('#accounts_id')[0].value.trim(),
+          subhead: $('#subaccounts_id')[0].value.trim(),
         });
 
         viewToast("success", "Added", "Party created.");
 
-        document.getElementById("partyName").value = "";
-        document.getElementById("partyMobile").value = "";
-        document.getElementById("partyAddress").value = "";
-        document.getElementById("accounts_id").value = "";
-        document.getElementById("subaccounts_id").value = "";
+        $('#partyName')[0].value = "";
+        $('#partyMobile')[0].value = "";
+        $('#partyAddress')[0].value = "";
+        $('#accounts_id')[0].value = "";
+        $('#subaccounts_id')[0].value = "";
 
         await loadMeta();
         await loadPartiesTable();
@@ -1976,9 +1974,9 @@
 
       fillPartySelect(entryParty, false);
       fillPartySelect(billParty, false);
-      fillItemSelect(document.getElementById("entryFilterItem"), true);
-      fillItemSelect(document.getElementById("stockItemFilter"), true);
-      fillPartySelect(document.getElementById("billFilterParty"), true);
+      fillItemSelect($('#entryFilterItem')[0], true);
+      fillItemSelect($('#stockItemFilter')[0], true);
+      fillPartySelect($('#billFilterParty')[0], true);
       refreshLineItemSelects();
     }
 
@@ -1995,9 +1993,9 @@
 
     async function loadEntries() {
       const res = await apiGet(endpoints.entries, {
-        item_id: document.getElementById("entryFilterItem").value || null,
-        flow: document.getElementById("entryFilterFlow").value || null,
-        q: document.getElementById("entrySearch").value || null,
+        item_id: $('#entryFilterItem')[0].value || null,
+        flow: $('#entryFilterFlow')[0].value || null,
+        q: $('#entrySearch')[0].value || null,
         per_page: 50,
         page: 1,
       });
@@ -2007,9 +2005,9 @@
 
     async function loadBills() {
       const res = await apiGet(endpoints.bills, {
-        type: document.getElementById("billFilterType").value || null,
-        party_id: document.getElementById("billFilterParty").value || null,
-        q: document.getElementById("billSearch").value || null,
+        type: $('#billFilterType')[0].value || null,
+        party_id: $('#billFilterParty')[0].value || null,
+        q: $('#billSearch')[0].value || null,
         per_page: 50,
         page: 1,
       });
@@ -2019,9 +2017,9 @@
 
     async function loadReport() {
       const res = await apiGet(endpoints.report, {
-        from: document.getElementById("stockFrom").value || null,
-        to: document.getElementById("stockTo").value || null,
-        item_id: document.getElementById("stockItemFilter").value || null,
+        from: $('#stockFrom')[0].value || null,
+        to: $('#stockTo')[0].value || null,
+        item_id: $('#stockItemFilter')[0].value || null,
       });
       state.report = res?.data || { rows: [], kpi: {} };
       renderStock();
@@ -2029,25 +2027,25 @@
 
     async function loadItemsTable() {
       const res = await apiGet(endpoints.items, {
-        q: document.getElementById("itemSearch").value || null,
+        q: $('#itemSearch')[0].value || null,
       });
       state.itemsTable = res?.data || { rows: [], total: 0 };
       renderItems();
     }
 
     async function loadItemImportHistory() {
-      const tbody = document.getElementById("itemImportHistoryBody");
+      const tbody = $('#itemImportHistoryBody')[0];
       try {
         const result = await apiGet(endpoints.itemImportHistory);
         const rows = result?.data?.rows || [];
         tbody.innerHTML = rows.length ? rows.map((row) => `
           <tr><td>#${Number(row.id)}</td><td>${importHtml(row.created_at || "")}</td><td>${importHtml(row.created_by || "-")}</td><td><span class="pv-pill ${row.status === "applied" ? "ok" : "warn"}">${importHtml(row.status)}</span></td><td>${Number(row.added)} / ${Number(row.updated)} / ${Number(row.failed)}</td><td><button type="button" class="btn btn-outline-primary btn-sm" data-import-preview="${Number(row.id)}">Preview</button></td></tr>`).join("") : '<tr><td colspan="6" class="text-muted text-center">No import batches yet.</td></tr>';
-        tbody.querySelectorAll("[data-import-preview]").forEach((button) => button.addEventListener("click", async () => {
+        tbody.querySelectorAll("[data-import-preview]").forEach((button) => $(button).on("click", async () => {
           try {
             const url = endpoints.itemImportPreview.replace(/0(?=\D*$)/, encodeURIComponent(button.dataset.importPreview));
             const detail = await apiGet(url);
             renderItemImportPreview(detail.data);
-            document.getElementById("itemImportPreview").scrollIntoView({ behavior: "smooth", block: "nearest" });
+            $('#itemImportPreview')[0].scrollIntoView({ behavior: "smooth", block: "nearest" });
           } catch (error) { handleApiError(error, "Unable to load this import preview."); }
         }));
       } catch (error) {
@@ -2057,8 +2055,8 @@
 
     async function loadPartiesTable() {
       const res = await apiGet(endpoints.parties, {
-        q: document.getElementById("partySearch").value || null,
-        type: document.getElementById("partyFilterType").value || null,
+        q: $('#partySearch')[0].value || null,
+        type: $('#partyFilterType')[0].value || null,
       });
       state.partiesTable = res?.data || { rows: [], total: 0 };
       renderParties();
@@ -2068,7 +2066,7 @@
   RENDERING
   =========================== */
     function renderEntryTable() {
-      const tbody = document.getElementById("entryTbody");
+      const tbody = $('#entryTbody')[0];
       tbody.innerHTML = "";
       (state.entries.rows || []).forEach((en, idx) => {
         const billingPill = en.billed_at
@@ -2099,24 +2097,24 @@
         );
       });
 
-      document.getElementById("entryCountChip").textContent = `${state.entries.total || 0
+      $('#entryCountChip')[0].textContent = `${state.entries.total || 0
         } total`;
 
       const kpi = state.entries.kpi || {};
-      document.getElementById("kpiInQty").textContent = fmtInt(
+      $('#kpiInQty')[0].textContent = fmtInt(
         kpi.in_qty || 0
       );
-      document.getElementById("kpiOutQty").textContent = fmtInt(
+      $('#kpiOutQty')[0].textContent = fmtInt(
         kpi.out_qty || 0
       );
-      document.getElementById("kpiLines").textContent = fmtInt(
+      $('#kpiLines')[0].textContent = fmtInt(
         kpi.line_count || 0
       );
 
     }
 
     function renderBillTable() {
-      const tbody = document.getElementById("billTbody");
+      const tbody = $('#billTbody')[0];
       tbody.innerHTML = "";
       (state.bills.rows || []).forEach((b, idx) => {
         tbody.insertAdjacentHTML(
@@ -2136,27 +2134,27 @@
         );
       });
 
-      document.getElementById("billCountChip").textContent = `${state.bills.total || 0
+      $('#billCountChip')[0].textContent = `${state.bills.total || 0
         } total`;
 
       const kpi = state.bills.kpi || {};
-      document.getElementById("kpiPurchaseBills").textContent = fmtInt(
+      $('#kpiPurchaseBills')[0].textContent = fmtInt(
         kpi.purchase_count || 0
       );
-      document.getElementById("kpiSaleBills").textContent = fmtInt(
+      $('#kpiSaleBills')[0].textContent = fmtInt(
         kpi.sale_count || 0
       );
-      document.getElementById("kpiBillTotal").textContent = fmtPKR(
+      $('#kpiBillTotal')[0].textContent = fmtPKR(
         kpi.total_amount || 0
       );
 
     }
 
     function renderStock() {
-      const from = document.getElementById("stockFrom").value;
-      const to = document.getElementById("stockTo").value;
+      const from = $('#stockFrom')[0].value;
+      const to = $('#stockTo')[0].value;
       const rows = state.report.rows || [];
-      const tbody = document.getElementById("stockTbody");
+      const tbody = $('#stockTbody')[0];
       tbody.innerHTML = "";
 
       rows.forEach((r) => {
@@ -2176,25 +2174,25 @@
       });
 
       const kpi = state.report.kpi || {};
-      document.getElementById("kpiStockItems").textContent = fmtInt(
+      $('#kpiStockItems')[0].textContent = fmtInt(
         kpi.items || 0
       );
-      document.getElementById("kpiStockIn").textContent = fmtInt(
+      $('#kpiStockIn')[0].textContent = fmtInt(
         kpi.in_qty || 0
       );
-      document.getElementById("kpiStockOut").textContent = fmtInt(
+      $('#kpiStockOut')[0].textContent = fmtInt(
         kpi.out_qty || 0
       );
-      document.getElementById("kpiStockAvail").textContent = fmtInt(
+      $('#kpiStockAvail')[0].textContent = fmtInt(
         kpi.available || 0
       );
 
-      const chip = document.getElementById("stockRangeChip");
+      const chip = $('#stockRangeChip')[0];
       chip.textContent = `Range: ${from || "—"} → ${to || "—"}`;
     }
 
     function renderItems() {
-      const tbody = document.getElementById("itemTbody");
+      const tbody = $('#itemTbody')[0];
       tbody.innerHTML = "";
       (state.itemsTable.rows || []).forEach((it, idx) => {
         tbody.insertAdjacentHTML(
@@ -2219,12 +2217,10 @@
         );
       });
 
-      document.getElementById(
-        "itemCountChip"
-      ).textContent = `${state.itemsTable.total || 0} total`;
+      $('#itemCountChip')[0].textContent = `${state.itemsTable.total || 0} total`;
 
-      const exportSelected = document.getElementById("exportSelectedItems");
-      const selectAll = document.getElementById("selectAllStockItems");
+      const exportSelected = $('#exportSelectedItems')[0];
+      const selectAll = $('#selectAllStockItems')[0];
       if (selectAll) selectAll.checked = false;
       const syncSelectedExport = () => {
         const ids = Array.from(tbody.querySelectorAll(".stock-item-select:checked"), (input) => input.value);
@@ -2232,21 +2228,21 @@
         url.searchParams.set("format", "xlsx");
         ids.forEach((id) => url.searchParams.append("item_ids[]", id));
         exportSelected.href = url.toString();
-        exportSelected.classList.toggle("disabled", ids.length === 0);
+        $(exportSelected).toggleClass("disabled", ids.length === 0);
         exportSelected.setAttribute("aria-disabled", ids.length === 0 ? "true" : "false");
       };
       if (selectAll) selectAll.onchange = () => {
         tbody.querySelectorAll(".stock-item-select").forEach((input) => { input.checked = selectAll.checked; });
         syncSelectedExport();
       };
-      tbody.querySelectorAll(".stock-item-select").forEach((input) => input.addEventListener("change", syncSelectedExport));
+      tbody.querySelectorAll(".stock-item-select").forEach((input) => $(input).on("change", syncSelectedExport));
       if (exportSelected) exportSelected.onclick = (event) => {
         if (!tbody.querySelector(".stock-item-select:checked")) event.preventDefault();
       };
       syncSelectedExport();
 
       tbody.querySelectorAll("button[data-act]").forEach((btn) => {
-        btn.addEventListener("click", async () => {
+        $(btn).on("click", async () => {
           const row = btn.closest("tr");
           const idx = Array.from(row.parentNode.children).indexOf(row);
           const it = state.itemsTable.rows[idx];
@@ -2309,7 +2305,7 @@
     }
 
     function renderParties() {
-      const tbody = document.getElementById("partyTbody");
+      const tbody = $('#partyTbody')[0];
       tbody.innerHTML = "";
       (state.partiesTable.rows || []).forEach((p, idx) => {
         tbody.insertAdjacentHTML(
@@ -2342,12 +2338,10 @@
         );
       });
 
-      document.getElementById(
-        "partyCountChip"
-      ).textContent = `${state.partiesTable.total || 0} total`;
+      $('#partyCountChip')[0].textContent = `${state.partiesTable.total || 0} total`;
 
       tbody.querySelectorAll("button[data-act]").forEach((btn) => {
-        btn.addEventListener("click", async () => {
+        $(btn).on("click", async () => {
           const row = btn.closest("tr");
           const idx = Array.from(row.parentNode.children).indexOf(row);
           const p = state.partiesTable.rows[idx];
@@ -2459,8 +2453,8 @@
     async function initUI() {
       entryDate.value = todayISO();
       billDate.value = todayISO();
-      document.getElementById("stockFrom").value = daysAgoISO(30);
-      document.getElementById("stockTo").value = todayISO();
+      $('#stockFrom')[0].value = daysAgoISO(30);
+      $('#stockTo')[0].value = todayISO();
 
       entryLinesWrap.innerHTML = "";
       entryLinesWrap.appendChild(makeLineRow("entry", 1));
@@ -2470,19 +2464,13 @@
       billLinesWrap.appendChild(makeBillLineRow(1));
       recalcBillTotal();
 
-      document
-        .getElementById("entryFilterItem")
-        .addEventListener("change", () =>
+      $('#entryFilterItem').on("change", () =>
           loadEntries().catch((err) => handleApiError(err, "Unable to load entries."))
         );
-      document
-        .getElementById("entryFilterFlow")
-        .addEventListener("change", () =>
+      $('#entryFilterFlow').on("change", () =>
           loadEntries().catch((err) => handleApiError(err, "Unable to load entries."))
         );
-      document
-        .getElementById("entrySearch")
-        .addEventListener(
+      $('#entrySearch').on(
           "input",
           debounce(
             () =>
@@ -2493,19 +2481,13 @@
           )
         );
 
-      document
-        .getElementById("billFilterType")
-        .addEventListener("change", () =>
+      $('#billFilterType').on("change", () =>
           loadBills().catch((err) => handleApiError(err, "Unable to load bills."))
         );
-      document
-        .getElementById("billFilterParty")
-        .addEventListener("change", () =>
+      $('#billFilterParty').on("change", () =>
           loadBills().catch((err) => handleApiError(err, "Unable to load bills."))
         );
-      document
-        .getElementById("billSearch")
-        .addEventListener(
+      $('#billSearch').on(
           "input",
           debounce(
             () =>
@@ -2514,9 +2496,7 @@
           )
         );
 
-      document
-        .getElementById("itemSearch")
-        .addEventListener(
+      $('#itemSearch').on(
           "input",
           debounce(
             () =>
@@ -2526,9 +2506,7 @@
             300
           )
         );
-      document
-        .getElementById("partySearch")
-        .addEventListener(
+      $('#partySearch').on(
           "input",
           debounce(
             () =>
@@ -2538,25 +2516,21 @@
             300
           )
         );
-      document
-        .getElementById("partyFilterType")
-        .addEventListener("change", () =>
+      $('#partyFilterType').on("change", () =>
           loadPartiesTable().catch((err) => handleApiError(err, "Unable to load parties."))
         );
 
-      document
-        .getElementById("btnApplyStock")
-        .addEventListener("click", () =>
+      $('#btnApplyStock').on("click", () =>
           loadReport().catch((err) => handleApiError(err, "Unable to load report."))
         );
 
-      billType.addEventListener("change", () =>
+      $(billType).on("change", () =>
         loadNextBill().catch((err) => handleApiError(err, "Unable to load bill no."))
       );
 
       document.querySelectorAll(".pv-money").forEach((el) => {
         pvFormatAmountNoDecimal(el);
-        el.addEventListener("input", () => pvFormatAmountNoDecimal(el));
+        $(el).on("input", () => pvFormatAmountNoDecimal(el));
       });
 
       setEntryMode("purchase");
@@ -2578,12 +2552,12 @@
       }
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
+    $(document).on("DOMContentLoaded", () => {
       initUI();
 
       // tab switching
       tabBtns.forEach((btn) =>
-        btn.addEventListener("click", () => setView(btn.dataset.view))
+        $(btn).on("click", () => setView(btn.dataset.view))
       );
     });
   </script>
