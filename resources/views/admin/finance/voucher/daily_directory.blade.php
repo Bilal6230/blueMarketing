@@ -375,8 +375,7 @@
         document.getElementById('dv-entry-title').textContent=button.dataset.title;
         methodWrap.classList.toggle('d-none',!button.dataset.chequeUrl);
         document.getElementById('dv-bank-method').value='online';
-        methodWrap.dataset.onlineUrl=button.dataset.url;
-        methodWrap.dataset.chequeUrl=button.dataset.chequeUrl;
+        $('#dv-bank-method-wrap').data('onlineUrl',button.dataset.url).data('chequeUrl',button.dataset.chequeUrl);
         loadEntry(button.dataset.url);
         if(window.jQuery)window.jQuery('#dv-entry-modal').modal('show');
     }
@@ -427,19 +426,20 @@
         loadEntry(url.toString(),'edit');
         if(window.jQuery)window.jQuery('#dv-entry-modal').modal('show');
     });
-    $('#dv-rows').on('click','.dv-delete',async function(){
+    $('#dv-rows').on('click','.dv-delete',function(){
         const button=this;
-        const reason=window.prompt('Reason for deactivating '+button.dataset.number+' (required):');
+        const reason=window.prompt('Reason for deactivating '+$(button).data('number')+' (required):');
         if(!reason || !reason.trim())return;
         if(reason.trim().length>500){window.alert('Reason cannot exceed 500 characters.');return;}
         if(!window.confirm('Deactivate '+button.dataset.number+'? No ledger record will be physically deleted.'))return;
         // JV/CV use their independent authorized reversal workflow.
-        if(!button.dataset.id){
-            const deletion=document.createElement('form');deletion.method='POST';deletion.action=button.dataset.url;
+        if(!$(button).data('id')){
+            const $deletion=$('<form>',{method:'POST',action:$(button).data('url')}).hide();
             for(const [name,value] of [['_token',@json(csrf_token())],['_method','DELETE'],['reason',reason.trim()],['effective_date',new Date().toISOString().slice(0,10)],['request_key',String(Date.now())]]){
-                const field=document.createElement('input');field.type='hidden';field.name=name;field.value=value;deletion.appendChild(field);
+                $deletion.append($('<input>',{type:'hidden',name,value}));
             }
-            document.body.appendChild(deletion);deletion.submit();return;
+            $('body').append($deletion);
+            $deletion.trigger('submit');return;
         }
         $(button).prop('disabled',true);
         $.ajax({
