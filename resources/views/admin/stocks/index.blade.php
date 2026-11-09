@@ -185,7 +185,7 @@
     </script>
     @if ($errors->any())
         <script>
-            document.addEventListener('DOMContentLoaded', function () {
+            $(document).on('DOMContentLoaded', function () {
                 Swal.fire({
                     toast: true,
                     position: 'top-end', // top right
@@ -201,7 +201,7 @@
 
     @if (session('success'))
         <script>
-            document.addEventListener('DOMContentLoaded', function () {
+            $(document).on('DOMContentLoaded', function () {
                 Swal.fire({
                     toast: true,
                     position: 'top-end',
@@ -348,17 +348,17 @@
         =========================== */
         const tabBtns = Array.from(document.querySelectorAll(".pv-tabbtn"));
         const views = {
-            entry: document.getElementById("view-entry"),
-            billing: document.getElementById("view-billing"),
-            stock: document.getElementById("view-stock"),
-            items: document.getElementById("view-items"),
-            parties: document.getElementById("view-parties"),
+            entry: $('#view-entry')[0],
+            billing: $('#view-billing')[0],
+            stock: $('#view-stock')[0],
+            items: $('#view-items')[0],
+            parties: $('#view-parties')[0],
         };
 
         function setView(name) {
             PV.state.view = name;
-            tabBtns.forEach((b) => b.classList.toggle("active", b.dataset.view === name));
-            Object.entries(views).forEach(([k, el]) => el.classList.toggle("d-none", k !== name));
+            tabBtns.forEach((b) => $(b).toggleClass("active", b.dataset.view === name));
+            Object.entries(views).forEach(([k, el]) => $(el).toggleClass("d-none", k !== name));
 
             // refresh view data (tables/report)
             renderAll().catch(() => { });
@@ -386,11 +386,11 @@
           ENTRY MODE
         =========================== */
         let entryMode = "purchase"; // purchase | stockout
-        const entryTitle = document.getElementById("entryTitle");
-        const entryPartyLabel = document.getElementById("entryPartyLabel");
-        const entryReasonLabel = document.getElementById("entryReasonLabel");
-        const btnPurchaseMode = document.getElementById("btnPurchaseMode");
-        const btnStockOutMode = document.getElementById("btnStockOutMode");
+        const entryTitle = $('#entryTitle')[0];
+        const entryPartyLabel = $('#entryPartyLabel')[0];
+        const entryReasonLabel = $('#entryReasonLabel')[0];
+        const btnPurchaseMode = $('#btnPurchaseMode')[0];
+        const btnStockOutMode = $('#btnStockOutMode')[0];
 
         function setEntryMode(mode) {
             entryMode = mode;
@@ -401,21 +401,21 @@
             entryPartyLabel.textContent = isPurchase ? "Shop / Party" : "Site & Customer";
             entryReasonLabel.textContent = isPurchase ? "Purchase Reason Details" : "Using Reason Details";
 
-            btnPurchaseMode.classList.toggle("btn-outline-primary", !isPurchase);
-            btnPurchaseMode.classList.toggle("btn-primary", isPurchase);
-            btnStockOutMode.classList.toggle("btn-outline-secondary", isPurchase);
-            btnStockOutMode.classList.toggle("btn-secondary", !isPurchase);
+            $(btnPurchaseMode).toggleClass("btn-outline-primary", !isPurchase);
+            $(btnPurchaseMode).toggleClass("btn-primary", isPurchase);
+            $(btnStockOutMode).toggleClass("btn-outline-secondary", isPurchase);
+            $(btnStockOutMode).toggleClass("btn-secondary", !isPurchase);
         }
-        btnPurchaseMode.addEventListener("click", () => setEntryMode("purchase"));
-        btnStockOutMode.addEventListener("click", () => setEntryMode("stockout"));
+        $(btnPurchaseMode).on("click", () => setEntryMode("purchase"));
+        $(btnStockOutMode).on("click", () => setEntryMode("stockout"));
 
         /* ===========================
           LINE ROW BUILDER (shared)
         =========================== */
-        const entryLinesWrap = document.getElementById("entryLines");
-        const entryTotalEl = document.getElementById("entryTotal");
-        const billLinesWrap = document.getElementById("billLines");
-        const billTotalEl = document.getElementById("billTotal");
+        const entryLinesWrap = $('#entryLines')[0];
+        const entryTotalEl = $('#entryTotal')[0];
+        const billLinesWrap = $('#billLines')[0];
+        const billTotalEl = $('#billTotal')[0];
 
         function makeLineRow(prefix) {
             const html = `
@@ -450,7 +450,7 @@
         </div>
       `.trim();
 
-            const temp = document.createElement("div");
+            const temp = $('<div>')[0];
             temp.innerHTML = html;
             const row = temp.firstElementChild;
 
@@ -484,17 +484,17 @@
                 if (prefix === 'bill') recalcBillTotal();
             }
 
-            itemSel.addEventListener("change", syncFromItem);
-            qtyEl.addEventListener("input", () => {
+            $(itemSel).on("change", syncFromItem);
+            $(qtyEl).on("input", () => {
                 qtyEl.value = qtyEl.value.replace(/[^0-9]/g, "");
                 recalc();
             });
-            rateEl.addEventListener("input", () => {
+            $(rateEl).on("input", () => {
                 pvFormatAmountNoDecimal(rateEl);
                 recalc();
             });
 
-            row.querySelector("button").addEventListener("click", () => {
+            $(row).find("button").on("click", () => {
                 row.remove();
                 if (prefix === 'entry') recalcEntryTotal();
                 if (prefix === 'bill') recalcBillTotal();
@@ -523,11 +523,11 @@
             billTotalEl.textContent = fmtPKR(total);
         }
 
-        document.getElementById("btnAddLine").addEventListener("click", () => {
+        $('#btnAddLine').on("click", () => {
             entryLinesWrap.appendChild(makeLineRow('entry'));
         });
 
-        document.getElementById("btnAddBillLine").addEventListener("click", () => {
+        $('#btnAddBillLine').on("click", () => {
             billLinesWrap.appendChild(makeLineRow('bill'));
         });
 
@@ -556,12 +556,12 @@
             }));
 
             // refresh dropdowns
-            fillPartySelect(document.getElementById("entryParty"), false);
-            fillPartySelect(document.getElementById("billParty"), false);
+            fillPartySelect($('#entryParty')[0], false);
+            fillPartySelect($('#billParty')[0], false);
 
-            fillItemSelect(document.getElementById("entryFilterItem"), true);
-            fillItemSelect(document.getElementById("stockItemFilter"), true);
-            fillPartySelect(document.getElementById("billFilterParty"), true);
+            fillItemSelect($('#entryFilterItem')[0], true);
+            fillItemSelect($('#stockItemFilter')[0], true);
+            fillPartySelect($('#billFilterParty')[0], true);
 
             // refresh existing line item dropdowns too
             entryLinesWrap.querySelectorAll('.line-item').forEach(sel => fillItemSelect(sel, false));
@@ -570,16 +570,16 @@
 
         async function refreshSlipNo() {
             const res = await apiFetch(PV.routes.nextSlip);
-            document.getElementById("entrySlipNo").value = res.slip_no ?? res.data?.slip_no ?? '';
+            $('#entrySlipNo')[0].value = res.slip_no ?? res.data?.slip_no ?? '';
         }
 
         async function refreshBillNo() {
-            const type = document.getElementById('billType').value || 'purchase';
+            const type = $('#billType')[0].value || 'purchase';
             const url = PV.routes.nextBill + '?type=' + encodeURIComponent(type);
             const res = await apiFetch(url);
             const billNo = res.bill_no ?? res.data?.bill_no ?? '';
-            document.getElementById("billNo").value = billNo;
-            document.getElementById("billNoChip").textContent = billNo || 'Bill no… auto';
+            $('#billNo')[0].value = billNo;
+            $('#billNoChip')[0].textContent = billNo || 'Bill no… auto';
         }
 
         /* ===========================
@@ -601,10 +601,10 @@
           SAVE ENTRY
           (NOTE: uses controller keys date/flow/vehicle/driver/reason)
         =========================== */
-        document.getElementById("entryForm").addEventListener("submit", async (e) => {
+        $('#entryForm').on("submit", async (e) => {
             e.preventDefault();
 
-            const partyId = document.getElementById("entryParty").value;
+            const partyId = $('#entryParty')[0].value;
             if (!partyId) {
                 Swal.fire({ icon: "error", title: "Missing Party", text: "Please select Shop/Party or Site/Customer." });
                 return;
@@ -623,21 +623,21 @@
                 await apiFetch(PV.routes.storeEntry, {
                     method: 'POST',
                     body: {
-                        date: document.getElementById("entryDate").value,
+                        date: $('#entryDate')[0].value,
                         flow,
                         party_id: Number(partyId),
-                        reason: document.getElementById("entryReason").value || null,
-                        vehicle: document.getElementById("entryVehicle").value || null,
-                        driver: document.getElementById("entryDriver").value || null,
+                        reason: $('#entryReason')[0].value || null,
+                        vehicle: $('#entryVehicle')[0].value || null,
+                        driver: $('#entryDriver')[0].value || null,
                         lines
                     }
                 });
 
                 viewToast("success", "Saved", `${flow} entry saved.`);
                 // reset
-                document.getElementById("entryReason").value = "";
-                document.getElementById("entryVehicle").value = "";
-                document.getElementById("entryDriver").value = "";
+                $('#entryReason')[0].value = "";
+                $('#entryVehicle')[0].value = "";
+                $('#entryDriver')[0].value = "";
                 entryLinesWrap.innerHTML = "";
                 entryLinesWrap.appendChild(makeLineRow('entry'));
                 recalcEntryTotal();
@@ -660,11 +660,11 @@
         /* ===========================
           SAVE BILL
         =========================== */
-        document.getElementById("billForm").addEventListener("submit", async (e) => {
+        $('#billForm').on("submit", async (e) => {
             e.preventDefault();
 
-            const type = document.getElementById("billType").value || 'purchase';
-            const partyId = document.getElementById("billParty").value;
+            const type = $('#billType')[0].value || 'purchase';
+            const partyId = $('#billParty')[0].value;
 
             if (!partyId) {
                 Swal.fire({ icon: "error", title: "Missing Party", text: "Please select Supplier / Site Name." });
@@ -682,16 +682,16 @@
                     method: 'POST',
                     body: {
                         type,
-                        date: document.getElementById("billDate").value,
+                        date: $('#billDate')[0].value,
                         party_id: Number(partyId),
-                        entry_no: document.getElementById("billEntryNo").value || null,
+                        entry_no: $('#billEntryNo')[0].value || null,
                         lines
                     }
                 });
 
                 viewToast("success", "Saved", `${type.toUpperCase()} bill saved.`);
                 // reset
-                document.getElementById("billEntryNo").value = "";
+                $('#billEntryNo')[0].value = "";
                 billLinesWrap.innerHTML = "";
                 billLinesWrap.appendChild(makeLineRow('bill'));
                 recalcBillTotal();
@@ -715,12 +715,12 @@
           SAVE ITEM
           (your form uses ids: itemName/itemUnit/itemRate)
         =========================== */
-        document.getElementById("itemForm").addEventListener("submit", async (e) => {
+        $('#itemForm').on("submit", async (e) => {
             e.preventDefault();
 
-            const name = document.getElementById("itemName").value.trim();
-            const unit = document.getElementById("itemUnit").value.trim();
-            const default_rate = pvParseIntAmount(document.getElementById("itemRate").value);
+            const name = $('#itemName')[0].value.trim();
+            const unit = $('#itemUnit')[0].value.trim();
+            const default_rate = pvParseIntAmount($('#itemRate')[0].value);
 
             if (!name || !unit) return;
 
@@ -731,9 +731,9 @@
                 });
 
                 viewToast("success", "Added", "Item added.");
-                document.getElementById("itemName").value = "";
-                document.getElementById("itemUnit").value = "";
-                document.getElementById("itemRate").value = "";
+                $('#itemName')[0].value = "";
+                $('#itemUnit')[0].value = "";
+                $('#itemRate')[0].value = "";
                 await loadMeta();
                 await renderItems(); // try refresh table
             } catch (err) {
@@ -744,11 +744,11 @@
         /* ===========================
           SAVE PARTY
         =========================== */
-        document.getElementById("partyForm").addEventListener("submit", async (e) => {
+        $('#partyForm').on("submit", async (e) => {
             e.preventDefault();
 
-            const type = document.getElementById("partyType").value;
-            const name = document.getElementById("partyName").value.trim();
+            const type = $('#partyType')[0].value;
+            const name = $('#partyName')[0].value.trim();
             if (!name) return;
 
             try {
@@ -757,19 +757,19 @@
                     body: {
                         type,
                         name,
-                        mobile: document.getElementById("partyMobile").value.trim() || null,
-                        address: document.getElementById("partyAddress").value.trim() || null,
-                        head: document.getElementById("partyHead").value.trim() || null,
-                        subhead: document.getElementById("partySubHead").value.trim() || null,
+                        mobile: $('#partyMobile')[0].value.trim() || null,
+                        address: $('#partyAddress')[0].value.trim() || null,
+                        head: $('#partyHead')[0].value.trim() || null,
+                        subhead: $('#partySubHead')[0].value.trim() || null,
                     }
                 });
 
                 viewToast("success", "Added", "Party added.");
-                document.getElementById("partyName").value = "";
-                document.getElementById("partyMobile").value = "";
-                document.getElementById("partyAddress").value = "";
-                document.getElementById("partyHead").value = "";
-                document.getElementById("partySubHead").value = "";
+                $('#partyName')[0].value = "";
+                $('#partyMobile')[0].value = "";
+                $('#partyAddress')[0].value = "";
+                $('#partyHead')[0].value = "";
+                $('#partySubHead')[0].value = "";
                 await loadMeta();
                 await renderParties(); // try refresh table
             } catch (err) {
@@ -794,12 +794,12 @@
         }
 
         async function renderEntryTable() {
-            const tbody = document.getElementById("entryTbody");
+            const tbody = $('#entryTbody')[0];
             if (!tbody) return;
 
-            const itemId = document.getElementById("entryFilterItem").value || '';
-            const flow = document.getElementById("entryFilterFlow").value || '';
-            const q = document.getElementById("entrySearch").value || '';
+            const itemId = $('#entryFilterItem')[0].value || '';
+            const flow = $('#entryFilterFlow')[0].value || '';
+            const q = $('#entrySearch')[0].value || '';
 
             try {
                 const url = PV.routes.listEntries + `?item_id=${encodeURIComponent(itemId)}&flow=${encodeURIComponent(flow)}&q=${encodeURIComponent(q)}`;
@@ -843,27 +843,27 @@
                     });
                 }
 
-                document.getElementById("entryCountChip").textContent = `${total} total`;
+                $('#entryCountChip')[0].textContent = `${total} total`;
 
                 // KPIs (if backend provides, use them; else compute naive from rows)
                 const kpi = res.data?.kpi ?? res.kpi ?? null;
                 if (kpi) {
-                    document.getElementById("kpiInQty").textContent = fmtInt(kpi.in_qty ?? 0);
-                    document.getElementById("kpiOutQty").textContent = fmtInt(kpi.out_qty ?? 0);
-                    document.getElementById("kpiLines").textContent = fmtInt(kpi.lines ?? 0);
+                    $('#kpiInQty')[0].textContent = fmtInt(kpi.in_qty ?? 0);
+                    $('#kpiOutQty')[0].textContent = fmtInt(kpi.out_qty ?? 0);
+                    $('#kpiLines')[0].textContent = fmtInt(kpi.lines ?? 0);
                 } else {
-                    document.getElementById("kpiInQty").textContent = '—';
-                    document.getElementById("kpiOutQty").textContent = '—';
-                    document.getElementById("kpiLines").textContent = '—';
+                    $('#kpiInQty')[0].textContent = '—';
+                    $('#kpiOutQty')[0].textContent = '—';
+                    $('#kpiLines')[0].textContent = '—';
                 }
 
             } catch (err) {
                 if (err.status === 404 || err.status === 500) {
                     showNotImplemented("entryTbody", "Entries list endpoint not ready yet (implement StockController@entries).");
-                    document.getElementById("entryCountChip").textContent = `—`;
-                    document.getElementById("kpiInQty").textContent = '—';
-                    document.getElementById("kpiOutQty").textContent = '—';
-                    document.getElementById("kpiLines").textContent = '—';
+                    $('#entryCountChip')[0].textContent = `—`;
+                    $('#kpiInQty')[0].textContent = '—';
+                    $('#kpiOutQty')[0].textContent = '—';
+                    $('#kpiLines')[0].textContent = '—';
                     return;
                 }
                 showNotImplemented("entryTbody", err.message || "Failed to load entries.");
@@ -871,12 +871,12 @@
         }
 
         async function renderBillTable() {
-            const tbody = document.getElementById("billTbody");
+            const tbody = $('#billTbody')[0];
             if (!tbody) return;
 
-            const type = document.getElementById("billFilterType").value || '';
-            const partyId = document.getElementById("billFilterParty").value || '';
-            const q = document.getElementById("billSearch").value || '';
+            const type = $('#billFilterType')[0].value || '';
+            const partyId = $('#billFilterParty')[0].value || '';
+            const q = $('#billSearch')[0].value || '';
 
             try {
                 const url = PV.routes.listBills + `?type=${encodeURIComponent(type)}&party_id=${encodeURIComponent(partyId)}&q=${encodeURIComponent(q)}`;
@@ -908,21 +908,21 @@
                     });
                 }
 
-                document.getElementById("billCountChip").textContent = `${total} total`;
+                $('#billCountChip')[0].textContent = `${total} total`;
 
                 // KPIs (backend optional)
                 const kpi = res.data?.kpi ?? res.kpi ?? null;
-                document.getElementById("kpiPurchaseBills").textContent = kpi ? fmtInt(kpi.purchase_count ?? 0) : '—';
-                document.getElementById("kpiSaleBills").textContent = kpi ? fmtInt(kpi.sale_count ?? 0) : '—';
-                document.getElementById("kpiBillTotal").textContent = kpi ? fmtPKR(kpi.total_amount ?? 0) : '—';
+                $('#kpiPurchaseBills')[0].textContent = kpi ? fmtInt(kpi.purchase_count ?? 0) : '—';
+                $('#kpiSaleBills')[0].textContent = kpi ? fmtInt(kpi.sale_count ?? 0) : '—';
+                $('#kpiBillTotal')[0].textContent = kpi ? fmtPKR(kpi.total_amount ?? 0) : '—';
 
             } catch (err) {
                 if (err.status === 404 || err.status === 500) {
                     showNotImplemented("billTbody", "Bills list endpoint not ready yet (implement StockController@bills).");
-                    document.getElementById("billCountChip").textContent = `—`;
-                    document.getElementById("kpiPurchaseBills").textContent = '—';
-                    document.getElementById("kpiSaleBills").textContent = '—';
-                    document.getElementById("kpiBillTotal").textContent = '—';
+                    $('#billCountChip')[0].textContent = `—`;
+                    $('#kpiPurchaseBills')[0].textContent = '—';
+                    $('#kpiSaleBills')[0].textContent = '—';
+                    $('#kpiBillTotal')[0].textContent = '—';
                     return;
                 }
                 showNotImplemented("billTbody", err.message || "Failed to load bills.");
@@ -930,12 +930,12 @@
         }
 
         async function renderStock() {
-            const tbody = document.getElementById("stockTbody");
+            const tbody = $('#stockTbody')[0];
             if (!tbody) return;
 
-            const from = document.getElementById("stockFrom").value || '';
-            const to = document.getElementById("stockTo").value || '';
-            const itemId = document.getElementById("stockItemFilter").value || '';
+            const from = $('#stockFrom')[0].value || '';
+            const to = $('#stockTo')[0].value || '';
+            const itemId = $('#stockItemFilter')[0].value || '';
 
             try {
                 const url = PV.routes.report + `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&item_id=${encodeURIComponent(itemId)}`;
@@ -959,21 +959,21 @@
                     });
                 }
 
-                document.getElementById("stockRangeChip").textContent = `Range: ${from || "—"} → ${to || "—"}`;
+                $('#stockRangeChip')[0].textContent = `Range: ${from || "—"} → ${to || "—"}`;
 
                 const kpi = res.data?.kpi ?? res.kpi ?? null;
-                document.getElementById("kpiStockItems").textContent = kpi ? fmtInt(kpi.items ?? 0) : '—';
-                document.getElementById("kpiStockIn").textContent = kpi ? fmtInt(kpi.in_qty ?? 0) : '—';
-                document.getElementById("kpiStockOut").textContent = kpi ? fmtInt(kpi.out_qty ?? 0) : '—';
-                document.getElementById("kpiStockAvail").textContent = kpi ? fmtInt(kpi.available ?? 0) : '—';
+                $('#kpiStockItems')[0].textContent = kpi ? fmtInt(kpi.items ?? 0) : '—';
+                $('#kpiStockIn')[0].textContent = kpi ? fmtInt(kpi.in_qty ?? 0) : '—';
+                $('#kpiStockOut')[0].textContent = kpi ? fmtInt(kpi.out_qty ?? 0) : '—';
+                $('#kpiStockAvail')[0].textContent = kpi ? fmtInt(kpi.available ?? 0) : '—';
 
             } catch (err) {
                 if (err.status === 404 || err.status === 500) {
                     showNotImplemented("stockTbody", "Stock report endpoint not ready yet (implement StockController@report).");
-                    document.getElementById("kpiStockItems").textContent = '—';
-                    document.getElementById("kpiStockIn").textContent = '—';
-                    document.getElementById("kpiStockOut").textContent = '—';
-                    document.getElementById("kpiStockAvail").textContent = '—';
+                    $('#kpiStockItems')[0].textContent = '—';
+                    $('#kpiStockIn')[0].textContent = '—';
+                    $('#kpiStockOut')[0].textContent = '—';
+                    $('#kpiStockAvail')[0].textContent = '—';
                     return;
                 }
                 showNotImplemented("stockTbody", err.message || "Failed to load stock report.");
@@ -981,10 +981,10 @@
         }
 
         async function renderItems() {
-            const tbody = document.getElementById("itemTbody");
+            const tbody = $('#itemTbody')[0];
             if (!tbody) return;
 
-            const q = document.getElementById("itemSearch").value || '';
+            const q = $('#itemSearch')[0].value || '';
 
             try {
                 const url = PV.routes.listItems + `?q=${encodeURIComponent(q)}`;
@@ -1010,19 +1010,19 @@
             `);
                     });
                 }
-                document.getElementById("itemCountChip").textContent = `${rows.length} total`;
+                $('#itemCountChip')[0].textContent = `${rows.length} total`;
             } catch (err) {
                 showNotImplemented("itemTbody", "Items list endpoint not ready yet (implement StockController@items).");
-                document.getElementById("itemCountChip").textContent = `—`;
+                $('#itemCountChip')[0].textContent = `—`;
             }
         }
 
         async function renderParties() {
-            const tbody = document.getElementById("partyTbody");
+            const tbody = $('#partyTbody')[0];
             if (!tbody) return;
 
-            const q = document.getElementById("partySearch").value || '';
-            const t = document.getElementById("partyFilterType").value || '';
+            const q = $('#partySearch')[0].value || '';
+            const t = $('#partyFilterType')[0].value || '';
 
             try {
                 const url = PV.routes.listParties + `?q=${encodeURIComponent(q)}&type=${encodeURIComponent(t)}`;
@@ -1051,21 +1051,21 @@
             `);
                     });
                 }
-                document.getElementById("partyCountChip").textContent = `${rows.length} total`;
+                $('#partyCountChip')[0].textContent = `${rows.length} total`;
             } catch (err) {
                 showNotImplemented("partyTbody", "Parties list endpoint not ready yet (implement StockController@parties).");
-                document.getElementById("partyCountChip").textContent = `—`;
+                $('#partyCountChip')[0].textContent = `—`;
             }
         }
 
         async function renderAll() {
             // refresh selects
-            fillPartySelect(document.getElementById("entryParty"), false);
-            fillPartySelect(document.getElementById("billParty"), false);
+            fillPartySelect($('#entryParty')[0], false);
+            fillPartySelect($('#billParty')[0], false);
 
-            fillItemSelect(document.getElementById("entryFilterItem"), true);
-            fillItemSelect(document.getElementById("stockItemFilter"), true);
-            fillPartySelect(document.getElementById("billFilterParty"), true);
+            fillItemSelect($('#entryFilterItem')[0], true);
+            fillItemSelect($('#stockItemFilter')[0], true);
+            fillPartySelect($('#billFilterParty')[0], true);
 
             await renderEntryTable();
             await renderBillTable();
@@ -1079,28 +1079,28 @@
         =========================== */
         async function initUI() {
             // default dates
-            document.getElementById("entryDate").value = todayISO();
-            document.getElementById("billDate").value = todayISO();
-            document.getElementById("stockFrom").value = daysAgoISO(30);
-            document.getElementById("stockTo").value = todayISO();
+            $('#entryDate')[0].value = todayISO();
+            $('#billDate')[0].value = todayISO();
+            $('#stockFrom')[0].value = daysAgoISO(30);
+            $('#stockTo')[0].value = todayISO();
 
             // wire filters
-            document.getElementById("entryFilterItem").addEventListener("change", renderEntryTable);
-            document.getElementById("entryFilterFlow").addEventListener("change", renderEntryTable);
-            document.getElementById("entrySearch").addEventListener("input", renderEntryTable);
+            $('#entryFilterItem').on("change", renderEntryTable);
+            $('#entryFilterFlow').on("change", renderEntryTable);
+            $('#entrySearch').on("input", renderEntryTable);
 
-            document.getElementById("billFilterType").addEventListener("change", renderBillTable);
-            document.getElementById("billFilterParty").addEventListener("change", renderBillTable);
-            document.getElementById("billSearch").addEventListener("input", renderBillTable);
+            $('#billFilterType').on("change", renderBillTable);
+            $('#billFilterParty').on("change", renderBillTable);
+            $('#billSearch').on("input", renderBillTable);
 
-            document.getElementById("itemSearch").addEventListener("input", renderItems);
-            document.getElementById("partySearch").addEventListener("input", renderParties);
-            document.getElementById("partyFilterType").addEventListener("change", renderParties);
+            $('#itemSearch').on("input", renderItems);
+            $('#partySearch').on("input", renderParties);
+            $('#partyFilterType').on("change", renderParties);
 
-            document.getElementById("btnApplyStock").addEventListener("click", renderStock);
+            $('#btnApplyStock').on("click", renderStock);
 
             // Bill type -> new bill no
-            document.getElementById("billType").addEventListener("change", refreshBillNo);
+            $('#billType').on("change", refreshBillNo);
 
             // Initial meta
             await loadMeta();
@@ -1125,7 +1125,7 @@
             await renderAll();
         }
 
-        document.addEventListener("DOMContentLoaded", async () => {
+        $(document).on("DOMContentLoaded", async () => {
             try {
                 await initUI();
             } catch (e) {
@@ -1133,12 +1133,12 @@
             }
 
             // tab switching
-            tabBtns.forEach((btn) => btn.addEventListener("click", () => setView(btn.dataset.view)));
+            tabBtns.forEach((btn) => $(btn).on("click", () => setView(btn.dataset.view)));
         });
 
         // Print/JV demo buttons keep
-        document.getElementById("btnPrintBill").addEventListener("click", () => viewToast("info", "Print", "Demo print action triggered."));
-        document.getElementById("btnGenerateJV").addEventListener("click", () => viewToast("info", "JV", "Generate JV is UI-only for now."));
+        $('#btnPrintBill').on("click", () => viewToast("info", "Print", "Demo print action triggered."));
+        $('#btnGenerateJV').on("click", () => viewToast("info", "JV", "Generate JV is UI-only for now."));
     </script>
 
 @endsection
