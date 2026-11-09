@@ -1,38 +1,7 @@
 @extends('admin.layouts.master')
 @section('title', $title ?? 'Cash Voucher')
 @section('content')
-    @if(request()->filled('edit_ledger_id') && auth()->user()?->can('update voucher'))
-        <script>
-            // Reuse the existing correction editor without navigating away from Daily Entries.
-            $(function () {
-                if (@json(request()->boolean('embed')) && window.jQuery) {
-                    window.jQuery('#modal-edit').on('hidden.bs.modal', function () {
-                        if (window.parent !== window) window.parent.postMessage({type:'daily-voucher-edit-cancelled'},window.location.origin);
-                    });
-                    window.jQuery('#modal-edit').on('shown.bs.modal', function () {
-                        const editor=this;
-                        // The form and its account choices are fully loaded at this point.
-                        requestAnimationFrame(function () {
-                            requestAnimationFrame(function () {
-                                if (window.parent !== window) window.parent.postMessage({type:'daily-voucher-edit-ready'},window.location.origin);
-                            });
-                        });
-                    });
-                }
-            });
-            $(window).on('load', function () {
-                const ledgerId = @json((int) request()->query('edit_ledger_id'));
-                const voucherType = @json((string) request()->query('edit_voucher_type', ''));
-                if (!ledgerId || !['CR', 'CP'].includes(voucherType) || !window.jQuery) return;
-                const editTrigger = window.jQuery('<button type="button" class="btn-edit" style="display:none"></button>')
-                    .attr('data-id', ledgerId)
-                    .attr('data-voucher-type', voucherType)
-                    .appendTo('body');
-                editTrigger.trigger('click');
-                editTrigger.remove();
-            });
-        </script>
-    @endif
+
     @php
         $voucherType = is_string($type) && in_array($type, ['CR', 'CP'], true) ? $type : '';
     @endphp
@@ -164,56 +133,7 @@
             border: 1px solid {{ $pagination_color }} !important;
         }
     </style>
-    @if($embeddedVoucher ?? false)
-        <script>
-            $('body').addClass('daily-voucher-embedded');
-            $(function () {
-                // The admin layout reserves sidebar space even when hidden.
-                // Detach only the embedded entry workspace from that layout.
-                const workspace=$('.main-content.page-content > .content-wrapper')[0];
-                if(workspace && !@json(request()->filled('edit_ledger_id'))) {
-                    $('body').append(workspace);
-                    // Inline important beats the old global sidebar offset regardless
-                    // of stylesheet order, while the parent directory is untouched.
-                    workspace.style.setProperty('margin-left','0','important');
-                    workspace.style.setProperty('margin-right','0','important');
-                    workspace.style.setProperty('width','100%','important');
-                    workspace.style.setProperty('max-width','100%','important');
-                }
-                // Move the original buttons; do not clone them or change their save/draft handlers.
-                const footer=$('#dv-embedded-actions')[0];
-                const save=$('#submit-button')[0];
-                const actions=save?$(save).parent()[0]:null;
-                if(footer && actions) {
-                    $(actions).removeClass('mt-3');
-                    $(footer).append(actions);
-                }
-            });
-            // Inform the parent when the actual form exists, rather than waiting for
-            // the master layout's external assets and window.load event.
-            (function () {
-                function ready() {
-                    if (!$('#voucherForm')[0]) return;
-                    const overlay = $('#load_screen')[0];
-                    if (overlay) overlay.remove();
-                    if (window.parent !== window && !@json(request()->filled('edit_ledger_id'))) {
-                        // Let the DOM-ready tab initialization, workspace relocation,
-                        // and two layout/paint frames complete before revealing the iframe.
-                        requestAnimationFrame(function () {
-                            requestAnimationFrame(function () {
-                                window.parent.postMessage({type:'daily-voucher-form-ready'}, window.location.origin);
-                            });
-                        });
-                    }
-                }
-                if (document.readyState === 'loading') {
-                    $(ready);
-                } else {
-                    ready();
-                }
-            })();
-        </script>
-    @endif
+
 
     <div class="content-wrapper">
         <div class="content-header">
@@ -765,6 +685,89 @@
 @endsection
 
 @section('js')
+    @if(request()->filled('edit_ledger_id') && auth()->user()?->can('update voucher'))
+        <script>
+            // Reuse the existing correction editor without navigating away from Daily Entries.
+            $(function () {
+                if (@json(request()->boolean('embed')) && window.jQuery) {
+                    window.jQuery('#modal-edit').on('hidden.bs.modal', function () {
+                        if (window.parent !== window) window.parent.postMessage({type:'daily-voucher-edit-cancelled'},window.location.origin);
+                    });
+                    window.jQuery('#modal-edit').on('shown.bs.modal', function () {
+                        const editor=this;
+                        // The form and its account choices are fully loaded at this point.
+                        requestAnimationFrame(function () {
+                            requestAnimationFrame(function () {
+                                if (window.parent !== window) window.parent.postMessage({type:'daily-voucher-edit-ready'},window.location.origin);
+                            });
+                        });
+                    });
+                }
+            });
+            $(window).on('load', function () {
+                const ledgerId = @json((int) request()->query('edit_ledger_id'));
+                const voucherType = @json((string) request()->query('edit_voucher_type', ''));
+                if (!ledgerId || !['CR', 'CP'].includes(voucherType) || !window.jQuery) return;
+                const editTrigger = window.jQuery('<button type="button" class="btn-edit" style="display:none"></button>')
+                    .attr('data-id', ledgerId)
+                    .attr('data-voucher-type', voucherType)
+                    .appendTo('body');
+                editTrigger.trigger('click');
+                editTrigger.remove();
+            });
+        </script>
+    @endif
+    @if($embeddedVoucher ?? false)
+        <script>
+            $('body').addClass('daily-voucher-embedded');
+            $(function () {
+                // The admin layout reserves sidebar space even when hidden.
+                // Detach only the embedded entry workspace from that layout.
+                const workspace=$('.main-content.page-content > .content-wrapper')[0];
+                if(workspace && !@json(request()->filled('edit_ledger_id'))) {
+                    $('body').append(workspace);
+                    // Inline important beats the old global sidebar offset regardless
+                    // of stylesheet order, while the parent directory is untouched.
+                    workspace.style.setProperty('margin-left','0','important');
+                    workspace.style.setProperty('margin-right','0','important');
+                    workspace.style.setProperty('width','100%','important');
+                    workspace.style.setProperty('max-width','100%','important');
+                }
+                // Move the original buttons; do not clone them or change their save/draft handlers.
+                const footer=$('#dv-embedded-actions')[0];
+                const save=$('#submit-button')[0];
+                const actions=save?$(save).parent()[0]:null;
+                if(footer && actions) {
+                    $(actions).removeClass('mt-3');
+                    $(footer).append(actions);
+                }
+            });
+            // Inform the parent when the actual form exists, rather than waiting for
+            // the master layout's external assets and window.load event.
+            (function () {
+                function ready() {
+                    if (!$('#voucherForm')[0]) return;
+                    const overlay = $('#load_screen')[0];
+                    if (overlay) overlay.remove();
+                    if (window.parent !== window && !@json(request()->filled('edit_ledger_id'))) {
+                        // Let the DOM-ready tab initialization, workspace relocation,
+                        // and two layout/paint frames complete before revealing the iframe.
+                        requestAnimationFrame(function () {
+                            requestAnimationFrame(function () {
+                                window.parent.postMessage({type:'daily-voucher-form-ready'}, window.location.origin);
+                            });
+                        });
+                    }
+                }
+                if (document.readyState === 'loading') {
+                    $(ready);
+                } else {
+                    ready();
+                }
+            })();
+        </script>
+    @endif
+
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
