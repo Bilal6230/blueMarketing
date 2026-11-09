@@ -152,8 +152,9 @@
     </table>
 </div>
 
+<script src="{{ asset('template/admin/plugins/jquery/jquery.min.js') }}"></script>
 <script>
-    window.addEventListener('load', () => {
+    $(window).on('load', () => {
         setTimeout(() => window.print(), 500);
     });
 </script>
