@@ -4,7 +4,7 @@
     @if(request()->filled('edit_ledger_id') && auth()->user()?->can('update voucher'))
         <script>
             // Reuse the existing correction editor without navigating away from Daily Entries.
-            document.addEventListener('DOMContentLoaded', function () {
+            $(function () {
                 if (@json(request()->boolean('embed')) && window.jQuery) {
                     window.jQuery('#modal-edit').on('hidden.bs.modal', function () {
                         if (window.parent !== window) window.parent.postMessage({type:'daily-voucher-edit-cancelled'},window.location.origin);
@@ -20,7 +20,7 @@
                     });
                 }
             });
-            window.addEventListener('load', function () {
+            $(window).on('load', function () {
                 const ledgerId = @json((int) request()->query('edit_ledger_id'));
                 const voucherType = @json((string) request()->query('edit_voucher_type', ''));
                 if (!ledgerId || !['CR', 'CP'].includes(voucherType) || !window.jQuery) return;
@@ -166,13 +166,13 @@
     </style>
     @if($embeddedVoucher ?? false)
         <script>
-            document.body.classList.add('daily-voucher-embedded');
-            document.addEventListener('DOMContentLoaded', function () {
+            $('body').addClass('daily-voucher-embedded');
+            $(function () {
                 // The admin layout reserves sidebar space even when hidden.
                 // Detach only the embedded entry workspace from that layout.
-                const workspace=document.querySelector('.main-content.page-content > .content-wrapper');
+                const workspace=$('.main-content.page-content > .content-wrapper')[0];
                 if(workspace && !@json(request()->filled('edit_ledger_id'))) {
-                    document.body.appendChild(workspace);
+                    $('body').append(workspace);
                     // Inline important beats the old global sidebar offset regardless
                     // of stylesheet order, while the parent directory is untouched.
                     workspace.style.setProperty('margin-left','0','important');
@@ -181,20 +181,20 @@
                     workspace.style.setProperty('max-width','100%','important');
                 }
                 // Move the original buttons; do not clone them or change their save/draft handlers.
-                const footer=document.getElementById('dv-embedded-actions');
-                const save=document.getElementById('submit-button');
-                const actions=save?.parentElement;
+                const footer=$('#dv-embedded-actions')[0];
+                const save=$('#submit-button')[0];
+                const actions=save?$(save).parent()[0]:null;
                 if(footer && actions) {
-                    actions.classList.remove('mt-3');
-                    footer.appendChild(actions);
+                    $(actions).removeClass('mt-3');
+                    $(footer).append(actions);
                 }
             });
             // Inform the parent when the actual form exists, rather than waiting for
             // the master layout's external assets and window.load event.
             (function () {
                 function ready() {
-                    if (!document.getElementById('voucherForm')) return;
-                    const overlay = document.getElementById('load_screen');
+                    if (!$('#voucherForm')[0]) return;
+                    const overlay = $('#load_screen')[0];
                     if (overlay) overlay.remove();
                     if (window.parent !== window && !@json(request()->filled('edit_ledger_id'))) {
                         // Let the DOM-ready tab initialization, workspace relocation,
@@ -207,7 +207,7 @@
                     }
                 }
                 if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', ready, {once:true});
+                    $(ready);
                 } else {
                     ready();
                 }
@@ -769,7 +769,7 @@
 
     <script>
         let isDateChanged = false;
-        document.addEventListener('DOMContentLoaded', () => {
+        $(function () {
             // TomSelect instances for this page are initialized by initTomSelects()
             // in the voucher tab manager below. Avoid a second init here because it
             // breaks the dependent account/subaccount change flow.
@@ -835,12 +835,12 @@
         });
     </script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const textarea = document.querySelector('.text-area');
-            const charCount = document.getElementById('char-count');
+        $(function() {
+            const textarea = $('.text-area')[0];
+            const charCount = $('#char-count')[0];
 
             if (textarea && charCount) {
-                textarea.addEventListener('input', function() {
+                $(textarea).on('input', function() {
                     charCount.textContent = this.value.length;
                 });
                 charCount.textContent = textarea.value.length;
@@ -850,7 +850,7 @@
 
     <script>
         function saveAsDraft() {
-            const form = document.getElementById('voucherForm');
+            const form = $('#voucherForm')[0];
             form.action = "{{ $fixedPaymentType !== null ? route('ledger.save_as_draft.fixed_method', ['paymentType' => $fixedPaymentType]) : route('ledger.save_as_draft') }}";
         }
 
@@ -1677,7 +1677,7 @@
 
             function setDateInputValue(selector, value) {
                 const normalized = normalizeDateForInput(value);
-                const el = document.querySelector(selector);
+                const el = $(selector)[0];
                 if (!el) return;
 
                 if (el._flatpickr) {
@@ -1692,7 +1692,7 @@
                     '#edit_date',
                     '#edit_passing_date'
                 ].forEach(function(selector) {
-                    const el = document.querySelector(selector);
+                    const el = $(selector)[0];
                     if (!el || el._flatpickr || typeof flatpickr === 'undefined') {
                         return;
                     }
@@ -2298,8 +2298,8 @@
 
                 const accountId = String($("[name='accounts_id']").val() || '');
                 const subAccountId = String($("[name='subaccounts_id']").val() || '');
-                const accountSelect = document.getElementById('accounts_id');
-                const subAccountSelect = document.getElementById('subaccounts_id');
+                const accountSelect = $('#accounts_id')[0];
+                const subAccountSelect = $('#subaccounts_id')[0];
                 const accountExists = accountSelect?.tomselect?.options?.[accountId];
                 const subAccountExists = subAccountSelect?.tomselect?.options?.[subAccountId];
                 if (!accountId || !subAccountId || !accountExists || !subAccountExists) {
@@ -2338,11 +2338,11 @@
         function convertToWords(value) {
             var numberInput = value;
             if (numberInput === undefined) {
-                numberInput = document.getElementById('numberInput')?.value;
+                numberInput = $('#numberInput')[0]?.value;
             }
 
             var numericValue = parseAmountForWords(numberInput);
-            var wordingTarget = document.getElementById('wordingAmount');
+            var wordingTarget = $('#wordingAmount')[0];
 
             if (numericValue === null || numericValue <= 0) {
                 clearAmountWords();
@@ -2358,13 +2358,13 @@
         }
 
         function eConvertToWords() {
-            var numberInput = document.getElementById('edit_amount').value;
+            var numberInput = $('#edit_amount')[0].value;
 
             var numericValue = numberInput.replace(/,/g, '');
 
             var wordingAmount = numberToWords.toWords(numericValue);
 
-            document.getElementById('eWordingAmount').innerText = wordingAmount;
+            $('#eWordingAmount')[0].innerText = wordingAmount;
         }
 
         function formatAmount(input) {
@@ -2729,7 +2729,7 @@
                             altFormat: "F j, Y",
                             defaultDate: val,
                             onChange: function(selectedDates, dateStr) {
-                                const hidden = document.getElementById('hiddenDate');
+                                const hidden = $('#hiddenDate')[0];
                                 if (hidden) hidden.value = dateStr;
                             }
                         });
@@ -2908,7 +2908,7 @@
                             altFormat: "F j, Y",
                             defaultDate: "{{ session('last_submit_date', now()) }}",
                             onChange: function(selectedDates, dateStr) {
-                                const hidden = document.getElementById('hiddenDate');
+                                const hidden = $('#hiddenDate')[0];
                                 if (hidden) hidden.value = dateStr;
                             }
                         });
@@ -3026,8 +3026,7 @@
                                 altFormat: "F j, Y",
                                 defaultDate: "{{ session('last_submit_date', now()) }}",
                                 onChange: function(selectedDates, dateStr) {
-                                    const hidden = document.getElementById(
-                                        'hiddenDate');
+                                    const hidden = $('#hiddenDate')[0];
                                     if (hidden) hidden.value = dateStr;
                                 }
                             });
