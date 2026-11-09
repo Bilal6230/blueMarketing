@@ -5,8 +5,14 @@
 <style>
     html.daily-voucher-directory-active,body.daily-voucher-directory-active{height:100%;overflow:hidden!important}
     body.daily-voucher-directory-active .main-footer{display:none!important}
-    .content-wrapper.daily-voucher-page{height:calc(100vh - 57px)!important;min-height:0!important;overflow:hidden!important;display:flex;flex-direction:column;padding:.45rem .75rem!important}
-    .daily-voucher-page .content-header{flex:0 0 auto;padding:.15rem 0 .35rem}
+    .main-content.page-content:has(> .daily-voucher-page){height:calc(100dvh - 57px);min-height:0;overflow:hidden}
+    .content-wrapper.daily-voucher-page{height:100%!important;max-height:100%!important;min-height:0!important;overflow:hidden!important;display:flex;flex-direction:column;padding:.3rem .65rem!important}
+    .daily-voucher-page .content-header{flex:0 0 auto;padding:.1rem 0 .25rem}
+    .daily-voucher-page .content-header h1{font-size:1.4rem;margin-bottom:.1rem!important}
+    .daily-voucher-page .daily-voucher-card.mb-3{margin-bottom:.55rem!important}
+    .daily-voucher-page .daily-voucher-card>.card-body{padding:.65rem .85rem}
+    .daily-voucher-page .daily-voucher-filters label{margin-bottom:.2rem;font-size:.83rem}
+    .daily-voucher-page .daily-voucher-filters .form-control{height:34px;padding:.25rem .55rem}
     .daily-voucher-page>.content{flex:1 1 auto;min-height:0;overflow:hidden;padding:0}
     .daily-voucher-page>.content>.container-fluid{height:100%;min-height:0;display:flex;flex-direction:column;padding:0}
     .daily-voucher-card{border:0;border-radius:14px;box-shadow:0 8px 24px rgba(16,36,64,.08);overflow:hidden}
@@ -38,7 +44,8 @@
     .daily-voucher-actions{display:flex;gap:.4rem;align-items:center;white-space:nowrap}
     .daily-voucher-shortcuts{display:flex;flex-wrap:wrap;gap:.5rem}
     .daily-voucher-table-card{flex:1 1 0;min-height:0;display:flex;flex-direction:column;margin-bottom:0!important}
-    .dv-table-tools{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:.6rem .75rem;background:#fff}
+    .dv-table-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:.35rem .65rem;background:#fff}
+    .daily-voucher-page .dv-pagination-footer{padding:.35rem .65rem}
     .dv-table-tools label{display:flex;align-items:center;gap:7px;margin:0;font-size:.88rem}
     .dv-table-tools select{width:72px}
     .dv-table-tools input{width:220px;max-width:45vw}
@@ -181,6 +188,7 @@
         </div>
     </div>
 </div>
+@push('script')
 <script>
 (() => {
     $('html, body').addClass('daily-voucher-directory-active');
@@ -486,4 +494,5 @@
     load();
 })();
 </script>
+@endpush
 @endsection
