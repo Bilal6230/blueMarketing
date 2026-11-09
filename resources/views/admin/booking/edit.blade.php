@@ -187,7 +187,7 @@
                 function toggleCharge(toggle, charge) {
                     const enabled = toggle.value === '1';
                     charge.readOnly = !enabled;
-                    charge.classList.toggle('bg-light', !enabled);
+                    $(charge).toggleClass('bg-light',!enabled);
                     if (!enabled) charge.value = '0';
                 }
                 function updatePreview() {
