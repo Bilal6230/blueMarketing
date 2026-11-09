@@ -216,15 +216,21 @@ Email {{ $landingPage->contentValue('contact_email') !== '' ? '✓' : '—' }}
 <a class="quick-contact" href="https://wa.me/{{ $floatingWhatsapp }}?text={{ rawurlencode('Hello BlueMarketing, I would like information about your property opportunities.') }}" target="_blank" rel="noopener noreferrer" aria-label="Contact BlueMarketing on WhatsApp">WhatsApp ↗</a>
 @endif
 <footer><div class="container"><div class="footer-grid"><div><a class="brand footer-brand" href="#top"><span class="brand-mark" style="background:#2563df">B</span><span>Blue<span style="color:#93b5ff">Marketing</span></span></a><p class="footer-copy">{{ $landingPage->contentValue('footer_description') }}</p></div><nav class="footer-links" aria-label="Footer navigation"><a href="#about">About</a><a href="#services">Services</a><a href="#opportunities">Explore</a><a href="#faq">FAQs</a><a href="#contact">Contact</a><a href="{{ route('login') }}">Staff Login</a></nav></div><div class="copyright"><span>© {{ date('Y') }} BlueMarketing. All rights reserved.</span><span>Made with care for your next move.</span></div></div></footer>
+<script src="{{ asset('template/admin/plugins/jquery/jquery.min.js') }}"></script>
 <script>
-(function(){
-  var toggle=document.getElementById('menu-toggle');
-  var menu=document.getElementById('site-menu');
-  if(toggle&&menu){
-    toggle.addEventListener('click',function(){var open=menu.classList.toggle('open');toggle.setAttribute('aria-expanded',String(open));});
-    menu.querySelectorAll('a').forEach(function(link){link.addEventListener('click',function(){menu.classList.remove('open');toggle.setAttribute('aria-expanded','false');});});
-  }
-})();
+$(function(){
+    const $toggle=$('#menu-toggle'),$menu=$('#site-menu');
+    if(!$toggle.length||!$menu.length)return;
+    $toggle.on('click',function(){
+        const expanded=!$menu.hasClass('open');
+        $menu.toggleClass('open',expanded);
+        $toggle.attr('aria-expanded',String(expanded));
+    });
+    $menu.on('click','a',function(){
+        $menu.removeClass('open');
+        $toggle.attr('aria-expanded','false');
+    });
+});
 </script>
 </body>
 </html>
