@@ -28,6 +28,10 @@
     </div>
     <section class="panel mt-2"><div class="panel-head"><span>Posted {{ $direction === 'receipt' ? 'bank receipts' : 'bank payments' }}</span><button type="button" class="btn btn-sm btn-outline-primary" id="refreshHistory">Refresh history</button></div><div class="table-wrap"><table class="table table-hover"><thead><tr><th>Voucher / Date</th><th>Linked source</th><th>Bank account</th><th>Narration</th><th class="text-right">Amount</th><th>Print</th></tr></thead><tbody id="historyRows"><tr><td colspan="6" class="empty">Loading posted vouchers...</td></tr></tbody></table></div></section>
 </div>
+
+@endsection
+
+@section('js')
 <script>
 (() => {
     const root=document.getElementById('bankVoucherApp'); if(!root)return;
