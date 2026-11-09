@@ -147,16 +147,16 @@
     <script src="{{ asset('template/admin/plugins/sweetalert2/sweetalert2.all.min.js') }}"></script>
     @if ($pricingEnabled)
         <script>
-            document.addEventListener('DOMContentLoaded', function () {
+            $(function() {
                 const plotSize = @json((string) $booking->plot_size);
-                const rate = document.getElementById('plot_rate');
-                const parkToggle = document.getElementById('is_park');
-                const parkCharge = document.getElementById('park_facing');
-                const cornerToggle = document.getElementById('is_corner');
-                const cornerCharge = document.getElementById('carner_price');
-                const discount = document.getElementById('dicount_value');
-                const subTotal = document.getElementById('sub_total_price');
-                const grandTotal = document.getElementById('grand_total');
+                const rate = $('#plot_rate')[0];
+                const parkToggle = $('#is_park')[0];
+                const parkCharge = $('#park_facing')[0];
+                const cornerToggle = $('#is_corner')[0];
+                const cornerCharge = $('#carner_price')[0];
+                const discount = $('#dicount_value')[0];
+                const subTotal = $('#sub_total_price')[0];
+                const grandTotal = $('#grand_total')[0];
                 const paid = moneyToCents(@json($paymentSummary['paid_to_date'] ?? '0.00'));
                 const originalTotal = moneyToCents(@json((string) $booking->total_price));
 
@@ -200,10 +200,10 @@
                     const revised = base === null || park === null || corner === null || less === null ? null : base + park + corner - less;
                 }
                 [rate, parkToggle, parkCharge, cornerToggle, cornerCharge, discount].forEach(function (field) {
-                    field.addEventListener(field.tagName === 'SELECT' ? 'change' : 'input', updatePreview);
+                    $(field).on(field.tagName === 'SELECT' ? 'change' : 'input', updatePreview);
                 });
                 updatePreview();
-                const form = document.getElementById('booking-edit-form');
+                const form = $('#booking-edit-form')[0];
                 const original = {
                     broker_id: @json((string) ($booking->broker_id ?? '')),
                     booking_date: @json(\Carbon\Carbon::parse($booking->booking_date)->format('Y-m-d')),
@@ -218,7 +218,7 @@
                 const labels = { broker_id: 'Broker', booking_date: 'Booking Date', status: 'Status', plot_rate: 'Plot Rate', is_park: 'Park Facing', park_facing: 'Park Charges', is_corner: 'Corner Plot', carner_price: 'Corner Charges', dicount_value: 'Discount' };
                 const escape = (value) => String(value).replace(/[&<>"']/g, (character) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[character]));
                 let confirmed = false;
-                form.addEventListener('submit', function (event) {
+                $(form).on('submit', function (event) {
                     if (confirmed) return;
                     event.preventDefault();
                     const changes = [];
@@ -249,12 +249,12 @@
                         confirmButtonText: 'Confirm Update', input: pricingChanged ? 'textarea' : undefined,
                         inputLabel: pricingChanged ? 'Reason for pricing change' : undefined,
                         inputPlaceholder: pricingChanged ? 'Enter the approved amendment reason' : undefined,
-                        inputValue: pricingChanged ? document.getElementById('amendment_reason').value : undefined,
+                        inputValue: pricingChanged ? $('#amendment_reason')[0].value : undefined,
                         inputAttributes: pricingChanged ? {maxlength: '500'} : undefined,
                         inputValidator: pricingChanged ? (value) => !String(value || '').trim() ? 'A reason is required for a pricing amendment.' : undefined : undefined
                     }).then(function (result) {
                         if (result.isConfirmed) {
-                            if (pricingChanged) document.getElementById('amendment_reason').value = String(result.value).trim();
+                            if (pricingChanged) $('#amendment_reason')[0].value = String(result.value).trim();
                             confirmed = true;
                             form.submit();
                         }
@@ -264,11 +264,11 @@
         </script>
     @elseif (false)
         <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                const form = document.getElementById('booking-edit-form');
-                const broker = document.getElementById('broker_id');
+            $(function() {
+                const form = $('#booking-edit-form')[0];
+                const broker = $('#broker_id')[0];
                 const oldBroker = @json((string) ($booking->broker_id ?? ''));
-                form.addEventListener('submit', function (event) {
+                $(form).on('submit', function (event) {
                     event.preventDefault();
                     if (broker.value === oldBroker) { Swal.fire('No changes to save.'); return; }
                     const before = broker.querySelector('option[value="' + CSS.escape(oldBroker) + '"]')?.textContent || 'None';
@@ -282,15 +282,15 @@
     @endif
     @if (!$pricingEnabled && $canUpdateBroker)
         <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                const form = document.getElementById('booking-edit-form');
-                const broker = document.getElementById('broker_id');
-                const bookingDate = document.getElementById('booking_date');
-                const status = document.getElementById('status');
+            $(function() {
+                const form = $('#booking-edit-form')[0];
+                const broker = $('#broker_id')[0];
+                const bookingDate = $('#booking_date')[0];
+                const status = $('#status')[0];
                 const oldBroker = @json((string) ($booking->broker_id ?? ''));
                 const oldBookingDate = @json(\Carbon\Carbon::parse($booking->booking_date)->format('Y-m-d'));
                 const oldStatus = @json((string) $booking->status);
-                form.addEventListener('submit', function (event) {
+                $(form).on('submit', function (event) {
                     event.preventDefault();
                     const changes = [];
                     if (broker.value !== oldBroker) {
