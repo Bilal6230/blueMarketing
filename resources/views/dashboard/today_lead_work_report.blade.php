@@ -40,20 +40,26 @@
         <div class="empty">No {{ strtolower($title) }} found for this project and selected period.</div>
     @endif
 </main>
+<script src="{{ asset('template/admin/plugins/jquery/jquery.min.js') }}"></script>
 <script>
-document.querySelectorAll('.user-card[data-user-id]').forEach(card=>card.addEventListener('click',async event=>{
-    event.preventDefault();
-    document.querySelectorAll('.user-card').forEach(item=>item.classList.remove('selected'));
-    card.classList.add('selected');
-    const results=document.getElementById('report-results');
-    results.innerHTML='<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
-    try{
-        const response=await fetch(card.href,{headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'}});
-        if(!response.ok) throw new Error('Request failed');
-        const payload=await response.json(); results.innerHTML=payload.html;
-        history.replaceState({},'',card.href);
-    }catch(error){results.innerHTML='<div class="empty">Data load nahi ho saka. Please dobara try karein.</div>';}
-}));
+$(function(){
+    $(document).on('click','.user-card[data-user-id]',function(event){
+        event.preventDefault();
+        const $card=$(this),url=$card.attr('href');
+        $('.user-card').removeClass('selected');
+        $card.addClass('selected');
+        $('#report-results').html('<div class="skeleton"></div>'.repeat(4));
+        $.ajax({
+            url,method:'GET',dataType:'json',
+            headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'}
+        }).done(payload=>{
+            $('#report-results').html(payload.html||'');
+            window.history.replaceState({},'',url);
+        }).fail(()=>{
+            $('#report-results').html('<div class="empty">Data load nahi ho saka. Please dobara try karein.</div>');
+        });
+    });
+});
 </script>
 </body>
 </html>
