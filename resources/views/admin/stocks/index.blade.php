@@ -266,8 +266,7 @@
         };
 
         function csrfToken() {
-            const el = document.querySelector('meta[name="csrf-token"]');
-            return el ? el.getAttribute('content') : '';
+            return $('meta[name="csrf-token"]').attr('content')||'';
         }
 
         async function apiFetch(url, { method = 'GET', body = null } = {}) {
@@ -346,7 +345,7 @@
         /* ===========================
           VIEW SWITCH
         =========================== */
-        const tabBtns = Array.from(document.querySelectorAll(".pv-tabbtn"));
+        const tabBtns = $(".pv-tabbtn").toArray();
         const views = {
             entry: $('#view-entry')[0],
             billing: $('#view-billing')[0],
