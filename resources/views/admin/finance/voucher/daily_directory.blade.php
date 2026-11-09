@@ -226,7 +226,7 @@
             if(!disabled)$button.on('click',()=>{start=(page-1)*length;load();$('#dv-table-wrap').scrollTop(0);});
             $('#dv-pages').append($button);
         };
-        pager.replaceChildren();
+        $('#dv-pages').empty();
         renderButton('Previous',current-1,current<=1);
         const shown=new Set([1,2,3,4,5,6,pages-1,pages]);
         for(let offset=-2;offset<=2;offset++)shown.add(current+offset);
@@ -291,7 +291,7 @@
         $(dvPage).toggleClass('dv-theme-debit',['DR','CDR','BOP','CP'].includes(type));
         const label=type ? type+' Vouchers' : 'Voucher Directory';
         $('#dv-page .content-header h1').text(label);
-        document.title=label+' - '+@json(Setting::getValue('app_name'));
+        $('title').text(label+' - '+@json(Setting::getValue('app_name')));
     }
     // The voucher type comes from the page URL; individual pages never switch series.
     let requestedEntryUrl='',entryMode='create';
@@ -312,7 +312,7 @@
         entryMode=mode;
         requestedEntryUrl=url;
         $(entryLoading).toggleClass('d-none',!url);
-        entryFrame.style.visibility='hidden';
+        $('#dv-entry-frame').css('visibility','hidden');
         $(entryError).addClass('d-none');
         $('#dv-entry-frame').attr('src',url||'about:blank');
         if(!url)showEntryError('No voucher entry form is available for this type.');
@@ -320,14 +320,14 @@
     $('#dv-entry-frame').on('load',()=>{
         if(!requestedEntryUrl || entryFrame.src==='about:blank')return;
         try{
-            const doc=entryFrame.contentDocument;
+            const doc=$('#dv-entry-frame').contents();
             if(entryMode==='edit')return;
-            if(doc?.querySelector('#voucherForm')){
+            if(doc.find('#voucherForm').length){
                 // The iframe load event is a fallback for a missed child ready message.
                 requestAnimationFrame(()=>requestAnimationFrame(revealEntry));
                 return;
             }
-            const message=doc?.querySelector('.alert-danger,.exception-message,h1')?.textContent?.trim();
+            const message=$.trim(doc.find('.alert-danger,.exception-message,h1').first().text());
             showEntryError(message ? 'Voucher form unavailable: '+message.slice(0,180) : 'Voucher form unavailable. Check your create permission or the server response.');
         }catch(error){
             showEntryError('Voucher form is blocked inside the modal. Open it in a separate tab.');
@@ -368,11 +368,11 @@
         $(entryChoose).addClass('d-none');
         $('#dv-entry-frame').css('display','block');
         $('#dv-entry-title').text($(button).data('title'));
-        $(methodWrap).toggleClass('d-none',!button.dataset.chequeUrl);
+        $(methodWrap).toggleClass('d-none',!$(button).data('chequeUrl'));
         $('#dv-bank-method').val('online');
         $('#dv-bank-method-wrap').data('onlineUrl',button.dataset.url).data('chequeUrl',button.dataset.chequeUrl);
         loadEntry(button.dataset.url);
-        if(window.jQuery)window.jQuery('#dv-entry-modal').modal('show');
+        $('#dv-entry-modal').modal('show');
     }
     $('#dv-entry-type').on('change',function(){
         if($(this).val())openVoucherType($(this).val());
@@ -385,7 +385,7 @@
         if(!selected || (!seriesMap[selected] && !dedicatedRoutes[selected]))chooseVoucher();
         else openVoucherType(selected);
     });
-    $('#dv-entry-modal').on('hidden.bs.modal',()=>{requestedEntryUrl='';$(entryLoading).addClass('d-none');$(entryError).addClass('d-none');$(entryChoose).addClass('d-none');entryFrame.style.visibility='hidden';entryFrame.src='about:blank';});
+    $('#dv-entry-modal').on('hidden.bs.modal',()=>{requestedEntryUrl='';$(entryLoading).addClass('d-none');$(entryError).addClass('d-none');$(entryChoose).addClass('d-none');$('#dv-entry-frame').css('visibility','hidden').attr('src','about:blank');});
     $(window).on('message',messageEvent=>{
         const event=messageEvent.originalEvent;
         if(event.origin!==window.location.origin || event.source!==entryFrame.contentWindow)return;
@@ -416,8 +416,8 @@
         url.searchParams.set('embed','1');
         $(entryChoose).addClass('d-none');
         $(methodWrap).addClass('d-none');
-        entryFrame.style.display='block';
-        $('#dv-entry-title')[0].textContent='Edit '+button.dataset.number;
+        $('#dv-entry-frame').css('display','block');
+        $('#dv-entry-title').text('Edit '+$(button).data('number'));
         loadEntry(url.toString(),'edit');
         if(window.jQuery)window.jQuery('#dv-entry-modal').modal('show');
     });
@@ -451,26 +451,36 @@
           .always(()=>$(button).prop('disabled',false));
     });
     $('#dv-rows').on('click','.dv-details',function(){
-        const button=this;
-        const row=JSON.parse(button.dataset.row), fields=$('#dv-detail-fields')[0];
-        $('#dv-detail-title')[0].textContent=`${row.type} · ${row.number}`;
-        fields.replaceChildren();
-        [['Date',row.date],['Voucher type',row.type],['Voucher number',row.number],['Reference',row.reference],['Account / customer',row.account],['Amount',Number(row.amount||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})],['Status',row.status],['Narration / detail',row.detail]].forEach(([label,value])=>{const term=document.createElement('dt'),description=document.createElement('dd');term.className='col-sm-4';description.className='col-sm-8';term.textContent=label;description.textContent=value||'—';fields.append(term,description);});
-        const audit=$('#dv-detail-audit')[0], auditWrap=$('#dv-detail-audit-wrap')[0];
-        audit.replaceChildren();
-        Object.entries(row.audit||{}).forEach(([label,value])=>{if(value===null||value===undefined||value==='')return;const term=document.createElement('dt'),description=document.createElement('dd');term.className='col-sm-4';description.className='col-sm-8';term.textContent=label;description.textContent=typeof value==='object'?JSON.stringify(value):String(value);audit.append(term,description);});
-        $(auditWrap).toggleClass('d-none',!audit.children.length);
-        const lineWrap=$('#dv-detail-lines-wrap')[0], lineBody=$('#dv-detail-lines')[0];
-        lineBody.replaceChildren();
-        (row.lines||[]).forEach(line=>{const tr=document.createElement('tr');[line.account,line.description,Number(line.debit||0).toLocaleString(),Number(line.credit||0).toLocaleString()].forEach((value,index)=>{const td=document.createElement('td');td.textContent=value||'—';if(index>1)td.className='text-right';tr.append(td);});lineBody.append(tr);});
-        $(lineWrap).toggleClass('d-none',!(row.lines||[]).length);
-        const printsWrap=$('#dv-detail-prints-wrap')[0], prints=$('#dv-detail-prints')[0];
-        prints.replaceChildren();
-        (row.prints||[]).forEach(item=>{const link=document.createElement('a');link.className='btn btn-sm btn-outline-primary';link.href=item.url;link.target='_blank';link.rel='noopener';link.textContent=item.label;prints.append(link);});
-        $(printsWrap).toggleClass('d-none',!(row.prints||[]).length);
-        const printLink=$('#dv-detail-print')[0], noPrint=$('#dv-no-print')[0];
-        $(printLink).toggleClass('d-none',!row.url); $(noPrint).toggleClass('d-none',!!row.url);
-        if(row.url) printLink.href=row.url;
+        const row=JSON.parse($(this).attr('data-row'));
+        $('#dv-detail-title').text(row.type+' · '+row.number);
+        const appendDefinition=($target,label,value)=>{
+            $target.append($('<dt>',{'class':'col-sm-4',text:label}));
+            $target.append($('<dd>',{'class':'col-sm-8',text:value===null||value===undefined||value===''?'—':String(value)}));
+        };
+        const $fields=$('#dv-detail-fields').empty();
+        [['Date',row.date],['Voucher type',row.type],['Voucher number',row.number],['Reference',row.reference],['Account / customer',row.account],['Amount',Number(row.amount||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})],['Status',row.status],['Narration / detail',row.detail]].forEach(([label,value])=>appendDefinition($fields,label,value));
+        const $audit=$('#dv-detail-audit').empty();
+        Object.entries(row.audit||{}).forEach(([label,value])=>{
+            if(value===null||value===undefined||value==='')return;
+            appendDefinition($audit,label,typeof value==='object'?JSON.stringify(value):value);
+        });
+        $('#dv-detail-audit-wrap').toggleClass('d-none',$audit.children().length===0);
+        const $lines=$('#dv-detail-lines').empty();
+        (row.lines||[]).forEach(line=>{
+            const $tr=$('<tr>');
+            [line.account,line.description,Number(line.debit||0).toLocaleString(),Number(line.credit||0).toLocaleString()].forEach((value,index)=>{
+                $tr.append($('<td>',{text:value||'—','class':index>1?'text-right':''}));
+            });
+            $lines.append($tr);
+        });
+        $('#dv-detail-lines-wrap').toggleClass('d-none',!(row.lines||[]).length);
+        const $prints=$('#dv-detail-prints').empty();
+        (row.prints||[]).forEach(item=>{
+            $prints.append($('<a>',{'class':'btn btn-sm btn-outline-primary',href:item.url,target:'_blank',rel:'noopener',text:item.label}));
+        });
+        $('#dv-detail-prints-wrap').toggleClass('d-none',!(row.prints||[]).length);
+        $('#dv-detail-print').toggleClass('d-none',!row.url).attr('href',row.url||'#');
+        $('#dv-no-print').toggleClass('d-none',!!row.url);
         $('#dv-detail-modal').modal('show');
     });
     load();
