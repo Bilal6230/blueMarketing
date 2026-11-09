@@ -223,7 +223,7 @@
                     event.preventDefault();
                     const changes = [];
                     Object.keys(original).forEach(function (key) {
-                        const field = document.getElementById(key);
+                        const field = $('#'+$.escapeSelector(key))[0];
                         if (!field || field.disabled) return;
                         const oldValue = original[key], newValue = field.value;
                         const same = ['plot_rate', 'park_facing', 'carner_price', 'dicount_value'].includes(key)
