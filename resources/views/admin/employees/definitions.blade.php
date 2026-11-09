@@ -195,7 +195,7 @@
     function toastFlashMessages(root=document) {
         root.querySelectorAll('.alert-success,.alert-danger').forEach((alert)=>{
             const message=alert.innerText.trim(); if(!message) return;
-            if(window.toastr){ if(alert.classList.contains('alert-success')) toastr.success(message); else toastr.error(message); alert.remove(); }
+            if(window.toastr){ if($(alert).hasClass('alert-success')) toastr.success(message); else toastr.error(message); alert.remove(); }
         });
     }
     $(modalizeDefinitionForms);
