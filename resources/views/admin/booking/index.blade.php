@@ -538,7 +538,7 @@
 
             $('#actionBookingModal').on('shown.bs.modal', function () {
                 ['sale_amount', 'deduction_amount', 'net_amount'].forEach(id => {
-                    const el = document.getElementById(id);
+                    const el = $('#'+$.escapeSelector(id))[0];
                     if (el && el.value) pvFormatAmountNoDecimal(el);
                 });
                 pvRecalcCancellationPreview();
