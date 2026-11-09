@@ -91,24 +91,25 @@
         </div>
     </div></section>
 </div>
+@push('script')
 <script>
-document.addEventListener('submit', function (event) {
-    const form = event.target;
-    if (!(form instanceof HTMLFormElement) || !form.closest('.definition-page .modal')) return;
-    document.addEventListener('ajax:panel-updated', function () {
-        document.querySelectorAll('.modal-backdrop').forEach((backdrop) => backdrop.remove());
-        document.body.classList.remove('modal-open');
-        document.body.style.removeProperty('padding-right');
-    }, { once: true });
-}, true);
-document.addEventListener('ajax:panel-updated', function (event) {
-    const panel = event.detail && event.detail.panel;
-    if (!panel || !panel.matches('.definition-page [data-ajax-panel]')) return;
-    const alert = panel.querySelector('.alert-success,.alert-danger,.alert-warning');
-    if (!alert) return;
-    const message = alert.innerText.trim();
-    if (window.toastr) (alert.classList.contains('alert-success') ? toastr.success : toastr.error)(message);
-    alert.remove();
+$(function(){
+    $(document).on('submit','.definition-page .modal form',function(){
+        $(document).one('ajax:panel-updated.definitions',function(){
+            $('.modal-backdrop').remove();
+            $('body').removeClass('modal-open').css('padding-right','');
+        });
+    });
+    $(document).on('ajax:panel-updated.definitions',function(_event,detail){
+        const $panel=$(detail?.panel);
+        if(!$panel.is('.definition-page [data-ajax-panel]'))return;
+        const $alert=$panel.find('.alert-success,.alert-danger,.alert-warning').first();
+        if(!$alert.length)return;
+        const message=$.trim($alert.text());
+        if(window.toastr)($alert.hasClass('alert-success')?toastr.success:toastr.error)(message);
+        $alert.remove();
+    });
 });
 </script>
+@endpush
 @endsection
