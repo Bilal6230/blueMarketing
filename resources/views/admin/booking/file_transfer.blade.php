@@ -561,11 +561,11 @@ function formatAmount(input) {
 }
 
 // Format on page load
-document.addEventListener('DOMContentLoaded', function () {
+$(function () {
   const ids = ['plot_rate', 'total_price', 'carner_price', 'discount_value', 'party_fee'];
 
   ids.forEach((id) => {
-    const el = document.getElementById(id);
+    const el = $('#'+$.escapeSelector(id))[0];
     if (el && el.value) formatAmount(el);
   });
 });
