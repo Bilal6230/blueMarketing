@@ -184,10 +184,10 @@
 <script>
 (() => {
     $('html, body').addClass('daily-voucher-directory-active');
-    const form=document.getElementById('daily-voucher-filters'), body=document.getElementById('dv-rows'), wrap=document.getElementById('dv-table-wrap');
+    const form=$('#daily-voucher-filters')[0], body=$('#dv-rows')[0], wrap=$('#dv-table-wrap')[0];
     let start=0, length=25, filtered=0, total=0, timer, activeRequest=0, activeController=null;
     let sortColumn='date',sortDirection='desc';
-    const tableSearch=document.getElementById('dv-table-search');
+    const tableSearch=$('#dv-table-search')[0];
     $('#dv-page-length').on('change',function(){length=Number($(this).val());start=0;load();});
     $('#dv-table-search').on('input',()=>{clearTimeout(timer);timer=setTimeout(()=>{start=0;load();},300);});
     function updateSortArrows(){
@@ -208,25 +208,23 @@
     const scheduleLoad=()=>{clearTimeout(timer);timer=setTimeout(()=>{start=0;load();},300);};
     function showTableSkeleton(){
         const widths=[68,62,79,87,58,65,91,70];
-        body.innerHTML=Array.from({length:10},(_,row)=>'<tr class="dv-skeleton-row" aria-hidden="true">'+
+        $('#dv-rows').html(Array.from({length:10},(_,row)=>'<tr class="dv-skeleton-row" aria-hidden="true">'+
             widths.map((width,column)=>'<td><div class="dv-skeleton-bar" style="width:'+Math.max(25,width-((row+column)%3)*10)+'%"></div></td>').join('')+
-            '</tr>').join('');
-        wrap.setAttribute('aria-busy','true');
-        recordSummary.textContent='Loading records...';
-        pager.replaceChildren();
+            '</tr>').join(''));
+        $('#dv-table-wrap').attr('aria-busy','true');
+        $('#dv-record-summary').text('Loading records...');
+        $('#dv-pages').empty();
     }
-    const pager=document.getElementById('dv-pages');
-    const recordSummary=document.getElementById('dv-record-summary');
+    const pager=$('#dv-pages')[0];
+    const recordSummary=$('#dv-record-summary')[0];
     function renderPagination(){
         const pages=Math.ceil(filtered/length);
         const current=Math.floor(start/length)+1;
         const renderButton=(label,page,disabled=false,active=false)=>{
-            const button=document.createElement('button');
-            button.type='button';button.className='dv-page-btn'+(active?' active':'');
-            button.textContent=label;button.disabled=disabled;button.setAttribute('aria-label',label==='Previous'||label==='Next'?label+' page':'Page '+label);
-            if(active)button.setAttribute('aria-current','page');
-            if(!disabled)button.addEventListener('click',()=>{start=(page-1)*length;load();wrap.scrollTop=0;});
-            pager.appendChild(button);
+            const $button=$('<button>',{type:'button','class':'dv-page-btn'+(active?' active':''),text:label,disabled,'aria-label':label==='Previous'||label==='Next'?label+' page':'Page '+label});
+            if(active)$button.attr('aria-current','page');
+            if(!disabled)$button.on('click',()=>{start=(page-1)*length;load();$('#dv-table-wrap').scrollTop(0);});
+            $('#dv-pages').append($button);
         };
         pager.replaceChildren();
         renderButton('Previous',current-1,current<=1);
@@ -235,13 +233,13 @@
         let previous=0;
         [...shown].filter(page=>page>=1&&page<=pages).sort((a,b)=>a-b).forEach(page=>{
             if(previous&&page>previous+1){
-                const dots=document.createElement('span');dots.className='dv-page-ellipsis';dots.textContent='…';pager.appendChild(dots);
+                $('#dv-pages').append($('<span>',{'class':'dv-page-ellipsis',text:'…'}));
             }
             renderButton(String(page),page,false,page===current);previous=page;
         });
         renderButton('Next',current+1,current>=pages);
         const first=filtered?start+1:0, last=Math.min(start+length,filtered);
-        recordSummary.textContent='Showing '+first+'–'+last+' of '+filtered.toLocaleString()+' records'+(total!==filtered?' (from '+total.toLocaleString()+' total)':'');
+        $('#dv-record-summary').text('Showing '+first+'–'+last+' of '+filtered.toLocaleString()+' records'+(total!==filtered?' (from '+total.toLocaleString()+' total)':''));
     }
     const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
     function load(){
@@ -251,7 +249,7 @@
         showTableSkeleton();
         const params=new URLSearchParams($('#daily-voucher-filters').serialize()); params.set('start',start); params.set('length',length);
         params.set('sort_column',sortColumn);params.set('sort_direction',sortDirection);
-        if(tableSearch.value.trim())params.set('search',tableSearch.value.trim());
+        if($.trim($('#dv-table-search').val()))params.set('search',$.trim($('#dv-table-search').val()));
         $('.dv-column-filter').each(function(){const value=$.trim($(this).val());if(value)params.set('column_'+$(this).data('column'),value);});
         activeController=$.ajax({
             url:@json(route('finance.daily-vouchers.data')),
@@ -281,33 +279,32 @@
         if(event.key==='Enter')event.preventDefault();
     });
     // The modal contains the real voucher form. No overlay, spinner or polling.
-    const entryFrame=document.getElementById('dv-entry-frame');
-    const entryError=document.getElementById('dv-entry-error');
-    const entryErrorText=document.getElementById('dv-entry-error-text');
-    const fallback=document.getElementById('dv-entry-fallback');
-    const entryLoading=document.getElementById('dv-entry-loading');
-    const dvPage=document.getElementById('dv-page');
+    const entryFrame=$('#dv-entry-frame')[0];
+    const entryError=$('#dv-entry-error')[0];
+    const entryErrorText=$('#dv-entry-error-text')[0];
+    const fallback=$('#dv-entry-fallback')[0];
+    const entryLoading=$('#dv-entry-loading')[0];
+    const dvPage=$('#dv-page')[0];
     const voucherTypeLabels={CR:'Credit Voucher (CR)',DR:'Debit Voucher (DR)',CCR:'Cash Credit (CCR)',CDR:'Cash Debit (CDR)',BOR:'Bank Credit (BOR)',BOP:'Bank Debit (BOP)'};
     function updateDirectoryTheme(type){
         $(dvPage).toggleClass('dv-theme-credit',['CR','CCR','BOR'].includes(type));
         $(dvPage).toggleClass('dv-theme-debit',['DR','CDR','BOP','CP'].includes(type));
-        const heading=dvPage.querySelector('.content-header h1');
         const label=type ? type+' Vouchers' : 'Voucher Directory';
-        if(heading)heading.textContent=label;
+        $('#dv-page .content-header h1').text(label);
         document.title=label+' - '+@json(Setting::getValue('app_name'));
     }
     // The voucher type comes from the page URL; individual pages never switch series.
     let requestedEntryUrl='',entryMode='create';
     function revealEntry(){
         if(!requestedEntryUrl)return;
-        entryFrame.style.visibility='visible';
+        $('#dv-entry-frame').css('visibility','visible');
         $(entryLoading).addClass('d-none');
     }
     function showEntryError(message,url=requestedEntryUrl){
         $(entryLoading).addClass('d-none');
-        entryFrame.style.visibility='hidden';
-        entryErrorText.textContent=message;
-        fallback.href=url||'#';
+        $('#dv-entry-frame').css('visibility','hidden');
+        $('#dv-entry-error-text').text(message);
+        $('#dv-entry-fallback').attr('href',url||'#');
         $(fallback).toggleClass('d-none',!url);
         $(entryError).removeClass('d-none');
     }
@@ -317,7 +314,7 @@
         $(entryLoading).toggleClass('d-none',!url);
         entryFrame.style.visibility='hidden';
         $(entryError).addClass('d-none');
-        entryFrame.src=url||'about:blank';
+        $('#dv-entry-frame').attr('src',url||'about:blank');
         if(!url)showEntryError('No voucher entry form is available for this type.');
     }
     $('#dv-entry-frame').on('load',()=>{
@@ -336,9 +333,9 @@
             showEntryError('Voucher form is blocked inside the modal. Open it in a separate tab.');
         }
     });
-    const entryChoose=document.getElementById('dv-entry-choose');
-    const entryType=document.getElementById('dv-entry-type');
-    const methodWrap=document.getElementById('dv-bank-method-wrap');
+    const entryChoose=$('#dv-entry-choose')[0];
+    const entryType=$('#dv-entry-type')[0];
+    const methodWrap=$('#dv-bank-method-wrap')[0];
     const seriesMap={CR:'CR',DR:'DR',CP:'DR',CCR:'CCR',CDR:'CDR',BOR:'BOR',BOP:'BOP'};
     const dedicatedRoutes={
         JV:@json(route('journal.voucher.create')),
@@ -352,14 +349,12 @@
     function chooseVoucher(){
         requestedEntryUrl='';
         $(entryLoading).addClass('d-none');
-        entryFrame.src='about:blank';
-        entryFrame.style.display='none';
-        entryFrame.style.visibility='hidden';
+        $('#dv-entry-frame').attr('src','about:blank').css({display:'none',visibility:'hidden'});
         $(entryError).addClass('d-none');
         $(methodWrap).addClass('d-none');
-        entryType.value='';
+        $('#dv-entry-type').val('');
         $(entryChoose).removeClass('d-none');
-        document.getElementById('dv-entry-title').textContent='New voucher';
+        $('#dv-entry-title').text('New voucher');
         $('#dv-entry-modal').modal('show');
     }
     function openVoucherType(selected){
@@ -368,13 +363,13 @@
             return;
         }
         const series=seriesMap[selected];
-        const button=series ? document.querySelector(`.dv-create[data-series="${series}"]`) : null;
+        const button=series ? $(`.dv-create[data-series="${series}"]`)[0] : null;
         if(!button){chooseVoucher();return;}
         $(entryChoose).addClass('d-none');
-        entryFrame.style.display='block';
-        document.getElementById('dv-entry-title').textContent=button.dataset.title;
+        $('#dv-entry-frame').css('display','block');
+        $('#dv-entry-title').text($(button).data('title'));
         $(methodWrap).toggleClass('d-none',!button.dataset.chequeUrl);
-        document.getElementById('dv-bank-method').value='online';
+        $('#dv-bank-method').val('online');
         $('#dv-bank-method-wrap').data('onlineUrl',button.dataset.url).data('chequeUrl',button.dataset.chequeUrl);
         loadEntry(button.dataset.url);
         if(window.jQuery)window.jQuery('#dv-entry-modal').modal('show');
@@ -413,7 +408,7 @@
         }
         if(event.data?.type!=='daily-voucher-saved')return;
         if(window.jQuery)window.jQuery('#dv-entry-modal').modal('hide');
-        document.getElementById('dv-entry-frame').src='about:blank';start=0;load();
+        $('#dv-entry-frame')[0].src='about:blank';start=0;load();
     });
     $('#dv-rows').on('click','.dv-edit',function(){
         const button=this;
@@ -422,7 +417,7 @@
         $(entryChoose).addClass('d-none');
         $(methodWrap).addClass('d-none');
         entryFrame.style.display='block';
-        document.getElementById('dv-entry-title').textContent='Edit '+button.dataset.number;
+        $('#dv-entry-title')[0].textContent='Edit '+button.dataset.number;
         loadEntry(url.toString(),'edit');
         if(window.jQuery)window.jQuery('#dv-entry-modal').modal('show');
     });
@@ -457,23 +452,23 @@
     });
     $('#dv-rows').on('click','.dv-details',function(){
         const button=this;
-        const row=JSON.parse(button.dataset.row), fields=document.getElementById('dv-detail-fields');
-        document.getElementById('dv-detail-title').textContent=`${row.type} · ${row.number}`;
+        const row=JSON.parse(button.dataset.row), fields=$('#dv-detail-fields')[0];
+        $('#dv-detail-title')[0].textContent=`${row.type} · ${row.number}`;
         fields.replaceChildren();
         [['Date',row.date],['Voucher type',row.type],['Voucher number',row.number],['Reference',row.reference],['Account / customer',row.account],['Amount',Number(row.amount||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})],['Status',row.status],['Narration / detail',row.detail]].forEach(([label,value])=>{const term=document.createElement('dt'),description=document.createElement('dd');term.className='col-sm-4';description.className='col-sm-8';term.textContent=label;description.textContent=value||'—';fields.append(term,description);});
-        const audit=document.getElementById('dv-detail-audit'), auditWrap=document.getElementById('dv-detail-audit-wrap');
+        const audit=$('#dv-detail-audit')[0], auditWrap=$('#dv-detail-audit-wrap')[0];
         audit.replaceChildren();
         Object.entries(row.audit||{}).forEach(([label,value])=>{if(value===null||value===undefined||value==='')return;const term=document.createElement('dt'),description=document.createElement('dd');term.className='col-sm-4';description.className='col-sm-8';term.textContent=label;description.textContent=typeof value==='object'?JSON.stringify(value):String(value);audit.append(term,description);});
         $(auditWrap).toggleClass('d-none',!audit.children.length);
-        const lineWrap=document.getElementById('dv-detail-lines-wrap'), lineBody=document.getElementById('dv-detail-lines');
+        const lineWrap=$('#dv-detail-lines-wrap')[0], lineBody=$('#dv-detail-lines')[0];
         lineBody.replaceChildren();
         (row.lines||[]).forEach(line=>{const tr=document.createElement('tr');[line.account,line.description,Number(line.debit||0).toLocaleString(),Number(line.credit||0).toLocaleString()].forEach((value,index)=>{const td=document.createElement('td');td.textContent=value||'—';if(index>1)td.className='text-right';tr.append(td);});lineBody.append(tr);});
         $(lineWrap).toggleClass('d-none',!(row.lines||[]).length);
-        const printsWrap=document.getElementById('dv-detail-prints-wrap'), prints=document.getElementById('dv-detail-prints');
+        const printsWrap=$('#dv-detail-prints-wrap')[0], prints=$('#dv-detail-prints')[0];
         prints.replaceChildren();
         (row.prints||[]).forEach(item=>{const link=document.createElement('a');link.className='btn btn-sm btn-outline-primary';link.href=item.url;link.target='_blank';link.rel='noopener';link.textContent=item.label;prints.append(link);});
         $(printsWrap).toggleClass('d-none',!(row.prints||[]).length);
-        const printLink=document.getElementById('dv-detail-print'), noPrint=document.getElementById('dv-no-print');
+        const printLink=$('#dv-detail-print')[0], noPrint=$('#dv-no-print')[0];
         $(printLink).toggleClass('d-none',!row.url); $(noPrint).toggleClass('d-none',!!row.url);
         if(row.url) printLink.href=row.url;
         $('#dv-detail-modal').modal('show');
