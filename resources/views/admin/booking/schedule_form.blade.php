@@ -147,27 +147,14 @@
     ];
 
     function addRow() {
-        var table = document.getElementById("payment_schedule_table");
-        var newRow = table.insertRow();
-
-        var cell1 = newRow.insertCell(0);
-        var cell2 = newRow.insertCell(1);
-        var cell3 = newRow.insertCell(2);
-        var cell4 = newRow.insertCell(3);
-
-        // Populate installment number dropdown
-        var selectHTML = '<select class="form-control select2" name="installment_number[]" required>';
-            for (var i = 0; i < installmentOptions.length; i++) {
-            selectHTML += '<option value="' + installmentOptions[i].value + '">' + installmentOptions[i].text + '</option>';
-        }
-        
-        selectHTML += '</select>';
-        cell1.innerHTML = selectHTML;
-
-        // Other cells remain the same
-        cell2.innerHTML = '<input type="number" name="amount[]" step="0.01" required class="form-control">';
-        cell3.innerHTML = '<input type="date" name="due_date[]" required class="date form-control" data-input >';
-        cell4.innerHTML = '<td><button type="button" class="btn btn-danger remove-row">Remove</button></td>';
+        const $row=$('<tr>');
+        const $installment=$('<select>',{'class':'form-control select2',name:'installment_number[]',required:true});
+        installmentOptions.forEach(item=>$installment.append($('<option>',{value:item.value,text:item.text})));
+        $row.append($('<td>').append($installment));
+        $row.append($('<td>').append($('<input>',{type:'number',name:'amount[]',step:'0.01',required:true,'class':'form-control'})));
+        $row.append($('<td>').append($('<input>',{type:'date',name:'due_date[]',required:true,'class':'date form-control','data-input':''})));
+        $row.append($('<td>').append($('<button>',{type:'button','class':'btn btn-danger remove-row',text:'Remove'})));
+        $('#payment_schedule_table').append($row);
     }
 
     // Remove row
