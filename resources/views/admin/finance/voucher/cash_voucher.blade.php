@@ -1020,7 +1020,7 @@
 
             function optionExists(selectId, value) {
                 if (!value) return false;
-                const ts = document.getElementById(selectId)?.tomselect;
+                const ts = $('#'+$.escapeSelector(selectId))[0]?.tomselect;
                 if (!ts) return false;
                 return Object.prototype.hasOwnProperty.call(ts.options || {}, String(value));
             }
