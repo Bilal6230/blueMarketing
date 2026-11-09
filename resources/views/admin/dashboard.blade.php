@@ -606,11 +606,11 @@ html::-webkit-scrollbar,body::-webkit-scrollbar{width:11px}html::-webkit-scrollb
 
 <script>
 (function(){
- const root=document.getElementById('bm-live-lead-search');
+ const root=$('#bm-live-lead-search')[0];
  if(!root)return;
- const input=document.getElementById('bm-lead-number');
- const button=document.getElementById('bm-search-number');
- const output=document.getElementById('bm-lead-result');
+ const input=$('#bm-lead-number')[0];
+ const button=$('#bm-search-number')[0];
+ const output=$('#bm-lead-result')[0];
  let timer=null,request=null,last='';
  const escape=value=>String(value??'').replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[char]));
  function state(message,type){output.innerHTML='<div class="bm-lead-state '+type+'">'+escape(message)+'</div>';}
@@ -627,65 +627,70 @@ html::-webkit-scrollbar,body::-webkit-scrollbar{width:11px}html::-webkit-scrollb
    const number=input.value.replace(/\D/g,'').slice(0,11);input.value=number;
    if(number.length<11){last='';if(number.length)state('Enter complete 11-digit mobile number.','loading');else output.textContent='';return;}
    if(number===last)return;last=number;
-   if(request)request.abort();request=new AbortController();state('Searching lead…','loading');button.disabled=true;
+   if(request)request.abort();state('Searching lead…','loading');button.disabled=true;
    try{
-    const body=new URLSearchParams({number,_token:'{{ csrf_token() }}'});
-    const response=await fetch(root.dataset.url,{method:'POST',credentials:'same-origin',headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest','Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body,signal:request.signal});
-    if(response.status===404){state('No lead found against this mobile number.','error');return;}
-    if(!response.ok)throw new Error('Search could not be completed.');
-    const payload=await response.json();if(!payload.data)throw new Error('No lead record returned.');render(payload.data);
-   }catch(error){if(error.name!=='AbortError')state(error.message,'error');}
-   finally{button.disabled=false;request=null;}
+    const current=request=$.ajax({
+     url:$(root).data('url'),method:'POST',data:{number,_token:'{{ csrf_token() }}'},
+     dataType:'json',headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}
+    });
+    const payload=await current;
+    if(!payload.data)throw new Error('No lead record returned.');
+    render(payload.data);
+   }catch(error){
+    if(error.statusText==='abort')return;
+    if(error.status===404){state('No lead found against this mobile number.','error');return;}
+    state(error.message||'Search could not be completed.','error');
+   }finally{button.disabled=false;request=null;}
  }
- input.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(search,350);});
- input.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();clearTimeout(timer);search();}});
- button.addEventListener('click',()=>{clearTimeout(timer);search();});
+ $(input).on('input',()=>{clearTimeout(timer);timer=setTimeout(search,350);});
+ $(input).on('keydown',event=>{if(event.key==='Enter'){event.preventDefault();clearTimeout(timer);search();}});
+ $(button).on('click',()=>{clearTimeout(timer);search();});
 })();
 </script>
 
 <script>
 (function(){
- const open=document.getElementById('bm-crm-open');
+ const open=$('#bm-crm-open')[0];
  if(!open)return;
- const form=document.getElementById('bm-lead-period-form');
- const rowHost=document.getElementById('bm-crm-rows');
- const error=document.getElementById('bm-crm-error');
- const summary=document.getElementById('bm-crm-kpis');
+ const form=$('#bm-lead-period-form')[0];
+ const rowHost=$('#bm-crm-rows')[0];
+ const error=$('#bm-crm-error')[0];
+ const summary=$('#bm-crm-kpis')[0];
  const labels=[['new_leads','New Leads'],['completed_followups','Completed Follow-ups'],['today_due','Today Follow-ups'],['pending_overdue_combined','Pending + Overdue'],['due_on_period_end','Due on Selected End Date'],['overdue_as_of_period_end','Overdue by Selected End Date']];
  const cell=(tr,value)=>{const td=document.createElement('td');td.textContent=value??'—';tr.appendChild(td);};
  let currentPage=1,lastPage=1;
  async function loadCrm(page=1){
    if(!window.jQuery){return;}
    window.jQuery('#bmCrmModal').modal('show');
-   summary.textContent='';rowHost.textContent='';document.getElementById('bm-crm-employee-rows').textContent='';error.textContent='Loading CRM data…';
-   const bounds=document.getElementById('bm-lead-period-bounds').textContent.trim().split(' to ');
+   summary.textContent='';rowHost.textContent='';$('#bm-crm-employee-rows')[0].textContent='';error.textContent='Loading CRM data…';
+   const bounds=$('#bm-lead-period-bounds')[0].textContent.trim().split(' to ');
    if(bounds.length!==2){error.textContent='Select a date range first.';return;}
    try{
-     const query=new URLSearchParams({from:bounds[0],to:bounds[1],page:String(page),per_page:'20'});const employee=document.getElementById('bm-crm-employee');if(employee && employee.value)query.set('employee_id',employee.value);const project=document.getElementById('bm-crm-project');if(project && project.value)query.set('project_id',project.value);const status=document.getElementById('bm-crm-status');if(status)query.set('status',status.value);
-     const res=await fetch(open.dataset.url+'?'+query.toString(),{credentials:'same-origin',headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}});
-     if(!res.ok)throw new Error('CRM report failed to load ('+res.status+').');
-     const data=await res.json();error.textContent='';
+     const query=new URLSearchParams({from:bounds[0],to:bounds[1],page:String(page),per_page:'20'});const employee=$('#bm-crm-employee')[0];if(employee && employee.value)query.set('employee_id',employee.value);const project=$('#bm-crm-project')[0];if(project && project.value)query.set('project_id',project.value);const status=$('#bm-crm-status')[0];if(status)query.set('status',status.value);
+     const data=await $.ajax({url:$(open).data('url'),method:'GET',data:query.toString(),
+       dataType:'json',headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}});
+     error.textContent='';
      labels.forEach(([key,label])=>{const box=document.createElement('div');const value=document.createElement('strong');value.textContent=Number(data[key]||0).toLocaleString('en-PK');const caption=document.createElement('span');caption.textContent=label;box.append(value,caption);summary.appendChild(box);});
      (data.rows||[]).forEach(row=>{const tr=document.createElement('tr');['id','customer','mobile','project','assigned','created_at','last_activity','next_follow_up','status','remarks'].forEach(k=>cell(tr,row[k]));rowHost.appendChild(tr);});
-     const employeeRows=document.getElementById('bm-crm-employee-rows');
+     const employeeRows=$('#bm-crm-employee-rows')[0];
      (data.employee_summary||[]).forEach(row=>{const tr=document.createElement('tr');['employee','assigned_leads','new_leads','completed_followups','due_on_period_end','overdue_as_of_period_end'].forEach(key=>cell(tr,row[key]));employeeRows.appendChild(tr);});
-     currentPage=data.pagination?.page||1;lastPage=data.pagination?.last_page||1;document.getElementById('bm-crm-page-info').textContent='Page '+currentPage+' of '+lastPage+' - '+(data.pagination?.total||0)+' records';document.getElementById('bm-crm-prev').disabled=currentPage<=1;document.getElementById('bm-crm-next').disabled=currentPage>=lastPage;
+     currentPage=data.pagination?.page||1;lastPage=data.pagination?.last_page||1;$('#bm-crm-page-info')[0].textContent='Page '+currentPage+' of '+lastPage+' - '+(data.pagination?.total||0)+' records';$('#bm-crm-prev')[0].disabled=currentPage<=1;$('#bm-crm-next')[0].disabled=currentPage>=lastPage;
      if(!data.rows?.length)error.textContent='No matching leads for this period.';
    }catch(e){error.textContent=e.message;}
  }
- open.addEventListener('click',()=>{if(window.jQuery)window.jQuery('#bmCrmModal').modal('show');loadCrm(1);});
- document.getElementById('bm-crm-apply')?.addEventListener('click',()=>loadCrm(1));
- document.getElementById('bm-crm-prev')?.addEventListener('click',()=>{if(currentPage>1)loadCrm(currentPage-1);});
- document.getElementById('bm-crm-next')?.addEventListener('click',()=>{if(currentPage<lastPage)loadCrm(currentPage+1);});
+ $(open).on('click',()=>{$('#bmCrmModal').modal('show');loadCrm(1);});
+ $('#bm-crm-apply').on('click',()=>loadCrm(1));
+ $('#bm-crm-prev').on('click',()=>{if(currentPage>1)loadCrm(currentPage-1);});
+ $('#bm-crm-next').on('click',()=>{if(currentPage<lastPage)loadCrm(currentPage+1);});
 })();
 </script>
 
 
 <script>
 (function(){
- const host=document.getElementById('bm-financial-widget');
+ const host=$('#bm-financial-widget')[0];
  if(!host)return;
- const tooltip=document.getElementById('bm-finance-tooltip');
+ const tooltip=$('#bm-finance-tooltip')[0];
  document.body.appendChild(tooltip); // Escape clipped dashboard panel for visible hover values.
  const number=(v)=>Number(v).toLocaleString('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2});
  function current(){
@@ -727,8 +732,8 @@ html::-webkit-scrollbar,body::-webkit-scrollbar{width:11px}html::-webkit-scrollb
    el.addEventListener('focus',()=>{show(el.dataset.type==='split'?'total':el.dataset.type);const rect=el.getBoundingClientRect();place(rect.left+rect.width/2,rect.top);});
    el.addEventListener('blur',()=>tooltip.hidden=true);
  });
- const observer=new MutationObserver(()=>{const h=parseFloat((document.getElementById('handCash')?.textContent||'').replace(/,/g,''));if(Number.isFinite(h)&&Math.abs(h-Number(host.dataset.hand))>.001){host.dataset.hand=h;update();}});
- const hand=document.getElementById('handCash');if(hand)observer.observe(hand,{childList:true,characterData:true,subtree:true});
+ const observer=new MutationObserver(()=>{const h=parseFloat(($('#handCash')[0]?.textContent||'').replace(/,/g,''));if(Number.isFinite(h)&&Math.abs(h-Number(host.dataset.hand))>.001){host.dataset.hand=h;update();}});
+ const hand=$('#handCash')[0];if(hand)observer.observe(hand,{childList:true,characterData:true,subtree:true});
  update();
 })();
 </script>
@@ -736,38 +741,32 @@ html::-webkit-scrollbar,body::-webkit-scrollbar{width:11px}html::-webkit-scrollb
 
 <script>
 (function(){
-  const form=document.getElementById('bm-lead-period-form');
+  const form=$('#bm-lead-period-form')[0];
   if(!form)return;
   const preset=form.querySelector('#bm-lead-period');
   const custom=form.querySelector('#bm-custom-period');
   const label=form.querySelector('#bm-lead-period-bounds');
   const error=form.querySelector('#bm-lead-period-error');
-  const values={new_leads:document.getElementById('bm-new-leads-count'),completed_followups:document.getElementById('bm-completed-followups-count'),today_followups:document.getElementById('bm-today-followups-count'),pending_overdue_followups:document.getElementById('bm-pending-overdue-count')};
+  const values={new_leads:$('#bm-new-leads-count')[0],completed_followups:$('#bm-completed-followups-count')[0],today_followups:$('#bm-today-followups-count')[0],pending_overdue_followups:$('#bm-pending-overdue-count')[0]};
   let pending=null;
   function toggleCustom(){custom.hidden=preset.value!=='custom';}
   async function loadPeriod(){
     if(preset.value==='custom' && (!form.elements.lead_from.value||!form.elements.lead_to.value))return;
     if(pending)pending.abort();
-    pending=new AbortController();
-    const current=pending;
+    const current=pending=$.ajax({url:$(form).attr('action'),method:'GET',data:$(form).serialize(),dataType:'json',headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}});
     form.setAttribute('aria-busy','true');
     error.hidden=true;
     try{
-      const params=new URLSearchParams(new FormData(form));
-      const response=await fetch(form.action+'?'+params.toString(),{
-        method:'GET',credentials:'same-origin',headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'},signal:current.signal
-      });
-      if(!response.ok)throw new Error(response.status===422?'Invalid date range.':'Unable to load New Leads.');
-      const result=await response.json();
+      const result=await current;
       if(!Number.isFinite(Number(result.new_leads)))throw new Error('Invalid response from server.');
       Object.entries(values).forEach(([key,node])=>{if(node&&Number.isFinite(Number(result[key]))){node.textContent=Number(result[key]).toLocaleString('en-US');node.dataset.number=result[key];}});
       label.textContent=result.from+' to '+result.to;
     }catch(e){
-      if(e.name!=='AbortError'){error.textContent=e.message;error.hidden=false;}
+      if(e.statusText!=='abort'){error.textContent=e.status===422?'Invalid date range.':(e.message||'Unable to load dashboard data.');error.hidden=false;}
     }finally{if(pending===current){form.removeAttribute('aria-busy');pending=null;}}
   }
-  preset.addEventListener('change',()=>{toggleCustom();if(preset.value!=='custom')loadPeriod();});
-  form.addEventListener('submit',e=>{e.preventDefault();loadPeriod();});
+  $(preset).on('change',()=>{toggleCustom();if(preset.value!=='custom')loadPeriod();});
+  $(form).on('submit',e=>{e.preventDefault();loadPeriod();});
   toggleCustom();
 })();
 </script>
@@ -777,7 +776,7 @@ html::-webkit-scrollbar,body::-webkit-scrollbar{width:11px}html::-webkit-scrollb
 (function () {
   if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   function runDashboardCounters() {
-    document.querySelectorAll('.bm-dashboard-modern .small-box .inner h3, .bm-dashboard-modern .financial-circle h4').forEach(function (node) {
+    $('.bm-dashboard-modern .small-box .inner h3, .bm-dashboard-modern .financial-circle h4').forEach(function (node) {
       var raw = node.textContent.trim();
       var clean = raw.replace(/,/g, '');
       if (!/^-?\d+(?:\.\d+)?$/.test(clean)) return;
