@@ -368,16 +368,16 @@
         =========================== */
         function fillPartySelect(sel, withAll = false) {
             $(sel).html("");
-            if (withAll) sel.insertAdjacentHTML("beforeend", `<option value="">All</option>`);
+            if (withAll) $(sel).append( `<option value="">All</option>`);
             PV.state.parties.forEach((p) => {
-                sel.insertAdjacentHTML("beforeend", `<option value="${p.id}">${p.name} • ${p.type}</option>`);
+                $(sel).append( `<option value="${p.id}">${p.name} • ${p.type}</option>`);
             });
         }
         function fillItemSelect(sel, withAll = false) {
             $(sel).html("");
-            if (withAll) sel.insertAdjacentHTML("beforeend", `<option value="">All</option>`);
+            if (withAll) $(sel).append( `<option value="">All</option>`);
             PV.state.items.forEach((i) => {
-                sel.insertAdjacentHTML("beforeend", `<option value="${i.id}">${i.name} (${i.unit})</option>`);
+                $(sel).append( `<option value="${i.id}">${i.name} (${i.unit})</option>`);
             });
         }
 
@@ -523,11 +523,11 @@
         }
 
         $('#btnAddLine').on("click", () => {
-            entryLinesWrap.appendChild(makeLineRow('entry'));
+            $(entryLinesWrap).append(makeLineRow('entry'));
         });
 
         $('#btnAddBillLine').on("click", () => {
-            billLinesWrap.appendChild(makeLineRow('bill'));
+            $(billLinesWrap).append(makeLineRow('bill'));
         });
 
         /* ===========================
@@ -638,7 +638,7 @@
                 $('#entryVehicle')[0].value = "";
                 $('#entryDriver')[0].value = "";
                 $(entryLinesWrap).html("");
-                entryLinesWrap.appendChild(makeLineRow('entry'));
+                $(entryLinesWrap).append(makeLineRow('entry'));
                 recalcEntryTotal();
                 await refreshSlipNo();
                 await renderAll();
@@ -692,7 +692,7 @@
                 // reset
                 $('#billEntryNo')[0].value = "";
                 $(billLinesWrap).html("");
-                billLinesWrap.appendChild(makeLineRow('bill'));
+                $(billLinesWrap).append(makeLineRow('bill'));
                 recalcBillTotal();
                 await refreshBillNo();
                 await renderAll();
@@ -820,7 +820,7 @@
                             ? `<span class="pv-pill ok">Billed</span>`
                             : `<span class="pv-pill warn">Unbilled</span>`;
 
-                        tbody.insertAdjacentHTML("beforeend", `
+                        $(tbody).append( `
               <tr>
                 <td>${idx + 1}</td>
                 <td>${r.entry_date ?? r.date ?? '—'}</td>
@@ -889,7 +889,7 @@
                 } else {
                     rows.forEach((r, idx) => {
                         const pill = r.type === 'purchase' ? 'ok' : 'warn';
-                        tbody.insertAdjacentHTML("beforeend", `
+                        $(tbody).append( `
               <tr>
                 <td>${idx + 1}</td>
                 <td>${r.bill_date ?? r.date ?? '—'}</td>
@@ -947,7 +947,7 @@
                 } else {
                     rows.forEach(r => {
                         const avail = Number(r.available ?? r.avail ?? 0);
-                        tbody.insertAdjacentHTML("beforeend", `
+                        $(tbody).append( `
               <tr>
                 <td>${r.item_name ?? r.item ?? '—'}</td>
                 <td>${fmtInt(r.purchase_qty ?? r.in_qty ?? r.inQty ?? 0)}</td>
@@ -995,7 +995,7 @@
                     $(tbody).html(`<tr><td colspan="10"><span class="pv-pill">No items</span></td></tr>`);
                 } else {
                     rows.forEach((it, idx) => {
-                        tbody.insertAdjacentHTML("beforeend", `
+                        $(tbody).append( `
               <tr>
                 <td>${idx + 1}</td>
                 <td>${it.name}</td>
@@ -1033,7 +1033,7 @@
                     $(tbody).html(`<tr><td colspan="20"><span class="pv-pill">No parties</span></td></tr>`);
                 } else {
                     rows.forEach((p, idx) => {
-                        tbody.insertAdjacentHTML("beforeend", `
+                        $(tbody).append( `
               <tr>
                 <td>${idx + 1}</td>
                 <td>${p.name}</td>
@@ -1106,11 +1106,11 @@
 
             // Initial rows
             $(entryLinesWrap).html("");
-            entryLinesWrap.appendChild(makeLineRow('entry'));
+            $(entryLinesWrap).append(makeLineRow('entry'));
             recalcEntryTotal();
 
             $(billLinesWrap).html("");
-            billLinesWrap.appendChild(makeLineRow('bill'));
+            $(billLinesWrap).append(makeLineRow('bill'));
             recalcBillTotal();
 
             // Counters
