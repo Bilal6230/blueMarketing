@@ -254,8 +254,8 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            document.querySelectorAll('.js-tomselect').forEach((el) => {
+        $(function () {
+            $('.js-tomselect').each(function(_,el) {
                 if (el.tomselect) return; // prevent double init
 
                 new TomSelect(el, {
@@ -452,12 +452,12 @@
         });
     </script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const textarea = document.querySelector('.text-area');
-            const charCount = document.getElementById('char-count');
+        $(function() {
+            const textarea = $('.text-area')[0];
+            const charCount = $('#char-count')[0];
 
             if (textarea && charCount) {
-                textarea.addEventListener('input', function() {
+                $(textarea).on('input', function() {
                     charCount.textContent = this.value.length;
                 });
                 charCount.textContent = textarea.value.length;
@@ -466,11 +466,11 @@
     </script>
     <script>
         function submitForm() {
-            document.getElementById('voucherForm').submit();
+            $('#voucherForm')[0].submit();
         }
 
         function saveAsLedger() {
-            const form = document.getElementById('editForm');
+            const form = $('#editForm')[0];
             form.action = "{{ route('ledger.store') }}";
         }
 
@@ -1069,13 +1069,13 @@
 
 
         function convertToWords() {
-            var numberInput = document.getElementById('numberInput').value;
+            var numberInput = $('#numberInput')[0].value;
 
             var numericValue = numberInput.replace(/,/g, '');
 
             var wordingAmount = numberToWords.toWords(numericValue);
 
-            document.getElementById('wordingAmount').innerText = wordingAmount;
+            $('#wordingAmount')[0].innerText = wordingAmount;
         }
 
         function formatAmount(input) {
