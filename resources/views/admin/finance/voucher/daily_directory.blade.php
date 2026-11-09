@@ -320,7 +320,7 @@
         entryFrame.src=url||'about:blank';
         if(!url)showEntryError('No voucher entry form is available for this type.');
     }
-    entryFrame.addEventListener('load',()=>{
+    $('#dv-entry-frame').on('load',()=>{
         if(!requestedEntryUrl || entryFrame.src==='about:blank')return;
         try{
             const doc=entryFrame.contentDocument;
@@ -360,7 +360,7 @@
         entryType.value='';
         entryChoose.classList.remove('d-none');
         document.getElementById('dv-entry-title').textContent='New voucher';
-        if(window.jQuery)window.jQuery('#dv-entry-modal').modal('show');
+        $('#dv-entry-modal').modal('show');
     }
     function openVoucherType(selected){
         if(dedicatedRoutes[selected]){
@@ -380,19 +380,20 @@
         loadEntry(button.dataset.url);
         if(window.jQuery)window.jQuery('#dv-entry-modal').modal('show');
     }
-    entryType.addEventListener('change',event=>{
-        if(event.target.value)openVoucherType(event.target.value);
+    $('#dv-entry-type').on('change',function(){
+        if($(this).val())openVoucherType($(this).val());
     });
-    document.getElementById('dv-bank-method').addEventListener('change',event=>{
-        loadEntry(event.target.value==='cheque'?methodWrap.dataset.chequeUrl:methodWrap.dataset.onlineUrl);
+    $('#dv-bank-method').on('change',function(){
+        loadEntry($(this).val()==='cheque'?$('#dv-bank-method-wrap').data('chequeUrl'):$('#dv-bank-method-wrap').data('onlineUrl'));
     });
-    document.getElementById('dv-create-voucher').addEventListener('click',()=>{
-        const selected=document.getElementById('dv-type').value;
+    $('#dv-create-voucher').on('click',()=>{
+        const selected=$('#dv-type').val();
         if(!selected || (!seriesMap[selected] && !dedicatedRoutes[selected]))chooseVoucher();
         else openVoucherType(selected);
     });
-    if(window.jQuery){window.jQuery('#dv-entry-modal').on('hidden.bs.modal',()=>{requestedEntryUrl='';entryLoading.classList.add('d-none');entryError.classList.add('d-none');entryChoose.classList.add('d-none');entryFrame.style.visibility='hidden';entryFrame.src='about:blank';});}
-    window.addEventListener('message',event=>{
+    $('#dv-entry-modal').on('hidden.bs.modal',()=>{requestedEntryUrl='';entryLoading.classList.add('d-none');entryError.classList.add('d-none');entryChoose.classList.add('d-none');entryFrame.style.visibility='hidden';entryFrame.src='about:blank';});
+    $(window).on('message',messageEvent=>{
+        const event=messageEvent.originalEvent;
         if(event.origin!==window.location.origin || event.source!==entryFrame.contentWindow)return;
         if(event.data?.type==='daily-voucher-form-ready' && entryMode==='create'){
             requestAnimationFrame(()=>requestAnimationFrame(revealEntry));
@@ -415,8 +416,8 @@
         if(window.jQuery)window.jQuery('#dv-entry-modal').modal('hide');
         document.getElementById('dv-entry-frame').src='about:blank';start=0;load();
     });
-    body.addEventListener('click',event=>{
-        const button=event.target.closest('.dv-edit');if(!button)return;
+    $('#dv-rows').on('click','.dv-edit',function(){
+        const button=this;
         const url=new URL(button.dataset.url,window.location.href);
         url.searchParams.set('embed','1');
         entryChoose.classList.add('d-none');
@@ -426,9 +427,8 @@
         loadEntry(url.toString(),'edit');
         if(window.jQuery)window.jQuery('#dv-entry-modal').modal('show');
     });
-    body.addEventListener('click',async event=>{
-        const button=event.target.closest('.dv-delete');
-        if(!button)return;
+    $('#dv-rows').on('click','.dv-delete',async function(){
+        const button=this;
         const reason=window.prompt('Reason for deactivating '+button.dataset.number+' (required):');
         if(!reason || !reason.trim())return;
         if(reason.trim().length>500){window.alert('Reason cannot exceed 500 characters.');return;}
@@ -457,8 +457,8 @@
         }catch(error){window.alert(error.message||'Unable to deactivate voucher.');}
         finally{button.disabled=false;}
     });
-    body.addEventListener('click',event=>{
-        const button=event.target.closest('.dv-details'); if(!button)return;
+    $('#dv-rows').on('click','.dv-details',function(){
+        const button=this;
         const row=JSON.parse(button.dataset.row), fields=document.getElementById('dv-detail-fields');
         document.getElementById('dv-detail-title').textContent=`${row.type} · ${row.number}`;
         fields.replaceChildren();
@@ -478,7 +478,7 @@
         const printLink=document.getElementById('dv-detail-print'), noPrint=document.getElementById('dv-no-print');
         printLink.classList.toggle('d-none',!row.url); noPrint.classList.toggle('d-none',!!row.url);
         if(row.url) printLink.href=row.url;
-        if(window.jQuery) window.jQuery('#dv-detail-modal').modal('show');
+        $('#dv-detail-modal').modal('show');
     });
     load();
 })();
