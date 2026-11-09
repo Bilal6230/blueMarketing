@@ -1449,7 +1449,7 @@
     /* ===========================
   VIEW SWITCH
   =========================== */
-    const tabBtns = Array.from(document.querySelectorAll(".pv-tabbtn"));
+    const tabBtns = $(".pv-tabbtn").toArray();
     const views = {
       entry: $('#view-entry')[0],
       billing: $('#view-billing')[0],
@@ -1497,7 +1497,7 @@
     }
 
     function refreshLineItemSelects() {
-      document.querySelectorAll(".line-item").forEach((sel) => {
+      $('.line-item').each((_,sel) => {
         const current = sel.value;
         fillItemSelect(sel, false);
         if (current) sel.value = current;
@@ -2528,7 +2528,7 @@
         loadNextBill().catch((err) => handleApiError(err, "Unable to load bill no."))
       );
 
-      document.querySelectorAll(".pv-money").forEach((el) => {
+      $('.pv-money').each((_,el) => {
         pvFormatAmountNoDecimal(el);
         $(el).on("input", () => pvFormatAmountNoDecimal(el));
       });
