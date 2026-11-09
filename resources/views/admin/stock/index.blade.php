@@ -1475,8 +1475,7 @@
       if (withAll)
         sel.options[0].textContent = "All";
       state.parties.forEach((p) => {
-        sel.insertAdjacentHTML(
-          "beforeend",
+        $(sel).append(
           `<option value="${p.id}">${p.name} • ${p.type}</option>`
         );
       });
@@ -1484,15 +1483,14 @@
     function fillItemSelect(sel, withAll = false) {
       $(sel).html("");
       if (withAll)
-        sel.insertAdjacentHTML("beforeend", `<option value="">All</option>`);
+        $(sel).append( `<option value="">All</option>`);
       state.items.forEach((i) => {
-        sel.insertAdjacentHTML(
-          "beforeend",
+        $(sel).append(
           `<option value="${i.id}">${i.name} (${i.unit})</option>`
         );
       });
       if (!state.items.length) {
-        sel.insertAdjacentHTML("beforeend", `<option value="">No items</option>`);
+        $(sel).append( `<option value="">No items</option>`);
       }
     }
 
@@ -1642,7 +1640,7 @@
     }
 
     $('#btnAddLine').on("click", () => {
-      entryLinesWrap.appendChild(
+      $(entryLinesWrap).append(
         makeLineRow("entry", entryLinesWrap.children.length + 1)
       );
     });
@@ -1719,7 +1717,7 @@
         entryVehicle.value = "";
         entryDriver.value = "";
         $(entryLinesWrap).html("");
-        entryLinesWrap.appendChild(makeLineRow("entry", 1));
+        $(entryLinesWrap).append(makeLineRow("entry", 1));
         recalcEntryTotal();
 
         await loadNextSlip();
@@ -1772,7 +1770,7 @@
     });
 
     $('#btnAddBillLine').on("click", () => {
-        billLinesWrap.appendChild(
+        $(billLinesWrap).append(
           makeBillLineRow(billLinesWrap.children.length + 1)
         );
         recalcBillTotal();
@@ -1818,7 +1816,7 @@
 
         billEntryNo.value = "";
         $(billLinesWrap).html("");
-        billLinesWrap.appendChild(makeBillLineRow(1));
+        $(billLinesWrap).append(makeBillLineRow(1));
         recalcBillTotal();
 
         await loadNextBill();
@@ -1844,8 +1842,7 @@
       $(form).html("");
 
       fields.forEach((f) => {
-        form.insertAdjacentHTML(
-          "beforeend",
+        $(form).append(
           `
             <div class="mb-2">
               <label class="form-label pv-small">${f.label}</label>
@@ -1864,8 +1861,7 @@
         }
       });
 
-      form.insertAdjacentHTML(
-        "beforeend",
+      $(form).append(
         `
           <div class="d-grid gap-2 mt-3">
             ${onSave
@@ -2074,8 +2070,7 @@
             ? `<span class="pv-pill ok">IN</span>`
             : `<span class="pv-pill bad">OUT</span>`;
 
-        tbody.insertAdjacentHTML(
-          "beforeend",
+        $(tbody).append(
           `
             <tr>
               <td>${idx + 1}</td>
@@ -2114,8 +2109,7 @@
       const tbody = $('#billTbody')[0];
       $(tbody).html("");
       (state.bills.rows || []).forEach((b, idx) => {
-        tbody.insertAdjacentHTML(
-          "beforeend",
+        $(tbody).append(
           `
             <tr>
               <td>${idx + 1}</td>
@@ -2155,8 +2149,7 @@
       $(tbody).html("");
 
       rows.forEach((r) => {
-        tbody.insertAdjacentHTML(
-          "beforeend",
+        $(tbody).append(
           `
             <tr>
               <td>${r.item_name || "—"}</td>
@@ -2192,8 +2185,7 @@
       const tbody = $('#itemTbody')[0];
       $(tbody).html("");
       (state.itemsTable.rows || []).forEach((it, idx) => {
-        tbody.insertAdjacentHTML(
-          "beforeend",
+        $(tbody).append(
           `
             <tr>
               <td><input type="checkbox" class="stock-item-select" value="${Number(it.id)}" aria-label="Select ${importHtml(it.name)}"></td>
@@ -2305,8 +2297,7 @@
       const tbody = $('#partyTbody')[0];
       $(tbody).html("");
       (state.partiesTable.rows || []).forEach((p, idx) => {
-        tbody.insertAdjacentHTML(
-          "beforeend",
+        $(tbody).append(
           `
             <tr>
               <td>${idx + 1}</td>
@@ -2454,11 +2445,11 @@
       $('#stockTo')[0].value = todayISO();
 
       $(entryLinesWrap).html("");
-      entryLinesWrap.appendChild(makeLineRow("entry", 1));
+      $(entryLinesWrap).append(makeLineRow("entry", 1));
       recalcEntryTotal();
 
       $(billLinesWrap).html("");
-      billLinesWrap.appendChild(makeBillLineRow(1));
+      $(billLinesWrap).append(makeBillLineRow(1));
       recalcBillTotal();
 
       $('#entryFilterItem').on("change", () =>
