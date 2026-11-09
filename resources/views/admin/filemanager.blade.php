@@ -6,8 +6,8 @@
 @push('script')
     <script src="{{ asset('vendor/file-manager/js/file-manager.js') }}"></script>
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        document.getElementById('fm-main-block').setAttribute('style', 'height:' + window.innerHeight + 'px');
+    $(function() {
+        $('#fm-main-block').css('height',window.innerHeight+'px');
 
         fm.$store.commit('fm/setFileCallBack', function(fileUrl) {
         window.opener.fmSetLink(fileUrl);
