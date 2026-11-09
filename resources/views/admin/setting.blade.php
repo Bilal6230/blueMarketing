@@ -242,33 +242,42 @@
     <script>
         (() => {
             let nextModal = 0;
-            function modalizeSettingsForms(root = document) {
-                root.querySelectorAll('form[method="POST"]:not([data-settings-modalized])').forEach((form) => {
-                    if (!form.closest('.settings-screen .tab-pane')) return;
-                    const pane = form.closest('.tab-pane'); if (!pane) return;
-                    const id = `settingsEditor${++nextModal}`;
-                    const label = form.action.includes('bank-account') ? 'Bank account'
-                        : form.action.includes('attendance') ? (form.action.includes('mapping') ? 'Employee ID mapping' : 'Attendance device')
-                        : form.action.includes('voucher-display') ? 'Voucher prefix'
-                        : form.action.includes('payment-method-labels') ? 'Payment method labels'
-                        : form.action.includes('custom-payment-method') ? 'Payment method' : 'Settings';
-                    const launcher = document.createElement('div'); launcher.className = 'settings-modal-trigger';
-                    const open = document.createElement('button'); open.type = 'button'; open.className = 'btn btn-sm btn-outline-primary'; open.dataset.toggle = 'modal'; open.dataset.target = `#${id}`; open.textContent = `Configure ${label}`;
-                    launcher.appendChild(open);
-                    const modal = document.createElement('div'); modal.className = 'modal fade'; modal.id = id; modal.tabIndex = -1; modal.innerHTML = `<div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">${label}</h5><button type="button" class="close" data-dismiss="modal"><span>&times;</span></button></div><div class="modal-body"></div></div></div>`;
-                    form.parentElement.insertBefore(launcher, form); modal.querySelector('.modal-body').appendChild(form); pane.appendChild(modal); form.dataset.settingsModalized = '1';
-                    if (form.querySelector('[name="bank_account_id"]') || pane.querySelector('.alert-danger,.settings-form-error')) { if (window.jQuery) window.jQuery(modal).modal('show'); }
+            function modalizeSettingsForms(root=document){
+                const $root=$(root);
+                $root.find('form[method="POST"]:not([data-settings-modalized])').each(function(){
+                    const $form=$(this),$pane=$form.closest('.settings-screen .tab-pane');
+                    if(!$pane.length)return;
+                    const id='settingsEditor'+(++nextModal),action=$form.attr('action')||'';
+                    const label=action.includes('bank-account')?'Bank account'
+                        :action.includes('attendance')?(action.includes('mapping')?'Employee ID mapping':'Attendance device')
+                        :action.includes('voucher-display')?'Voucher prefix'
+                        :action.includes('payment-method-labels')?'Payment method labels'
+                        :action.includes('custom-payment-method')?'Payment method':'Settings';
+                    const $launcher=$('<div>',{'class':'settings-modal-trigger'});
+                    const $open=$('<button>',{type:'button','class':'btn btn-sm btn-outline-primary',
+                        'data-toggle':'modal','data-target':'#'+id,text:'Configure '+label});
+                    $launcher.append($open);
+                    const $modal=$('<div>',{'class':'modal fade',id,tabindex:-1});
+                    $modal.html('<div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title"></h5><button type="button" class="close" data-dismiss="modal"><span>&times;</span></button></div><div class="modal-body"></div></div></div>');
+                    $modal.find('.modal-title').text(label);
+                    $form.before($launcher);
+                    $modal.find('.modal-body').append($form);
+                    $pane.append($modal);
+                    $form.attr('data-settings-modalized','1');
+                    if($form.find('[name="bank_account_id"]').length||$pane.find('.alert-danger,.settings-form-error').length)$modal.modal('show');
                 });
-                root.querySelectorAll('.alert-success,.alert-danger').forEach((alert) => {
-                    if (!window.toastr || !alert.closest('.settings-screen')) return;
-                    const message=alert.innerText.trim(); if(!message) return;
-                    alert.classList.contains('alert-success') ? toastr.success(message) : toastr.error(message);
-                    alert.remove();
+                $root.find('.alert-success,.alert-danger').each(function(){
+                    const $alert=$(this);
+                    if(!window.toastr||!$alert.closest('.settings-screen').length)return;
+                    const message=$.trim($alert.text());
+                    if(!message)return;
+                    ($alert.hasClass('alert-success')?toastr.success:toastr.error)(message);
+                    $alert.remove();
                 });
-                root.querySelectorAll('.settings-form-error').forEach((message) => {
-                    if (!window.toastr) return;
-                    toastr.error(message.innerText.trim());
-                    message.remove();
+                $root.find('.settings-form-error').each(function(){
+                    if(!window.toastr)return;
+                    toastr.error($.trim($(this).text()));
+                    $(this).remove();
                 });
             }
             $(modalizeSettingsForms);
