@@ -657,7 +657,7 @@ html::-webkit-scrollbar,body::-webkit-scrollbar{width:11px}html::-webkit-scrollb
  const error=$('#bm-crm-error')[0];
  const summary=$('#bm-crm-kpis')[0];
  const labels=[['new_leads','New Leads'],['completed_followups','Completed Follow-ups'],['today_due','Today Follow-ups'],['pending_overdue_combined','Pending + Overdue'],['due_on_period_end','Due on Selected End Date'],['overdue_as_of_period_end','Overdue by Selected End Date']];
- const cell=(tr,value)=>{const td=document.createElement('td');td.textContent=value??'—';tr.appendChild(td);};
+ const cell=($tr,value)=>$tr.append($('<td>',{text:value??'—'}));
  let currentPage=1,lastPage=1;
  async function loadCrm(page=1){
    if(!window.jQuery){return;}
@@ -670,10 +670,10 @@ html::-webkit-scrollbar,body::-webkit-scrollbar{width:11px}html::-webkit-scrollb
      const data=await $.ajax({url:$(open).data('url'),method:'GET',data:query.toString(),
        dataType:'json',headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}});
      error.textContent='';
-     labels.forEach(([key,label])=>{const box=document.createElement('div');const value=document.createElement('strong');value.textContent=Number(data[key]||0).toLocaleString('en-PK');const caption=document.createElement('span');caption.textContent=label;box.append(value,caption);summary.appendChild(box);});
-     (data.rows||[]).forEach(row=>{const tr=document.createElement('tr');['id','customer','mobile','project','assigned','created_at','last_activity','next_follow_up','status','remarks'].forEach(k=>cell(tr,row[k]));rowHost.appendChild(tr);});
+     labels.forEach(([key,label])=>{$(summary).append($('<div>').append($('<strong>',{text:Number(data[key]||0).toLocaleString('en-PK')}),$('<span>',{text:label})));});
+     (data.rows||[]).forEach(row=>{const $tr=$('<tr>');['id','customer','mobile','project','assigned','created_at','last_activity','next_follow_up','status','remarks'].forEach(k=>cell($tr,row[k]));$(rowHost).append($tr);});
      const employeeRows=$('#bm-crm-employee-rows')[0];
-     (data.employee_summary||[]).forEach(row=>{const tr=document.createElement('tr');['employee','assigned_leads','new_leads','completed_followups','due_on_period_end','overdue_as_of_period_end'].forEach(key=>cell(tr,row[key]));employeeRows.appendChild(tr);});
+     (data.employee_summary||[]).forEach(row=>{const $tr=$('<tr>');['employee','assigned_leads','new_leads','completed_followups','due_on_period_end','overdue_as_of_period_end'].forEach(key=>cell($tr,row[key]));$(employeeRows).append($tr);});
      currentPage=data.pagination?.page||1;lastPage=data.pagination?.last_page||1;$('#bm-crm-page-info')[0].textContent='Page '+currentPage+' of '+lastPage+' - '+(data.pagination?.total||0)+' records';$('#bm-crm-prev')[0].disabled=currentPage<=1;$('#bm-crm-next')[0].disabled=currentPage>=lastPage;
      if(!data.rows?.length)error.textContent='No matching leads for this period.';
    }catch(e){error.textContent=e.message;}
@@ -709,7 +709,7 @@ html::-webkit-scrollbar,body::-webkit-scrollbar{width:11px}html::-webkit-scrollb
  inner.style.setProperty('--hand-color',d.hand<=d.bank?'#991b1b':'#0cae87');
  inner.style.setProperty('--bank-color',d.bank<d.hand?'#991b1b':'#198add');
  const dots=host.querySelectorAll('.bm-cash-detail .bm-dot');if(dots[0])dots[0].style.background=d.hand<=d.bank?'#991b1b':'#0cae87';if(dots[1])dots[1].style.background=d.bank<d.hand?'#991b1b':'#198add';
- [['handCash',d.hand],['bmBankCash',d.bank],['totalCash',d.total],['bmCashLegendTotal',d.total]].forEach(([id,n])=>{const el=document.getElementById(id);if(el)el.textContent=number(n)});
+ [['handCash',d.hand],['bmBankCash',d.bank],['totalCash',d.total],['bmCashLegendTotal',d.total]].forEach(([id,n])=>{const $el=$('#'+$.escapeSelector(id));if($el.length)$el.text(number(n))});
  const small=host.querySelectorAll('.bm-cash-detail small');if(small[0])small[0].textContent=d.hp.toFixed(2)+'%';if(small[1])small[1].textContent=d.bp.toFixed(2)+'%';
  }
  function show(type){const d=current(),name=type==='hand'?'Hand Cash':type==='bank'?'Bank Account':'Total Cash';
