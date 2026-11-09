@@ -2552,13 +2552,9 @@
       }
     }
 
-    $(document).on("DOMContentLoaded", () => {
+    $(function () {
       initUI();
-
-      // tab switching
-      tabBtns.forEach((btn) =>
-        $(btn).on("click", () => setView(btn.dataset.view))
-      );
+      $(tabBtns).on('click',function(){setView($(this).data('view'));});
     });
   </script>
 @endsection
