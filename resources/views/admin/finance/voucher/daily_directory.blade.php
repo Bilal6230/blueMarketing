@@ -441,21 +441,19 @@
             }
             document.body.appendChild(deletion);deletion.submit();return;
         }
-        button.disabled=true;
-        try{
-            const formData=new URLSearchParams();
-            formData.set('_token',@json(csrf_token()));formData.set('_method','DELETE');
-            formData.set('id',button.dataset.id);formData.set('delete_reason',reason.trim());
-            const response=await fetch(button.dataset.url,{
-                method:'POST',credentials:'same-origin',
-                headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest','Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
-                body:formData.toString()
-            });
-            const payload=await response.json().catch(()=>({}));
-            if(!response.ok)throw new Error(payload.message||'Unable to deactivate voucher.');
-            load();
-        }catch(error){window.alert(error.message||'Unable to deactivate voucher.');}
-        finally{button.disabled=false;}
+        $(button).prop('disabled',true);
+        $.ajax({
+            url:$(button).data('url'),
+            method:'POST',
+            dataType:'json',
+            headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'},
+            data:{
+                _token:@json(csrf_token()),_method:'DELETE',
+                id:$(button).data('id'),delete_reason:reason.trim()
+            }
+        }).done(()=>load())
+          .fail(xhr=>window.alert(xhr.responseJSON?.message||'Unable to deactivate voucher.'))
+          .always(()=>$(button).prop('disabled',false));
     });
     $('#dv-rows').on('click','.dv-details',function(){
         const button=this;
