@@ -698,7 +698,7 @@ html::-webkit-scrollbar,body::-webkit-scrollbar{width:11px}html::-webkit-scrollb
    const positive=Math.max(0,hand)+Math.max(0,bank);
    return {hand,bank,total:hand+bank,hp:positive?Math.max(0,hand)/positive*100:0,bp:positive?Math.max(0,bank)/positive*100:0};
  }
- function update(){const d=current();const inner=host.querySelector('.bm-cash-inner');
+ function update(){const d=current();const inner=$(host).find('.bm-cash-inner')[0];
  inner.style.setProperty('--hand-share',d.hp+'%');inner.style.setProperty('--bank-share',d.bp+'%');
  const minAnglePercent=2/3.6;let handDisplay=d.hp;
  if(d.hp>0&&d.hp<minAnglePercent)handDisplay=minAnglePercent;
@@ -708,9 +708,9 @@ html::-webkit-scrollbar,body::-webkit-scrollbar{width:11px}html::-webkit-scrollb
 
  inner.style.setProperty('--hand-color',d.hand<=d.bank?'#991b1b':'#0cae87');
  inner.style.setProperty('--bank-color',d.bank<d.hand?'#991b1b':'#198add');
- const dots=host.querySelectorAll('.bm-cash-detail .bm-dot');if(dots[0])dots[0].style.background=d.hand<=d.bank?'#991b1b':'#0cae87';if(dots[1])dots[1].style.background=d.bank<d.hand?'#991b1b':'#198add';
+ const dots=$(host).find('.bm-cash-detail .bm-dot').toArray();if(dots[0])dots[0].style.background=d.hand<=d.bank?'#991b1b':'#0cae87';if(dots[1])dots[1].style.background=d.bank<d.hand?'#991b1b':'#198add';
  [['handCash',d.hand],['bmBankCash',d.bank],['totalCash',d.total],['bmCashLegendTotal',d.total]].forEach(([id,n])=>{const $el=$('#'+$.escapeSelector(id));if($el.length)$el.text(number(n))});
- const small=host.querySelectorAll('.bm-cash-detail small');if(small[0])small[0].textContent=d.hp.toFixed(2)+'%';if(small[1])small[1].textContent=d.bp.toFixed(2)+'%';
+ const small=$(host).find('.bm-cash-detail small').toArray();if(small[0])small[0].textContent=d.hp.toFixed(2)+'%';if(small[1])small[1].textContent=d.bp.toFixed(2)+'%';
  }
  function show(type){const d=current(),name=type==='hand'?'Hand Cash':type==='bank'?'Bank Account':'Total Cash';
  const amount=type==='hand'?d.hand:type==='bank'?d.bank:d.total,percent=type==='hand'?d.hp:type==='bank'?d.bp:100;
@@ -743,10 +743,10 @@ html::-webkit-scrollbar,body::-webkit-scrollbar{width:11px}html::-webkit-scrollb
 (function(){
   const form=$('#bm-lead-period-form')[0];
   if(!form)return;
-  const preset=form.querySelector('#bm-lead-period');
-  const custom=form.querySelector('#bm-custom-period');
-  const label=form.querySelector('#bm-lead-period-bounds');
-  const error=form.querySelector('#bm-lead-period-error');
+  const preset=$(form).find('#bm-lead-period')[0];
+  const custom=$(form).find('#bm-custom-period')[0];
+  const label=$(form).find('#bm-lead-period-bounds')[0];
+  const error=$(form).find('#bm-lead-period-error')[0];
   const values={new_leads:$('#bm-new-leads-count')[0],completed_followups:$('#bm-completed-followups-count')[0],today_followups:$('#bm-today-followups-count')[0],pending_overdue_followups:$('#bm-pending-overdue-count')[0]};
   let pending=null;
   function toggleCustom(){custom.hidden=preset.value!=='custom';}
