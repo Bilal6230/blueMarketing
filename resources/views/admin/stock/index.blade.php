@@ -1238,7 +1238,7 @@
       const form = event.currentTarget;
       const file = $('#itemImportFile')[0]?.files?.[0];
       if (!file) return;
-      const button = form.querySelector('button[type="submit"]');
+      const button = $(form).find('button[type="submit"]')[0];
       const preview = $('#itemImportPreview')[0];
       button.disabled = true;
       button.textContent = "Uploading and validating...";
@@ -1581,16 +1581,16 @@
       temp.innerHTML = html.trim();
       const row = temp.firstElementChild;
 
-      const itemSel = row.querySelector(".line-item");
+      const itemSel = $(row).find(".line-item")[0];
       fillItemSelect(itemSel, false);
 
       // default first item
       if (state.items.length) itemSel.value = state.items[0].id;
 
-      const unitEl = row.querySelector(".line-unit");
-      const qtyEl = row.querySelector(".line-qty");
-      const rateEl = row.querySelector(".line-rate");
-      const amtEl = row.querySelector(".line-amount");
+      const unitEl = $(row).find(".line-unit")[0];
+      const qtyEl = $(row).find(".line-qty")[0];
+      const rateEl = $(row).find(".line-rate")[0];
+      const amtEl = $(row).find(".line-amount")[0];
 
       function syncFromItem() {
         const it = findItem(itemSel.value);
@@ -1633,9 +1633,9 @@
 
     function recalcEntryTotal() {
       let total = 0;
-      entryLinesWrap.querySelectorAll(".pv-line").forEach((row) => {
-        const qty = pvParseIntAmount(row.querySelector(".line-qty").value);
-        const rate = pvParseIntAmount(row.querySelector(".line-rate").value);
+      $(entryLinesWrap).find(".pv-line").toArray().forEach((row) => {
+        const qty = pvParseIntAmount($(row).find(".line-qty")[0].value);
+        const rate = pvParseIntAmount($(row).find(".line-rate")[0].value);
         total += qty * rate;
       });
       entryTotalEl.textContent = fmtPKR(total);
@@ -1661,13 +1661,13 @@
 
     function collectLines(wrap) {
       const lines = [];
-      wrap.querySelectorAll(".pv-line").forEach((row) => {
-        const itemId = Number(row.querySelector(".line-item").value);
-        const qtyRaw = String(row.querySelector(".line-qty").value || "").replace(
+      $(wrap).find(".pv-line").toArray().forEach((row) => {
+        const itemId = Number($(row).find(".line-item")[0].value);
+        const qtyRaw = String($(row).find(".line-qty")[0].value || "").replace(
           /[^0-9]/g,
           ""
         );
-        const rate = pvParseIntAmount(row.querySelector(".line-rate").value);
+        const rate = pvParseIntAmount($(row).find(".line-rate")[0].value);
         if (!itemId || !qtyRaw || Number(qtyRaw) <= 0) return;
         lines.push({ item_id: itemId, qty: qtyRaw, rate });
       });
@@ -1757,9 +1757,9 @@
 
     function recalcBillTotal() {
       let total = 0;
-      billLinesWrap.querySelectorAll(".pv-line").forEach((row) => {
-        const qty = pvParseIntAmount(row.querySelector(".line-qty").value);
-        const rate = pvParseIntAmount(row.querySelector(".line-rate").value);
+      $(billLinesWrap).find(".pv-line").toArray().forEach((row) => {
+        const qty = pvParseIntAmount($(row).find(".line-qty")[0].value);
+        const rate = pvParseIntAmount($(row).find(".line-rate")[0].value);
         total += qty * rate;
       });
       billTotalEl.textContent = fmtPKR(total);
@@ -1803,7 +1803,7 @@
         return;
       }
 
-      billForm.querySelector('button[type="submit"]').disabled = true;
+      $(billForm).find('button[type="submit"]')[0].disabled = true;
       try {
         const res = await apiPost(endpoints.storeBill, {
           type: billType.value,
@@ -1829,7 +1829,7 @@
       } catch (err) {
         handleApiError(err, "Unable to save bill.");
       } finally {
-        billForm.querySelector('button[type="submit"]').disabled = false;
+        $(billForm).find('button[type="submit"]')[0].disabled = false;
       }
     });
 
@@ -1863,7 +1863,7 @@
           `
         );
         if (f.type === "select") {
-          form.querySelector(`[name="${f.name}"]`).value = f.value ?? "";
+          $(form).find(`[name="${f.name}"]`)[0].value = f.value ?? "";
         }
       });
 
@@ -1884,7 +1884,7 @@
         `
       );
 
-      form.querySelectorAll(".pv-money").forEach((el) => {
+      $(form).find(".pv-money").toArray().forEach((el) => {
         pvFormatAmountNoDecimal(el);
         $(el).on("input", () => pvFormatAmountNoDecimal(el));
       });
@@ -2040,7 +2040,7 @@
         const rows = result?.data?.rows || [];
         tbody.innerHTML = rows.length ? rows.map((row) => `
           <tr><td>#${Number(row.id)}</td><td>${importHtml(row.created_at || "")}</td><td>${importHtml(row.created_by || "-")}</td><td><span class="pv-pill ${row.status === "applied" ? "ok" : "warn"}">${importHtml(row.status)}</span></td><td>${Number(row.added)} / ${Number(row.updated)} / ${Number(row.failed)}</td><td><button type="button" class="btn btn-outline-primary btn-sm" data-import-preview="${Number(row.id)}">Preview</button></td></tr>`).join("") : '<tr><td colspan="6" class="text-muted text-center">No import batches yet.</td></tr>';
-        tbody.querySelectorAll("[data-import-preview]").forEach((button) => $(button).on("click", async () => {
+        $(tbody).find("[data-import-preview]").toArray().forEach((button) => $(button).on("click", async () => {
           try {
             const url = endpoints.itemImportPreview.replace(/0(?=\D*$)/, encodeURIComponent(button.dataset.importPreview));
             const detail = await apiGet(url);
@@ -2223,7 +2223,7 @@
       const selectAll = $('#selectAllStockItems')[0];
       if (selectAll) selectAll.checked = false;
       const syncSelectedExport = () => {
-        const ids = Array.from(tbody.querySelectorAll(".stock-item-select:checked"), (input) => input.value);
+        const ids = Array.from($(tbody).find(".stock-item-select:checked").toArray(), (input) => input.value);
         const url = new URL(endpoints.exportItems, window.location.origin);
         url.searchParams.set("format", "xlsx");
         ids.forEach((id) => url.searchParams.append("item_ids[]", id));
@@ -2232,16 +2232,16 @@
         exportSelected.setAttribute("aria-disabled", ids.length === 0 ? "true" : "false");
       };
       if (selectAll) selectAll.onchange = () => {
-        tbody.querySelectorAll(".stock-item-select").forEach((input) => { input.checked = selectAll.checked; });
+        $(tbody).find(".stock-item-select").toArray().forEach((input) => { input.checked = selectAll.checked; });
         syncSelectedExport();
       };
-      tbody.querySelectorAll(".stock-item-select").forEach((input) => $(input).on("change", syncSelectedExport));
+      $(tbody).find(".stock-item-select").toArray().forEach((input) => $(input).on("change", syncSelectedExport));
       if (exportSelected) exportSelected.onclick = (event) => {
-        if (!tbody.querySelector(".stock-item-select:checked")) event.preventDefault();
+        if (!$(tbody).find(".stock-item-select:checked")[0]) event.preventDefault();
       };
       syncSelectedExport();
 
-      tbody.querySelectorAll("button[data-act]").forEach((btn) => {
+      $(tbody).find("button[data-act]").toArray().forEach((btn) => {
         $(btn).on("click", async () => {
           const row = btn.closest("tr");
           const idx = Array.from(row.parentNode.children).indexOf(row);
@@ -2340,7 +2340,7 @@
 
       $('#partyCountChip')[0].textContent = `${state.partiesTable.total || 0} total`;
 
-      tbody.querySelectorAll("button[data-act]").forEach((btn) => {
+      $(tbody).find("button[data-act]").toArray().forEach((btn) => {
         $(btn).on("click", async () => {
           const row = btn.closest("tr");
           const idx = Array.from(row.parentNode.children).indexOf(row);
