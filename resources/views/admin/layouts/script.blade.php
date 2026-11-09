@@ -1,25 +1,16 @@
 <script>
-    localStorage.getItem('theme') == "light" || localStorage.getItem('theme') == null ? $("#icontheme").attr("class","fas fa-sun"):$("#icontheme").attr("class","fas fa-moon");
-    document.querySelector('body').classList.add(localStorage.getItem('theme'));
-    $(document).ready(function(){
-        $("#btntheme").on("click", function(){
-            if (localStorage.getItem('theme') == 'light' || localStorage.getItem('theme') == null) {
-            localStorage.setItem('theme', 'dark-mode')
-            document.querySelector('body').classList.add(localStorage.getItem('theme'));
-            document.querySelector('body').classList.remove('light');
-            $("#icontheme").attr("class","fas fa-moon");
-            }else{
-            localStorage.setItem('theme', 'light')
-            document.querySelector('body').classList.add(localStorage.getItem('theme'));
-            document.querySelector('body').classList.remove('dark-mode');
-            $("#icontheme").attr("class","fas fa-sun");
-            }
+    $(function(){
+        function applyTheme(theme){
+            const mode=theme==='dark-mode'?'dark-mode':'light';
+            $('body').removeClass('dark-mode light').addClass(mode);
+            $('#icontheme').attr('class',mode==='dark-mode'?'fas fa-moon':'fas fa-sun');
+        }
+        applyTheme(localStorage.getItem('theme'));
+        $('#btntheme').on('click',function(){
+            const next=localStorage.getItem('theme')==='dark-mode'?'light':'dark-mode';
+            localStorage.setItem('theme',next);
+            applyTheme(next);
         });
-
-        $(function () {
-            $('.datatable').DataTable({
-                "stateSave": true
-            });
-        });
+        $('.datatable').DataTable({stateSave:true});
     });
 </script>
