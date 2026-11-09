@@ -205,7 +205,7 @@
         });
 
         // -------- Open modal + load ledgers --------
-        document.addEventListener('click', function (e) {
+        $(document).on('click', function (e) {
             var btn = e.target.closest('.viewLedgersBtn');
             if (!btn) return;
 
@@ -296,7 +296,7 @@
 
     @if ($errors->any())
         <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        $(function() {
             Swal.fire({
                 toast: true,
                 position: 'top-end',
@@ -312,7 +312,7 @@
 
     @if (session('success'))
         <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        $(function() {
             Swal.fire({
                 toast: true,
                 position: 'top-end',
