@@ -244,35 +244,36 @@
         recordSummary.textContent='Showing '+first+'–'+last+' of '+filtered.toLocaleString()+' records'+(total!==filtered?' (from '+total.toLocaleString()+' total)':'');
     }
     const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
-    async function load(){
+    function load(){
         const requestId=++activeRequest;
         if(activeController)activeController.abort();
-        activeController=new AbortController();
         wrap.classList.add('daily-voucher-loading');
         showTableSkeleton();
         const params=new URLSearchParams($('#daily-voucher-filters').serialize()); params.set('start',start); params.set('length',length);
         params.set('sort_column',sortColumn);params.set('sort_direction',sortDirection);
         if(tableSearch.value.trim())params.set('search',tableSearch.value.trim());
         $('.dv-column-filter').each(function(){const value=$.trim($(this).val());if(value)params.set('column_'+$(this).data('column'),value);});
-        try {
-            const response=await fetch(@json(route('finance.daily-vouchers.data'))+'?'+params.toString(),{headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'},signal:activeController.signal});
-            if(!response.ok){
-                const errorBody=await response.json().catch(()=>({}));
-                throw new Error(errorBody.message||'Unable to load voucher history.');
-            }
-            const result=await response.json();
+        activeController=$.ajax({
+            url:@json(route('finance.daily-vouchers.data')),
+            method:'GET',data:params.toString(),dataType:'json',
+            headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}
+        }).done(result=>{
             if(requestId!==activeRequest)return;
             filtered=Number(result.recordsFiltered||0);
             total=Number(result.recordsTotal||0);
             renderPagination();
-            body.innerHTML=result.data.length?result.data.map((row,index)=>`<tr><td>${start+index+1}</td><td>${esc(row.date)}</td><td class="font-weight-bold">${esc(row.number)}</td><td>${esc(row.head)||'—'}</td><td>${esc(row.subhead)||'—'}</td><td class="text-truncate" style="max-width:420px" title="${esc(row.detail)}">${esc(row.detail)||'—'}</td><td class="text-right">${Number(row.amount||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td class="text-nowrap"><button type="button" class="btn btn-sm btn-outline-secondary dv-details" data-row="${esc(JSON.stringify(row))}">Details</button> ${row.edit_url?`<button type="button" class="btn btn-sm btn-outline-primary dv-edit" data-url="${esc(row.edit_url)}" data-number="${esc(row.number)}" title="Edit voucher" aria-label="Edit voucher ${esc(row.number)}"><i class="fas fa-edit" aria-hidden="true"></i></button>`:''} ${row.delete_url?`<button type="button" class="btn btn-sm btn-outline-danger dv-delete" title="Delete voucher" aria-label="Delete voucher ${esc(row.number)}" data-url="${esc(row.delete_url)}" data-id="${esc(row.delete_id||'')}" data-number="${esc(row.number)}"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>`:''} ${row.url?`<a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" href="${esc(row.url)}" aria-label="Print ${esc(row.number)}"><i class="fas fa-print"></i></a>`:'<span class="small text-muted">—</span>'}</td></tr>`).join(''):'<tr><td colspan="8" class="text-center text-muted p-4">No vouchers match these filters.</td></tr>';
-        } catch(error){
+            $('#dv-rows').html(result.data.length?result.data.map((row,index)=>`<tr><td>${start+index+1}</td><td>${esc(row.date)}</td><td class="font-weight-bold">${esc(row.number)}</td><td>${esc(row.head)||'—'}</td><td>${esc(row.subhead)||'—'}</td><td class="text-truncate" style="max-width:420px" title="${esc(row.detail)}">${esc(row.detail)||'—'}</td><td class="text-right">${Number(row.amount||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td class="text-nowrap"><button type="button" class="btn btn-sm btn-outline-secondary dv-details" data-row="${esc(JSON.stringify(row))}">Details</button> ${row.edit_url?`<button type="button" class="btn btn-sm btn-outline-primary dv-edit" data-url="${esc(row.edit_url)}" data-number="${esc(row.number)}" title="Edit voucher" aria-label="Edit voucher ${esc(row.number)}"><i class="fas fa-edit" aria-hidden="true"></i></button>`:''} ${row.delete_url?`<button type="button" class="btn btn-sm btn-outline-danger dv-delete" title="Delete voucher" aria-label="Delete voucher ${esc(row.number)}" data-url="${esc(row.delete_url)}" data-id="${esc(row.delete_id||'')}" data-number="${esc(row.number)}"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>`:''} ${row.url?`<a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" href="${esc(row.url)}" aria-label="Print ${esc(row.number)}"><i class="fas fa-print"></i></a>`:'<span class="small text-muted">—</span>'}</td></tr>`).join(''):'<tr><td colspan="8" class="text-center text-muted p-4">No vouchers match these filters.</td></tr>' );
+        }).fail((xhr,status)=>{
+            if(requestId!==activeRequest||status==='abort')return;
+            const message=xhr.responseJSON?.message||'Unable to load voucher history.';
+            $('#dv-rows').html('<tr><td colspan="8" class="text-center text-danger p-4">'+esc(message)+'</td></tr>');
+            $('#dv-pages').empty();
+            $('#dv-record-summary').text('Unable to load records');
+        }).always(()=>{
             if(requestId!==activeRequest)return;
-            body.innerHTML=`<tr><td colspan="8" class="text-center text-danger p-4">${esc(error.message)}</td></tr>`;
-            pager.replaceChildren();
-            recordSummary.textContent='Unable to load records';
-        }
-        finally{if(requestId===activeRequest){wrap.classList.remove('daily-voucher-loading');wrap.removeAttribute('aria-busy');activeController=null;}}
+            $('#dv-table-wrap').removeClass('daily-voucher-loading').removeAttr('aria-busy');
+            activeController=null;
+        });
     }
     $('#daily-voucher-filters').on('submit',event=>{event.preventDefault();start=0;load();});
     $('#dv-search').on('input',scheduleLoad);
