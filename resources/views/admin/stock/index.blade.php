@@ -1748,10 +1748,7 @@
     function makeBillLineRow(idx) {
       const row = makeLineRow("bill", idx);
       // tweak labels a bit
-      row
-        .querySelector(".line-amount")
-        .closest(".d-flex")
-        .querySelector(".pv-muted").textContent = "Line Amount";
+      $(row).find('.line-amount').closest('.d-flex').find('.pv-muted').text('Line Amount');
       return row;
     }
 
@@ -2236,9 +2233,9 @@
         syncSelectedExport();
       };
       $(tbody).find(".stock-item-select").toArray().forEach((input) => $(input).on("change", syncSelectedExport));
-      if (exportSelected) exportSelected.onclick = (event) => {
+      if (exportSelected) $(exportSelected).on('click', (event) => {
         if (!$(tbody).find(".stock-item-select:checked")[0]) event.preventDefault();
-      };
+      });
       syncSelectedExport();
 
       $(tbody).find("button[data-act]").toArray().forEach((btn) => {
