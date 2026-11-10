@@ -2,7 +2,10 @@
 @section('title', $title)
 @section('content')
 <style>
-.jv-page{padding:8px 10px;background:#edf3ff;min-height:calc(100vh - 130px);display:flex;flex-direction:column;gap:8px}
+body.jv-directory-active{overflow:hidden!important}
+.main-content.page-content:has(> .jv-page){height:auto!important;min-height:0!important;overflow:visible!important;padding-bottom:0!important}
+.jv-page{padding:8px 10px;background:#edf3ff;height:var(--jv-viewport-height,calc(100dvh - 155px))!important;max-height:var(--jv-viewport-height,calc(100dvh - 155px))!important;min-height:0!important;display:flex;flex-direction:column;gap:8px;overflow:hidden!important;box-sizing:border-box}
+.jv-head,.jv-filters{flex:0 0 auto}
 .jv-head{background:#e8f0ff;border-bottom:2px solid #0673f9;border-radius:8px;display:flex;align-items:center;justify-content:space-between;padding:11px 14px;gap:10px}
 .jv-head h4{margin:0;font-size:19px;font-weight:700;color:#0861d4}
 .jv-head small{color:#6c7d91;font-size:12px}
@@ -11,8 +14,12 @@
 .jv-filter-grid label{font-size:11px;font-weight:700;margin:0 0 4px}
 .jv-filter-grid .form-control{height:32px;font-size:12px}
 .jv-filter-buttons{display:flex;gap:5px;align-items:center}
-.jv-card{flex:1;min-height:240px;display:flex;flex-direction:column;padding:8px}
-.jv-table-wrap{min-height:0;flex:1;overflow:auto}
+.jv-card{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;padding:8px;overflow:hidden}
+.jv-table-wrap{min-height:0;flex:1 1 auto;overflow:hidden;display:flex;flex-direction:column}
+.jv-record-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:auto;overscroll-behavior:contain}
+.jv-record-scroll .jv-table{margin-bottom:0}
+.jv-card .dataTables_wrapper>.d-flex{flex:0 0 auto}
+.jv-card .dataTables_wrapper>.jv-footer{flex:0 0 auto;min-height:35px;background:#fff}
 .jv-table{width:100%!important;margin:0;font-size:12px}
 .jv-table th{background:#e7efff!important;border-bottom:2px solid #087cff!important;font-weight:700;color:#192a46!important}
 .jv-table td{vertical-align:middle}
@@ -25,7 +32,7 @@
 .jv-actions .btn{padding:3px 7px;white-space:nowrap}
 .jv-footer{border-top:1px solid #dde6f4;padding-top:8px}
 .jv-footer .dataTables_info,.jv-footer .dataTables_paginate{font-size:12px}
-.jv-card .dataTables_wrapper{display:flex;flex-direction:column;flex:1;min-height:0}
+.jv-card .dataTables_wrapper{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden}
 .jv-card .dataTables_wrapper>.row{margin-left:0;margin-right:0}
 .jv-card .dataTables_processing{z-index:5}
 .jv-modal .modal-dialog{max-width:min(1100px,96vw);height:calc(100vh - 48px);margin:24px auto}
@@ -106,6 +113,15 @@
 $(function(){
  'use strict';
  var $table=$('#jv-directory'),timer=null,table=null,entryUrl='';
+ $('body').addClass('jv-directory-active');
+ function fitJournalDirectory(){
+  var $page=$('.jv-page'),top=$page.offset().top;
+  var footer=$('.main-footer:visible').first().outerHeight()||38;
+  var available=Math.max(320,$(window).height()-top-footer-3);
+  $page.css('--jv-viewport-height',available+'px');
+ }
+ fitJournalDirectory();
+ $(window).on('resize.journalDirectory',fitJournalDirectory);
  var baseUrl=@json($type==='SV'?route('sales.voucher.index'):route('journal.voucher.index'));
  var createUrl=@json(route('journal.voucher.create'));
  function esc(value){return $('<div>').text(value==null?'':String(value)).html();}
@@ -153,6 +169,10 @@ $(function(){
   },
   language:{emptyTable:'No vouchers found.',processing:'Loading vouchers...'}
  });
+ // DataTables creates its toolbar and pagination outside the table.
+ // Scroll only the rows/header region; toolbar and pagination remain visible.
+ $table.wrap('<div class="jv-record-scroll"></div>');
+ fitJournalDirectory();
  $('#jv-top-filters').on('submit',function(e){e.preventDefault();apply();});
  $('#jv-reset').on('click',function(){
   $('#jv-top-filters')[0].reset();$table.find('.jv-column-search input,.jv-column-search select').val('');

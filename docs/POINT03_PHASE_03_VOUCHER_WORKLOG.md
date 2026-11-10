@@ -62,3 +62,8 @@
 - Replaced legacy JV index presentation with blue-accent modern filter toolbar in one row, compact DataTable with per-column filters, status badges and icon action buttons. Add/Edit open the unchanged original forms inside a Bootstrap modal using same-origin iframe; fallback Open in new tab. Original validation, journal posting and reversal remain on their own existing routes.
 - Create/Edit forms can render embed layout without duplicate sidebar/top navigation. No accounting migrations or ledger mutations.
 - Needs browser testing for DataTables columns, modal save/redirect, edit/print, legacy fallback, filter search, approval statuses. Phase gate remains open.
+
+## 2026-11-10 — JV page-only scroll correction
+- Owner screenshot confirmed page-level scrollbar after modern JV list. Root cause: `min-height:calc(100vh - 130px)` plus layout footer and an unconstrained DataTables wrapper.
+- JV viewport is now measured relative to actual top offset and visible footer by jQuery on load/resize. Body scroll disabled only on this route. Card flexes into remaining viewport, with DataTables table in dedicated internal `jv-record-scroll`; controls and pagination remain outside the scroller. Blue theme preserved, no global layout or posting logic changed.
+- Browser retest required at 100% browser zoom and typical desktop viewport; test 25/50 rows, table internal scrollbar, footer visibility, pagination, Add/Edit modal. Batch 2 browser gate remains open.
