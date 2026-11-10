@@ -21,7 +21,10 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
 .online-table .table{margin-bottom:0}
 .online-table thead th{position:sticky;top:0;z-index:1;background:#e6f4eb;border-bottom:2px solid #168348;white-space:nowrap}
 .online-table thead .online-column-filters th{top:32px;background:#e6f4eb;z-index:2;padding:4px}
-.online-table thead .online-column-filters input,.online-table thead .online-column-filters select{width:100%;min-width:74px;height:27px;font-size:11px;padding:3px 5px}
+.online-table thead .online-column-filters input,.online-table thead .online-column-filters select{display:block;width:100%;min-width:74px;height:27px!important;min-height:27px!important;max-height:27px!important;font-size:11px;padding:3px 5px;line-height:18px;margin:0;box-sizing:border-box}
+.online-table thead .online-column-filters th{height:36px!important;max-height:36px!important;vertical-align:middle!important}
+.online-table thead .online-column-filters select.online-native-column-select{appearance:auto!important;-webkit-appearance:menulist!important;background:white!important;cursor:pointer}
+.online-table thead .online-column-filters .ts-wrapper{display:none!important}
 .online-table thead .online-column-filters th:nth-child(2){min-width:126px}
 .online-table thead .online-column-filters th:nth-child(3){min-width:110px}
 .online-table thead .online-column-filters th:nth-child(5),.online-table thead .online-column-filters th:nth-child(6),.online-table thead .online-column-filters th:nth-child(7),.online-table thead .online-column-filters th:nth-child(8){min-width:145px}
@@ -93,13 +96,13 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
        <th></th>
        <th><input type="date" class="form-control form-control-sm" data-column="transaction_date" aria-label="Filter by transaction date"></th>
        <th><input type="text" class="form-control form-control-sm" data-column="reference" placeholder="Filter" aria-label="Filter transaction reference" maxlength="120"></th>
-       <th><select class="form-select form-select-sm" data-column="type" aria-label="Filter transaction type"><option value="">All</option><option value="receipt">IN</option><option value="payment">OUT</option></select></th>
+       <th><select class="form-control form-control-sm online-native-column-select" data-column="type" aria-label="Filter transaction type"><option value="">All</option><option value="receipt">IN</option><option value="payment">OUT</option></select></th>
        <th><input type="text" class="form-control form-control-sm" data-column="sending_bank" placeholder="Filter" aria-label="Filter sending bank" maxlength="150"></th>
        <th><input type="text" class="form-control form-control-sm" data-column="receiving_bank" placeholder="Filter" aria-label="Filter receiving bank" maxlength="150"></th>
        <th><input type="text" class="form-control form-control-sm" data-column="party" placeholder="Filter" aria-label="Filter sender or receiver" maxlength="150"></th>
        <th><input type="text" class="form-control form-control-sm" data-column="purpose" placeholder="Filter" aria-label="Filter purpose" maxlength="150"></th>
        <th><input type="number" class="form-control form-control-sm" data-column="amount" placeholder="Amount" aria-label="Filter exact amount" min="0" step="0.01"></th>
-       <th><select class="form-select form-select-sm" data-column="status" aria-label="Filter status"><option value="">All</option><option value="pending">Pending</option><option value="confirmed">Confirmed</option></select></th>
+       <th><select class="form-control form-control-sm online-native-column-select" data-column="status" aria-label="Filter status"><option value="">All</option><option value="pending">Pending</option><option value="confirmed">Confirmed</option></select></th>
        <th></th><th></th>
       </tr>
      </thead>
@@ -143,6 +146,7 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
  <div class="modal-dialog modal-dialog-centered modal-lg" role="document"><div class="modal-content">
   <div class="modal-header"><h5 class="modal-title">Online Transaction History</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
   <div class="modal-body"><p class="font-weight-bold" id="online-history-ref"></p>
+   <div id="online-eligibility-status" class="alert alert-light border small" role="status">Loading source eligibility...</div>
    <div class="table-responsive online-history-table"><table class="table table-sm table-bordered">
     <thead><tr><th>Time / Actor</th><th>From → To</th><th>Bank Statement Ref</th><th>Verification Date</th><th>Original Amount</th><th>Remarks</th></tr></thead>
     <tbody id="online-history-rows"></tbody></table></div>
@@ -211,7 +215,7 @@ $(function(){
  }
  function initSelects(){
   if(typeof window.TomSelect==='undefined'){toast('TomSelect failed to load. Refresh the page.',true);return;}
-  $('.online-register-page select,#online-entry-modal select').each(function(){
+  $('#online-filters select,#online-per-page,#online-entry-modal select').each(function(){
    if(this.tomselect)return;
    var el=this;
    new TomSelect(el,{persist:false,create:false,maxItems:1,allowEmptyOption:true,
@@ -428,12 +432,19 @@ $(function(){
  $rows.on('click','.online-history-button',function(){
   var $button=$(this),id=String($button.attr('data-id'));
   $('#online-history-ref').text('Reference: '+($button.attr('data-reference')||''));
+  $('#online-eligibility-status').removeClass('alert-success alert-warning').addClass('alert-light')
+   .text('Checking confirmed-source eligibility...');
   var $body=$('#online-history-rows').empty();
   $('<tr>').append($('<td colspan="6" class="text-center">').text('Loading history...')).appendTo($body);
   $('#online-history-modal').modal('show');
   $.ajax({url:historyUrlTemplate.replace('__ONLINE_ID__',id),dataType:'json'})
    .done(function(result){
     $body.empty();
+    var eligibility=result.eligibility||{};
+    $('#online-eligibility-status')
+      .removeClass('alert-light alert-success alert-warning')
+      .addClass(eligibility.eligible?'alert-success':'alert-warning')
+      .text((eligibility.eligible?'Eligible for future bank voucher: ':'Not eligible: ')+(eligibility.reason||'Verification pending.')+' No posting is performed here.');
     var events=result.events||[];
     if(!events.length){
      $('<tr>').append($('<td colspan="6" class="text-muted text-center">')
@@ -451,6 +462,7 @@ $(function(){
     });
    }).fail(function(xhr){
     var msg=xhr.responseJSON&&xhr.responseJSON.message?xhr.responseJSON.message:'Unable to load history.';
+    $('#online-eligibility-status').removeClass('alert-success').addClass('alert-warning').text('Eligibility could not be checked.');
     $body.empty().append($('<tr>').append($('<td colspan="6" class="text-danger">').text(msg)));
    });
  });

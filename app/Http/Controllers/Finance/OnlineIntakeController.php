@@ -262,6 +262,56 @@ final class OnlineIntakeController extends Controller
         ])->header('Cache-Control','private, no-store');
     }
 
+    public function eligible(Request $request)
+    {
+        $this->ready();
+        abort_unless(Schema::hasTable('finance_online_confirmation_events')
+            && Schema::hasTable('finance_online_voucher_claims'),409,
+            'Online eligibility migration has not been applied.');
+        $project=$this->project();
+        $input=$request->validate([
+            'type'=>['nullable',Rule::in(['receipt','payment'])],
+            'search'=>['nullable','string','max:120'],
+            'per_page'=>['nullable','integer','in:10,25,50'],
+            'page'=>['nullable','integer','min:1'],
+        ]);
+        $query=DB::table('finance_online_intakes as i')
+            ->where('i.project_id',$project)
+            ->where('i.status','confirmed')
+            ->whereExists(function($q)use($project){
+                $q->selectRaw('1')->from('finance_online_confirmation_events as e')
+                    ->whereColumn('e.online_intake_id','i.id')
+                    ->where('e.project_id',$project)
+                    ->where('e.from_status','pending')
+                    ->where('e.to_status','confirmed')
+                    ->whereColumn('e.original_amount','i.amount')
+                    ->whereColumn('e.transaction_type','i.type');
+            })
+            ->whereNotExists(function($q)use($project){
+                $q->selectRaw('1')->from('finance_online_voucher_claims as l')
+                    ->whereColumn('l.online_intake_id','i.id')
+                    ->where('l.project_id',$project);
+            });
+        if(!empty($input['type'])) $query->where('i.type',$input['type']);
+        if(!empty($input['search'])) {
+            $query->where('i.reference','like','%'.$input['search'].'%');
+        }
+        $page=$query->orderByDesc('i.id')->paginate((int)($input['per_page']??25),[
+            'i.id','i.project_id','i.reference','i.transaction_date','i.type',
+            'i.amount','i.sending_bank','i.sending_account','i.receiving_bank',
+            'i.receiving_account','i.sender_name','i.receiver_name','i.account_mapping_id',
+            'i.purpose','i.status',
+        ],'page',(int)($input['page']??1));
+        return response()->json([
+            'data'=>$page->items(),
+            'total'=>$page->total(),
+            'current_page'=>$page->currentPage(),
+            'last_page'=>$page->lastPage(),
+            'per_page'=>$page->perPage(),
+            'message'=>'Read-only verified sources. No bank voucher is created from this endpoint.',
+        ])->header('Cache-Control','private, no-store');
+    }
+
     public function history(int $id)
     {
         $this->ready();
@@ -272,6 +322,24 @@ final class OnlineIntakeController extends Controller
             ->where('project_id',$project)->where('id',$id)
             ->first(['id','reference','amount','type','status','transaction_date','created_by','created_at']);
         abort_unless($record,404);
+        $eligibleForFutureVoucher=false;
+        $eligibilityReason=$record->status==='pending'
+            ? 'Pending bank verification.'
+            : 'Confirmation evidence or voucher-claim migration unavailable.';
+        if(Schema::hasTable('finance_online_voucher_claims')){
+            $linked=DB::table('finance_online_voucher_claims')
+                ->where('project_id',$project)->where('online_intake_id',$id)->exists();
+            $evidence=DB::table('finance_online_confirmation_events')
+                ->where('project_id',$project)->where('online_intake_id',$id)
+                ->where('from_status','pending')->where('to_status','confirmed')
+                ->where('original_amount',$record->amount)->where('transaction_type',$record->type)->exists();
+            $eligibleForFutureVoucher=$record->status==='confirmed'&&$evidence&&!$linked;
+            $eligibilityReason=$linked
+                ? 'Source already linked to a voucher; it cannot be reused.'
+                : (!$evidence?'Confirmed bank-verification evidence is missing.'
+                    : ($record->status!=='confirmed'?'Only Confirmed sources are eligible.'
+                       :'Verified source is available for a future bank voucher.'));
+        }
         $events=DB::table('finance_online_confirmation_events as e')
             ->leftJoin('users as u','u.id','=','e.actor_id')
             ->where('e.project_id',$project)->where('e.online_intake_id',$id)
@@ -279,7 +347,14 @@ final class OnlineIntakeController extends Controller
             ->get(['e.id','e.from_status','e.to_status','e.verification_date',
                 'e.statement_reference','e.remarks','e.original_amount',
                 'e.transaction_type','e.actor_id','e.confirmed_at','u.name as actor_name']);
-        return response()->json(['transaction'=>$record,'events'=>$events])
+        return response()->json([
+            'transaction'=>$record,'events'=>$events,
+            'eligibility'=>[
+                'eligible'=>$eligibleForFutureVoucher,
+                'reason'=>$eligibilityReason,
+                'voucher_posted_by_this_module'=>false,
+            ]
+        ])
             ->header('Cache-Control','private, no-store');
     }
 
