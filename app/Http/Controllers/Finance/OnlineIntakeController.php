@@ -79,10 +79,17 @@ final class OnlineIntakeController extends Controller
         }
         $page=$query->orderByDesc('id')->paginate((int)($input['per_page']??25),[
             'id','reference','transaction_date','amount','type','sending_bank','receiving_bank',
-            'sender_name','receiver_name','purpose','status','account_mapping_id'
+            'sender_name','receiver_name','purpose','status','account_mapping_id','proof_path'
         ],'page',(int)($input['page']??1));
+        $rows=collect($page->items())->map(function($row){
+            $row->has_proof=(bool)$row->proof_path;
+            $row->proof_url=$row->has_proof
+                ? route('finance.online.proof',['id'=>$row->id]) : null;
+            unset($row->proof_path);
+            return $row;
+        })->all();
         return response()->json([
-            'data'=>$page->items(),'total'=>$page->total(),
+            'data'=>$rows,'total'=>$page->total(),
             'current_page'=>$page->currentPage(),'last_page'=>$page->lastPage(),
             'per_page'=>$page->perPage(),'from'=>$page->firstItem(),'to'=>$page->lastItem(),
         ])->header('Cache-Control','private, no-store');
@@ -119,7 +126,7 @@ final class OnlineIntakeController extends Controller
             ]);
         }
         $reference=trim($data['reference']);
-        $referenceKey=strtoupper($reference);
+        $referenceKey=mb_strtoupper($reference,'UTF-8');
         if(DB::table('finance_online_intakes')->where('project_id',$project)
             ->where('reference_key',$referenceKey)->exists()){
             throw ValidationException::withMessages([

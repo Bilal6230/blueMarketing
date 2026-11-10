@@ -27,3 +27,7 @@
 
 ## Next milestone
 02.2: Pending → Confirmed with mandatory bank statement/audit verification, confirmation actor/time, audit history and state locking. No automatic bank voucher posting.
+
+## 2026-11-10 — Complete code milestone 02.1
+- Implemented controller, migration, online register Blade, classic/v2 sidebar links and authenticated routes. Static verification: route endpoints, unique project/ref index, transaction type and account mapping validators, pending only, non-posting, private proof and returned proof download URLs. Browser test pending.
+- Any bank confirmation/ledger voucher remains prohibited until separately approved 02.2/04 gate.
