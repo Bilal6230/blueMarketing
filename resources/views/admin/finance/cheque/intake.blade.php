@@ -307,7 +307,7 @@ $(function () {
         }).text('Print').appendTo($slip);
         $slip.appendTo($tr);
         var $actions=$('<td>').addClass('text-nowrap');
-        if(r.status==='received') {
+        if(@json(auth()->user()->can('create voucher')) && r.status==='received') {
             $('<button type="button">').addClass('btn btn-sm btn-outline-success mr-1 cheque-action')
                 .attr('data-id',r.id).attr('data-cheque',r.cheque_number)
                 .attr('data-amount',r.amount).attr('data-kind','clearing').text('Send for Clearing').appendTo($actions);
