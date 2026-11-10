@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Finance;
 
 use App\Http\Controllers\Controller;
+use App\Models\ProjectHeadSubhead;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -29,13 +30,24 @@ final class ChequeIntakeController extends Controller
     {
         $this->ready();
         $project = $this->project();
-        $customers = DB::table('leads')->where('project_id', $project)
-            ->orderBy('first_name')->get(['id', 'first_name', 'last_name']);
+        // CR Voucher uses the same active project account mappings.
+        $accountMappings = ProjectHeadSubhead::availableForPosting()
+            ->with(['headAccounting:id,name','subheadAccounting:id,name'])
+            ->where('project_id',$project)->orderBy('head_accounting_id')
+            ->orderBy('subhead_accounting_id')->get()
+            ->map(fn($account) => [
+                'id'=>(int)$account->id,
+                'head_id'=>(int)$account->head_accounting_id,
+                'head_name'=>(string)($account->headAccounting?->name ?? ''),
+                'subhead_id'=>(int)$account->subhead_accounting_id,
+                'subhead_name'=>(string)($account->subheadAccounting?->name ?? ''),
+            ]);
+        $headAccounts = $accountMappings->unique('head_id')->values();
         $bankAccounts = Schema::hasTable('project_bank_accounts')
             ? DB::table('project_bank_accounts')->where('project_id', $project)
                 ->where('is_active', 1)->orderBy('bank_name')->get(['id', 'bank_name', 'account_title', 'branch'])
             : collect();
-        return view('admin.finance.cheque.intake', compact('customers', 'bankAccounts'));
+        return view('admin.finance.cheque.intake', compact('accountMappings', 'headAccounts', 'bankAccounts'));
     }
 
     public function data(Request $request)
@@ -45,7 +57,7 @@ final class ChequeIntakeController extends Controller
         $filters = $request->validate([
             'from' => ['nullable', 'date_format:Y-m-d'],
             'to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
-            'customer_id' => ['nullable', 'integer', Rule::exists('leads', 'id')->where('project_id', $project)],
+            'account_mapping_id' => ['nullable','integer',Rule::exists('project_head_subheads','id')->where('project_id',$project)],
             'search' => ['nullable', 'string', 'max:150'],
             'cheque_number' => ['nullable', 'string', 'max:100'],
             'bank_name' => ['nullable', 'string', 'max:150'],
@@ -58,7 +70,7 @@ final class ChequeIntakeController extends Controller
         $query = DB::table('finance_cheque_intakes as c')->where('c.project_id', $project);
         if (!empty($filters['from'])) $query->whereDate('c.received_date', '>=', $filters['from']);
         if (!empty($filters['to'])) $query->whereDate('c.received_date', '<=', $filters['to']);
-        if (!empty($filters['customer_id'])) $query->where('c.customer_id', (int) $filters['customer_id']);
+        if (!empty($filters['account_mapping_id'])) $query->where('c.account_mapping_id',(int)$filters['account_mapping_id']);
         if (!empty($filters['status'])) $query->where('c.status', $filters['status']);
         foreach (['cheque_number', 'bank_name', 'received_from', 'purpose'] as $column) {
             if (!empty($filters[$column])) {
@@ -72,12 +84,12 @@ final class ChequeIntakeController extends Controller
                     ->orWhere('c.bank_name', 'like', $search)
                     ->orWhere('c.received_from', 'like', $search)
                     ->orWhere('c.purpose', 'like', $search)
-                    ->orWhere('c.remarks', 'like', $search);
+                    ->orWhere('c.cheque_title','like',$search);
             });
         }
         $page = $query->orderByDesc('c.id')
             ->paginate((int) ($filters['per_page'] ?? 25), ['c.id', 'c.cheque_number', 'c.cheque_date', 'c.received_date',
-                'c.amount', 'c.bank_name', 'c.received_from', 'c.purpose', 'c.status'], 'page', (int) ($filters['page'] ?? 1));
+                'c.amount', 'c.bank_name', 'c.received_from', 'c.purpose', 'c.status', 'c.direction','c.cheque_title'], 'page', (int) ($filters['page'] ?? 1));
         return response()->json([
             'data' => $page->items(),
             'total' => $page->total(),
@@ -96,12 +108,18 @@ final class ChequeIntakeController extends Controller
         $cheque = DB::table('finance_cheque_intakes')
             ->where('project_id', $project)->where('id', $id)->first();
         abort_unless($cheque, 404);
-        $customer = DB::table('leads')->where('project_id', $project)
-            ->where('id', $cheque->customer_id)->first(['first_name','last_name']);
+        $mapping = $cheque->account_mapping_id
+            ? ProjectHeadSubhead::with(['headAccounting:id,name','subheadAccounting:id,name'])
+                ->where('project_id',$project)->where('id',$cheque->account_mapping_id)->first()
+            : null;
+        $customer = $cheque->customer_id
+            ? DB::table('leads')->where('project_id',$project)->where('id',$cheque->customer_id)
+                ->first(['first_name','last_name'])
+            : null;
         $receiver = DB::table('users')->where('id', $cheque->created_by)->value('name');
         $slipNumber = 'CHR-'. $project .'-'. str_pad((string) $cheque->id, 6, '0', STR_PAD_LEFT);
         return response()->view('admin.finance.cheque.receiving_slip', compact(
-            'cheque', 'customer', 'receiver', 'slipNumber'
+            'cheque', 'customer', 'mapping', 'receiver', 'slipNumber'
         ))->header('Cache-Control', 'private, no-store, max-age=0');
     }
 
@@ -194,7 +212,8 @@ final class ChequeIntakeController extends Controller
                 'a.memo_path','a.actor_id','a.created_at','u.name as actor_name']);
         return response()->json([
             'cheque' => ['id' => $cheque->id, 'cheque_number' => $cheque->cheque_number,
-                'status' => $cheque->status, 'amount' => $cheque->amount],
+                'status' => $cheque->status, 'amount' => $cheque->amount,
+                'direction' => $cheque->direction],
             'events' => $events->map(function ($event) use ($id) {
                 $event->has_memo = (bool) $event->memo_path;
                 $event->memo_url = $event->has_memo
@@ -313,17 +332,26 @@ final class ChequeIntakeController extends Controller
         $project = $this->project();
         $data = $request->validate([
             'cheque_number' => ['required', 'string', 'max:100', 'regex:/^[A-Za-z0-9\\/_-]+$/D'],
+            'cheque_title' => ['required','string','max:200'],
+            'direction' => ['required',Rule::in(['in','out'])],
+            'head_accounting_id' => ['required','integer'],
+            'subhead_accounting_id' => ['required','integer'],
             'cheque_date' => ['required', 'date_format:Y-m-d'],
             'received_date' => ['required', 'date_format:Y-m-d'],
             'amount' => ['required', 'regex:/^[0-9]{1,13}(?:\\.[0-9]{1,2})?$/D', 'not_in:0,0.0,0.00'],
             'bank_name' => ['required', 'string', 'max:150'],
             'branch' => ['nullable', 'string', 'max:150'],
             'received_from' => ['required', 'string', 'max:150'],
-            'customer_id' => ['required', 'integer', Rule::exists('leads', 'id')->where('project_id', $project)],
             'purpose' => ['required', 'string', 'max:500'],
-            'remarks' => ['nullable', 'string', 'max:2000'],
             'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
         ]);
+        $account = ProjectHeadSubhead::availableForPosting()
+            ->where('project_id',$project)
+            ->where('head_accounting_id',(int)$data['head_accounting_id'])
+            ->where('subhead_accounting_id',(int)$data['subhead_accounting_id'])->first();
+        if (!$account) {
+            throw ValidationException::withMessages(['subhead_accounting_id'=>'Select a valid Head / Child Account for the current project.']);
+        }
         $number = strtoupper(trim($data['cheque_number']));
         $bank = trim($data['bank_name']);
         if (DB::table('finance_cheque_intakes')->where('project_id', $project)
@@ -337,7 +365,10 @@ final class ChequeIntakeController extends Controller
             }
             $id = DB::table('finance_cheque_intakes')->insertGetId([
                 'project_id' => $project,
-                'customer_id' => (int) $data['customer_id'],
+                'customer_id' => $account->customer_id ? (int)$account->customer_id : null,
+                'account_mapping_id' => (int)$account->id,
+                'cheque_title' => trim($data['cheque_title']),
+                'direction' => $data['direction'],
                 'cheque_number' => $number,
                 'cheque_date' => $data['cheque_date'],
                 'received_date' => $data['received_date'],
@@ -346,7 +377,6 @@ final class ChequeIntakeController extends Controller
                 'branch' => $data['branch'] ?? null,
                 'received_from' => trim($data['received_from']),
                 'purpose' => trim($data['purpose']),
-                'remarks' => $data['remarks'] ?? null,
                 'attachment_path' => $path,
                 'status' => 'received',
                 'created_by' => (int) $request->user()->id,
@@ -366,7 +396,7 @@ final class ChequeIntakeController extends Controller
         // This receiving record never creates customer_ledger or ledgers entries.
         $record = DB::table('finance_cheque_intakes')->where('project_id', $project)->where('id', $id)
             ->first(['id', 'cheque_number', 'cheque_date', 'received_date', 'amount',
-                'bank_name', 'received_from', 'purpose', 'status']);
+                'bank_name', 'received_from', 'purpose', 'status','direction','cheque_title']);
         if ($request->expectsJson()) {
             return response()->json([
                 'status' => 'success',
