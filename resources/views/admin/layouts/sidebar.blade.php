@@ -633,13 +633,16 @@
 
                 @canany(['read setting', 'filemanager'])
                     <li class="nav-item">
-                        <a href="#" class="nav-link  {{ request()->routeIs('setting*') ? 'active' : '' }}">
+                        <a href="#" class="nav-link  {{ request()->routeIs('setting*','finance.voucher-settings.*') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-wrench"></i>
                             <p>Setting<i class="right fas fa-angle-left"></i></p>
                         </a>
                         <ul class="nav nav-treeview"
-                            style="display: {{ request()->routeIs('setting*') ? 'block' : 'none' }};">
+                            style="display: {{ request()->routeIs('setting*','finance.voucher-settings.*') ? 'block' : 'none' }};">
                             @can('read setting')
+                                @if(\App\Http\Controllers\Finance\VoucherController::canAccessFinanceApprovalsForUser(auth()->user()))
+                                <li class="nav-item"><a href="{{ route('finance.voucher-settings.index') }}" class="nav-link {{ request()->routeIs('finance.voucher-settings.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Voucher Settings</p></a></li>
+                                @endif
                                 <li class="nav-item">
                                     <a href="{{ route('setting.index') }}"
                                         class="nav-link {{ request()->routeIs('setting.index') ? 'active' : '' }}">

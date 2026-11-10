@@ -24,3 +24,10 @@
 
 ### Next
 03.2 — per-type approval settings and selected approver permissions; do not implement before 03.1 browser PASS.
+
+## 2026-11-10 — Milestone 03.1 browser PASS; 03.2 policy configuration
+- Owner explicitly confirmed Common Voucher UI & Print **browser PASS**. Milestone 03.1 CLOSED.
+- Inspected existing `DailyVoucherApprovalWorkflow`: only CR/CP/JV have real inactive-until-approval enforcement, project-scoped selected approver and rejection audit. Extending approval_required=ON to unsupported types would be unsafe.
+- Added centralized project-scoped **Definitions & Settings → Voucher Settings** page, covering required voucher labels; CR/CP/JV approval ON/OFF and authorized approver are editable, unsupported types clearly locked. No unsupported approval policy can be saved (backend rejects it).
+- Reuses `daily_voucher_approval_policies`; no schema, no new posting, no existing source rewrites. Config saves via jQuery AJAX with SweetAlert2 confirmation, validation/error and success responses, manager & read/update setting guards, project-scoped approver validation.
+- Owner browser PASS required before 03.3; pending queue/decisions remain on existing Approval Dashboard.

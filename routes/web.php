@@ -380,6 +380,11 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::get('/data', 'data')->name('data');
         Route::get('/sources/{customerLedger}/print', 'printSource')->whereNumber('customerLedger')->name('source.print');
     });
+    Route::get('finance/voucher-settings', [\App\Http\Controllers\Finance\VoucherSettingsController::class,'index'])
+        ->middleware('permission:read setting')->name('finance.voucher-settings.index');
+    Route::post('finance/voucher-settings', [\App\Http\Controllers\Finance\VoucherSettingsController::class,'save'])
+        ->middleware(['permission:update setting','throttle:20,1'])->name('finance.voucher-settings.save');
+
     Route::middleware(['permission:read voucher'])->prefix('finance/daily-vouchers/approvals')->name('finance.daily-vouchers.approvals.')
         ->controller(App\Http\Controllers\Finance\DailyVoucherApprovalController::class)->group(function () {
             Route::get('/', 'index')->name('index');

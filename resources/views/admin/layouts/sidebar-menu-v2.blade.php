@@ -8,7 +8,7 @@
 
 <li class="nav-header">MAIN MENU</li>
 @canany(['read setting','read project','read user','read role','read permission','read landing page','read accounting','read plot'])
-<li class="nav-item {{ $tree(['setting.*','project.*','area.*','accounting.*','user.*','role.*','permission.*','landing-page.*','filemanager','project.plot-definitions.*','employee-definitions.*'])?'menu-open':'' }}"><a href="#" class="nav-link"><i class="nav-icon fas fa-cogs"></i><p>Definitions & Settings<i class="right fas fa-angle-left"></i></p></a><ul class="nav nav-treeview">
+<li class="nav-item {{ $tree(['setting.*','finance.voucher-settings.*','project.*','area.*','accounting.*','user.*','role.*','permission.*','landing-page.*','filemanager','project.plot-definitions.*','employee-definitions.*'])?'menu-open':'' }}"><a href="#" class="nav-link"><i class="nav-icon fas fa-cogs"></i><p>Definitions & Settings<i class="right fas fa-angle-left"></i></p></a><ul class="nav nav-treeview">
  @can('read landing page')<li class="nav-item"><a href="{{ route('landing-page.admin.index') }}" class="nav-link {{ request()->routeIs('landing-page.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Landing Page Manager</p></a></li>@endcan
  @can('read project')<li class="nav-item"><a href="{{ route('project.index') }}" class="nav-link {{ request()->routeIs('project.index')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Projects</p></a></li>@endcan
  @can('read sector')<li class="nav-item"><a href="{{ route('project.zone.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Sectors</p></a></li>@endcan
@@ -17,7 +17,10 @@
  @can('read user')<li class="nav-item"><a href="{{ route('accounting.head_index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Main Accounts</p></a></li><li class="nav-item"><a href="{{ route('accounting.subhead_index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Party Accounts</p></a></li><li class="nav-item"><a href="{{ route('accounting.category_index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Joint Accounts</p></a></li>@endcan
  @can('read user')<li class="nav-item"><a href="{{ route('employee-definitions.index') }}" class="nav-link {{ request()->routeIs('employee-definitions.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Employee Setup</p></a></li>@endcan
  @can('read accounting')<li class="nav-item"><a href="{{ route('accounting.Accountant') }}" class="nav-link {{ request()->routeIs('accounting.Accountant*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Accountant</p></a></li>@endcan
- @can('read setting')<li class="nav-item"><a href="{{ route('setting.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>System Settings</p></a></li>@endcan
+ @can('read setting')
+ <li class="nav-item"><a href="{{ route('setting.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>System Settings</p></a></li>
+ @if($canFinanceApprovals)<li class="nav-item"><a href="{{ route('finance.voucher-settings.index') }}" class="nav-link {{ request()->routeIs('finance.voucher-settings.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Voucher Settings</p></a></li>@endif
+ @endcan
  @can('filemanager')<li class="nav-item"><a href="{{ route('filemanager') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>File Manager</p></a></li>@endcan
 </ul></li>
 @endcanany
