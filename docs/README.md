@@ -22,3 +22,10 @@ This is a new documentation starting point for the `upgrade/laravel-framework` b
 **Current phase:** Not started. The first phase will be defined from the latest client requirements and a new code audit.
 
 **Browser test gate:** Pending. No phase may be marked complete without the owner's browser PASS.
+
+
+## Active client requirement delivery
+- [Point 03 Roman Urdu source](./BLUEMARKETING_POINT03_DAILY_ENTRIES_REQUIREMENTS_ROMAN_URDU.md)
+- [Point 03 strict phase roadmap](./POINT03_DAILY_ENTRIES_PHASE_ROADMAP.md)
+- [Active Phase 01 Cheque worklog](./POINT03_PHASE_01_CHEQUE_WORKLOG.md)
+- Phase 01 must pass the owner's browser verification before Phase 02 can begin.
