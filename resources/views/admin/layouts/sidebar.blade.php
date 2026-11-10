@@ -217,10 +217,11 @@
                             <p>Vouchers<i class="right fas fa-angle-left"></i></p>
                         </a>
                         <ul class="nav nav-treeview"
-                            style="display: {{ request()->routeIs('finance.voucher*', 'finance.daily-vouchers.*') ? 'block' : 'none' }};">
+                            style="display: {{ request()->routeIs('finance.voucher*', 'finance.daily-vouchers.*', 'finance.cheques.*', 'finance.online.*') ? 'block' : 'none' }};">
 
 
                             @can('read voucher')
+                                <li class="nav-item"><a href="{{ route('finance.online.index') }}" class="nav-link {{ request()->routeIs('finance.online.*') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Online Transactions</p></a></li>
                                 <li class="nav-item"><a href="{{ route('finance.cheques.index') }}" class="nav-link {{ request()->routeIs('finance.cheques.*') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Cheque Management</p></a></li>
                                 <li class="nav-item">
                                     <a href="{{ route('finance.daily-vouchers.index') }}" class="nav-link {{ request()->routeIs('finance.daily-vouchers.*') ? 'active' : '' }}">

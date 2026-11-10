@@ -289,6 +289,16 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
 
     });
 
+    // Phase 02.1: online receipt/payment source capture only; no bank voucher posting.
+    Route::get('finance/online-transactions', [\App\Http\Controllers\Finance\OnlineIntakeController::class,'index'])
+        ->middleware('permission:read voucher')->name('finance.online.index');
+    Route::get('finance/online-transactions/data', [\App\Http\Controllers\Finance\OnlineIntakeController::class,'data'])
+        ->middleware('permission:read voucher')->name('finance.online.data');
+    Route::get('finance/online-transactions/{id}/proof', [\App\Http\Controllers\Finance\OnlineIntakeController::class,'proof'])
+        ->whereNumber('id')->middleware('permission:read voucher')->name('finance.online.proof');
+    Route::post('finance/online-transactions', [\App\Http\Controllers\Finance\OnlineIntakeController::class,'store'])
+        ->middleware(['permission:create voucher','throttle:20,1'])->name('finance.online.store');
+
     // Phase 01: receipt-only cheque intake; deliberately separate from cash voucher posting.
     Route::get('finance/cheques', [\App\Http\Controllers\Finance\ChequeIntakeController::class, 'index'])
         ->middleware('permission:read voucher')->name('finance.cheques.index');
