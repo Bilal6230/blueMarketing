@@ -132,3 +132,6 @@
 - Added distinct colored Direction column: IN received versus OUT issued, regardless of shared cleared status.
 - Added TomSelect Direction filter (All/IN/OUT), project-scoped backend filtering, reset, and updated 11-column skeleton and empty states.
 - No migration or data updates; Phase 02 stays gated until owner's browser PASS.
+
+## 2026-11-10 — Milestone 01.4 final browser PASS
+- Owner explicitly confirmed IN/OUT badge and direction filter browser testing PASS. Marked 01.4 and Phase 01 COMPLETE. Phase 02.1 allowed to start; no Phase 03 work yet.
