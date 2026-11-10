@@ -120,3 +120,5 @@
 - OUT cheque Send for Clearing hides/disables bank field, submits without bank account and backend validates its direction from DB under row lock. IN still mandates current project's active deposit bank. OUT retains issuing-bank details for audit; later Mark Cleared accepts OUT without a deposit-bank ID.
 - Fixed hardcoded received status update preventing issued cheque transitioning to pending_clearing; row-count check prevents silently confirming an unmodified status. No accounting postings.
 - Source checks run; actual browser PASS pending. Milestone 01.4 remains open.
+
+- Follow-up state consistency: native form reset explicitly synchronizes TomSelect direction/Head/Child values; filter reset synchronizes TomSelect; clearing bank TomSelect disabled for OUT and re-enabled for IN. Invalid selects highlight visible TomSelect controls.

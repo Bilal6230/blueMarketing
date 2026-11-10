@@ -308,17 +308,20 @@ $(function () {
     function fieldError($input,message) {
         var $group=$input.closest('.form-group');
         $input.addClass('is-invalid').attr('aria-invalid','true');
+        $input.next('.ts-wrapper').addClass('is-invalid');
         if ($input.is('[type=file]')) $('#cheque-upload').addClass('is-invalid');
         $group.find('.cheque-field-error').remove();
         $('<small>').addClass('cheque-field-error').text(message).appendTo($group);
     }
     function clearError($input) {
         $input.removeClass('is-invalid').removeAttr('aria-invalid');
+        $input.next('.ts-wrapper').removeClass('is-invalid');
         $input.closest('.form-group').find('.cheque-field-error').remove();
         if ($input.is('[type=file]')) $('#cheque-upload').removeClass('is-invalid');
     }
     function clearErrors() {
         $form.find('.is-invalid').removeClass('is-invalid').removeAttr('aria-invalid');
+        $form.find('.ts-wrapper.is-invalid').removeClass('is-invalid');
         $form.find('.cheque-field-error').remove();
         $('#cheque-upload').removeClass('is-invalid');
     }
@@ -357,6 +360,8 @@ $(function () {
         $form.find('[name=received_date]').val(@json(date('Y-m-d')));
         $('#cheque-file-name').text('No file selected');
         clearErrors();
+        setTs($('#cheque-direction'),'in');
+        setTs($head,'');
         refreshChildren('',false);
         $('#cheque-direction').trigger('change');
     }
@@ -448,7 +453,14 @@ $(function () {
     }
     $('#cheque-add-btn').on('click',function(){clearErrors();$create.modal('show');});
     $('#cheque-filter-form').on('submit',function(e){e.preventDefault();load(1);});
-    $('#cheque-reset').on('click',function(){$('#cheque-filter-form').trigger('reset');$('#cheque-quick-search').val('');$('.cheque-column-filters [data-column]').val('');load(1);});
+    $('#cheque-reset').on('click',function(){
+        $('#cheque-filter-form').trigger('reset');
+        setTs($('#cheque-customer'),'');
+        setTs($('#cheque-status'),'');
+        $('#cheque-quick-search').val('');
+        $('.cheque-column-filters [data-column]').val('');
+        load(1);
+    });
     $('#cheque-per-page').on('change',function(){load(1);});
     $('#cheque-quick-search,.cheque-column-filters [data-column]').on('input',function(){clearTimeout(searchTimer);searchTimer=setTimeout(function(){load(1);},300);});
     // Reuse the same SweetAlert2 dialogs as the CR voucher. Keep the cheque form open behind them.
@@ -589,7 +601,13 @@ $(function () {
         var incoming=($button.attr('data-direction')||'in')!=='out';
         actionTarget.direction=incoming?'in':'out';
         $('#cheque-clearing-account-group').toggle(kind==='clearing'&&incoming);
-        $('#cheque-action-bank-account').prop('disabled',kind!=='clearing'||!incoming);
+        var bankSelect=$('#cheque-action-bank-account');
+        var bankDisabled=kind!=='clearing'||!incoming;
+        bankSelect.prop('disabled',bankDisabled);
+        if(bankSelect[0]&&bankSelect[0].tomselect){
+            if(bankDisabled)bankSelect[0].tomselect.disable();
+            else bankSelect[0].tomselect.enable();
+        }
         $('.cheque-withdrawal-only,#cheque-action-bank-name-group,#cheque-action-branch-group').toggle(kind==='withdrawal');
         $modal.modal('show');
     });
