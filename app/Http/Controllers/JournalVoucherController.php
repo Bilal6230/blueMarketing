@@ -105,8 +105,10 @@ class JournalVoucherController extends Controller
                     ->pluck('display_number', 'source_id')
                 : collect();
 
-            // Prepare the data, including the "actions" column
-            $data = $vouchers->map(function ($voucher) use ($displayNumbers) {
+            $approvalStatuses = app(\App\Services\Finance\VoucherApprovalStatusReader::class)->forSources((int)$selectedProjectId,'journal_vouchers',$vouchers->pluck('id'));
+            $data = $vouchers->map(function ($voucher) use ($displayNumbers,$approvalStatuses) {
+                $approval=$approvalStatuses[$voucher->id]??null;
+                $status=$approval['status']??(string)($voucher->status??'posted');
                 return [
                     'id' => $voucher->id,
                     'voucher_number' => $displayNumbers[$voucher->id] ?? ('JV-' . get_jv_number($voucher->voucher_number)),
@@ -114,6 +116,9 @@ class JournalVoucherController extends Controller
                     'date' => $voucher->date,
                     'description' => $voucher->description,
                     'total_debit' => $voucher->total_debit,
+                    'approval_status' => ucfirst($status),
+                    'approval_approver' => $approval['approver']??null,
+                    'approval_reason' => $approval['reason']??null,
                     'actions' => view('admin.reports.vouchers.actions', compact('voucher'))->render() // Render actions view
                 ];
             });
@@ -572,7 +577,12 @@ class JournalVoucherController extends Controller
             DB::transaction($post);
         }
 
-        return redirect()->route('journal.voucher.index')->with('success', 'Journal Voucher created successfully.');
+        $hasPendingApproval=\App\Models\DailyVoucherApproval::query()
+            ->where('project_id',(int)$selectedProjectId)->where('source_table','journal_vouchers')
+            ->where('submitted_by',(int)auth()->id())->where('status','pending')
+            ->where('created_at','>=',now()->subMinutes(2))->exists();
+        return redirect()->route('journal.voucher.index')->with('success',
+            $hasPendingApproval?'Journal Voucher saved — Pending Approval. Ledger posting is inactive until approval.':'Journal Voucher created successfully.');
     }
 
     // public function edit($id)

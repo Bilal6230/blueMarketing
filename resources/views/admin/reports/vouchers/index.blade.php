@@ -12,6 +12,7 @@
                         <h4 class="mb-0">{{ $title }}</h4>
                     </div>
                     <div class="card-body">
+                        @if(session('success'))<div class="alert alert-success" role="status">{{ session('success') }}</div>@endif
                         <div class="row {{ $type == 'SV' ? 'd-none' : '' }}">
                             <a href="{{ route('journal.voucher.create') }}" class="btn btn-success">
                                 <i class="fas fa-plus"></i> Add New Voucher
@@ -72,6 +73,7 @@
                                     <th style="background-color:black">Date</th>
                                     <th style="background-color:black">Description</th>
                                     <th style="background-color:black">Amount</th>
+                                    @if ($type === 'JV')<th style="background-color:black">Approval Status</th>@endif
                                     @if ($showActions)
                                         <th style="background-color:black">Actions</th>
                                     @endif
@@ -225,6 +227,18 @@
                         data: 'total_debit',
                         name: 'total_debit'
                     }
+                    @if ($type === 'JV')
+                    , {
+                        data: 'approval_status',orderable:false,searchable:false,
+                        render:function(value,type,row){
+                            if(type!=='display')return value||'';
+                            var states={pending:'warning',approved:'success',rejected:'danger',posted:'secondary'};
+                            var key=String(value||'posted').toLowerCase();
+                            var title=$('<span>').text(row.approval_approver?'Assigned: '+row.approval_approver:'').html();
+                            return '<span class="badge badge-'+(states[key]||'secondary')+'" title="'+title+'">'+$('<span>').text(value||'Posted').html()+'</span>';
+                        }
+                    }
+                    @endif
                     @if ($showActions)
                     , {
                         data: 'actions',

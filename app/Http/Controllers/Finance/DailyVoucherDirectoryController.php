@@ -68,7 +68,20 @@ final class DailyVoucherDirectoryController extends Controller
         $identities = app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class);
 
         if (Schema::hasTable('customer_ledger')) {
-            $query = DB::table('customer_ledger as source')->where('source.project_id', $projectId)->where('source.is_active', 1);
+            $query = DB::table('customer_ledger as source')->where('source.project_id', $projectId);
+            if(Schema::hasColumn('customer_ledger','deleted_at')) $query->whereNull('source.deleted_at');
+            if(Schema::hasTable('daily_voucher_approvals')){
+                $query->where(function($visible)use($projectId){
+                    $visible->where('source.is_active',1)
+                        ->orWhereExists(function($a)use($projectId){
+                            $a->selectRaw('1')->from('daily_voucher_approvals as approval')
+                              ->where('approval.project_id',$projectId)
+                              ->where('approval.source_table','customer_ledger')
+                              ->whereColumn('approval.source_id','source.id')
+                              ->whereIn('approval.status',['pending','rejected']);
+                        });
+                });
+            }else $query->where('source.is_active',1);
             if (!empty($filters['from'])) $query->whereDate('source.date', '>=', $filters['from']);
             if (!empty($filters['to'])) $query->whereDate('source.date', '<=', $filters['to']);
             if (!empty($filters['type'])) {
@@ -142,6 +155,7 @@ final class DailyVoucherDirectoryController extends Controller
                 ? DB::table('leads')->whereIn('id', $leadIds)->get()->keyBy('id')->map(function ($lead) {
                     return trim(implode(' ', array_filter([$lead->first_name ?? null, $lead->last_name ?? null]))) ?: (string) ($lead->business ?? '—');
                 }) : collect();
+            $sourceApprovals=app(\App\Services\Finance\VoucherApprovalStatusReader::class)->forSources($projectId,'customer_ledger',$sources->pluck('id'));
             foreach ($sources as $source) {
                 $series = $identities->series($projectId, 'customer_ledger', (int) $source->id);
                 $display = $identities->lookup($projectId, 'customer_ledger', (int) $source->id)
@@ -169,7 +183,8 @@ final class DailyVoucherDirectoryController extends Controller
                             ? trim(($linkedLines->first()->head_name ? $linkedLines->first()->head_name.' / ' : '').($linkedLines->first()->subhead_name ?: 'Account #'.$linkedLines->first()->account_id))
                             : '—'),
                     'amount' => (float) max((float) ($source->amount_in ?? 0), (float) ($source->amount_out ?? 0)),
-                    'status' => !empty($source->is_active) ? (!empty($source->is_approve) ? 'Approved' : 'Posted') : 'Inactive',
+                    'status' => ucfirst((string)($sourceApprovals[$source->id]['status']??(!empty($source->is_active)?'posted':'inactive'))),
+                    'approval_approver' => $sourceApprovals[$source->id]['approver']??null,
                     'detail' => (string) ($source->description ?? ''),
                     'audit' => array_filter([
                         'Prepared by' => $source->created_by ?? $source->create_by ?? null,
@@ -232,7 +247,11 @@ final class DailyVoucherDirectoryController extends Controller
                     ->where('vd.account_id', (int) $filters['account']));
             }
             $total += (clone $query)->count();
-            foreach ($query->orderByDesc('date')->orderByDesc('id')->limit($window)->get() as $voucher) {
+            $voucherResults=$query->orderByDesc('date')->orderByDesc('id')->limit($window)->get();
+            $voucherApprovals=$type==='JV'
+                ? app(\App\Services\Finance\VoucherApprovalStatusReader::class)->forSources($projectId,'journal_vouchers',$voucherResults->pluck('id'))
+                : [];
+            foreach ($voucherResults as $voucher) {
                 $actualType = (string) ($voucher->type ?? $type);
                 $detailsTable = $type === 'JV' ? 'journal_voucher_details' : 'commision_voucher_details';
                 $foreignKey = $type === 'JV' ? 'journal_voucher_id' : 'commision_voucher_id';
@@ -262,7 +281,9 @@ final class DailyVoucherDirectoryController extends Controller
                     'number' => $identities->lookup($projectId, $kind, (int) $voucher->id) ?: (string) $voucher->voucher_number,
                     'reference' => (string) ($voucher->reference ?? ''), 'account' => $lines[0]['account'] ?? '—',
                     'head' => $lines[0]['head'] ?? '—', 'subhead' => $lines[0]['subhead'] ?? '—',
-                    'amount' => (float) ($voucher->total_debit ?? 0), 'status' => ucfirst((string) ($voucher->status ?? 'posted')),
+                    'amount' => (float) ($voucher->total_debit ?? 0),
+                    'status' => ucfirst((string)($voucherApprovals[$voucher->id]['status']??($voucher->status??'posted'))),
+                    'approval_approver' => $voucherApprovals[$voucher->id]['approver']??null,
                     'detail' => (string) ($voucher->description ?? ''),
                     'lines' => $lines,
                     'audit' => array_filter([
