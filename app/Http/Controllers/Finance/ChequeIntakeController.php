@@ -85,6 +85,22 @@ final class ChequeIntakeController extends Controller
         ]);
     }
 
+    public function slip(int $id)
+    {
+        $this->ready();
+        $project = $this->project();
+        $cheque = DB::table('finance_cheque_intakes')
+            ->where('project_id', $project)->where('id', $id)->first();
+        abort_unless($cheque, 404);
+        $customer = DB::table('leads')->where('project_id', $project)
+            ->where('id', $cheque->customer_id)->first(['first_name','last_name']);
+        $receiver = DB::table('users')->where('id', $cheque->created_by)->value('name');
+        $slipNumber = 'CHR-'. $project .'-'. str_pad((string) $cheque->id, 6, '0', STR_PAD_LEFT);
+        return response()->view('admin.finance.cheque.receiving_slip', compact(
+            'cheque', 'customer', 'receiver', 'slipNumber'
+        ))->header('Cache-Control', 'private, no-store, max-age=0');
+    }
+
     public function store(Request $request)
     {
         abort_unless($request->user()?->can('create voucher'), 403);

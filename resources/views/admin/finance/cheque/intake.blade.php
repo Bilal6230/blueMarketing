@@ -88,17 +88,17 @@
             <div class="table-responsive">
                 <table class="table table-sm table-bordered table-hover" id="cheque-register-table">
                     <thead>
-                        <tr><th>#</th><th>Received Date</th><th>Cheque #</th><th>Bank</th><th>Received From</th><th>Purpose</th><th>Amount</th><th>Status</th></tr>
+                        <tr><th>#</th><th>Received Date</th><th>Cheque #</th><th>Bank</th><th>Received From</th><th>Purpose</th><th>Amount</th><th>Status</th><th>Slip</th></tr>
                         <tr class="cheque-column-filters">
                             <th></th><th></th>
                             <th><input class="form-control form-control-sm" data-column="cheque_number" placeholder="Filter"></th>
                             <th><input class="form-control form-control-sm" data-column="bank_name" placeholder="Filter"></th>
                             <th><input class="form-control form-control-sm" data-column="received_from" placeholder="Filter"></th>
                             <th><input class="form-control form-control-sm" data-column="purpose" placeholder="Filter"></th>
-                            <th></th><th></th>
+                            <th></th><th></th><th></th>
                         </tr>
                     </thead>
-                    <tbody id="cheque-table-body"><tr><td colspan="8" class="text-center text-muted py-4">Loading cheques...</td></tr></tbody>
+                    <tbody id="cheque-table-body"><tr><td colspan="9" class="text-center text-muted py-4">Loading cheques...</td></tr></tbody>
                 </table>
             </div>
             <div class="d-flex justify-content-between align-items-center flex-wrap mt-2">
@@ -153,6 +153,8 @@ $(function () {
     'use strict';
     var currentPage=1, listRequest=null, saveBusy=false, searchTimer=null, listSeq=0;
     var $form=$('#cheque-intake-form'), $create=$('#cheque-create-modal');
+    var slipUrlTemplate=@json(route('finance.cheques.slip',['id'=>'__CHEQUE_ID__']));
+    function slipUrl(id){return slipUrlTemplate.replace('__CHEQUE_ID__',String(id));}
     $('html,body').addClass('cheque-register-active');
     function fitPage() {
         var $page=$('.cheque-register-page');
@@ -246,6 +248,14 @@ $(function () {
         var amount=Number(r.amount);
         $('<td>').addClass('text-right').text(Number.isFinite(amount)?amount.toLocaleString('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2}):'0.00').appendTo($tr);
         $('<td>').append($('<span>').addClass('badge badge-secondary').text((r.status||'received').replace(/_/g,' '))).appendTo($tr);
+        var $slip=$('<td>').addClass('text-nowrap');
+        $('<a>').addClass('btn btn-sm btn-outline-success mr-1').attr({
+            href:slipUrl(r.id),target:'_blank',rel:'noopener',title:'View receiving slip'
+        }).text('View').appendTo($slip);
+        $('<a>').addClass('btn btn-sm btn-outline-primary').attr({
+            href:slipUrl(r.id)+'?print=1',target:'_blank',rel:'noopener',title:'Print receiving slip'
+        }).text('Print').appendTo($slip);
+        $slip.appendTo($tr);
         return $tr;
     }
     function pagination(data) {
@@ -264,7 +274,7 @@ $(function () {
         currentPage=page;
         var seq=++listSeq;
         if(listRequest)listRequest.abort();
-        $.blueTableSkeleton.show($('#cheque-table-body'),{rows:10,columns:8,tone:'credit'});
+        $.blueTableSkeleton.show($('#cheque-table-body'),{rows:10,columns:9,tone:'credit'});
         $('#cheque-count').text('Loading records...');
         $('#cheque-pagination').empty();
         listRequest=$.ajax({url:@json(route('finance.cheques.data')),method:'GET',data:filters(page),dataType:'json'})
@@ -273,12 +283,12 @@ $(function () {
             $.blueTableSkeleton.clear($('#cheque-table-body'));
             var $body=$('#cheque-table-body').empty();
             $.each(data.data||[],function(i,r){$body.append(row(r,((data.current_page-1)*data.per_page)+i+1));});
-            if(!(data.data||[]).length)$body.append($('<tr>').append($('<td colspan="8" class="text-center text-muted py-4">').text('No matching cheques found.')));
+            if(!(data.data||[]).length)$body.append($('<tr>').append($('<td colspan="9" class="text-center text-muted py-4">').text('No matching cheques found.')));
             pagination(data);
         }).fail(function(xhr,status){
             if(status==='abort'||seq!==listSeq)return;
             $.blueTableSkeleton.clear($('#cheque-table-body'));
-            $('#cheque-table-body').empty().append($('<tr>').append($('<td colspan="8" class="text-center text-danger py-4">').text('Unable to load cheque records.')));
+            $('#cheque-table-body').empty().append($('<tr>').append($('<td colspan="9" class="text-center text-danger py-4">').text('Unable to load cheque records.')));
             $('#cheque-count').text('Could not load records');
             toast('Cheque list could not be loaded.',true);
         });

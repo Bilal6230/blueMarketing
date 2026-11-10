@@ -294,6 +294,8 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         ->middleware('permission:read voucher')->name('finance.cheques.index');
     Route::get('finance/cheques/data', [\App\Http\Controllers\Finance\ChequeIntakeController::class, 'data'])
         ->middleware('permission:read voucher')->name('finance.cheques.data');
+    Route::get('finance/cheques/{id}/slip', [\App\Http\Controllers\Finance\ChequeIntakeController::class, 'slip'])
+        ->whereNumber('id')->middleware('permission:read voucher')->name('finance.cheques.slip');
     Route::post('finance/cheques', [\App\Http\Controllers\Finance\ChequeIntakeController::class, 'store'])
         ->middleware(['permission:create voucher', 'throttle:20,1'])->name('finance.cheques.store');
 

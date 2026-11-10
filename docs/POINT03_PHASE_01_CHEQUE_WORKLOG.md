@@ -77,3 +77,9 @@
 - Cheque page now declares dynamic browser tab title through `@section('title','Cheque Management')`.
 - Only Cheque Management gets locked page-level scroll, anchored footer, and internal scrollable table, retaining other modules' layout.
 - Owner browser tests are pending: no milestone PASS declared.
+
+## 2026-11-10 — Browser PASS and Milestone 01.2 start
+- **Milestone 01.1: COMPLETE / BROWSER PASS**. Owner explicitly confirmed browser testing passed on 2026-11-10. No claims about independent automated test execution.
+- **Milestone 01.2: implementation committed; browser PASS pending.** Added read-only, project-scoped slip GET by cheque id with `permission:read voucher`; unique deterministic slip reference `CHR-{project}-{id padded}` based on existing primary key. No new migration or posting source.
+- Added printable receipt containing company name/logo, unique slip number, receiving/customer/cheque/bank/amount/purpose/remarks, received-by and live status, signature spaces and prominent 'NOT bank clearance / NOT final accounting voucher' note. Existing records immediately have stable slip URLs. Cheque register has View and Print actions for each row.
+- Next browser gate: fresh save → register View/Print, older cheque View/Print, repeat same slip ID, new project cannot view another project's slip, printed disclaimer and current status; then owner confirms PASS. Clearing/withdrawal remain locked.
