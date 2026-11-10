@@ -64,6 +64,7 @@ final class ChequeIntakeController extends Controller
             'received_from' => ['nullable', 'string', 'max:150'],
             'purpose' => ['nullable', 'string', 'max:150'],
             'status' => ['nullable', 'string', 'in:received,issued,pending_clearing,cleared,returned,rejected,withdrawn'],
+            'direction' => ['nullable', Rule::in(['in','out'])],
             'per_page' => ['nullable', 'integer', 'in:10,25,50,100'],
             'page' => ['nullable', 'integer', 'min:1'],
         ]);
@@ -72,6 +73,7 @@ final class ChequeIntakeController extends Controller
         if (!empty($filters['to'])) $query->whereDate('c.received_date', '<=', $filters['to']);
         if (!empty($filters['account_mapping_id'])) $query->where('c.account_mapping_id',(int)$filters['account_mapping_id']);
         if (!empty($filters['status'])) $query->where('c.status', $filters['status']);
+        if (!empty($filters['direction'])) $query->where('c.direction', $filters['direction']);
         foreach (['cheque_number', 'bank_name', 'received_from', 'purpose'] as $column) {
             if (!empty($filters[$column])) {
                 $query->where('c.'.$column, 'like', '%'.$filters[$column].'%');

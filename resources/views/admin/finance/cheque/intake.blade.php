@@ -7,7 +7,7 @@
     .main-content.page-content:has(> .cheque-register-page) {height:auto!important;min-height:0!important;max-height:none!important;overflow:hidden!important;padding:0!important;margin-bottom:0!important}
     .cheque-register-page .cheque-table-panel{margin-bottom:0!important}
     .cheque-register-page { --cheque-green:#168348; --cheque-border:#b9e1c6; height:var(--cheque-height,calc(100dvh - 165px)); max-height:var(--cheque-height,calc(100dvh - 165px)); min-height:0; display:flex; flex-direction:column; overflow:hidden; }
-    .cheque-register-page .cheque-filter-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.2fr) minmax(0,1.05fr) minmax(0,1.35fr) auto; align-items:end; column-gap:10px; row-gap:8px; margin:0; width:100%; }
+    .cheque-register-page .cheque-filter-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.15fr) minmax(0,.9fr) minmax(0,.95fr) minmax(0,1.25fr) auto; align-items:end; column-gap:10px; row-gap:8px; margin:0; width:100%; }
     .cheque-register-page .cheque-filter-row > div { min-width:0; width:100%; padding:0; margin:0!important; max-width:none; }
     .cheque-register-page .cheque-filter-row .form-control { width:100%; min-width:0; }
     .cheque-register-page .cheque-filter-row .cheque-filter-actions { display:flex; align-items:center; justify-content:flex-end; padding:0; gap:5px; white-space:nowrap; height:31px; }
@@ -32,6 +32,9 @@
     .cheque-status-badge{display:inline-block;border-radius:4px;padding:3px 6px;font-size:11px;font-weight:700;text-transform:capitalize}
     .cheque-status-cleared{background:#198754;color:white}.cheque-status-returned{background:#ffc107;color:#242424}.cheque-status-rejected{background:#dc3545;color:white}
     .cheque-status-withdrawn{background:#0d6efd;color:white}.cheque-status-received,.cheque-status-issued{background:#6c757d;color:white}.cheque-status-pending_clearing{background:#17a2b8;color:white}
+    .cheque-direction-badge{display:inline-block;min-width:44px;padding:3px 8px;border-radius:4px;text-align:center;font-size:11px;font-weight:800;letter-spacing:.3px}
+    .cheque-direction-in{background:#e2f4e9;color:#086d39;border:1px solid #7cc99a}
+    .cheque-direction-out{background:#fff0e6;color:#a34400;border:1px solid #f4b37f}
     /* CR-style TomSelect: never show the underlying native select alongside its generated control. */
     .cheque-register-page select.tomselected,
     #cheque-create-modal select.tomselected,
@@ -89,6 +92,7 @@
                     <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-from">From</label><input type="date" id="cheque-from" name="from" class="form-control form-control-sm"></div>
                     <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-to">To</label><input type="date" id="cheque-to" name="to" class="form-control form-control-sm"></div>
                     <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-customer">Child Account</label><select name="account_mapping_id" id="cheque-customer" class="js-tomselect form-select form-select-sm"><option value="">All child accounts</option>@foreach($accountMappings as $account)<option value="{{ $account['id'] }}">{{ $account['head_name'] }} / {{ $account['subhead_name'] }}</option>@endforeach</select></div>
+                    <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-direction-filter">Direction</label><select name="direction" id="cheque-direction-filter" class="js-tomselect form-select form-select-sm"><option value="">All directions</option><option value="in">IN — Received</option><option value="out">OUT — Issued</option></select></div>
                     <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-status">Status</label><select name="status" id="cheque-status" class="js-tomselect form-select form-select-sm"><option value="">All statuses</option><option value="received">Received</option><option value="issued">Issued</option><option value="pending_clearing">Pending Clearing</option><option value="cleared">Cleared</option><option value="returned">Returned</option><option value="rejected">Rejected</option><option value="withdrawn">Withdrawn</option></select></div>
                     <div class="col-lg-2 col-md-8 mb-2"><label class="cheque-filter-label" for="cheque-search">Search</label><input name="search" id="cheque-search" class="form-control form-control-sm" placeholder="Cheque number, bank, person, purpose"></div>
                     <div class="col-lg-2 col-md-4 mb-2 cheque-filter-actions"><button type="submit" class="btn btn-success btn-sm"><i class="fas fa-filter mr-1"></i> Apply</button><button type="button" id="cheque-reset" class="btn btn-outline-secondary btn-sm">Reset</button></div>
@@ -103,17 +107,18 @@
             <div class="table-responsive">
                 <table class="table table-sm table-bordered table-hover" id="cheque-register-table">
                     <thead>
-                        <tr><th>#</th><th>Received Date</th><th>Cheque #</th><th>Bank</th><th>Received From</th><th>Purpose</th><th>Amount</th><th>Status</th><th>Slip</th><th>Actions</th></tr>
+                        <tr><th>#</th><th>Received Date</th><th>Cheque #</th><th>Direction</th><th>Bank</th><th>Received From / Issued To</th><th>Purpose</th><th>Amount</th><th>Status</th><th>Slip</th><th>Actions</th></tr>
                         <tr class="cheque-column-filters">
                             <th></th><th></th>
                             <th><input class="form-control form-control-sm" data-column="cheque_number" placeholder="Filter"></th>
+                            <th></th>
                             <th><input class="form-control form-control-sm" data-column="bank_name" placeholder="Filter"></th>
                             <th><input class="form-control form-control-sm" data-column="received_from" placeholder="Filter"></th>
                             <th><input class="form-control form-control-sm" data-column="purpose" placeholder="Filter"></th>
                             <th></th><th></th><th></th><th></th>
                         </tr>
                     </thead>
-                    <tbody id="cheque-table-body"><tr><td colspan="10" class="text-center text-muted py-4">Loading cheques...</td></tr></tbody>
+                    <tbody id="cheque-table-body"><tr><td colspan="11" class="text-center text-muted py-4">Loading cheques...</td></tr></tbody>
                 </table>
             </div>
             <div class="d-flex justify-content-between align-items-center flex-wrap mt-2">
@@ -391,6 +396,9 @@ $(function () {
         $('<td>').text(index).appendTo($tr);
         $('<td>').text(r.received_date||'').appendTo($tr);
         $('<td>').addClass('cheque-number').text(r.cheque_number||'').appendTo($tr);
+        var direction=(r.direction||'in').toLowerCase()==='out'?'out':'in';
+        $('<td>').append($('<span>').addClass('cheque-direction-badge cheque-direction-'+direction)
+            .text(direction.toUpperCase()).attr('title',direction==='in'?'Cheque received':'Cheque issued')).appendTo($tr);
         $('<td>').text(r.bank_name||'').appendTo($tr);
         $('<td>').text(r.received_from||'').appendTo($tr);
         $('<td>').text(r.purpose||'').appendTo($tr);
@@ -443,7 +451,7 @@ $(function () {
         currentPage=page;
         var seq=++listSeq;
         if(listRequest)listRequest.abort();
-        $.blueTableSkeleton.show($('#cheque-table-body'),{rows:10,columns:10,tone:'credit'});
+        $.blueTableSkeleton.show($('#cheque-table-body'),{rows:10,columns:11,tone:'credit'});
         $('#cheque-count').text('Loading records...');
         $('#cheque-pagination').empty();
         listRequest=$.ajax({url:@json(route('finance.cheques.data')),method:'GET',data:filters(page),dataType:'json'})
@@ -452,12 +460,12 @@ $(function () {
             $.blueTableSkeleton.clear($('#cheque-table-body'));
             var $body=$('#cheque-table-body').empty();
             $.each(data.data||[],function(i,r){$body.append(row(r,((data.current_page-1)*data.per_page)+i+1));});
-            if(!(data.data||[]).length)$body.append($('<tr>').append($('<td colspan="10" class="text-center text-muted py-4">').text('No matching cheques found.')));
+            if(!(data.data||[]).length)$body.append($('<tr>').append($('<td colspan="11" class="text-center text-muted py-4">').text('No matching cheques found.')));
             pagination(data);
         }).fail(function(xhr,status){
             if(status==='abort'||seq!==listSeq)return;
             $.blueTableSkeleton.clear($('#cheque-table-body'));
-            $('#cheque-table-body').empty().append($('<tr>').append($('<td colspan="10" class="text-center text-danger py-4">').text('Unable to load cheque records.')));
+            $('#cheque-table-body').empty().append($('<tr>').append($('<td colspan="11" class="text-center text-danger py-4">').text('Unable to load cheque records.')));
             $('#cheque-count').text('Could not load records');
             toast('Cheque list could not be loaded.',true);
         });
@@ -467,6 +475,7 @@ $(function () {
     $('#cheque-reset').on('click',function(){
         $('#cheque-filter-form').trigger('reset');
         setTs($('#cheque-customer'),'');
+        setTs($('#cheque-direction-filter'),'');
         setTs($('#cheque-status'),'');
         $('#cheque-quick-search').val('');
         $('.cheque-column-filters [data-column]').val('');

@@ -127,3 +127,8 @@
 - Owner screenshot showed native select plus generated TomSelect input simultaneously. Corrected all seven cheque-screen selects to CR Voucher's `form-select form-select-sm js-tomselect` base classes (instead of Bootstrap `form-control` on a select), and added targeted CSS hiding TomSelect's original native `select.tomselected` element.
 - Removed `dropdownParent:'body'`; searchable option lists now remain inside their original TomSelect wrappers, which are inside their Bootstrap modal. This avoids Bootstrap modal focus trapping body-level dropdown input. Existing Head/Child mapping event hooks retained.
 - Static checks PASS; browser testing required for search/select, dependent Head/Child, filter dropdown, and IN/OUT clearing bank modal. 01.4 still browser-PASS pending.
+
+## 2026-11-10 — IN/OUT visibility in Cleared status
+- Added distinct colored Direction column: IN received versus OUT issued, regardless of shared cleared status.
+- Added TomSelect Direction filter (All/IN/OUT), project-scoped backend filtering, reset, and updated 11-column skeleton and empty states.
+- No migration or data updates; Phase 02 stays gated until owner's browser PASS.
