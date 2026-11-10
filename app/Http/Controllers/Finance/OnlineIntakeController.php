@@ -57,6 +57,15 @@ final class OnlineIntakeController extends Controller
             'status'=>['nullable',Rule::in(['pending','confirmed'])],
             'account_mapping_id'=>['nullable','integer',Rule::exists('project_head_subheads','id')->where('project_id',$project)],
             'search'=>['nullable','string','max:150'],
+            'column_transaction_date'=>['nullable','date_format:Y-m-d'],
+            'column_reference'=>['nullable','string','max:120'],
+            'column_type'=>['nullable',Rule::in(['receipt','payment'])],
+            'column_sending_bank'=>['nullable','string','max:150'],
+            'column_receiving_bank'=>['nullable','string','max:150'],
+            'column_party'=>['nullable','string','max:150'],
+            'column_purpose'=>['nullable','string','max:150'],
+            'column_amount'=>['nullable','numeric','decimal:0,2','min:0'],
+            'column_status'=>['nullable',Rule::in(['pending','confirmed'])],
             'per_page'=>['nullable','integer','in:10,25,50,100'],
             'page'=>['nullable','integer','min:1'],
         ]);
@@ -75,6 +84,28 @@ final class OnlineIntakeController extends Controller
                   ->orWhere('sender_name','like',$search)
                   ->orWhere('receiver_name','like',$search)
                   ->orWhere('purpose','like',$search);
+            });
+        }
+        // Column filters must apply in SQL before pagination (not only to visible rows).
+        if(!empty($input['column_transaction_date'])) {
+            $query->whereDate('transaction_date',$input['column_transaction_date']);
+        }
+        foreach(['reference','sending_bank','receiving_bank','purpose'] as $column) {
+            $key='column_'.$column;
+            if(isset($input[$key]) && $input[$key]!=='') {
+                $query->where($column,'like','%'.$input[$key].'%');
+            }
+        }
+        if(!empty($input['column_type'])) $query->where('type',$input['column_type']);
+        if(!empty($input['column_status'])) $query->where('status',$input['column_status']);
+        if(isset($input['column_amount']) && $input['column_amount']!=='') {
+            $query->where('amount',$input['column_amount']);
+        }
+        if(!empty($input['column_party'])) {
+            $party='%'.$input['column_party'].'%';
+            $query->where(function($q)use($party){
+                $q->where('sender_name','like',$party)
+                  ->orWhere('receiver_name','like',$party);
             });
         }
         $page=$query->orderByDesc('id')->paginate((int)($input['per_page']??25),[
@@ -113,7 +144,6 @@ final class OnlineIntakeController extends Controller
             'head_accounting_id'=>['required','integer'],
             'subhead_accounting_id'=>['required','integer'],
             'purpose'=>['required','string','max:500'],
-            'remarks'=>['nullable','string','max:2000'],
             'proof'=>['nullable','file','mimes:pdf,jpg,jpeg,png','max:5120'],
         ]);
         $mapping=ProjectHeadSubhead::availableForPosting()
@@ -148,7 +178,7 @@ final class OnlineIntakeController extends Controller
                 'receiving_account'=>trim($data['receiving_account']),
                 'sender_name'=>trim($data['sender_name']),'receiver_name'=>trim($data['receiver_name']),
                 'account_mapping_id'=>$mapping->id,'purpose'=>trim($data['purpose']),
-                'remarks'=>$data['remarks']??null,'proof_path'=>$path,
+                'proof_path'=>$path,
                 'status'=>'pending','created_by'=>(int)$request->user()->id,
                 'created_at'=>now(),'updated_at'=>now(),
             ]);

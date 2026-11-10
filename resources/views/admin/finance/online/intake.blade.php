@@ -20,6 +20,12 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
 .online-table>.d-flex:last-child{flex-shrink:0}
 .online-table .table{margin-bottom:0}
 .online-table thead th{position:sticky;top:0;z-index:1;background:#e6f4eb;border-bottom:2px solid #168348;white-space:nowrap}
+.online-table thead .online-column-filters th{top:32px;background:#e6f4eb;z-index:2;padding:4px}
+.online-table thead .online-column-filters input,.online-table thead .online-column-filters select{width:100%;min-width:74px;height:27px;font-size:11px;padding:3px 5px}
+.online-table thead .online-column-filters th:nth-child(2){min-width:126px}
+.online-table thead .online-column-filters th:nth-child(3){min-width:110px}
+.online-table thead .online-column-filters th:nth-child(5),.online-table thead .online-column-filters th:nth-child(6),.online-table thead .online-column-filters th:nth-child(7),.online-table thead .online-column-filters th:nth-child(8){min-width:145px}
+.online-table thead .online-column-filters th:nth-child(9){min-width:95px}
 .online-table td{vertical-align:middle}
 .online-table tbody tr:nth-child(even){background:#f7fbf8}
 .online-ref{font-weight:700;color:#087a38}
@@ -81,7 +87,22 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
    </div>
    <div class="table-responsive">
     <table class="table table-bordered table-hover table-sm">
-     <thead><tr><th>#</th><th>Date</th><th>Transaction Ref</th><th>Type</th><th>Sending Bank</th><th>Receiving Bank</th><th>Sender / Receiver</th><th>Purpose</th><th>Amount</th><th>Status</th><th>Proof</th><th>Actions</th></tr></thead>
+     <thead>
+      <tr><th>#</th><th>Date</th><th>Transaction Ref</th><th>Type</th><th>Sending Bank</th><th>Receiving Bank</th><th>Sender / Receiver</th><th>Purpose</th><th>Amount</th><th>Status</th><th>Proof</th><th>Actions</th></tr>
+      <tr class="online-column-filters">
+       <th></th>
+       <th><input type="date" class="form-control form-control-sm" data-column="transaction_date" aria-label="Filter by transaction date"></th>
+       <th><input type="text" class="form-control form-control-sm" data-column="reference" placeholder="Filter" aria-label="Filter transaction reference" maxlength="120"></th>
+       <th><select class="form-select form-select-sm" data-column="type" aria-label="Filter transaction type"><option value="">All</option><option value="receipt">IN</option><option value="payment">OUT</option></select></th>
+       <th><input type="text" class="form-control form-control-sm" data-column="sending_bank" placeholder="Filter" aria-label="Filter sending bank" maxlength="150"></th>
+       <th><input type="text" class="form-control form-control-sm" data-column="receiving_bank" placeholder="Filter" aria-label="Filter receiving bank" maxlength="150"></th>
+       <th><input type="text" class="form-control form-control-sm" data-column="party" placeholder="Filter" aria-label="Filter sender or receiver" maxlength="150"></th>
+       <th><input type="text" class="form-control form-control-sm" data-column="purpose" placeholder="Filter" aria-label="Filter purpose" maxlength="150"></th>
+       <th><input type="number" class="form-control form-control-sm" data-column="amount" placeholder="Amount" aria-label="Filter exact amount" min="0" step="0.01"></th>
+       <th><select class="form-select form-select-sm" data-column="status" aria-label="Filter status"><option value="">All</option><option value="pending">Pending</option><option value="confirmed">Confirmed</option></select></th>
+       <th></th><th></th>
+      </tr>
+     </thead>
      <tbody id="online-rows"><tr><td colspan="12" class="text-muted text-center">Loading transactions...</td></tr></tbody>
     </table>
    </div>
@@ -109,7 +130,6 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
     <div class="form-group col-md-4"><label>Child Account *</label><select id="online-child" name="subhead_accounting_id" class="js-tomselect form-select form-select-sm" required><option value="">Select Child</option>@foreach($mappings as $account)<option value="{{ $account['child_id'] }}">{{ $account['child_name'] }} — {{ $account['head_name'] }}</option>@endforeach</select></div>
     <div class="form-group col-md-8"><label>Description / Purpose *</label><textarea name="purpose" class="form-control form-control-sm" maxlength="500" rows="2" required></textarea></div>
     <div class="form-group col-md-4"><label>Supporting Proof (PDF / JPG / PNG, max 5 MB)</label><div class="online-upload"><label for="online-proof"><i class="fas fa-cloud-upload-alt text-success"></i> <strong class="text-success">Choose file</strong><span id="online-file-name" class="d-block small text-muted">No file selected</span></label><input type="file" name="proof" id="online-proof" accept=".pdf,.jpg,.jpeg,.png"></div></div>
-    <div class="form-group col-12"><label>Remarks (optional)</label><textarea name="remarks" rows="2" class="form-control form-control-sm" maxlength="2000"></textarea></div>
    </div>
    <div id="online-errors" class="text-danger small" role="alert"></div>
    <small class="text-muted">Saving only creates a Pending source. No bank posting or accounting voucher will be generated.</small>
@@ -286,6 +306,10 @@ $(function(){
   $.each($('#online-filters').serializeArray(),function(_,f){if(f.value)payload[f.name]=f.value;});
   var quick=$.trim($('#online-quick-search').val());
   if(quick)payload.search=quick;
+  $('.online-column-filters [data-column]').each(function(){
+   var value=$.trim(String($(this).val()||''));
+   if(value)payload['column_'+$(this).attr('data-column')]=value;
+  });
   return payload;
  }
  function renderRow(x,idx){
@@ -354,7 +378,15 @@ $(function(){
  $('#online-reset').on('click',function(){
   $('#online-filters').trigger('reset');
   $.each(['#online-account-filter','#online-type-filter','#online-status-filter'],function(_,id){tsSet($(id),'');});
-  $('#online-quick-search').val('');load(1);
+  $('#online-quick-search').val('');
+  $('.online-column-filters [data-column]').val('');
+  load(1);
+ });
+ $('.online-column-filters').on('input change','[data-column]',function(){
+  var el=this;
+  clearTimeout(searchTimer);
+  if($(el).is('select,[type=date]'))load(1);
+  else searchTimer=setTimeout(function(){load(1);},300);
  });
  $('#online-per-page').on('change',function(){load(1);});
  $('#online-quick-search').on('input',function(){

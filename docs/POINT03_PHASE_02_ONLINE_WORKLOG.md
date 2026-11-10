@@ -49,3 +49,8 @@
 - Confirmation form shows original immutable reference/amount, verification date, statement reference, mandatory checkbox and optional remarks. UI text distinguishes Receipt IN bank credit versus Payment OUT bank debit. SweetAlert2 confirmation is stacked above the original form, with cancel/error preserving data.
 - AJAX POST confirms and reloads table; history displays actor/time, original fixed amount, statement reference/date and remarks through project-scoped endpoint. No GL posting or voucher generation.
 - Browser gate still pending: confirm credit & debit records, checkbox/date/ref validation, cancel, replay/duplicate POST, history, record-isolation and ledger unchanged. Milestone 02.3 remains locked.
+
+## 2026-11-10 — Owner UI feedback on Milestone 02.2
+- Removed separate **Remarks** textarea from new online transaction intake and stopped accepting/storing intake Remarks; **Purpose / Description** remains required. Historical `finance_online_intakes.remarks` database column is deliberately retained as nullable to preserve existing data; no destructive migration. **Verification Remarks** in the separate Confirm action and audit events remain unchanged.
+- Added second CR-style table header row with column filters for Date, Transaction Reference, Type, Sending Bank, Receiving Bank, Sender/Receiver, Purpose, exact Amount, Status; empty filter cells for #, Proof, Actions. Filters are validated and applied in the scoped SQL query *before* pagination; compound top filters and quick search work together. jQuery debounce, reset, skeleton and pagination retained.
+- Code committed, browser verification pending. Milestone 02.2 and its next gate remain open.
