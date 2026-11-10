@@ -98,3 +98,8 @@
 - Reused append-only `finance_cheque_intake_actions`, additive optional columns for verification timestamp/reference, reason and memo path; project-scoped authenticated history and memo endpoints. UI has CR-style SweetAlert2 confirmation and searchable list History buttons; slips render live status.
 - No bank voucher/ledger posting. Cleared is only **eligible** for a future approved voucher workflow, not posted. Withdrawal remains terminal, outside the clearing decision path.
 - Browser tests still required: verified clear, cancel, empty reference, failed return/memo validation, returned/rejected, history/attachments/project isolation, duplicate POST/replay rejection, slip status and no ledger postings. 01.4 NOT browser-PASS yet; Phase 02 locked.
+
+## 2026-11-10 — Milestone 01.4 return/reject browser bug fix
+- Owner reported Returned / Rejected failed with `Bank statement verified must be accepted.` despite entering reason and memo.
+- Root cause: the unconditional implicit `accepted` validator applied to all decisions, even though `required_if` was conditional. Changed to `accepted_if:decision,cleared` so checkbox is required **only** for successful clearance. Return/reject still require reason and bank memo.
+- No database, accounting, routes or frontend changes. Source check complete; local PHP/browser regression still pending. Milestone 01.4 remains browser-PASS pending.

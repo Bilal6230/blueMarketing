@@ -232,7 +232,7 @@ final class ChequeIntakeController extends Controller
         $data = $request->validate([
             'decision' => ['required', Rule::in(['cleared','returned','rejected'])],
             'action_date' => ['required','date_format:Y-m-d'],
-            'bank_statement_verified' => ['required_if:decision,cleared','nullable','accepted'],
+            'bank_statement_verified' => ['accepted_if:decision,cleared'],
             'bank_statement_reference' => ['required_if:decision,cleared','nullable','string','max:150'],
             'reason' => ['required_if:decision,returned,rejected','nullable','string','max:1000'],
             'remarks' => ['nullable','string','max:2000'],
