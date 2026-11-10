@@ -51,3 +51,12 @@
 - Server returns JSON record on successful AJAX save and JSON validation errors (including duplicate bank+cheque); all records scoped to selected project. Receipt-only source remains separate; no customer_ledger/ledgers write.
 - Source and route inspection completed; PHPUnit, PHP lint, browser modal/AJAX behavior and cross-project/duplicate regression still require verification on user's local runtime. Milestone **01.1 NOT PASSED** until owner tests.
 - Next: owner pull, `php -l` on changed PHP files, `php artisan route:list --path=admin/finance/cheques`, browser create/cancel/filter/duplicate/modal tests; fix feedback within same milestone, then proceed only after explicit PASS.
+
+## 2026-11-10 — Second owner UI feedback patch — Milestone 01.1 remains open
+- Removed CR Vouchers button (future cheque-pass page link will appear when built).
+- Put Apply and Reset beside compact filters in one desktop row.
+- Amount is HTML number with positive minimum/two-decimal step. jQuery validates all required fields with red borders and inline errors; no silent native form block.
+- Introduced styled file selection area, selected filename, file type and 5MB checks; server-side validation remains unchanged.
+- Fixed silent Save: form uses novalidate, jQuery validation, and Bootstrap hidden.bs.modal sequencing before displaying confirmation. Cancel returns form data without clearing; failed AJAX save retains form and presents errors.
+- Register fills viewport to footer, internally scrolls data and keeps count and pagination visible.
+- **Static source checks:** noCR, filterButtonsInRow, numberInput, validation, uploader, modalSequencing, scroll, ajax, noNativeDom PASS. **Actual browser testing not run from GitHub-only environment.** Browser PASS required before leaving milestone 01.1.
