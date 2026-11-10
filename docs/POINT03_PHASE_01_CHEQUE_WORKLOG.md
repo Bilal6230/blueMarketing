@@ -34,3 +34,12 @@
 5. Browser testing must be done on actual owner's application. No evidence of browser PASS yet.
 
 **Current gate:** Milestone 01.1 NOT PASSED. Phase 02 locked.
+
+## 2026-11-10 — Milestone 01.1 implementation slice A (backend + entry page)
+- Added separate **non-posting** `finance_cheque_intakes` table and protected `/admin/finance/cheques` GET/POST endpoints. This is intentionally a receiving-only source: the existing CR/CP `customer_ledger` + `ledgers` writer must NOT run when a cheque is merely received. A future verified link may use nullable `customer_ledger_id` without duplicating posting.
+- Added receiving page with required cheque number/date/received date/amount/bank/person/customer/purpose, optional branch/remarks/image-PDF and register; jQuery show/hide action.
+- Server enforces selected project, matching project customer, create permission, positive amount, required purpose, restricted attachments, duplicate bank+cheque uniqueness; new receipts start `received`.
+- **Not complete:** receiving slip, clearing/withdrawal, verified lifecycle, source-to-accounting mapping, full menu placement, browser verification and automated test execution.
+- **Required deployment step:** REVIEW and apply additive migration to an approved local/test database before opening the route. Do NOT migrate or write production/client database.
+- **Verification:** GitHub source commit only; PHP runtime, MySQL migration and browser results NOT executed in this environment. Milestone 01.1 is **IN PROGRESS**. Browser PASS is required before advancing.
+- **Next planned work within 01.1:** focused local PHP/route/migration checks, account-lookup/UX adjustments, browser negative/positive scenarios, user PASS. Phase 02 and Milestone 01.2 remain locked.
