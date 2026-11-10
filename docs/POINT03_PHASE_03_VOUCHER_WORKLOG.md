@@ -71,3 +71,7 @@
 ## 2026-11-10 — Embedded JV modal spinner fix
 - Owner screenshot: Add New Journal Voucher modal displayed endless blue circular spinner. Root cause: full master layout renders global `#load_screen.preloader` inside same-origin embedded form iframe, above the actual form. Added embed-only CSS to hide nested global preloader on both Create and Edit forms, and parent jQuery iframe-load handler explicitly hides it on successful document load. Parent overlay is still removed only after the `#journalForm` is detected; missing form produces actionable error with Open in new tab.
 - Existing full-page route preloader unchanged; no accounting, permissions or ledger changes. Browser retest pending.
+
+## 2026-11-10 — JV modal layout alignment
+- User confirmed form loads, but screenshot showed narrow inset form within a wide parent modal. Embed-only CSS removes nested content/layout max-width and padding, makes form full-width, uses compact CR-style 3-column fields, blue accented table headers, reduced padding and right-aligned Save button. Keeps original journal form inputs, names, scripts, validation, debit/credit and save controllers intact. Parent modal width expanded slightly to 1180px while maintaining viewport bounds. Both create and edit embedded views updated; full-page routes unchanged.
+- Browser re-test required for modal layout, dynamic Add/Remove row, Account/Subaccount dropdowns and save flow.

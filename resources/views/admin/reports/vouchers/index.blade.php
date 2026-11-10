@@ -35,7 +35,7 @@ body.jv-directory-active{overflow:hidden!important}
 .jv-card .dataTables_wrapper{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden}
 .jv-card .dataTables_wrapper>.row{margin-left:0;margin-right:0}
 .jv-card .dataTables_processing{z-index:5}
-.jv-modal .modal-dialog{max-width:min(1100px,96vw);height:calc(100vh - 48px);margin:24px auto}
+.jv-modal .modal-dialog{max-width:min(1180px,96vw);width:96vw;height:calc(100vh - 48px);margin:24px auto}
 .jv-modal .modal-content{height:100%;overflow:hidden}
 .jv-modal .modal-header{background:#e9f1ff;border-bottom:2px solid #0676ff;padding:10px 14px}
 .jv-modal .modal-header .modal-title{font-size:17px;color:#0861d4;font-weight:700}

@@ -4,11 +4,30 @@
 @if(request()->boolean('embed'))
 <style>
 .main-sidebar,.main-header,.main-footer,.navbar,.control-sidebar,#load_screen,.preloader{display:none!important;visibility:hidden!important;pointer-events:none!important}
-.content-wrapper{margin-left:0!important;min-height:0!important;padding:3px!important;background:#fff!important}
-.content-wrapper .card{margin:0!important;box-shadow:none!important;border:0!important}
-.content-wrapper .card-header{border-radius:4px!important;padding:8px 12px!important}
-.content-wrapper .card-body{padding:12px!important}
-body{overflow:auto!important}
+html,body{width:100%!important;min-width:0!important;margin:0!important;padding:0!important;overflow-x:hidden!important;background:#fff!important}
+.main-content.page-content{margin:0!important;padding:0!important;width:100%!important;max-width:none!important;min-height:0!important;height:auto!important;overflow:visible!important}
+.content-wrapper{margin:0!important;padding:0!important;width:100%!important;max-width:none!important;min-height:0!important;background:#fff!important}
+.content-wrapper>.content,.content-wrapper>.content>.container-fluid{margin:0!important;padding:0!important;width:100%!important;max-width:none!important}
+.content-wrapper .card{width:100%!important;max-width:none!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important}
+.content-wrapper .card-header{display:none!important}
+.content-wrapper .card-body{padding:14px 18px 22px!important}
+#journalForm{width:100%!important;max-width:none!important;margin:0!important}
+#journalForm>.row{margin-left:-6px!important;margin-right:-6px!important;margin-bottom:13px!important}
+#journalForm>.row>[class*="col-"]{padding-left:6px!important;padding-right:6px!important}
+#journalForm .input-group{display:flex!important;flex-direction:column!important;width:100%!important;min-width:0!important}
+#journalForm .input-group>.form-control,#journalForm .input-group>input{width:100%!important;max-width:100%!important;flex:0 0 auto!important}
+#journalForm .fbox,#journalForm label{font-size:12px!important;font-weight:700!important;color:#203758!important;margin-bottom:5px!important}
+#journalForm .form-control{font-size:13px!important;min-height:34px;border-radius:5px!important}
+#journalForm textarea{min-height:75px!important;resize:vertical}
+#journalForm .table-responsive{width:100%!important;margin:0 0 12px!important;overflow-x:auto!important}
+#journalForm #journalTable{width:100%!important;min-width:760px!important;table-layout:fixed!important;margin-bottom:0!important;font-size:12px}
+#journalForm #journalTable th{background:#e8f1ff!important;color:#203758!important;border-bottom:2px solid #087cff!important;vertical-align:middle!important;padding:9px 6px!important}
+#journalForm #journalTable td{vertical-align:middle!important;padding:6px!important}
+#journalForm #journalTable td .form-control{min-width:0!important;width:100%!important}
+#journalForm #journalTable .btn{padding:5px 8px!important}
+#journalForm>.text-center{text-align:right!important;margin:0!important;padding-top:10px!important;border-top:1px solid #e3eaf6}
+#journalForm>.text-center .btn-primary{background:#0876ef!important;border-color:#0876ef!important}
+@media(max-width:720px){.content-wrapper .card-body{padding:10px!important}#journalForm #journalTable{min-width:760px!important}}
 </style>
 @endif
     <div class="content-wrapper">
