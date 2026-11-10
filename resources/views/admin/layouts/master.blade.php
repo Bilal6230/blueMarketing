@@ -60,6 +60,7 @@
     <link rel="stylesheet" href="{{ asset('template/admin/dist/css/theme.css') }}?v={{ time() }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+    <link rel="stylesheet" href="{{ asset('css/blue-table-skeleton.css') }}?v=1">
     @stack('style')
     <style>
         div#load_screen {
@@ -242,6 +243,7 @@
     <!-- ./wrapper -->
     <!-- jQuery -->
     <script src="{{ asset('template/admin/plugins/jquery/jquery.min.js') }}"></script>
+    <script src="{{ asset('js/blue-table-skeleton.js') }}?v=1"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
     @yield('js')

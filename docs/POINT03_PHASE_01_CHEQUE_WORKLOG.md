@@ -71,3 +71,9 @@
 - Scoped parent page height override and footer-aware jQuery height calculation remove extra bottom spacing while preserving internal table scrolling, with no global layout changes.
 - No database schema/controller changes. Existing AJAX, permissions, amount checks and receipt-only non-posting logic retained.
 - Browser testing still required. Milestone 01.1 NOT PASSED; no later milestone started.
+
+## 2026-11-10 — Global skeleton and cheque layout/title corrections
+- Created globally available jQuery skeleton: `$.blueTableSkeleton.show($tbody, {rows,columns,tone})` and `clear($tbody)`, CSS/JS registered once in master layout. Used in existing CR/DR directory and Cheque AJAX register. Other unrelated AJAX pages can adopt the same shared utility as their workflows are audited; no blanket interception of every request.
+- Cheque page now declares dynamic browser tab title through `@section('title','Cheque Management')`.
+- Only Cheque Management gets locked page-level scroll, anchored footer, and internal scrollable table, retaining other modules' layout.
+- Owner browser tests are pending: no milestone PASS declared.

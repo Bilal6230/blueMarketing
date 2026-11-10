@@ -1,7 +1,11 @@
 @extends('admin.layouts.master')
+@section('title', 'Cheque Management')
 @section('content')
 <style>
-    .main-content.page-content:has(> .cheque-register-page) { height:auto!important; min-height:0!important; max-height:none!important; overflow:visible!important; padding-bottom:0!important; }
+    html.cheque-register-active,body.cheque-register-active {height:100%;overflow:hidden!important}
+    body.cheque-register-active .main-footer {position:fixed!important;bottom:0;left:0;right:0;z-index:10;margin-bottom:0!important}
+    .main-content.page-content:has(> .cheque-register-page) {height:auto!important;min-height:0!important;max-height:none!important;overflow:hidden!important;padding:0!important;margin-bottom:0!important}
+    .cheque-register-page .cheque-table-panel{margin-bottom:0!important}
     .cheque-register-page { --cheque-green:#168348; --cheque-border:#b9e1c6; height:var(--cheque-height,calc(100dvh - 165px)); max-height:var(--cheque-height,calc(100dvh - 165px)); min-height:0; display:flex; flex-direction:column; overflow:hidden; }
     .cheque-register-page .cheque-filter-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.2fr) minmax(0,1.05fr) minmax(0,1.35fr) auto; align-items:end; column-gap:10px; row-gap:8px; margin:0; width:100%; }
     .cheque-register-page .cheque-filter-row > div { min-width:0; width:100%; padding:0; margin:0!important; max-width:none; }
@@ -149,6 +153,7 @@ $(function () {
     'use strict';
     var currentPage=1, listRequest=null, saveBusy=false, searchTimer=null, listSeq=0;
     var $form=$('#cheque-intake-form'), $create=$('#cheque-create-modal');
+    $('html,body').addClass('cheque-register-active');
     function fitPage() {
         var $page=$('.cheque-register-page');
         if (!$page.length || !$page.offset()) return;
@@ -259,16 +264,20 @@ $(function () {
         currentPage=page;
         var seq=++listSeq;
         if(listRequest)listRequest.abort();
-        $('#cheque-table-body').empty().append($('<tr>').append($('<td colspan="8" class="text-center text-muted py-4">').text('Loading cheques...')));
+        $.blueTableSkeleton.show($('#cheque-table-body'),{rows:10,columns:8,tone:'credit'});
+        $('#cheque-count').text('Loading records...');
+        $('#cheque-pagination').empty();
         listRequest=$.ajax({url:@json(route('finance.cheques.data')),method:'GET',data:filters(page),dataType:'json'})
         .done(function(data){
             if(seq!==listSeq)return;
+            $.blueTableSkeleton.clear($('#cheque-table-body'));
             var $body=$('#cheque-table-body').empty();
             $.each(data.data||[],function(i,r){$body.append(row(r,((data.current_page-1)*data.per_page)+i+1));});
             if(!(data.data||[]).length)$body.append($('<tr>').append($('<td colspan="8" class="text-center text-muted py-4">').text('No matching cheques found.')));
             pagination(data);
         }).fail(function(xhr,status){
             if(status==='abort'||seq!==listSeq)return;
+            $.blueTableSkeleton.clear($('#cheque-table-body'));
             $('#cheque-table-body').empty().append($('<tr>').append($('<td colspan="8" class="text-center text-danger py-4">').text('Unable to load cheque records.')));
             $('#cheque-count').text('Could not load records');
             toast('Cheque list could not be loaded.',true);

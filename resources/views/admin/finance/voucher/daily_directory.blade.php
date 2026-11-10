@@ -224,11 +224,7 @@
     updateSortArrows();
     const scheduleLoad=()=>{clearTimeout(timer);timer=setTimeout(()=>{start=0;load();},300);};
     function showTableSkeleton(){
-        const widths=[68,62,79,87,58,65,91,70];
-        $('#dv-rows').html(Array.from({length:10},(_,row)=>'<tr class="dv-skeleton-row" aria-hidden="true">'+
-            widths.map((width,column)=>'<td><div class="dv-skeleton-bar" style="width:'+Math.max(25,width-((row+column)%3)*10)+'%"></div></td>').join('')+
-            '</tr>').join(''));
-        $('#dv-table-wrap').attr('aria-busy','true');
+        $.blueTableSkeleton.show($('#dv-rows'),{rows:10,columns:8,tone:$('#dv-page').hasClass('dv-theme-debit')?'debit':'credit'});
         $('#dv-record-summary').text('Loading records...');
         $('#dv-pages').empty();
     }
@@ -286,7 +282,8 @@
             $('#dv-record-summary').text('Unable to load records');
         }).always(()=>{
             if(requestId!==activeRequest)return;
-            $('#dv-table-wrap').removeClass('daily-voucher-loading').removeAttr('aria-busy');
+            $('#dv-table-wrap').removeClass('daily-voucher-loading');
+            $.blueTableSkeleton.clear($('#dv-rows'));
             activeController=null;
         });
     }
