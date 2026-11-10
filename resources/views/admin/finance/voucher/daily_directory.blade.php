@@ -40,7 +40,29 @@
     #dv-entry-loading{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;gap:.75rem;background:#fff;color:#48556b}
     #dv-entry-loading.d-none{display:none!important}
     #dv-entry-loading .spinner-border{width:1.4rem;height:1.4rem;border-width:.18em}
-    .daily-voucher-filters{display:grid;grid-template-columns:repeat(4,minmax(130px,1fr)) auto;gap:.6rem;align-items:end}
+    .daily-voucher-filters{display:grid;grid-template-columns:repeat(5,minmax(110px,1fr)) auto;gap:.6rem;align-items:end}
+    .daily-voucher-filters.dv-preset{grid-template-columns:repeat(4,minmax(130px,1fr)) auto}
+    .dv-common-print-heading{display:none}
+    .dv-common-print-button{white-space:nowrap}
+    @media print{
+      body.dv-common-print-active *{visibility:hidden!important}
+      body.dv-common-print-active #dv-detail-modal,
+      body.dv-common-print-active #dv-detail-modal .modal-dialog,
+      body.dv-common-print-active #dv-detail-modal .modal-content,
+      body.dv-common-print-active #dv-detail-modal .modal-body,
+      body.dv-common-print-active #dv-detail-modal .modal-body *{visibility:visible!important}
+      body.dv-common-print-active #dv-detail-modal{position:absolute!important;inset:0 auto auto 0!important;display:block!important;width:100%!important;max-height:none!important;overflow:visible!important;background:white!important}
+      body.dv-common-print-active #dv-detail-modal .modal-dialog{margin:0!important;max-width:none!important;width:100%!important;transform:none!important}
+      body.dv-common-print-active #dv-detail-modal .modal-content{border:0!important;box-shadow:none!important}
+      body.dv-common-print-active #dv-detail-modal .modal-header,
+      body.dv-common-print-active #dv-detail-modal .modal-footer{display:none!important}
+      body.dv-common-print-active .dv-common-print-heading{display:block!important;text-align:center;margin-bottom:18px;border-bottom:2px solid #333;padding-bottom:12px}
+      body.dv-common-print-active #dv-detail-prints-wrap{display:none!important}
+      body.dv-common-print-active #dv-detail-modal .modal-body{overflow:visible!important;max-height:none!important;padding:16px!important}
+      body.dv-common-print-active #dv-detail-modal .modal-body dt,
+      body.dv-common-print-active #dv-detail-modal .modal-body dd{break-inside:avoid}
+      @page{size:A4 portrait;margin:15mm}
+    }
     .daily-voucher-actions{display:flex;gap:.4rem;align-items:center;white-space:nowrap}
     .daily-voucher-shortcuts{display:flex;flex-wrap:wrap;gap:.5rem}
     .daily-voucher-table-card{flex:1 1 0;min-height:0;display:flex;flex-direction:column;margin-bottom:0!important}
@@ -98,14 +120,26 @@
     </div></section>
     <section class="content"><div class="container-fluid">
         <div class="card daily-voucher-card mb-3"><div class="card-body">
-            <form id="daily-voucher-filters" class="daily-voucher-filters">
+            <form id="daily-voucher-filters" class="daily-voucher-filters {{ $presetType ? 'dv-preset' : '' }}">
                 <div><label for="dv-from">From</label><input id="dv-from" name="from" type="date" class="form-control"></div>
                 <div><label for="dv-to">To</label><input id="dv-to" name="to" type="date" class="form-control"></div>
+                @if($presetType)
                 <input id="dv-type" name="type" type="hidden" value="{{ $presetType }}">
+                @else
+                <div><label for="dv-type">Voucher Type</label>
+                  <select id="dv-type" name="type" class="form-control">
+                    <option value="">All voucher types</option>
+                    @foreach(['CR','DR','CCR','CDR','BOR','BOP','CP','PPR','JV','CV','BR','BO','BW','BD','PR','PP'] as $type)
+                      <option value="{{ $type }}">{{ $type }}</option>
+                    @endforeach
+                  </select>
+                </div>
+                @endif
                 <div><label for="dv-account">Account</label><select id="dv-account" name="account" class="form-control"><option value="">All accounts</option>@foreach($accounts as $account)<option value="{{ $account->id }}">{{ $account->head_name }}{{ $account->sub_name ? ' · '.$account->sub_name : '' }}</option>@endforeach</select></div>
                 <div><label for="dv-search">Search</label><input id="dv-search" name="search" class="form-control" maxlength="100" placeholder="Number, reference, account or detail"></div>
                 <div class="daily-voucher-actions">
                     <button class="btn btn-primary" type="submit"><i class="fas fa-filter mr-1"></i> Apply</button>
+                    <button class="btn btn-outline-secondary" type="button" id="dv-reset-filters">Reset</button>
                     <button class="btn btn-success" type="button" id="dv-create-voucher"><i class="fas fa-plus mr-1"></i> New voucher</button>
                 </div>
             </form>
@@ -146,7 +180,7 @@
         </div>
     </div></section>
 </div>
-<div class="modal fade" id="dv-detail-modal" tabindex="-1" role="dialog" aria-labelledby="dv-detail-title" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-scrollable" role="document"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="dv-detail-title">Voucher details</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div><div class="modal-body"><dl class="row mb-0" id="dv-detail-fields"></dl><div id="dv-detail-lines-wrap" class="mt-3 d-none"><h6>Voucher lines</h6><div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>Account</th><th>Description</th><th class="text-right">Debit</th><th class="text-right">Credit</th></tr></thead><tbody id="dv-detail-lines"></tbody></table></div></div><div id="dv-detail-prints-wrap" class="mt-3 d-none"><h6>Plot receipt print views</h6><div id="dv-detail-prints" class="d-flex flex-wrap" style="gap:.5rem"></div></div><div id="dv-detail-audit-wrap" class="mt-3 d-none"><h6>Payment and audit information</h6><dl class="row mb-0" id="dv-detail-audit"></dl></div></div><div class="modal-footer"><a id="dv-detail-print" class="btn btn-primary" target="_blank" rel="noopener"><i class="fas fa-print mr-1"></i> Open print view</a><span id="dv-no-print" class="small text-muted d-none">No posted print record is available.</span><button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button></div></div></div></div>
+<div class="modal fade" id="dv-detail-modal" tabindex="-1" role="dialog" aria-labelledby="dv-detail-title" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-scrollable" role="document"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="dv-detail-title">Voucher details</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div><div class="modal-body"><div class="dv-common-print-heading"><h3 class="mb-1">Voucher Details</h3><div id="dv-print-identity" class="small text-muted"></div><div class="small">Read-only voucher record · not a new accounting posting</div></div><dl class="row mb-0" id="dv-detail-fields"></dl><div id="dv-detail-lines-wrap" class="mt-3 d-none"><h6>Voucher lines</h6><div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>Account</th><th>Description</th><th class="text-right">Debit</th><th class="text-right">Credit</th></tr></thead><tbody id="dv-detail-lines"></tbody></table></div></div><div id="dv-detail-prints-wrap" class="mt-3 d-none"><h6>Plot receipt print views</h6><div id="dv-detail-prints" class="d-flex flex-wrap" style="gap:.5rem"></div></div><div id="dv-detail-audit-wrap" class="mt-3 d-none"><h6>Payment and audit information</h6><dl class="row mb-0" id="dv-detail-audit"></dl></div></div><div class="modal-footer"><button type="button" class="btn btn-outline-primary dv-common-print-button" id="dv-common-print"><i class="fas fa-print mr-1"></i> Print Details (A4)</button><a id="dv-detail-print" class="btn btn-primary" target="_blank" rel="noopener"><i class="fas fa-print mr-1"></i> Open print view</a><span id="dv-no-print" class="small text-muted d-none">No posted print record is available.</span><button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button></div></div></div></div>
 <div class="modal fade" id="dv-entry-modal" tabindex="-1" role="dialog" aria-labelledby="dv-entry-title" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
         <div class="modal-content">
@@ -288,6 +322,17 @@
         });
     }
     $('#daily-voucher-filters').on('submit',event=>{event.preventDefault();start=0;load();});
+    $('#dv-reset-filters').on('click',()=>{
+        $('#daily-voucher-filters')[0].reset();
+        $('#dv-from,#dv-to,#dv-account,#dv-search').val('');
+        if($('#dv-type').is('select'))$('#dv-type').val('');
+        $('#dv-table-search').val('');
+        $('.dv-column-filter').val('');
+        start=0;sortColumn='date';sortDirection='desc';updateSortArrows();load();
+    });
+    $('#dv-type').on('change',function(){
+        if($(this).is('select')){start=0;updateDirectoryTheme($(this).val());load();}
+    });
     $('#dv-search').on('input',scheduleLoad);
     $('.dv-column-filter').on('input search',scheduleLoad).on('keydown',event=>{
         if(event.key==='Enter')event.preventDefault();
@@ -467,6 +512,8 @@
     $('#dv-rows').on('click','.dv-details',function(){
         const row=JSON.parse($(this).attr('data-row'));
         $('#dv-detail-title').text(row.type+' · '+row.number);
+        $('#dv-print-identity').text(row.type+' / '+row.number+' · '+(row.date||''));
+        $('#dv-common-print').prop('disabled',false);
         const appendDefinition=($target,label,value)=>{
             $target.append($('<dt>',{'class':'col-sm-4',text:label}));
             $target.append($('<dd>',{'class':'col-sm-8',text:value===null||value===undefined||value===''?'—':String(value)}));
@@ -497,6 +544,13 @@
         $('#dv-no-print').toggleClass('d-none',!!row.url);
         $('#dv-detail-modal').modal('show');
     });
+    $('#dv-common-print').on('click',()=>{
+        if(!$('#dv-detail-modal').hasClass('show'))return;
+        $('body').addClass('dv-common-print-active');
+        window.print();
+    });
+    $(window).on('afterprint.dailyVoucherCommon',()=>{$('body').removeClass('dv-common-print-active');});
+    $('#dv-detail-modal').on('hidden.bs.modal',()=>{$('body').removeClass('dv-common-print-active');});
     load();
 })();
 </script>

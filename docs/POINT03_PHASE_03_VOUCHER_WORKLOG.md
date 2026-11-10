@@ -1,0 +1,26 @@
+# Phase 03 — Common Voucher UI and Voucher Approval Settings
+**Source:** `docs/BLUEMARKETING_POINT03_DAILY_ENTRIES_REQUIREMENTS_ROMAN_URDU.md` Sections A and B.
+**Phase 02:** COMPLETE, owner browser PASS 2026-11-10.
+
+## 03.1 — Common Voucher Display/Print and Filters
+**Status:** Code committed; local/browser gate PENDING.
+
+### Implemented
+- Reused existing project-scoped `DailyVoucherDirectoryController` and its read-only source lines/details to prevent duplicate accounting logic, voucher creation or updates.
+- General Voucher Directory now exposes existing supported Voucher Type series as a common dropdown; type-preset pages retain their fixed hidden series.
+- Added Reset for top Date/Account/Type/Search, quick search and column inputs; restores date-desc sort and first page.
+- Added a standard A4 **Print Details** view for the existing read-only Details modal, in addition to the existing source-specific print link. A4 print includes original voucher number/type/date/account/reference/status/narration, source lines and audit fields when returned. It does not manufacture missing debit/credit or approval metadata.
+- Existing source-specific print links, editing rights, bank/cheque source gates and original voucher code unchanged; jQuery handlers only.
+- No new database tables, migrations, backend writes, approvals or ledger postings.
+
+### Browser acceptance scenarios (must PASS before 03.2)
+1. General voucher directory: type filter CR, DR, JV where data exists; project-scoped results.
+2. Preset CR/BOP page: fixed series remains fixed even after Reset.
+3. Reset clears top, quick and column filters; returns latest-first listing.
+4. Open Details for several existing source types; new Print Details (A4) preview shows only actual row data.
+5. Existing Open Print View remains available; both PDF/printer preview and screen details display without overlapping page UI.
+6. No new bank voucher or ledger posting; existing edit/create flows unchanged.
+7. Client/browser tester confirms PASS explicitly.
+
+### Next
+03.2 — per-type approval settings and selected approver permissions; do not implement before 03.1 browser PASS.
