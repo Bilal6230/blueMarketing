@@ -63,7 +63,7 @@ final class ChequeIntakeController extends Controller
             'bank_name' => ['nullable', 'string', 'max:150'],
             'received_from' => ['nullable', 'string', 'max:150'],
             'purpose' => ['nullable', 'string', 'max:150'],
-            'status' => ['nullable', 'string', 'in:received,pending_clearing,cleared,returned,rejected,withdrawn'],
+            'status' => ['nullable', 'string', 'in:received,issued,pending_clearing,cleared,returned,rejected,withdrawn'],
             'per_page' => ['nullable', 'integer', 'in:10,25,50,100'],
             'page' => ['nullable', 'integer', 'min:1'],
         ]);
@@ -154,8 +154,12 @@ final class ChequeIntakeController extends Controller
             $cheque = DB::table('finance_cheque_intakes')->where('project_id', $project)
                 ->where('id', $id)->lockForUpdate()->first();
             abort_unless($cheque, 404);
-            if ($cheque->status !== 'received') {
-                throw ValidationException::withMessages(['action' => 'Only Received cheques can be submitted for clearing or withdrawal.']);
+            $expectedStatus = ($cheque->direction ?? 'in') === 'out' ? 'issued' : 'received';
+            if ($cheque->status !== $expectedStatus) {
+                throw ValidationException::withMessages(['action' => 'Cheque cannot be processed from its current status.']);
+            }
+            if (($cheque->direction ?? 'in') === 'out' && $action === 'withdrawal') {
+                throw ValidationException::withMessages(['action' => 'Outgoing cheques cannot use direct cash withdrawal.']);
             }
             if ($data['action_date'] < $cheque->received_date) {
                 throw ValidationException::withMessages(['action_date' => 'Action date cannot be before the cheque receiving date.']);
@@ -378,7 +382,7 @@ final class ChequeIntakeController extends Controller
                 'received_from' => trim($data['received_from']),
                 'purpose' => trim($data['purpose']),
                 'attachment_path' => $path,
-                'status' => 'received',
+                'status' => $data['direction'] === 'out' ? 'issued' : 'received',
                 'created_by' => (int) $request->user()->id,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -400,11 +404,15 @@ final class ChequeIntakeController extends Controller
         if ($request->expectsJson()) {
             return response()->json([
                 'status' => 'success',
-                'message' => 'Cheque received. No bank or accounting voucher has been posted.',
+                'message' => $data['direction'] === 'out'
+                    ? 'Outgoing cheque issued. No bank or accounting voucher was posted.'
+                    : 'Cheque received. No bank or accounting voucher has been posted.',
                 'data' => $record,
             ], 201);
         }
         return redirect()->route('finance.cheques.index')
-            ->with('success', 'Cheque received. No bank or accounting voucher has been posted.');
+            ->with('success', $data['direction'] === 'out'
+                ? 'Outgoing cheque issued. No bank or accounting voucher was posted.'
+                : 'Cheque received. No bank or accounting voucher has been posted.');
     }
 }

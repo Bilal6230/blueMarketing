@@ -27,7 +27,11 @@
         .signatures {display:flex;justify-content:space-between;gap:40px;margin-top:70px}
         .signatures div {width:43%;border-top:1px solid #3b4856;text-align:center;padding-top:9px}
         .footer {border-top:1px solid #dce4ea;margin-top:30px;padding-top:12px;text-align:center;font-size:11px;color:#657487}
-        @page {size:A5 portrait;margin:6mm}
+        @if(request()->query('size') === 'pos80')
+            @page {size:80mm 200mm;margin:2mm}
+        @else
+            @page {size:A5 portrait;margin:6mm}
+        @endif
         body.slip-pos80 .paper{width:80mm;max-width:80mm;padding:5mm;margin:8px auto;font-size:11px}
         body.slip-pos80 .grid{grid-template-columns:1fr;gap:0}
         body.slip-pos80 .wide{grid-column:1}
@@ -57,8 +61,8 @@
                 <div>Official cheque receiving acknowledgement</div>
             </div>
         </header>
-        <h2>CHEQUE RECEIVING SLIP</h2>
-        <p class="disclaimer">Receipt of cheque only — NOT proof of bank clearance, successful payment or final accounting voucher.</p>
+        <h2>{{ ($cheque->direction ?? 'in') === 'out' ? 'CHEQUE ISSUANCE SLIP' : 'CHEQUE RECEIVING SLIP' }}</h2>
+        <p class="disclaimer">{{ ($cheque->direction ?? 'in') === 'out' ? 'Cheque issuance acknowledgement only' : 'Receipt of cheque only' }} — NOT proof of bank clearance, successful payment or final accounting voucher.</p>
         <div class="meta">
             <div><strong>Slip No:</strong> {{ $slipNumber }}</div>
             <div><strong>{{ ($cheque->direction ?? 'in') === 'out' ? 'Issued Date' : 'Received Date' }}:</strong> {{ $cheque->received_date }}</div>

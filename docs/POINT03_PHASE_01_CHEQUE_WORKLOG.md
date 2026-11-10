@@ -109,3 +109,8 @@
 - Removed only intake-form Remarks. Existing action/audit remarks still preserved. Additive migration copies old intake remarks into Purpose before dropping that single intake column, failing safely if text cannot fit.
 - Status badges: cleared green, returned warning, rejected red. Print links changed to A5 and POS 80mm; receipt includes title/direction/account.
 - Outgoing cleared popup now says verify bank debit, incoming says credit. No bank dropdown at clearance decision. Browser testing pending.
+
+## 2026-11-10 — Direction-specific processing and page-size finishing
+- Incoming starts Received; outgoing starts Issued. Outgoing cannot use Direct Cash Withdrawal. Both can enter Pending Clearing before final bank verification. Existing cheques remain incoming.
+- Print layout: A5 portrait page; POS 80mm width with printer-compatible 200mm maximum page height. Issuance uses appropriate text.
+- Browser and printer validation pending; milestone 01.4 remains open.

@@ -31,7 +31,7 @@
     #cheque-intake-form textarea[name=purpose] { min-height:61px; resize:vertical; }
     .cheque-status-badge{display:inline-block;border-radius:4px;padding:3px 6px;font-size:11px;font-weight:700;text-transform:capitalize}
     .cheque-status-cleared{background:#198754;color:white}.cheque-status-returned{background:#ffc107;color:#242424}.cheque-status-rejected{background:#dc3545;color:white}
-    .cheque-status-withdrawn{background:#0d6efd;color:white}.cheque-status-received{background:#6c757d;color:white}.cheque-status-pending_clearing{background:#17a2b8;color:white}
+    .cheque-status-withdrawn{background:#0d6efd;color:white}.cheque-status-received,.cheque-status-issued{background:#6c757d;color:white}.cheque-status-pending_clearing{background:#17a2b8;color:white}
     #cheque-create-modal .select2-container { width:100%!important; }
     #cheque-create-modal .select2-container .select2-selection--single { height:31px!important; }
     .swal2-container {z-index:20000!important;}
@@ -77,7 +77,7 @@
                     <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-from">From</label><input type="date" id="cheque-from" name="from" class="form-control form-control-sm"></div>
                     <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-to">To</label><input type="date" id="cheque-to" name="to" class="form-control form-control-sm"></div>
                     <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-customer">Child Account</label><select name="account_mapping_id" id="cheque-customer" class="form-control form-control-sm"><option value="">All child accounts</option>@foreach($accountMappings as $account)<option value="{{ $account['id'] }}">{{ $account['head_name'] }} / {{ $account['subhead_name'] }}</option>@endforeach</select></div>
-                    <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-status">Status</label><select name="status" id="cheque-status" class="form-control form-control-sm"><option value="">All statuses</option><option value="received">Received</option><option value="pending_clearing">Pending Clearing</option><option value="cleared">Cleared</option><option value="returned">Returned</option><option value="rejected">Rejected</option><option value="withdrawn">Withdrawn</option></select></div>
+                    <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-status">Status</label><select name="status" id="cheque-status" class="form-control form-control-sm"><option value="">All statuses</option><option value="received">Received</option><option value="issued">Issued</option><option value="pending_clearing">Pending Clearing</option><option value="cleared">Cleared</option><option value="returned">Returned</option><option value="rejected">Rejected</option><option value="withdrawn">Withdrawn</option></select></div>
                     <div class="col-lg-2 col-md-8 mb-2"><label class="cheque-filter-label" for="cheque-search">Search</label><input name="search" id="cheque-search" class="form-control form-control-sm" placeholder="Cheque number, bank, person, purpose"></div>
                     <div class="col-lg-2 col-md-4 mb-2 cheque-filter-actions"><button type="submit" class="btn btn-success btn-sm"><i class="fas fa-filter mr-1"></i> Apply</button><button type="button" id="cheque-reset" class="btn btn-outline-secondary btn-sm">Reset</button></div>
                 </div>
@@ -389,13 +389,15 @@ $(function () {
         }).text('POS 80').appendTo($slip);
         $slip.appendTo($tr);
         var $actions=$('<td>').addClass('text-nowrap');
-        if(@json(auth()->user()->can('create voucher')) && r.status==='received') {
+        if(@json(auth()->user()->can('create voucher')) && (r.status==='received'||r.status==='issued')) {
             $('<button type="button">').addClass('btn btn-sm btn-outline-success mr-1 cheque-action')
                 .attr('data-id',r.id).attr('data-cheque',r.cheque_number)
                 .attr('data-amount',r.amount).attr('data-kind','clearing').text('Send for Clearing').appendTo($actions);
-            $('<button type="button">').addClass('btn btn-sm btn-outline-primary cheque-action')
-                .attr('data-id',r.id).attr('data-cheque',r.cheque_number)
-                .attr('data-amount',r.amount).attr('data-kind','withdrawal').text('Direct Withdrawal').appendTo($actions);
+            if((r.direction||'in')==='in') {
+                $('<button type="button">').addClass('btn btn-sm btn-outline-primary cheque-action')
+                    .attr('data-id',r.id).attr('data-cheque',r.cheque_number)
+                    .attr('data-amount',r.amount).attr('data-kind','withdrawal').text('Direct Withdrawal').appendTo($actions);
+            }
         } else if(@json(auth()->user()->can('create voucher')) && r.status==='pending_clearing') {
             $.each([['cleared','Mark Cleared','success'],['returned','Returned / Bounced','warning'],['rejected','Rejected / Memo','danger']],function(_,item){
                 $('<button type="button">').addClass('btn btn-sm btn-outline-'+item[2]+' mr-1 cheque-finalize')
@@ -465,7 +467,7 @@ $(function () {
         window.Swal.fire({
             icon:'question',
             title:'Confirm Cheque Receiving',
-            text:'Save this cheque as Received? No bank clearance or accounting voucher will be created.',
+            text:'Save this In/Out cheque record? No bank clearance or accounting voucher will be created.',
             showCancelButton:true,
             confirmButtonText:'Yes, Save Cheque',
             cancelButtonText:'Cancel',
