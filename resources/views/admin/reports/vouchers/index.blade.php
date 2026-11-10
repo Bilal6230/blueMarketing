@@ -108,7 +108,6 @@ $(function(){
  var $table=$('#jv-directory'),timer=null,table=null,entryUrl='';
  var baseUrl=@json($type==='SV'?route('sales.voucher.index'):route('journal.voucher.index'));
  var createUrl=@json(route('journal.voucher.create'));
- var canAct=@json($showActions);
  function esc(value){return $('<div>').text(value==null?'':String(value)).html();}
  function apply(){
   table.ajax.reload(null,true);
