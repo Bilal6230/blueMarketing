@@ -171,6 +171,88 @@ final class OnlineIntakeController extends Controller
         ],201);
     }
 
+    public function confirm(Request $request, int $id)
+    {
+        $this->ready();
+        abort_unless($request->user()?->can('create voucher'),403);
+        abort_unless(Schema::hasTable('finance_online_confirmation_events'),409,
+            'Online confirmation history migration has not been applied.');
+        $project=$this->project();
+        $data=$request->validate([
+            'statement_verified'=>['required','accepted'],
+            'statement_reference'=>['required','string','max:150'],
+            'verification_date'=>['required','date_format:Y-m-d'],
+            'remarks'=>['nullable','string','max:2000'],
+        ]);
+        $reference=trim($data['statement_reference']);
+        if($reference==='') {
+            throw ValidationException::withMessages(['statement_reference'=>'Bank statement reference is required.']);
+        }
+
+        $result=DB::transaction(function()use($request,$project,$id,$data,$reference){
+            $record=DB::table('finance_online_intakes')
+                ->where('project_id',$project)->where('id',$id)->lockForUpdate()->first();
+            abort_unless($record,404);
+            if($record->status!=='pending'){
+                throw ValidationException::withMessages(['status'=>'Only Pending online transactions can be confirmed.']);
+            }
+            if($data['verification_date']<$record->transaction_date){
+                throw ValidationException::withMessages([
+                    'verification_date'=>'Verification date cannot be before the transaction date.'
+                ]);
+            }
+
+            // The confirmed amount, bank names, type and account all come from the locked
+            // source record, never from submitted form fields.
+            DB::table('finance_online_confirmation_events')->insert([
+                'project_id'=>$project,'online_intake_id'=>$id,
+                'from_status'=>'pending','to_status'=>'confirmed',
+                'verification_date'=>$data['verification_date'],
+                'statement_reference'=>$reference,
+                'remarks'=>$data['remarks']??null,
+                'original_amount'=>$record->amount,
+                'transaction_type'=>$record->type,
+                'actor_id'=>(int)$request->user()->id,
+                'confirmed_at'=>now(),'created_at'=>now(),'updated_at'=>now(),
+            ]);
+            $changed=DB::table('finance_online_intakes')
+                ->where('project_id',$project)->where('id',$id)->where('status','pending')
+                ->update(['status'=>'confirmed','updated_at'=>now()]);
+            if($changed!==1){
+                throw ValidationException::withMessages(['status'=>'Transaction has already been processed.']);
+            }
+            return ['id'=>(int)$record->id,'reference'=>$record->reference,
+                'status'=>'confirmed','amount'=>$record->amount,'type'=>$record->type];
+        },3);
+
+        return response()->json([
+            'status'=>'success',
+            'message'=>'Bank statement verification recorded. Online transaction Confirmed; no accounting voucher was posted.',
+            'data'=>$result,
+        ])->header('Cache-Control','private, no-store');
+    }
+
+    public function history(int $id)
+    {
+        $this->ready();
+        $project=$this->project();
+        abort_unless(Schema::hasTable('finance_online_confirmation_events'),409,
+            'Online confirmation history migration has not been applied.');
+        $record=DB::table('finance_online_intakes')
+            ->where('project_id',$project)->where('id',$id)
+            ->first(['id','reference','amount','type','status','transaction_date','created_by','created_at']);
+        abort_unless($record,404);
+        $events=DB::table('finance_online_confirmation_events as e')
+            ->leftJoin('users as u','u.id','=','e.actor_id')
+            ->where('e.project_id',$project)->where('e.online_intake_id',$id)
+            ->orderBy('e.id')
+            ->get(['e.id','e.from_status','e.to_status','e.verification_date',
+                'e.statement_reference','e.remarks','e.original_amount',
+                'e.transaction_type','e.actor_id','e.confirmed_at','u.name as actor_name']);
+        return response()->json(['transaction'=>$record,'events'=>$events])
+            ->header('Cache-Control','private, no-store');
+    }
+
     public function proof(int $id)
     {
         $this->ready();

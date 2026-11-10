@@ -296,6 +296,10 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         ->middleware('permission:read voucher')->name('finance.online.data');
     Route::get('finance/online-transactions/{id}/proof', [\App\Http\Controllers\Finance\OnlineIntakeController::class,'proof'])
         ->whereNumber('id')->middleware('permission:read voucher')->name('finance.online.proof');
+    Route::get('finance/online-transactions/{id}/history', [\App\Http\Controllers\Finance\OnlineIntakeController::class,'history'])
+        ->whereNumber('id')->middleware('permission:read voucher')->name('finance.online.history');
+    Route::post('finance/online-transactions/{id}/confirm', [\App\Http\Controllers\Finance\OnlineIntakeController::class,'confirm'])
+        ->whereNumber('id')->middleware(['permission:create voucher','throttle:20,1'])->name('finance.online.confirm');
     Route::post('finance/online-transactions', [\App\Http\Controllers\Finance\OnlineIntakeController::class,'store'])
         ->middleware(['permission:create voucher','throttle:20,1'])->name('finance.online.store');
 

@@ -37,3 +37,9 @@
 - Root cause: Online Intake used `window.Swal.fire` without loading SweetAlert2, while the existing Cheque and CR Voucher views explicitly load the same library.
 - Added SweetAlert2 script include before Online Intake's jQuery handlers, preserving CR-style stacked confirmation/success/error dialogs and existing AJAX flow.
 - Source verified; awaiting owner browser retest. Milestone 02.1 is not PASS yet.
+
+## 2026-11-10 — 02.1 browser PASS; 02.2 backend verification
+- Owner explicitly confirmed **Milestone 02.1 browser PASS**. Milestone 02.2 started.
+- Added additive `finance_online_confirmation_events` audit table, preserving project, transaction, original amount/type, statement reference, verification date, actor/timestamp and remarks. A unique project + intake key prevents duplicate confirmation history.
+- Pending → Confirmed only, within project-scoped row lock and database transaction. Bank statement checkbox, reference and date are required; date cannot predate original transaction. No editing amount, source bank, account or type; no ledger posting.
+- Added project-scoped read history endpoint (read voucher), confirm endpoint (create voucher), with strict authorization. Browser PASS pending.
