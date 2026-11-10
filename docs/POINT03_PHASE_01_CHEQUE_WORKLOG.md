@@ -91,3 +91,10 @@
 - Active project bank account selection for clearing; withdrawals capture actual bank and collecting person. Clearing -> pending_clearing; verified withdrawal -> withdrawn. Zero GL / bank voucher posting.
 - Added Cheque Management sidebar entries in both classic and v2 sidebar, under finance/daily entries (permission: read voucher).
 - Next **browser gate**: migration on approved local/test DB, clearing once, duplicate replay rejected, withdrawal once, amount fixed, future-dated/invalid customer/project rejected, old receiving slips display updated status, none create `customer_ledger` or `ledgers` entries. No Milestone 01.4 implementation yet.
+
+## 2026-11-10 — Milestone 01.3 browser PASS; Milestone 01.4 coded
+- Owner explicitly confirmed **01.3 browser PASS**; milestones 01.1–01.3 now complete.
+- Added 01.4 Pending Clearing → Cleared/Returned/Rejected workflow, protected server authorization, bank statement verification checkbox and statement reference required for clearing, fixed original amount, mandatory return/rejection reason and private bank memo, state transition row locks and duplicate/replay protection.
+- Reused append-only `finance_cheque_intake_actions`, additive optional columns for verification timestamp/reference, reason and memo path; project-scoped authenticated history and memo endpoints. UI has CR-style SweetAlert2 confirmation and searchable list History buttons; slips render live status.
+- No bank voucher/ledger posting. Cleared is only **eligible** for a future approved voucher workflow, not posted. Withdrawal remains terminal, outside the clearing decision path.
+- Browser tests still required: verified clear, cancel, empty reference, failed return/memo validation, returned/rejected, history/attachments/project isolation, duplicate POST/replay rejection, slip status and no ledger postings. 01.4 NOT browser-PASS yet; Phase 02 locked.

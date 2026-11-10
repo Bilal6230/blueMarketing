@@ -298,6 +298,12 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         ->whereNumber('id')->middleware('permission:read voucher')->name('finance.cheques.slip');
     Route::post('finance/cheques/{id}/action', [\App\Http\Controllers\Finance\ChequeIntakeController::class, 'act'])
         ->whereNumber('id')->middleware(['permission:create voucher', 'throttle:20,1'])->name('finance.cheques.action');
+    Route::get('finance/cheques/{id}/history', [\App\Http\Controllers\Finance\ChequeIntakeController::class, 'history'])
+        ->whereNumber('id')->middleware('permission:read voucher')->name('finance.cheques.history');
+    Route::get('finance/cheques/{id}/memos/{event}', [\App\Http\Controllers\Finance\ChequeIntakeController::class, 'memo'])
+        ->whereNumber('id')->whereNumber('event')->middleware('permission:read voucher')->name('finance.cheques.memo');
+    Route::post('finance/cheques/{id}/finalize', [\App\Http\Controllers\Finance\ChequeIntakeController::class, 'finalize'])
+        ->whereNumber('id')->middleware(['permission:create voucher','throttle:20,1'])->name('finance.cheques.finalize');
     Route::post('finance/cheques', [\App\Http\Controllers\Finance\ChequeIntakeController::class, 'store'])
         ->middleware(['permission:create voucher', 'throttle:20,1'])->name('finance.cheques.store');
 

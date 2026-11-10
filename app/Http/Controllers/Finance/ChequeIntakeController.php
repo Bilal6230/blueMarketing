@@ -176,6 +176,136 @@ final class ChequeIntakeController extends Controller
         ]);
     }
 
+    public function history(int $id)
+    {
+        $this->ready();
+        abort_unless(Schema::hasTable('finance_cheque_intake_actions'), 409);
+        $project = $this->project();
+        $cheque = DB::table('finance_cheque_intakes')
+            ->where('project_id', $project)->where('id', $id)->first();
+        abort_unless($cheque, 404);
+        $events = DB::table('finance_cheque_intake_actions as a')
+            ->leftJoin('users as u', 'u.id', '=', 'a.actor_id')
+            ->where('a.project_id', $project)->where('a.cheque_intake_id', $id)
+            ->orderBy('a.id')
+            ->get(['a.id','a.action','a.from_status','a.to_status','a.action_date',
+                'a.bank_name','a.branch','a.original_amount','a.remarks','a.reason',
+                'a.bank_statement_reference','a.verification_confirmed_at',
+                'a.memo_path','a.actor_id','a.created_at','u.name as actor_name']);
+        return response()->json([
+            'cheque' => ['id' => $cheque->id, 'cheque_number' => $cheque->cheque_number,
+                'status' => $cheque->status, 'amount' => $cheque->amount],
+            'events' => $events->map(function ($event) use ($id) {
+                $event->has_memo = (bool) $event->memo_path;
+                $event->memo_url = $event->has_memo
+                    ? route('finance.cheques.memo', ['id'=>$id,'event'=>$event->id]) : null;
+                unset($event->memo_path);
+                return $event;
+            }),
+        ])->header('Cache-Control', 'private, no-store');
+    }
+
+    public function memo(int $id, int $event)
+    {
+        $this->ready();
+        $project = $this->project();
+        $record = DB::table('finance_cheque_intake_actions as a')
+            ->join('finance_cheque_intakes as c', function ($join) {
+                $join->on('c.id','=','a.cheque_intake_id')
+                    ->on('c.project_id','=','a.project_id');
+            })
+            ->where('a.project_id',$project)->where('a.cheque_intake_id',$id)
+            ->where('a.id',$event)->first(['a.memo_path']);
+        abort_unless($record && $record->memo_path,404);
+        abort_unless(Storage::disk('local')->exists($record->memo_path),404);
+        return Storage::disk('local')->download($record->memo_path);
+    }
+
+    public function finalize(Request $request, int $id)
+    {
+        abort_unless($request->user()?->can('create voucher'),403);
+        $this->ready();
+        abort_unless(Schema::hasTable('finance_cheque_intake_actions')
+            && Schema::hasColumn('finance_cheque_intake_actions','verification_confirmed_at'),
+            409,'Cheque finalization migration must be applied first.');
+        $project = $this->project();
+        $data = $request->validate([
+            'decision' => ['required', Rule::in(['cleared','returned','rejected'])],
+            'action_date' => ['required','date_format:Y-m-d'],
+            'bank_statement_verified' => ['required_if:decision,cleared','nullable','accepted'],
+            'bank_statement_reference' => ['required_if:decision,cleared','nullable','string','max:150'],
+            'reason' => ['required_if:decision,returned,rejected','nullable','string','max:1000'],
+            'remarks' => ['nullable','string','max:2000'],
+            'bank_memo' => ['required_if:decision,returned,rejected','nullable','file',
+                'mimes:pdf,jpg,jpeg,png','max:5120'],
+        ]);
+        $decision = $data['decision'];
+        // File remains private and accessible only through scoped authenticated download.
+        $memoPath = null;
+        if ($request->hasFile('bank_memo')) {
+            $memoPath = $request->file('bank_memo')
+                ->store('finance/cheque-intakes/'.$project.'/memos','local');
+        }
+        try {
+            $result = DB::transaction(function () use ($project,$id,$decision,$data,$memoPath,$request) {
+                $cheque = DB::table('finance_cheque_intakes')->where('project_id',$project)
+                    ->where('id',$id)->lockForUpdate()->first();
+                abort_unless($cheque,404);
+                if ($cheque->status !== 'pending_clearing') {
+                    throw ValidationException::withMessages([
+                        'decision'=>'Only cheques in Pending Clearing can be cleared, returned or rejected.'
+                    ]);
+                }
+                $clearing = DB::table('finance_cheque_intake_actions')
+                    ->where('project_id',$project)->where('cheque_intake_id',$id)
+                    ->where('action','clearing')->orderByDesc('id')->first();
+                abort_unless($clearing && $clearing->bank_account_id,409,
+                    'The original clearing bank account could not be verified.');
+                if ($data['action_date'] < $clearing->action_date) {
+                    throw ValidationException::withMessages([
+                        'action_date'=>'Decision date cannot be before bank clearing submission.'
+                    ]);
+                }
+                DB::table('finance_cheque_intake_actions')->insert([
+                    'project_id'=>$project,'cheque_intake_id'=>$id,
+                    'action'=>$decision,'from_status'=>'pending_clearing',
+                    'to_status'=>$decision,'action_date'=>$data['action_date'],
+                    'bank_account_id'=>$clearing->bank_account_id,
+                    'bank_name'=>$clearing->bank_name,'branch'=>$clearing->branch,
+                    'collector_name'=>null,'collector_cnic'=>null,
+                    'remarks'=>$data['remarks']??null,
+                    'original_amount'=>$cheque->amount,
+                    'actor_id'=>(int)$request->user()->id,
+                    'verification_confirmed_at'=>$decision==='cleared'?now():null,
+                    'bank_statement_reference'=>$decision==='cleared'
+                        ?trim($data['bank_statement_reference']):null,
+                    'reason'=>$decision==='cleared'?null:trim($data['reason']),
+                    'memo_path'=>$decision==='cleared'?null:$memoPath,
+                    'created_at'=>now(),
+                ]);
+                $changed = DB::table('finance_cheque_intakes')->where('project_id',$project)
+                    ->where('id',$id)->where('status','pending_clearing')
+                    ->update(['status'=>$decision,'updated_at'=>now()]);
+                if ($changed !== 1) {
+                    throw new \RuntimeException('Cheque status changed during confirmation.');
+                }
+                return ['id'=>$id,'status'=>$decision,'amount'=>$cheque->amount];
+            },3);
+        } catch (\Throwable $exception) {
+            if ($memoPath) Storage::disk('local')->delete($memoPath);
+            throw $exception;
+        }
+        return response()->json([
+            'status'=>'success',
+            'message'=>match($decision){
+                'cleared'=>'Cheque clearance verified and recorded. No accounting voucher was posted.',
+                'returned'=>'Cheque returned / bounced with bank memo recorded.',
+                default=>'Cheque rejected with memo recorded.'
+            },
+            'data'=>$result,
+        ]);
+    }
+
     public function store(Request $request)
     {
         abort_unless($request->user()?->can('create voucher'), 403);

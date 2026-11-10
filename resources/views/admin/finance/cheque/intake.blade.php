@@ -191,6 +191,71 @@
     </div></div>
 </div>
 
+<div class="modal fade" id="cheque-finalize-modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document"><div class="modal-content">
+        <div class="modal-header" style="background:#eaf7ee;border-bottom:2px solid #168348">
+            <h5 class="modal-title text-success">Cheque Clearing Decision</h5>
+            <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span></button>
+        </div>
+        <form id="cheque-finalize-form" enctype="multipart/form-data" novalidate>
+            @csrf
+            <div class="modal-body">
+                <p>Cheque <strong id="cheque-finalize-number"></strong> — Original Amount:
+                    <strong id="cheque-finalize-amount"></strong> (fixed)</p>
+                <input type="hidden" name="decision" id="cheque-finalize-decision">
+                <div class="form-group"><label>Decision Date *</label>
+                    <input name="action_date" id="cheque-finalize-date" type="date" class="form-control" required></div>
+                <div id="cheque-finalize-cleared">
+                    <div class="alert alert-warning">
+                        Kya aap confirm karte hain ke ye cheque successfully clear ho chuka hai aur payment relevant bank
+                        account mein credit ho chuki hai? Kya aap ne bank statement / account audit se credit entry verify
+                        kar li hai? Sirf us waqt confirm karein jab amount waqai receive aur verify ho chuka ho.
+                    </div>
+                    <div class="form-group"><label>Bank Statement Reference *</label>
+                        <input name="bank_statement_reference" id="cheque-finalize-reference" maxlength="150" class="form-control"></div>
+                    <div class="custom-control custom-checkbox mb-3">
+                        <input type="checkbox" class="custom-control-input" name="bank_statement_verified"
+                            value="1" id="cheque-finalize-verified">
+                        <label class="custom-control-label" for="cheque-finalize-verified">
+                            Maine bank statement/account audit se credit amount verify kar li hai *
+                        </label>
+                    </div>
+                </div>
+                <div id="cheque-finalize-rejected" style="display:none">
+                    <div class="form-group"><label>Return / Rejection Reason *</label>
+                        <textarea class="form-control" name="reason" id="cheque-finalize-reason" maxlength="1000" rows="2"></textarea></div>
+                    <div class="form-group"><label>Bank Memo / Attachment * (PDF, JPG, PNG; max 5 MB)</label>
+                        <input type="file" name="bank_memo" id="cheque-finalize-memo" class="form-control-file" accept=".pdf,.jpg,.jpeg,.png"></div>
+                </div>
+                <div class="form-group"><label>Remarks</label>
+                    <textarea name="remarks" class="form-control" maxlength="2000" rows="2"></textarea></div>
+                <div class="small text-danger" id="cheque-finalize-errors" role="alert"></div>
+                <small class="text-muted">Is action se koi accounting voucher ya ledger posting create nahi hogi.</small>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-success" id="cheque-finalize-save">Continue</button>
+            </div>
+        </form>
+    </div></div>
+</div>
+<div class="modal fade" id="cheque-history-modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document"><div class="modal-content">
+        <div class="modal-header" style="background:#eaf7ee;border-bottom:2px solid #168348">
+            <h5 class="modal-title text-success">Cheque Lifecycle History</h5>
+            <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span></button>
+        </div>
+        <div class="modal-body">
+            <p id="cheque-history-heading" class="font-weight-bold"></p>
+            <div class="table-responsive" style="max-height:60vh;overflow:auto">
+                <table class="table table-sm table-bordered">
+                    <thead><tr><th>Date / Actor</th><th>Action</th><th>Status</th><th>Bank / Ref</th><th>Reason / Remarks / Memo</th></tr></thead>
+                    <tbody id="cheque-history-rows"></tbody>
+                </table>
+            </div>
+        </div>
+    </div></div>
+</div>
 <div id="cheque-toast" class="alert alert-success shadow" role="status" aria-live="polite"></div>
 @endsection
 @push('script')
@@ -201,6 +266,9 @@ $(function () {
     var currentPage=1, listRequest=null, saveBusy=false, searchTimer=null, listSeq=0;
     var $form=$('#cheque-intake-form'), $create=$('#cheque-create-modal');
     var actionUrlTemplate=@json(route('finance.cheques.action',['id'=>'__CHEQUE_ID__']));
+    var finalizeUrlTemplate=@json(route('finance.cheques.finalize',['id'=>'__CHEQUE_ID__']));
+    var historyUrlTemplate=@json(route('finance.cheques.history',['id'=>'__CHEQUE_ID__']));
+    var finalizeBusy=false,finalizeTarget=null;
     var actionBusy=false;
     var actionTarget=null;
     var slipUrlTemplate=@json(route('finance.cheques.slip',['id'=>'__CHEQUE_ID__']));
@@ -314,7 +382,15 @@ $(function () {
             $('<button type="button">').addClass('btn btn-sm btn-outline-primary cheque-action')
                 .attr('data-id',r.id).attr('data-cheque',r.cheque_number)
                 .attr('data-amount',r.amount).attr('data-kind','withdrawal').text('Direct Withdrawal').appendTo($actions);
-        } else $('<span>').addClass('text-muted small').text('—').appendTo($actions);
+        } else if(@json(auth()->user()->can('create voucher')) && r.status==='pending_clearing') {
+            $.each([['cleared','Mark Cleared','success'],['returned','Returned / Bounced','warning'],['rejected','Rejected / Memo','danger']],function(_,item){
+                $('<button type="button">').addClass('btn btn-sm btn-outline-'+item[2]+' mr-1 cheque-finalize')
+                    .attr({'data-id':r.id,'data-cheque':r.cheque_number,'data-amount':r.amount,'data-decision':item[0]})
+                    .text(item[1]).appendTo($actions);
+            });
+        }
+        $('<button type="button">').addClass('btn btn-sm btn-outline-secondary cheque-history')
+            .attr({'data-id':r.id,'data-cheque':r.cheque_number}).text('History').appendTo($actions);
         $actions.appendTo($tr);
         return $tr;
     }
@@ -477,6 +553,98 @@ $(function () {
                 toast(message,true);
                 window.Swal.fire({icon:'error',title:'Action Not Saved',text:message});
             }).always(function(){actionBusy=false;$('#cheque-action-submit').prop('disabled',false);});
+        });
+    });
+    @endcan
+    // Milestone 01.4 — history, mandatory bank verification and terminal status decisions.
+    $('#cheque-table-body').on('click','.cheque-history',function(){
+        var id=$(this).attr('data-id'), number=$(this).attr('data-cheque');
+        $('#cheque-history-heading').text('Cheque #'+number);
+        var $body=$('#cheque-history-rows').empty();
+        $('<tr>').append($('<td colspan="5">').text('Loading history...')).appendTo($body);
+        $('#cheque-history-modal').modal('show');
+        $.ajax({url:historyUrlTemplate.replace('__CHEQUE_ID__',id),dataType:'json'}).done(function(result){
+            $body.empty();
+            var events=result.events||[];
+            if(!events.length){
+                $('<tr>').append($('<td colspan="5">').text('Cheque received. No bank lifecycle actions recorded yet.')).appendTo($body);
+            }
+            $.each(events,function(_,e){
+                var $row=$('<tr>');
+                $('<td>').text((e.created_at||e.action_date)+' / '+(e.actor_name||'User #'+e.actor_id)).appendTo($row);
+                $('<td>').text(e.action||'').appendTo($row);
+                $('<td>').text((e.from_status||'')+' → '+(e.to_status||'')).appendTo($row);
+                $('<td>').text([e.bank_name,e.bank_statement_reference].filter(Boolean).join(' / ')).appendTo($row);
+                var $details=$('<td>');
+                $details.text([e.reason,e.remarks,e.verification_confirmed_at?'Bank verified: '+e.verification_confirmed_at:''].filter(Boolean).join(' | '));
+                if(e.has_memo&&e.memo_url) $('<a>').addClass('d-block').attr({href:e.memo_url,target:'_blank',rel:'noopener'}).text('Download Bank Memo').appendTo($details);
+                $details.appendTo($row);$body.append($row);
+            });
+        }).fail(function(){
+            $body.empty().append($('<tr>').append($('<td colspan="5" class="text-danger">').text('Could not load cheque history.')));
+        });
+    });
+    @can('create voucher')
+    $('#cheque-table-body').on('click','.cheque-finalize',function(){
+        var $btn=$(this),decision=$btn.attr('data-decision');
+        finalizeTarget={id:$btn.attr('data-id'),decision:decision};
+        $('#cheque-finalize-form').trigger('reset');
+        $('#cheque-finalize-errors').empty();
+        $('#cheque-finalize-decision').val(decision);
+        $('#cheque-finalize-date').val(@json(date('Y-m-d')));
+        $('#cheque-finalize-number').text($btn.attr('data-cheque'));
+        $('#cheque-finalize-amount').text(Number($btn.attr('data-amount')).toLocaleString('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2}));
+        $('#cheque-finalize-cleared').toggle(decision==='cleared');
+        $('#cheque-finalize-rejected').toggle(decision!=='cleared');
+        $('#cheque-finalize-save').text(decision==='cleared'?'Verify and Mark Cleared':(decision==='returned'?'Mark Returned / Bounced':'Mark Rejected / Memo'));
+        $('#cheque-finalize-modal').modal('show');
+    });
+    $('#cheque-finalize-form').on('submit',function(e){
+        e.preventDefault();
+        if(!finalizeTarget||finalizeBusy)return;
+        var decision=finalizeTarget.decision,errors=[];
+        if(!$('#cheque-finalize-date').val())errors.push('Decision date is required.');
+        if(decision==='cleared'){
+            if(!$.trim($('#cheque-finalize-reference').val()))errors.push('Bank statement reference is required.');
+            if(!$('#cheque-finalize-verified').prop('checked'))errors.push('Bank statement verification is required.');
+        }else{
+            if(!$.trim($('#cheque-finalize-reason').val()))errors.push('Return/rejection reason is required.');
+            var files=$('#cheque-finalize-memo').prop('files');
+            if(!files||!files.length)errors.push('Bank memo attachment is required.');
+            else if(files[0].size>5*1024*1024||!/\.(pdf|jpe?g|png)$/i.test(files[0].name))errors.push('Bank memo must be PDF/JPG/PNG under 5 MB.');
+        }
+        if(errors.length){$('#cheque-finalize-errors').text(errors.join(' '));return;}
+        if(!window.Swal||!$.isFunction(window.Swal.fire)){toast('Confirmation dialog unavailable.',true);return;}
+        window.Swal.fire({
+            icon:decision==='cleared'?'warning':'question',
+            title:decision==='cleared'?'Bank Statement Verification':'Confirm Cheque Decision',
+            text:decision==='cleared'
+                ?'Kya aap confirm karte hain ke ye cheque successfully clear ho chuka hai aur payment relevant bank account mein credit ho chuki hai? Kya aap ne bank statement / account audit se credit entry verify kar li hai? Sirf us waqt confirm karein jab amount waqai receive aur verify ho chuka ho.'
+                :'Confirm cheque status as '+decision+'? The original cheque amount will remain unchanged.',
+            showCancelButton:true,confirmButtonText:decision==='cleared'?'OK – Confirm Cheque Cleared':'Yes, Confirm',
+            cancelButtonText:decision==='cleared'?'Cancel – Do Not Confirm':'Cancel',
+            confirmButtonColor:'#168348',allowOutsideClick:false
+        }).then(function(result){
+            if(!result.isConfirmed||finalizeBusy)return;
+            finalizeBusy=true;
+            $('#cheque-finalize-save').prop('disabled',true);
+            var formData=new FormData($('#cheque-finalize-form')[0]);
+            $.ajax({
+                url:finalizeUrlTemplate.replace('__CHEQUE_ID__',String(finalizeTarget.id)),
+                method:'POST',data:formData,processData:false,contentType:false,
+                dataType:'json',headers:{Accept:'application/json'}
+            }).done(function(response){
+                toast(response.message||'Cheque status updated.',false);
+                $('#cheque-finalize-modal').modal('hide');
+                load(1);
+                window.Swal.fire({icon:'success',title:'Cheque Status Updated',text:response.message||'Saved'});
+            }).fail(function(xhr){
+                var msg=xhr.responseJSON&&xhr.responseJSON.message?xhr.responseJSON.message:'Unable to finalize cheque.';
+                if(xhr.responseJSON&&xhr.responseJSON.errors)$.each(xhr.responseJSON.errors,function(_,messages){msg=messages[0]||msg;return false;});
+                $('#cheque-finalize-errors').text(msg);
+                toast(msg,true);
+                window.Swal.fire({icon:'error',title:'Cheque Not Updated',text:msg});
+            }).always(function(){finalizeBusy=false;$('#cheque-finalize-save').prop('disabled',false);});
         });
     });
     @endcan
