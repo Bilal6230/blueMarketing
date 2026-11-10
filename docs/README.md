@@ -1,24 +1,24 @@
-# BlueMarketing Engineering Handover
+# BlueMarketing — Fresh Phase-by-Phase Implementation
 
-**Last updated:** 2026-10-26  
-**Working branch:** `upgrade/laravel-framework`  
-**Production branch:** `master_live` — do not modify, merge or deploy without explicit approval.
+## Scope
+This is a new documentation starting point for the `upgrade/laravel-framework` branch. Previous non-V2 working documents were intentionally cleared. Existing Database V2 documents and `docs/database_v2_scan/` are retained unchanged as historical technical evidence; retaining them does **not** mean V2 is production-ready.
 
-## Start here (new chats and new developers)
-Read in order:
-1. [PROJECT_STATUS.md](PROJECT_STATUS.md) — verified state, environment differences, next actions.
-2. [DATABASE_ARCHITECTURE_PLAN.md](DATABASE_ARCHITECTURE_PLAN.md) — database restructuring, financial integrity, foreign keys, soft delete policy, migration strategy.
-3. [SECURITY_ACTIVITY_PLAN.md](SECURITY_ACTIVITY_PLAN.md) — audit trail, device registration, adaptive OTP.
-4. [AUDIT_WORKLOG.md](AUDIT_WORKLOG.md) — findings, evidence, unanswered questions, decisions and changes.
-5. [Historical upgrade audit](../LARAVEL_13_UPGRADE_AUDIT.md) — historical planning document (some version/status information is outdated).
+## Mandatory phase gates
+1. Start by inspecting existing application code, current behavior, and the client requirements for the selected phase. Record what is already implemented, partial, and missing.
+2. Write a small, testable phase scope and explicit acceptance criteria before implementation.
+3. Implement **only the active phase**; preserve unrelated modules, records, permissions, and accounting rules. First-party frontend DOM/AJAX work must use jQuery per root `AGENTS.md`.
+4. Run relevant code-level tests and record results. Do not claim browser testing based on code inspection alone.
+5. Require the owner's **actual browser testing and explicit PASS** for every phase. Record routes, actions, expected/observed behavior, failures, and evidence.
+6. If any test fails, repair and repeat **the same phase**. **Do not start the next phase until the current phase passes browser testing and the owner confirms PASS.**
+7. After PASS, update the active phase report with completed items, remaining items, evidence and commit reference; only then open the next phase.
 
-## Non-negotiable guardrails
-- Never modify `master_live` without explicit approval. No new branches without permission.
-- Never run migrations, `migrate:fresh`, rollbacks, seeding, import, bulk update/delete or production deploy without explicit authorization and verified backups.
-- Do not delete/reset/stash-pop uncommitted user work or financial data.
-- Analyze provided dumps **read-only**. Never commit SQL dumps, secrets, credentials or personal data.
-- Prefer additive, reviewed database changes for existing installations. Clean baseline migrations and in-place upgrades have different requirements.
-- Report what was *verified*, what is a *proposal*, and what still needs testing.
+## Safety
+- Do not change or disable the isolated Database V2 safety guards as part of ordinary phases.
+- Do not modify production financial data, migrate databases, or force deployments without explicit authorization.
+- Do not infer phase completion from previous documents that have been cleared.
+- This documentation reset does not delete any application code or historical Git commits.
 
-## Maintenance protocol
-At each material milestone update the relevant documentation in the existing working branch: date, decision, implementation, tests, risks, next action, commit link. Documentation is the handoff source, not proof that unexecuted changes exist. When beginning a new chat, read these files first, then check live Git state before any code edits.
+## Phase tracking
+**Current phase:** Not started. The first phase will be defined from the latest client requirements and a new code audit.
+
+**Browser test gate:** Pending. No phase may be marked complete without the owner's browser PASS.
