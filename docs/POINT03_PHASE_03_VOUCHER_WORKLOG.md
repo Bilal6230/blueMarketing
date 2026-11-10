@@ -54,3 +54,5 @@
 - Batch 1 browser PASS confirmed by owner. Implemented read-only project-scoped approval status resolver; JV listing and Daily Voucher Directory show Pending/Approved/Rejected explicitly instead of inferring approval from is_active.
 - Inactive CR/CP source appears only if pending/rejected approval exists, not merely because is_active is zero; soft-deleted records remain excluded. JV save flash explicitly reports Pending approval where an approval was just submitted.
 - No ledger writes or schema changes. Browser PASS pending; next workflow lifecycle changes blocked until testing.
+
+- Post-commit review: JV save banner is now keyed to exactly the transaction-returned voucher id (including durable-request replay), never to some other recent pending voucher created by the same user. Updated directory skeleton from 8 to 9 columns and JV conditional colgroup to match the new approval status column.

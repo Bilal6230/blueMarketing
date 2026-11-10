@@ -62,6 +62,7 @@
                                 <col style="width: 7%">
                                 <col style="width: 50%">
                                 <col style="width: 8%">
+                                @if($type === 'JV')<col style="width: 11%">@endif
                                 <col style="width: 15%">
                             </colgroup>
 

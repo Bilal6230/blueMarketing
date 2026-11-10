@@ -258,7 +258,7 @@
     updateSortArrows();
     const scheduleLoad=()=>{clearTimeout(timer);timer=setTimeout(()=>{start=0;load();},300);};
     function showTableSkeleton(){
-        $.blueTableSkeleton.show($('#dv-rows'),{rows:10,columns:8,tone:$('#dv-page').hasClass('dv-theme-debit')?'debit':'credit'});
+        $.blueTableSkeleton.show($('#dv-rows'),{rows:10,columns:9,tone:$('#dv-page').hasClass('dv-theme-debit')?'debit':'credit'});
         $('#dv-record-summary').text('Loading records...');
         $('#dv-pages').empty();
     }

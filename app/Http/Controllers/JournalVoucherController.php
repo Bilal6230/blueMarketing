@@ -547,6 +547,7 @@ class JournalVoucherController extends Controller
             return (int) $journalVoucher->id;
         };
 
+        $savedVoucherId = null;
         if ($requestKey !== null) {
             // A retry must match metadata AND amounts, not just the debit total.
             $canonical = [
@@ -569,18 +570,19 @@ class JournalVoucherController extends Controller
             $posting = app(\App\Services\Finance\DurableFinancialRequest::class)->execute(
                 'journal_voucher', (int) $selectedProjectId, $requestKey, $hash, $post
             );
+            $savedVoucherId = (int) $posting['voucher_id'];
             if ($posting['replayed']) {
                 app(\App\Services\Finance\JournalVoucherReplayIntegrity::class)
                     ->assertIntact((int) $selectedProjectId, (int) $posting['voucher_id']);
             }
         } else {
-            DB::transaction($post);
+            $savedVoucherId = (int) DB::transaction($post);
         }
 
         $hasPendingApproval=\App\Models\DailyVoucherApproval::query()
             ->where('project_id',(int)$selectedProjectId)->where('source_table','journal_vouchers')
-            ->where('submitted_by',(int)auth()->id())->where('status','pending')
-            ->where('created_at','>=',now()->subMinutes(2))->exists();
+            ->where('source_id',$savedVoucherId)
+            ->where('status','pending')->exists();
         return redirect()->route('journal.voucher.index')->with('success',
             $hasPendingApproval?'Journal Voucher saved — Pending Approval. Ledger posting is inactive until approval.':'Journal Voucher created successfully.');
     }
