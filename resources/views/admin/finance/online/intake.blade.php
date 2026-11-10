@@ -34,6 +34,13 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
 #online-entry-modal .ts-control{min-height:31px;border-radius:4px;padding:4px 9px;font-size:13px}
 .online-register-page select.tomselected,#online-entry-modal select.tomselected{display:none!important;position:absolute!important;width:1px!important;height:1px!important}
 #online-entry-modal .modal-dialog{max-width:970px}
+#online-confirm-modal .modal-header,#online-history-modal .modal-header{background:#eaf7ee;border-bottom:2px solid #168348}
+#online-confirm-modal .modal-title,#online-history-modal .modal-title{color:#087a38;font-weight:700}
+#online-confirm-modal .modal-body label{font-size:12px;font-weight:700}
+.online-confirm-error{font-size:12px;color:#dc3545}
+.online-history-table{max-height:55vh;overflow:auto}
+.online-history-table thead th{position:sticky;top:0;background:#eaf7ee}
+
 #online-entry-modal .modal-header{background:#eaf7ee;border-bottom:2px solid #168348}
 #online-entry-modal .modal-title{color:#087a38;font-weight:700}
 #online-entry-modal label{font-size:12px;font-weight:700}
@@ -74,8 +81,8 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
    </div>
    <div class="table-responsive">
     <table class="table table-bordered table-hover table-sm">
-     <thead><tr><th>#</th><th>Date</th><th>Transaction Ref</th><th>Type</th><th>Sending Bank</th><th>Receiving Bank</th><th>Sender / Receiver</th><th>Purpose</th><th>Amount</th><th>Status</th><th>Proof</th></tr></thead>
-     <tbody id="online-rows"><tr><td colspan="11" class="text-muted text-center">Loading transactions...</td></tr></tbody>
+     <thead><tr><th>#</th><th>Date</th><th>Transaction Ref</th><th>Type</th><th>Sending Bank</th><th>Receiving Bank</th><th>Sender / Receiver</th><th>Purpose</th><th>Amount</th><th>Status</th><th>Proof</th><th>Actions</th></tr></thead>
+     <tbody id="online-rows"><tr><td colspan="12" class="text-muted text-center">Loading transactions...</td></tr></tbody>
     </table>
    </div>
    <div class="d-flex justify-content-between align-items-center mt-2"><small class="text-muted" id="online-count">Loading...</small><div id="online-pages" class="btn-group btn-group-sm"></div></div>
@@ -112,6 +119,44 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
  </div></div>
 </div>
 @endcan
+<div class="modal fade" id="online-history-modal" tabindex="-1" role="dialog" aria-hidden="true">
+ <div class="modal-dialog modal-dialog-centered modal-lg" role="document"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title">Online Transaction History</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
+  <div class="modal-body"><p class="font-weight-bold" id="online-history-ref"></p>
+   <div class="table-responsive online-history-table"><table class="table table-sm table-bordered">
+    <thead><tr><th>Time / Actor</th><th>From → To</th><th>Bank Statement Ref</th><th>Verification Date</th><th>Original Amount</th><th>Remarks</th></tr></thead>
+    <tbody id="online-history-rows"></tbody></table></div>
+  </div>
+ </div></div>
+</div>
+@can('create voucher')
+<div class="modal fade" id="online-confirm-modal" tabindex="-1" role="dialog" aria-hidden="true">
+ <div class="modal-dialog modal-dialog-centered" role="document"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title">Confirm Online Transaction</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
+  <form id="online-confirm-form" novalidate>@csrf
+   <div class="modal-body">
+    <p><strong>Reference:</strong> <span id="online-confirm-ref"></span></p>
+    <p><strong>Amount (fixed):</strong> Rs. <span id="online-confirm-amount"></span></p>
+    <div id="online-confirm-notice" class="alert alert-warning small"></div>
+    <div class="form-group"><label for="online-verify-date">Bank Verification Date *</label>
+     <input type="date" id="online-verify-date" name="verification_date" class="form-control form-control-sm" required></div>
+    <div class="form-group"><label for="online-statement-reference">Bank Statement / Audit Reference *</label>
+     <input id="online-statement-reference" name="statement_reference" class="form-control form-control-sm" maxlength="150" required></div>
+    <div class="custom-control custom-checkbox mb-3">
+     <input type="checkbox" class="custom-control-input" id="online-verified" name="statement_verified" value="1" required>
+     <label class="custom-control-label" for="online-verified">Maine bank statement / account audit mein payment verify ki hai *</label>
+    </div>
+    <div class="form-group"><label for="online-verify-remarks">Verification Remarks (optional)</label>
+     <textarea name="remarks" id="online-verify-remarks" maxlength="2000" rows="2" class="form-control form-control-sm"></textarea></div>
+    <div class="online-confirm-error" id="online-confirm-errors" role="alert"></div>
+    <small class="text-muted">Confirmation sirf status/audit update karegi. Bank voucher ya ledger posting nahi hogi.</small>
+   </div>
+   <div class="modal-footer"><button class="btn btn-outline-secondary" type="button" data-dismiss="modal">Cancel</button>
+    <button class="btn btn-success" id="online-confirm-submit" type="submit">Verify & Confirm</button></div>
+  </form>
+ </div></div>
+</div>
+@endcan
 <div id="online-toast" class="alert" role="status"></div>
 @endsection
 @push('script')
@@ -122,7 +167,9 @@ $(function(){
  'use strict';
  $('html,body').addClass('online-page-active');
  var $entry=$('#online-entry-form'),$modal=$('#online-entry-modal'),$rows=$('#online-rows');
- var request=null,sequence=0,busy=false,searchTimer=null;
+ var request=null,sequence=0,busy=false,searchTimer=null,confirmBusy=false,confirmRecord=null;
+ var confirmUrlTemplate=@json(route('finance.online.confirm',['id'=>'__ONLINE_ID__']));
+ var historyUrlTemplate=@json(route('finance.online.history',['id'=>'__ONLINE_ID__']));
  var mappings=@json($mappings);
  function fit(){
   var $page=$('.online-register-page');
@@ -256,7 +303,20 @@ $(function(){
   var $proof=$('<td>');
   if(x.has_proof && x.proof_url)$('<a>').attr({href:x.proof_url,target:'_blank',rel:'noopener'}).text('Download').addClass('btn btn-outline-primary btn-sm').appendTo($proof);
   else $proof.addClass('text-muted').text('—');
-  $proof.appendTo($r);return $r;
+  $proof.appendTo($r);
+  var $actions=$('<td>').addClass('text-nowrap');
+  @can('create voucher')
+  if(x.status==='pending'){
+   $('<button type="button">').addClass('btn btn-outline-success btn-sm mr-1 online-confirm-button')
+    .attr({'data-id':x.id,'data-reference':x.reference,'data-amount':x.amount,
+     'data-type':x.type,'data-date':x.transaction_date})
+    .text('Confirm').appendTo($actions);
+  }
+  @endcan
+  $('<button type="button">').addClass('btn btn-outline-secondary btn-sm online-history-button')
+   .attr({'data-id':x.id,'data-reference':x.reference}).text('History').appendTo($actions);
+  $actions.appendTo($r);
+  return $r;
  }
  function pageLinks(data){
   var $nav=$('#online-pages').empty(),page=data.current_page||1,last=data.last_page||1;
@@ -272,7 +332,7 @@ $(function(){
  function load(page){
   var seq=++sequence;
   if(request)request.abort();
-  $.blueTableSkeleton.show($rows,{rows:10,columns:11,tone:'credit'});
+  $.blueTableSkeleton.show($rows,{rows:10,columns:12,tone:'credit'});
   $('#online-count').text('Loading records...');$('#online-pages').empty();
   request=$.ajax({url:@json(route('finance.online.data')),dataType:'json',data:filters(page)})
    .done(function(data){
@@ -280,12 +340,12 @@ $(function(){
     $.blueTableSkeleton.clear($rows);
     $rows.empty();
     $.each(data.data||[],function(i,x){$rows.append(renderRow(x,(data.current_page-1)*data.per_page+i+1));});
-    if(!(data.data||[]).length)$rows.append($('<tr>').append($('<td colspan="11" class="text-center text-muted py-4">').text('No matching online transactions.')));
+    if(!(data.data||[]).length)$rows.append($('<tr>').append($('<td colspan="12" class="text-center text-muted py-4">').text('No matching online transactions.')));
     pageLinks(data);
    }).fail(function(xhr,status){
     if(status==='abort'||seq!==sequence)return;
     $.blueTableSkeleton.clear($rows);
-    $rows.empty().append($('<tr>').append($('<td colspan="11" class="text-danger text-center py-4">').text('Unable to load online transactions.')));
+    $rows.empty().append($('<tr>').append($('<td colspan="12" class="text-danger text-center py-4">').text('Unable to load online transactions.')));
     $('#online-count').text('Could not load records.');
     toast('Online register could not be loaded.',true);
    });
@@ -332,6 +392,95 @@ $(function(){
    }).always(function(){busy=false;$('#online-save').prop('disabled',false);});
   });
  });
+ // 02.2: read-only project-scoped history for all records.
+ $rows.on('click','.online-history-button',function(){
+  var $button=$(this),id=String($button.attr('data-id'));
+  $('#online-history-ref').text('Reference: '+($button.attr('data-reference')||''));
+  var $body=$('#online-history-rows').empty();
+  $('<tr>').append($('<td colspan="6" class="text-center">').text('Loading history...')).appendTo($body);
+  $('#online-history-modal').modal('show');
+  $.ajax({url:historyUrlTemplate.replace('__ONLINE_ID__',id),dataType:'json'})
+   .done(function(result){
+    $body.empty();
+    var events=result.events||[];
+    if(!events.length){
+     $('<tr>').append($('<td colspan="6" class="text-muted text-center">')
+      .text('Pending source recorded. No bank confirmation yet.')).appendTo($body);
+    }
+    $.each(events,function(_,e){
+     var $tr=$('<tr>');
+     $('<td>').text((e.confirmed_at||'')+' / '+(e.actor_name||'User #'+e.actor_id)).appendTo($tr);
+     $('<td>').text(e.from_status+' → '+e.to_status).appendTo($tr);
+     $('<td>').text(e.statement_reference||'').appendTo($tr);
+     $('<td>').text(e.verification_date||'').appendTo($tr);
+     $('<td>').addClass('text-right').text(Number(e.original_amount).toLocaleString('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2})).appendTo($tr);
+     $('<td>').text(e.remarks||'—').appendTo($tr);
+     $body.append($tr);
+    });
+   }).fail(function(xhr){
+    var msg=xhr.responseJSON&&xhr.responseJSON.message?xhr.responseJSON.message:'Unable to load history.';
+    $body.empty().append($('<tr>').append($('<td colspan="6" class="text-danger">').text(msg)));
+   });
+ });
+ @can('create voucher')
+ $rows.on('click','.online-confirm-button',function(){
+  var $button=$(this);
+  confirmRecord={id:String($button.attr('data-id')),type:$button.attr('data-type'),
+   reference:$button.attr('data-reference'),amount:$button.attr('data-amount'),date:$button.attr('data-date')};
+  var $form=$('#online-confirm-form');
+  $form.trigger('reset');
+  $('#online-confirm-errors').empty();
+  $('#online-confirm-ref').text(confirmRecord.reference);
+  $('#online-confirm-amount').text(Number(confirmRecord.amount).toLocaleString('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2}));
+  $('#online-verify-date').val(@json(date('Y-m-d'))).attr('min',confirmRecord.date);
+  $('#online-confirm-notice').text(confirmRecord.type==='receipt'
+   ?'Receipt IN: bank statement par receiving bank mein credit entry confirm karein. Sirf actual received amount verify hone par Confirm karein.'
+   :'Payment OUT: bank statement par sending bank se debit entry confirm karein. Sirf actual deducted amount verify hone par Confirm karein.');
+  $('#online-confirm-modal').modal('show');
+ });
+ $('#online-confirm-form').on('submit',function(e){
+  e.preventDefault();
+  if(confirmBusy||!confirmRecord)return;
+  var errors=[];
+  var date=$('#online-verify-date').val(),reference=$.trim($('#online-statement-reference').val());
+  if(!date)errors.push('Verification date is required.');
+  if(date&&date<confirmRecord.date)errors.push('Verification date cannot be earlier than transaction date.');
+  if(!reference)errors.push('Bank statement reference is required.');
+  if(!$('#online-verified').prop('checked'))errors.push('Bank statement verification is mandatory.');
+  if(errors.length){$('#online-confirm-errors').text(errors.join(' '));return;}
+  $('#online-confirm-errors').empty();
+  if(!window.Swal||!$.isFunction(window.Swal.fire)){toast('Confirmation dialog unavailable.',true);return;}
+  window.Swal.fire({
+   icon:'warning',title:'Verify Bank Statement Before Confirmation',
+   text:confirmRecord.type==='receipt'
+    ?'Kya aap ne bank statement se verify kar liya hai ke amount relevant bank account mein credit ho chuka hai?'
+    :'Kya aap ne bank statement se verify kar liya hai ke amount relevant bank account se debit ho chuka hai?',
+   showCancelButton:true,confirmButtonText:'Yes, Bank Verified',cancelButtonText:'Cancel',
+   confirmButtonColor:'#168348',allowOutsideClick:false
+  }).then(function(result){
+   if(!result.isConfirmed||confirmBusy)return;
+   confirmBusy=true;
+   $('#online-confirm-submit').prop('disabled',true);
+   $.ajax({
+    url:confirmUrlTemplate.replace('__ONLINE_ID__',confirmRecord.id),method:'POST',
+    data:$('#online-confirm-form').serialize(),dataType:'json',headers:{Accept:'application/json'}
+   }).done(function(data){
+    toast(data.message||'Transaction confirmed.',false);
+    $('#online-confirm-modal').modal('hide');
+    load(1);
+    window.Swal.fire({icon:'success',title:'Bank Verification Recorded',text:data.message||'Confirmed.'});
+   }).fail(function(xhr){
+    var msg=xhr.responseJSON&&xhr.responseJSON.message?xhr.responseJSON.message:'Unable to confirm online transaction.';
+    if(xhr.responseJSON&&xhr.responseJSON.errors){
+     $.each(xhr.responseJSON.errors,function(_,messages){msg=messages[0]||msg;return false;});
+    }
+    $('#online-confirm-errors').text(msg);
+    toast(msg,true);
+    window.Swal.fire({icon:'error',title:'Transaction Not Confirmed',text:msg});
+   }).always(function(){confirmBusy=false;$('#online-confirm-submit').prop('disabled',false);});
+  });
+ });
+ @endcan
  load(1);
 });
 </script>

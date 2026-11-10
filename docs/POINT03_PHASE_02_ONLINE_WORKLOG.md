@@ -43,3 +43,9 @@
 - Added additive `finance_online_confirmation_events` audit table, preserving project, transaction, original amount/type, statement reference, verification date, actor/timestamp and remarks. A unique project + intake key prevents duplicate confirmation history.
 - Pending → Confirmed only, within project-scoped row lock and database transaction. Bank statement checkbox, reference and date are required; date cannot predate original transaction. No editing amount, source bank, account or type; no ledger posting.
 - Added project-scoped read history endpoint (read voucher), confirm endpoint (create voucher), with strict authorization. Browser PASS pending.
+
+## 2026-11-10 — Milestone 02.2 UI completed (code only)
+- Added transaction actions: Confirm only when Pending (create voucher permission), History for read voucher. Table skeleton and pagination updated for twelfth column.
+- Confirmation form shows original immutable reference/amount, verification date, statement reference, mandatory checkbox and optional remarks. UI text distinguishes Receipt IN bank credit versus Payment OUT bank debit. SweetAlert2 confirmation is stacked above the original form, with cancel/error preserving data.
+- AJAX POST confirms and reloads table; history displays actor/time, original fixed amount, statement reference/date and remarks through project-scoped endpoint. No GL posting or voucher generation.
+- Browser gate still pending: confirm credit & debit records, checkbox/date/ref validation, cancel, replay/duplicate POST, history, record-isolation and ledger unchanged. Milestone 02.3 remains locked.
