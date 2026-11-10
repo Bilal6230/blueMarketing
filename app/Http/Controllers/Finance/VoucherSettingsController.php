@@ -53,7 +53,7 @@ final class VoucherSettingsController extends Controller
         $project=$this->authorizeSettings();
         $policies=DailyVoucherApprovalPolicy::query()->where('project_id',$project)->get()->keyBy('voucher_type');
         $approvers=User::query()->where('project_id',$project)->where('status_id',1)
-            ->orderBy('name')->get(['id','name'])->filter(
+            ->orderBy('name')->get(['id','name','project_id','status_id'])->filter(
                 fn(User $user)=>\App\Services\Finance\VoucherApproverAccess::eligibleForAssignment($user,$project)
             )->values();
         $types=self::TYPES;

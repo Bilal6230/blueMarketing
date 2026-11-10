@@ -22,7 +22,7 @@ final class DailyVoucherApprovalController extends Controller
         abort_unless(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())
             || (int) auth()->user()->project_id === $projectId, 403);
         $policies = DailyVoucherApprovalPolicy::query()->where('project_id', $projectId)->get()->keyBy('voucher_type');
-        $approvers = User::query()->where('project_id', $projectId)->where('status_id', 1)->orderBy('name')->get(['id', 'name'])
+        $approvers = User::query()->where('project_id', $projectId)->where('status_id', 1)->orderBy('name')->get(['id', 'name', 'project_id', 'status_id'])
             ->filter(fn (User $user) => \App\Services\Finance\VoucherApproverAccess::eligibleForAssignment($user,$projectId))->values();
         $isSuperAdmin = \App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user());
         $queueQuery = DailyVoucherApproval::query()->with(['assignedApprover:id,name', 'submitter:id,name', 'events'])

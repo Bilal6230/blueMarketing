@@ -47,3 +47,5 @@
 - IMPORTANT staged rollout: existing assigned approvers need voucher approver permission assigned through Role/Permission UI; until granted, they cannot act. Browser testing required before proceeding to status badges and further flow changes.
 
 - Safety review correction: restored `VoucherController::canAccessFinanceApprovalsForUser` legacy `read voucher + super-admin/direct-update` policy (with `superadmin` spelling support) because this helper also guards unrelated finance actions. New `voucher approver` authority applies only in the dedicated voucher-approval controller/workflow. Approval dashboard route accepts either read voucher or voucher approver, with project-access check for non-superadmins.
+
+- Fixed narrow Eloquent approver projections in both controllers: fetched `project_id` and `status_id` alongside `id,name` before `VoucherApproverAccess::eligibleForAssignment` checks, preventing the authorized dropdown from appearing empty due to missing model attributes.
