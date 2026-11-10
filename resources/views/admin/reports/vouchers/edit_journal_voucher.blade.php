@@ -19,6 +19,9 @@ body{overflow:auto!important}
                         <h4 class="mb-0">{{ $title }}</h4>
                     </div>
                     <div class="card-body">
+                        @if(session('success'))
+                            <div class="alert alert-success" role="status">{{ session('success') }}</div>
+                        @endif
                         <form id="journalForm" action="{{ route('journal.voucher.update', $voucher->id) }}" method="POST">
                             @csrf
                             @method('PUT')

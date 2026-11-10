@@ -185,7 +185,7 @@ $(function(){
   if(!entryUrl)return;
   try{
    var $doc=$(this).contents(),$form=$doc.find('#journalForm');
-   if($doc.find('.alert-success').length&&!$form.length){
+   if($doc.find('.alert-success').length){
     $('#jv-entry').modal('hide');table.ajax.reload(null,false);return;
    }
    // Native form redirects back to index after create. Do not leave an index inside the modal.
@@ -193,9 +193,6 @@ $(function(){
     var $success=$doc.find('.alert-success');
     if($success.length){$('#jv-entry').modal('hide');table.ajax.reload(null,false);return;}
     $('#jv-loading').html('<span class="text-danger">Form unavailable. Open in a new tab.</span>');return;
-   }
-   if($doc.find('.alert-success').length){
-    $('#jv-entry').modal('hide');table.ajax.reload(null,false);return;
    }
    $('#jv-loading').addClass('d-none');
   }catch(ex){$('#jv-loading').html('<span class="text-danger">Form unavailable. Open in a new tab.</span>');}
