@@ -43,3 +43,11 @@
 - **Required deployment step:** REVIEW and apply additive migration to an approved local/test database before opening the route. Do NOT migrate or write production/client database.
 - **Verification:** GitHub source commit only; PHP runtime, MySQL migration and browser results NOT executed in this environment. Milestone 01.1 is **IN PROGRESS**. Browser PASS is required before advancing.
 - **Next planned work within 01.1:** focused local PHP/route/migration checks, account-lookup/UX adjustments, browser negative/positive scenarios, user PASS. Phase 02 and Milestone 01.2 remain locked.
+
+## 2026-11-10 — Milestone 01.1 UI correction (owner screenshot feedback)
+- Owner confirmed local migration and successful receipt intake in `bluenew` and provided browser screenshots. Earlier inline form, full redirect and banner were not accepted as final UI.
+- Replaced inline form with Bootstrap create modal; added separate save confirmation modal, AJAX POST with jQuery, success/error toaster plus result modal; no whole-page refresh.
+- AJAX GET server-paginated filtered list with From/To, Customer, Status, Search, row-level cheque/bank/person/purpose filters, page-size controls, pagination and total count. Successful new row prepends immediately on unfiltered first page, then refreshes list/count via AJAX.
+- Server returns JSON record on successful AJAX save and JSON validation errors (including duplicate bank+cheque); all records scoped to selected project. Receipt-only source remains separate; no customer_ledger/ledgers write.
+- Source and route inspection completed; PHPUnit, PHP lint, browser modal/AJAX behavior and cross-project/duplicate regression still require verification on user's local runtime. Milestone **01.1 NOT PASSED** until owner tests.
+- Next: owner pull, `php -l` on changed PHP files, `php artisan route:list --path=admin/finance/cheques`, browser create/cancel/filter/duplicate/modal tests; fix feedback within same milestone, then proceed only after explicit PASS.
