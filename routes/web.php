@@ -385,7 +385,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
     Route::post('finance/voucher-settings', [\App\Http\Controllers\Finance\VoucherSettingsController::class,'save'])
         ->middleware(['permission:update setting','throttle:20,1'])->name('finance.voucher-settings.save');
 
-    Route::middleware(['permission:read voucher'])->prefix('finance/daily-vouchers/approvals')->name('finance.daily-vouchers.approvals.')
+    Route::middleware(['permission:read voucher|voucher approver'])->prefix('finance/daily-vouchers/approvals')->name('finance.daily-vouchers.approvals.')
         ->controller(App\Http\Controllers\Finance\DailyVoucherApprovalController::class)->group(function () {
             Route::get('/', 'index')->name('index');
             Route::post('/policy', 'savePolicy')->name('policy');

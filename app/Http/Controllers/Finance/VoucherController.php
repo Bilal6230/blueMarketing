@@ -161,7 +161,11 @@ class VoucherController extends Controller
             return false;
         }
 
-        return \App\Services\Finance\VoucherApproverAccess::mayApprove($user);
+        // This legacy helper also authorizes unrelated finance operations;
+        // keep its existing access rules. Voucher-specific approval uses
+        // VoucherApproverAccess in the dedicated approval controller/service.
+        return $user->can('read voucher')
+            && ($user->hasRole('super-admin') || $user->hasRole('superadmin') || $user->can('direct-update'));
     }
 
     protected function authorizeFinanceApproval(?User $user = null): void

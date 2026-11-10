@@ -19,6 +19,8 @@ final class DailyVoucherApprovalController extends Controller
         $this->authorizeManager();
         $projectId = (int) getSelectedTown();
         abort_unless($projectId > 0 && Schema::hasTable('daily_voucher_approval_policies'), 409, 'Run the Daily Entries approval migration first.');
+        abort_unless(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())
+            || (int) auth()->user()->project_id === $projectId, 403);
         $policies = DailyVoucherApprovalPolicy::query()->where('project_id', $projectId)->get()->keyBy('voucher_type');
         $approvers = User::query()->where('project_id', $projectId)->where('status_id', 1)->orderBy('name')->get(['id', 'name'])
             ->filter(fn (User $user) => \App\Services\Finance\VoucherApproverAccess::eligibleForAssignment($user,$projectId))->values();
@@ -65,6 +67,8 @@ final class DailyVoucherApprovalController extends Controller
         $this->authorizeManager();
         $data = $request->validate(['reason' => [$decision === 'reject' ? 'required' : 'nullable', 'string', 'min:2', 'max:1000']]);
         abort_unless((int) $approval->project_id === (int) getSelectedTown(), 404);
+        abort_unless(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())
+            || (int) auth()->user()->project_id === (int) $approval->project_id, 403);
         abort_unless(in_array($approval->voucher_type, self::TYPES, true), 403);
         try {
             app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)->decide(

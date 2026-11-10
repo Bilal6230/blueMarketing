@@ -45,3 +45,5 @@
 - Approval queue/history now filtered by assigned_approver_id for non-superadmins. Super Admin can approve/reject all pending project requests including own, with existing locked transaction and audit evidence; normal approvers cannot approve own requests.
 - Preserved `daily_voucher_approvals.status` for pending/approved/rejected, `ledgers.is_active` for accounting effect and deletion separate. No ledger schema changes or preexisting approvals changed.
 - IMPORTANT staged rollout: existing assigned approvers need voucher approver permission assigned through Role/Permission UI; until granted, they cannot act. Browser testing required before proceeding to status badges and further flow changes.
+
+- Safety review correction: restored `VoucherController::canAccessFinanceApprovalsForUser` legacy `read voucher + super-admin/direct-update` policy (with `superadmin` spelling support) because this helper also guards unrelated finance actions. New `voucher approver` authority applies only in the dedicated voucher-approval controller/workflow. Approval dashboard route accepts either read voucher or voucher approver, with project-access check for non-superadmins.
