@@ -103,3 +103,9 @@
 - Owner reported Returned / Rejected failed with `Bank statement verified must be accepted.` despite entering reason and memo.
 - Root cause: the unconditional implicit `accepted` validator applied to all decisions, even though `required_if` was conditional. Changed to `accepted_if:decision,cleared` so checkbox is required **only** for successful clearance. Return/reject still require reason and bank memo.
 - No database, accounting, routes or frontend changes. Source check complete; local PHP/browser regression still pending. Milestone 01.4 remains browser-PASS pending.
+
+## 2026-11-10 — Intake UX corrections
+- Frontend Cheque Title, In/Out, Head and Child selectors mapped to active project accounts; Child auto-selects Head. Input account pair checked server-side.
+- Removed only intake-form Remarks. Existing action/audit remarks still preserved. Additive migration copies old intake remarks into Purpose before dropping that single intake column, failing safely if text cannot fit.
+- Status badges: cleared green, returned warning, rejected red. Print links changed to A5 and POS 80mm; receipt includes title/direction/account.
+- Outgoing cleared popup now says verify bank debit, incoming says credit. No bank dropdown at clearance decision. Browser testing pending.

@@ -23,16 +23,32 @@
         .wide {grid-column:1/-1}
         .wide span {text-align:left}
         .status {display:inline-block;color:#0d6b3e;border:1px solid #b7ddc7;border-radius:5px;padding:3px 9px;font-weight:bold;text-transform:capitalize}
+        .status-cleared{background:#198754;color:white;border-color:#198754}.status-returned{background:#ffc107;color:#242424;border-color:#ffc107}.status-rejected{background:#dc3545;color:white;border-color:#dc3545}
         .signatures {display:flex;justify-content:space-between;gap:40px;margin-top:70px}
         .signatures div {width:43%;border-top:1px solid #3b4856;text-align:center;padding-top:9px}
         .footer {border-top:1px solid #dce4ea;margin-top:30px;padding-top:12px;text-align:center;font-size:11px;color:#657487}
-        @page {size:A4;margin:12mm}
+        @page {size:A5 portrait;margin:6mm}
+        body.slip-pos80 .paper{width:80mm;max-width:80mm;padding:5mm;margin:8px auto;font-size:11px}
+        body.slip-pos80 .grid{grid-template-columns:1fr;gap:0}
+        body.slip-pos80 .wide{grid-column:1}
+        body.slip-pos80 .company{gap:6px}
+        body.slip-pos80 .company h1{font-size:14px}
+        body.slip-pos80 .company img{max-width:45px;max-height:35px}
+        body.slip-pos80 .company div{font-size:10px}
+        body.slip-pos80 h2{font-size:13px}
+        body.slip-pos80 .item{padding:6px 0}
+        body.slip-pos80 .item strong{font-size:10px}
+        body.slip-pos80 .disclaimer{font-size:10px}
+        body.slip-pos80 .signatures{gap:8px;margin-top:34px}
+        body.slip-pos80 .signatures div{font-size:9px}
+        body.slip-pos80 .footer{font-size:9px}
+        @media print{body.slip-a5{width:148mm}body.slip-pos80{width:80mm}body.slip-pos80 .paper{width:80mm!important;max-width:80mm!important}}
         @media print {.toolbar{display:none}body{background:white}.paper{width:100%;margin:0;padding:0;box-shadow:none}.company img{print-color-adjust:exact}}
         @media(max-width:600px){.paper{padding:20px}.grid{grid-template-columns:1fr}.wide{grid-column:1}.meta{display:block}.signatures{gap:16px}}
     </style>
 </head>
-<body>
-    <div class="toolbar"><button type="button" id="cheque-print-slip">Print Receiving Slip</button></div>
+<body class="{{ request()->query('size') === 'pos80' ? 'slip-pos80' : 'slip-a5' }}">
+    <div class="toolbar"><button type="button" id="cheque-print-slip">Print {{ request()->query('size') === 'pos80' ? 'POS 80mm' : 'A5' }} Slip</button></div>
     <main class="paper">
         <header class="company">
             <img src="{{ asset('images/logo/blue-marketing-logo.png') }}" alt="Company logo">
@@ -45,19 +61,20 @@
         <p class="disclaimer">Receipt of cheque only — NOT proof of bank clearance, successful payment or final accounting voucher.</p>
         <div class="meta">
             <div><strong>Slip No:</strong> {{ $slipNumber }}</div>
-            <div><strong>Received Date:</strong> {{ $cheque->received_date }}</div>
+            <div><strong>{{ ($cheque->direction ?? 'in') === 'out' ? 'Issued Date' : 'Received Date' }}:</strong> {{ $cheque->received_date }}</div>
         </div>
         <div class="grid">
+            <div class="item"><strong>Cheque Title</strong><span>{{ $cheque->cheque_title ?: '—' }}</span></div>
+            <div class="item"><strong>Direction</strong><span>{{ strtoupper($cheque->direction ?? 'in') }}</span></div>
             <div class="item"><strong>Cheque Number</strong><span>{{ $cheque->cheque_number }}</span></div>
             <div class="item"><strong>Cheque Date</strong><span>{{ $cheque->cheque_date }}</span></div>
             <div class="item"><strong>Cheque Amount</strong><span>Rs. {{ number_format((float) $cheque->amount,2) }}</span></div>
             <div class="item"><strong>Bank</strong><span>{{ $cheque->bank_name }}</span></div>
             <div class="item"><strong>Branch</strong><span>{{ $cheque->branch ?: '—' }}</span></div>
-            <div class="item"><strong>Received From</strong><span>{{ $cheque->received_from }}</span></div>
-            <div class="item wide"><strong>Related Customer Account</strong><span>{{ trim(($customer->first_name ?? '').' '.($customer->last_name ?? '')) }} (#{{ $cheque->customer_id }})</span></div>
+            <div class="item"><strong>{{ ($cheque->direction ?? 'in') === 'out' ? 'Issued To' : 'Received From' }}</strong><span>{{ $cheque->received_from }}</span></div>
+            <div class="item wide"><strong>Head / Child Account</strong><span>{{ $mapping ? trim(($mapping->headAccounting?->name ?? '').' / '.($mapping->subheadAccounting?->name ?? '')) : (trim(($customer->first_name ?? '').' '.($customer->last_name ?? '')) ?: 'Legacy account not mapped') }}</span></div>
             <div class="item wide"><strong>Purpose / Description</strong><span>{{ $cheque->purpose }}</span></div>
-            <div class="item wide"><strong>Remarks</strong><span>{{ $cheque->remarks ?: '—' }}</span></div>
-            <div class="item"><strong>Current Cheque Status</strong><span class="status">{{ str_replace('_',' ', $cheque->status) }}</span></div>
+            <div class="item"><strong>Current Cheque Status</strong><span class="status status-{{ $cheque->status }}">{{ str_replace('_',' ', $cheque->status) }}</span></div>
             <div class="item"><strong>Received By</strong><span>{{ $receiver ?: 'User #'.$cheque->created_by }}</span></div>
         </div>
         <div class="signatures">

@@ -28,7 +28,10 @@
     #cheque-intake-form .cheque-upload .fa-cloud-upload-alt { display:inline-block!important; margin:0 6px 0 0!important; font-size:13px; }
     #cheque-intake-form .cheque-upload .cheque-file-name { margin:0!important; max-height:17px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     #cheque-intake-form .cheque-upload small { line-height:13px; font-size:10px; }
-    #cheque-intake-form textarea[name=remarks] { height:61px; min-height:61px; resize:vertical; }
+    #cheque-intake-form textarea[name=purpose] { min-height:61px; resize:vertical; }
+    .cheque-status-badge{display:inline-block;border-radius:4px;padding:3px 6px;font-size:11px;font-weight:700;text-transform:capitalize}
+    .cheque-status-cleared{background:#198754;color:white}.cheque-status-returned{background:#ffc107;color:#242424}.cheque-status-rejected{background:#dc3545;color:white}
+    .cheque-status-withdrawn{background:#0d6efd;color:white}.cheque-status-received{background:#6c757d;color:white}.cheque-status-pending_clearing{background:#17a2b8;color:white}
     #cheque-create-modal .select2-container { width:100%!important; }
     #cheque-create-modal .select2-container .select2-selection--single { height:31px!important; }
     .swal2-container {z-index:20000!important;}
@@ -73,7 +76,7 @@
                 <div class="row cheque-filter-row">
                     <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-from">From</label><input type="date" id="cheque-from" name="from" class="form-control form-control-sm"></div>
                     <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-to">To</label><input type="date" id="cheque-to" name="to" class="form-control form-control-sm"></div>
-                    <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-customer">Customer</label><select name="customer_id" id="cheque-customer" class="form-control form-control-sm"><option value="">All customers</option>@foreach($customers as $customer)<option value="{{ $customer->id }}">{{ $customer->first_name }} {{ $customer->last_name }} (#{{ $customer->id }})</option>@endforeach</select></div>
+                    <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-customer">Child Account</label><select name="account_mapping_id" id="cheque-customer" class="form-control form-control-sm"><option value="">All child accounts</option>@foreach($accountMappings as $account)<option value="{{ $account['id'] }}">{{ $account['head_name'] }} / {{ $account['subhead_name'] }}</option>@endforeach</select></div>
                     <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-status">Status</label><select name="status" id="cheque-status" class="form-control form-control-sm"><option value="">All statuses</option><option value="received">Received</option><option value="pending_clearing">Pending Clearing</option><option value="cleared">Cleared</option><option value="returned">Returned</option><option value="rejected">Rejected</option><option value="withdrawn">Withdrawn</option></select></div>
                     <div class="col-lg-2 col-md-8 mb-2"><label class="cheque-filter-label" for="cheque-search">Search</label><input name="search" id="cheque-search" class="form-control form-control-sm" placeholder="Cheque number, bank, person, purpose"></div>
                     <div class="col-lg-2 col-md-4 mb-2 cheque-filter-actions"><button type="submit" class="btn btn-success btn-sm"><i class="fas fa-filter mr-1"></i> Apply</button><button type="button" id="cheque-reset" class="btn btn-outline-secondary btn-sm">Reset</button></div>
@@ -118,15 +121,26 @@
             <div class="modal-body">
                 <div class="row">
                     <div class="form-group col-md-4"><label>Cheque Number *</label><input class="form-control form-control-sm" name="cheque_number" maxlength="100" required></div>
+                    <div class="form-group col-md-4"><label>Cheque Title *</label><input class="form-control form-control-sm" name="cheque_title" maxlength="200" required></div>
+                    <div class="form-group col-md-4"><label>Cheque Direction *</label><select class="form-control form-control-sm" name="direction" id="cheque-direction" required>
+                        <option value="in">In — Cheque Received</option><option value="out">Out — Cheque Issued</option>
+                    </select></div>
                     <div class="form-group col-md-4"><label>Cheque Date *</label><input class="form-control form-control-sm" type="date" name="cheque_date" required></div>
                     <div class="form-group col-md-4"><label>Receiving Date *</label><input class="form-control form-control-sm" type="date" name="received_date" value="{{ date('Y-m-d') }}" required></div>
                     <div class="form-group col-md-4"><label>Amount (Rs.) *</label><input class="form-control form-control-sm" name="amount" type="number" min="0.01" max="9999999999999.99" step="0.01" inputmode="decimal" required placeholder="0.00"></div>
                     <div class="form-group col-md-4"><label>Bank Name *</label><input class="form-control form-control-sm" name="bank_name" maxlength="150" required></div>
                     <div class="form-group col-md-4"><label>Branch</label><input class="form-control form-control-sm" name="branch" maxlength="150"></div>
                     <div class="form-group col-md-4"><label>Received From *</label><input class="form-control form-control-sm" name="received_from" maxlength="150" required></div>
-                    <div class="form-group col-md-8"><label>Related Customer *</label><select class="form-control form-control-sm" name="customer_id" required><option value="">Select Customer</option>@foreach($customers as $customer)<option value="{{ $customer->id }}">{{ $customer->first_name }} {{ $customer->last_name }} (#{{ $customer->id }})</option>@endforeach</select></div>
-                    <div class="form-group col-12"><label>Purpose / Description *</label><textarea class="form-control form-control-sm" name="purpose" rows="2" maxlength="500" required></textarea></div>
-                    <div class="form-group col-md-8"><label>Remarks</label><textarea class="form-control form-control-sm" name="remarks" rows="2" maxlength="2000"></textarea></div>
+                    <div class="form-group col-md-4"><label>Head Account *</label>
+                        <select class="form-control form-control-sm" name="head_accounting_id" id="cheque-head-account" required>
+                            <option value="">Select Head Account</option>@foreach($headAccounts as $head)<option value="{{ $head['head_id'] }}">{{ $head['head_name'] }}</option>@endforeach
+                        </select></div>
+                    <div class="form-group col-md-4"><label>Child Account *</label>
+                        <select class="form-control form-control-sm" name="subhead_accounting_id" id="cheque-child-account" required>
+                            <option value="">Select Child Account</option>
+                            @foreach($accountMappings as $account)<option value="{{ $account['subhead_id'] }}" data-head="{{ $account['head_id'] }}">{{ $account['subhead_name'] }} — {{ $account['head_name'] }}</option>@endforeach
+                        </select></div>
+                    <div class="form-group col-md-8"><label>Purpose / Description *</label><textarea class="form-control form-control-sm" name="purpose" rows="2" maxlength="500" required></textarea></div>
                     <div class="form-group col-md-4"><label for="cheque-attachment">Cheque Image / PDF</label>
                         <div id="cheque-upload" class="cheque-upload"><label for="cheque-attachment" class="w-100 mb-0" style="cursor:pointer">
                             <i class="fas fa-cloud-upload-alt fa-lg d-block mb-2 text-success"></i>
@@ -207,9 +221,7 @@
                     <input name="action_date" id="cheque-finalize-date" type="date" class="form-control" required></div>
                 <div id="cheque-finalize-cleared">
                     <div class="alert alert-warning">
-                        Kya aap confirm karte hain ke ye cheque successfully clear ho chuka hai aur payment relevant bank
-                        account mein credit ho chuki hai? Kya aap ne bank statement / account audit se credit entry verify
-                        kar li hai? Sirf us waqt confirm karein jab amount waqai receive aur verify ho chuka ho.
+                        <span id="cheque-finalize-verification-message">Bank statement se cheque ki entry verify karne ke baad hi confirm karein.</span>
                     </div>
                     <div class="form-group"><label>Bank Statement Reference *</label>
                         <input name="bank_statement_reference" id="cheque-finalize-reference" maxlength="150" class="form-control"></div>
@@ -344,6 +356,8 @@ $(function () {
         $form.find('[name=received_date]').val(@json(date('Y-m-d')));
         $('#cheque-file-name').text('No file selected');
         clearErrors();
+        refreshChildren('',false);
+        $('#cheque-direction').trigger('change');
     }
     function filters(page) {
         var result={page:page,per_page:$('#cheque-per-page').val()};
@@ -365,14 +379,14 @@ $(function () {
         $('<td>').text(r.purpose||'').appendTo($tr);
         var amount=Number(r.amount);
         $('<td>').addClass('text-right').text(Number.isFinite(amount)?amount.toLocaleString('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2}):'0.00').appendTo($tr);
-        $('<td>').append($('<span>').addClass('badge badge-secondary').text((r.status||'received').replace(/_/g,' '))).appendTo($tr);
+        $('<td>').append($('<span>').addClass('cheque-status-badge cheque-status-'+(r.status||'received')).text((r.status||'received').replace(/_/g,' '))).appendTo($tr);
         var $slip=$('<td>').addClass('text-nowrap');
         $('<a>').addClass('btn btn-sm btn-outline-success mr-1').attr({
-            href:slipUrl(r.id),target:'_blank',rel:'noopener',title:'View receiving slip'
-        }).text('View').appendTo($slip);
+            href:slipUrl(r.id)+'?size=a5&print=1',target:'_blank',rel:'noopener',title:'A5 receipt'
+        }).text('A5 Print').appendTo($slip);
         $('<a>').addClass('btn btn-sm btn-outline-primary').attr({
-            href:slipUrl(r.id)+'?print=1',target:'_blank',rel:'noopener',title:'Print receiving slip'
-        }).text('Print').appendTo($slip);
+            href:slipUrl(r.id)+'?size=pos80&print=1',target:'_blank',rel:'noopener',title:'POS 80mm receipt'
+        }).text('POS 80').appendTo($slip);
         $slip.appendTo($tr);
         var $actions=$('<td>').addClass('text-nowrap');
         if(@json(auth()->user()->can('create voucher')) && r.status==='received') {
@@ -385,7 +399,7 @@ $(function () {
         } else if(@json(auth()->user()->can('create voucher')) && r.status==='pending_clearing') {
             $.each([['cleared','Mark Cleared','success'],['returned','Returned / Bounced','warning'],['rejected','Rejected / Memo','danger']],function(_,item){
                 $('<button type="button">').addClass('btn btn-sm btn-outline-'+item[2]+' mr-1 cheque-finalize')
-                    .attr({'data-id':r.id,'data-cheque':r.cheque_number,'data-amount':r.amount,'data-decision':item[0]})
+                    .attr({'data-id':r.id,'data-cheque':r.cheque_number,'data-amount':r.amount,'data-direction':r.direction||'in','data-decision':item[0]})
                     .text(item[1]).appendTo($actions);
             });
         }
@@ -493,10 +507,42 @@ $(function () {
             });
         });
     });
+    // CR Voucher project mapping. Child selection resolves its Head automatically.
+    var mappingOptions=@json($accountMappings);
+    var $head=$('#cheque-head-account'),$child=$('#cheque-child-account');
+    function refreshChildren(headId,keep) {
+        var previous=keep?String($child.val()||''):'';
+        $child.empty().append($('<option>').val('').text('Select Child Account'));
+        $.each(mappingOptions,function(_,item){
+            if(!headId||String(item.head_id)===String(headId)) {
+                $('<option>').val(item.subhead_id).text(item.subhead_name+' — '+item.head_name).appendTo($child);
+            }
+        });
+        if(previous&&$child.find('option').filter(function(){return $(this).val()===previous;}).length)$child.val(previous);
+        $child.trigger('change.select2');
+    }
+    $head.on('change',function(){
+        if($head.data('syncing'))return;
+        refreshChildren($head.val(),false);
+    });
+    $child.on('change',function(){
+        var selected=$child.val();if(!selected)return;
+        var matches=$.grep(mappingOptions,function(i){return String(i.subhead_id)===String(selected);});
+        if(!matches.length)return;
+        var match=$.grep(matches,function(i){return String(i.head_id)===String($head.val());})[0]||matches[0];
+        if(String($head.val())!==String(match.head_id)){
+            $head.data('syncing',true).val(String(match.head_id)).trigger('change.select2').removeData('syncing');
+            refreshChildren(match.head_id,true);
+        }
+    });
+    $('#cheque-direction').on('change',function(){
+        $form.find('[name=received_from]').closest('.form-group').find('label')
+            .text($(this).val()==='out'?'Issued To *':'Received From *');
+    });
     // Select2 is already supplied by the ERP layout; match CR voucher dropdown appearance.
     if($.isFunction($.fn.select2)) {
         $('#cheque-customer,#cheque-status').select2({theme:'bootstrap4',width:'100%'});
-        $form.find('[name="customer_id"]').select2({theme:'bootstrap4',width:'100%',dropdownParent:$create});
+        $form.find('[name="direction"],[name="head_accounting_id"],[name="subhead_accounting_id"]').select2({theme:'bootstrap4',width:'100%',dropdownParent:$create});
     }
     // Bank-clearing / direct-withdrawal workflows. No accounting postings are made here.
     @can('create voucher')
@@ -591,6 +637,10 @@ $(function () {
         $('#cheque-finalize-form').trigger('reset');
         $('#cheque-finalize-errors').empty();
         $('#cheque-finalize-decision').val(decision);
+        var direction=$btn.attr('data-direction')||'in';
+        $('#cheque-finalize-verification-message').text(direction==='out'
+            ?'Outgoing cheque ki bank statement debit entry verify karein. Bank se amount deduct hua ho, tab confirm karein.'
+            :'Incoming cheque ki bank statement credit entry verify karein. Bank mein amount receive hua ho, tab confirm karein.');
         $('#cheque-finalize-date').val(@json(date('Y-m-d')));
         $('#cheque-finalize-number').text($btn.attr('data-cheque'));
         $('#cheque-finalize-amount').text(Number($btn.attr('data-amount')).toLocaleString('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2}));
@@ -619,7 +669,7 @@ $(function () {
             icon:decision==='cleared'?'warning':'question',
             title:decision==='cleared'?'Bank Statement Verification':'Confirm Cheque Decision',
             text:decision==='cleared'
-                ?'Kya aap confirm karte hain ke ye cheque successfully clear ho chuka hai aur payment relevant bank account mein credit ho chuki hai? Kya aap ne bank statement / account audit se credit entry verify kar li hai? Sirf us waqt confirm karein jab amount waqai receive aur verify ho chuka ho.'
+                ?$('#cheque-finalize-verification-message').text()
                 :'Confirm cheque status as '+decision+'? The original cheque amount will remain unchanged.',
             showCancelButton:true,confirmButtonText:decision==='cleared'?'OK – Confirm Cheque Cleared':'Yes, Confirm',
             cancelButtonText:decision==='cleared'?'Cancel – Do Not Confirm':'Cancel',
