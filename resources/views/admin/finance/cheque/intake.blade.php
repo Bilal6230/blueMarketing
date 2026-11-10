@@ -236,7 +236,9 @@ $(function () {
             url: $form.attr('action'), method: 'POST', data: formData, processData: false, contentType: false,
             dataType: 'json', headers: {'Accept': 'application/json'}
         }).done(function (response) {
-            $('#cheque-confirm-modal').modal('hide');
+            $('#cheque-confirm-modal').one('hidden.bs.modal', function () {
+                resultModal('Cheque Saved Successfully', response.message || 'Cheque received.');
+            }).modal('hide');
             $form.trigger('reset');
             $form.find('[name="received_date"]').val(@json(date('Y-m-d')));
             const row = response.data || {};
@@ -246,10 +248,8 @@ $(function () {
                 $body.prepend(buildRow(row, 1));
             }
             toast(response.message || 'Cheque received successfully.', false);
-            resultModal('Cheque Saved Successfully', response.message || 'Cheque received.');
             load(1);
         }).fail(function (xhr) {
-            $('#cheque-confirm-modal').modal('hide');
             let message = 'Unable to save cheque. Please try again.';
             if (xhr.responseJSON) {
                 const err = xhr.responseJSON;
@@ -260,7 +260,9 @@ $(function () {
                 }
             }
             toast(message, true);
-            resultModal('Cheque Not Saved', message);
+            $('#cheque-confirm-modal').one('hidden.bs.modal', function () {
+                resultModal('Cheque Not Saved', message);
+            }).modal('hide');
         }).always(function () {
             saveBusy = false;
             $('#cheque-confirm-save, #cheque-save').prop('disabled', false);
