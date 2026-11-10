@@ -62,3 +62,12 @@
 - **Static source checks:** noCR, filterButtonsInRow, numberInput, validation, uploader, modalSequencing, scroll, ajax, noNativeDom PASS. **Actual browser testing not run from GitHub-only environment.** Browser PASS required before leaving milestone 01.1.
 
 - Follow-up code review: CSS footer gap corrected, validation validity queried via jQuery `.prop()`, and any save failure reopens the populated cheque form when the error-result modal closes.
+
+## 2026-11-10 — CR-style UI corrections from owner's screenshots
+- Actual Cheque Management Blade changed (not an image): replaced Bootstrap confirmation/result modals with the same SweetAlert2 dialogs used by cash/CR vouchers. The cheque form remains visible behind both dialogs.
+- Existing Select2 with bootstrap4 theme enabled on customer and status dropdowns (including modal dropdownParent).
+- Desktop filter fields and Apply/Reset use one full-width CSS grid with aligned bottom edges; responsive 3/2 column fallback.
+- Uploader compressed to 61px; Remarks textarea is the same height.
+- Scoped parent page height override and footer-aware jQuery height calculation remove extra bottom spacing while preserving internal table scrolling, with no global layout changes.
+- No database schema/controller changes. Existing AJAX, permissions, amount checks and receipt-only non-posting logic retained.
+- Browser testing still required. Milestone 01.1 NOT PASSED; no later milestone started.

@@ -1,7 +1,17 @@
 @extends('admin.layouts.master')
 @section('content')
 <style>
-    .cheque-register-page { --cheque-green:#168348; --cheque-border:#b9e1c6; height:var(--cheque-height,calc(100dvh - 115px)); max-height:var(--cheque-height,calc(100dvh - 115px)); min-height:360px; display:flex; flex-direction:column; overflow:hidden; }
+    .main-content.page-content:has(> .cheque-register-page) { height:auto!important; min-height:0!important; max-height:none!important; overflow:visible!important; padding-bottom:0!important; }
+    .cheque-register-page { --cheque-green:#168348; --cheque-border:#b9e1c6; height:var(--cheque-height,calc(100dvh - 165px)); max-height:var(--cheque-height,calc(100dvh - 165px)); min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+    .cheque-register-page .cheque-filter-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.2fr) minmax(0,1.05fr) minmax(0,1.35fr) auto; align-items:end; column-gap:10px; row-gap:8px; margin:0; width:100%; }
+    .cheque-register-page .cheque-filter-row > div { min-width:0; width:100%; padding:0; margin:0!important; max-width:none; }
+    .cheque-register-page .cheque-filter-row .form-control { width:100%; min-width:0; }
+    .cheque-register-page .cheque-filter-row .cheque-filter-actions { display:flex; align-items:center; justify-content:flex-end; padding:0; gap:5px; white-space:nowrap; height:31px; }
+    .cheque-register-page .cheque-filter-row .cheque-filter-actions .btn { height:31px; }
+    .cheque-register-page .cheque-filter-row .select2-container { width:100%!important; }
+    .cheque-register-page .cheque-filter-row .select2-selection--single { height:31px!important; padding-top:1px; }
+    @media(max-width:1199px){.cheque-register-page .cheque-filter-row {grid-template-columns:repeat(3,minmax(0,1fr));}.cheque-register-page .cheque-filter-row .cheque-filter-actions{justify-content:flex-start;}}
+    @media(max-width:650px){.cheque-register-page .cheque-filter-row {grid-template-columns:repeat(2,minmax(0,1fr));}}
     .cheque-register-page > .container-fluid {display:flex;flex-direction:column;flex:1;min-height:0;}
     .cheque-register-page .cheque-heading,.cheque-register-page .cheque-filter-panel {flex-shrink:0;}
     .cheque-register-page .cheque-table-panel {display:flex;flex-direction:column;flex:1;min-height:0;margin-bottom:0;}
@@ -10,12 +20,19 @@
     .cheque-filter-actions {display:flex;align-items:end;gap:5px;padding-bottom:8px;}
     #cheque-intake-form .is-invalid {border-color:#dc3545!important;box-shadow:0 0 0 .1rem rgba(220,53,69,.12);}
     #cheque-intake-form .cheque-field-error {display:block;color:#dc3545;font-size:11px;margin-top:4px;}
-    #cheque-intake-form .cheque-upload {border:2px dashed #8cbea0;border-radius:10px;background:#f4faf6;padding:15px;text-align:center;cursor:pointer;}
+    #cheque-intake-form .cheque-upload {border:1px dashed #8cbea0;border-radius:7px;background:#f4faf6;padding:6px 10px;text-align:center;cursor:pointer;min-height:61px;height:61px;overflow:hidden;}
+    #cheque-intake-form .cheque-upload .fa-cloud-upload-alt { display:inline-block!important; margin:0 6px 0 0!important; font-size:13px; }
+    #cheque-intake-form .cheque-upload .cheque-file-name { margin:0!important; max-height:17px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    #cheque-intake-form .cheque-upload small { line-height:13px; font-size:10px; }
+    #cheque-intake-form textarea[name=remarks] { height:61px; min-height:61px; resize:vertical; }
+    #cheque-create-modal .select2-container { width:100%!important; }
+    #cheque-create-modal .select2-container .select2-selection--single { height:31px!important; }
+    .swal2-container {z-index:20000!important;}
     #cheque-intake-form .cheque-upload:hover,#cheque-intake-form .cheque-upload:focus-within {background:#e9f7ed;border-color:#168348;}
     #cheque-intake-form .cheque-upload.is-invalid {border-color:#dc3545;}
     #cheque-intake-form .cheque-file {position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;}
     #cheque-intake-form .cheque-file-name {display:block;font-size:12px;overflow-wrap:anywhere;}
-    @media(max-width:991px){.cheque-filter-actions{padding-bottom:0;}}
+
     .cheque-register-page .cheque-heading { background: #eaf7ee; border-bottom: 2px solid var(--cheque-green); padding: 12px 15px; }
     .cheque-register-page .cheque-heading h4 { color: #087a38; font-size: 21px; font-weight: 700; }
     .cheque-register-page .cheque-filter-panel, .cheque-register-page .cheque-table-panel { border: 1px solid var(--cheque-border); border-top: 3px solid var(--cheque-green); border-radius: 12px; background: #fff; padding: 12px; margin-bottom: 10px; }
@@ -49,7 +66,7 @@
         </div>
         <div class="cheque-filter-panel mt-2">
             <form id="cheque-filter-form" autocomplete="off">
-                <div class="row">
+                <div class="row cheque-filter-row">
                     <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-from">From</label><input type="date" id="cheque-from" name="from" class="form-control form-control-sm"></div>
                     <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-to">To</label><input type="date" id="cheque-to" name="to" class="form-control form-control-sm"></div>
                     <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-customer">Customer</label><select name="customer_id" id="cheque-customer" class="form-control form-control-sm"><option value="">All customers</option>@foreach($customers as $customer)<option value="{{ $customer->id }}">{{ $customer->first_name }} {{ $customer->last_name }} (#{{ $customer->id }})</option>@endforeach</select></div>
@@ -124,31 +141,21 @@
 @endcan
 
 <div id="cheque-toast" class="alert alert-success shadow" role="status" aria-live="polite"></div>
-<div class="modal fade" id="cheque-result-modal" tabindex="-1" role="dialog" aria-labelledby="cheque-result-title" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" role="document"><div class="modal-content">
-        <div class="modal-header"><h5 class="modal-title" id="cheque-result-title">Cheque Status</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
-        <div class="modal-body" id="cheque-result-message"></div>
-        <div class="modal-footer"><button type="button" class="btn btn-primary" data-dismiss="modal">OK</button></div>
-    </div></div>
-</div>
-<div class="modal fade" id="cheque-confirm-modal" tabindex="-1" role="dialog" aria-labelledby="cheque-confirm-title" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" role="document"><div class="modal-content">
-        <div class="modal-header"><h5 class="modal-title" id="cheque-confirm-title">Confirm Cheque Receiving</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
-        <div class="modal-body">Are you sure you want to save this cheque as <strong>Received</strong>? No accounting voucher or bank clearance will be created.</div>
-        <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button><button type="button" class="btn btn-success" id="cheque-confirm-save">Yes, Save Cheque</button></div>
-    </div></div>
-</div>
 @endsection
 @push('script')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 $(function () {
     'use strict';
-    var currentPage=1, listRequest=null, saveBusy=false, searchTimer=null, state='idle', queuedResult=null, listSeq=0, reopenAfterResult=false;
-    var $form=$('#cheque-intake-form'), $create=$('#cheque-create-modal'), $confirm=$('#cheque-confirm-modal'), $result=$('#cheque-result-modal');
+    var currentPage=1, listRequest=null, saveBusy=false, searchTimer=null, listSeq=0;
+    var $form=$('#cheque-intake-form'), $create=$('#cheque-create-modal');
     function fitPage() {
         var $page=$('.cheque-register-page');
         if (!$page.length || !$page.offset()) return;
-        $page.css('--cheque-height',Math.max(360,$(window).height()-$page.offset().top-12)+'px');
+        // Subtract the real footer height: the document itself must not scroll.
+        var footerHeight=$('.main-footer').outerHeight() || 40;
+        var available=$(window).height()-$page.offset().top-footerHeight-2;
+        $page.css('--cheque-height',Math.max(200,available)+'px');
     }
     fitPage();
     $(window).on('resize.chequeRegister',fitPage);
@@ -159,11 +166,6 @@ $(function () {
             $('#cheque-toast').toggleClass('alert-success',!error).toggleClass('alert-danger',!!error).text(message)
                 .stop(true,true).fadeIn(150).delay(3500).fadeOut(200);
         }
-    }
-    function showResult(title,message) {
-        $('#cheque-result-title').text(title);
-        $('#cheque-result-message').text(message);
-        $result.modal('show');
     }
     function fieldError($input,message) {
         var $group=$input.closest('.form-group');
@@ -277,56 +279,70 @@ $(function () {
     $('#cheque-reset').on('click',function(){$('#cheque-filter-form').trigger('reset');$('#cheque-quick-search').val('');$('.cheque-column-filters [data-column]').val('');load(1);});
     $('#cheque-per-page').on('change',function(){load(1);});
     $('#cheque-quick-search,.cheque-column-filters [data-column]').on('input',function(){clearTimeout(searchTimer);searchTimer=setTimeout(function(){load(1);},300);});
-    // Sequence Bootstrap modals only AFTER previous modal has fully hidden.
-    $create.on('hidden.bs.modal',function(){if(state==='confirm')$confirm.modal('show');});
-    $confirm.on('hidden.bs.modal',function(){
-        if(queuedResult) {
-            var next=queuedResult;queuedResult=null;state='idle';showResult(next.title,next.message);
-        } else if(state==='cancel-confirm') {
-            state='idle';$create.modal('show');
-        }
-    });
+    // Reuse the same SweetAlert2 dialogs as the CR voucher. Keep the cheque form open behind them.
     $form.on('submit',function(e){
         e.preventDefault();
-        if(saveBusy||state!=='idle'||!validate())return;
-        state='confirm';$create.modal('hide');
-    });
-    $confirm.find('[data-dismiss="modal"]').on('click',function(){if(!saveBusy)state='cancel-confirm';});
-    $('#cheque-confirm-save').on('click',function(){
-        if(saveBusy)return;
-        saveBusy=true;state='saving';
-        $('#cheque-confirm-save,#cheque-save').prop('disabled',true);
-        $.ajax({
-            url:$form.attr('action'),method:'POST',data:new FormData($form[0]),processData:false,
-            contentType:false,dataType:'json',headers:{Accept:'application/json'}
-        }).done(function(data){
-            reopenAfterResult=false;
-            resetForm();
-            toast(data.message||'Cheque saved successfully.',false);
-            load(1);
-            queuedResult={title:'Cheque Saved Successfully',message:data.message||'Cheque received.'};
-            $confirm.modal('hide');
-        }).fail(function(xhr){
-            var msg='Unable to save cheque. Please try again.';
-            if(xhr.status===419)msg='Session expired. Refresh and try again.';
-            else if(xhr.status===403)msg='You do not have permission to create cheques.';
-            else if(xhr.responseJSON){
-                msg=xhr.responseJSON.message||msg;
-                if(xhr.responseJSON.errors)$.each(xhr.responseJSON.errors,function(name,messages){
-                    var $field=$form.find('[name="'+name+'"]');
-                    if($field.length)fieldError($field,messages[0]||msg);
-                    msg=messages[0]||msg;
-                });
+        if(saveBusy) return;
+        if(!validate()) {
+            if($.isFunction(window.Swal && window.Swal.fire)) {
+                window.Swal.fire({icon:'warning',title:'Validation error',text:'Please correct the highlighted fields.'});
             }
-            reopenAfterResult=true;
-            toast(msg,true);
-            queuedResult={title:'Cheque Not Saved',message:msg};
-            $confirm.modal('hide');
-        }).always(function(){
-            saveBusy=false;$('#cheque-confirm-save,#cheque-save').prop('disabled',false);
+            return;
+        }
+        if(!window.Swal || !$.isFunction(window.Swal.fire)) {
+            toast('Confirmation dialog is unavailable. Please reload the page.',true);
+            return;
+        }
+        window.Swal.fire({
+            icon:'question',
+            title:'Confirm Cheque Receiving',
+            text:'Save this cheque as Received? No bank clearance or accounting voucher will be created.',
+            showCancelButton:true,
+            confirmButtonText:'Yes, Save Cheque',
+            cancelButtonText:'Cancel',
+            confirmButtonColor:'#168348',
+            allowOutsideClick:false
+        }).then(function(result){
+            if(!result.isConfirmed || saveBusy) return;
+            saveBusy=true;
+            $('#cheque-save').prop('disabled',true);
+            $.ajax({
+                url:$form.attr('action'),method:'POST',data:new FormData($form[0]),
+                processData:false,contentType:false,dataType:'json',headers:{Accept:'application/json'}
+            }).done(function(data){
+                toast(data.message||'Cheque saved successfully.',false);
+                // Leave the modal visible behind the SweetAlert popup.
+                window.Swal.fire({icon:'success',title:'Cheque Saved Successfully',
+                    text:data.message||'Cheque received.',confirmButtonText:'OK'}).then(function(){
+                    $create.modal('hide');
+                    resetForm();
+                });
+                load(1);
+            }).fail(function(xhr){
+                var msg='Unable to save cheque. Please try again.';
+                if(xhr.status===419) msg='Session expired. Refresh and try again.';
+                else if(xhr.status===403) msg='You do not have permission to create cheques.';
+                else if(xhr.responseJSON) {
+                    msg=xhr.responseJSON.message||msg;
+                    if(xhr.responseJSON.errors) $.each(xhr.responseJSON.errors,function(name,messages){
+                        var $field=$form.find('[name="'+name+'"]');
+                        if($field.length) fieldError($field,messages[0]||msg);
+                        msg=messages[0]||msg;
+                    });
+                }
+                toast(msg,true);
+                window.Swal.fire({icon:'error',title:'Cheque Not Saved',text:msg,confirmButtonText:'OK'});
+            }).always(function(){
+                saveBusy=false;
+                $('#cheque-save').prop('disabled',false);
+            });
         });
     });
-    $result.on('hidden.bs.modal',function(){if(reopenAfterResult){reopenAfterResult=false;$create.modal('show');}});
+    // Select2 is already supplied by the ERP layout; match CR voucher dropdown appearance.
+    if($.isFunction($.fn.select2)) {
+        $('#cheque-customer,#cheque-status').select2({theme:'bootstrap4',width:'100%'});
+        $form.find('[name="customer_id"]').select2({theme:'bootstrap4',width:'100%',dropdownParent:$create});
+    }
     load(1);
 });
 </script>
