@@ -32,7 +32,7 @@
     </style>
 </head>
 <body>
-    <div class="toolbar"><button type="button" onclick="window.print()">Print Receiving Slip</button></div>
+    <div class="toolbar"><button type="button" id="cheque-print-slip">Print Receiving Slip</button></div>
     <main class="paper">
         <header class="company">
             <img src="{{ asset('images/logo/blue-marketing-logo.png') }}" alt="Company logo">
@@ -66,8 +66,14 @@
         </div>
         <p class="footer">This slip displays the current status from the original cheque record. A cheque receiving slip does not confirm available funds. Generated from the secure cheque register.</p>
     </main>
-    @if(request()->boolean('print'))
-        <script>window.addEventListener('load', function(){ window.print(); });</script>
-    @endif
+    <script src="{{ asset('template/admin/plugins/jquery/jquery.min.js') }}"></script>
+    <script>
+        $(function () {
+            $('#cheque-print-slip').on('click', function () { window.print(); });
+            @if(request()->boolean('print'))
+                window.print();
+            @endif
+        });
+    </script>
 </body>
 </html>
