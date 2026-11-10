@@ -212,7 +212,7 @@
 
                 @canany(['read voucher', 'read slip', 'add slip', 'read jv'])
                     <li class="nav-item">
-                        <a href="#" class="nav-link {{ request()->routeIs('finance.voucher*', 'finance.daily-vouchers.*') ? 'active' : '' }}">
+                        <a href="#" class="nav-link {{ request()->routeIs('finance.voucher*', 'finance.daily-vouchers.*', 'finance.cheques.*') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-ticket-alt"></i>
                             <p>Vouchers<i class="right fas fa-angle-left"></i></p>
                         </a>
@@ -221,6 +221,7 @@
 
 
                             @can('read voucher')
+                                <li class="nav-item"><a href="{{ route('finance.cheques.index') }}" class="nav-link {{ request()->routeIs('finance.cheques.*') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Cheque Management</p></a></li>
                                 <li class="nav-item">
                                     <a href="{{ route('finance.daily-vouchers.index') }}" class="nav-link {{ request()->routeIs('finance.daily-vouchers.*') ? 'active' : '' }}">
                                         <i class="far fa-circle nav-icon"></i><p>Daily Voucher Directory</p>

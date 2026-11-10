@@ -31,7 +31,11 @@ final class ChequeIntakeController extends Controller
         $project = $this->project();
         $customers = DB::table('leads')->where('project_id', $project)
             ->orderBy('first_name')->get(['id', 'first_name', 'last_name']);
-        return view('admin.finance.cheque.intake', compact('customers'));
+        $bankAccounts = Schema::hasTable('project_bank_accounts')
+            ? DB::table('project_bank_accounts')->where('project_id', $project)
+                ->where('is_active', 1)->orderBy('bank_name')->get(['id', 'bank_name', 'account_title', 'branch'])
+            : collect();
+        return view('admin.finance.cheque.intake', compact('customers', 'bankAccounts'));
     }
 
     public function data(Request $request)
@@ -99,6 +103,77 @@ final class ChequeIntakeController extends Controller
         return response()->view('admin.finance.cheque.receiving_slip', compact(
             'cheque', 'customer', 'receiver', 'slipNumber'
         ))->header('Cache-Control', 'private, no-store, max-age=0');
+    }
+
+    public function act(Request $request, int $id)
+    {
+        abort_unless($request->user()?->can('create voucher'), 403);
+        $this->ready();
+        abort_unless(Schema::hasTable('finance_cheque_intake_actions'), 409,
+            'Cheque action history migration must be applied first.');
+        $project = $this->project();
+        $data = $request->validate([
+            'action' => ['required', Rule::in(['clearing', 'withdrawal'])],
+            'action_date' => ['required', 'date_format:Y-m-d'],
+            'bank_account_id' => ['required_if:action,clearing', 'nullable', 'integer'],
+            'bank_name' => ['required', 'string', 'max:150'],
+            'branch' => ['nullable', 'string', 'max:150'],
+            'collector_name' => ['required_if:action,withdrawal', 'nullable', 'string', 'max:150'],
+            'collector_cnic' => ['nullable', 'string', 'regex:/^([0-9]{5}-?[0-9]{7}-?[0-9])?$/D'],
+            'remarks' => ['nullable', 'string', 'max:2000'],
+        ]);
+        $action = $data['action'];
+        $bankAccount = null;
+        if ($action === 'clearing') {
+            abort_unless(Schema::hasTable('project_bank_accounts'), 409, 'Project bank configuration is missing.');
+            $bankAccount = DB::table('project_bank_accounts')->where('project_id', $project)
+                ->where('id', (int) $data['bank_account_id'])->where('is_active', 1)->first();
+            if (!$bankAccount) {
+                throw ValidationException::withMessages(['bank_account_id' => 'Select an active bank account for this project.']);
+            }
+        }
+        $record = DB::transaction(function () use ($project, $id, $data, $action, $bankAccount, $request) {
+            $cheque = DB::table('finance_cheque_intakes')->where('project_id', $project)
+                ->where('id', $id)->lockForUpdate()->first();
+            abort_unless($cheque, 404);
+            if ($cheque->status !== 'received') {
+                throw ValidationException::withMessages(['action' => 'Only Received cheques can be submitted for clearing or withdrawal.']);
+            }
+            if ($data['action_date'] < $cheque->received_date) {
+                throw ValidationException::withMessages(['action_date' => 'Action date cannot be before the cheque receiving date.']);
+            }
+            $to = $action === 'clearing' ? 'pending_clearing' : 'withdrawn';
+            $bankName = $bankAccount ? $bankAccount->bank_name : trim($data['bank_name']);
+            $branch = $bankAccount ? $bankAccount->branch : ($data['branch'] ?? null);
+            DB::table('finance_cheque_intake_actions')->insert([
+                'project_id' => $project,
+                'cheque_intake_id' => (int) $cheque->id,
+                'action' => $action,
+                'from_status' => $cheque->status,
+                'to_status' => $to,
+                'action_date' => $data['action_date'],
+                'bank_account_id' => $bankAccount?->id,
+                'bank_name' => $bankName,
+                'branch' => $branch,
+                'collector_name' => $action === 'withdrawal' ? $data['collector_name'] : null,
+                'collector_cnic' => $action === 'withdrawal' ? ($data['collector_cnic'] ?? null) : null,
+                'remarks' => $data['remarks'] ?? null,
+                'original_amount' => $cheque->amount,
+                'actor_id' => (int) $request->user()->id,
+                'created_at' => now(),
+            ]);
+            DB::table('finance_cheque_intakes')->where('project_id', $project)
+                ->where('id', $id)->where('status', 'received')
+                ->update(['status' => $to, 'updated_at' => now()]);
+            return ['id' => $cheque->id, 'status' => $to, 'amount' => $cheque->amount];
+        }, 3);
+        return response()->json([
+            'status' => 'success',
+            'message' => $action === 'clearing'
+                ? 'Cheque submitted for bank clearing. No bank receipt voucher was posted.'
+                : 'Direct withdrawal recorded. No bank withdrawal voucher was posted.',
+            'data' => $record,
+        ]);
     }
 
     public function store(Request $request)

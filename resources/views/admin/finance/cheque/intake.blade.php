@@ -88,17 +88,17 @@
             <div class="table-responsive">
                 <table class="table table-sm table-bordered table-hover" id="cheque-register-table">
                     <thead>
-                        <tr><th>#</th><th>Received Date</th><th>Cheque #</th><th>Bank</th><th>Received From</th><th>Purpose</th><th>Amount</th><th>Status</th><th>Slip</th></tr>
+                        <tr><th>#</th><th>Received Date</th><th>Cheque #</th><th>Bank</th><th>Received From</th><th>Purpose</th><th>Amount</th><th>Status</th><th>Slip</th><th>Actions</th></tr>
                         <tr class="cheque-column-filters">
                             <th></th><th></th>
                             <th><input class="form-control form-control-sm" data-column="cheque_number" placeholder="Filter"></th>
                             <th><input class="form-control form-control-sm" data-column="bank_name" placeholder="Filter"></th>
                             <th><input class="form-control form-control-sm" data-column="received_from" placeholder="Filter"></th>
                             <th><input class="form-control form-control-sm" data-column="purpose" placeholder="Filter"></th>
-                            <th></th><th></th><th></th>
+                            <th></th><th></th><th></th><th></th>
                         </tr>
                     </thead>
-                    <tbody id="cheque-table-body"><tr><td colspan="9" class="text-center text-muted py-4">Loading cheques...</td></tr></tbody>
+                    <tbody id="cheque-table-body"><tr><td colspan="10" class="text-center text-muted py-4">Loading cheques...</td></tr></tbody>
                 </table>
             </div>
             <div class="d-flex justify-content-between align-items-center flex-wrap mt-2">
@@ -144,6 +144,53 @@
 </div>
 @endcan
 
+<div class="modal fade" id="cheque-action-modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document"><div class="modal-content">
+        <div class="modal-header" style="background:#eaf7ee;border-bottom:2px solid #168348">
+            <h5 class="modal-title font-weight-bold text-success" id="cheque-action-title">Cheque Action</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        </div>
+        <form id="cheque-action-form" novalidate>
+            @csrf
+            <input type="hidden" name="action" id="cheque-action-kind">
+            <div class="modal-body">
+                <p class="text-muted mb-2">Original cheque: <strong id="cheque-action-number"></strong></p>
+                <div class="form-group">
+                    <label>Original Cheque Amount (Fixed)</label>
+                    <input type="text" id="cheque-action-amount" class="form-control" readonly>
+                    <small class="text-muted">The amount is read directly from the original cheque and cannot be changed.</small>
+                </div>
+                <div class="row">
+                    <div class="form-group col-md-6"><label for="cheque-action-date">Clearing / Withdrawal Date *</label>
+                        <input type="date" class="form-control" name="action_date" id="cheque-action-date" required></div>
+                    <div class="form-group col-md-6" id="cheque-clearing-account-group">
+                        <label for="cheque-action-bank-account">Deposit Bank Account *</label>
+                        <select id="cheque-action-bank-account" name="bank_account_id" class="form-control">
+                            <option value="">Select bank account</option>
+                            @foreach($bankAccounts as $account)
+                                <option value="{{ $account->id }}">{{ $account->bank_name }} / {{ $account->account_title }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group col-md-6" id="cheque-action-bank-name-group"><label for="cheque-action-bank-name">Bank Name *</label>
+                        <input class="form-control" id="cheque-action-bank-name" name="bank_name" maxlength="150"></div>
+                    <div class="form-group col-md-6" id="cheque-action-branch-group"><label for="cheque-action-branch">Branch</label>
+                        <input class="form-control" id="cheque-action-branch" name="branch" maxlength="150"></div>
+                    <div class="form-group col-md-6 cheque-withdrawal-only"><label for="cheque-action-collector">Person Who Collected *</label>
+                        <input class="form-control" id="cheque-action-collector" name="collector_name" maxlength="150"></div>
+                    <div class="form-group col-md-6 cheque-withdrawal-only"><label for="cheque-action-cnic">Collector CNIC (if applicable)</label>
+                        <input class="form-control" id="cheque-action-cnic" name="collector_cnic" maxlength="15" placeholder="XXXXX-XXXXXXX-X"></div>
+                    <div class="form-group col-12"><label for="cheque-action-remarks">Remarks</label>
+                        <textarea class="form-control" id="cheque-action-remarks" name="remarks" rows="2" maxlength="2000"></textarea></div>
+                </div>
+                <div id="cheque-action-errors" class="text-danger small" role="alert"></div>
+                <p class="small text-muted mb-0">This action changes the cheque's workflow status only. No accounting voucher or bank posting will be created.</p>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button><button type="submit" id="cheque-action-submit" class="btn btn-success">Confirm Action</button></div>
+        </form>
+    </div></div>
+</div>
+
 <div id="cheque-toast" class="alert alert-success shadow" role="status" aria-live="polite"></div>
 @endsection
 @push('script')
@@ -153,6 +200,9 @@ $(function () {
     'use strict';
     var currentPage=1, listRequest=null, saveBusy=false, searchTimer=null, listSeq=0;
     var $form=$('#cheque-intake-form'), $create=$('#cheque-create-modal');
+    var actionUrlTemplate=@json(route('finance.cheques.action',['id'=>'__CHEQUE_ID__']));
+    var actionBusy=false;
+    var actionTarget=null;
     var slipUrlTemplate=@json(route('finance.cheques.slip',['id'=>'__CHEQUE_ID__']));
     function slipUrl(id){return slipUrlTemplate.replace('__CHEQUE_ID__',String(id));}
     $('html,body').addClass('cheque-register-active');
@@ -256,6 +306,16 @@ $(function () {
             href:slipUrl(r.id)+'?print=1',target:'_blank',rel:'noopener',title:'Print receiving slip'
         }).text('Print').appendTo($slip);
         $slip.appendTo($tr);
+        var $actions=$('<td>').addClass('text-nowrap');
+        if(r.status==='received') {
+            $('<button type="button">').addClass('btn btn-sm btn-outline-success mr-1 cheque-action')
+                .attr('data-id',r.id).attr('data-cheque',r.cheque_number)
+                .attr('data-amount',r.amount).attr('data-kind','clearing').text('Send for Clearing').appendTo($actions);
+            $('<button type="button">').addClass('btn btn-sm btn-outline-primary cheque-action')
+                .attr('data-id',r.id).attr('data-cheque',r.cheque_number)
+                .attr('data-amount',r.amount).attr('data-kind','withdrawal').text('Direct Withdrawal').appendTo($actions);
+        } else $('<span>').addClass('text-muted small').text('—').appendTo($actions);
+        $actions.appendTo($tr);
         return $tr;
     }
     function pagination(data) {
@@ -274,7 +334,7 @@ $(function () {
         currentPage=page;
         var seq=++listSeq;
         if(listRequest)listRequest.abort();
-        $.blueTableSkeleton.show($('#cheque-table-body'),{rows:10,columns:9,tone:'credit'});
+        $.blueTableSkeleton.show($('#cheque-table-body'),{rows:10,columns:10,tone:'credit'});
         $('#cheque-count').text('Loading records...');
         $('#cheque-pagination').empty();
         listRequest=$.ajax({url:@json(route('finance.cheques.data')),method:'GET',data:filters(page),dataType:'json'})
@@ -283,12 +343,12 @@ $(function () {
             $.blueTableSkeleton.clear($('#cheque-table-body'));
             var $body=$('#cheque-table-body').empty();
             $.each(data.data||[],function(i,r){$body.append(row(r,((data.current_page-1)*data.per_page)+i+1));});
-            if(!(data.data||[]).length)$body.append($('<tr>').append($('<td colspan="9" class="text-center text-muted py-4">').text('No matching cheques found.')));
+            if(!(data.data||[]).length)$body.append($('<tr>').append($('<td colspan="10" class="text-center text-muted py-4">').text('No matching cheques found.')));
             pagination(data);
         }).fail(function(xhr,status){
             if(status==='abort'||seq!==listSeq)return;
             $.blueTableSkeleton.clear($('#cheque-table-body'));
-            $('#cheque-table-body').empty().append($('<tr>').append($('<td colspan="9" class="text-center text-danger py-4">').text('Unable to load cheque records.')));
+            $('#cheque-table-body').empty().append($('<tr>').append($('<td colspan="10" class="text-center text-danger py-4">').text('Unable to load cheque records.')));
             $('#cheque-count').text('Could not load records');
             toast('Cheque list could not be loaded.',true);
         });
@@ -362,6 +422,64 @@ $(function () {
         $('#cheque-customer,#cheque-status').select2({theme:'bootstrap4',width:'100%'});
         $form.find('[name="customer_id"]').select2({theme:'bootstrap4',width:'100%',dropdownParent:$create});
     }
+    // Bank-clearing / direct-withdrawal workflows. No accounting postings are made here.
+    @can('create voucher')
+    $('#cheque-table-body').on('click','.cheque-action',function(){
+        var $button=$(this),kind=$button.attr('data-kind');
+        actionTarget={id:$button.attr('data-id'),kind:kind};
+        var $modal=$('#cheque-action-modal'),$form=$('#cheque-action-form');
+        $form.trigger('reset');
+        $('#cheque-action-errors').empty();
+        $('#cheque-action-kind').val(kind);
+        $('#cheque-action-title').text(kind==='clearing'?'Send Cheque for Bank Clearing':'Direct Bank Withdrawal');
+        $('#cheque-action-number').text($button.attr('data-cheque'));
+        $('#cheque-action-amount').val(Number($button.attr('data-amount')).toLocaleString('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2}));
+        $('#cheque-action-date').val(@json(date('Y-m-d')));
+        $('#cheque-clearing-account-group').toggle(kind==='clearing');
+        $('.cheque-withdrawal-only,#cheque-action-bank-name-group,#cheque-action-branch-group').toggle(kind==='withdrawal');
+        $modal.modal('show');
+    });
+    $('#cheque-action-form').on('submit',function(e){
+        e.preventDefault();
+        if(actionBusy || !actionTarget)return;
+        var $form=$(this),kind=actionTarget.kind;
+        var bankId=$('#cheque-action-bank-account').val(),date=$('#cheque-action-date').val();
+        var bankName=$.trim($('#cheque-action-bank-name').val()),collector=$.trim($('#cheque-action-collector').val());
+        var errors=[];
+        if(!date)errors.push('Action date is required.');
+        if(kind==='clearing'&&!bankId)errors.push('Select the receiving bank account.');
+        if(kind==='withdrawal'&&!bankName)errors.push('Bank name is required.');
+        if(kind==='withdrawal'&&!collector)errors.push('Collector name is required.');
+        if(errors.length){$('#cheque-action-errors').text(errors.join(' '));return;}
+        if(!window.Swal || !$.isFunction(window.Swal.fire)){toast('Confirmation dialog unavailable.',true);return;}
+        window.Swal.fire({
+            icon:'warning',title:'Confirm Cheque Action',
+            text:kind==='clearing'?'Submit this cheque for bank clearing? It will remain unposted until clearance is verified.':'Confirm this cheque was withdrawn directly from the bank? This records withdrawal but does not post an accounting voucher.',
+            showCancelButton:true,confirmButtonText:'Yes, Confirm',cancelButtonText:'Cancel',confirmButtonColor:'#168348'
+        }).then(function(result){
+            if(!result.isConfirmed || actionBusy)return;
+            actionBusy=true;
+            $('#cheque-action-submit').prop('disabled',true);
+            $.ajax({
+                url:actionUrlTemplate.replace('__CHEQUE_ID__',String(actionTarget.id)),
+                method:'POST',data:$form.serialize(),dataType:'json',headers:{Accept:'application/json'}
+            }).done(function(data){
+                $('#cheque-action-modal').modal('hide');
+                toast(data.message||'Cheque status updated.',false);
+                load(1);
+                window.Swal.fire({icon:'success',title:'Action Recorded',text:data.message||'Cheque updated.'});
+            }).fail(function(xhr){
+                var message=xhr.responseJSON&&xhr.responseJSON.message?xhr.responseJSON.message:'Unable to update cheque.';
+                if(xhr.responseJSON&&xhr.responseJSON.errors){
+                    $.each(xhr.responseJSON.errors,function(_,messages){message=messages[0]||message;return false;});
+                }
+                $('#cheque-action-errors').text(message);
+                toast(message,true);
+                window.Swal.fire({icon:'error',title:'Action Not Saved',text:message});
+            }).always(function(){actionBusy=false;$('#cheque-action-submit').prop('disabled',false);});
+        });
+    });
+    @endcan
     load(1);
 });
 </script>
