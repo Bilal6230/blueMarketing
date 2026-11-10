@@ -133,7 +133,7 @@ final class ChequeIntakeController extends Controller
         $data = $request->validate([
             'action' => ['required', Rule::in(['clearing', 'withdrawal'])],
             'action_date' => ['required', 'date_format:Y-m-d'],
-            'bank_account_id' => ['required_if:action,clearing', 'nullable', 'integer'],
+            'bank_account_id' => ['nullable', 'integer'],
             'bank_name' => ['required_if:action,withdrawal', 'nullable', 'string', 'max:150'],
             'branch' => ['nullable', 'string', 'max:150'],
             'collector_name' => ['required_if:action,withdrawal', 'nullable', 'string', 'max:150'],
@@ -141,16 +141,8 @@ final class ChequeIntakeController extends Controller
             'remarks' => ['nullable', 'string', 'max:2000'],
         ]);
         $action = $data['action'];
-        $bankAccount = null;
-        if ($action === 'clearing') {
-            abort_unless(Schema::hasTable('project_bank_accounts'), 409, 'Project bank configuration is missing.');
-            $bankAccount = DB::table('project_bank_accounts')->where('project_id', $project)
-                ->where('id', (int) $data['bank_account_id'])->where('is_active', 1)->first();
-            if (!$bankAccount) {
-                throw ValidationException::withMessages(['bank_account_id' => 'Select an active bank account for this project.']);
-            }
-        }
-        $record = DB::transaction(function () use ($project, $id, $data, $action, $bankAccount, $request) {
+        // Never trust the submitted direction: inspect the source inside its transaction lock.
+        $record = DB::transaction(function () use ($project, $id, $data, $action, $request) {
             $cheque = DB::table('finance_cheque_intakes')->where('project_id', $project)
                 ->where('id', $id)->lockForUpdate()->first();
             abort_unless($cheque, 404);
@@ -164,9 +156,25 @@ final class ChequeIntakeController extends Controller
             if ($data['action_date'] < $cheque->received_date) {
                 throw ValidationException::withMessages(['action_date' => 'Action date cannot be before the cheque receiving date.']);
             }
+            $incoming = ($cheque->direction ?? 'in') !== 'out';
+            $bankAccount = null;
+            if ($action === 'clearing' && $incoming) {
+                abort_unless(Schema::hasTable('project_bank_accounts'),409,'Project bank configuration is missing.');
+                $bankAccount = DB::table('project_bank_accounts')->where('project_id',$project)
+                    ->where('id',(int)($data['bank_account_id'] ?? 0))->where('is_active',1)->first();
+                if (!$bankAccount) {
+                    throw ValidationException::withMessages([
+                        'bank_account_id'=>'Select an active deposit bank account for incoming cheque clearing.'
+                    ]);
+                }
+            }
             $to = $action === 'clearing' ? 'pending_clearing' : 'withdrawn';
-            $bankName = $bankAccount ? $bankAccount->bank_name : trim($data['bank_name']);
-            $branch = $bankAccount ? $bankAccount->branch : ($data['branch'] ?? null);
+            $bankName = $bankAccount
+                ? $bankAccount->bank_name
+                : ($action === 'clearing' ? $cheque->bank_name : trim($data['bank_name']));
+            $branch = $bankAccount
+                ? $bankAccount->branch
+                : ($action === 'clearing' ? $cheque->branch : ($data['branch'] ?? null));
             DB::table('finance_cheque_intake_actions')->insert([
                 'project_id' => $project,
                 'cheque_intake_id' => (int) $cheque->id,
@@ -184,9 +192,12 @@ final class ChequeIntakeController extends Controller
                 'actor_id' => (int) $request->user()->id,
                 'created_at' => now(),
             ]);
-            DB::table('finance_cheque_intakes')->where('project_id', $project)
-                ->where('id', $id)->where('status', 'received')
+            $changed = DB::table('finance_cheque_intakes')->where('project_id', $project)
+                ->where('id', $id)->where('status', $expectedStatus)
                 ->update(['status' => $to, 'updated_at' => now()]);
+            if ($changed !== 1) {
+                throw ValidationException::withMessages(['action'=>'Cheque status changed; refresh and retry.']);
+            }
             return ['id' => $cheque->id, 'status' => $to, 'amount' => $cheque->amount];
         }, 3);
         return response()->json([
@@ -282,8 +293,11 @@ final class ChequeIntakeController extends Controller
                 $clearing = DB::table('finance_cheque_intake_actions')
                     ->where('project_id',$project)->where('cheque_intake_id',$id)
                     ->where('action','clearing')->orderByDesc('id')->first();
-                abort_unless($clearing && $clearing->bank_account_id,409,
-                    'The original clearing bank account could not be verified.');
+                abort_unless($clearing,409,'Original clearing submission not found.');
+                if (($cheque->direction ?? 'in') !== 'out') {
+                    abort_unless($clearing->bank_account_id,409,
+                        'Incoming cheque bank account could not be verified.');
+                }
                 if ($data['action_date'] < $clearing->action_date) {
                     throw ValidationException::withMessages([
                         'action_date'=>'Decision date cannot be before bank clearing submission.'

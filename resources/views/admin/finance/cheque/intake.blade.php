@@ -12,8 +12,8 @@
     .cheque-register-page .cheque-filter-row .form-control { width:100%; min-width:0; }
     .cheque-register-page .cheque-filter-row .cheque-filter-actions { display:flex; align-items:center; justify-content:flex-end; padding:0; gap:5px; white-space:nowrap; height:31px; }
     .cheque-register-page .cheque-filter-row .cheque-filter-actions .btn { height:31px; }
-    .cheque-register-page .cheque-filter-row .select2-container { width:100%!important; }
-    .cheque-register-page .cheque-filter-row .select2-selection--single { height:31px!important; padding-top:1px; }
+    .cheque-register-page .cheque-filter-row .ts-wrapper{width:100%;min-width:0}
+    .cheque-register-page .cheque-filter-row .ts-control{min-height:31px;padding:4px 8px;border-radius:4px;font-size:12px}
     @media(max-width:1199px){.cheque-register-page .cheque-filter-row {grid-template-columns:repeat(3,minmax(0,1fr));}.cheque-register-page .cheque-filter-row .cheque-filter-actions{justify-content:flex-start;}}
     @media(max-width:650px){.cheque-register-page .cheque-filter-row {grid-template-columns:repeat(2,minmax(0,1fr));}}
     .cheque-register-page > .container-fluid {display:flex;flex-direction:column;flex:1;min-height:0;}
@@ -32,8 +32,9 @@
     .cheque-status-badge{display:inline-block;border-radius:4px;padding:3px 6px;font-size:11px;font-weight:700;text-transform:capitalize}
     .cheque-status-cleared{background:#198754;color:white}.cheque-status-returned{background:#ffc107;color:#242424}.cheque-status-rejected{background:#dc3545;color:white}
     .cheque-status-withdrawn{background:#0d6efd;color:white}.cheque-status-received,.cheque-status-issued{background:#6c757d;color:white}.cheque-status-pending_clearing{background:#17a2b8;color:white}
-    #cheque-create-modal .select2-container { width:100%!important; }
-    #cheque-create-modal .select2-container .select2-selection--single { height:31px!important; }
+    #cheque-create-modal .ts-wrapper,#cheque-action-modal .ts-wrapper{width:100%;min-width:0}
+    #cheque-create-modal .ts-control,#cheque-action-modal .ts-control{min-height:31px;padding:4px 8px;border-radius:4px;font-size:13px}
+    #cheque-intake-form .ts-wrapper.is-invalid .ts-control{border-color:#dc3545!important}
     .swal2-container {z-index:20000!important;}
     #cheque-intake-form .cheque-upload:hover,#cheque-intake-form .cheque-upload:focus-within {background:#e9f7ed;border-color:#168348;}
     #cheque-intake-form .cheque-upload.is-invalid {border-color:#dc3545;}
@@ -76,8 +77,8 @@
                 <div class="row cheque-filter-row">
                     <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-from">From</label><input type="date" id="cheque-from" name="from" class="form-control form-control-sm"></div>
                     <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-to">To</label><input type="date" id="cheque-to" name="to" class="form-control form-control-sm"></div>
-                    <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-customer">Child Account</label><select name="account_mapping_id" id="cheque-customer" class="form-control form-control-sm"><option value="">All child accounts</option>@foreach($accountMappings as $account)<option value="{{ $account['id'] }}">{{ $account['head_name'] }} / {{ $account['subhead_name'] }}</option>@endforeach</select></div>
-                    <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-status">Status</label><select name="status" id="cheque-status" class="form-control form-control-sm"><option value="">All statuses</option><option value="received">Received</option><option value="issued">Issued</option><option value="pending_clearing">Pending Clearing</option><option value="cleared">Cleared</option><option value="returned">Returned</option><option value="rejected">Rejected</option><option value="withdrawn">Withdrawn</option></select></div>
+                    <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-customer">Child Account</label><select name="account_mapping_id" id="cheque-customer" class="js-tomselect form-control form-control-sm"><option value="">All child accounts</option>@foreach($accountMappings as $account)<option value="{{ $account['id'] }}">{{ $account['head_name'] }} / {{ $account['subhead_name'] }}</option>@endforeach</select></div>
+                    <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-status">Status</label><select name="status" id="cheque-status" class="js-tomselect form-control form-control-sm"><option value="">All statuses</option><option value="received">Received</option><option value="issued">Issued</option><option value="pending_clearing">Pending Clearing</option><option value="cleared">Cleared</option><option value="returned">Returned</option><option value="rejected">Rejected</option><option value="withdrawn">Withdrawn</option></select></div>
                     <div class="col-lg-2 col-md-8 mb-2"><label class="cheque-filter-label" for="cheque-search">Search</label><input name="search" id="cheque-search" class="form-control form-control-sm" placeholder="Cheque number, bank, person, purpose"></div>
                     <div class="col-lg-2 col-md-4 mb-2 cheque-filter-actions"><button type="submit" class="btn btn-success btn-sm"><i class="fas fa-filter mr-1"></i> Apply</button><button type="button" id="cheque-reset" class="btn btn-outline-secondary btn-sm">Reset</button></div>
                 </div>
@@ -85,7 +86,7 @@
         </div>
         <div class="cheque-table-panel">
             <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap">
-                <div class="d-flex align-items-center"><strong class="mr-2">Show</strong><select id="cheque-per-page" class="form-control form-control-sm mr-2" style="width:80px"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option></select><span>entries</span></div>
+                <div class="d-flex align-items-center"><strong class="mr-2">Show</strong><select id="cheque-per-page" class="js-tomselect form-control form-control-sm mr-2" style="width:80px"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option></select><span>entries</span></div>
                 <div><label class="mb-0" for="cheque-quick-search">Search: </label><input id="cheque-quick-search" class="form-control form-control-sm d-inline-block ml-1" style="width:190px" placeholder="Search cheques"></div>
             </div>
             <div class="table-responsive">
@@ -122,7 +123,7 @@
                 <div class="row">
                     <div class="form-group col-md-4"><label>Cheque Number *</label><input class="form-control form-control-sm" name="cheque_number" maxlength="100" required></div>
                     <div class="form-group col-md-4"><label>Cheque Title *</label><input class="form-control form-control-sm" name="cheque_title" maxlength="200" required></div>
-                    <div class="form-group col-md-4"><label>Cheque Direction *</label><select class="form-control form-control-sm" name="direction" id="cheque-direction" required>
+                    <div class="form-group col-md-4"><label>Cheque Direction *</label><select class="js-tomselect form-control form-control-sm" name="direction" id="cheque-direction" required>
                         <option value="in">In — Cheque Received</option><option value="out">Out — Cheque Issued</option>
                     </select></div>
                     <div class="form-group col-md-4"><label>Cheque Date *</label><input class="form-control form-control-sm" type="date" name="cheque_date" required></div>
@@ -132,11 +133,11 @@
                     <div class="form-group col-md-4"><label>Branch</label><input class="form-control form-control-sm" name="branch" maxlength="150"></div>
                     <div class="form-group col-md-4"><label>Received From *</label><input class="form-control form-control-sm" name="received_from" maxlength="150" required></div>
                     <div class="form-group col-md-4"><label>Head Account *</label>
-                        <select class="form-control form-control-sm" name="head_accounting_id" id="cheque-head-account" required>
+                        <select class="js-tomselect form-control form-control-sm" name="head_accounting_id" id="cheque-head-account" required>
                             <option value="">Select Head Account</option>@foreach($headAccounts as $head)<option value="{{ $head['head_id'] }}">{{ $head['head_name'] }}</option>@endforeach
                         </select></div>
                     <div class="form-group col-md-4"><label>Child Account *</label>
-                        <select class="form-control form-control-sm" name="subhead_accounting_id" id="cheque-child-account" required>
+                        <select class="js-tomselect form-control form-control-sm" name="subhead_accounting_id" id="cheque-child-account" required>
                             <option value="">Select Child Account</option>
                             @foreach($accountMappings as $account)<option value="{{ $account['subhead_id'] }}" data-head="{{ $account['head_id'] }}">{{ $account['subhead_name'] }} — {{ $account['head_name'] }}</option>@endforeach
                         </select></div>
@@ -179,7 +180,7 @@
                         <input type="date" class="form-control" name="action_date" id="cheque-action-date" required></div>
                     <div class="form-group col-md-6" id="cheque-clearing-account-group">
                         <label for="cheque-action-bank-account">Deposit Bank Account *</label>
-                        <select id="cheque-action-bank-account" name="bank_account_id" class="form-control">
+                        <select id="cheque-action-bank-account" name="bank_account_id" class="js-tomselect form-control">
                             <option value="">Select bank account</option>
                             @foreach($bankAccounts as $account)
                                 <option value="{{ $account->id }}">{{ $account->bank_name }} / {{ $account->account_title }}</option>
@@ -392,7 +393,7 @@ $(function () {
         if(@json(auth()->user()->can('create voucher')) && (r.status==='received'||r.status==='issued')) {
             $('<button type="button">').addClass('btn btn-sm btn-outline-success mr-1 cheque-action')
                 .attr('data-id',r.id).attr('data-cheque',r.cheque_number)
-                .attr('data-amount',r.amount).attr('data-kind','clearing').text('Send for Clearing').appendTo($actions);
+                .attr('data-amount',r.amount).attr('data-direction',r.direction||'in').attr('data-kind','clearing').text('Send for Clearing').appendTo($actions);
             if((r.direction||'in')==='in') {
                 $('<button type="button">').addClass('btn btn-sm btn-outline-primary cheque-action')
                     .attr('data-id',r.id).attr('data-cheque',r.cheque_number)
@@ -512,40 +513,64 @@ $(function () {
     // CR Voucher project mapping. Child selection resolves its Head automatically.
     var mappingOptions=@json($accountMappings);
     var $head=$('#cheque-head-account'),$child=$('#cheque-child-account');
-    function refreshChildren(headId,keep) {
-        var previous=keep?String($child.val()||''):'';
+    function initChequeTomSelects() {
+        if (typeof window.TomSelect === 'undefined') {
+            toast('TomSelect is unavailable; reload the page.',true);
+            return;
+        }
+        $('#cheque-filter-form select,#cheque-per-page,#cheque-intake-form select,#cheque-action-form select').each(function(){
+            if(this.tomselect)return;
+            var el=this;
+            new TomSelect(this,{
+                persist:false,create:false,maxItems:1,allowEmptyOption:true,dropdownParent:'body',
+                onChange:function(){ $(el).trigger('change'); }
+            });
+        });
+    }
+    function setTs($el,value) {
+        var ts=$el[0]&&$el[0].tomselect;
+        if(ts)ts.setValue(String(value||''),true);
+        else $el.val(String(value||''));
+    }
+    function refreshChildren(headId,keep){
+        var old=keep?String($child.val()||''):'';
+        var ts=$child[0]&&$child[0].tomselect;
+        if(ts){ts.clear(true);ts.clearOptions();}
         $child.empty().append($('<option>').val('').text('Select Child Account'));
+        if(ts)ts.addOption({value:'',text:'Select Child Account'});
         $.each(mappingOptions,function(_,item){
-            if(!headId||String(item.head_id)===String(headId)) {
-                $('<option>').val(item.subhead_id).text(item.subhead_name+' — '+item.head_name).appendTo($child);
+            if(!headId||String(item.head_id)===String(headId)){
+                var label=item.subhead_name+' — '+item.head_name;
+                $child.append($('<option>').val(String(item.subhead_id)).text(label));
+                if(ts)ts.addOption({value:String(item.subhead_id),text:label});
             }
         });
-        if(previous&&$child.find('option').filter(function(){return $(this).val()===previous;}).length)$child.val(previous);
-        $child.trigger('change.select2');
+        var valid=old&&$child.find('option').filter(function(){return $(this).val()===old;}).length;
+        setTs($child,valid?old:'');
+        if(ts)ts.refreshOptions(false);
     }
     $head.on('change',function(){
         if($head.data('syncing'))return;
         refreshChildren($head.val(),false);
     });
     $child.on('change',function(){
-        var selected=$child.val();if(!selected)return;
-        var matches=$.grep(mappingOptions,function(i){return String(i.subhead_id)===String(selected);});
+        var child=$child.val();if(!child)return;
+        var matches=$.grep(mappingOptions,function(x){return String(x.subhead_id)===String(child);});
         if(!matches.length)return;
-        var match=$.grep(matches,function(i){return String(i.head_id)===String($head.val());})[0]||matches[0];
-        if(String($head.val())!==String(match.head_id)){
-            $head.data('syncing',true).val(String(match.head_id)).trigger('change.select2').removeData('syncing');
-            refreshChildren(match.head_id,true);
+        var current=$.grep(matches,function(x){return String(x.head_id)===String($head.val());})[0]||matches[0];
+        if(String($head.val())!==String(current.head_id)){
+            $head.data('syncing',true);
+            setTs($head,current.head_id);
+            $head.removeData('syncing');
+            refreshChildren(current.head_id,true);
+            setTs($child,child);
         }
     });
     $('#cheque-direction').on('change',function(){
         $form.find('[name=received_from]').closest('.form-group').find('label')
             .text($(this).val()==='out'?'Issued To *':'Received From *');
     });
-    // Select2 is already supplied by the ERP layout; match CR voucher dropdown appearance.
-    if($.isFunction($.fn.select2)) {
-        $('#cheque-customer,#cheque-status').select2({theme:'bootstrap4',width:'100%'});
-        $form.find('[name="direction"],[name="head_accounting_id"],[name="subhead_accounting_id"]').select2({theme:'bootstrap4',width:'100%',dropdownParent:$create});
-    }
+    initChequeTomSelects();
     // Bank-clearing / direct-withdrawal workflows. No accounting postings are made here.
     @can('create voucher')
     $('#cheque-table-body').on('click','.cheque-action',function(){
@@ -553,13 +578,18 @@ $(function () {
         actionTarget={id:$button.attr('data-id'),kind:kind};
         var $modal=$('#cheque-action-modal'),$form=$('#cheque-action-form');
         $form.trigger('reset');
+        var bankTs=$('#cheque-action-bank-account')[0]&&$('#cheque-action-bank-account')[0].tomselect;
+        if(bankTs)bankTs.clear(true);
         $('#cheque-action-errors').empty();
         $('#cheque-action-kind').val(kind);
         $('#cheque-action-title').text(kind==='clearing'?'Send Cheque for Bank Clearing':'Direct Bank Withdrawal');
         $('#cheque-action-number').text($button.attr('data-cheque'));
         $('#cheque-action-amount').val(Number($button.attr('data-amount')).toLocaleString('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2}));
         $('#cheque-action-date').val(@json(date('Y-m-d')));
-        $('#cheque-clearing-account-group').toggle(kind==='clearing');
+        var incoming=($button.attr('data-direction')||'in')!=='out';
+        actionTarget.direction=incoming?'in':'out';
+        $('#cheque-clearing-account-group').toggle(kind==='clearing'&&incoming);
+        $('#cheque-action-bank-account').prop('disabled',kind!=='clearing'||!incoming);
         $('.cheque-withdrawal-only,#cheque-action-bank-name-group,#cheque-action-branch-group').toggle(kind==='withdrawal');
         $modal.modal('show');
     });
@@ -571,7 +601,7 @@ $(function () {
         var bankName=$.trim($('#cheque-action-bank-name').val()),collector=$.trim($('#cheque-action-collector').val());
         var errors=[];
         if(!date)errors.push('Action date is required.');
-        if(kind==='clearing'&&!bankId)errors.push('Select the receiving bank account.');
+        if(kind==='clearing'&&actionTarget.direction==='in'&&!bankId)errors.push('Select the receiving bank account.');
         if(kind==='withdrawal'&&!bankName)errors.push('Bank name is required.');
         if(kind==='withdrawal'&&!collector)errors.push('Collector name is required.');
         if(errors.length){$('#cheque-action-errors').text(errors.join(' '));return;}

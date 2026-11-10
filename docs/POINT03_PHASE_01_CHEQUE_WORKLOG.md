@@ -114,3 +114,9 @@
 - Incoming starts Received; outgoing starts Issued. Outgoing cannot use Direct Cash Withdrawal. Both can enter Pending Clearing before final bank verification. Existing cheques remain incoming.
 - Print layout: A5 portrait page; POS 80mm width with printer-compatible 200mm maximum page height. Issuance uses appropriate text.
 - Browser and printer validation pending; milestone 01.4 remains open.
+
+## 2026-11-10 — CR TomSelect parity and outgoing clearing fix
+- Cheque screen dropdowns now use native TomSelect from the shared master layout (same config as CR Voucher), not Select2. Head/Child dependency uses TomSelect methods for filtered option rebuild and automatic Head selection. Filters, Direction, per-page and clearing-bank dropdown also use TomSelect.
+- OUT cheque Send for Clearing hides/disables bank field, submits without bank account and backend validates its direction from DB under row lock. IN still mandates current project's active deposit bank. OUT retains issuing-bank details for audit; later Mark Cleared accepts OUT without a deposit-bank ID.
+- Fixed hardcoded received status update preventing issued cheque transitioning to pending_clearing; row-count check prevents silently confirming an unmodified status. No accounting postings.
+- Source checks run; actual browser PASS pending. Milestone 01.4 remains open.
