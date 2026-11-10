@@ -122,3 +122,8 @@
 - Source checks run; actual browser PASS pending. Milestone 01.4 remains open.
 
 - Follow-up state consistency: native form reset explicitly synchronizes TomSelect direction/Head/Child values; filter reset synchronizes TomSelect; clearing bank TomSelect disabled for OUT and re-enabled for IN. Invalid selects highlight visible TomSelect controls.
+
+## 2026-11-10 — TomSelect browser regression correction
+- Owner screenshot showed native select plus generated TomSelect input simultaneously. Corrected all seven cheque-screen selects to CR Voucher's `form-select form-select-sm js-tomselect` base classes (instead of Bootstrap `form-control` on a select), and added targeted CSS hiding TomSelect's original native `select.tomselected` element.
+- Removed `dropdownParent:'body'`; searchable option lists now remain inside their original TomSelect wrappers, which are inside their Bootstrap modal. This avoids Bootstrap modal focus trapping body-level dropdown input. Existing Head/Child mapping event hooks retained.
+- Static checks PASS; browser testing required for search/select, dependent Head/Child, filter dropdown, and IN/OUT clearing bank modal. 01.4 still browser-PASS pending.

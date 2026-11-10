@@ -32,6 +32,17 @@
     .cheque-status-badge{display:inline-block;border-radius:4px;padding:3px 6px;font-size:11px;font-weight:700;text-transform:capitalize}
     .cheque-status-cleared{background:#198754;color:white}.cheque-status-returned{background:#ffc107;color:#242424}.cheque-status-rejected{background:#dc3545;color:white}
     .cheque-status-withdrawn{background:#0d6efd;color:white}.cheque-status-received,.cheque-status-issued{background:#6c757d;color:white}.cheque-status-pending_clearing{background:#17a2b8;color:white}
+    /* CR-style TomSelect: never show the underlying native select alongside its generated control. */
+    .cheque-register-page select.tomselected,
+    #cheque-create-modal select.tomselected,
+    #cheque-action-modal select.tomselected {display:none!important;visibility:hidden!important;position:absolute!important;width:1px!important;height:1px!important;}
+    .cheque-register-page .ts-wrapper,
+    #cheque-create-modal .ts-wrapper,
+    #cheque-action-modal .ts-wrapper {display:block;width:100%;min-width:0}
+    .cheque-register-page .ts-control,
+    #cheque-create-modal .ts-control,
+    #cheque-action-modal .ts-control {width:100%;box-sizing:border-box}
+    #cheque-create-modal .modal-body {overflow-y:auto;}
     #cheque-create-modal .ts-wrapper,#cheque-action-modal .ts-wrapper{width:100%;min-width:0}
     #cheque-create-modal .ts-control,#cheque-action-modal .ts-control{min-height:31px;padding:4px 8px;border-radius:4px;font-size:13px}
     #cheque-intake-form .ts-wrapper.is-invalid .ts-control{border-color:#dc3545!important}
@@ -77,8 +88,8 @@
                 <div class="row cheque-filter-row">
                     <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-from">From</label><input type="date" id="cheque-from" name="from" class="form-control form-control-sm"></div>
                     <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-to">To</label><input type="date" id="cheque-to" name="to" class="form-control form-control-sm"></div>
-                    <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-customer">Child Account</label><select name="account_mapping_id" id="cheque-customer" class="js-tomselect form-control form-control-sm"><option value="">All child accounts</option>@foreach($accountMappings as $account)<option value="{{ $account['id'] }}">{{ $account['head_name'] }} / {{ $account['subhead_name'] }}</option>@endforeach</select></div>
-                    <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-status">Status</label><select name="status" id="cheque-status" class="js-tomselect form-control form-control-sm"><option value="">All statuses</option><option value="received">Received</option><option value="issued">Issued</option><option value="pending_clearing">Pending Clearing</option><option value="cleared">Cleared</option><option value="returned">Returned</option><option value="rejected">Rejected</option><option value="withdrawn">Withdrawn</option></select></div>
+                    <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-customer">Child Account</label><select name="account_mapping_id" id="cheque-customer" class="js-tomselect form-select form-select-sm"><option value="">All child accounts</option>@foreach($accountMappings as $account)<option value="{{ $account['id'] }}">{{ $account['head_name'] }} / {{ $account['subhead_name'] }}</option>@endforeach</select></div>
+                    <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-status">Status</label><select name="status" id="cheque-status" class="js-tomselect form-select form-select-sm"><option value="">All statuses</option><option value="received">Received</option><option value="issued">Issued</option><option value="pending_clearing">Pending Clearing</option><option value="cleared">Cleared</option><option value="returned">Returned</option><option value="rejected">Rejected</option><option value="withdrawn">Withdrawn</option></select></div>
                     <div class="col-lg-2 col-md-8 mb-2"><label class="cheque-filter-label" for="cheque-search">Search</label><input name="search" id="cheque-search" class="form-control form-control-sm" placeholder="Cheque number, bank, person, purpose"></div>
                     <div class="col-lg-2 col-md-4 mb-2 cheque-filter-actions"><button type="submit" class="btn btn-success btn-sm"><i class="fas fa-filter mr-1"></i> Apply</button><button type="button" id="cheque-reset" class="btn btn-outline-secondary btn-sm">Reset</button></div>
                 </div>
@@ -86,7 +97,7 @@
         </div>
         <div class="cheque-table-panel">
             <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap">
-                <div class="d-flex align-items-center"><strong class="mr-2">Show</strong><select id="cheque-per-page" class="js-tomselect form-control form-control-sm mr-2" style="width:80px"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option></select><span>entries</span></div>
+                <div class="d-flex align-items-center"><strong class="mr-2">Show</strong><select id="cheque-per-page" class="js-tomselect form-select form-select-sm mr-2" style="width:80px"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option></select><span>entries</span></div>
                 <div><label class="mb-0" for="cheque-quick-search">Search: </label><input id="cheque-quick-search" class="form-control form-control-sm d-inline-block ml-1" style="width:190px" placeholder="Search cheques"></div>
             </div>
             <div class="table-responsive">
@@ -123,7 +134,7 @@
                 <div class="row">
                     <div class="form-group col-md-4"><label>Cheque Number *</label><input class="form-control form-control-sm" name="cheque_number" maxlength="100" required></div>
                     <div class="form-group col-md-4"><label>Cheque Title *</label><input class="form-control form-control-sm" name="cheque_title" maxlength="200" required></div>
-                    <div class="form-group col-md-4"><label>Cheque Direction *</label><select class="js-tomselect form-control form-control-sm" name="direction" id="cheque-direction" required>
+                    <div class="form-group col-md-4"><label>Cheque Direction *</label><select class="js-tomselect form-select form-select-sm" name="direction" id="cheque-direction" required>
                         <option value="in">In — Cheque Received</option><option value="out">Out — Cheque Issued</option>
                     </select></div>
                     <div class="form-group col-md-4"><label>Cheque Date *</label><input class="form-control form-control-sm" type="date" name="cheque_date" required></div>
@@ -133,11 +144,11 @@
                     <div class="form-group col-md-4"><label>Branch</label><input class="form-control form-control-sm" name="branch" maxlength="150"></div>
                     <div class="form-group col-md-4"><label>Received From *</label><input class="form-control form-control-sm" name="received_from" maxlength="150" required></div>
                     <div class="form-group col-md-4"><label>Head Account *</label>
-                        <select class="js-tomselect form-control form-control-sm" name="head_accounting_id" id="cheque-head-account" required>
+                        <select class="js-tomselect form-select form-select-sm" name="head_accounting_id" id="cheque-head-account" required>
                             <option value="">Select Head Account</option>@foreach($headAccounts as $head)<option value="{{ $head['head_id'] }}">{{ $head['head_name'] }}</option>@endforeach
                         </select></div>
                     <div class="form-group col-md-4"><label>Child Account *</label>
-                        <select class="js-tomselect form-control form-control-sm" name="subhead_accounting_id" id="cheque-child-account" required>
+                        <select class="js-tomselect form-select form-select-sm" name="subhead_accounting_id" id="cheque-child-account" required>
                             <option value="">Select Child Account</option>
                             @foreach($accountMappings as $account)<option value="{{ $account['subhead_id'] }}" data-head="{{ $account['head_id'] }}">{{ $account['subhead_name'] }} — {{ $account['head_name'] }}</option>@endforeach
                         </select></div>
@@ -180,7 +191,7 @@
                         <input type="date" class="form-control" name="action_date" id="cheque-action-date" required></div>
                     <div class="form-group col-md-6" id="cheque-clearing-account-group">
                         <label for="cheque-action-bank-account">Deposit Bank Account *</label>
-                        <select id="cheque-action-bank-account" name="bank_account_id" class="js-tomselect form-control">
+                        <select id="cheque-action-bank-account" name="bank_account_id" class="js-tomselect form-select">
                             <option value="">Select bank account</option>
                             @foreach($bankAccounts as $account)
                                 <option value="{{ $account->id }}">{{ $account->bank_name }} / {{ $account->account_title }}</option>
@@ -533,8 +544,10 @@ $(function () {
         $('#cheque-filter-form select,#cheque-per-page,#cheque-intake-form select,#cheque-action-form select').each(function(){
             if(this.tomselect)return;
             var el=this;
+            // Keep modal menus inside the modal, otherwise Bootstrap's focus trap
+            // blocks the searchable input when the dropdown is appended to body.
             new TomSelect(this,{
-                persist:false,create:false,maxItems:1,allowEmptyOption:true,dropdownParent:'body',
+                persist:false,create:false,maxItems:1,allowEmptyOption:true,
                 onChange:function(){ $(el).trigger('change'); }
             });
         });
