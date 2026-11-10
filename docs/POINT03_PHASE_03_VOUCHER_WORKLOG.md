@@ -56,3 +56,9 @@
 - No ledger writes or schema changes. Browser PASS pending; next workflow lifecycle changes blocked until testing.
 
 - Post-commit review: JV save banner is now keyed to exactly the transaction-returned voucher id (including durable-request replay), never to some other recent pending voucher created by the same user. Updated directory skeleton from 8 to 9 columns and JV conditional colgroup to match the new approval status column.
+
+## 2026-11-10 — Owner screenshots / JV legacy status and modern UX
+- Root cause: legacy `journal_vouchers.status` is not approval state. Removed fallback that incorrectly labeled legacy posted JVs Pending. Only matched project-scoped approval rows control Pending/Approved/Rejected; no approval record => Posted. Directory has same fix.
+- Replaced legacy JV index presentation with blue-accent modern filter toolbar in one row, compact DataTable with per-column filters, status badges and icon action buttons. Add/Edit open the unchanged original forms inside a Bootstrap modal using same-origin iframe; fallback Open in new tab. Original validation, journal posting and reversal remain on their own existing routes.
+- Create/Edit forms can render embed layout without duplicate sidebar/top navigation. No accounting migrations or ledger mutations.
+- Needs browser testing for DataTables columns, modal save/redirect, edit/print, legacy fallback, filter search, approval statuses. Phase gate remains open.

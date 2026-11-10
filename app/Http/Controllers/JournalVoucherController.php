@@ -90,8 +90,35 @@ class JournalVoucherController extends Controller
             });
         }
 
-        // If it's an AJAX request, return JSON data
+        // Column filters are applied in SQL before paging (not just the first page).
         if ($request->ajax()) {
+            $columnTerms = (array) $request->input('columns', []);
+            foreach ([0=>'id',1=>'voucher_number',2=>'reference',3=>'date',4=>'description',5=>'total_debit'] as $index=>$column) {
+                $needle=trim((string) data_get($columnTerms,$index.'.search.value',''));
+                if ($needle==='') continue;
+                $needle=mb_substr($needle,0,120);
+                if($index===0 && ctype_digit($needle)) $query->where('id',(int)$needle);
+                elseif($index===3) $query->whereDate('date',$needle);
+                elseif($index===5 && is_numeric($needle)) $query->where('total_debit',(float)$needle);
+                else $query->where($column,'like','%'.addcslashes($needle,'%_\\').'%');
+            }
+            $approvalTerm=strtolower(trim((string)data_get($columnTerms,'6.search.value','')));
+            if (in_array($approvalTerm,['pending','approved','rejected'],true) && \Illuminate\Support\Facades\Schema::hasTable('daily_voucher_approvals')) {
+                $query->whereExists(function($sub)use($selectedProjectId,$approvalTerm){
+                    $sub->selectRaw('1')->from('daily_voucher_approvals as approval')
+                        ->whereColumn('approval.source_id','journal_vouchers.id')
+                        ->where('approval.project_id',(int)$selectedProjectId)
+                        ->where('approval.source_table','journal_vouchers')
+                        ->where('approval.status',$approvalTerm);
+                });
+            } elseif($approvalTerm==='posted' && \Illuminate\Support\Facades\Schema::hasTable('daily_voucher_approvals')) {
+                $query->whereNotExists(function($sub)use($selectedProjectId){
+                    $sub->selectRaw('1')->from('daily_voucher_approvals as approval')
+                        ->whereColumn('approval.source_id','journal_vouchers.id')
+                        ->where('approval.project_id',(int)$selectedProjectId)
+                        ->where('approval.source_table','journal_vouchers');
+                });
+            }
             // Pagination parameters
             $start = max(0, (int) $request->input('start', 0));
             $length = min(100, max(1, (int) $request->input('length', 10)));
@@ -108,7 +135,7 @@ class JournalVoucherController extends Controller
             $approvalStatuses = app(\App\Services\Finance\VoucherApprovalStatusReader::class)->forSources((int)$selectedProjectId,'journal_vouchers',$vouchers->pluck('id'));
             $data = $vouchers->map(function ($voucher) use ($displayNumbers,$approvalStatuses) {
                 $approval=$approvalStatuses[$voucher->id]??null;
-                $status=$approval['status']??(string)($voucher->status??'posted');
+                $status=$approval['status']??'posted';
                 return [
                     'id' => $voucher->id,
                     'voucher_number' => $displayNumbers[$voucher->id] ?? ('JV-' . get_jv_number($voucher->voucher_number)),

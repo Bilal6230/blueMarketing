@@ -1,6 +1,16 @@
 @extends('admin.layouts.master')
 
 @section('content')
+@if(request()->boolean('embed'))
+<style>
+.main-sidebar,.main-header,.main-footer,.navbar,.control-sidebar{display:none!important}
+.content-wrapper{margin-left:0!important;min-height:0!important;padding:3px!important;background:#fff!important}
+.content-wrapper .card{margin:0!important;box-shadow:none!important;border:0!important}
+.content-wrapper .card-header{border-radius:4px!important;padding:8px 12px!important}
+.content-wrapper .card-body{padding:12px!important}
+body{overflow:auto!important}
+</style>
+@endif
     <div class="content-wrapper">
         <div class="content">
             <div class="container-fluid mt-1">

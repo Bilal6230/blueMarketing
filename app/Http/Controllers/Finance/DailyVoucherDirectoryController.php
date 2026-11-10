@@ -282,7 +282,7 @@ final class DailyVoucherDirectoryController extends Controller
                     'reference' => (string) ($voucher->reference ?? ''), 'account' => $lines[0]['account'] ?? '—',
                     'head' => $lines[0]['head'] ?? '—', 'subhead' => $lines[0]['subhead'] ?? '—',
                     'amount' => (float) ($voucher->total_debit ?? 0),
-                    'status' => ucfirst((string)($voucherApprovals[$voucher->id]['status']??($voucher->status??'posted'))),
+                    'status' => ucfirst((string)($voucherApprovals[$voucher->id]['status']??'posted')),
                     'approval_approver' => $voucherApprovals[$voucher->id]['approver']??null,
                     'detail' => (string) ($voucher->description ?? ''),
                     'lines' => $lines,
