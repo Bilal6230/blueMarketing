@@ -116,7 +116,7 @@ final class ChequeIntakeController extends Controller
             'action' => ['required', Rule::in(['clearing', 'withdrawal'])],
             'action_date' => ['required', 'date_format:Y-m-d'],
             'bank_account_id' => ['required_if:action,clearing', 'nullable', 'integer'],
-            'bank_name' => ['required', 'string', 'max:150'],
+            'bank_name' => ['required_if:action,withdrawal', 'nullable', 'string', 'max:150'],
             'branch' => ['nullable', 'string', 'max:150'],
             'collector_name' => ['required_if:action,withdrawal', 'nullable', 'string', 'max:150'],
             'collector_cnic' => ['nullable', 'string', 'regex:/^([0-9]{5}-?[0-9]{7}-?[0-9])?$/D'],
