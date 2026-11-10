@@ -60,3 +60,5 @@
 - Fixed silent Save: form uses novalidate, jQuery validation, and Bootstrap hidden.bs.modal sequencing before displaying confirmation. Cancel returns form data without clearing; failed AJAX save retains form and presents errors.
 - Register fills viewport to footer, internally scrolls data and keeps count and pagination visible.
 - **Static source checks:** noCR, filterButtonsInRow, numberInput, validation, uploader, modalSequencing, scroll, ajax, noNativeDom PASS. **Actual browser testing not run from GitHub-only environment.** Browser PASS required before leaving milestone 01.1.
+
+- Follow-up code review: CSS footer gap corrected, validation validity queried via jQuery `.prop()`, and any save failure reopens the populated cheque form when the error-result modal closes.

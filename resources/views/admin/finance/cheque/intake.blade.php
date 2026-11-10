@@ -25,6 +25,7 @@
     .cheque-register-page .cheque-table-panel .form-control-sm { min-width: 85px; }
     .cheque-register-page .cheque-table-panel tbody tr:nth-child(even) { background: #f7fbf8; }
 
+    .cheque-register-page .cheque-table-panel { margin-bottom:0; }
     .cheque-register-page .cheque-table-panel thead th { position: sticky; top: 0; z-index: 1; }
     .cheque-register-page .cheque-number { color: #087b39; font-weight: 700; }
     .cheque-register-page .cheque-filter-label { font-size: 12px; font-weight: 700; margin-bottom: 5px; }
@@ -142,7 +143,7 @@
 <script>
 $(function () {
     'use strict';
-    var currentPage=1, listRequest=null, saveBusy=false, searchTimer=null, state='idle', queuedResult=null, listSeq=0;
+    var currentPage=1, listRequest=null, saveBusy=false, searchTimer=null, state='idle', queuedResult=null, listSeq=0, reopenAfterResult=false;
     var $form=$('#cheque-intake-form'), $create=$('#cheque-create-modal'), $confirm=$('#cheque-confirm-modal'), $result=$('#cheque-result-modal');
     function fitPage() {
         var $page=$('.cheque-register-page');
@@ -187,7 +188,7 @@ $(function () {
         $form.find('input[name],select[name],textarea[name]').not('[type=hidden]').each(function () {
             var $f=$(this), val=$.trim(String($f.val()||'')), error='';
             if ($f.prop('required') && !val) error='This field is required.';
-            else if (val && !this.checkValidity()) error=$f.is('[type=number]')?'Enter a valid amount (greater than zero, max 2 decimals).':'Enter a valid value.';
+            else if (val && $f.prop('validity') && !$f.prop('validity').valid) error=$f.is('[type=number]')?'Enter a valid amount (greater than zero, max 2 decimals).':'Enter a valid value.';
             if (error) { fieldError($f,error);valid=false;if(!first)first=$f; }
         });
         var $amount=$form.find('[name=amount]');
@@ -299,6 +300,7 @@ $(function () {
             url:$form.attr('action'),method:'POST',data:new FormData($form[0]),processData:false,
             contentType:false,dataType:'json',headers:{Accept:'application/json'}
         }).done(function(data){
+            reopenAfterResult=false;
             resetForm();
             toast(data.message||'Cheque saved successfully.',false);
             load(1);
@@ -316,6 +318,7 @@ $(function () {
                     msg=messages[0]||msg;
                 });
             }
+            reopenAfterResult=true;
             toast(msg,true);
             queuedResult={title:'Cheque Not Saved',message:msg};
             $confirm.modal('hide');
@@ -323,7 +326,7 @@ $(function () {
             saveBusy=false;$('#cheque-confirm-save,#cheque-save').prop('disabled',false);
         });
     });
-    $result.on('hidden.bs.modal',function(){if($form.find('.is-invalid').length)$create.modal('show');});
+    $result.on('hidden.bs.modal',function(){if(reopenAfterResult){reopenAfterResult=false;$create.modal('show');}});
     load(1);
 });
 </script>
