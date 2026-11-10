@@ -1,35 +1,222 @@
 @extends('admin.layouts.master')
-@section('title','Voucher Approvals')
+@section('title','Voucher Approval Dashboard')
 @section('content')
-<div class="content-wrapper" style="min-height:100vh;background:#eef2ff;padding:24px">
-  <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-3"><div><h2>Voucher Approval Workflow</h2><div class="text-muted">Project #{{ (int)getSelectedTown() }} · CR, CP and JV posting is held inactive until approval.</div></div></div>
-    @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
-    @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
-    <div class="card mb-4"><div class="card-header"><strong>Project policies</strong></div><div class="card-body"><div class="row">
-      @foreach(['CR'=>'Cash Receipt','CP'=>'Cash Payment','JV'=>'Journal Voucher'] as $type=>$label)
-        @php($policy=$policies->get($type))
-        <div class="col-lg-4 mb-3"><form method="post" action="{{ route('finance.daily-vouchers.approvals.policy') }}" class="border rounded p-3 bg-white h-100">@csrf
-          <input type="hidden" name="voucher_type" value="{{ $type }}"><h5>{{ $label }} <small class="text-muted">({{ $type }})</small></h5>
-          <label class="d-block"><input type="checkbox" name="approval_required" value="1" {{ $policy?->approval_required ? 'checked' : '' }}> Require separate approval before posting</label>
-          <label class="mt-2">Assigned approver</label><select name="approver_user_id" class="form-control"><option value="">Select project user</option>@foreach($approvers as $user)<option value="{{ $user->id }}" {{ (int)$policy?->approver_user_id === (int)$user->id ? 'selected' : '' }}>{{ $user->name }}</option>@endforeach</select>
-          <button class="btn btn-primary btn-sm mt-3">Save policy</button>
-        </form></div>
-      @endforeach
-    </div><small class="text-muted">Policy changes affect new vouchers only. Existing posted vouchers and history are not changed. Approval and submission must be done by different users.</small></div></div>
-    <div class="card"><div class="card-header d-flex justify-content-between"><strong>Requests awaiting your decision</strong><span class="badge badge-primary">{{ $queue->total() }}</span></div><div class="table-responsive" style="max-height:60vh;overflow:auto"><table class="table table-sm table-hover mb-0"><thead class="thead-light"><tr><th>Type</th><th>Voucher source</th><th>Submitted by</th><th>Assigned approver</th><th>Submitted</th><th style="min-width:320px">Decision</th></tr></thead><tbody>
-      @forelse($queue as $item)<tr><td><strong>{{ $item->voucher_type }}</strong></td><td>{{ $item->source_table }} #{{ $item->source_id }}</td><td>{{ $item->submitter?->name ?? 'User #'.$item->submitted_by }}</td><td>{{ $item->assignedApprover?->name ?? 'User #'.$item->assigned_approver_id }}</td><td>{{ $item->created_at?->format('d-M-Y H:i') }}</td><td>
-        @if((int)$item->assigned_approver_id === (int)auth()->id() && (int)$item->submitted_by !== (int)auth()->id())
-          <form method="post" action="{{ route('finance.daily-vouchers.approvals.decide',[$item,'approve']) }}" class="d-inline">@csrf<button class="btn btn-success btn-sm">Approve &amp; post</button></form>
-          <form method="post" action="{{ route('finance.daily-vouchers.approvals.decide',[$item,'reject']) }}" class="mt-2">@csrf<div class="input-group input-group-sm"><input name="reason" required minlength="2" maxlength="1000" class="form-control" placeholder="Required rejection reason"><div class="input-group-append"><button class="btn btn-outline-danger">Reject</button></div></div></form>
-        @else <span class="text-muted">Assigned approver only</span> @endif
-        @php($events=$item->events)
-        <details class="mt-2"><summary>History ({{ $events->count() }})</summary>@foreach($events as $event)<div class="small">{{ $event->created_at }} · {{ ucfirst($event->event) }} · User #{{ $event->actor_id }} {{ $event->remarks ? '· '.$event->remarks : '' }}</div>@endforeach</details>
-      </td></tr>@empty<tr><td colspan="6" class="text-center text-muted p-4">No pending voucher approvals.</td></tr>@endforelse
-    </tbody></table></div><div class="card-footer">{{ $queue->links() }}</div></div>
-    <div class="card mt-4"><div class="card-header d-flex justify-content-between"><strong>Recent approval history</strong><span class="text-muted">Latest 50 decisions</span></div><div class="table-responsive" style="max-height:45vh;overflow:auto"><table class="table table-sm table-hover mb-0"><thead class="thead-light"><tr><th>Type / source</th><th>Submitted by</th><th>Decision</th><th>Approver</th><th>Reason</th><th>Events</th></tr></thead><tbody>
-      @forelse($history as $item)<tr><td>{{ $item->voucher_type }} · {{ $item->source_table }} #{{ $item->source_id }}</td><td>{{ $item->submitter?->name ?? 'User #'.$item->submitted_by }}</td><td><span class="badge badge-{{ $item->status === 'approved' ? 'success' : 'danger' }}">{{ ucfirst($item->status) }}</span></td><td>{{ $item->assignedApprover?->name ?? 'User #'.$item->assigned_approver_id }}</td><td>{{ $item->rejection_reason ?: '—' }}</td><td>@foreach($item->events as $event)<div class="small">{{ $event->created_at?->format('d-M-Y H:i') }} · {{ ucfirst($event->event) }} · User #{{ $event->actor_id }} {{ $event->remarks ? '· '.$event->remarks : '' }}</div>@endforeach</td></tr>@empty<tr><td colspan="6" class="text-center text-muted p-4">No completed approval decisions yet.</td></tr>@endforelse
-    </tbody></table></div></div>
+<style>
+.vap-page{padding:12px;background:#f0f5fb;min-height:calc(100vh - 125px)}
+.vap-heading{background:#e9f7ed;border-bottom:2px solid #168348;border-radius:7px;padding:12px 15px;margin-bottom:12px}
+.vap-heading h4{font-size:21px;color:#087840;font-weight:700;margin:0}
+.vap-card{border:1px solid #c2e3ce;border-top:3px solid #168348;border-radius:10px;background:#fff;margin-bottom:12px;overflow:hidden}
+.vap-card-head{padding:10px 13px;border-bottom:1px solid #dcebe1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.vap-table-wrap{max-height:46vh;overflow:auto}
+.vap-table{margin:0}
+.vap-table thead th{background:#e6f4eb;position:sticky;top:0;z-index:1;border-bottom:2px solid #168348;white-space:nowrap}
+.vap-table td{vertical-align:middle;white-space:nowrap}
+.vap-table tbody tr:nth-child(even){background:#f6fbf8}
+.vap-card-footer{padding:9px 13px;border-top:1px solid #edf2ee}
+.vap-actions{display:flex;gap:5px;align-items:center}
+.vap-modal .modal-header{background:#e9f7ed;border-bottom:2px solid #168348}
+.vap-modal .modal-title{color:#087840;font-weight:700}
+.vap-event{font-size:12px;padding:4px 7px;border-left:2px solid #abd9bb;margin:3px 0;background:#f7faf8;white-space:normal}
+.vap-status{display:inline-block;min-width:65px;border-radius:4px;text-align:center;padding:3px 7px;font-size:11px;font-weight:700}
+.vap-status.pending{background:#fef3d3;color:#775400}
+.vap-status.approved{background:#dcf4e5;color:#076235}
+.vap-status.rejected{background:#fee5e7;color:#9c1c2d}
+.vap-error{color:#c52a39;font-size:12px}
+.vap-alert{position:fixed;top:78px;right:20px;max-width:420px;z-index:2200;display:none}
+.swal2-container{z-index:20000!important}
+</style>
+<div class="content-wrapper vap-page">
+ <div class="container-fluid">
+  <div class="vap-heading d-flex justify-content-between align-items-center flex-wrap">
+   <div><h4>Voucher Approval Dashboard</h4><small class="text-muted">Project #{{ (int)getSelectedTown() }} · CR, CP &amp; JV approvals · Selected approver only</small></div>
+   <a href="{{ route('finance.voucher-settings.index') }}" class="btn btn-outline-success btn-sm"><i class="fas fa-cog mr-1"></i> Voucher Settings</a>
   </div>
+  <div class="alert alert-info small mb-3">
+   New vouchers with approval ON remain inactive until their assigned approver approves.
+   Rejected vouchers remain inactive. Existing voucher posting checks, project isolation and approval history are retained.
+  </div>
+  @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
+  @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
+
+  <div class="vap-card">
+   <div class="vap-card-head"><strong>Pending Approval Queue</strong>
+    <div><span class="badge badge-warning mr-2">{{ $queue->total() }} Pending</span>
+     <a class="btn btn-sm btn-outline-secondary" href="{{ route('finance.daily-vouchers.approvals.index') }}">Refresh</a>
+    </div>
+   </div>
+   <div class="table-responsive vap-table-wrap">
+    <table class="table table-sm table-bordered table-hover vap-table">
+     <thead><tr><th>#</th><th>Submitted</th><th>Voucher Type</th><th>Original Source</th><th>Submitted By</th><th>Assigned Approver</th><th>Status</th><th>Actions</th></tr></thead>
+     <tbody>
+     @forelse($queue as $item)
+      <tr id="vap-row-{{ $item->id }}">
+       <td>{{ $item->id }}</td>
+       <td>{{ $item->created_at?->format('d-M-Y H:i') }}</td>
+       <td><strong>{{ $item->voucher_type }}</strong></td>
+       <td>{{ $item->source_table }} #{{ $item->source_id }}</td>
+       <td>{{ $item->submitter?->name ?? 'User #'.$item->submitted_by }}</td>
+       <td>{{ $item->assignedApprover?->name ?? 'User #'.$item->assigned_approver_id }}</td>
+       <td><span class="vap-status pending">Pending</span></td>
+       <td>
+        <div class="vap-actions">
+         @if((int)$item->assigned_approver_id === (int)auth()->id() && (int)$item->submitted_by !== (int)auth()->id())
+          <button type="button" class="btn btn-sm btn-outline-success vap-decision"
+           data-url="{{ route('finance.daily-vouchers.approvals.decide',[$item,'approve']) }}"
+           data-action="approve" data-id="{{ $item->id }}" data-type="{{ $item->voucher_type }}"
+           data-source="{{ $item->source_table }} #{{ $item->source_id }}">Approve</button>
+          <button type="button" class="btn btn-sm btn-outline-danger vap-decision"
+           data-url="{{ route('finance.daily-vouchers.approvals.decide',[$item,'reject']) }}"
+           data-action="reject" data-id="{{ $item->id }}" data-type="{{ $item->voucher_type }}"
+           data-source="{{ $item->source_table }} #{{ $item->source_id }}">Reject</button>
+         @else <small class="text-muted">Assigned approver only</small>@endif
+         <button type="button" class="btn btn-sm btn-outline-secondary vap-history" data-target="#vap-events-{{ $item->id }}">History</button>
+        </div>
+        <div id="vap-events-{{ $item->id }}" class="d-none">
+         @foreach($item->events as $event)
+          <div class="vap-event">{{ $event->created_at?->format('d-M-Y H:i:s') }} · {{ ucfirst($event->event) }} · User #{{ $event->actor_id }}{{ $event->remarks ? ' · '.$event->remarks : '' }}</div>
+         @endforeach
+        </div>
+       </td>
+      </tr>
+     @empty
+      <tr><td colspan="8" class="text-center text-muted py-4">No pending voucher approvals.</td></tr>
+     @endforelse
+     </tbody>
+    </table>
+   </div>
+   <div class="vap-card-footer">{{ $queue->links() }}</div>
+  </div>
+
+  <div class="vap-card">
+   <div class="vap-card-head"><strong>Recent Approval History</strong><span class="text-muted small">Last 50 decisions · Read-only</span></div>
+   <div class="table-responsive vap-table-wrap"><table class="table table-sm table-bordered table-hover vap-table">
+    <thead><tr><th>Decided At</th><th>Voucher</th><th>Source</th><th>Submitted By</th><th>Decision</th><th>Assigned Approver</th><th>Reason</th><th>Audit</th></tr></thead>
+    <tbody>
+     @forelse($history as $item)
+      <tr>
+       <td>{{ $item->decided_at?->format('d-M-Y H:i:s') }}</td>
+       <td>{{ $item->voucher_type }}</td>
+       <td>{{ $item->source_table }} #{{ $item->source_id }}</td>
+       <td>{{ $item->submitter?->name ?? 'User #'.$item->submitted_by }}</td>
+       <td><span class="vap-status {{ $item->status }}">{{ ucfirst($item->status) }}</span></td>
+       <td>{{ $item->assignedApprover?->name ?? 'User #'.$item->assigned_approver_id }}</td>
+       <td>{{ $item->rejection_reason ?: '—' }}</td>
+       <td>
+        <button type="button" class="btn btn-outline-secondary btn-sm vap-history" data-target="#vap-events-{{ $item->id }}">History</button>
+        <div id="vap-events-{{ $item->id }}" class="d-none">
+         @foreach($item->events as $event)
+          <div class="vap-event">{{ $event->created_at?->format('d-M-Y H:i:s') }} · {{ ucfirst($event->event) }} · User #{{ $event->actor_id }}{{ $event->remarks ? ' · '.$event->remarks : '' }}</div>
+         @endforeach
+        </div>
+       </td>
+      </tr>
+     @empty
+      <tr><td colspan="8" class="text-muted text-center py-4">No completed decisions yet.</td></tr>
+     @endforelse
+    </tbody>
+   </table></div>
+  </div>
+ </div>
 </div>
+<div class="modal fade vap-modal" id="vap-decision-modal" tabindex="-1" aria-hidden="true" role="dialog">
+ <div class="modal-dialog modal-dialog-centered" role="document"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title" id="vap-decision-title">Approval Decision</h5>
+   <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
+  <form id="vap-decision-form">@csrf
+   <div class="modal-body">
+    <p class="mb-2" id="vap-source"></p>
+    <div id="vap-decision-note" class="alert alert-warning small"></div>
+    <div class="form-group" id="vap-reason-group">
+     <label for="vap-reason">Rejection Reason *</label>
+     <textarea class="form-control" id="vap-reason" name="reason" rows="3" maxlength="1000" placeholder="Minimum 2 characters"></textarea>
+     <small class="vap-error" id="vap-reason-error" role="alert"></small>
+    </div>
+    <small class="text-muted">Only the assigned approver can act. Decisions and actor/time are recorded in audit history.</small>
+   </div>
+   <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button>
+    <button type="submit" class="btn btn-success" id="vap-submit">Confirm Decision</button></div>
+  </form>
+ </div></div>
+</div>
+<div class="modal fade vap-modal" id="vap-history-modal" tabindex="-1" aria-hidden="true" role="dialog">
+ <div class="modal-dialog modal-dialog-centered modal-lg" role="document"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title">Voucher Approval History</h5><button class="close" type="button" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
+  <div class="modal-body"><div id="vap-history-content"></div></div>
+  <div class="modal-footer"><button class="btn btn-outline-secondary" type="button" data-dismiss="modal">Close</button></div>
+ </div></div>
+</div>
+<div class="alert vap-alert" id="vap-alert" role="status"></div>
 @endsection
+@push('script')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+$(function(){
+ 'use strict';
+ var selected=null,busy=false;
+ function toast(msg,failed){
+  if(window.toastr&&$.isFunction(window.toastr.error)){
+   if(failed)window.toastr.error(msg);else window.toastr.success(msg);
+  }else $('#vap-alert').removeClass('alert-success alert-danger')
+   .addClass(failed?'alert-danger':'alert-success').text(msg)
+   .stop(true,true).fadeIn(100).delay(3500).fadeOut(200);
+ }
+ $('.vap-history').on('click',function(){
+  var $template=$($(this).attr('data-target'));
+  var $content=$('#vap-history-content').empty();
+  if(!$template.length||!$template.children().length){
+   $('<p>').addClass('text-muted').text('No history available.').appendTo($content);
+  }else $template.children().clone().removeClass('d-none').appendTo($content);
+  $('#vap-history-modal').modal('show');
+ });
+ $('.vap-decision').on('click',function(){
+  var $b=$(this);
+  selected={url:$b.attr('data-url'),type:$b.attr('data-type'),
+   action:$b.attr('data-action'),source:$b.attr('data-source'),id:$b.attr('data-id')};
+  $('#vap-source').text(selected.type+' · '+selected.source);
+  $('#vap-reason-error').text('');
+  $('#vap-reason').val('');
+  $('#vap-reason-group').toggle(selected.action==='reject');
+  $('#vap-decision-title').text(selected.action==='approve'?'Approve Voucher':'Reject Voucher');
+  $('#vap-decision-note').text(selected.action==='approve'
+   ?'Approval will activate the existing guarded voucher posting. This action cannot be repeated.'
+   :'Rejecting will keep the voucher posting inactive. A reason is mandatory.');
+  $('#vap-submit').toggleClass('btn-success',selected.action==='approve')
+   .toggleClass('btn-danger',selected.action==='reject').text(selected.action==='approve'?'Approve & Post':'Reject Voucher');
+  $('#vap-decision-modal').modal('show');
+ });
+ $('#vap-decision-form').on('submit',function(e){
+  e.preventDefault();if(busy||!selected)return;
+  var reason=$.trim($('#vap-reason').val());
+  if(selected.action==='reject'&&reason.length<2){
+   $('#vap-reason-error').text('Provide a rejection reason with at least 2 characters.');return;
+  }
+  $('#vap-reason-error').text('');
+  if(!window.Swal||!$.isFunction(window.Swal.fire)){toast('Confirmation dialog unavailable.',true);return;}
+  window.Swal.fire({icon:'warning',
+   title:selected.action==='approve'?'Confirm Voucher Approval?':'Confirm Voucher Rejection?',
+   text:selected.action==='approve'
+    ?'This will activate the selected voucher under the existing guarded approval workflow.'
+    :'This will reject the voucher; posting remains inactive.',
+   showCancelButton:true,confirmButtonText:selected.action==='approve'?'Yes, Approve':'Yes, Reject',
+   cancelButtonText:'Cancel',confirmButtonColor:selected.action==='approve'?'#168348':'#bd293b'
+  }).then(function(result){
+   if(!result.isConfirmed||busy)return;
+   busy=true;$('#vap-submit').prop('disabled',true);
+   $.ajax({url:selected.url,method:'POST',data:{_token:$('#vap-decision-form [name=_token]').val(),reason:reason},
+    dataType:'json',headers:{Accept:'application/json'}})
+    .done(function(response){
+     $('#vap-decision-modal').modal('hide');
+     toast(response.message||'Voucher decision recorded.',false);
+     window.Swal.fire({icon:'success',title:'Decision Recorded',text:response.message||'Saved.'})
+      .then(function(){window.location.reload();});
+    }).fail(function(xhr){
+     var message=xhr.responseJSON&&xhr.responseJSON.message?xhr.responseJSON.message:'Unable to process voucher.';
+     if(xhr.responseJSON&&xhr.responseJSON.errors)$.each(xhr.responseJSON.errors,function(_,errors){message=errors[0]||message;return false;});
+     $('#vap-reason-error').text(message);toast(message,true);
+     window.Swal.fire({icon:'error',title:'Decision Not Saved',text:message});
+    }).always(function(){busy=false;$('#vap-submit').prop('disabled',false);});
+  });
+ });
+});
+</script>
+@endpush

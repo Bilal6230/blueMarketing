@@ -57,8 +57,10 @@ final class DailyVoucherApprovalController extends Controller
     public function decide(Request $request, DailyVoucherApproval $approval, string $decision)
     {
         abort_unless(in_array($decision, ['approve', 'reject'], true), 404);
+        $this->authorizeManager();
         $data = $request->validate(['reason' => [$decision === 'reject' ? 'required' : 'nullable', 'string', 'min:2', 'max:1000']]);
         abort_unless((int) $approval->project_id === (int) getSelectedTown(), 404);
+        abort_unless(in_array($approval->voucher_type, self::TYPES, true), 403);
         try {
             app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)->decide(
                 $approval, (int) auth()->id(), $decision === 'approve' ? 'approved' : 'rejected', $data['reason'] ?? null
@@ -71,7 +73,13 @@ final class DailyVoucherApprovalController extends Controller
                 default => 'The voucher approval could not be completed safely.',
             });
         }
-        return back()->with('success', $decision === 'approve' ? 'Voucher approved and posted.' : 'Voucher rejected; posting remains inactive.');
+        $message = $decision === 'approve' ? 'Voucher approved and existing guarded posting activated.' : 'Voucher rejected; posting remains inactive.';
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'message' => $message,
+                'data' => ['id' => $approval->id, 'status' => $decision === 'approve' ? 'approved' : 'rejected']])
+                ->header('Cache-Control', 'private, no-store');
+        }
+        return back()->with('success', $message);
     }
 
     private function authorizeManager(): void
