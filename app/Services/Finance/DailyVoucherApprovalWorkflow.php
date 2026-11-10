@@ -28,7 +28,13 @@ final class DailyVoucherApprovalWorkflow
         if (!$policy) {
             return false;
         }
-        if (!$policy->approver_user_id || (int) $policy->approver_user_id === $userId) {
+        $configuredApprover = $policy->approver_user_id
+            ? \App\Models\User::query()->find($policy->approver_user_id) : null;
+        if (!VoucherApproverAccess::eligibleForAssignment($configuredApprover, $projectId)) {
+            throw new \DomainException('DAILY_VOUCHER_APPROVER_NOT_CONFIGURED_OR_SELF_APPROVAL');
+        }
+        if ((int) $policy->approver_user_id === $userId
+            && !VoucherApproverAccess::isSuperAdmin(\App\Models\User::find($userId))) {
             throw new \DomainException('DAILY_VOUCHER_APPROVER_NOT_CONFIGURED_OR_SELF_APPROVAL');
         }
 
@@ -75,7 +81,9 @@ final class DailyVoucherApprovalWorkflow
             if ($locked->status !== 'pending') {
                 throw new \DomainException('DAILY_VOUCHER_APPROVAL_ALREADY_PROCESSED');
             }
-            if ((int) $locked->assigned_approver_id !== $actorId || (int) $locked->submitted_by === $actorId) {
+            $actor = \App\Models\User::query()->find($actorId);
+            if (!VoucherApproverAccess::mayDecide($actor, (int) $locked->project_id,
+                (int) $locked->assigned_approver_id, (int) $locked->submitted_by)) {
                 throw new \DomainException('DAILY_VOUCHER_APPROVER_NOT_AUTHORIZED');
             }
 

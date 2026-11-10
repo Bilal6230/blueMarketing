@@ -161,8 +161,7 @@ class VoucherController extends Controller
             return false;
         }
 
-        return $user->can('read voucher')
-            && ($user->hasRole('super-admin') || $user->can('direct-update'));
+        return \App\Services\Finance\VoucherApproverAccess::mayApprove($user);
     }
 
     protected function authorizeFinanceApproval(?User $user = null): void

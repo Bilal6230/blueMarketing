@@ -21,11 +21,16 @@ final class DailyVoucherApprovalController extends Controller
         abort_unless($projectId > 0 && Schema::hasTable('daily_voucher_approval_policies'), 409, 'Run the Daily Entries approval migration first.');
         $policies = DailyVoucherApprovalPolicy::query()->where('project_id', $projectId)->get()->keyBy('voucher_type');
         $approvers = User::query()->where('project_id', $projectId)->where('status_id', 1)->orderBy('name')->get(['id', 'name'])
-            ->filter(fn (User $user) => VoucherController::canAccessFinanceApprovalsForUser($user))->values();
-        $queue = DailyVoucherApproval::query()->with(['assignedApprover:id,name', 'submitter:id,name', 'events'])
-            ->where('project_id', $projectId)->where('status', 'pending')->latest()->paginate(25);
-        $history = DailyVoucherApproval::query()->with(['assignedApprover:id,name', 'submitter:id,name', 'events'])
-            ->where('project_id', $projectId)->whereIn('status', ['approved', 'rejected'])->latest('decided_at')->limit(50)->get();
+            ->filter(fn (User $user) => \App\Services\Finance\VoucherApproverAccess::eligibleForAssignment($user,$projectId))->values();
+        $isSuperAdmin = \App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user());
+        $queueQuery = DailyVoucherApproval::query()->with(['assignedApprover:id,name', 'submitter:id,name', 'events'])
+            ->where('project_id', $projectId)->where('status', 'pending');
+        if (!$isSuperAdmin) $queueQuery->where('assigned_approver_id', (int) auth()->id());
+        $queue = $queueQuery->latest()->paginate(25);
+        $historyQuery = DailyVoucherApproval::query()->with(['assignedApprover:id,name', 'submitter:id,name', 'events'])
+            ->where('project_id', $projectId)->whereIn('status', ['approved', 'rejected']);
+        if (!$isSuperAdmin) $historyQuery->where('assigned_approver_id', (int) auth()->id());
+        $history = $historyQuery->latest('decided_at')->limit(50)->get();
         return view('admin.finance.voucher.approvals', compact('policies', 'approvers', 'queue', 'history'));
     }
 
@@ -42,7 +47,7 @@ final class DailyVoucherApprovalController extends Controller
         $approverId = $data['approver_user_id'] ?? null;
         if ($required) {
             $approver = $approverId ? User::query()->where('project_id', $projectId)->where('status_id', 1)->whereKey($approverId)->first() : null;
-            abort_unless($approver && VoucherController::canAccessFinanceApprovalsForUser($approver), 422, 'Select an active finance approver from this project.');
+            abort_unless($approver && \App\Services\Finance\VoucherApproverAccess::eligibleForAssignment($approver,$projectId), 422, 'Select an active authorized voucher approver from this project.');
             abort_if((int) $approverId === (int) auth()->id(), 422, 'The submitter cannot approve their own voucher.');
         } else {
             $approverId = null;
@@ -70,6 +75,7 @@ final class DailyVoucherApprovalController extends Controller
                 'DAILY_VOUCHER_APPROVAL_ALREADY_PROCESSED' => 'This approval request has already been processed.',
                 'DAILY_VOUCHER_APPROVER_NOT_AUTHORIZED' => 'You are not the assigned approver for this voucher.',
                 'DAILY_VOUCHER_SOURCE_NOT_FOUND' => 'The voucher source could not be found in this project.',
+                'DAILY_VOUCHER_APPROVER_INACTIVE' => 'Approver permission or active project access is missing.',
                 default => 'The voucher approval could not be completed safely.',
             });
         }
@@ -84,6 +90,6 @@ final class DailyVoucherApprovalController extends Controller
 
     private function authorizeManager(): void
     {
-        abort_unless(VoucherController::canAccessFinanceApprovalsForUser(auth()->user()), 403);
+        abort_unless(\App\Services\Finance\VoucherApproverAccess::mayApprove(auth()->user()), 403);
     }
 }

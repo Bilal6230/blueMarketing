@@ -40,7 +40,7 @@ final class VoucherSettingsController extends Controller
     {
         $user=auth()->user();
         abort_unless($user && $user->can('read setting') &&
-            VoucherController::canAccessFinanceApprovalsForUser($user),403);
+            \App\Services\Finance\VoucherApproverAccess::isSuperAdmin($user),403);
         $project=(int)getSelectedTown();
         abort_unless($project>0 && DB::table('projects')->where('id',$project)->exists(),403);
         abort_unless(Schema::hasTable('daily_voucher_approval_policies'),409,
@@ -54,7 +54,7 @@ final class VoucherSettingsController extends Controller
         $policies=DailyVoucherApprovalPolicy::query()->where('project_id',$project)->get()->keyBy('voucher_type');
         $approvers=User::query()->where('project_id',$project)->where('status_id',1)
             ->orderBy('name')->get(['id','name'])->filter(
-                fn(User $user)=>VoucherController::canAccessFinanceApprovalsForUser($user)
+                fn(User $user)=>\App\Services\Finance\VoucherApproverAccess::eligibleForAssignment($user,$project)
             )->values();
         $types=self::TYPES;
         return view('admin.finance.voucher.settings',compact('policies','approvers','types'));
@@ -80,16 +80,13 @@ final class VoucherSettingsController extends Controller
         if($required){
             $approver=$approverId?User::query()->where('project_id',$project)
                 ->where('status_id',1)->whereKey($approverId)->first():null;
-            if(!$approver||!VoucherController::canAccessFinanceApprovalsForUser($approver)){
+            if(!$approver||!\App\Services\Finance\VoucherApproverAccess::eligibleForAssignment($approver,$project)){
                 throw ValidationException::withMessages([
                     'approver_user_id'=>'Select an active authorized finance approver from the current project.'
                 ]);
             }
-            if((int)$approverId===(int)$request->user()->id){
-                throw ValidationException::withMessages([
-                    'approver_user_id'=>'A user cannot be assigned to approve their own voucher submissions.'
-                ]);
-            }
+            // Assignment belongs to voucher type, not to a particular submitter.
+            // Self-approval is restricted for non-superadmin actors at decision time.
         }
         DailyVoucherApprovalPolicy::query()->updateOrCreate(
             ['project_id'=>$project,'voucher_type'=>$type],

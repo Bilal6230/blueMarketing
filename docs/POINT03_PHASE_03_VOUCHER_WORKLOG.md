@@ -37,3 +37,11 @@
 - Modernized existing project-scoped approval dashboard: Pending queue, readonly recent history, separate decision and audit modals; existing manager access gate, assigned approver-only buttons and no self-approval. Used jQuery AJAX + SweetAlert2 confirmation/validation/toaster, preserving modal on rejected AJAX error, disabling in-flight repeat submissions.
 - Rejection reason required client- and server-side; source/project/type checked on server; unchanged transactional guarded `DailyVoucherApprovalWorkflow::decide` remains authoritative for source locking, posting activation, status and immutable actor/time event. JSON API response supports AJAX, old form fallback retained.
 - No schema changes, no unsupported source approvals, no new posting logic. Phase 03.3 browser gate pending.
+
+## 2026-11-10 — Approved new policy / implementation batch 1
+- User approved implementation of role permission `voucher approver`, assigned-only queue for normal approvers, and universal Super Admin decision authority. Current code's original `super-admin` check mismatched the actual `superadmin` role seeded in `RoleSeeder`.
+- Created additive idempotent permission migration **without silently assigning roles**, and shared `VoucherApproverAccess` policy for consistent Super Admin and eligible normal approver checks.
+- Voucher Settings restricted to Super Admin for edits; eligible list now requires active user, current project and `voucher approver`. Existing policy values unchanged.
+- Approval queue/history now filtered by assigned_approver_id for non-superadmins. Super Admin can approve/reject all pending project requests including own, with existing locked transaction and audit evidence; normal approvers cannot approve own requests.
+- Preserved `daily_voucher_approvals.status` for pending/approved/rejected, `ledgers.is_active` for accounting effect and deletion separate. No ledger schema changes or preexisting approvals changed.
+- IMPORTANT staged rollout: existing assigned approvers need voucher approver permission assigned through Role/Permission UI; until granted, they cannot act. Browser testing required before proceeding to status badges and further flow changes.

@@ -28,11 +28,11 @@
 <div class="content-wrapper vap-page">
  <div class="container-fluid">
   <div class="vap-heading d-flex justify-content-between align-items-center flex-wrap">
-   <div><h4>Voucher Approval Dashboard</h4><small class="text-muted">Project #{{ (int)getSelectedTown() }} · CR, CP &amp; JV approvals · Selected approver only</small></div>
+   <div><h4>Voucher Approval Dashboard</h4><small class="text-muted">Project #{{ (int)getSelectedTown() }} · CR, CP &amp; JV approvals · {{ \App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user()) ? 'Super Admin: all project requests' : 'Assigned requests only' }}</small></div>
    <a href="{{ route('finance.voucher-settings.index') }}" class="btn btn-outline-success btn-sm"><i class="fas fa-cog mr-1"></i> Voucher Settings</a>
   </div>
   <div class="alert alert-info small mb-3">
-   New vouchers with approval ON remain inactive until their assigned approver approves.
+   New vouchers with approval ON remain inactive until the assigned approver or a Super Admin explicitly approves.
    Rejected vouchers remain inactive. Existing voucher posting checks, project isolation and approval history are retained.
   </div>
   @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
@@ -59,7 +59,7 @@
        <td><span class="vap-status pending">Pending</span></td>
        <td>
         <div class="vap-actions">
-         @if((int)$item->assigned_approver_id === (int)auth()->id() && (int)$item->submitted_by !== (int)auth()->id())
+         @if(\App\Services\Finance\VoucherApproverAccess::mayDecide(auth()->user(),(int)$item->project_id,(int)$item->assigned_approver_id,(int)$item->submitted_by))
           <button type="button" class="btn btn-sm btn-outline-success vap-decision"
            data-url="{{ route('finance.daily-vouchers.approvals.decide',[$item,'approve']) }}"
            data-action="approve" data-id="{{ $item->id }}" data-type="{{ $item->voucher_type }}"
