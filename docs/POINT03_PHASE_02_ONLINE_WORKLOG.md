@@ -31,3 +31,9 @@
 ## 2026-11-10 — Complete code milestone 02.1
 - Implemented controller, migration, online register Blade, classic/v2 sidebar links and authenticated routes. Static verification: route endpoints, unique project/ref index, transaction type and account mapping validators, pending only, non-posting, private proof and returned proof download URLs. Browser test pending.
 - Any bank confirmation/ledger voucher remains prohibited until separately approved 02.2/04 gate.
+
+## 2026-11-10 — Browser defect: confirmation popup unavailable
+- Owner provided browser screenshot with toast `Confirmation popup unavailable.` when saving Online Receipt.
+- Root cause: Online Intake used `window.Swal.fire` without loading SweetAlert2, while the existing Cheque and CR Voucher views explicitly load the same library.
+- Added SweetAlert2 script include before Online Intake's jQuery handlers, preserving CR-style stacked confirmation/success/error dialogs and existing AJAX flow.
+- Source verified; awaiting owner browser retest. Milestone 02.1 is not PASS yet.

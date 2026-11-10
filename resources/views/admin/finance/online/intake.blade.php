@@ -115,6 +115,8 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
 <div id="online-toast" class="alert" role="status"></div>
 @endsection
 @push('script')
+{{-- Same SweetAlert2 asset used by the existing CR/Cheque voucher dialogs. --}}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 $(function(){
  'use strict';
