@@ -24,8 +24,8 @@
    <a class="btn btn-outline-success btn-sm" href="{{ route('finance.daily-vouchers.approvals.index') }}">Approval Dashboard</a>
   </div>
   <div class="alert alert-info small">
-   Approval policy applies to <strong>new vouchers only</strong>. Currently CR, CP and JV use the guarded approval engine. Approvers must have the <code>voucher approver</code> permission through their role or direct assignment. Super Admin has universal decision authority.
-   All other required voucher types are listed for visibility but cannot be enabled until their posting workflows are safely integrated.
+   Approval policy applies to <strong>new vouchers only</strong>. CR, CP, CCR, CDR and JV now use the guarded approval engine. Approvers must have the <code>voucher approver</code> permission through their role or direct assignment. Super Admin has universal decision authority.
+   CCR and CDR have independent approval switches; existing Posted vouchers stay unchanged when a switch is enabled. Remaining voucher types are locked until their posting workflows are safely integrated.
   </div>
   <div class="row">
    @foreach($types as $type=>$definition)
