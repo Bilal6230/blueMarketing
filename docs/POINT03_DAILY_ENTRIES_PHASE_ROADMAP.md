@@ -229,3 +229,12 @@ Owner screenshot: /admin/finance/daily-vouchers?type=CCR opens existing modern m
 - Approval decision guard verifies project-scoped, cash-only CCR/CDR source type, one matched ledger leg, same voucher number and type before changing posting activity. Rejection cannot accidentally activate an unrelated source/ledger.
 - No new pages, plain first-party DOM/AJAX, hard deletes or bank/cheque lifecycle changes. No owner PASS yet. After pull, Super Admin must enable CCR/CDR separately, choose an authorized approver, create *new* disposable vouchers and verify Pending->Approve/Reject, stored posting state and dashboard balance. Existing Posted samples remain Posted, do not rewrite them.
 - Next milestone BOR/BOP is dependency-gated and NOT started, per owner's requirement to wait for explicit browser PASS on CCR/CDR.
+
+
+## 2026-11-11 — CCR/CDR viewport-height table card + internal scrolling + row polish (browser retest OPEN)
+Owner shared two post-pull screenshots of CCR and CDR, each with one posted row: earlier sparse-record styling collapsed the entire table card to one row, leaving the rest of the window outside the card. Owner specifically requires **table card to fill the available screen height** and **scroll only within the table card if records overflow**; wants enhanced row design.
+- Updated ONLY the shared existing `resources/views/admin/finance/voucher/daily_directory.blade.php` with `.dv-cash-only` scoped CSS, leaving CR/DR untouched.
+- Removed `.dv-sparse-records` JS toggle and old sparse-card CSS that set flex=0 and capped wrapper height.
+- Cash-only table card now `flex:1 1 0; min-height:0; overflow:hidden` inside the existing viewport-filling `daily-voucher-page`; tools and pagination stay outside the independent vertically/ horizontally scrollable table wrap, with `overscroll-behavior:contain`.
+- Rows now use legible 13px type, 51px min height, balanced vertical padding, subtle zebra/hover, account text wrapping, emphasized voucher number and amount, compact aligned action buttons and sticky filter/header rows. No data, accounting, approval, routes or other voucher logic touched.
+- GitHub commits `52b5dd03bbfb643c9aa30ebd6229b69197df7509`, `8c6d3026384b520789026772d75555ea6c397d16`. Browser pass remains owner-dependent; verify at 1 record and at 25+ records on CCR/CDR and narrower screen to ensure internal scroll and fixed bottom pagination. No next phase started.
