@@ -66,6 +66,7 @@ final class LegacyCashVoucherCorrection
                 // narration and instrument metadata remain untouched.
                 'note' => 'Edit Reason: '.trim((string) ($changes['edit_reason'] ?? '')),
                 'is_active' => $postingActive ? 1 : 0,
+                'is_approve' => $postingActive ? 1 : 0,
             ]));
             $correctionFields = $changes;
             unset($correctionFields['edit_reason']);
@@ -74,6 +75,7 @@ final class LegacyCashVoucherCorrection
                 'customer_id' => $changes['customer_id'] ?? $account->customer_id ?? $source->customer_id,
                 'plot_id' => $changes['plot_id'] ?? $account->plot_id ?? $source->plot_id,
                 'transaction_type' => $type, 'is_active' => $postingActive ? 1 : 0,
+                'is_approve' => $postingActive ? 1 : 0,
             ]));
             $displayIdentity = app(ProjectVoucherDisplayIdentity::class);
             $displayIdentity->assign($projectId, 'customer_ledger', (int) $reversalSource->id, $type, $date);
