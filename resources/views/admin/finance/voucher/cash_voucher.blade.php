@@ -866,7 +866,9 @@
     <script>
         function saveAsDraft() {
             const form = $('#voucherForm')[0];
-            form.action = "{{ $fixedPaymentType !== null ? route('ledger.save_as_draft.fixed_method', ['paymentType' => $fixedPaymentType]) : route('ledger.save_as_draft') }}";
+            form.action = @json(in_array($voucherType,['CCR','CDR'],true)
+                ? route('finance.voucher.cash-only.draft')
+                : ($fixedPaymentType !== null ? route('ledger.save_as_draft.fixed_method',['paymentType'=>$fixedPaymentType]) : route('ledger.save_as_draft')));
         }
 
 
@@ -2276,6 +2278,9 @@
             });
             $(document).on("click", "#submit-button", function(e) {
                 e.preventDefault();
+                @if(in_array($voucherType,['CCR','CDR'],true))
+                    $('#voucherForm').attr('action', @json(route('finance.voucher.cash-only.store')));
+                @endif
                 let isValid = true;
                 let messages = [];
 
