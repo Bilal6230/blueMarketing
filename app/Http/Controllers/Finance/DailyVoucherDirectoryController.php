@@ -185,6 +185,7 @@ final class DailyVoucherDirectoryController extends Controller
                     'amount' => (float) max((float) ($source->amount_in ?? 0), (float) ($source->amount_out ?? 0)),
                     'status' => ucfirst((string)($sourceApprovals[$source->id]['status']??(!empty($source->is_active)?'posted':'inactive'))),
                     'approval_approver' => $sourceApprovals[$source->id]['approver']??null,
+                    'rejection_reason' => $sourceApprovals[$source->id]['reason'] ?? null,
                     'detail' => (string) ($source->description ?? ''),
                     'audit' => array_filter([
                         'Prepared by' => $source->created_by ?? $source->create_by ?? null,
@@ -197,6 +198,7 @@ final class DailyVoucherDirectoryController extends Controller
                         'Bank account ID' => (int) ($source->payment_type ?? 0) === 2 ? $source->bank_id : null,
                         'Bank passing date' => (int) ($source->payment_type ?? 0) === 2 ? $source->passing_date : null,
                         'Bank status' => (int) ($source->payment_type ?? 0) === 2 ? $source->passing_status : null,
+                        'Rejection Reason' => $sourceApprovals[$source->id]['reason'] ?? null,
                     ], fn ($value) => $value !== null && $value !== ''),
                     'revise_url' => ($sourceApprovals[$source->id]['status'] ?? '') === 'rejected'
                         && in_array((int)$source->payment_type,[1,2,3],true)
