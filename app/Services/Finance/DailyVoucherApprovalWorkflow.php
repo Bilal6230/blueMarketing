@@ -132,7 +132,7 @@ final class DailyVoucherApprovalWorkflow
                         throw new \DomainException('LEGACY_CASH_REVERSAL_LEG_INVALID');
                     }
                     DB::table('customer_ledger')->where('id',$reverseId)
-                        ->where('project_id',$locked->project_id)->update(['is_active'=>1]);
+                        ->where('project_id',$locked->project_id)->update(['is_active'=>1,'is_approve'=>1]);
                     DB::table('ledgers')->where('id',$leg->first()->id)->update(['is_active'=>1]);
                     DB::table('daily_voucher_approval_events')->insert([
                         'approval_id'=>$locked->id,'event'=>'legacy_cash_correction_activated',
