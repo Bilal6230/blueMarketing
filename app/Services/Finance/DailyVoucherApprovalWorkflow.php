@@ -87,6 +87,61 @@ final class DailyVoucherApprovalWorkflow
                 throw new \DomainException('DAILY_VOUCHER_APPROVER_NOT_AUTHORIZED');
             }
 
+            // An approved cash correction is append-only. Keep the original
+            // posting active while the replacement is pending/rejected. Only
+            // when the authorized approver accepts the replacement, atomically
+            // deactivate the original source and its matching ledger leg.
+            if ($decision === 'approved' && $locked->source_table === 'customer_ledger') {
+                $revision = DB::table('daily_voucher_approval_events')
+                    ->where('approval_id', $locked->id)
+                    ->where('event', 'revision_from_approved')
+                    ->lockForUpdate()->first();
+                if ($revision) {
+                    $context = json_decode((string) $revision->remarks, true);
+                    $originalId = (int) ($context['old_source_id'] ?? 0);
+                    $originalApprovalId = (int) ($context['old_approval_id'] ?? 0);
+                    if ($originalId <= 0 || $originalApprovalId <= 0) {
+                        throw new \DomainException('INVALID_APPROVED_CORRECTION_LINK');
+                    }
+                    $originalApproval = DailyVoucherApproval::query()
+                        ->whereKey($originalApprovalId)->where('project_id', $locked->project_id)
+                        ->where('source_table', 'customer_ledger')->where('source_id', $originalId)
+                        ->where('voucher_type', $locked->voucher_type)->lockForUpdate()->firstOrFail();
+                    if ($originalApproval->status !== 'approved') {
+                        throw new \DomainException('ORIGINAL_APPROVAL_CHANGED');
+                    }
+                    $original = DB::table('customer_ledger')
+                        ->where('id', $originalId)->where('project_id', $locked->project_id)
+                        ->where('transaction_type', $locked->voucher_type)
+                        ->lockForUpdate()->first();
+                    if (!$original || (int) $original->payment_type !== 1 ||
+                        (int) $original->is_active !== 1) {
+                        throw new \DomainException('ORIGINAL_CASH_SOURCE_NOT_ACTIVE');
+                    }
+                    $originalLegs = DB::table('ledgers as ledger')
+                        ->join('project_head_subheads as account', 'account.id', '=', 'ledger.project_head_subheads_id')
+                        ->where('ledger.customer_ledger_id', $originalId)
+                        ->where('ledger.type', $locked->voucher_type)
+                        ->where('account.project_id', $locked->project_id)
+                        ->lockForUpdate()->get(['ledger.id', 'ledger.is_active']);
+                    if ($originalLegs->count() !== 1 || (int) $originalLegs->first()->is_active !== 1) {
+                        throw new \DomainException('ORIGINAL_CASH_LEDGER_NOT_ACTIVE');
+                    }
+                    $voidReason = 'Superseded by approved voucher source #'.$locked->source_id;
+                    DB::table('ledgers')->where('id', $originalLegs->first()->id)
+                        ->update(['is_active'=>0, 'delete_reason'=>$voidReason, 'update_by'=>$actorId]);
+                    DB::table('customer_ledger')->where('id', $originalId)
+                        ->where('project_id', $locked->project_id)
+                        ->update(['is_active'=>0, 'delete_reason'=>$voidReason]);
+                    DB::table('daily_voucher_approval_events')->insert([
+                        'approval_id'=>$originalApprovalId, 'event'=>'superseded_by_approved_correction',
+                        'actor_id'=>$actorId,
+                        'remarks'=>json_encode(['replacement_source_id'=>$locked->source_id,
+                            'replacement_approval_id'=>$locked->id], JSON_THROW_ON_ERROR),
+                        'created_at'=>now(),
+                    ]);
+                }
+            }
             $this->setPostingState($locked, $decision === 'approved');
             $locked->forceFill([
                 'status' => $decision, 'decided_by' => $actorId,
