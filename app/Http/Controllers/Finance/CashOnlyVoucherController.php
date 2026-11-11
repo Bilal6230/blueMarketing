@@ -13,6 +13,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
 
 final class CashOnlyVoucherController extends Controller
@@ -55,8 +57,18 @@ final class CashOnlyVoucherController extends Controller
             422,'Select a valid project account and matching account type.');
         $amount=round((float)str_replace(',','',(string)$data['amount']),2);
         $requestedNumber=(int)substr($data['voucher'],strlen($series)+1);
+        $uploadedPath=null;
+        if($request->hasFile('attachment')) {
+            abort_unless(Schema::hasTable('cash_voucher_attachments'),409,
+                'Voucher attachment migration is required.');
+            $uploadedPath=$request->file('attachment')->store(
+                'private/voucher-attachments/'.$projectId,'local');
+            if(!$uploadedPath) {
+                return response()->json(['status'=>'error','message'=>'Attachment upload failed.'],422);
+            }
+        }
         try {
-            $result=DB::transaction(function()use($request,$projectId,$data,$series,$account,$amount,$requestedNumber){
+            $result=DB::transaction(function()use($request,$projectId,$data,$series,$account,$amount,$requestedNumber,$uploadedPath){
                 DB::table('projects')->where('id',$projectId)->lockForUpdate()->first()
                     ?:throw new \DomainException('Project not found.');
                 $number=app(ProjectVoucherAllocator::class)->next($projectId,$series);
@@ -88,17 +100,44 @@ final class CashOnlyVoucherController extends Controller
                     $source->forceFill(['is_active'=>0,'is_approve'=>0])->save();
                     $ledger->forceFill(['is_active'=>0])->save();
                 }
-                // Never persist a file without the corresponding secure
-                // retrieval/authorization lifecycle. Reject for now rather
-                // than silently discard an uploaded attachment.
+                if($uploadedPath){
+                    DB::table('cash_voucher_attachments')->insert([
+                        'project_id'=>$projectId,'customer_ledger_id'=>$source->id,
+                        'disk'=>'local','path'=>$uploadedPath,
+                        'original_name'=>substr($request->file('attachment')->getClientOriginalName(),0,255),
+                        'mime_type'=>(string)$request->file('attachment')->getMimeType(),
+                        'size'=>$request->file('attachment')->getSize(),'uploaded_by'=>Auth::id(),
+                        'created_at'=>now(),'updated_at'=>now(),
+                    ]);
+                }
                 return ['source_id'=>$source->id,'number'=>$display ?: $series.'-'.$number,
                     'pending'=>$pending];
             },3);
-        } catch(\DomainException $e){
-            return response()->json(['status'=>'error','message'=>$e->getMessage()],409);
+        } catch(\Throwable $e){
+            if($uploadedPath) Storage::disk('local')->delete($uploadedPath);
+            if($e instanceof \DomainException) {
+                return response()->json(['status'=>'error','message'=>$e->getMessage()],409);
+            }
+            throw $e;
         }
         return response()->json(['status'=>'success','flow_type'=>$result['pending']?'pending_approval':'posted',
             'message'=>$result['pending']?'Voucher saved Pending Approval.':'Cash voucher saved successfully.',
             'voucher_display'=>$result['number'],'source_id'=>$result['source_id']]);
+    }
+
+    public function attachment(int $attachment)
+    {
+        abort_unless(Auth::user()?->can('read voucher'),403);
+        $projectId=(int)getSelectedTown();
+        abort_unless($projectId>0 && Schema::hasTable('cash_voucher_attachments'),404);
+        $row=DB::table('cash_voucher_attachments as file')
+            ->join('customer_ledger as source','source.id','=','file.customer_ledger_id')
+            ->where('file.id',$attachment)
+            ->where('file.project_id',$projectId)
+            ->where('source.project_id',$projectId)
+            ->whereIn('source.transaction_type',['CCR','CDR'])
+            ->first(['file.path','file.disk','file.original_name']);
+        abort_unless($row && $row->disk==='local' && Storage::disk('local')->exists($row->path),404);
+        return Storage::disk('local')->download($row->path,$row->original_name);
     }
 }
