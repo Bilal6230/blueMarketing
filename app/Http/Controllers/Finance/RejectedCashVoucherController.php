@@ -18,7 +18,7 @@ final class RejectedCashVoucherController extends Controller
         abort_unless($project>0,403);
         $source=CustomerLedger::query()->where('project_id',$project)
             ->whereKey($customerLedger)->whereIn('transaction_type',['CR','CP'])->firstOrFail();
-        abort_unless((int)$source->payment_type===1,409,'Cash vouchers only.');
+        abort_unless(in_array((int)$source->payment_type,[1,2,3],true),409,'Unsupported payment method.');
         $approval=DailyVoucherApproval::query()->where('project_id',$project)
             ->where('source_table','customer_ledger')->where('source_id',$source->id)
             ->where('status','rejected')->firstOrFail();
@@ -43,7 +43,22 @@ final class RejectedCashVoucherController extends Controller
             'account_id'=>['required','integer'],
             'description'=>['required','string','max:255'],
             'revision_reason'=>['required','string','min:3','max:500'],
+            't_number'=>['required_if:payment_type,2,3','nullable','string','max:255'],
+            'bank_id'=>['nullable','integer','min:1'],
+            'passing_date'=>['nullable','date_format:Y-m-d'],
+            'cheque_purpose'=>['nullable','string','max:500'],
         ]);
+        $source=CustomerLedger::query()->where('project_id',(int)getSelectedTown())
+            ->whereKey($customerLedger)->firstOrFail();
+        if (in_array((int)$source->payment_type,[2,3],true)) {
+            $request->validate([
+                't_number'=>['required','string','max:255'],
+                'bank_id'=>['required','integer','min:1'],
+                'passing_date'=>['required','date_format:Y-m-d'],
+                'cheque_purpose'=>[(int)$source->payment_type===3?'required':'nullable','string','max:500'],
+            ]);
+        }
+        $data=array_merge($data,$request->only(['t_number','bank_id','passing_date','cheque_purpose']));
         try {
             $saved=app(RejectedCashVoucherResubmission::class)->resubmit(
                 (int)getSelectedTown(),$customerLedger,(int)auth()->id(),$data);

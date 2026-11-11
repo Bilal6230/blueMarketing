@@ -49,3 +49,6 @@ Use `COMPLETE`, `PARTIAL`, `PENDING`, `BLOCKED` grounded in evidence. Never inve
 
 ### Phase 03.3 3B2A — 2026-11-11
 - Batch 3B1 owner browser PASS. Rejected cash CR/CP append-only revise/resubmit **implemented, browser PASS pending**. Bank/online/cheque resubmit 3B2B pending separate clearance-safe audit. Phase 04 remains locked.
+
+### Phase 03.3 — 3B2B (2026-11-11)
+- Owner places 3B2A browser testing **ON HOLD** due to existing CR/CP create validation errors, explicitly authorizes 3B2B next. Bank/online/cheque rejected revision code prepared; only unsettled and inactive sources eligible. Full browser gate held until CR/CP validation fixed. Phase 03 NOT complete. 04–09 remain locked.

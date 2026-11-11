@@ -199,7 +199,7 @@ final class DailyVoucherDirectoryController extends Controller
                         'Bank status' => (int) ($source->payment_type ?? 0) === 2 ? $source->passing_status : null,
                     ], fn ($value) => $value !== null && $value !== ''),
                     'revise_url' => ($sourceApprovals[$source->id]['status'] ?? '') === 'rejected'
-                        && (int)$source->payment_type === 1
+                        && in_array((int)$source->payment_type,[1,2,3],true)
                         && in_array((string)$source->transaction_type,['CR','CP'],true)
                         && auth()->user()?->can('update voucher')
                         && (\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())

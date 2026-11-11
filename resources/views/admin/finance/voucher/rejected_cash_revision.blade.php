@@ -29,6 +29,21 @@ body{overflow:auto!important}
 @foreach($accounts as $account)<option value="{{ $account->id }}" @selected((int)$leg?->project_head_subheads_id===(int)$account->id)>{{ $account->head_name }} / {{ $account->sub_name }}</option>@endforeach
 </select></div>
 </div>
+@if((int)$source->payment_type !== 1)
+<div class="fields">
+<div class="form-group"><label for="cr-revise-number">{{ (int)$source->payment_type === 3 ? 'Cheque Number' : 'Transaction Reference' }} *</label>
+<input id="cr-revise-number" name="t_number" class="form-control" value="{{ $source->t_number }}" maxlength="255" required></div>
+<div class="form-group"><label for="cr-revise-bank">Bank ID *</label>
+<input id="cr-revise-bank" type="number" min="1" name="bank_id" class="form-control" value="{{ $source->bank_id }}" required></div>
+<div class="form-group"><label for="cr-revise-passing-date">Bank / Passing Date *</label>
+<input id="cr-revise-passing-date" name="passing_date" type="date" class="form-control" value="{{ $source->passing_date ? substr((string)$source->passing_date,0,10) : substr((string)$source->date,0,10) }}" required></div>
+</div>
+@if((int)$source->payment_type === 3)
+<div class="form-group"><label for="cr-revise-cheque-purpose">Cheque Purpose *</label>
+<input id="cr-revise-cheque-purpose" name="cheque_purpose" class="form-control" maxlength="500" value="{{ $source->cheque_purpose }}" required></div>
+@endif
+<div class="alert alert-info">Revised bank/cheque voucher will start with Pending clearance status. Existing bank decisions are never copied. Source with settled/bounced/returned history cannot be revised.</div>
+@endif
 <div class="form-group"><label for="cr-revise-description">Purpose / Description *</label><textarea id="cr-revise-description" name="description" class="form-control" rows="3" required>{{ $source->description }}</textarea></div>
 <div class="form-group"><label for="cr-revise-reason">Reason for revision *</label><textarea id="cr-revise-reason" name="revision_reason" class="form-control" minlength="3" maxlength="500" rows="2" required></textarea></div>
 <div class="text-danger mb-2" id="cash-revision-error" role="alert"></div>

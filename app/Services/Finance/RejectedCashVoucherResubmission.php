@@ -16,8 +16,27 @@ final class RejectedCashVoucherResubmission
             $old = CustomerLedger::query()->where('project_id', $projectId)
                 ->whereKey($sourceId)->whereIn('transaction_type', ['CR','CP'])
                 ->lockForUpdate()->firstOrFail();
-            if ((int)$old->payment_type !== 1 || (int)$old->is_active !== 0)
-                throw new \DomainException('Only inactive rejected cash CR/CP can be revised.');
+            if (!in_array((int)$old->payment_type,[1,2,3],true) || (int)$old->is_active !== 0)
+                throw new \DomainException('Only inactive rejected CR/CP can be revised.');
+            $method=(int)$old->payment_type;
+            if ($method !== 1) {
+                if (!in_array($old->passing_status === null ? 0 : (int)$old->passing_status,[0],true)
+                    || $old->bank_post_at !== null)
+                    throw new \DomainException('Cleared, returned, bounced or bank-posted voucher cannot be revised.');
+                $historyTable=$method===2?'finance_online_lifecycle_events':'finance_cheque_lifecycle_events';
+                if (\Illuminate\Support\Facades\Schema::hasTable($historyTable)) {
+                    $events=DB::table($historyTable)->where('project_id',$projectId)
+                        ->where('customer_ledger_id',$sourceId)->pluck('event_type');
+                    $allowed=$method===2?['captured']:['received'];
+                    if ($events->contains(fn($event)=>!in_array((string)$event,$allowed,true)))
+                        throw new \DomainException('Voucher already has bank/cheque lifecycle decisions; revision blocked.');
+                }
+                if (DB::table('customer_ledger')->where('project_id',$projectId)
+                    ->where('id','<>',$sourceId)->where('reference',$old->reference)
+                    ->whereIn('transaction_type',['CR','CP','PPR'])->exists()) {
+                    throw new \DomainException('Ambiguous bank source reference. Revision blocked.');
+                }
+            }
             $actor=User::query()->findOrFail($actorId);
             $approval=DailyVoucherApproval::query()->where('project_id',$projectId)
                 ->where('source_table','customer_ledger')->where('source_id',$sourceId)
@@ -48,6 +67,19 @@ final class RejectedCashVoucherResubmission
                 throw new \DomainException('Active authorized approver is required.');
             if ((int)$approver->id === $actorId && !VoucherApproverAccess::isSuperAdmin($actor))
                 throw new \DomainException('Submitter cannot be their own approver.');
+            if ($method !== 1) {
+                foreach(['t_number','bank_id','passing_date'] as $field) {
+                    if (empty($data[$field]))
+                        throw new \DomainException('Bank/cheque fields are required.');
+                }
+                if ($method===3 && trim((string)($data['cheque_purpose']??''))==='')
+                    throw new \DomainException('Cheque purpose is required.');
+                if (DB::table('customer_ledger')->where('project_id',$projectId)
+                    ->where('id','<>',$sourceId)->where('payment_type',$method)
+                    ->where('t_number',$data['t_number'])->where('bank_id',$data['bank_id'])
+                    ->whereIn('transaction_type',['CR','CP'])->where('is_active',1)->exists())
+                    throw new \DomainException('This bank instrument is already used in an active voucher.');
+            }
             $cents=(int)round((float)$data['amount']*100);
             if ($cents <= 0)throw new \DomainException('Amount must be positive.');
             $amount=number_format($cents/100,2,'.','');
@@ -59,12 +91,19 @@ final class RejectedCashVoucherResubmission
                 'project_id'=>$projectId,'customer_id'=>$account->customer_id,
                 'plot_id'=>$account->plot_id,'amount_in'=>$type==='CR'?$amount:0,
                 'amount_out'=>$type==='CP'?$amount:0,'description'=>$data['description'],
-                'date'=>$data['date'],'payment_type'=>1,'is_active'=>0,'is_approve'=>0,
+                'date'=>$data['date'],'payment_type'=>$method,
+                't_number'=>$method===1?null:$data['t_number'],
+                'bank_id'=>$method===1?null:(int)$data['bank_id'],
+                'passing_date'=>$method===1?null:$data['passing_date'],
+                'passing_status'=>$method===1?null:0,
+                'cheque_purpose'=>$method===3?$data['cheque_purpose']:null,
+                'is_active'=>0,'is_approve'=>0,
             ]);
             $series=app(ProjectVoucherDisplayIdentity::class)
                 ->series($projectId,'customer_ledger',$sourceId) ?: ($type==='CR'?'CCR':'CDR');
-            if (!in_array($series,['CR','CP','CCR','CDR'],true))
-                throw new \DomainException('Voucher series is not a cash series.');
+            $allowedSeries=$method===1?['CR','CP','CCR','CDR']:($type==='CR'?['BOR','CHR']:['BOP','CHP']);
+            if (!in_array($series,$allowedSeries,true))
+                throw new \DomainException('Voucher series does not match bank/payment method.');
             $display=app(ProjectVoucherDisplayIdentity::class)
                 ->assign($projectId,'customer_ledger',(int)$new->id,$series,$data['date']);
             $ledger=Ledger::create([
@@ -87,6 +126,9 @@ final class RejectedCashVoucherResubmission
                     'revision_reason'=>$data['revision_reason'],
                     'original_account_id'=>$legs->first()->project_head_subheads_id,
                     'original_amount_in'=>$old->amount_in,'original_amount_out'=>$old->amount_out,
+                    'method'=>$method,'original_instrument'=>$old->t_number,
+                    'new_instrument'=>$method===1?null:$data['t_number'],
+                    'old_bank_id'=>$old->bank_id,'new_bank_id'=>$method===1?null:$data['bank_id'],
                 ]],
                 [$newApproval->id,'revision_from_rejected',[
                     'old_source_id'=>$sourceId,'old_approval_id'=>$approval->id,

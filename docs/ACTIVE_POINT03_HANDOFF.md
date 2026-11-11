@@ -92,3 +92,6 @@ No claim of local migration, browser or PHP test execution unless actually verif
 
 ## 2026-11-11 — Batch 3B2A
 - User marked rejected JV 3B1 browser PASS. Cash CR/CP rejected revision now implemented in `RejectedCashVoucherResubmission`, `RejectedCashVoucherController`, `rejected_cash_revision.blade.php`, Daily Voucher Directory row action and routes. Original rejected source/ledger stays inactive; revised voucher gets new source, ledger, identity and pending approval; approval events link old/new. No migration. Browser PASS pending. Bank/online/cheque 3B2B NOT STARTED. Read current source before next batch.
+
+## 2026-11-11 — 3B2B and testing hold
+- Owner explicitly put CR/CP 3B2A browser testing HOLD because CR/CP create validation fails. They authorized implementation of 3B2B despite gate. 3B2B extends rejected CR/CP revision to payment_type 2/3 only if source and its single ledger inactive, no bank clearance outcome/posted date, no subsequent finance cheque/online lifecycle decisions. New pending source keeps instrument metadata; old history immutable. Browser test of 3B2A/3B2B still HOLD; investigate create validation next. Phase 03 remains ACTIVE, Phase 04–09 remain locked.
