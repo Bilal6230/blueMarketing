@@ -247,7 +247,7 @@ final class DailyVoucherApprovalWorkflow
                 'actor_id' => $actorId, 'remarks' => $decision === 'rejected' ? $reason : null,
                 'created_at' => now(),
             ]);
-        });
+        },3);
     }
 
     private function setPostingState(DailyVoucherApproval $approval, bool $active): void
