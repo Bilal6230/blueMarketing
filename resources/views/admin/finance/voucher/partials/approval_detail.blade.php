@@ -49,6 +49,25 @@
  @if(!empty($detail['pending_edit']))
   <p class="small text-muted mb-3">Proposed account ID: {{ $detail['proposed_account_id'] ?? '—' }}. Proposed amount: {{ $money($detail['proposed_amount'] ?? null) }}. Original accounting values above are unchanged until approval.</p>
  @endif
+ @if(!empty($detail['edit_history']))
+  <h6 class="font-weight-bold mt-3">Edit / Revision change history</h6>
+  @foreach($detail['edit_history'] as $edit)
+   <div class="vap-event mb-2">
+    <strong>{{ $edit['created_at'] }} · {{ ucfirst($edit['status']) }}</strong>
+    <div><strong>Reason:</strong> {{ $edit['reason'] }}</div>
+    <div class="table-responsive mt-2">
+     <table class="table table-sm table-bordered mb-1">
+      <thead><tr><th>Field</th><th>Before Edit</th><th>Proposed / Applied</th></tr></thead>
+      <tbody>
+       @foreach(['date'=>'Date','description'=>'Narration','account_id'=>'Account ID','amount_in'=>'Amount In','amount_out'=>'Amount Out'] as $key=>$label)
+        <tr><td>{{ $label }}</td><td>{{ $edit['before'][$key] ?? '—' }}</td><td>{{ $edit['after'][$key] ?? '—' }}</td></tr>
+       @endforeach
+      </tbody>
+     </table>
+    </div>
+   </div>
+  @endforeach
+ @endif
  <h6 class="font-weight-bold">Approval audit timeline</h6>
  @forelse($item->events as $event)
   @php $context=json_decode((string)$event->remarks,true); @endphp
