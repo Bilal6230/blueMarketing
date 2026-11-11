@@ -130,7 +130,7 @@ body.jv-directory-active{overflow:hidden!important}
 $(function(){
  'use strict';
  var $table=$('#jv-directory'),timer=null,table=null,entryUrl='';
- var jvExcelSelections={},jvExcelCurrent=null,jvExcelOptions=[],jvExcelDraft=new Set(),jvExcelRequest=null,$jvExcel=$('#jv-excel-pop');
+ var jvExcelSelections={},jvExcelExclusions={},jvExcelCurrent=null,jvExcelOptions=[],jvExcelDraft=new Set(),jvExcelRequest=null,$jvExcel=$('#jv-excel-pop');
  $('body').addClass('jv-directory-active');
  function fitJournalDirectory(){
   var $page=$('.jv-page'),top=$page.offset().top;
@@ -157,6 +157,7 @@ $(function(){
    req.filter_amount_max=$('#jv-max').val();
    req.filter_reference=$('#jv-reference').val();
    $.each(jvExcelSelections,function(field,values){req.excel_values??={};req.excel_values[field]=values;});
+   $.each(jvExcelExclusions,function(field,values){req.excel_excluded??={};req.excel_excluded[field]=values;});
   }},
   columns:[
    {data:'id',name:'id'},
@@ -194,7 +195,8 @@ $(function(){
  fitJournalDirectory();
  $('#jv-top-filters').on('submit',function(e){e.preventDefault();apply();});
  $('#jv-reset').on('click',function(){
-  $('#jv-top-filters')[0].reset();$.each(jvExcelSelections,function(field){delete jvExcelSelections[field];});closeJvExcel();updateJvExcelButtons();
+  $('#jv-top-filters')[0].reset();$.each(jvExcelSelections,function(field){delete jvExcelSelections[field];});
+  $.each(jvExcelExclusions,function(field){delete jvExcelExclusions[field];});closeJvExcel();updateJvExcelButtons();
   table.columns().search('');table.search('');apply();
  });
 
@@ -204,7 +206,8 @@ $(function(){
  }
  function updateJvExcelButtons(){
   $('.jv-excel-trigger').each(function(){
-   $(this).toggleClass('jv-filter-on',Object.prototype.hasOwnProperty.call(jvExcelSelections,$(this).data('field')));
+   $(this).toggleClass('jv-filter-on',Object.prototype.hasOwnProperty.call(jvExcelSelections,$(this).data('field'))||
+    Object.prototype.hasOwnProperty.call(jvExcelExclusions,$(this).data('field')));
   });
  }
  function renderJvExcel(){
@@ -243,7 +246,9 @@ $(function(){
    headers:{'X-Requested-With':'XMLHttpRequest'}}).done(function(res){
     if(jvExcelCurrent!==field)return;
     jvExcelOptions=(res.options||[]).map(String);
-    if(!Object.prototype.hasOwnProperty.call(jvExcelSelections,field))
+    if(Object.prototype.hasOwnProperty.call(jvExcelExclusions,field))
+     jvExcelDraft=new Set(jvExcelOptions.filter(function(v){return !jvExcelExclusions[field].includes(v);}));
+    else if(!Object.prototype.hasOwnProperty.call(jvExcelSelections,field))
      $.each(jvExcelOptions,function(_,v){jvExcelDraft.add(v);});
     renderJvExcel();
     if(res.more_options)$('#jv-excel-items').prepend($('<p>',{'class':'small text-warning',
@@ -268,16 +273,20 @@ $(function(){
   if(!jvExcelDraft.size&&jvExcelOptions.length){
    $('#jv-excel-items').prepend($('<p>',{'class':'small text-danger',text:'Select a value or Clear.'}));return;
   }
-  if(jvExcelDraft.size===jvExcelOptions.length&&
-   jvExcelOptions.every(function(v){return jvExcelDraft.has(String(v));}))
-   delete jvExcelSelections[jvExcelCurrent];
-  else jvExcelSelections[jvExcelCurrent]=[...jvExcelDraft];
+  var removed=jvExcelOptions.filter(function(v){return !jvExcelDraft.has(String(v));});
+  if(!removed.length){
+   delete jvExcelSelections[jvExcelCurrent];delete jvExcelExclusions[jvExcelCurrent];
+  }else if(removed.length<jvExcelDraft.size){
+   delete jvExcelSelections[jvExcelCurrent];jvExcelExclusions[jvExcelCurrent]=removed;
+  }else{
+   delete jvExcelExclusions[jvExcelCurrent];jvExcelSelections[jvExcelCurrent]=[...jvExcelDraft];
+  }
   closeJvExcel();updateJvExcelButtons();apply();
  });
  $('#jv-excel-cancel').on('click',closeJvExcel);
  $('#jv-excel-clear').on('click',function(){
   if(!jvExcelCurrent)return;delete jvExcelSelections[jvExcelCurrent];
-  closeJvExcel();updateJvExcelButtons();apply();
+  delete jvExcelExclusions[jvExcelCurrent];closeJvExcel();updateJvExcelButtons();apply();
  });
  $jvExcel.on('click','.jv-excel-sort',function(){
   if(!jvExcelCurrent)return;
