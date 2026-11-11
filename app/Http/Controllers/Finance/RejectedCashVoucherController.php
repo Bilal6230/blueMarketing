@@ -31,9 +31,10 @@ final class RejectedCashVoucherController extends Controller
             ->leftJoin('head_accountings as h','h.id','=','p.head_accounting_id')
             ->leftJoin('subhead_accountings as s','s.id','=','p.subhead_accounting_id')
             ->where('p.project_id',$project)->orderBy('h.name')->orderBy('s.name')
-            ->get(['p.id','h.name as head_name','s.name as sub_name']);
+            ->get(['p.id','p.head_accounting_id','p.subhead_accounting_id','h.acct_type','h.name as head_name','s.name as sub_name']);
+        $accountTypes=\App\Models\AccountType::query()->where('status',1)->orderBy('id')->get(['id','name']);
         return view('admin.finance.voucher.rejected_cash_revision',
-            compact('source','approval','leg','accounts'));
+            compact('source','approval','leg','accounts','accountTypes'));
     }
     public function store(int $customerLedger, Request $request)
     {
