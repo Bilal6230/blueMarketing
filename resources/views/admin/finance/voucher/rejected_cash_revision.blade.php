@@ -1,5 +1,5 @@
 @extends('admin.layouts.master')
-@section('title','Revise Rejected Cash Voucher')
+@section('title','Voucher Correction')
 @section('content')
 @if(request()->boolean('embed'))
 <style>
@@ -9,14 +9,14 @@ body{overflow:auto!important}
 </style>
 @endif
 <style>
-.cr-revise{max-width:960px;margin:0 auto;background:#fff;padding:18px;font-size:13px}
-.cr-revise h4{font-size:18px;color:#086fe0;font-weight:700}
+.cr-revise{max-width:none;margin:0;background:#fff;padding:16px 18px;font-size:13px;min-height:0}
+.cr-revise h4{font-size:16px;color:{{ $approval->status === 'approved' ? '#1b7d52' : '#b17408' }};font-weight:700;margin:0 0 12px}
 .cr-revise label{font-size:13px;font-weight:700}
-.cr-revise .form-control{font-size:14px}
-.cr-revise .fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.cr-revise .form-control{font-size:14px;min-height:34px;border-radius:5px}
+.cr-revise .fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:8px}.cr-revise .fields>.form-group{min-width:0}.cr-revise .form-group{margin-bottom:10px}.cr-revise textarea.form-control{min-height:72px}.cr-revise .alert{padding:10px 12px}.cr-revise button[type=submit]{background:{{ $approval->status === 'approved' ? '#18824a' : '#cf911a' }};border-color:transparent}.cr-revise .reason-label{font-weight:700}
 @media(max-width:650px){.cr-revise .fields{grid-template-columns:1fr}}
 </style>
-<div class="content-wrapper"><div class="cr-revise">
+<div class="content-wrapper" style="margin:0!important;min-height:0!important;"><div class="cr-revise">
 <h4>{{ $approval->status === 'approved' ? 'Correct Approved' : 'Revise Rejected' }} {{ $source->transaction_type }} Voucher</h4>
 <div class="alert alert-warning">
 @if($approval->status === 'approved')
@@ -28,10 +28,7 @@ Original voucher #{{ $source->type_id }} will remain rejected. Reason: {{ $appro
 <form id="cash-revision-form" action="{{ route('finance.daily-vouchers.revise.store',$source->id) }}" method="post">
 @csrf
 <div class="fields">
-<div class="form-group"><label>Voucher No</label><input class="form-control" value="{{ app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->lookup((int)getSelectedTown(), 'customer_ledger', (int)$source->id) ?: $source->transaction_type.'-'.$source->type_id }}" readonly></div>
-<div class="form-group"><label>Payment Type</label><input class="form-control" value="{{ [1=>'Cash',2=>'Online',3=>'Cheque'][(int)$source->payment_type] ?? 'Unknown' }}" readonly></div>
-</div>
-<div class="fields">
+<div class="form-group"><label>Voucher No</label><input class="form-control" value="{{ ($source->transaction_type === 'CP' ? 'DR' : $source->transaction_type).'-'.$source->type_id }}" readonly></div>
 <div class="form-group"><label for="cr-revise-date">Date *</label><input id="cr-revise-date" name="date" class="form-control" type="date" value="{{ substr((string)$source->date,0,10) }}" required></div>
 <div class="form-group"><label for="cr-revise-amount">Amount *</label><input id="cr-revise-amount" name="amount" class="form-control" type="number" min="0.01" step="0.01" value="{{ max((float)$source->amount_in,(float)$source->amount_out) }}" required></div>
 </div>
@@ -59,6 +56,7 @@ Original voucher #{{ $source->type_id }} will remain rejected. Reason: {{ $appro
 @endforeach
 </select></div>
 </div>
+<div class="fields"><div class="form-group"><label>Payment Type</label><input class="form-control" value="{{ [1=>'Cash',2=>'Online',3=>'Cheque'][(int)$source->payment_type] ?? 'Unknown' }}" readonly></div></div>
 @if((int)$source->payment_type !== 1)
 <div class="fields">
 <div class="form-group"><label for="cr-revise-number">{{ (int)$source->payment_type === 3 ? 'Cheque Number' : 'Transaction Reference' }} *</label>
@@ -80,7 +78,7 @@ Original voucher #{{ $source->type_id }} will remain rejected. Reason: {{ $appro
 <div class="alert alert-info">Revised bank/cheque voucher will start with Pending clearance status. Existing bank decisions are never copied. Source with settled/bounced/returned history cannot be revised.</div>
 @endif
 <div class="form-group"><label for="cr-revise-description">Purpose / Description *</label><textarea id="cr-revise-description" name="description" class="form-control" rows="3" required>{{ $source->description }}</textarea></div>
-<div class="form-group"><label for="cr-revise-reason">Reason for revision *</label><textarea id="cr-revise-reason" name="revision_reason" class="form-control" minlength="3" maxlength="500" rows="2" required></textarea></div>
+<div class="form-group"><label class="reason-label" for="cr-revise-reason">{{ $approval->status === 'approved' ? 'Reason for Edit *' : 'Reason for revision *' }}</label><textarea id="cr-revise-reason" name="revision_reason" class="form-control" minlength="3" maxlength="500" rows="2" required></textarea></div>
 <div class="text-danger mb-2" id="cash-revision-error" role="alert"></div>
 <div class="text-right"><button type="submit" class="btn btn-primary" id="cash-revision-save">{{ $approval->status === 'approved' ? 'Submit Correction for Approval' : 'Revise & Resubmit for Approval' }}</button></div>
 </form></div></div>
