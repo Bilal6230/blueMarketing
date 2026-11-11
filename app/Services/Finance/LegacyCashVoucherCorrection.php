@@ -109,7 +109,7 @@ final class LegacyCashVoucherCorrection
             if ($approvedDirect) {
                 DB::table('daily_voucher_approval_events')->insert([
                     'approval_id'=>$tracked->id,
-                    'event'=>'approved_cash_direct_correction',
+                    'event'=>'approved_cash_direct',
                     'actor_id'=>$userId,
                     'remarks'=>json_encode([
                         'original_source_id'=>(int)$source->id,
