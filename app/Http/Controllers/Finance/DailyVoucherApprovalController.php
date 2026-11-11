@@ -43,6 +43,16 @@ final class DailyVoucherApprovalController extends Controller
         $reader=app(\App\Services\Finance\VoucherApprovalDetailReader::class);
         $voucherDetails=collect($queue->items())->concat($history)->unique('id')
             ->mapWithKeys(fn($approval)=>[$approval->id=>$reader->read($approval)])->all();
+        $editDecisions=[];
+        if (Schema::hasTable('daily_voucher_edit_snapshots')) {
+            $approvalIds=collect($queue->items())->concat($history)->pluck('id')->all();
+            if ($approvalIds) {
+                $editDecisions=DB::table('daily_voucher_edit_snapshots')
+                    ->where('project_id',$projectId)->whereIn('approval_id',$approvalIds)
+                    ->whereIn('status',['applied','rejected'])
+                    ->orderByDesc('id')->get()->unique('approval_id')->keyBy('approval_id')->all();
+            }
+        }
         $auditUserIds=collect($queue->items())->concat($history)
             ->flatMap(fn($approval)=>$approval->events->pluck('actor_id'))
             ->filter()->unique()->values()->all();
@@ -50,7 +60,7 @@ final class DailyVoucherApprovalController extends Controller
             ? User::query()->whereIn('id',$auditUserIds)->pluck('name','id')->all()
             : [];
         return view('admin.finance.voucher.approvals',
-            compact('policies','approvers','queue','history','voucherDetails','auditActors'));
+            compact('policies','approvers','queue','history','voucherDetails','auditActors','editDecisions'));
     }
 
     public function savePolicy(Request $request)
