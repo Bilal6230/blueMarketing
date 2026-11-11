@@ -1742,6 +1742,7 @@
             function resetEditModalFields() {
                 $('#edit_id').val('');
                 $('#edit_voucher_number').val('');
+                $('#edit_reason').val('');
                 $('#edit_voucher_type').val('');
                 setDateInputValue('#edit_date', '');
                 $('#edit_amount').val('');
@@ -2181,6 +2182,7 @@
                     subaccounts_id: $('#edit_subaccounts_id').val(),
                     amount: $('#edit_amount').val(),
                     detail: $('#edit_detail').val(),
+                    edit_reason: $.trim($('#edit_reason').val()),
                     payment_type: paymentType,
                     t_number: $('#edit_t_number').val(),
                     bank_id: $('#edit_bank_id').val(),
@@ -2206,6 +2208,10 @@
                 }
                 if (!payload.detail) {
                     Swal.fire({ icon: 'warning', title: 'Validation error', text: 'Detail is required.' });
+                    return;
+                }
+                if (payload.edit_reason.length < 3) {
+                    Swal.fire({ icon: 'warning', title: 'Validation error', text: 'Reason for Edit must be at least 3 characters.' });
                     return;
                 }
                 if (!paymentType) {
@@ -3461,6 +3467,43 @@
 @endsection
 
 @section('modal')
+    <style>
+      /* Same compact three-column field hierarchy as the modern Add voucher
+         form; scoped to the existing legacy Edit modal only. */
+      #modal-edit .modal-dialog{max-width:1180px;width:calc(100% - 32px);margin:18px auto}
+      #modal-edit .modal-header{padding:12px 18px}
+      #modal-edit .modal-body{padding:16px 18px;max-height:calc(100vh - 195px);overflow:auto}
+      #edit-voucher-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 14px}
+      #edit-voucher-form>.row,#edit-voucher-form>.row>.col-sm-12,
+      #edit-voucher-form>.row>.col-sm-12>.row,
+      #edit-voucher-form>.customer-detail{display:contents}
+      #edit-voucher-form [class*="col-sm-"]{max-width:none;width:auto;flex:none;min-width:0;margin:0!important}
+      #edit-voucher-form .input-group{display:block;width:100%;min-width:0}
+      #edit-voucher-form label{display:block;font-size:13px;font-weight:600;margin-bottom:5px}
+      #edit-voucher-form .form-control,#edit-voucher-form .ts-wrapper,
+      #edit-voucher-form .ts-control{width:100%;max-width:100%;min-height:35px}
+      #edit-voucher-form [class*="col-sm-"]:has(#edit_voucher_number){order:1}
+      #edit-voucher-form [class*="col-sm-"]:has(#edit_date){order:2}
+      #edit-voucher-form [class*="col-sm-"]:has(#edit_amount){order:3}
+      #edit-voucher-form [class*="col-sm-"]:has(#edit_acct_type){order:4}
+      #edit-voucher-form [class*="col-sm-"]:has(#edit_accounts_id){order:5}
+      #edit-voucher-form [class*="col-sm-"]:has(#edit_subaccounts_id){order:6}
+      #edit-voucher-form [class*="col-sm-"]:has(#edit_payment_type){order:7}
+      #edit-voucher-form [class*="col-sm-"]:has(#edit_voucher_type){order:8}
+      #edit-voucher-form [class*="col-sm-"]:has(#edit_t_number){order:9}
+      #edit-voucher-form [class*="col-sm-"]:has(#edit_bank_id){order:10}
+      #edit-voucher-form [class*="col-sm-"]:has(#edit_passing_date){order:11}
+      #edit-voucher-form [class*="col-sm-"]:has(#edit_cheque_purpose){order:12}
+      #edit-voucher-form [class*="col-sm-"]:has(#edit_passing_status){order:13}
+      #edit-voucher-form>.mb-3.col-sm-12{grid-column:1/-1;order:20}
+      #edit-voucher-form>.row:has(#edit_detail){display:contents}
+      #edit-voucher-form [class*="col-sm-"]:has(#edit_detail){grid-column:1/-1;order:21}
+      #edit-voucher-form #edit_detail{height:85px!important}
+      #edit-voucher-form .voucher-edit-reason{grid-column:1/-1;order:22}
+      #edit-voucher-form .modal-footer{grid-column:1/-1;order:23;margin:0;padding:12px 0 0}
+      @media(max-width:760px){#edit-voucher-form{grid-template-columns:repeat(2,minmax(0,1fr))}}
+      @media(max-width:530px){#edit-voucher-form{grid-template-columns:minmax(0,1fr)}}
+    </style>
     {{-- Modal Update --}}
     <div class="modal fade" id="modal-edit">
         <div class="modal-dialog modal-lg">
@@ -3752,6 +3795,11 @@
                             </div>
                         </div>
 
+                        <div class="voucher-edit-reason">
+                            <label class="fbox" for="edit_reason">Reason for Edit *</label>
+                            <textarea class="form-control" id="edit_reason" name="edit_reason" rows="2"
+                                minlength="3" maxlength="500" required placeholder="Explain why this financial voucher is being corrected"></textarea>
+                        </div>
                         <div class="modal-footer justify-content-between">
                             <input type="hidden" name="id" id="edit_id">
                             <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
