@@ -15,7 +15,7 @@ final class ProjectVoucherDisplayIdentity
         // For the real CR and legacy CP-as-DR voucher form, the stored source
         // type_id is the visible voucher number, not a configurable fiscal
         // prefix. Other voucher families keep their historical identity rules.
-        if ($sourceKind === 'customer_ledger' && in_array((string) ($identity->series ?? ''), ['CR','DR','CP'], true)) {
+        if ($sourceKind === 'customer_ledger' && in_array((string) ($identity->series ?? ''), ['CR','DR','CP','CCR','CDR'], true)) {
             $source = DB::table('customer_ledger')->where('id',$sourceId)
                 ->where('project_id',$projectId)->first(['transaction_type','type_id']);
             if ($source && (int)$source->type_id > 0) {
@@ -51,16 +51,18 @@ final class ProjectVoucherDisplayIdentity
             return (string) $existing->display_number;
         }
 
-        if ($sourceKind === 'customer_ledger' && in_array($series, ['CR','DR','CP'], true)) {
+        if ($sourceKind === 'customer_ledger' && in_array($series, ['CR','DR','CP','CCR','CDR'], true)) {
             $source = DB::table('customer_ledger')->where('id', $sourceId)
                 ->where('project_id', $projectId)->lockForUpdate()
                 ->first(['transaction_type', 'type_id']);
-            if (!$source || !in_array($source->transaction_type, ['CR','CP'], true) ||
+            if (!$source || !in_array($source->transaction_type, ['CR','CP','CCR','CDR'], true) ||
                 (int)$source->type_id <= 0 ||
-                (($series === 'CR') !== ($source->transaction_type === 'CR'))) {
+                (($series === 'CCR' || $series === 'CDR')
+                    ? $series !== $source->transaction_type
+                    : (($series === 'CR') !== ($source->transaction_type === 'CR')))) {
                 throw new \DomainException('VOUCHER_SOURCE_IDENTITY_MISMATCH');
             }
-            $display = ($source->transaction_type === 'CP' ? 'DR' : 'CR').'-'.$source->type_id;
+            $display = ($source->transaction_type === 'CP' ? 'DR' : $source->transaction_type).'-'.$source->type_id;
         } else {
             $sequence = app(ProjectVoucherFiscalSequence::class)->next($projectId, $series, $date);
             $display = app(ProjectVoucherDisplay::class)->format($projectId, $series, $sequence, $date);
