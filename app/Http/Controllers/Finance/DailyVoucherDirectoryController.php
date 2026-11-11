@@ -156,6 +156,13 @@ final class DailyVoucherDirectoryController extends Controller
                     return trim(implode(' ', array_filter([$lead->first_name ?? null, $lead->last_name ?? null]))) ?: (string) ($lead->business ?? '—');
                 }) : collect();
             $sourceApprovals=app(\App\Services\Finance\VoucherApprovalStatusReader::class)->forSources($projectId,'customer_ledger',$sources->pluck('id'));
+            $pendingEdits=collect();
+            if (Schema::hasTable('daily_voucher_edit_snapshots') && $sources->isNotEmpty()) {
+                $pendingEdits=DB::table('daily_voucher_edit_snapshots')
+                    ->where('project_id',$projectId)->where('status','pending')
+                    ->whereIn('source_id',$sources->pluck('id'))
+                    ->orderByDesc('id')->get()->unique('source_id')->keyBy('source_id');
+            }
             foreach ($sources as $source) {
                 $series = $identities->series($projectId, 'customer_ledger', (int) $source->id);
                 $display = $identities->lookup($projectId, 'customer_ledger', (int) $source->id)
@@ -173,22 +180,32 @@ final class DailyVoucherDirectoryController extends Controller
                     ->where('linked.customer_ledger_id', $source->id)->where('a.project_id', $projectId)
                     ->orderBy('linked.id')->get(['linked.id', 'a.id as account_id', 'h.name as head_name', 's.name as subhead_name', 'linked.amount_in', 'linked.amount_out', 'linked.detail']);
                 $ledgerId = $linkedLines->first()->id ?? null;
+                $pending=$pendingEdits->get($source->id);
+                $proposed=$pending ? json_decode((string)$pending->proposed_snapshot,true) : null;
+                $proposedAccount=is_array($proposed) ? DB::table('project_head_subheads as p')
+                    ->leftJoin('head_accountings as h','h.id','=','p.head_accounting_id')
+                    ->leftJoin('subhead_accountings as sub','sub.id','=','p.subhead_accounting_id')
+                    ->where('p.project_id',$projectId)->where('p.id',(int)($proposed['account_id']??0))
+                    ->first(['h.name as head_name','sub.name as sub_name']) : null;
                 $rows->push([
-                    'date' => (string) $source->date, 'type' => $displayType,
+                    'date' => is_array($proposed) ? (string)$proposed['date'] : (string) $source->date, 'type' => $displayType,
                     'number' => $display, 'reference' => (string) ($source->reference ?? ''),
-                    'head' => (string) ($linkedLines->first()->head_name ?? '—'),
-                    'subhead' => (string) ($linkedLines->first()->subhead_name ?? '—'),
+                    'head' => (string) ($proposedAccount?->head_name ?? $linkedLines->first()->head_name ?? '—'),
+                    'subhead' => (string) ($proposedAccount?->sub_name ?? $linkedLines->first()->subhead_name ?? '—'),
                     'account' => $leadNames->get($source->customer_id)
                         ?: ($linkedLines->first()
                             ? trim(($linkedLines->first()->head_name ? $linkedLines->first()->head_name.' / ' : '').($linkedLines->first()->subhead_name ?: 'Account #'.$linkedLines->first()->account_id))
                             : '—'),
-                    'amount' => (float) max((float) ($source->amount_in ?? 0), (float) ($source->amount_out ?? 0)),
+                    'amount' => is_array($proposed)
+                        ? max((float)($proposed['amount_in']??0),(float)($proposed['amount_out']??0))
+                        : (float) max((float) ($source->amount_in ?? 0), (float) ($source->amount_out ?? 0)),
                     'status' => ucfirst((string)($sourceApprovals[$source->id]['status']??(!empty($source->is_active)?'posted':'inactive'))),
                     'approval_approver' => $sourceApprovals[$source->id]['approver']??null,
                     'approved_by' => \App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())
                         ? ($sourceApprovals[$source->id]['approved_by'] ?? null) : null,
                     'rejection_reason' => $sourceApprovals[$source->id]['reason'] ?? null,
-                    'detail' => (string) ($source->description ?? ''),
+                    'detail' => is_array($proposed) ? (string)$proposed['description'] : (string) ($source->description ?? ''),
+                    'pending_edit' => (bool)$pending,
                     'audit' => array_filter([
                         'Prepared by' => $source->created_by ?? $source->create_by ?? null,
                         'Updated by' => $source->updated_by ?? $source->update_by ?? null,
@@ -201,6 +218,8 @@ final class DailyVoucherDirectoryController extends Controller
                         'Bank passing date' => (int) ($source->payment_type ?? 0) === 2 ? $source->passing_date : null,
                         'Bank status' => (int) ($source->payment_type ?? 0) === 2 ? $source->passing_status : null,
                         'Rejection Reason' => $sourceApprovals[$source->id]['reason'] ?? null,
+                        'Pending Edit' => $pending ? 'Proposed fields shown; original ledger posting unchanged until decision' : null,
+                        'Original Amount' => $pending ? max((float)$source->amount_in,(float)$source->amount_out) : null,
                     ], fn ($value) => $value !== null && $value !== ''),
                     'revise_url' => ($sourceApprovals[$source->id]['status'] ?? '') === 'rejected'
                         && in_array((int)$source->payment_type,[1,2,3],true)
