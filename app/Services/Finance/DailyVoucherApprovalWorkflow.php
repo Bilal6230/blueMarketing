@@ -242,9 +242,17 @@ final class DailyVoucherApprovalWorkflow
                 'rejection_reason' => $decision === 'rejected' ? $reason : null,
                 'decided_at' => now(),
             ])->save();
+            // The voucher's previous approval remains valid when a proposed
+            // edit is rejected, but the latest EDIT decision must be recorded
+            // independently so UI history never labels that rejection as an
+            // approval. The source itself is NOT deactivated here.
             DB::table('daily_voucher_approval_events')->insert([
-                'approval_id' => $locked->id, 'event' => $decision,
-                'actor_id' => $actorId, 'remarks' => $decision === 'rejected' ? $reason : null,
+                'approval_id' => $locked->id,
+                'event' => $sameSourceEdit
+                    ? ($decision === 'rejected' ? 'edit_rejected' : 'edit_approved')
+                    : $decision,
+                'actor_id' => $actorId,
+                'remarks' => $decision === 'rejected' ? $reason : null,
                 'created_at' => now(),
             ]);
         },3);
