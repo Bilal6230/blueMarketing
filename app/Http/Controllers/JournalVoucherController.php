@@ -99,6 +99,12 @@ class JournalVoucherController extends Controller
                 return response()->json(['options'=>['Pending','Approved','Rejected','Posted'],
                     'more_options'=>false]);
             }
+            if ($excelColumn==='voucher_number') {
+                $numbers=$this->excelVoucherNumbers($query,(int)$selectedProjectId,'JV');
+                $values=collect(array_values($numbers))->unique()->sort(SORT_NATURAL|SORT_FLAG_CASE)->values();
+                return response()->json(['options'=>$values->take(500)->all(),
+                    'more_options'=>$values->count()>500]);
+            }
             if (in_array($excelColumn,$allowedExcelColumns,true)) {
                 $options=(clone $query)->reorder()->select($excelColumn)->distinct()
                     ->orderBy($excelColumn)->limit(501)->pluck($excelColumn)
@@ -136,7 +142,12 @@ class JournalVoucherController extends Controller
                     count($values)>250)abort(422,'Invalid excluded values.');
                 foreach($values as $v)if(!is_scalar($v)||mb_strlen((string)$v)>255)
                     abort(422,'Invalid excluded value.');
-                if($values)$query->whereNotIn($field,array_map('strval',$values));
+                if($values && $field==='voucher_number'){
+                    $numbers=$this->excelVoucherNumbers($query,(int)$selectedProjectId,'JV');
+                    $ids=array_keys(array_filter($numbers,
+                        fn($display)=>in_array($display,array_map('strval',$values),true)));
+                    $query->whereNotIn('journal_vouchers.id',$ids);
+                }elseif($values)$query->whereNotIn($field,array_map('strval',$values));
             }
             $selected=(array)$request->input('excel_values',[]);
             foreach($selected as $field=>$values) {
@@ -177,7 +188,12 @@ class JournalVoucherController extends Controller
                     if(!is_scalar($value) || mb_strlen((string)$value)>255)
                         abort(422,'Invalid filter value.');
                 }
-                $query->whereIn($field,array_map('strval',$values));
+                if($field==='voucher_number'){
+                    $numbers=$this->excelVoucherNumbers($query,(int)$selectedProjectId,'JV');
+                    $ids=array_keys(array_filter($numbers,
+                        fn($display)=>in_array($display,array_map('strval',$values),true)));
+                    $query->whereIn('journal_vouchers.id',$ids);
+                }else $query->whereIn($field,array_map('strval',$values));
             }
         }
         // Column filters are applied in SQL before paging (not just the first page).
@@ -342,6 +358,12 @@ class JournalVoucherController extends Controller
         if ($request->ajax()) {
             $allowed=['id','voucher_number','reference','date','description','total_debit'];
             $facet=(string)$request->input('excel_facet','');
+            if($facet==='voucher_number'){
+                $numbers=$this->excelVoucherNumbers($query,(int)$selectedProjectId,'SV');
+                $values=collect(array_values($numbers))->unique()->sort(SORT_NATURAL|SORT_FLAG_CASE)->values();
+                return response()->json(['options'=>$values->take(500)->all(),
+                    'more_options'=>$values->count()>500]);
+            }
             if(in_array($facet,$allowed,true)){
                 $options=(clone $query)->reorder()->select($facet)->distinct()
                     ->orderBy($facet)->limit(501)->pluck($facet)
@@ -355,8 +377,16 @@ class JournalVoucherController extends Controller
                         !$values||count($values)>100)abort(422,'Invalid sales voucher filter.');
                     foreach($values as $v)if(!is_scalar($v)||mb_strlen((string)$v)>255)
                         abort(422,'Invalid sales voucher filter value.');
-                    $include?$query->whereIn($field,array_map('strval',$values))
-                        :$query->whereNotIn($field,array_map('strval',$values));
+                    if($field==='voucher_number'){
+                        $numbers=$this->excelVoucherNumbers($query,(int)$selectedProjectId,'SV');
+                        $ids=array_keys(array_filter($numbers,
+                            fn($display)=>in_array($display,array_map('strval',$values),true)));
+                        $include?$query->whereIn('journal_vouchers.id',$ids)
+                            :$query->whereNotIn('journal_vouchers.id',$ids);
+                    }else{
+                        $include?$query->whereIn($field,array_map('strval',$values))
+                            :$query->whereNotIn($field,array_map('strval',$values));
+                    }
                 }
             }
         }
@@ -415,6 +445,30 @@ class JournalVoucherController extends Controller
         $x['vouchers'] = $query->orderByDesc('id')->get(); // Fetch all vouchers initially
 
         return view('admin.reports.vouchers.index', $x);
+    }
+
+    /**
+     * Use user-visible voucher numbers, not raw DB sequence fragments, in
+     * Excel facets. Query remains project/type scoped and bounded.
+     */
+    private function excelVoucherNumbers($query, int $projectId, string $type): array
+    {
+        $sources=(clone $query)->reorder()->limit(5001)
+            ->get(['id','voucher_number']);
+        if($sources->count()>5000)
+            abort(422,'Narrow the date range before filtering voucher numbers.');
+        $stored=\Illuminate\Support\Facades\Schema::hasTable('project_voucher_display_numbers')
+            ? DB::table('project_voucher_display_numbers')->where('project_id',$projectId)
+                ->where('source_kind','journal_voucher')
+                ->whereIn('source_id',$sources->pluck('id'))
+                ->pluck('display_number','source_id')
+            : collect();
+        return $sources->mapWithKeys(function($row)use($type,$stored){
+            $default=$type==='JV'
+                ? 'JV-'.get_jv_number($row->voucher_number)
+                : 'SV-'.(int)$row->voucher_number;
+            return [(int)$row->id=>(string)($stored[$row->id]??$default)];
+        })->all();
     }
 
     private function normalizeVoucherNumberInput(string $value, string $prefix): ?string
