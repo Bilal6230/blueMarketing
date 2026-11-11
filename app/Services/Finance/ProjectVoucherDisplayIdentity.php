@@ -10,8 +10,20 @@ final class ProjectVoucherDisplayIdentity
     public function lookup(int $projectId, string $sourceKind, int $sourceId): ?string
     {
         if ($projectId < 1 || $sourceId < 1 || !Schema::hasTable('project_voucher_display_numbers')) return null;
-        $number = DB::table('project_voucher_display_numbers')->where('project_id', $projectId)
-            ->where('source_kind', $sourceKind)->where('source_id', $sourceId)->value('display_number') ?: null;
+        $identity = DB::table('project_voucher_display_numbers')->where('project_id', $projectId)
+            ->where('source_kind', $sourceKind)->where('source_id', $sourceId)->first(['series','display_number']);
+        // For the real CR and legacy CP-as-DR voucher form, the stored source
+        // type_id is the visible voucher number, not a configurable fiscal
+        // prefix. Other voucher families keep their historical identity rules.
+        if ($sourceKind === 'customer_ledger' && in_array((string) ($identity->series ?? ''), ['CR','DR','CP'], true)) {
+            $source = DB::table('customer_ledger')->where('id',$sourceId)
+                ->where('project_id',$projectId)->first(['transaction_type','type_id']);
+            if ($source && (int)$source->type_id > 0) {
+                $label = $source->transaction_type === 'CP' ? 'DR' : $source->transaction_type;
+                return $label.'-'.$source->type_id;
+            }
+        }
+        $number = $identity->display_number ?? null;
         // CP is the immutable legacy source type; show its user-facing label as DR.
         return $number ? preg_replace('/^CP-/', 'DR-', (string) $number) : null;
     }
@@ -39,8 +51,20 @@ final class ProjectVoucherDisplayIdentity
             return (string) $existing->display_number;
         }
 
-        $sequence = app(ProjectVoucherFiscalSequence::class)->next($projectId, $series, $date);
-        $display = app(ProjectVoucherDisplay::class)->format($projectId, $series, $sequence, $date);
+        if ($sourceKind === 'customer_ledger' && in_array($series, ['CR','DR','CP'], true)) {
+            $source = DB::table('customer_ledger')->where('id', $sourceId)
+                ->where('project_id', $projectId)->lockForUpdate()
+                ->first(['transaction_type', 'type_id']);
+            if (!$source || !in_array($source->transaction_type, ['CR','CP'], true) ||
+                (int)$source->type_id <= 0 ||
+                (($series === 'CR') !== ($source->transaction_type === 'CR'))) {
+                throw new \DomainException('VOUCHER_SOURCE_IDENTITY_MISMATCH');
+            }
+            $display = ($source->transaction_type === 'CP' ? 'DR' : 'CR').'-'.$source->type_id;
+        } else {
+            $sequence = app(ProjectVoucherFiscalSequence::class)->next($projectId, $series, $date);
+            $display = app(ProjectVoucherDisplay::class)->format($projectId, $series, $sequence, $date);
+        }
         DB::table('project_voucher_display_numbers')->insert([
             'project_id' => $projectId, 'source_kind' => $sourceKind, 'source_id' => $sourceId,
             'series' => $series, 'financial_year' => (int) substr($date, 0, 4),
