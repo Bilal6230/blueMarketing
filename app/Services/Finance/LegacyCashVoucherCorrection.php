@@ -17,8 +17,21 @@ final class LegacyCashVoucherCorrection
             $source = CustomerLedger::query()->whereKey($sourceId)->where('project_id', $projectId)
                 ->whereIn('transaction_type', ['CR', 'CP', 'PPR'])->where('is_active', 1)
                 ->lockForUpdate()->firstOrFail();
-            app(VoucherApprovalMutationGuard::class)
-                ->assertLegacyMutationAllowed($projectId, 'customer_ledger', (int) $source->id);
+            $tracked=DB::table('daily_voucher_approvals')->where('project_id',$projectId)
+                ->where('source_table','customer_ledger')->where('source_id',$source->id)
+                ->lockForUpdate()->first();
+            $policyActive=app(DailyVoucherApprovalWorkflow::class)
+                ->policy($projectId,(string)$source->transaction_type)!==null;
+            $approvedDirect = $tracked && $tracked->status==='approved' &&
+                !$policyActive && (int)$source->payment_type===1 &&
+                (int)($changes['payment_type']??0)===1;
+            if (!$approvedDirect) {
+                app(VoucherApprovalMutationGuard::class)
+                    ->assertLegacyMutationAllowed($projectId, 'customer_ledger', (int) $source->id);
+            } else {
+                app(VoucherApprovalMutationGuard::class)
+                    ->assertNoPendingCorrection($projectId,(int)$source->id);
+            }
             $old = Ledger::query()->withoutGlobalScopes()->where('customer_ledger_id', $source->id)
                 ->where('type', $source->transaction_type)->where('is_active', 1)
                 ->whereIn('project_head_subheads_id', ProjectHeadSubhead::where('project_id', $projectId)->select('id'))
@@ -100,6 +113,20 @@ final class LegacyCashVoucherCorrection
                 'detail' => $this->correctedDetail($correctedSource), 'create_by' => $userId,
                 'is_active' => $postingActive ? 1 : 0, 'status' => '0', 'date' => $date,
             ]);
+            if ($approvedDirect) {
+                DB::table('daily_voucher_approval_events')->insert([
+                    'approval_id'=>$tracked->id,
+                    'event'=>'approved_cash_direct_correction',
+                    'actor_id'=>$userId,
+                    'remarks'=>json_encode([
+                        'original_source_id'=>(int)$source->id,
+                        'reversal_source_id'=>(int)$reversalSource->id,
+                        'corrected_source_id'=>(int)$correctedSource->id,
+                        'revision_reason'=>(string)($changes['edit_reason']??''),
+                    ],JSON_THROW_ON_ERROR),
+                    'created_at'=>now(),
+                ]);
+            }
             if ($approvalRequired) {
                 if (!$workflow->submitIfRequired($projectId, $type, 'customer_ledger',
                     (int) $correctedSource->id, $userId)) {
