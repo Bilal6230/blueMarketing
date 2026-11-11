@@ -565,6 +565,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::post('journal-voucher/create', 'store')->middleware(['permission:create jv'])->name('journal.voucher.store');
         Route::get('journal-vouchers/{id}/edit', 'edit')->middleware(['permission:edit jv'])->name('journal.voucher.edit');
         Route::put('journal-vouchers/{id}', 'update')->middleware(['permission:edit jv'])->name('journal.voucher.update');
+        Route::post('journal-vouchers/{id}/resubmit', 'update')->middleware(['permission:edit jv'])->name('journal.voucher.resubmit');
         Route::delete('journal-vouchers/delete/{id}', 'destroy')->middleware(['permission:delete jv'])->name('journal.voucher.delete');
 
         Route::get('/journal-voucher/print/{id}', 'print')->middleware(['permission:print jv'])->name('journal.voucher.print');

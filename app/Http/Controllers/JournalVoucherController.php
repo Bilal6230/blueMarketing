@@ -146,7 +146,12 @@ class JournalVoucherController extends Controller
                     'approval_status' => ucfirst($status),
                     'approval_approver' => $approval['approver']??null,
                     'approval_reason' => $approval['reason']??null,
-                    'actions' => view('admin.reports.vouchers.actions', ['voucher'=>$voucher, 'approvalTracked'=>$approval !== null])->render() // Render actions view
+                    'actions' => view('admin.reports.vouchers.actions', [
+                        'voucher'=>$voucher,'approvalTracked'=>$approval !== null,
+                        'canResubmit'=>$approval !== null && $approval['status']==='rejected'
+                            && (\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())
+                                || (int)$voucher->created_by===(int)auth()->id()),
+                    ])->render() // Render actions view
                 ];
             });
 
@@ -702,8 +707,20 @@ class JournalVoucherController extends Controller
         $voucher = JournalVoucher::with('details')->where('project_id', getSelectedTown())->findOrFail($id);
         $x = $this->getCommonData('Edit Journal Voucher');
         $x['voucher'] = $voucher;
-        app(\App\Services\Finance\VoucherApprovalMutationGuard::class)
-            ->assertLegacyMutationAllowed((int) getSelectedTown(), 'journal_vouchers', (int) $voucher->id);
+        $x['isRevision']=$isRevision=request()->boolean('resubmit');
+        if($isRevision){
+            abort_if(\App\Services\Finance\V2OriginalWorkflowAccess::selected(),409,'Rejected JV revision is unavailable in V2 mode.');
+            $approval=\App\Models\DailyVoucherApproval::query()
+                ->where('project_id',(int)getSelectedTown())->where('voucher_type','JV')
+                ->where('source_table','journal_vouchers')->where('source_id',(int)$voucher->id)
+                ->where('status','rejected')->firstOrFail();
+            abort_unless(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())
+                || (int)$voucher->created_by===(int)auth()->id(),403);
+            $x['rejectionReason']=$approval->rejection_reason;
+        }else{
+            app(\App\Services\Finance\VoucherApprovalMutationGuard::class)
+                ->assertLegacyMutationAllowed((int) getSelectedTown(), 'journal_vouchers', (int) $voucher->id);
+        }
 
         // Get selected town's project_id
         $x['selectedProjectId'] = $selectedProjectId = getSelectedTown();
@@ -777,6 +794,28 @@ class JournalVoucherController extends Controller
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'debit' => 'Total debit and credit must be equal and greater than zero.',
             ]);
+        }
+
+        if ($request->routeIs('journal.voucher.resubmit')) {
+            abort_if(\App\Services\Finance\V2OriginalWorkflowAccess::selected(),409,'Rejected JV revision is unavailable in V2 mode.');
+            $reason=$request->validate(['revision_reason'=>['required','string','min:3','max:500']])['revision_reason'];
+            $revisionLines=[];
+            foreach($keys as $i){
+                $revisionLines[]=[
+                    'account_id'=>(int)$data['sub_accounts'][$i],
+                    'debit_cents'=>$this->moneyToCents((string)$data['debit'][$i]),
+                    'credit_cents'=>$this->moneyToCents((string)$data['credit'][$i]),
+                    'description'=>(string)($data['line_description'][$i]??''),
+                ];
+            }
+            try{
+                app(\App\Services\Finance\RejectedJournalVoucherResubmission::class)
+                    ->resubmit($projectId,(int)$id,(int)Auth::id(),$data,$revisionLines,$reason);
+            }catch(\DomainException $exception){
+                abort(409,$exception->getMessage());
+            }
+            return redirect()->route('journal.voucher.index')
+                ->with('success','Rejected JV revised and resubmitted for approval. Ledger remains inactive.');
         }
 
         if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {

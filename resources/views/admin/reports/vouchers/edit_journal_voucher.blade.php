@@ -63,9 +63,15 @@ html body .main-content.page-content > .content-wrapper .card-body{
                         @if(session('success'))
                             <div class="alert alert-success" role="status">{{ session('success') }}</div>
                         @endif
-                        <form id="journalForm" action="{{ route('journal.voucher.update', $voucher->id) }}" method="POST">
+                        @if($isRevision ?? false)
+                            <div class="alert alert-warning" role="status">
+                                <strong>Revise Rejected JV:</strong> {{ $rejectionReason ?? 'Previous submission was rejected.' }}
+                                <div class="small">This change will stay unposted until the authorized approver approves it.</div>
+                            </div>
+                            @endif
+                        <form id="journalForm" action="{{ ($isRevision ?? false) ? route('journal.voucher.resubmit',$voucher->id) : route('journal.voucher.update', $voucher->id) }}" method="POST">
                             @csrf
-                            @method('PUT')
+                            @unless($isRevision ?? false) @method('PUT') @endunless
                             <!-- Voucher Details -->
                             <div class="row mb-4">
                                 <div class="col-sm-4">
@@ -208,10 +214,17 @@ html body .main-content.page-content > .content-wrapper .card-body{
                                 </table>
                             </div>
 
+                            @if($isRevision ?? false)
+                            <div class="form-group">
+                                <label for="revision_reason">What changed? / Revision reason *</label>
+                                <textarea id="revision_reason" name="revision_reason" class="form-control" rows="2" minlength="3" maxlength="500" required>{{ old('revision_reason') }}</textarea>
+                                @error('revision_reason') <div class="text-danger">{{ $message }}</div> @enderror
+                            </div>
+                            @endif
                             <!-- Submit Button -->
                             <div class="text-center">
                                 <button type="submit" class="btn btn-warning">
-                                    <i class="fas fa-save"></i> Update Journal Voucher
+                                    <i class="fas fa-save"></i> {{ ($isRevision ?? false) ? 'Revise & Resubmit for Approval' : 'Update Journal Voucher' }}
                                 </button>
                             </div>
                         </form>

@@ -42,3 +42,7 @@ Use `COMPLETE`, `PARTIAL`, `PENDING`, `BLOCKED` grounded in evidence. Never inve
 - **3A — Legacy mutation safety:** Implemented code safeguards for approval-tracked JV/CR/CP; owner browser test pending. All approval statuses (pending/approved/rejected) block direct legacy Edit/Reverse/Delete, regardless of is_active. Untracked legacy vouchers unchanged.
 - **3B — Audited revise-and-resubmit:** NOT STARTED; requires explicit safe revision identity/audit design and browser pass for 3A.
 - Do not mark Phase 03.3 complete; Phase 04 remains locked.
+
+### Phase 03.3 — 3B1 (2026-11-11)
+- **3A owner browser PASS.**
+- **3B1 rejected JV revision & resubmit** coded, browser gate pending; reuses unique approval row and appends historical audit event, never activates ledger before re-approval. CR/CP resubmission **not implemented** (3B2), Phase 04 remains locked.

@@ -19,6 +19,14 @@
             @endunless
         @endcan
 
+        @if(($canResubmit ?? false) && $voucherRoutePrefix === 'journal.voucher')
+            @can('edit jv')
+                <a href="{{ route('journal.voucher.edit', $voucher->id) }}?resubmit=1" class="btn btn-sm btn-outline-warning jv-resubmit" title="Revise rejected voucher and resubmit for approval">
+                    <i class="fas fa-redo"></i> Revise
+                </a>
+            @endcan
+        @endif
+
         @can('print jv')
             <a href="{{ route($voucherRoutePrefix.'.print', $voucher->id) }}" target="_blank" class="btn btn-sm btn-info">
                 <i class="fas fa-print"></i> Print
