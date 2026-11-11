@@ -262,7 +262,12 @@
                             aria-haspopup="dialog" title="Sort and filter {{ $label }}"><i class="fas fa-caret-down" aria-hidden="true"></i></button>
                     </th>
                     @endforeach
-                    @if(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user()))<th>Approved By</th>@endif
+                    @if(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user()))
+                    <th class="dv-filter-heading"><span>Approved By</span>
+                    <button type="button" class="dv-excel-trigger" data-column="approved_by"
+                        aria-label="Sort or filter Approved By" aria-expanded="false"
+                        aria-haspopup="dialog" title="Sort and filter Approved By"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                    @endif
                     <th>Actions</th>
                 </tr>
             </thead><tbody id="dv-rows"></tbody></table></div>
