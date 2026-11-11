@@ -48,6 +48,20 @@ final class SameSourceCashVoucherEdit
                 throw new \DomainException('This voucher already has a pending edit.');
             }
             app(VoucherApprovalMutationGuard::class)->assertNoPendingCorrection($projectId,$sourceId);
+            // Earlier append-only corrections may have already offset this
+            // source with active reversal rows. Those require a one-time
+            // ledger reconciliation before they can be edited in place.
+            $previousCorrections=DB::table('daily_voucher_approval_events')
+                ->whereIn('event',['legacy_cash_correction','approved_cash_direct'])
+                ->where('remarks','like','%"original_source_id":'.$sourceId.',%')
+                ->get(['remarks']);
+            foreach ($previousCorrections as $prior) {
+                $history=json_decode((string)$prior->remarks,true);
+                if (is_array($history) &&
+                    (int)($history['original_source_id']??0)===$sourceId) {
+                    throw new \DomainException('This voucher has a previous reversal/correction chain. Audit and reconcile that chain before same-ID editing.');
+                }
+            }
             $leg=DB::table('ledgers as l')
                 ->join('project_head_subheads as p','p.id','=','l.project_head_subheads_id')
                 ->where('l.customer_ledger_id',$sourceId)->where('l.type',$source->transaction_type)
@@ -135,6 +149,12 @@ final class SameSourceCashVoucherEdit
                 'created_at'=>now(),'updated_at'=>now(),
             ]);
             if ($approvals) {
+                if ($approvals->status==='rejected') {
+                    $approvals->forceFill([
+                        'status'=>'posted','rejection_reason'=>null,
+                        'decided_by'=>$userId,'decided_at'=>now(),
+                    ])->save();
+                }
                 DB::table('daily_voucher_approval_events')->insert([
                     'approval_id'=>$approvals->id,'event'=>'same_source_direct',
                     'actor_id'=>$userId,
