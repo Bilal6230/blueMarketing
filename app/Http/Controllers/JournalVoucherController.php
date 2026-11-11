@@ -146,7 +146,7 @@ class JournalVoucherController extends Controller
                     'approval_status' => ucfirst($status),
                     'approval_approver' => $approval['approver']??null,
                     'approval_reason' => $approval['reason']??null,
-                    'actions' => view('admin.reports.vouchers.actions', compact('voucher'))->render() // Render actions view
+                    'actions' => view('admin.reports.vouchers.actions', ['voucher'=>$voucher, 'approvalTracked'=>$approval !== null])->render() // Render actions view
                 ];
             });
 
@@ -672,6 +672,8 @@ class JournalVoucherController extends Controller
                 $voucher = JournalVoucher::whereKey((int) $id)->where('project_id', $projectId)
                     ->where(fn ($q) => $q->where('type', 'JV')->orWhereNull('type'))
                     ->lockForUpdate()->firstOrFail();
+                app(\App\Services\Finance\VoucherApprovalMutationGuard::class)
+                    ->assertLegacyMutationAllowed($projectId, 'journal_vouchers', (int) $voucher->id);
                 $ledgers = Ledger::query()->withoutGlobalScopes()->where('type', 'JV')
                     ->where('type_id', $voucher->id)->where('is_active', 1)
                     ->whereIn('project_head_subheads_id', ProjectHeadSubhead::where('project_id', $projectId)->select('id'))
@@ -700,6 +702,8 @@ class JournalVoucherController extends Controller
         $voucher = JournalVoucher::with('details')->where('project_id', getSelectedTown())->findOrFail($id);
         $x = $this->getCommonData('Edit Journal Voucher');
         $x['voucher'] = $voucher;
+        app(\App\Services\Finance\VoucherApprovalMutationGuard::class)
+            ->assertLegacyMutationAllowed((int) getSelectedTown(), 'journal_vouchers', (int) $voucher->id);
 
         // Get selected town's project_id
         $x['selectedProjectId'] = $selectedProjectId = getSelectedTown();
@@ -788,6 +792,8 @@ class JournalVoucherController extends Controller
                 $voucher = JournalVoucher::whereKey((int) $id)->where('project_id', $projectId)
                     ->where(function ($query) { $query->where('type', 'JV')->orWhereNull('type'); })
                     ->lockForUpdate()->firstOrFail();
+                app(\App\Services\Finance\VoucherApprovalMutationGuard::class)
+                    ->assertLegacyMutationAllowed($projectId, 'journal_vouchers', (int) $voucher->id);
                 $oldDetails = JournalVoucherDetail::where('journal_voucher_id', $voucher->id)
                     ->lockForUpdate()->get();
                 $oldLedgers = Ledger::query()->withoutGlobalScopes()->where('type', 'JV')

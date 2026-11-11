@@ -1041,6 +1041,10 @@ class LedgerController extends Controller
                     ->whereHas('projectHeadSubhead', fn ($query) => $query->where('project_id', $projectId))
                     ->lockForUpdate()->firstOrFail();
 
+                if ($ledger->customer_ledger_id !== null) {
+                    app(\App\Services\Finance\VoucherApprovalMutationGuard::class)
+                        ->assertLegacyMutationAllowed($projectId, 'customer_ledger', (int) $ledger->customer_ledger_id);
+                }
                 if ((int) $ledger->is_active === 0) return false;
 
                 $reason = trim((string) $validated['delete_reason']);
@@ -1050,6 +1054,8 @@ class LedgerController extends Controller
                         ->where('project_id', $projectId)
                         ->where('transaction_type', $ledger->type)
                         ->lockForUpdate()->firstOrFail();
+                    app(\App\Services\Finance\VoucherApprovalMutationGuard::class)
+                        ->assertLegacyMutationAllowed($projectId, 'customer_ledger', (int) $source->id);
 
                     // A voucher's linked accounting legs must be deactivated
                     // together, never just one side of a multi-leg posting.

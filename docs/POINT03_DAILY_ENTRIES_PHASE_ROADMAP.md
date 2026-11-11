@@ -37,3 +37,8 @@ Use `COMPLETE`, `PARTIAL`, `PENDING`, `BLOCKED` grounded in evidence. Never inve
 - **Batch 2 — Status visibility, legacy JV correction, blue JV listing, internal-only table scroll, Add/Edit modal:** implementation committed; owner confirmed Add/Edit alignment browser PASS. **Latest font adjustment** `d8289e98` code committed but browser PASS not yet reported; finish that gate first.
 - **Batch 3 — Pending/Rejected JV/CR/CP edit, reverse/delete and resubmission safety:** NEXT after Batch 2 gate; start with source/database lifecycle audit. No premature schema change.
 - Canonical new-chat continuation instructions: [Active Point03 handoff](./ACTIVE_POINT03_HANDOFF.md).
+
+## Phase 03.3 Batch 3 — progress 2026-11-11
+- **3A — Legacy mutation safety:** Implemented code safeguards for approval-tracked JV/CR/CP; owner browser test pending. All approval statuses (pending/approved/rejected) block direct legacy Edit/Reverse/Delete, regardless of is_active. Untracked legacy vouchers unchanged.
+- **3B — Audited revise-and-resubmit:** NOT STARTED; requires explicit safe revision identity/audit design and browser pass for 3A.
+- Do not mark Phase 03.3 complete; Phase 04 remains locked.

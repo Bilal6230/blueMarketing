@@ -17,6 +17,8 @@ final class LegacyCashVoucherCorrection
             $source = CustomerLedger::query()->whereKey($sourceId)->where('project_id', $projectId)
                 ->whereIn('transaction_type', ['CR', 'CP', 'PPR'])->where('is_active', 1)
                 ->lockForUpdate()->firstOrFail();
+            app(VoucherApprovalMutationGuard::class)
+                ->assertLegacyMutationAllowed($projectId, 'customer_ledger', (int) $source->id);
             $old = Ledger::query()->withoutGlobalScopes()->where('customer_ledger_id', $source->id)
                 ->where('type', $source->transaction_type)->where('is_active', 1)
                 ->whereIn('project_head_subheads_id', ProjectHeadSubhead::where('project_id', $projectId)->select('id'))

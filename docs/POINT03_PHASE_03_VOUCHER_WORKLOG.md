@@ -94,3 +94,10 @@
 - Batch 2 in final UI verification; main page must not scroll; only table card scrolls; avoid right-hand clipping in modal. No new PHP/backend changes in this documentation checkpoint.
 - NEXT Batch 3: audit/edit/reverse/delete/resubmission restrictions and approval-state transitions for JV/CR/CP, preserve legacy posted records, soft-delete/void semantics, authority and journal trail. Not yet implemented. Phase 04+ locked.
 - Full project/new-chat continuation: [ACTIVE_POINT03_HANDOFF.md](./ACTIVE_POINT03_HANDOFF.md).
+
+## 2026-11-11 — Batch 3 started / safety gate 3A implemented
+- Owner instructed to start next batch after previous JV UI fixes. Latest font-change browser PASS was not explicitly re-confirmed; treating request to proceed as go-ahead, NOT retroactively claiming a browser PASS.
+- Audited JV update (creates immediate active reversal+new posting), JV destroy (reverses active ledger and deletes source/details), CR/CP update via `LegacyCashVoucherCorrection` (creates active reversal+correction), CR/CP destroy (deactivates source+ledgers). These legacy write paths are dangerous on pending/rejected/approved approvals.
+- Introduced centralized read-only `VoucherApprovalMutationGuard`: if source has **any** `daily_voucher_approvals` row (pending/rejected/approved), legacy mutation fails with explicit `DomainException`, regardless of `is_active`. Checks occur inside locked source transactions where relevant. Legacy sources without approval rows retain existing behavior. JV Edit form now refuses approval-tracked records; JV listing hides Edit/Reverse for approval-tracked records but continues Print.
+- This is protection only, **NOT** rejected-voucher revision/resubmission implementation. Need separately design and implement auditable revision request, source identity, approval events and activation; do not implement unguarded edit or reactivate old rejected ledger records.
+- No schema, no existing database writes, no ledger activation changes. Manual browser gate for 3A pending before 3B resubmission.

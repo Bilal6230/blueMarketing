@@ -26,7 +26,7 @@
 | 03.3 Batch 1 — `voucher approver` permission and authority | Owner browser PASS |
 | 03.3 Batch 2 — Status visibility, JV listing/modals/layout | Major UX sub-fixes tested repeatedly; owner **explicitly confirmed Add/Edit modal alignment browser PASS**, then asked to increase font size |
 | Latest font-size change | **Code committed, browser PASS NOT YET CONFIRMED** — do not mark Batch 2 final PASS until owner verifies |
-| Batch 3 — Pending/Rejected edit, reverse/delete, resubmit safety | **NEXT** after latest font UI/browser gate; NOT IMPLEMENTED |
+| Batch 3 — Pending/Rejected edit, reverse/delete, resubmit safety | **ACTIVE**: 3A mutation guard coded, browser PASS pending; 3B revise/resubmit NOT STARTED |
 | Phase 04–09 | LOCKED until Phase 03 browser PASS |
 
 ### Recent important commits (verify against HEAD)
@@ -78,3 +78,7 @@ No claim of local migration, browser or PHP test execution unless actually verif
 
 ## New chat starter (user can paste, but docs are canonical)
 “BlueMarketing ka previous flow continue karo. Branch `upgrade/laravel-framework` par `docs/ACTIVE_POINT03_HANDOFF.md`, `docs/POINT03_DAILY_ENTRIES_PHASE_ROADMAP.md` aur `docs/POINT03_PHASE_03_VOUCHER_WORKLOG.md` padh kar latest source verify karo. Phase 03.3 active hai, Batch 1 browser PASS; Add/Edit modal alignment PASS; latest JV typography change ka browser gate pending hai. Next Batch 3 Pending/Rejected edit/void/resubmit safety hai—Batch 2 browser PASS se pehle next batch nahi. Sirf jQuery; no unrelated changes; commits and PowerShell pull commands do.”
+
+## Update 2026-11-11 — Batch 3A
+- Owner requested next batch. Central \`app/Services/Finance/VoucherApprovalMutationGuard.php\` now blocks legacy JV and CR/CP mutation when a matching approval request exists, independent of ledger is_active. JV Edit/Reverse buttons hidden for tracked approvals, Print kept. Legacy records without approval evidence unchanged. No migration/ledger schema or existing database record changes.
+- 3A browser testing not yet confirmed. 3B audited revise-and-resubmit remains unimplemented. Next assistant must test status-specific 409 for JV edit/update/reverse, CR/CP correct/deactivate, and legacy no-approval behavior before moving on.
