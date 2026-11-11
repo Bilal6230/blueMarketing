@@ -133,7 +133,7 @@ class JournalVoucherController extends Controller
                     continue;
                 }
                 if(!in_array($field,$allowedExcelColumns,true)||!is_array($values)||
-                    count($values)>100)abort(422,'Invalid excluded values.');
+                    count($values)>250)abort(422,'Invalid excluded values.');
                 foreach($values as $v)if(!is_scalar($v)||mb_strlen((string)$v)>255)
                     abort(422,'Invalid excluded value.');
                 if($values)$query->whereNotIn($field,array_map('strval',$values));
