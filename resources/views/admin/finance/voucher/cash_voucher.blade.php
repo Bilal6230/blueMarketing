@@ -3798,7 +3798,7 @@
                         <div class="voucher-edit-reason">
                             <label class="fbox" for="edit_reason">Reason for Edit *</label>
                             <textarea class="form-control" id="edit_reason" name="edit_reason" rows="2"
-                                minlength="3" maxlength="500" required placeholder="Explain why this financial voucher is being corrected"></textarea>
+                                minlength="3" maxlength="220" required placeholder="Explain why this financial voucher is being corrected"></textarea>
                         </div>
                         <div class="modal-footer justify-content-between">
                             <input type="hidden" name="id" id="edit_id">
