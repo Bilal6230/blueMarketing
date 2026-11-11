@@ -325,6 +325,9 @@ class LedgerController extends Controller
 
                             $resolvedVoucherNumber = app(\App\Services\Finance\ProjectVoucherAllocator::class)
                                 ->next((int) $selectedProjectId, 'CP');
+                            if ($resolvedVoucherNumber !== $voucherNumber) {
+                                throw new \DomainException('Voucher number changed since this form was opened. Refresh to use the current database number.');
+                            }
 
                             $cashOutClearanceLedger = Ledger::create([
                                 'customer_ledger_id' => $pendingCustomerLedger->id,
