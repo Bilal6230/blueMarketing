@@ -5,7 +5,53 @@ const vm = require('node:vm');
 const template = fs.readFileSync(path.join(__dirname, '../../resources/views/admin/finance/voucher/typed_posting_fields.blade.php'), 'utf8');
 const script = template.match(/<script>([\s\S]*?)<\/script>/)[1];
 const window = {};
-vm.runInNewContext(script, { window, document: { readyState: 'loading', addEventListener() {} }, queueMicrotask });
+const document = { readyState: 'loading' };
+// Minimal deterministic jQuery facade for the application's first-party
+// jQuery posting script. This simulates the selectors used by the tested
+// form without loading a browser or switching production code to native DOM.
+class JQuerySelection {
+    constructor(elements = []) { this.elements = elements; this.length = elements.length; }
+    find(selector) {
+        if (!this.length) return new JQuerySelection();
+        if (selector === '[data-posting-allocation]') return new JQuerySelection(inputs);
+        const item = this.elements[0].querySelector?.(selector);
+        return new JQuerySelection(item ? [item] : []);
+    }
+    first() { return new JQuerySelection(this.elements.slice(0, 1)); }
+    val(next) {
+        if (arguments.length) {
+            this.elements.forEach(item => { item.value = next; });
+            return this;
+        }
+        return this.elements[0]?.value;
+    }
+    attr(key, next) {
+        const item = this.elements[0];
+        if (!item) return undefined;
+        const name = key.replace(/^data-/, '').replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+        if (arguments.length > 1) {
+            item.dataset ??= {};
+            item.dataset[name] = next;
+            return this;
+        }
+        return item.dataset?.[name];
+    }
+    prop(key, next) {
+        this.elements.forEach(item => { item[key] = next; });
+        return this;
+    }
+    each(callback) { this.elements.forEach((item, i) => callback.call(item, i, item)); return this; }
+    on() { return this; }
+}
+const $ = value => {
+    if (typeof value === 'function') {
+        value();
+        return new JQuerySelection();
+    }
+    if (value === '[data-original-posting-fields]') return new JQuerySelection();
+    return new JQuerySelection(value === null || value === undefined ? [] : [value]);
+};
+vm.runInNewContext(script, { window, document, $, queueMicrotask });
 assert.equal(window.originalPostingTotal(['0.10', '0.20']), '0.30');
 assert.equal(window.originalPostingTotal(['1,234.56', '0.44']), '1235.00');
 assert.equal(window.originalPostingTotal(['2.005']), null);
