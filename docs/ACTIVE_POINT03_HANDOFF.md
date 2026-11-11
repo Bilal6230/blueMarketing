@@ -104,3 +104,7 @@ No claim of local migration, browser or PHP test execution unless actually verif
 - Current code uses CCR/CDR/BOR/BOP as display series over CR/CP: full backend implementation NOT done. Do not claim done. CR/CP validation repair and 3B2A/B browser gate held. No live data/schema changed.
 
 - Latest explicit correction: CCR/CDR Details / Description must stay. Seven fields in total. Do not automatically generate narration or remove Details. All earlier six-field statements are superseded.
+
+## 2026-11-11 — LATEST OWNER DECISION (overrides earlier field-count notes)
+- **Eight mandatory-to-display common form fields** for CR, CP, CCR, CDR, BOR, BOP: Voucher No, Date, Amount, Account Type, Accounts, Child Account, Attachment/File Uploader (optional file selection), Description/Narration (required). Attachment uploader visible on all six and optional; not a bank-specific field. CCR/CDR no bank/cheque extras. CR/CP old conditional Cash/Online/Check and pending-clearing functionality, BOR/BOP bank/online source-linked only. All older six/seven-field phrasing is superseded; do not remove description or uploader.
+- This turn updated docs only. CR/CP validation and browser testing still on hold.

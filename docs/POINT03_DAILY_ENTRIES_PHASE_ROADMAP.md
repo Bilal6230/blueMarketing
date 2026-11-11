@@ -68,3 +68,6 @@ Use `COMPLETE`, `PARTIAL`, `PENDING`, `BLOCKED` grounded in evidence. Never inve
 - Current app only persists CR/CP source and ledger types; other four are display series. Phase 04 implementation cannot be marked complete. CR/CP create validation blocker and 3B2A/B browser HOLD remain unchanged.
 
 - Owner correction: CCR/CDR keep **Details / Description**. Their seven visible fields are Voucher No, Date, Amount, Account Type, Accounts, Child Account, Details. Previous six-field wording superseded.
+
+## 2026-11-11 — Latest owner correction: eight common fields for SIX voucher forms
+- Supersedes earlier six/seven-field summaries: CR/CP/CCR/CDR/BOR/BOP all show **Voucher No, Date, Amount, Account Type, Accounts, Child Account, Attachment/File Uploader (optional), Description/Narration (required)**. CCR/CDR hide only bank/cheque/online-specific fields; CR/CP and BOR/BOP preserve previously specified conditional flow. Full canonical spec updated; docs only, no application code changes.

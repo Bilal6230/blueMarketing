@@ -132,3 +132,6 @@
 
 ## 2026-11-11 — Owner correction for CCR/CDR fields
 - Previous six-field interpretation was incorrect. **Keep mandatory Details / Description** alongside Voucher No, Date, Amount, Account Type, Accounts, Child Account. Remove only bank/cheque/online-related fields. Updated functional spec, roadmap and handoff. No code change.
+
+## 2026-11-11 — Final owner clarification for common voucher fields
+- For all six CR, CP, CCR, CDR, BOR and BOP forms show eight common fields: Voucher No, Date, Amount, Account Type, Accounts, Child Account, Attachment/File Uploader (optional), Description/Narration (required). This supersedes all prior six/seven-field descriptions. Other method-specific behavior unchanged. No application/schema changes.
