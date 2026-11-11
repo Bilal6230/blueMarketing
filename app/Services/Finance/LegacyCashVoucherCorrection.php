@@ -44,9 +44,14 @@ final class LegacyCashVoucherCorrection
                 'type_id' => $next, 'reference' => $reversalReference, 'date' => $date,
                 'amount_in' => $source->amount_out, 'amount_out' => $source->amount_in,
                 'description' => 'Correction reversal: '.($source->description ?: $source->reference),
+                // Append-only source keeps the correction reason; original
+                // narration and instrument metadata remain untouched.
+                'note' => 'Edit Reason: '.trim((string) ($changes['edit_reason'] ?? '')),
                 'is_active' => 1,
             ]));
-            $correctedSource = CustomerLedger::create(array_merge($base, $changes, [
+            $correctionFields = $changes;
+            unset($correctionFields['edit_reason']);
+            $correctedSource = CustomerLedger::create(array_merge($base, $correctionFields, [
                 'type_id' => $correctedSourceId, 'project_id' => $projectId,
                 'customer_id' => $changes['customer_id'] ?? $account->customer_id ?? $source->customer_id,
                 'plot_id' => $changes['plot_id'] ?? $account->plot_id ?? $source->plot_id,
