@@ -111,7 +111,7 @@
        <td>{{ $item->assignedApprover?->name ?? 'User #'.$item->assigned_approver_id }}</td>
        <td style="max-width:280px;white-space:normal">{{ $item->rejection_reason ?: '—' }}</td>
        @php
-          $historyEvent = $item->events->first(fn($event) => in_array($event->event, ['revision_from_approved','revision_from_rejected','resubmitted','legacy_cash_correction','same_source_edit'], true));
+          $historyEvent = $item->events->reverse()->first(fn($event) => in_array($event->event, ['revision_from_approved','revision_from_rejected','resubmitted','legacy_cash_correction','same_source_edit'], true));
           $historyData = $historyEvent ? json_decode((string)$historyEvent->remarks, true) : null;
        @endphp
        <td style="max-width:280px;white-space:normal">{{ is_array($historyData) ? ($historyData['revision_reason'] ?? '—') : '—' }}</td>
