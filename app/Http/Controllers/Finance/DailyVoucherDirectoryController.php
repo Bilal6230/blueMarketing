@@ -204,6 +204,8 @@ final class DailyVoucherDirectoryController extends Controller
                     'approved_by' => \App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())
                         ? ($sourceApprovals[$source->id]['approved_by'] ?? null) : null,
                     'rejection_reason' => $sourceApprovals[$source->id]['reason'] ?? null,
+                    'last_edit_status' => $sourceApprovals[$source->id]['last_edit_status'] ?? null,
+                    'last_edit_reason' => $sourceApprovals[$source->id]['last_edit_reason'] ?? null,
                     'detail' => is_array($proposed) ? (string)$proposed['description'] : (string) ($source->description ?? ''),
                     'pending_edit' => (bool)$pending,
                     'audit' => array_filter([
@@ -218,6 +220,8 @@ final class DailyVoucherDirectoryController extends Controller
                         'Bank passing date' => (int) ($source->payment_type ?? 0) === 2 ? $source->passing_date : null,
                         'Bank status' => (int) ($source->payment_type ?? 0) === 2 ? $source->passing_status : null,
                         'Rejection Reason' => $sourceApprovals[$source->id]['reason'] ?? null,
+                        'Last Edit Decision' => ($sourceApprovals[$source->id]['last_edit_status'] ?? '') === 'rejected' ? 'Rejected' : null,
+                        'Edit Rejection Reason' => $sourceApprovals[$source->id]['last_edit_reason'] ?? null,
                         'Pending Edit' => $pending ? 'Proposed fields shown; original ledger posting unchanged until decision' : null,
                         'Original Amount' => $pending ? max((float)$source->amount_in,(float)$source->amount_out) : null,
                     ], fn ($value) => $value !== null && $value !== ''),
