@@ -52,6 +52,9 @@ final class DailyVoucherDirectoryController extends Controller
             'column_values' => ['sometimes','array','max:7'],
             'column_values.*' => ['array','max:50'],
             'column_values.*.*' => ['string','max:255'],
+            'column_excluded' => ['sometimes','array','max:7'],
+            'column_excluded.*' => ['array','max:100'],
+            'column_excluded.*.*' => ['string','max:255'],
         ]);
         $rows = collect();
         $total = 0;
@@ -66,11 +69,13 @@ final class DailyVoucherDirectoryController extends Controller
         // Cross-source column filters require a bounded complete candidate set.
         $filterCandidateLimit = 5000;
         $facetColumn=$filters['facet_column']??null;
-        $selectedValues=array_intersect_key($filters['column_values']??[],
-            array_flip(['date','number','head','subhead','detail','amount','status']));
+        $columnKeys=array_flip(['date','number','head','subhead','detail','amount','status']);
+        $selectedValues=array_intersect_key($filters['column_values']??[],$columnKeys);
+        $excludedValues=array_intersect_key($filters['column_excluded']??[],$columnKeys);
         $sortColumn = (string) ($filters['sort_column'] ?? 'date');
         $sortDirection = (string) ($filters['sort_direction'] ?? 'desc');
         $requiresFullCandidateSet = (bool) $columnFilters || (bool)$selectedValues
+            || (bool)$excludedValues
             || $facetColumn !== null || $sortColumn !== 'date' || $sortDirection !== 'desc';
         $window = $requiresFullCandidateSet ? $filterCandidateLimit : $start + $length;
         $identities = app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class);
@@ -557,6 +562,17 @@ final class DailyVoucherDirectoryController extends Controller
                 return true;
             })->values();
         }
+        if ($excludedValues) {
+            $rows=$rows->filter(function(array $row)use($excludedValues){
+                foreach($excludedValues as $key=>$choices) {
+                    $actual=$key==='amount'
+                        ? number_format((float)($row[$key]??0),2,'.','')
+                        : (string)($row[$key]??'');
+                    if(in_array($actual,array_map('strval',$choices),true))return false;
+                }
+                return true;
+            })->values();
+        }
         if ($facetColumn !== null) {
             $options=$rows->map(fn($row)=>$facetColumn==='amount'
                 ? number_format((float)($row['amount']??0),2,'.','')
@@ -565,7 +581,7 @@ final class DailyVoucherDirectoryController extends Controller
             return response()->json(['options'=>$options,'truncated'=>$rows->count()>5000,
                 'more_options'=>$rows->pluck($facetColumn)->unique()->count()>500]);
         }
-        $filteredTotal = ($columnFilters || $selectedValues) ? $rows->count() : $total;
+        $filteredTotal = ($columnFilters || $selectedValues || $excludedValues) ? $rows->count() : $total;
         return response()->json([
             'draw' => (int) $request->input('draw', 1), 'recordsTotal' => $total,
             'recordsFiltered' => $filteredTotal, 'data' => $rows->slice($start, $length)->values(),
