@@ -87,6 +87,60 @@ final class DailyVoucherApprovalWorkflow
                 throw new \DomainException('DAILY_VOUCHER_APPROVER_NOT_AUTHORIZED');
             }
 
+            // Legacy posted cash edit: original stays posted while correction
+            // is awaiting approval. Only after approval activate its matched
+            // reversal and corrected leg together, in this one transaction.
+            if ($decision === 'approved' && $locked->source_table === 'customer_ledger') {
+                $legacyCorrection = DB::table('daily_voucher_approval_events')
+                    ->where('approval_id',$locked->id)
+                    ->where('event','legacy_cash_correction')
+                    ->lockForUpdate()->first();
+                if ($legacyCorrection) {
+                    $meta = json_decode((string)$legacyCorrection->remarks,true);
+                    $oldId=(int)($meta['original_source_id']??0);
+                    $reverseId=(int)($meta['reversal_source_id']??0);
+                    if (!$oldId || !$reverseId || $oldId===$reverseId ||
+                        $reverseId===(int)$locked->source_id) {
+                        throw new \DomainException('INVALID_LEGACY_CORRECTION_LINK');
+                    }
+                    $original=DB::table('customer_ledger')->where('id',$oldId)
+                        ->where('project_id',$locked->project_id)->lockForUpdate()->first();
+                    $reversal=DB::table('customer_ledger')->where('id',$reverseId)
+                        ->where('project_id',$locked->project_id)->lockForUpdate()->first();
+                    $corrected=DB::table('customer_ledger')->where('id',$locked->source_id)
+                        ->where('project_id',$locked->project_id)->lockForUpdate()->first();
+                    if (!$original || !$reversal || !$corrected ||
+                        $original->transaction_type !== $locked->voucher_type ||
+                        $reversal->transaction_type !== $locked->voucher_type ||
+                        $corrected->transaction_type !== $locked->voucher_type ||
+                        (int)$original->payment_type !== 1 || (int)$reversal->payment_type !== 1 ||
+                        (int)$corrected->payment_type !== 1 ||
+                        (int)$original->is_active !== 1 ||
+                        (int)$reversal->is_active !== 0 ||
+                        (int)$corrected->is_active !== 0 ||
+                        round((float)$reversal->amount_in,2) !== round((float)$original->amount_out,2) ||
+                        round((float)$reversal->amount_out,2) !== round((float)$original->amount_in,2)) {
+                        throw new \DomainException('LEGACY_CASH_REVERSAL_INTEGRITY_FAILED');
+                    }
+                    $leg=DB::table('ledgers as ledger')
+                        ->join('project_head_subheads as account','account.id','=','ledger.project_head_subheads_id')
+                        ->where('ledger.customer_ledger_id',$reverseId)
+                        ->where('ledger.type',$locked->voucher_type)
+                        ->where('account.project_id',$locked->project_id)
+                        ->lockForUpdate()->get(['ledger.id','ledger.is_active']);
+                    if ($leg->count()!==1 || (int)$leg->first()->is_active!==0) {
+                        throw new \DomainException('LEGACY_CASH_REVERSAL_LEG_INVALID');
+                    }
+                    DB::table('customer_ledger')->where('id',$reverseId)
+                        ->where('project_id',$locked->project_id)->update(['is_active'=>1]);
+                    DB::table('ledgers')->where('id',$leg->first()->id)->update(['is_active'=>1]);
+                    DB::table('daily_voucher_approval_events')->insert([
+                        'approval_id'=>$locked->id,'event'=>'legacy_cash_correction_activated',
+                        'actor_id'=>$actorId,'remarks'=>'Approved original offset and corrected posting',
+                        'created_at'=>now(),
+                    ]);
+                }
+            }
             // An approved cash correction is append-only. Keep the original
             // posting active while the replacement is pending/rejected. Only
             // when the authorized approver accepts the replacement, atomically
