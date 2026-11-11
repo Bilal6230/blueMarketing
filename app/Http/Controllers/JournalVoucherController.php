@@ -106,6 +106,38 @@ class JournalVoucherController extends Controller
                 return response()->json(['options'=>array_slice($options,0,500),
                     'more_options'=>count($options)>500]);
             }
+            $excluded=(array)$request->input('excel_excluded',[]);
+            foreach($excluded as $field=>$values) {
+                if($field==='approval_status' && is_array($values)) {
+                    $statuses=array_unique(array_map('strtolower',array_map('strval',$values)));
+                    if(count($statuses)>4 || array_diff($statuses,['pending','approved','rejected','posted']))
+                        abort(422,'Invalid excluded statuses.');
+                    if(\Illuminate\Support\Facades\Schema::hasTable('daily_voucher_approvals')) {
+                        if(in_array('posted',$statuses,true)){
+                            $query->whereExists(function($sub)use($selectedProjectId) {
+                                $sub->selectRaw('1')->from('daily_voucher_approvals as a')
+                                    ->whereColumn('a.source_id','journal_vouchers.id')
+                                    ->where('a.project_id',$selectedProjectId)->where('a.source_table','journal_vouchers');
+                            });
+                        }
+                        $others=array_diff($statuses,['posted']);
+                        if($others){
+                            $query->whereNotExists(function($sub)use($selectedProjectId,$others){
+                                $sub->selectRaw('1')->from('daily_voucher_approvals as a')
+                                    ->whereColumn('a.source_id','journal_vouchers.id')
+                                    ->where('a.project_id',$selectedProjectId)
+                                    ->where('a.source_table','journal_vouchers')->whereIn('a.status',$others);
+                            });
+                        }
+                    }elseif(in_array('posted',$statuses,true))$query->whereRaw('1=0');
+                    continue;
+                }
+                if(!in_array($field,$allowedExcelColumns,true)||!is_array($values)||
+                    count($values)>100)abort(422,'Invalid excluded values.');
+                foreach($values as $v)if(!is_scalar($v)||mb_strlen((string)$v)>255)
+                    abort(422,'Invalid excluded value.');
+                if($values)$query->whereNotIn($field,array_map('strval',$values));
+            }
             $selected=(array)$request->input('excel_values',[]);
             foreach($selected as $field=>$values) {
                 if($field==='approval_status' && is_array($values)) {
