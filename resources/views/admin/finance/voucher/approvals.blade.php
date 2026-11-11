@@ -107,7 +107,20 @@
        <td>{{ $item->decided_at?->format('d-M-Y H:i:s') }}</td>
        <td class="vap-voucher-no">{{ $voucherDetails[$item->id]['number'] ?? '—' }}</td>
        <td>{{ $item->submitter?->name ?? 'User #'.$item->submitted_by }}</td>
-       <td><span class="vap-status {{ $item->status }}">{{ ucfirst($item->status) }}</span></td>
+       @php
+          $latestEdit = $editDecisions[$item->id] ?? null;
+          $editRejected = $latestEdit && $latestEdit->status === 'rejected';
+       @endphp
+       <td>
+        @if($editRejected)
+         <span class="vap-status rejected">Edit Rejected</span>
+         <small class="text-muted d-block">Original {{ ucfirst($item->status) }}</small>
+        @elseif($latestEdit && $latestEdit->status === 'applied')
+         <span class="vap-status approved">Edit Approved</span>
+        @else
+         <span class="vap-status {{ $item->status }}">{{ ucfirst($item->status) }}</span>
+        @endif
+       </td>
        <td>{{ $item->assignedApprover?->name ?? 'User #'.$item->assigned_approver_id }}</td>
        <td style="max-width:280px;white-space:normal">{{ $item->rejection_reason ?: '—' }}</td>
        @php
