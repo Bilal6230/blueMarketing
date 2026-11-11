@@ -101,7 +101,7 @@ final class RejectedCashVoucherResubmission
             ]);
             $series=app(ProjectVoucherDisplayIdentity::class)
                 ->series($projectId,'customer_ledger',$sourceId) ?: ($type==='CR'?'CCR':'CDR');
-            $allowedSeries=$method===1?['CR','CP','CCR','CDR']:($type==='CR'?['BOR','CHR']:['BOP','CHP']);
+            $allowedSeries=$method===1?['CR','DR','CP','CCR','CDR']:($type==='CR'?['CR','BOR','CHR']:['DR','CP','BOP','CHP']);
             if (!in_array($series,$allowedSeries,true))
                 throw new \DomainException('Voucher series does not match bank/payment method.');
             $display=app(ProjectVoucherDisplayIdentity::class)
