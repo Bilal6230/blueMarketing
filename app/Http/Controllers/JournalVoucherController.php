@@ -90,6 +90,29 @@ class JournalVoucherController extends Controller
             });
         }
 
+        // Excel-style per-column menus share the same scoped SQL query.
+        // Never fetch only the first visible DataTables page for filter choices.
+        if ($request->ajax()) {
+            $allowedExcelColumns=['id','voucher_number','reference','date','description','total_debit'];
+            $excelColumn=(string)$request->input('excel_facet','');
+            if (in_array($excelColumn,$allowedExcelColumns,true)) {
+                $options=(clone $query)->reorder()->select($excelColumn)->distinct()
+                    ->orderBy($excelColumn)->limit(501)->pluck($excelColumn)
+                    ->map(fn($value)=>(string)$value)->all();
+                return response()->json(['options'=>array_slice($options,0,500),
+                    'more_options'=>count($options)>500]);
+            }
+            $selected=(array)$request->input('excel_values',[]);
+            foreach($selected as $field=>$values) {
+                if(!in_array($field,$allowedExcelColumns,true) || !is_array($values) ||
+                    !$values || count($values)>50) abort(422,'Invalid column selections.');
+                foreach($values as $value) {
+                    if(!is_scalar($value) || mb_strlen((string)$value)>255)
+                        abort(422,'Invalid filter value.');
+                }
+                $query->whereIn($field,array_map('strval',$values));
+            }
+        }
         // Column filters are applied in SQL before paging (not just the first page).
         if ($request->ajax()) {
             $columnTerms = (array) $request->input('columns', []);
