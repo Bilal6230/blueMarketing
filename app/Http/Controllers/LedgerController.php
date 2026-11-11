@@ -132,7 +132,7 @@ class LedgerController extends Controller
             'accounts_id' => ['required', 'integer', 'min:1'],
             'subaccounts_id' => ['required', 'integer', 'min:1'],
             'payment_type' => ['required', 'integer', 'in:1,2,3'],
-            'display_series' => ['nullable', 'string', 'in:CR,CP,CCR,CDR,BOR,BOP'],
+            'display_series' => ['nullable', 'string', 'in:CR,DR,CP,CCR,CDR,BOR,BOP'],
             'custom_payment_method_id' => ['nullable', 'integer', 'min:1'],
             'date' => ['required', 'date'],
             'voucher' => ['required', 'string', 'regex:/^(CR|CP)-\d+$/'],
@@ -443,11 +443,14 @@ class LedgerController extends Controller
                 $requestedDisplaySeries = strtoupper(trim((string) $request->input('display_series')));
                 if ($requestedDisplaySeries !== '') {
                     $seriesMapping = [
-                        'CR' => ['CR', 1], 'CCR' => ['CR', 1],
+                        'CCR' => ['CR', 1], 'CDR' => ['CP', 1],
+                        'CR' => ['CR', 1], 'DR' => ['CP', 1],
                         'BOR' => ['CR', 2], 'BOP' => ['CP', 2],
-                        'CP' => ['CP', 1], 'CDR' => ['CP', 1],
+                        'CP' => ['CP', 1],
                     ];
                     $seriesAllowed = match ($requestedDisplaySeries) {
+                        'CR' => $effectiveVoucherType === 'CR' && in_array($paymentType, [1, 2, 3], true),
+                        'DR' => $effectiveVoucherType === 'CP' && in_array($paymentType, [1, 2, 3], true),
                         'BOR' => $effectiveVoucherType === 'CR' && in_array($paymentType, [2, 3], true),
                         'BOP' => $effectiveVoucherType === 'CP' && in_array($paymentType, [2, 3], true),
                         default => isset($seriesMapping[$requestedDisplaySeries])
