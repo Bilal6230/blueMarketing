@@ -1,0 +1,60 @@
+# BlueMarketing — CR, CP, CCR, CDR, BOR, BOP Functional Specification (Roman Urdu)
+Date: 2026-11-11 | Branch: upgrade/laravel-framework | Status: Requirements captured; implementation NOT started.
+
+## SOURCE-CHECKED CURRENT BEHAVIOR
+- Current old Cash In: /admin/finance/voucher/in. Old Cash Out: /admin/finance/voucher/out.
+- Current LedgerController stores customer_ledger.transaction_type and ledgers.type ONLY as CR or CP; CCR/CDR/BOR/BOP are project_voucher_display_numbers display-series identities, NOT distinct persisted accounting types. Validator enforces CR-/CP- numbers and requires detail and payment_type.
+- Current Cash In/Out method codes: Cash=1, Online=2, Check=3. Cash hides bank_group. Online opens Number, Bank, Passing Date. Check adds required Cheque Purpose.
+- Existing CP Online/Check route also opens pending receipts clearance list, amount lock and statuses Pass=1, Return=2, Bounce=3. Some branches only update original pending source rather than create a new CP voucher. Keep this behavior for old CP and do not mistake it for independent BOP.
+- Current source can require approval to post; pending and rejected accounting stays inactive. Current approval support is CR/CP/JV, not real CCR/CDR/BOR/BOP.
+
+## OWNER-REQUESTED FINAL BEHAVIOR
+### CR — original Cash In Voucher
+- Preserve old business logic for Cash / Online / Check payment type selection and all conditional fields, account cascades, save rules, project isolation and approval/clearance. Only visual UI should remain modern.
+- Base existing fields: Voucher No, Date, Amount, Account Type, Accounts, Child Account, Payment Type, Details. Online: Number, Bank, Passing Date. Check: those fields plus Cheque Purpose.
+- CR database type remains CR. Own CR-only list.
+### CP — original Cash Out Voucher (old DR screen)
+- Preserve old business flow, including Cash / Online / Check; CP Online/Check pending receipt selection, locked amount, status Pass/Return/Bounce, no duplicate unrelated voucher.
+- Bank/cheque conditional fields same old form; preserve historical accounting and validations; design remains modern.
+- CP database type remains CP. Own CP-only list.
+### CCR — NEW Cash Credit / Cash Receipt Voucher
+- Must be a real database type CCR in transaction_type / ledgers.type, not display series only. Cash-only.
+- EXACT six visible fields: (1) Voucher No, (2) Date, (3) Amount, (4) Account Type, (5) Accounts, (6) Child Account.
+- NO Details, Remarks, Payment Type selector, Number, Bank, Passing Date, Cheque Purpose or clearance fields.
+- Backend validates only applicable fields; fixed internal cash method if schema needs it. Current mandatory detail conflicts with six-field spec and must be redesigned safely (system narration/nullable strategy to be decided during implementation).
+- Own CCR-only listing.
+### CDR — NEW Cash Debit / Cash Payment Voucher
+- Must be real database type CDR; outgoing cash; same EXACT six visible fields as CCR and no other fields.
+- Own CDR-only listing, correct outgoing ledger amount, project scope and approvals.
+### BOR — NEW Bank Receipt Voucher
+- Display title Bank Receipt Voucher. Must persist real BOR type.
+- Payment Type offers ONLY Online or Cheque. NO Cash.
+- Created ONLY from eligible confirmed Online Management receipt or passed/cleared Cheque Management incoming source. Require source id, status, project, amount, direction and unique linkage. Do not permit arbitrary fake bank receipts.
+- Source financial reference/amount must be immutable and bank fields derive from verified source. Exact bank-side allocation details need separate implementation audit.
+- Own BOR-only list.
+### BOP — NEW Bank Payment Voucher
+- Display title Bank Payment Voucher. Must persist real BOP type.
+- Payment Type offers ONLY Online or Cheque. NO Cash.
+- Created ONLY from eligible confirmed Online Management OUT payment or passed/cleared issued cheque source. Ensure true outgoing direction, amount, bank account, unique linkage and non-duplication.
+- Do not turn old CP's clearance-of-an-incoming-receipt operation into an outgoing BOP.
+- Own BOP-only list.
+
+## SHARED MODERN UI
+- Six separate list pages, each filtered by actual persisted voucher type; no mixed rows across types. Existing historical CR/CP not rewritten automatically.
+- Modern forms/modal Add/Edit, confirmation, validation, toast, table column filters, date/account/type filters, fixed-card internal scroll, print and pagination, following already approved BlueMarketing styling.
+- Only jQuery for first-party frontend logic; use existing third-party Tom Select integrations appropriately.
+
+## IMPLEMENTATION SAFETY / GATES
+1. Audit schema constraints, typed relation consumers, bank clearance registries, approval workflow, posting guards, allocator, revision service, deletion, historical reporting and V2 pilot routes before any real-type migration.
+2. Current LedgerController store hardcodes CR/CP and requires detail/payment_type. New types need independent validators and correct account direction, unique numbering, source linkage and approval activation rules.
+3. Ensure BOR/BOP source-linked issuance from confirmed online/passed cheque management with immutable amount, one-time idempotent posting, no duplicate ledger or bank movement.
+4. Historical CR/CP and existing display-series identities remain readable; no irreversible backfill without separate review.
+5. Original CR/CP Create validation is currently reported broken: investigate and repair before 3B2A/B browser tests are claimed PASS.
+6. Browser acceptance: all six persistence types, correct conditional field visibility, CCR/CDR six-field-only form, six independent lists, permission and approval gates, negative duplicate/cross-project/source-status tests, print, return/bounce, ledger and history.
+7. Phase 03 currently open; 3B2A/B testing temporarily HOLD per user. This document records requirements ONLY, not production implementation.
+
+## PROPOSED SEQUENCE (for discussion; not executed)
+- Phase 03 corrective milestone: fix old CR/CP creation and conditional validation, then 3B2A/B browser tests.
+- Phase 04.1: CCR/CDR true persistent types + exactly-six-field forms + separate lists, browser gate.
+- Phase 04.2: BOR source-linked verified incoming posting and BOP verified outgoing posting, each independently browser gated.
+- Phase 04.3–04.4 and Phases 05–09 proceed under established browser PASS gates.

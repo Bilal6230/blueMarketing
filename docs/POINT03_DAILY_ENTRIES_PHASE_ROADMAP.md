@@ -61,3 +61,8 @@ Use `COMPLETE`, `PARTIAL`, `PENDING`, `BLOCKED` grounded in evidence. Never inve
 - Phase 07 (07.1–07.3): narration and bank-linked voucher history.
 - Phase 08 (08.1–08.3): cheque/online dashboard.
 - Phase 09 (09.1–09.3): end-to-end acceptance and delivery.
+
+## 2026-11-11 — Clarified six-voucher type requirements
+- Owner specification: docs/POINT03_CR_CP_CCR_CDR_BOR_BOP_FUNCTIONAL_SPEC.md (source-inspected, documentation only).
+- CR/CP retain original conditional Cash/Online/Check flows and CP pending clearance, modern UI only. CCR/CDR require real database types and exactly six visible fields. BOR/BOP require real database types, Online/Check only, created from eligible confirmed online or cleared cheque sources, with six independent voucher lists.
+- Current app only persists CR/CP source and ledger types; other four are display series. Phase 04 implementation cannot be marked complete. CR/CP create validation blocker and 3B2A/B browser HOLD remain unchanged.

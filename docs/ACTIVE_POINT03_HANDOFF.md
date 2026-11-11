@@ -97,3 +97,8 @@ No claim of local migration, browser or PHP test execution unless actually verif
 - Owner explicitly put CR/CP 3B2A browser testing HOLD because CR/CP create validation fails. They authorized implementation of 3B2B despite gate. 3B2B extends rejected CR/CP revision to payment_type 2/3 only if source and its single ledger inactive, no bank clearance outcome/posted date, no subsequent finance cheque/online lifecycle decisions. New pending source keeps instrument metadata; old history immutable. Browser test of 3B2A/3B2B still HOLD; investigate create validation next. Phase 03 remains ACTIVE, Phase 04–09 remain locked.
 
 - Final 3B2B UI review: replaced raw numeric bank_id input with getPakistanBanks list-backed select, matching existing CR/CP voucher form bank values. Browser testing remains ON HOLD.
+
+## 2026-11-11 — Six voucher specification documented
+- User explicitly asked to discuss existing CR/CP old business logic and document CCR/CDR/BOR/BOP requirements. Canonical file: docs/POINT03_CR_CP_CCR_CDR_BOR_BOP_FUNCTIONAL_SPEC.md.
+- CR/CP: old Cash/Online/Check switching and CP pending clearance preserved, visual UI modern. CCR/CDR: real transaction_type/ledger.type and only six visible fields (no Details). BOR/BOP: real types, Online/Check only, source-linked to eligible passed Cheque Management and confirmed Online Management transactions. Six separate lists.
+- Current code uses CCR/CDR/BOR/BOP as display series over CR/CP: full backend implementation NOT done. Do not claim done. CR/CP validation repair and 3B2A/B browser gate held. No live data/schema changed.
