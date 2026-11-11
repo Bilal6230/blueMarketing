@@ -288,6 +288,26 @@ class VoucherController extends Controller
         return back()->with('success', 'Voucher rejected.');
     }
 
+    /**
+     * Read-only preview of the SAME canonical numeric source/ledger counter
+     * used by ProjectVoucherAllocator::next() inside the posting transaction.
+     * Never recycle gaps; another user's concurrent save may reserve it first.
+     */
+    private function previewCanonicalCashNumber(int $projectId, string $type): int
+    {
+        abort_unless($projectId > 0 && in_array($type, ['CR','CP'], true), 422);
+        $sourceMax = (int) DB::table('customer_ledger')->where('project_id', $projectId)
+            ->where('transaction_type', $type)->max('type_id');
+        $ledgerMax = (int) DB::table('ledgers as ledger')
+            ->join('project_head_subheads as account','account.id','=','ledger.project_head_subheads_id')
+            ->where('account.project_id',$projectId)->where('ledger.type',$type)
+            ->max('ledger.voucher_number');
+        $counterMax = Schema::hasTable('ledger_voucher_counters')
+            ? (int) DB::table('ledger_voucher_counters')->where('project_id',$projectId)
+                ->where('voucher_type',$type)->value('last_number') : 0;
+        return max($sourceMax,$ledgerMax,$counterMax) + 1;
+    }
+
     private function cashVoucherPaymentType(?string $method): ?int
     {
         if ($method === null) {
@@ -410,26 +430,7 @@ class VoucherController extends Controller
         $x['table_data_route'] = $fixedPaymentType === null
             ? route('voucher.cash_in.data')
             : route('voucher.cash_in.method.data', ['method' => $method]);
-        $numbers = Ledger::where('type', 'CR')
-            ->where('voucher_number', '>', 0)
-            ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
-            ->orderBy('voucher_number')
-            ->pluck('voucher_number')
-            ->toArray();
-
-        $nextNumber = 1; // default starting number
-
-        if (!empty($numbers)) {
-            $allNumbers = range(min($numbers), max($numbers));
-            $missing = array_diff($allNumbers, $numbers);
-            if (!empty($missing)) {
-                // Get the smallest missing number
-                $nextNumber = min($missing);
-            } else {
-                // If no missing numbers, continue from max
-                $nextNumber = max($numbers) + 1;
-            }
-        }
+        $nextNumber = $this->previewCanonicalCashNumber((int) $selectedProjectId, 'CR');
 
         $x['latest_voucher_number'] = $nextNumber;
 
@@ -715,26 +716,7 @@ class VoucherController extends Controller
         $x['table_data_route'] = $fixedPaymentType === null
             ? route('voucher.cash_out.data')
             : route('voucher.cash_out.method.data', ['method' => $method]);
-        $numbers = Ledger::where('type', 'CP')
-            ->where('voucher_number', '>', 0)
-            ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
-            ->orderBy('voucher_number')
-            ->pluck('voucher_number')
-            ->toArray();
-
-        $nextNumber = 1; // default starting number
-
-        if (!empty($numbers)) {
-            $allNumbers = range(min($numbers), max($numbers));
-            $missing = array_diff($allNumbers, $numbers);
-            if (!empty($missing)) {
-                // Get the smallest missing number
-                $nextNumber = min($missing);
-            } else {
-                // If no missing numbers, continue from max
-                $nextNumber = max($numbers) + 1;
-            }
-        }
+        $nextNumber = $this->previewCanonicalCashNumber((int) $selectedProjectId, 'CP');
 
         $x['latest_voucher_number'] = $nextNumber;
 
@@ -2056,37 +2038,15 @@ class VoucherController extends Controller
 
     public function checkNewVoucherNumber(Request $request)
     {
-        $selectedProjectId = getSelectedTown();
-        // dd($request->all());
-        $type = $request->type;
-        $voucherNumber = (int) $request->number;
-        // Check if voucher number already exists
-        $exists = Ledger::where('type', $type)
-            ->where('voucher_number', '>', 0)
-            ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
-            ->where('voucher_number', $voucherNumber)
-            ->exists();
-
-        if ($exists) {
-            // Find next available number
-            $nextNumber = $voucherNumber + 1;
-
-            // Keep incrementing until a free number is found
-            while (
-                Ledger::where('type', $type)
-                    ->where('voucher_number', $nextNumber)
-                    ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId))
-                    ->exists()
-            ) {
-                $nextNumber++;
-            }
-
-            $voucherNumber = $nextNumber;
-        }
-
-        // ✅ Now $voucherNumber is guaranteed unique
-        $x['latest_voucher_number'] = $voucherNumber;
-        return response()->json($x);
+        $data = $request->validate([
+            'type' => ['required','string','in:CR,CP'],
+            'number' => ['nullable','integer','min:1'],
+        ]);
+        $projectId = (int) getSelectedTown();
+        abort_unless($projectId > 0,403);
+        return response()->json([
+            'latest_voucher_number' => $this->previewCanonicalCashNumber($projectId, $data['type']),
+        ]);
     }
     public function updateVoucherNumber()
     {
