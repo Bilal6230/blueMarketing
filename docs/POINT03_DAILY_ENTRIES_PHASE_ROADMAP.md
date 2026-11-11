@@ -1,3 +1,17 @@
+# Point03 — latest active voucher correction
+
+## 2026-11-11 — CR/DR OWNER CORRECTION AND FIRST SIX-FORM UI BATCH (LATEST AUTHORITY)
+
+**Previous CP-as-second-voucher delivery plan is superseded.** Required SIX UI/product identities are **CR Credit Voucher, DR Debit Voucher, CCR Cash Credit Voucher, CDR Cash Debit Voucher, BOR Bank Online Receipt Voucher, BOP Bank Online Payment Voucher**. Existing Cash In business flow must move to Credit Voucher (CR); existing Cash Out business flow must move to Debit Voucher (DR). Historical **CP** remains a legacy stored type pending a verified migration/compatibility design; it is not the new DR identity. Never mass-rewrite CP records.
+
+**Implementation order:** form foundation for ALL SIX first, then CR and DR protected real saves, then CCR/CDR real cash-only types, BOR/BOP verified-source saves, six independent lists/print/attachment persistence, and finally approval/resubmission acceptance.
+
+**First implementation batch committed:** six project-scoped GET-only form pages under `/admin/finance/voucher/forms/{type}`, new `SixVoucherFormController` and `six_voucher_form.blade.php`. All six show eight common inputs, jQuery account cascades and method-specific conditional inputs. CCR/CDR expose no banking fields; BOR/BOP have no cash choice. **Save intentionally disabled** until source/ledger identity, numbering, attachment persistence, bank source binding, approval and compatibility contracts are implemented; no false claim of working POST/ledger writes or browser PASS. CR/DR link to the existing legacy entry during rollout. Do not mark Phase 04 PASS.
+
+Next gated development: safe functional CR/DR posting and historical CP compatibility (plus optional secure file persistence), then the other four types. Owner browser PASS required at each completed functional batch, not for inactive mock save.
+
+---
+
 # BlueMarketing — Point 03 Daily Entries — Phase Roadmap
 **Source:** [Original Roman Urdu requirements](./BLUEMARKETING_POINT03_DAILY_ENTRIES_REQUIREMENTS_ROMAN_URDU.md) (preserved without rewriting).
 **Branch:** `upgrade/laravel-framework`
