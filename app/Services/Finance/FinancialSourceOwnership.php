@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class FinancialSourceOwnership
 {
-    public const FAMILIES = ['CR', 'CP', 'PPR', 'EC', 'ECP'];
+    public const FAMILIES = ['CR', 'CP', 'CCR', 'CDR', 'PPR', 'EC', 'ECP'];
 
     public function assertLinked(array $leg): void
     {
@@ -46,6 +46,12 @@ final class FinancialSourceOwnership
             (int) $source->project_id !== (int) $account->project_id ||
             !$sourceAndLegMatch) {
             throw new \DomainException('FINANCE_SOURCE_OWNER_MISMATCH');
+        }
+        if (in_array($type, ['CCR','CDR'], true) &&
+            ((int)($leg['type_id'] ?? 0) !== (int)$source->type_id ||
+             (int)($leg['voucher_number'] ?? 0) !== (int)$source->type_id ||
+             (int)$source->payment_type !== 1)) {
+            throw new \DomainException('CASH_ONLY_SOURCE_SERIES_MISMATCH');
         }
         if (in_array($type, ['EC', 'ECP'], true) &&
             ((int) ($leg['type_id'] ?? 0) !== (int) $source->type_id ||
