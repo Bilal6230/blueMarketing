@@ -46,9 +46,9 @@ final class DailyVoucherDirectoryController extends Controller
             'column_detail' => ['nullable', 'string', 'max:100'],
             'start' => ['sometimes', 'integer', 'min:0', 'max:50000'],
             'length' => ['sometimes', 'integer', 'min:1', 'max:100'],
-            'sort_column' => ['sometimes','string','in:date,number,head,subhead,amount,detail'],
+            'sort_column' => ['sometimes','string','in:date,number,head,subhead,amount,detail,status,approved_by'],
             'sort_direction' => ['sometimes','string','in:asc,desc'],
-            'facet_column' => ['sometimes','string','in:date,number,head,subhead,detail,amount,status'],
+            'facet_column' => ['sometimes','string','in:date,number,head,subhead,detail,amount,status,approved_by'],
             'column_values' => ['sometimes','array','max:7'],
             'column_values.*' => ['array','max:250'],
             'column_values.*.*' => ['string','max:255'],
@@ -69,9 +69,13 @@ final class DailyVoucherDirectoryController extends Controller
         // Cross-source column filters require a bounded complete candidate set.
         $filterCandidateLimit = 5000;
         $facetColumn=$filters['facet_column']??null;
-        $columnKeys=array_flip(['date','number','head','subhead','detail','amount','status']);
+        $columnKeys=array_flip(['date','number','head','subhead','detail','amount','status','approved_by']);
         $selectedValues=array_intersect_key($filters['column_values']??[],$columnKeys);
         $excludedValues=array_intersect_key($filters['column_excluded']??[],$columnKeys);
+        $isSuperAdmin=\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user());
+        if(!$isSuperAdmin && ($facetColumn==='approved_by' ||
+            isset($selectedValues['approved_by']) || isset($excludedValues['approved_by']) ||
+            ($filters['sort_column']??null)==='approved_by'))abort(403);
         $sortColumn = (string) ($filters['sort_column'] ?? 'date');
         $sortDirection = (string) ($filters['sort_direction'] ?? 'desc');
         $requiresFullCandidateSet = (bool) $columnFilters || (bool)$selectedValues
