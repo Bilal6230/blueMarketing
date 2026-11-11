@@ -865,10 +865,9 @@
 
     <script>
         function saveAsDraft() {
-            const form = $('#voucherForm')[0];
-            form.action = @json(in_array($voucherType,['CCR','CDR'],true)
+            $('#voucherForm').attr('action', @json(in_array($voucherType,['CCR','CDR'],true)
                 ? route('finance.voucher.cash-only.draft')
-                : ($fixedPaymentType !== null ? route('ledger.save_as_draft.fixed_method',['paymentType'=>$fixedPaymentType]) : route('ledger.save_as_draft')));
+                : ($fixedPaymentType !== null ? route('ledger.save_as_draft.fixed_method',['paymentType'=>$fixedPaymentType]) : route('ledger.save_as_draft'))));
         }
 
 
