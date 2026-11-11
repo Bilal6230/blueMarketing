@@ -90,6 +90,7 @@ final class SameSourceCashVoucherEdit
                 }
                 if ($approvals) {
                     $previous=(string)$approvals->status;
+                    $previousDecidedBy=$approvals->decided_by;
                     $approvals->forceFill([
                         'status'=>'pending','submitted_by'=>$userId,
                         'assigned_approver_id'=>$policy->approver_user_id,
@@ -98,6 +99,7 @@ final class SameSourceCashVoucherEdit
                     $approval=$approvals;
                 } else {
                     $previous='posted';
+                    $previousDecidedBy=null;
                     if (!$workflow->submitIfRequired($projectId,(string)$source->transaction_type,
                         'customer_ledger',$sourceId,$userId)) {
                         throw new \DomainException('Approval submission failed.');
@@ -117,6 +119,7 @@ final class SameSourceCashVoucherEdit
                     'actor_id'=>$userId,
                     'remarks'=>json_encode([
                         'edit_snapshot_id'=>$snapshotId,'previous_status'=>$previous,
+                        'previous_decided_by'=>$previousDecidedBy,
                         'revision_reason'=>$reason,
                     ],JSON_THROW_ON_ERROR),'created_at'=>now(),
                 ]);
