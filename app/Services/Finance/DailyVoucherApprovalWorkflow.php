@@ -151,7 +151,7 @@ final class DailyVoucherApprovalWorkflow
                         ->where('project_id',$locked->project_id)->update(['is_active'=>1,'is_approve'=>1]);
                     DB::table('ledgers')->where('id',$leg->first()->id)->update(['is_active'=>1]);
                     DB::table('daily_voucher_approval_events')->insert([
-                        'approval_id'=>$locked->id,'event'=>'legacy_cash_correction_activated',
+                        'approval_id'=>$locked->id,'event'=>'legacy_corr_activated',
                         'actor_id'=>$actorId,'remarks'=>'Approved original offset and corrected posting',
                         'created_at'=>now(),
                     ]);
@@ -204,7 +204,7 @@ final class DailyVoucherApprovalWorkflow
                         ->where('project_id', $locked->project_id)
                         ->update(['is_active'=>0, 'delete_reason'=>$voidReason]);
                     DB::table('daily_voucher_approval_events')->insert([
-                        'approval_id'=>$originalApprovalId, 'event'=>'superseded_by_approved_correction',
+                        'approval_id'=>$originalApprovalId, 'event'=>'approved_corr_superseded',
                         'actor_id'=>$actorId,
                         'remarks'=>json_encode(['replacement_source_id'=>$locked->source_id,
                             'replacement_approval_id'=>$locked->id], JSON_THROW_ON_ERROR),
