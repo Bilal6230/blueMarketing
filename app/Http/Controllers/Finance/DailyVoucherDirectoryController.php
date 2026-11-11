@@ -185,6 +185,8 @@ final class DailyVoucherDirectoryController extends Controller
                     'amount' => (float) max((float) ($source->amount_in ?? 0), (float) ($source->amount_out ?? 0)),
                     'status' => ucfirst((string)($sourceApprovals[$source->id]['status']??(!empty($source->is_active)?'posted':'inactive'))),
                     'approval_approver' => $sourceApprovals[$source->id]['approver']??null,
+                    'approved_by' => \App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())
+                        ? ($sourceApprovals[$source->id]['approved_by'] ?? null) : null,
                     'rejection_reason' => $sourceApprovals[$source->id]['reason'] ?? null,
                     'detail' => (string) ($source->description ?? ''),
                     'audit' => array_filter([
@@ -301,6 +303,8 @@ final class DailyVoucherDirectoryController extends Controller
                     'amount' => (float) ($voucher->total_debit ?? 0),
                     'status' => ucfirst((string)($voucherApprovals[$voucher->id]['status']??'posted')),
                     'approval_approver' => $voucherApprovals[$voucher->id]['approver']??null,
+                    'approved_by' => \App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())
+                        ? ($voucherApprovals[$voucher->id]['approved_by'] ?? null) : null,
                     'detail' => (string) ($voucher->description ?? ''),
                     'lines' => $lines,
                     'audit' => array_filter([
