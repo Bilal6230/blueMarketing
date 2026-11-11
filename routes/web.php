@@ -323,6 +323,8 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
     Route::post('finance/cheques', [\App\Http\Controllers\Finance\ChequeIntakeController::class, 'store'])
         ->middleware(['permission:create voucher', 'throttle:20,1'])->name('finance.cheques.store');
 
+    Route::get('finance/voucher/cash-only/attachment/{attachment}', [\App\Http\Controllers\Finance\CashOnlyVoucherController::class, 'attachment'])
+        ->whereNumber('attachment')->middleware('permission:read voucher')->name('finance.voucher.cash-only.attachment');
     Route::post('finance/voucher/cash-only', [\App\Http\Controllers\Finance\CashOnlyVoucherController::class, 'store'])
         ->middleware(['permission:create voucher','throttle:20,1'])->name('finance.voucher.cash-only.store');
 
