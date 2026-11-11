@@ -8,6 +8,26 @@ html,body{width:100%!important;min-width:0!important;margin:0!important;padding:
 .wrapper{margin:0!important;padding:0!important;width:100%!important;max-width:none!important;min-height:0!important}
 .main-content.page-content{margin:0!important;margin-left:0!important;left:0!important;right:0!important;padding:0!important;width:100%!important;max-width:none!important;min-height:0!important;height:auto!important;overflow:visible!important}
 body.sidebar-collapse .main-content.page-content,body.sidebar-mini .main-content.page-content{margin-left:0!important}
+/* AdminLTE sidebar-collapse offsets .content-wrapper by ~4.6rem.
+   Override the exact high-specificity layout selector only for embed=1. */
+html body.sidebar-mini.sidebar-collapse .main-content.page-content > .content-wrapper,
+html body.sidebar-collapse .main-content.page-content > .content-wrapper,
+html body.sidebar-mini .main-content.page-content > .content-wrapper,
+html body .main-content.page-content > .content-wrapper{
+    margin-left:0!important;margin-right:0!important;
+    left:0!important;right:0!important;transform:none!important;
+    width:100%!important;max-width:100%!important;
+    float:none!important;box-sizing:border-box!important;
+}
+html body .main-content.page-content > .content-wrapper > .content,
+html body .main-content.page-content > .content-wrapper > .content > .container-fluid{
+    margin-left:0!important;margin-right:0!important;
+    padding-left:0!important;padding-right:0!important;
+    width:100%!important;max-width:100%!important;box-sizing:border-box!important;
+}
+html body .main-content.page-content > .content-wrapper .card-body{
+    box-sizing:border-box!important;max-width:100%!important;
+}
 .content-wrapper{margin:0!important;padding:0!important;width:100%!important;max-width:none!important;min-height:0!important;background:#fff!important}
 .content-wrapper>.content,.content-wrapper>.content>.container-fluid{margin:0!important;padding:0!important;width:100%!important;max-width:none!important}
 .content-wrapper .card{width:100%!important;max-width:none!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important}

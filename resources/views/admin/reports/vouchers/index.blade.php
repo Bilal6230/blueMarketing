@@ -209,6 +209,10 @@ $(function(){
    var $doc=$(this).contents(),$form=$doc.find('#journalForm');
    // Nested master layout has its own global preloader. Remove it in embed mode.
    $doc.find('#load_screen,.preloader').hide();
+   // The nested page must not inherit AdminLTE's collapsed sidebar offset.
+   $doc.find('body').removeClass('sidebar-mini sidebar-collapse layout-fixed layout-navbar-fixed');
+   $doc.find('.main-content.page-content,.content-wrapper').css({'margin-left':'0','margin-right':'0','width':'100%','max-width':'100%'});
+   $doc.find('.content-wrapper > .content > .container-fluid').css({'margin-left':'0','margin-right':'0','padding-left':'0','padding-right':'0'});
    if($doc.find('.alert-success').length){
     $('#jv-entry').modal('hide');table.ajax.reload(null,false);return;
    }
