@@ -83,44 +83,19 @@ final class RejectedCashVoucherController extends Controller
         if ($tracked) abort_unless(VoucherApproverAccess::isSuperAdmin($actor)
             || ((int)$tracked->submitted_by===(int)$actor->id
                 && (int)$actor->project_id===$project),403);
-        $policy=app(DailyVoucherApprovalWorkflow::class)->policy($project,(string)$source->transaction_type);
         try {
-            if ($tracked && ($tracked->status==='rejected' ||
-                ($tracked->status==='approved' && $policy !== null))) {
-                $saved=app(RejectedCashVoucherResubmission::class)->resubmit(
-                    $project,$customerLedger,(int)$actor->id,$data);
-                $pending=$saved['approval_pending'] ?? true;
-            } else {
-                // Untracked historical Posted and tracked Approved share the
-                // same append-only cash correction. The policy is checked at
-                // request time, not inferred from historical approval status.
-                abort_unless((int)$source->is_active===1,409,'Original voucher is no longer active.');
-                $account=ProjectHeadSubhead::availableForPosting()->where('project_id',$project)
-                    ->whereKey((int)$data['account_id'])->firstOrFail();
-                $amount=number_format((float)$data['amount'],2,'.','');
-                $saved=app(LegacyCashVoucherCorrection::class)->correct(
-                    $project,(int)$source->id,(int)$account->id,[
-                        'date'=>$data['date'],'description'=>$data['description'],
-                        'amount_in'=>$source->transaction_type==='CR'?$amount:0,
-                        'amount_out'=>$source->transaction_type==='CP'?$amount:0,
-                        'payment_type'=>(int)$source->payment_type,
-                        't_number'=>$source->payment_type==1?null:($data['t_number']??null),
-                        'bank_id'=>$source->payment_type==1?null:($data['bank_id']??null),
-                        'passing_date'=>$source->payment_type==1?null:($data['passing_date']??null),
-                        'cheque_purpose'=>$source->payment_type==3?($data['cheque_purpose']??null):null,
-                        'edit_reason'=>$data['revision_reason'],
-                        'reference'=>(string)$source->reference.'-CORR-'.now()->format('YmdHisu')
-                    ],(int)$actor->id);
-                $pending=(bool)($saved['approval_pending']??false);
-            }
+            $saved=app(\App\Services\Finance\SameSourceCashVoucherEdit::class)
+                ->submit($project,$customerLedger,(int)$actor->id,$data);
         } catch (\DomainException $e) {
             return response()->json(['message'=>$e->getMessage()],409);
         }
         return response()->json([
-            'message'=>$pending
-                ? 'Correction submitted for approval. Original accounting remains protected until decision.'
-                : 'Correction posted directly with original and reversal preserved in audit history.',
-            'approval_pending'=>$pending,
+            'message'=>$saved['pending']
+                ? 'Same voucher submitted as Pending. Number and source ID unchanged; original posting protected until approval.'
+                : 'Same voucher updated directly. Number and source ID unchanged; audit snapshot saved.',
+            'approval_pending'=>$saved['pending'],
+            'source_id'=>$saved['source_id'],
+            'voucher_number'=>$saved['voucher_number'],
         ]);
     }
 }
