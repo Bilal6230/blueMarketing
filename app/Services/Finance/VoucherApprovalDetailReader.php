@@ -16,7 +16,8 @@ final class VoucherApprovalDetailReader
             'amount'=>null,'status'=>(string)$approval->status,'lines'=>[],
             'created_at'=>null,'updated_at'=>null,'payment_type'=>null,
             'transaction_reference'=>null,'bank'=>null,'passing_date'=>null,
-            'pending_edit'=>false,'revision_reason'=>null,'rejection_reason'=>$approval->rejection_reason];
+            'pending_edit'=>false,'revision_reason'=>null,'rejection_reason'=>$approval->rejection_reason,
+            'edit_history'=>[]];
         $identity=app(ProjectVoucherDisplayIdentity::class);
         if ($approval->source_table==='customer_ledger' && Schema::hasTable('customer_ledger')) {
             $s=DB::table('customer_ledger')->where('id',$approval->source_id)
@@ -81,6 +82,18 @@ final class VoucherApprovalDetailReader
         }
         if ($approval->source_table==='customer_ledger' &&
             Schema::hasTable('daily_voucher_edit_snapshots')) {
+            $snapshots=DB::table('daily_voucher_edit_snapshots')
+                ->where('project_id',$project)->where('source_id',$approval->source_id)
+                ->orderByDesc('id')->limit(25)->get();
+            $base['edit_history']=$snapshots->map(function($snapshot) {
+                $previous=json_decode((string)$snapshot->before_snapshot,true);
+                $proposed=json_decode((string)$snapshot->proposed_snapshot,true);
+                return [
+                    'status'=>$snapshot->status,'reason'=>$snapshot->reason,
+                    'created_at'=>$snapshot->created_at,
+                    'before'=>$previous,'after'=>$proposed,
+                ];
+            })->all();
             $snapshot=DB::table('daily_voucher_edit_snapshots')
                 ->where('project_id',$project)->where('source_id',$approval->source_id)
                 ->where('approval_id',$approval->id)->where('status','pending')
