@@ -159,6 +159,33 @@
     @media(max-width:1200px){.daily-voucher-filters{grid-template-columns:repeat(3,minmax(115px,1fr))}.daily-voucher-actions{grid-column:1/-1;justify-content:flex-end}}
     @media(max-width:900px){.daily-voucher-filters{grid-template-columns:repeat(2,minmax(130px,1fr))}.daily-voucher-actions{grid-column:1/-1;justify-content:flex-end}}
     @media(max-width:520px){.daily-voucher-filters{grid-template-columns:1fr}.daily-voucher-page .daily-voucher-actions{grid-column:1;justify-content:flex-end}.content-wrapper.daily-voucher-page{padding:.35rem!important}}
+
+    /* Excel-like menu belongs to the viewport, never clipped by scrollable table. */
+    .daily-voucher-page .daily-voucher-table{border-collapse:separate;border-spacing:0}
+    .daily-voucher-page .daily-voucher-table th,
+    .daily-voucher-page .daily-voucher-table td{border-right:1px solid #dce3eb!important;border-bottom:1px solid #dce3eb!important}
+    .daily-voucher-page .daily-voucher-table th:first-child,
+    .daily-voucher-page .daily-voucher-table td:first-child{border-left:1px solid #dce3eb!important}
+    .daily-voucher-page .daily-voucher-table thead th{border-top:1px solid #dce3eb!important}
+    .daily-voucher-page .daily-voucher-table tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--dv-pale) 19%,white)}
+    .daily-voucher-page .daily-voucher-table tbody tr:hover td{background:color-mix(in srgb,var(--dv-pale) 51%,white)}
+    .daily-voucher-page .daily-voucher-table tbody td{height:42px;padding:.48rem .48rem}
+    .daily-voucher-page .dv-filter-heading{vertical-align:middle;white-space:nowrap}
+    .daily-voucher-page .dv-excel-trigger{float:right;min-width:25px;height:24px;border:1px solid transparent;border-radius:4px;color:#607086;background:transparent}
+    .daily-voucher-page .dv-excel-trigger:hover,.daily-voucher-page .dv-excel-trigger[aria-expanded=true]{border-color:var(--dv-accent);background:#fff;color:var(--dv-accent)}
+    .daily-voucher-page .dv-excel-trigger.dv-has-filter{color:var(--dv-accent);background:#fff;border-color:var(--dv-accent)}
+    .dv-excel-popover{position:fixed;z-index:1100;width:288px;max-width:calc(100vw - 20px);background:white;border:1px solid #c9d3de;border-radius:8px;box-shadow:0 14px 38px rgba(13,34,56,.22);padding:10px;color:#273549;font-size:12px}
+    .dv-excel-popover.d-none{display:none!important}
+    .dv-excel-title{font-weight:700;font-size:13px;margin:0 0 7px}
+    .dv-excel-sort{width:100%;display:block;border:0;background:white;text-align:left;padding:8px;border-radius:4px;color:#273549}
+    .dv-excel-sort:hover,.dv-excel-sort:focus-visible{background:#ecf4fc}
+    .dv-excel-divider{border-top:1px solid #e1e7ed;margin:8px 0}
+    .dv-excel-values{height:190px;overflow:auto;border:1px solid #dde4ec;border-radius:5px;margin-top:7px;padding:5px}
+    .dv-excel-choice{display:flex;align-items:center;gap:7px;margin:0;padding:5px 3px;cursor:pointer;overflow-wrap:anywhere}
+    .dv-excel-choice:hover{background:#f1f6fc}
+    .dv-excel-choice input{flex:0 0 auto;margin:0}
+    .dv-excel-footer{display:flex;gap:6px;justify-content:flex-end;margin-top:10px}
+    .dv-excel-footer .btn-primary{background:#2165b4;border-color:#2165b4}
 </style>
 <div class="content-wrapper daily-voucher-page {{ in_array($presetType, ['CCR','CDR'], true) ? 'dv-cash-only' : '' }} {{ in_array($presetType, ['CR','CCR','BOR'], true) ? 'dv-theme-credit' : (in_array($presetType, ['DR','CDR','BOP','CP'], true) ? 'dv-theme-debit' : '') }}" id="dv-page">
     <section class="content-header"><div class="container-fluid d-flex justify-content-between align-items-center">
@@ -225,13 +252,18 @@
             <div class="daily-voucher-table-wrap" id="dv-table-wrap"><table class="table table-sm table-hover mb-0 daily-voucher-table">
                 <colgroup><col style="width:48px"><col style="width:100px"><col style="width:125px"><col style="width:160px"><col style="width:180px"><col><col style="width:115px"><col style="width:90px">@if(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user()))<col style="width:140px">@endif<col class="dv-col-actions"></colgroup>
                 <thead>
-                <tr><th>#</th><th class="dv-sortable" data-sort="date" tabindex="0" role="button">Date<span class="dv-sort-indicator">↕</span></th><th class="dv-sortable" data-sort="number" tabindex="0" role="button">Voucher #<span class="dv-sort-indicator">↕</span></th><th class="dv-sortable" data-sort="head" tabindex="0" role="button">Head<span class="dv-sort-indicator">↕</span></th><th class="dv-sortable" data-sort="subhead" tabindex="0" role="button">Sub Head<span class="dv-sort-indicator">↕</span></th><th class="dv-sortable" data-sort="detail" tabindex="0" role="button">Details<span class="dv-sort-indicator">↕</span></th><th class="dv-sortable text-right" data-sort="amount" tabindex="0" role="button">Amount<span class="dv-sort-indicator">↕</span></th><th>Status</th>@if(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user()))<th>Approved By</th>@endif<th>Actions</th></tr>
-                <tr class="dv-column-filters">
-                    <th></th>
-                    @foreach(['date'=>'Date','number'=>'Voucher #','head'=>'Head','subhead'=>'Sub Head','detail'=>'Details','amount'=>'Amount'] as $key=>$label)
-                        <th><input type="search" class="form-control form-control-sm dv-column-filter" data-column="{{$key}}" aria-label="Filter {{$label}}" placeholder="Filter"></th>
+                <tr>
+                    <th>#</th>
+                    @foreach(['date'=>'Date','number'=>'Voucher #','head'=>'Head','subhead'=>'Sub Head','detail'=>'Details','amount'=>'Amount','status'=>'Status'] as $field=>$label)
+                    <th class="{{ $field==='amount' ? 'text-right' : '' }} dv-filter-heading" data-field="{{ $field }}">
+                        <span>{{ $label }}</span>
+                        <button type="button" class="dv-excel-trigger" data-column="{{ $field }}"
+                            aria-label="Sort or filter {{ $label }}" aria-expanded="false"
+                            aria-haspopup="dialog" title="Sort and filter {{ $label }}"><i class="fas fa-caret-down" aria-hidden="true"></i></button>
+                    </th>
                     @endforeach
-                    <th></th>@if(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user()))<th></th>@endif<th></th>
+                    @if(\\App\\Services\\Finance\\VoucherApproverAccess::isSuperAdmin(auth()->user()))<th>Approved By</th>@endif
+                    <th>Actions</th>
                 </tr>
             </thead><tbody id="dv-rows"></tbody></table></div>
             <div class="card-footer dv-pagination-footer">
@@ -240,6 +272,20 @@
             </div>
         </div>
     </div></section>
+</div>
+<div id="dv-excel-popover" class="dv-excel-popover d-none" role="dialog" aria-label="Column sorting and filtering">
+    <div class="dv-excel-title" id="dv-excel-title"></div>
+    <button type="button" class="dv-excel-sort" data-direction="asc"><i class="fas fa-sort-amount-up mr-2" aria-hidden="true"></i>Sort A to Z / Small to Large</button>
+    <button type="button" class="dv-excel-sort" data-direction="desc"><i class="fas fa-sort-amount-down mr-2" aria-hidden="true"></i>Sort Z to A / Large to Small</button>
+    <div class="dv-excel-divider"></div>
+    <label for="dv-excel-search" class="sr-only">Find filter values</label>
+    <input id="dv-excel-search" type="search" class="form-control form-control-sm" placeholder="Search values…" autocomplete="off">
+    <div class="dv-excel-values" id="dv-excel-values" role="group" aria-label="Filter choices"></div>
+    <div class="dv-excel-footer">
+        <button type="button" class="btn btn-sm btn-light" id="dv-excel-clear">Clear</button>
+        <button type="button" class="btn btn-sm btn-light" id="dv-excel-cancel">Cancel</button>
+        <button type="button" class="btn btn-sm btn-primary" id="dv-excel-apply">Apply</button>
+    </div>
 </div>
 <div class="modal fade" id="dv-detail-modal" tabindex="-1" role="dialog" aria-labelledby="dv-detail-title" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-scrollable" role="document"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="dv-detail-title">Voucher details</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div><div class="modal-body"><div class="dv-common-print-heading"><h3 class="mb-1">Voucher Details</h3><div id="dv-print-identity" class="small text-muted"></div><div class="small">Read-only voucher record · not a new accounting posting</div></div><dl class="row mb-0" id="dv-detail-fields"></dl><div id="dv-detail-lines-wrap" class="mt-3 d-none"><h6>Voucher lines</h6><div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>Account</th><th>Description</th><th class="text-right">Debit</th><th class="text-right">Credit</th></tr></thead><tbody id="dv-detail-lines"></tbody></table></div></div><div id="dv-detail-prints-wrap" class="mt-3 d-none"><h6>Plot receipt print views</h6><div id="dv-detail-prints" class="d-flex flex-wrap" style="gap:.5rem"></div></div><div id="dv-detail-audit-wrap" class="mt-3 d-none"><h6>Payment and audit information</h6><dl class="row mb-0" id="dv-detail-audit"></dl></div></div><div class="modal-footer"><button type="button" class="btn btn-outline-primary dv-common-print-button" id="dv-common-print"><i class="fas fa-print mr-1"></i> Print Details (A4)</button><a id="dv-detail-print" class="btn btn-primary" target="_blank" rel="noopener"><i class="fas fa-print mr-1"></i> Open print view</a><span id="dv-no-print" class="small text-muted d-none">No posted print record is available.</span><button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button></div></div></div></div>
 <div class="modal fade" id="dv-entry-modal" tabindex="-1" role="dialog" aria-labelledby="dv-entry-title" aria-hidden="true">
@@ -302,20 +348,117 @@
     const tableSearch=$('#dv-table-search')[0];
     $('#dv-page-length').on('change',function(){length=Number($(this).val());start=0;load();});
     $('#dv-table-search').on('input',()=>{clearTimeout(timer);timer=setTimeout(()=>{start=0;load();},300);});
+    const excelSelections={};
+    let excelCurrent=null,excelOptions=[],excelDraft=new Set(),excelFacetRequest=null;
+    const $excel=$('#dv-excel-popover');
     function updateSortArrows(){
-        $('.daily-voucher-table th.dv-sortable').each(function(){
-            const $th=$(this),isActive=$th.data('sort')===sortColumn;
-            $th.find('.dv-sort-indicator').text(isActive?(sortDirection==='asc'?'↑':'↓'):'↕');
-            $th.attr('aria-sort',isActive?(sortDirection==='asc'?'ascending':'descending'):'none');
+        $('.dv-excel-trigger').each(function(){
+            const $button=$(this),field=$button.data('column');
+            $button.toggleClass('dv-has-filter',Object.prototype.hasOwnProperty.call(excelSelections,field));
+            $button.attr('title',(field===sortColumn?(sortDirection==='asc'?'Sorted ascending. ':'Sorted descending. '):'')+
+                (Object.prototype.hasOwnProperty.call(excelSelections,field)?'Filter active. ':'')+'Sort or filter '+field);
+            $button.closest('th').attr('aria-sort',field===sortColumn?(sortDirection==='asc'?'ascending':'descending'):'none');
         });
     }
-    $('.daily-voucher-table th.dv-sortable').on('click',function(){
-        const column=$(this).data('sort');
-        sortDirection=sortColumn===column?(sortDirection==='asc'?'desc':'asc'):'asc';
-        sortColumn=column;start=0;updateSortArrows();load();
-    }).on('keydown',function(event){
-        if(event.key==='Enter'||event.key===' '){event.preventDefault();$(this).trigger('click');}
+    function closeExcel(){
+        $excel.addClass('d-none');
+        $('.dv-excel-trigger').attr('aria-expanded','false');
+        if(excelFacetRequest){excelFacetRequest.abort();excelFacetRequest=null;}
+        excelCurrent=null;
+    }
+    function renderExcelValues(){
+        const match=$.trim($('#dv-excel-search').val()).toLocaleLowerCase();
+        const $values=$('#dv-excel-values').empty();
+        const $all=$('<label>',{'class':'dv-excel-choice'})
+            .append($('<input>',{type:'checkbox','class':'dv-check-all'}))
+            .append($('<span>',{text:'(Select All Results)'}));
+        const shown=excelOptions.filter(value=>String(value).toLocaleLowerCase().includes(match));
+        $all.find('input').prop('checked',shown.length>0&&shown.every(v=>excelDraft.has(String(v))));
+        $values.append($all);
+        shown.forEach(value=>{
+            const str=String(value);
+            const $label=$('<label>',{'class':'dv-excel-choice'})
+                .append($('<input>',{type:'checkbox','class':'dv-excel-item',value:str,checked:excelDraft.has(str)}))
+                .append($('<span>',{text:str||'(Blank)'}));
+            $values.append($label);
+        });
+        if(!shown.length)$values.append($('<div>',{'class':'text-muted p-2',text:'No matching values'}));
+    }
+    function queryParams(){
+        const params=$('#daily-voucher-filters').serializeArray();
+        const query={};
+        $.each(params,(_,item)=>{query[item.name]=item.value;});
+        query.start=start;query.length=length;query.sort_column=sortColumn;query.sort_direction=sortDirection;
+        if($.trim($('#dv-table-search').val()))query.search=$.trim($('#dv-table-search').val());
+        $.each(excelSelections,(field,values)=>{
+            $.each(values,(_,value)=>{(query['column_values['+field+']']??=[]).push(value);});
+        });
+        return query;
+    }
+    $('.dv-excel-trigger').on('click',function(event){
+        event.stopPropagation();
+        const $button=$(this),field=$button.data('column');
+        if(excelCurrent===field){closeExcel();return;}
+        closeExcel();excelCurrent=field;excelOptions=[];
+        excelDraft=new Set(excelSelections[field]||[]);
+        $('.dv-excel-trigger').attr('aria-expanded','false');$button.attr('aria-expanded','true');
+        $('#dv-excel-title').text($button.closest('th').find('span:first').text());
+        $('#dv-excel-search').val('');
+        $('#dv-excel-values').text('Loading available values…');
+        $excel.removeClass('d-none');
+        const location=$button.offset(),top=location.top-$(window).scrollTop()+$button.outerHeight();
+        $excel.css({left:Math.max(8,Math.min(location.left-$(window).scrollLeft(),$(window).width()-300))+'px',
+            top:Math.max(8,Math.min(top,$(window).height()-355))+'px'});
+        const params=queryParams();
+        delete params['column_values['+field+']'];
+        params.facet_column=field;
+        excelFacetRequest=$.ajax({url:@json(route('finance.daily-vouchers.data')),method:'GET',
+            data:params,dataType:'json'}).done(result=>{
+            if(excelCurrent!==field)return;
+            excelOptions=(result.options||[]).map(String);
+            excelOptions.forEach(value=>{if(!Object.prototype.hasOwnProperty.call(excelSelections,field))excelDraft.add(value);});
+            renderExcelValues();
+            if(result.more_options)$('#dv-excel-values').prepend($('<div>',{'class':'small text-warning p-1',
+                text:'Showing first 500 distinct values. Narrow date/search for more.'}));
+        }).fail((xhr,status)=>{
+            if(status!=='abort'&&excelCurrent===field)
+                $('#dv-excel-values').text(xhr.responseJSON?.message||'Cannot load filter values.');
+        });
     });
+    $excel.on('change','.dv-excel-item',function(){
+        if($(this).is(':checked'))excelDraft.add($(this).val());
+        else excelDraft.delete($(this).val());
+        renderExcelValues();
+    }).on('change','.dv-check-all',function(){
+        const checked=$(this).is(':checked');
+        const match=$.trim($('#dv-excel-search').val()).toLocaleLowerCase();
+        excelOptions.filter(v=>String(v).toLocaleLowerCase().includes(match)).forEach(v=>{
+            if(checked)excelDraft.add(String(v));else excelDraft.delete(String(v));
+        });
+        renderExcelValues();
+    });
+    $('#dv-excel-search').on('input',renderExcelValues);
+    $('#dv-excel-apply').on('click',()=>{
+        if(!excelCurrent)return;
+        if(excelDraft.size===excelOptions.length&&excelOptions.every(v=>excelDraft.has(String(v))))
+            delete excelSelections[excelCurrent];
+        else excelSelections[excelCurrent]=[...excelDraft];
+        closeExcel();start=0;updateSortArrows();load();
+    });
+    $('#dv-excel-clear').on('click',()=>{
+        if(!excelCurrent)return;
+        delete excelSelections[excelCurrent];closeExcel();start=0;updateSortArrows();load();
+    });
+    $('#dv-excel-cancel').on('click',closeExcel);
+    $excel.on('click','.dv-excel-sort',function(){
+        if(!excelCurrent)return;
+        sortColumn=excelCurrent;sortDirection=$(this).data('direction');
+        closeExcel();start=0;updateSortArrows();load();
+    });
+    $(document).on('pointerdown.dvExcel',function(event){
+        if(!$(event.target).closest('#dv-excel-popover,.dv-excel-trigger').length)closeExcel();
+    }).on('keydown.dvExcel',function(event){if(event.key==='Escape')closeExcel();});
+    $('#dv-table-wrap').on('scroll',()=>{if(excelCurrent)closeExcel();});
     updateSortArrows();
     const scheduleLoad=()=>{clearTimeout(timer);timer=setTimeout(()=>{start=0;load();},300);};
     function showTableSkeleton(){
@@ -357,13 +500,10 @@
         if(activeController)activeController.abort();
         $(wrap).addClass('daily-voucher-loading');
         showTableSkeleton();
-        const params=new URLSearchParams($('#daily-voucher-filters').serialize()); params.set('start',start); params.set('length',length);
-        params.set('sort_column',sortColumn);params.set('sort_direction',sortDirection);
-        if($.trim($('#dv-table-search').val()))params.set('search',$.trim($('#dv-table-search').val()));
-        $('.dv-column-filter').each(function(){const value=$.trim($(this).val());if(value)params.set('column_'+$(this).data('column'),value);});
+        const params=queryParams();
         activeController=$.ajax({
             url:@json(route('finance.daily-vouchers.data')),
-            method:'GET',data:params.toString(),dataType:'json',
+            method:'GET',data:params,dataType:'json',
             headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}
         }).done(result=>{
             if(requestId!==activeRequest)return;
@@ -390,16 +530,14 @@
         $('#dv-from,#dv-to,#dv-account,#dv-search').val('');
         if($('#dv-type').is('select'))$('#dv-type').val('');
         $('#dv-table-search').val('');
-        $('.dv-column-filter').val('');
+        $.each(excelSelections,(field)=>{delete excelSelections[field];});closeExcel();
         start=0;sortColumn='date';sortDirection='desc';updateSortArrows();load();
     });
     $('#dv-type').on('change',function(){
         if($(this).is('select')){start=0;updateDirectoryTheme($(this).val());load();}
     });
     $('#dv-search').on('input',scheduleLoad);
-    $('.dv-column-filter').on('input search',scheduleLoad).on('keydown',event=>{
-        if(event.key==='Enter')event.preventDefault();
-    });
+
     // The modal contains the real voucher form. No overlay, spinner or polling.
     const entryFrame=$('#dv-entry-frame')[0];
     const entryError=$('#dv-entry-error')[0];
