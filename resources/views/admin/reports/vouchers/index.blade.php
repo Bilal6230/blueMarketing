@@ -200,7 +200,7 @@ $(function(){
   // Handle only the JV page; print links remain unchanged.
   if($(this).attr('target')==='_blank')return;
   var url=$(this).attr('href');
-  if(!url||!\/\/[^?#]+\/edit(?:[?#]|$)/.test(url))return;
+  if(!url || url.indexOf('/edit')===-1)return;
   e.preventDefault();
   openEntry(url,url.indexOf('resubmit=1')!==-1?'Revise & Resubmit Rejected Journal Voucher':'Edit Journal Voucher');
  });

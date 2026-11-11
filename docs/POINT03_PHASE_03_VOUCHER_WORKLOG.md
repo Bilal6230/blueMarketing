@@ -110,3 +110,7 @@
 - No schema changes, no automatic approval, no existing production-data mutation by migration. **Browser testing PENDING**: rejected JV Revise/Resubmit, valid re-approval, duplicate submit should 409, pending/approved edit blocked, unauthorized project/actor blocked, original reject audit preserved. CR/CP resubmit NOT implemented in this sub-batch; separate gated 3B2 after PASS.
 
 - **3B1 correction:** The Ledger model forbids updating account/amount/date. Replaced in-place revision with append-only new inactive detail/ledger records, archived previous detail rows and preserved original inactive ledger rows. Approval activates only current non-archived detail-linked legs, not rejected historic revisions. Browser gate pending.
+
+## 2026-11-11 — Critical JV listing regression (3B1)
+- User screenshot: JV page empty, DataTables toolbar/pagination absent after 3B1. Root cause: generated client-side handler had a malformed regex expression (`if(!url||!\\/\\/...`) without the opening JS regex slash, causing script parse error that blocked *all* DataTables initialization. Replaced with a simple jQuery-safe URL substring check (`url.indexOf('/edit')===-1`). The Edit and `?resubmit=1` actions remain delegated to existing modal. No backend, data or financial records affected.
+- Browser verification pending: existing 127+ JV records, toolbar/pagination and Edit/Revise modal. Do not advance 3B2 without owner PASS.
