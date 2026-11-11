@@ -224,13 +224,9 @@ final class DailyVoucherDirectoryController extends Controller
                                 && (int)auth()->user()->project_id===$projectId))
                         ? route('finance.daily-vouchers.revise.edit',['customerLedger'=>$source->id])
                         : ($ledgerId && empty($sourceApprovals[$source->id]) && auth()->user()?->can('update voucher')
-                            ? route(in_array($displayType, ['CR', 'CCR', 'BOR'], true) ? 'finance.voucher.in.method' : 'finance.voucher.out.method', [
-                                'method' => in_array((int) ($source->payment_type ?? 1), [2, 3], true)
-                                    ? ((int) $source->payment_type === 3 ? 'cheque' : 'online') : 'cash',
-                                'series' => $series ?: $displayType,
-                                'edit_ledger_id' => $ledgerId,
-                                'edit_voucher_type' => (string) $source->transaction_type,
-                            ]) : null),
+                            && in_array((string) $source->transaction_type, ['CR','CP'],true)
+                            && (int)$source->is_active === 1
+                            ? route('finance.daily-vouchers.revise.edit', ['customerLedger'=>$source->id]) : null),
                     'url' => $ledgerId
                         ? route('finance.voucher.print', ['id' => $ledgerId])
                         : route('finance.daily-vouchers.source.print', ['customerLedger' => $source->id]),
