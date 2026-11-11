@@ -68,7 +68,10 @@ final class SameSourceCashVoucherEdit
                 ->where('p.project_id',$projectId)->lockForUpdate()
                 ->get(['l.id','l.project_head_subheads_id','l.type','l.voucher_number',
                     'l.amount_in','l.amount_out','l.date','l.detail','l.is_active']);
-            if ($leg->count()!==1 || (int)$leg->first()->is_active!==(int)$source->is_active) {
+            if ($leg->count()!==1 || (int)$leg->first()->is_active!==(int)$source->is_active ||
+                DB::table('ledgers')->where('customer_ledger_id',$sourceId)->count()!==1 ||
+                round((float)$leg->first()->amount_in,2)!==round((float)$source->amount_in,2) ||
+                round((float)$leg->first()->amount_out,2)!==round((float)$source->amount_out,2)) {
                 throw new \DomainException('Single-leg voucher ownership/posting integrity required.');
             }
             $account=ProjectHeadSubhead::availableForPosting()
@@ -181,12 +184,15 @@ final class SameSourceCashVoucherEdit
         $leg=DB::table('ledgers as l')->join('project_head_subheads as a','a.id','=','l.project_head_subheads_id')
             ->where('l.id',$before['leg_id'])->where('l.customer_ledger_id',$approval->source_id)
             ->where('a.project_id',$approval->project_id)->lockForUpdate()
-            ->first(['l.id','l.project_head_subheads_id','l.is_active']);
+            ->first(['l.id','l.project_head_subheads_id','l.amount_in','l.amount_out','l.is_active']);
         if (!$source || !$leg || (int)$source->type_id!==(int)$before['type_id'] ||
             $source->transaction_type!==$before['type'] ||
             (int)$source->is_active!==(int)$before['active'] ||
             (int)$leg->is_active!==(int)$before['active'] ||
             (int)$leg->project_head_subheads_id!==(int)$before['account_id'] ||
+            DB::table('ledgers')->where('customer_ledger_id',$approval->source_id)->count()!==1 ||
+            round((float)$leg->amount_in,2)!==round((float)$before['amount_in'],2) ||
+            round((float)$leg->amount_out,2)!==round((float)$before['amount_out'],2) ||
             substr((string)$source->date,0,10)!==substr((string)$before['date'],0,10) ||
             (string)$source->description!==(string)$before['description'] ||
             round((float)$source->amount_in,2)!==round((float)$before['amount_in'],2) ||
