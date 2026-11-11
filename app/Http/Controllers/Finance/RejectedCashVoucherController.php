@@ -21,7 +21,11 @@ final class RejectedCashVoucherController extends Controller
         abort_unless(in_array((int)$source->payment_type,[1,2,3],true),409,'Unsupported payment method.');
         $approval=DailyVoucherApproval::query()->where('project_id',$project)
             ->where('source_table','customer_ledger')->where('source_id',$source->id)
-            ->where('status','rejected')->firstOrFail();
+            ->whereIn('status',['rejected','approved'])->firstOrFail();
+        if ($approval->status === 'approved') {
+            abort_unless((int)$source->payment_type === 1 && (int)$source->is_active === 1,409,
+                'Approved bank/cheque voucher correction requires a separately audited bank reversal.');
+        }
         $actor=auth()->user();
         abort_unless(VoucherApproverAccess::isSuperAdmin($actor)
             || ((int)$approval->submitted_by===(int)$actor->id
@@ -67,7 +71,7 @@ final class RejectedCashVoucherController extends Controller
             return response()->json(['message'=>$e->getMessage()],409);
         }
         return response()->json([
-            'message'=>'New voucher '.$saved['display'].' saved as Pending Approval. Original remains Rejected.'
+            'message'=>'New voucher '.$saved['display'].' saved as Pending Approval. Original '.($saved['original_status'] === 'approved' ? 'remains active until the correction is approved.' : 'remains Rejected.')
         ]+$saved);
     }
 }
