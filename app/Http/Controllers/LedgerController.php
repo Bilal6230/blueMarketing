@@ -128,8 +128,9 @@ class LedgerController extends Controller
                 }
             ],
             'detail' => ['required', 'string', 'max:255'],
-            'accounts_id' => ['required', 'integer'],
-            'subaccounts_id' => ['required', 'integer'],
+            'acct_type' => ['required', 'integer', 'min:1'],
+            'accounts_id' => ['required', 'integer', 'min:1'],
+            'subaccounts_id' => ['required', 'integer', 'min:1'],
             'payment_type' => ['required', 'integer', 'in:1,2,3'],
             'display_series' => ['nullable', 'string', 'in:CR,CP,CCR,CDR,BOR,BOP'],
             'custom_payment_method_id' => ['nullable', 'integer', 'min:1'],
@@ -137,8 +138,8 @@ class LedgerController extends Controller
             'voucher' => ['required', 'string', 'regex:/^(CR|CP)-\d+$/'],
             'voucher_number' => ['required', 'string', 'regex:/^(CR|CP)-\d+$/'],
             't_number' => ['required_if:payment_type,2,3', 'nullable', 'string', 'max:255'],
-            'bank_id' => ['required_if:payment_type,2,3', 'nullable', 'integer'],
-            'passing_date' => ['required_if:payment_type,2,3', 'nullable', 'date'],
+            'bank_id' => ['required_if:payment_type,2,3', 'nullable', 'integer', 'min:1'],
+            'passing_date' => ['required_if:payment_type,2,3', 'nullable', 'date_format:Y-m-d'],
             'cheque_purpose' => [
                 'nullable', 'string', 'max:500',
                 \Illuminate\Validation\Rule::requiredIf(fn () => (int) $request->input('payment_type') === 3
@@ -211,6 +212,14 @@ class LedgerController extends Controller
             ->where('project_id', $selectedProjectId)
             ->first();
 
+        if ($projectHeadSubhead && (int) $projectHeadSubhead->headAccounting?->account_type_id !== (int) $request->input('acct_type')) {
+            return response()->json([
+                'status' => 'error',
+                'error_key' => 'invalid_account_type',
+                'message' => 'Account Type does not match the selected account.',
+                'errors' => ['acct_type' => ['Please select the matching Account Type.']],
+            ], 422);
+        }
         if (!$projectHeadSubhead) {
             return response()->json([
                 'status' => 'error',

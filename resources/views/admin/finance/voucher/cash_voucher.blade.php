@@ -2263,18 +2263,31 @@
 
                 // Helper function
                 function checkField(selector, message, extraCheck = null) {
-                    let $field = $(selector);
-                    let val = $field.val().trim();
-
-                    if (!val || (extraCheck && !extraCheck(val))) {
+                    const $field = $('#voucherForm').find(selector).first();
+                    const raw = $field.val();
+                    const val = String(raw == null ? '' : raw).trim();
+                    const valid = !!$field.length && !!val && (!extraCheck || extraCheck(val));
+                    $field.toggleClass('is-invalid', !valid);
+                    const $control = $field[0] && $field[0].tomselect
+                        ? $($field[0].tomselect.wrapper) : $field;
+                    $control.toggleClass('is-invalid', !valid);
+                    const errorId = 'cash-create-error-' + $field.attr('name');
+                    let $error = $('#' + errorId);
+                    if (!valid) {
                         isValid = false;
                         messages.push(message);
-                        $field.addClass("is-invalid");
+                        if (!$error.length) {
+                            $error = $('<div/>', { id: errorId, class: 'invalid-feedback d-block cash-create-validation-error' });
+                            $control.after($error);
+                        }
+                        $error.text(message);
                     } else {
-                        $field.removeClass("is-invalid");
+                        $error.remove();
                     }
                 }
 
+                // Clear only this create form's validation markers.
+                $('#voucherForm .cash-create-validation-error').remove();
                 // Validate fields
                 // checkField("[name='reference']", "Reference No is required.");
                 checkField("[name='date']", "Date is required.");
@@ -2282,6 +2295,25 @@
                 checkField("[name='accounts_id']", "Accounts is required.");
                 checkField("[name='subaccounts_id']", "Child Account is required.");
                 checkField("[name='detail']", "Details are required.");
+                checkField("[name='payment_type']", "Payment Type is required.", function(val) {
+                    return ['1', '2', '3'].includes(val);
+                });
+                const paymentTypeCode = String($('#voucherForm #payment_type').val() || '');
+                const pendingId = String($('#voucherForm #selected_pending_payment_id').val() || '').trim();
+                if (paymentTypeCode === '2' || paymentTypeCode === '3') {
+                    checkField("[name='t_number']", "Transaction / Cheque Number is required.");
+                    checkField("[name='bank_id']", "Bank is required.");
+                    checkField("[name='passing_date']", "Passing Date is required.");
+                    if (@json($voucherType) === 'CP') {
+                        checkField("[name='selected_pending_payment_id']", "Select a pending receipt before clearance.");
+                        checkField("[name='pending_status']", "Clearance status is required.", function(val) {
+                            return ['1', '2', '3'].includes(val);
+                        });
+                    }
+                }
+                if (paymentTypeCode === '3' && !pendingId) {
+                    checkField("[name='cheque_purpose']", "Cheque Purpose is required.");
+                }
 
                 // Amount special check
                 checkField("[name='amount']", "Valid amount is required.", function(val) {
@@ -2289,22 +2321,24 @@
                     return !isNaN(val) && parseFloat(val) > 0;
                 });
 
-                const voucherVisible = String($("[name='voucher_number']").val() || '');
-                const voucherHidden = String($("[name='voucher']").val() || '');
+                const voucherVisible = String($('#voucherForm [name="voucher_number"]').val() || '');
+                const voucherHidden = String($('#voucherForm [name="voucher"]').val() || '');
                 const voucherRegex = /^(CR|CP)-\d+$/;
                 const visibleMatch = voucherVisible.match(voucherRegex);
                 const hiddenMatch = voucherHidden.match(voucherRegex);
-                if (!visibleMatch || !hiddenMatch || visibleMatch[1] !== hiddenMatch[1] || visibleMatch[1] !== @json($voucherType)) {
+                if (!visibleMatch || !hiddenMatch || voucherVisible !== voucherHidden || visibleMatch[1] !== @json($voucherType)) {
                     isValid = false;
                     messages.push("Invalid voucher number. Please refresh and try again.");
                 }
 
-                const accountId = String($("[name='accounts_id']").val() || '');
-                const subAccountId = String($("[name='subaccounts_id']").val() || '');
+                const accountId = String($('#voucherForm [name="accounts_id"]').val() || '');
+                const subAccountId = String($('#voucherForm [name="subaccounts_id"]').val() || '');
                 const accountSelect = $('#accounts_id')[0];
                 const subAccountSelect = $('#subaccounts_id')[0];
-                const accountExists = accountSelect?.tomselect?.options?.[accountId];
-                const subAccountExists = subAccountSelect?.tomselect?.options?.[subAccountId];
+                const accountExists = accountSelect?.tomselect
+                    ? !!accountSelect.tomselect.options[accountId] : !!$('#accounts_id option').filter(function() { return $(this).val() === accountId; }).length;
+                const subAccountExists = subAccountSelect?.tomselect
+                    ? !!subAccountSelect.tomselect.options[subAccountId] : !!$('#subaccounts_id option').filter(function() { return $(this).val() === subAccountId; }).length;
                 if (!accountId || !subAccountId || !accountExists || !subAccountExists) {
                     isValid = false;
                     messages.push("Please reselect Account and Child Account.");

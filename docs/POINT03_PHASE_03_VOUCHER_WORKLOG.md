@@ -135,3 +135,8 @@
 
 ## 2026-11-11 — Final owner clarification for common voucher fields
 - For all six CR, CP, CCR, CDR, BOR and BOP forms show eight common fields: Voucher No, Date, Amount, Account Type, Accounts, Child Account, Attachment/File Uploader (optional), Description/Narration (required). This supersedes all prior six/seven-field descriptions. Other method-specific behavior unchanged. No application/schema changes.
+
+## 2026-11-11 — CR/CP create validation repair, targeted first batch
+- CR/CP create form validator now safely converts nullable Tom Select values to strings (no null.trim crash), scoping all field lookups to #voucherForm, highlights missing values with inline errors, checks Payment Type 1/2/3, conditionally requires bank transaction number/bank/passing date, cheque purpose, and CP selected pending clearance/status. Cash mode does not require bank fields. Fixed voucher hidden/visible equality and ensured Tom Select fallback for non-enhanced selects.
+- Server validation now enforces Account Type presence, integer account IDs, positive bank ID and ISO passing date, plus matching head Account Type. Accounting transactions and ledger posting untouched. Browser test required on CR Cash/Online/Cheque and CP Cash/Online/Cheque, including pending amount lock and approval.
+- **Caution:** This does not claim to resolve all owner-reported validation problems without exact browser 422 payload. Batch 3B2A/B tests remain HOLD. Next gated stage is optional uploader on six voucher forms + real type rollout only after safe schema audit and owner PASS.

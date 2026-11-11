@@ -108,3 +108,6 @@ No claim of local migration, browser or PHP test execution unless actually verif
 ## 2026-11-11 — LATEST OWNER DECISION (overrides earlier field-count notes)
 - **Eight mandatory-to-display common form fields** for CR, CP, CCR, CDR, BOR, BOP: Voucher No, Date, Amount, Account Type, Accounts, Child Account, Attachment/File Uploader (optional file selection), Description/Narration (required). Attachment uploader visible on all six and optional; not a bank-specific field. CCR/CDR no bank/cheque extras. CR/CP old conditional Cash/Online/Check and pending-clearing functionality, BOR/BOP bank/online source-linked only. All older six/seven-field phrasing is superseded; do not remove description or uploader.
 - This turn updated docs only. CR/CP validation and browser testing still on hold.
+
+## 2026-11-11 — CR/CP first repair batch
+- User asked to begin work after documenting eight common fields. Started with existing CR/CP create validation. Null-safe jQuery create-form checks, conditional bank/cheque and CP pending receipt inputs, hidden/visible voucher equality, per-field inline feedback, backend Account Type matching, bank/date validation. No ledger mutation or CCR/CDR/BOR/BOP type migration yet. Browser testing required before next milestone. 3B2A/B browser HOLD continues.
