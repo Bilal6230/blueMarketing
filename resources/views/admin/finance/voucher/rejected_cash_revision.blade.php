@@ -25,13 +25,13 @@ body{overflow:auto!important}
 <h4>{{ $editStatus === 'rejected' ? 'Revise Rejected' : 'Edit' }} {{ $source->transaction_type === 'CP' ? 'DR' : $source->transaction_type }} Voucher</h4>
 <div class="alert alert-warning">
 @if($editStatus === 'rejected')
-Original voucher #{{ $source->type_id }} was rejected. Rejection Reason: {{ $approval?->rejection_reason ?? 'Not recorded' }}.
+Voucher #{{ $source->type_id }} was rejected. Rejection Reason: {{ $approval?->rejection_reason ?? 'Not recorded' }}. Revision keeps the same ID and voucher number.
 @elseif($editStatus === 'approved')
-Original approved voucher #{{ $source->type_id }} remains preserved. Correction will use an auditable new posting.
+Voucher #{{ $source->type_id }} will keep the same database ID and voucher number. No replacement voucher will be created.
 @else
-Original posted voucher #{{ $source->type_id }} remains preserved. Correction will use an auditable new posting.
+Voucher #{{ $source->type_id }} will keep the same database ID and voucher number. Changes are audited against this record.
 @endif
-{{ $usesApproval ? 'Approval is ON: the correction will remain Pending until approved.' : 'Approval is OFF: the authorized correction will post directly.' }}
+{{ $usesApproval ? 'Approval ON: changes stay pending as an audit snapshot; current posted accounting stays unchanged until approved.' : 'Approval OFF: same voucher and ledger will be updated directly with an audit snapshot.' }}
 </div>
 <form id="cash-revision-form" action="{{ route('finance.daily-vouchers.revise.store',$source->id) }}" method="post">
 @csrf
