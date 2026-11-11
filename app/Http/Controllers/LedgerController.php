@@ -1172,7 +1172,9 @@ class LedgerController extends Controller
     {
         $data = $request->validate([
             'id' => ['required', 'integer'], 'amount' => ['required', 'regex:/^\d[\d,]*(?:\.\d{1,2})?$/D'],
-            'detail' => ['required', 'string', 'max:255'], 'accounts_id' => ['required', 'integer'],
+            'detail' => ['required', 'string', 'max:255'],
+            'edit_reason' => ['required', 'string', 'min:3', 'max:500'],
+            'accounts_id' => ['required', 'integer'],
             'subaccounts_id' => ['required', 'integer'], 'date' => ['required', 'date_format:Y-m-d'],
             'payment_type' => ['required', 'integer', 'in:1,2,3'],
             't_number' => ['required_if:payment_type,2,3', 'nullable', 'string', 'max:255'],
@@ -1202,6 +1204,7 @@ class LedgerController extends Controller
                 [
                     'reference' => (string) $ledger->reference.'-CORR-'.now()->format('YmdHisu'),
                     'date' => $data['date'], 'description' => $data['detail'],
+                    'edit_reason' => $data['edit_reason'],
                     'amount_in' => $ledger->type === 'CR' ? $amount : 0,
                     'amount_out' => $ledger->type === 'CP' ? $amount : 0,
                     'payment_type' => $data['payment_type'], 't_number' => $cash ? null : $data['t_number'],
