@@ -425,6 +425,14 @@
                                                             <div class="error-message">{{ $message }}</div>
                                                         @enderror
                                                     </div>
+                                                    @if(in_array($voucherType,['CCR','CDR'],true))
+                                                        <div class="col-12 col-md-6 col-lg-4">
+                                                            <label for="cash-voucher-attachment" class="fbox mb-1">Attachment / File Uploader (optional)</label>
+                                                            <input type="file" class="form-control form-control-sm" id="cash-voucher-attachment"
+                                                                name="attachment" accept=".pdf,.jpg,.jpeg,.png,.webp">
+                                                            <small class="text-muted">PDF or image, maximum 5 MB.</small>
+                                                        </div>
+                                                    @endif
                                                     @if ($voucherType === 'CP')
                                                         <div class="col-12 mt-3" id="pendingPaymentsSection"
                                                             style="display: none;">
