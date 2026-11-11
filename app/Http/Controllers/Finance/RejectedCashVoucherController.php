@@ -24,7 +24,8 @@ final class RejectedCashVoucherController extends Controller
             ->where('status','rejected')->firstOrFail();
         $actor=auth()->user();
         abort_unless(VoucherApproverAccess::isSuperAdmin($actor)
-            || (int)($source->created_by??$source->create_by)===(int)$actor->id,403);
+            || ((int)$approval->submitted_by===(int)$actor->id
+                && (int)$actor->project_id===$project),403);
         $leg=Ledger::query()->withoutGlobalScopes()->where('customer_ledger_id',$source->id)->first();
         $accounts=DB::table('project_head_subheads as p')
             ->leftJoin('head_accountings as h','h.id','=','p.head_accounting_id')

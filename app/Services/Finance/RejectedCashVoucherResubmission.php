@@ -19,16 +19,16 @@ final class RejectedCashVoucherResubmission
             if ((int)$old->payment_type !== 1 || (int)$old->is_active !== 0)
                 throw new \DomainException('Only inactive rejected cash CR/CP can be revised.');
             $actor=User::query()->findOrFail($actorId);
-            if (!VoucherApproverAccess::isSuperAdmin($actor) &&
-                ((int)($old->created_by ?? $old->create_by) !== $actorId ||
-                 (int)$actor->project_id !== $projectId))
-                throw new \DomainException('Revision is restricted to creator or Super Admin.');
             $approval=DailyVoucherApproval::query()->where('project_id',$projectId)
                 ->where('source_table','customer_ledger')->where('source_id',$sourceId)
                 ->where('voucher_type',$old->transaction_type)
                 ->lockForUpdate()->firstOrFail();
             if ($approval->status !== 'rejected')
                 throw new \DomainException('Voucher is no longer rejected.');
+            if (!VoucherApproverAccess::isSuperAdmin($actor) &&
+                ((int)$approval->submitted_by !== $actorId ||
+                 (int)$actor->project_id !== $projectId))
+                throw new \DomainException('Revision is restricted to original submitter or Super Admin.');
             if (DB::table('daily_voucher_approval_events')
                 ->where('approval_id',$approval->id)->where('event','revised_to_new_source')
                 ->exists())

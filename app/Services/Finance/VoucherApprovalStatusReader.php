@@ -12,9 +12,10 @@ final class VoucherApprovalStatusReader
             ->leftJoin('users as u','u.id','=','a.assigned_approver_id')
             ->where('a.project_id',$projectId)->where('a.source_table',$table)
             ->whereIn('a.source_id',$ids)
-            ->get(['a.source_id','a.status','u.name as approver_name','a.rejection_reason'])
+            ->get(['a.source_id','a.status','a.submitted_by','u.name as approver_name','a.rejection_reason'])
             ->keyBy('source_id')->map(fn($row)=>[
                 'status'=>(string)$row->status,
+                'submitted_by'=>(int)$row->submitted_by,
                 'approver'=>(string)($row->approver_name??''),
                 'reason'=>(string)($row->rejection_reason??'')
             ])->all();

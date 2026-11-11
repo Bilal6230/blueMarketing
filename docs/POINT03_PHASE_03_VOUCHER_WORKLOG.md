@@ -117,3 +117,5 @@
 
 ## 2026-11-11 — Phase 03.3 Batch 3B2A Rejected cash CR/CP
 - Owner confirmed Batch 3B1 browser PASS. Implemented guarded append-only rejected **cash** CR/CP Revise & Resubmit: original source, ledger and rejected approval preserved, new source/ledger inactive with new project/series ID, pending approval and cross-linked audit events. Creator or Super Admin authorization, one-to-one inactive ledger check, project account, approval policy, duplicate revision and amount guards. jQuery AJAX revision modal on Daily Voucher Directory, original tracked edit/delete buttons hidden. No schema migration, no live data mutation by deployment. Bank/cheque revision remains next 3B2B after browser PASS.
+
+- Post-commit adjustment: rejected CR/CP revision creator authorization now uses immutable `daily_voucher_approvals.submitted_by` rather than source creator fields that may be absent on legacy cash sources. Read-only approval resolver exposes `submitted_by`; server/controller/directory all use consistent original submitter + selected-project checks.
