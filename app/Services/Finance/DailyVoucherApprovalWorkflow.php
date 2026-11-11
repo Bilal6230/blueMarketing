@@ -278,6 +278,25 @@ final class DailyVoucherApprovalWorkflow
             if (!$source) {
                 throw new \DomainException('DAILY_VOUCHER_SOURCE_NOT_FOUND');
             }
+            // A CCR/CDR decision must never activate a different series or a
+            // bank/cheque instrument. The original voucher numbers are fixed.
+            if (in_array((string)$approval->voucher_type,['CCR','CDR'],true)) {
+                if ((string)$source->transaction_type !== (string)$approval->voucher_type ||
+                    (int)$source->payment_type !== 1) {
+                    throw new \DomainException('CASH_ONLY_APPROVAL_SOURCE_TYPE_MISMATCH');
+                }
+                $legs = DB::table('ledgers as ledger')
+                    ->join('project_head_subheads as account','account.id','=','ledger.project_head_subheads_id')
+                    ->where('ledger.customer_ledger_id',$source->id)
+                    ->where('account.project_id',$approval->project_id)
+                    ->lockForUpdate()->get(['ledger.type','ledger.type_id','ledger.voucher_number']);
+                if ($legs->count()!==1 ||
+                    $legs->first()->type !== $approval->voucher_type ||
+                    (int)$legs->first()->type_id !== (int)$source->type_id ||
+                    (int)$legs->first()->voucher_number !== (int)$source->type_id) {
+                    throw new \DomainException('CASH_ONLY_APPROVAL_LEDGER_MISMATCH');
+                }
+            }
             $sourceUpdate = [];
             if (Schema::hasColumn('customer_ledger', 'is_active')) $sourceUpdate['is_active'] = $active ? 1 : 0;
             if (Schema::hasColumn('customer_ledger', 'is_approve')) $sourceUpdate['is_approve'] = $active ? 1 : 2;
