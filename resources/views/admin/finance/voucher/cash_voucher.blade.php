@@ -3,7 +3,7 @@
 @section('content')
 
     @php
-        $voucherType = is_string($type) && in_array($type, ['CR', 'CP'], true) ? $type : '';
+        $voucherType = is_string($type) && in_array($type, ['CR', 'CP', 'CCR', 'CDR'], true) ? $type : '';
     @endphp
     <style>
         @if($embeddedVoucher ?? false)
@@ -208,7 +208,7 @@
 
 
                                 @can('create voucher')
-                                    <form action="{{ $fixedPaymentType !== null ? route('ledger.store.fixed_method', ['paymentType' => $fixedPaymentType]) : route('ledger.store') }}" method="POST" enctype="multipart/form-data"
+                                    <form action="{{ in_array($voucherType, ['CCR','CDR'], true) ? route('finance.voucher.cash-only.store') : ($fixedPaymentType !== null ? route('ledger.store.fixed_method', ['paymentType' => $fixedPaymentType]) : route('ledger.store')) }}" method="POST" enctype="multipart/form-data"
                                         id="voucherForm">
                                         @csrf
                                         @if(!empty($displaySeries))<input type="hidden" name="display_series" value="{{ $displaySeries }}">@endif
@@ -338,6 +338,7 @@
                                                         @enderror
                                                     </div>
 
+                                                    @if(in_array($voucherType,['CCR','CDR'],true))<input type="hidden" id="payment_type" name="payment_type" value="1">@else
                                                     <div class="col-6 col-md-3 col-lg-2 {{ $fixedPaymentType !== null ? 'd-none' : '' }}">
 
                                                         <label class="fbox mb-1">Payment Type</label>
@@ -352,7 +353,8 @@
                                                         @enderror
                                                     </div>
 
-                                                    @if (isset($customPaymentMethods) && $customPaymentMethods->isNotEmpty())
+                                                    @endif
+                                                    @if (!in_array($voucherType, ['CCR','CDR'], true) && isset($customPaymentMethods) && $customPaymentMethods->isNotEmpty())
                                                         <div class="col-6 col-md-3 col-lg-2">
                                                             <label class="fbox mb-1" for="custom_payment_method_id">Payment Method</label>
                                                             <select class="form-select form-select-sm" name="custom_payment_method_id" id="custom_payment_method_id">
@@ -366,6 +368,7 @@
                                                         </div>
                                                     @endif
 
+                                                    @unless(in_array($voucherType, ['CCR','CDR'], true))
                                                     <div class="col-6 col-md-3 col-lg-2 bank_group" style="display: none">
                                                         <label class="fbox mb-1">Number</label>
                                                         <input id="t_number" type="text"
@@ -413,6 +416,7 @@
                                                             </select>
                                                         </div>
                                                     @endif
+                                                    @endunless
                                                     <div class="col-12 col-md-12 col-lg-10" style="margin-top: 10px">
                                                         <label for="detail" class="fbox mb-1">Details</label>
                                                         <textarea id="detail" class="form-control @error('detail') input-error @enderror"
@@ -2329,7 +2333,7 @@
 
                 const voucherVisible = String($('#voucherForm [name="voucher_number"]').val() || '');
                 const voucherHidden = String($('#voucherForm [name="voucher"]').val() || '');
-                const voucherRegex = /^(CR|CP)-\d+$/;
+                const voucherRegex = /^(CR|CP|CCR|CDR)-\d+$/;
                 const visibleMatch = voucherVisible.match(voucherRegex);
                 const hiddenMatch = voucherHidden.match(voucherRegex);
                 if (!visibleMatch || !hiddenMatch || voucherVisible !== voucherHidden || visibleMatch[1] !== @json($voucherType)) {
@@ -2441,7 +2445,7 @@
             function parseVoucherNumber(value) {
                 if (typeof value !== 'string') return null;
                 if (value.includes('{') || value.includes('}') || value.includes('&quot;')) return null;
-                const match = value.match(/^(CR|CP)-(\d+)$/);
+                const match = value.match(/^(CR|CP|CCR|CDR)-(\d+)$/);
                 if (!match || match[1] !== VOUCHER_TYPE) return null;
                 return parseInt(match[2], 10);
             }
