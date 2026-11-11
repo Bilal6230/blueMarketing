@@ -8,6 +8,13 @@ final class VoucherApprovalStatusReader
     {
         $ids=collect($sourceIds)->map(fn($id)=>(int)$id)->filter()->unique()->values();
         if($ids->isEmpty() || !Schema::hasTable('daily_voucher_approvals')) return [];
+        $lastEdits=[];
+        if ($table==='customer_ledger' && Schema::hasTable('daily_voucher_edit_snapshots')) {
+            $lastEdits=DB::table('daily_voucher_edit_snapshots')
+                ->where('project_id',$projectId)->whereIn('source_id',$ids)
+                ->whereIn('status',['applied','rejected'])
+                ->orderByDesc('id')->get()->unique('source_id')->keyBy('source_id');
+        }
         return DB::table('daily_voucher_approvals as a')
             ->leftJoin('users as u','u.id','=','a.assigned_approver_id')
             ->leftJoin('users as decision_user','decision_user.id','=','a.decided_by')
@@ -22,7 +29,9 @@ final class VoucherApprovalStatusReader
                 'approver'=>(string)($row->approver_name??''),
                 'approved_by'=>(string)$row->status==='approved' ? (string)($row->decided_by_name??'') : '',
                 'approved_by_id'=>(string)$row->status==='approved' ? (int)($row->decided_by??0) : null,
-                'reason'=>(string)($row->rejection_reason??'')
+                'reason'=>(string)($row->rejection_reason??''),
+                'last_edit_status'=>(string)($lastEdits[$row->source_id]->status ?? ''),
+                'last_edit_reason'=>(string)($lastEdits[$row->source_id]->reason ?? ''),
             ])->all();
     }
 }
