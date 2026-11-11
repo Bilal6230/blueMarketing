@@ -111,3 +111,12 @@ No claim of local migration, browser or PHP test execution unless actually verif
 
 ## 2026-11-11 — CR/CP first repair batch
 - User asked to begin work after documenting eight common fields. Started with existing CR/CP create validation. Null-safe jQuery create-form checks, conditional bank/cheque and CP pending receipt inputs, hidden/visible voucher equality, per-field inline feedback, backend Account Type matching, bank/date validation. No ledger mutation or CCR/CDR/BOR/BOP type migration yet. Browser testing required before next milestone. 3B2A/B browser HOLD continues.
+
+
+## 2026-11-11 OWNER-APPROVED DEPENDENCY RESEQUENCING — READ FIRST
+- **ACTIVE ORDER is now Phase 01 Cheque PASS → 02 Online PASS → 03 completed voucher foundation preserved → 04 six functional vouchers FIRST → 05 final approval/revision/resubmission acceptance → 06 bank narration/link history/deposit & withdrawal → 07 plot receive → 08 plot purchase/auto purchase → 09 dashboard → 10 full acceptance.** This supersedes older statements below that Phase 04 is locked behind unfinished 03.3 browser testing.
+- Reason: cannot meaningfully browser-test CR/CP resubmission across full six-voucher flows before the vouchers are actually complete. Phase 03.3 is **not** retroactively PASS; 3B2A/B CR/CP browser tests remain HOLD and are carried into Phase 05, with latest JV typography browser gate also still unconfirmed. Existing 3A and 3B1 PASS preserved.
+- **Phase 04 batches:** 04.1 CR, 04.2 CP, 04.3 CCR, 04.4 CDR, 04.5 BOR, 04.6 BOP, 04.7 six lists/print/attachments/regression. Each batch must get owner's own browser PASS before the next. Phase 04 work must include necessary source/ledger posting safety but not pretend final Phase 05 approval testing passed.
+- Eight common fields across ALL SIX: Voucher No, Date, Amount, Account Type, Accounts, Child Account, Attachment/File Uploader **optional**, Description/Narration **required**. CCR/CDR cash-only with no bank/cheque inputs; BOR/BOP only verified online/cleared cheque incoming/outgoing, not cash. CR/CP original conditional flows preserved.
+- Source of truth: [ACTIVE delivery roadmap](./POINT03_DAILY_ENTRIES_PHASE_ROADMAP.md), [six-voucher spec](./POINT03_CR_CP_CCR_CDR_BOR_BOP_FUNCTIONAL_SPEC.md). Earlier roadmap, locked-status and next-milestone statements below are historic and superseded on delivery order only.
+- This was a **documentation-only roadmap change**. No code changes or browser tests claimed as part of resequencing.
