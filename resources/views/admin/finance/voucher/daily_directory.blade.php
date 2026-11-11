@@ -262,7 +262,7 @@
                             aria-haspopup="dialog" title="Sort and filter {{ $label }}"><i class="fas fa-caret-down" aria-hidden="true"></i></button>
                     </th>
                     @endforeach
-                    @if(\\App\\Services\\Finance\\VoucherApproverAccess::isSuperAdmin(auth()->user()))<th>Approved By</th>@endif
+                    @if(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user()))<th>Approved By</th>@endif
                     <th>Actions</th>
                 </tr>
             </thead><tbody id="dv-rows"></tbody></table></div>
@@ -440,6 +440,11 @@
     $('#dv-excel-search').on('input',renderExcelValues);
     $('#dv-excel-apply').on('click',()=>{
         if(!excelCurrent)return;
+        if(!excelDraft.size && excelOptions.length) {
+            $('#dv-excel-values').prepend($('<p>',{'class':'text-danger mb-1',
+                text:'Select at least one value, or use Clear.'}));
+            return;
+        }
         if(excelDraft.size===excelOptions.length&&excelOptions.every(v=>excelDraft.has(String(v))))
             delete excelSelections[excelCurrent];
         else excelSelections[excelCurrent]=[...excelDraft];
