@@ -29,8 +29,9 @@ final class LegacyCashVoucherCorrection
             $oldLedger = $old->first();
             $workflow = app(DailyVoucherApprovalWorkflow::class);
             $approvalRequired = $workflow->policy($projectId, (string)$source->transaction_type) !== null;
-            if ($approvalRequired && (int)$source->payment_type !== 1) {
-                throw new \DomainException('Approved bank/cheque correction requires verified clearing reversal before a new approval request.');
+            if ($approvalRequired && ((int)$source->payment_type !== 1 ||
+                (int)($changes['payment_type'] ?? 0) !== 1)) {
+                throw new \DomainException('Approval-controlled correction requires cash-to-cash. Bank/cheque changes need verified clearing reversal.');
             }
             if ($approvalRequired) {
                 $corrections = DB::table('daily_voucher_approval_events')
