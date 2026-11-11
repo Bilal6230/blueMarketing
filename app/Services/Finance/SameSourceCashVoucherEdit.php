@@ -22,7 +22,7 @@ final class SameSourceCashVoucherEdit
         return DB::transaction(function () use ($projectId,$sourceId,$userId,$data): array {
             DB::table('projects')->where('id',$projectId)->lockForUpdate()->first() ?: throw new \DomainException('Project not found.');
             $source=DB::table('customer_ledger')->where('project_id',$projectId)
-                ->where('id',$sourceId)->whereIn('transaction_type',['CR','CP'])
+                ->where('id',$sourceId)->whereIn('transaction_type',['CR','CP','CCR','CDR'])
                 ->lockForUpdate()->first();
             if (!$source) throw new \DomainException('Voucher not found.');
             if ((int)$source->payment_type!==1) {
@@ -92,8 +92,8 @@ final class SameSourceCashVoucherEdit
             ];
             $proposed=[
                 'date'=>$data['date'],
-                'amount_in'=>$source->transaction_type==='CR'?$amount:'0.00',
-                'amount_out'=>$source->transaction_type==='CP'?$amount:'0.00',
+                'amount_in'=>in_array($source->transaction_type,['CR','CCR'],true)?$amount:'0.00',
+                'amount_out'=>in_array($source->transaction_type,['CP','CDR'],true)?$amount:'0.00',
                 'description'=>(string)$data['description'],
                 'account_id'=>(int)$account->id,
                 'customer_id'=>$account->customer_id ?? $source->customer_id,
@@ -221,7 +221,7 @@ final class SameSourceCashVoucherEdit
 
     private function applyLocked(int $projectId,object $source,object $leg,array $before,array $next): void
     {
-        if ((int)$source->payment_type!==1 || !in_array($source->transaction_type,['CR','CP'],true)) {
+        if ((int)$source->payment_type!==1 || !in_array($source->transaction_type,['CR','CP','CCR','CDR'],true)) {
             throw new \DomainException('Only same-method cash correction is supported.');
         }
         $account=ProjectHeadSubhead::availableForPosting()
