@@ -950,7 +950,7 @@ class LedgerController extends Controller
                 'id' => $ledger->id,
                 'type' => $ledger->type,
                 'voucher_number' => $ledger->voucher_number,
-                'voucher_number_display' => $displayNumber ?: (($ledger->type ?? '') . '-' . ($ledger->voucher_number ?? '')),
+                'voucher_number_display' => $displayNumber ?: (($ledger->type === 'CP' ? 'DR' : $ledger->type) . '-' . ($customerLedger?->type_id ?: $ledger->voucher_number)),
                 'date' => $ledger->date,
                 'detail' => $ledger->detail,
                 'amount_in' => (float) ($ledger->amount_in ?? 0),
