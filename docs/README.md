@@ -19,13 +19,16 @@ This is a new documentation starting point for the `upgrade/laravel-framework` b
 - This documentation reset does not delete any application code or historical Git commits.
 
 ## Phase tracking
-**Current phase:** Not started. The first phase will be defined from the latest client requirements and a new code audit.
+**Current phase:** Point03 Phase 03 — ACTIVE. Phases 01 and 02 complete with owner browser PASS. Phase 03.1 and 03.2 complete with owner browser PASS. Phase 03.3 in progress: Batch 1 owner browser PASS; Batch 2 modern JV UI alignment owner browser PASS but latest font-size adjustment browser verification pending. Batch 3 (Pending/Rejected Voucher Lifecycle Safety) next after gate. Phase 04+ LOCKED.
 
-**Browser test gate:** Pending. No phase may be marked complete without the owner's browser PASS.
+**Browser test gate:** Latest Batch 2 typography change pending. Overall Phase 03.3 browser PASS pending. No phase may be marked complete without the owner's browser PASS.
 
 
 ## Active client requirement delivery
 - [Point 03 Roman Urdu source](./BLUEMARKETING_POINT03_DAILY_ENTRIES_REQUIREMENTS_ROMAN_URDU.md)
 - [Point 03 strict phase roadmap](./POINT03_DAILY_ENTRIES_PHASE_ROADMAP.md)
-- [Active Phase 01 Cheque worklog](./POINT03_PHASE_01_CHEQUE_WORKLOG.md)
-- Phase 01 must pass the owner's browser verification before Phase 02 can begin.
+- [Canonical active handoff for new chats](./ACTIVE_POINT03_HANDOFF.md)
+- [Phase 01 Cheque worklog — COMPLETE](./POINT03_PHASE_01_CHEQUE_WORKLOG.md)
+- [Phase 02 Online worklog — COMPLETE](./POINT03_PHASE_02_ONLINE_WORKLOG.md)
+- [Active Phase 03 Voucher worklog](./POINT03_PHASE_03_VOUCHER_WORKLOG.md)
+- Phase 04+ must not start before Phase 03 owner browser PASS.

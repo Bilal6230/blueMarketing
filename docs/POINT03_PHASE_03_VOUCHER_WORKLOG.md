@@ -88,3 +88,9 @@
 
 ## 2026-11-11 — JV font readability adjustment
 - Owner confirmed embedded Add/Edit modal layout browser PASS. Increased font sizes slightly on JV listing, filters, column inputs, buttons and pagination, as well as embedded Add/Edit form labels, fields and debit/credit table. Blue theme, layout heights, scoped iframe alignment, and voucher accounting logic are unchanged. Browser recheck pending for font readability and clipping.
+
+## 2026-11-11 — Documentation checkpoint / new-chat handoff
+- Updated Phase 03.3 stage record: **Batch 1 browser PASS; Add/Edit modal alignment browser PASS; latest typography `d8289e98` pending separate owner browser confirmation**. Do not equate layout PASS with typography PASS.
+- Batch 2 in final UI verification; main page must not scroll; only table card scrolls; avoid right-hand clipping in modal. No new PHP/backend changes in this documentation checkpoint.
+- NEXT Batch 3: audit/edit/reverse/delete/resubmission restrictions and approval-state transitions for JV/CR/CP, preserve legacy posted records, soft-delete/void semantics, authority and journal trail. Not yet implemented. Phase 04+ locked.
+- Full project/new-chat continuation: [ACTIVE_POINT03_HANDOFF.md](./ACTIVE_POINT03_HANDOFF.md).
