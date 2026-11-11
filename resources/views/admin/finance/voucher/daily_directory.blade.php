@@ -145,8 +145,8 @@
             </form>
             <div class="d-none" aria-hidden="true">
                 @foreach([
-                    'CR' => ['Credit Voucher (CR)', route('finance.voucher.in.method', ['method'=>'cash','series'=>'CR','embed'=>1])],
-                    'DR' => ['Debit Voucher (DR)', route('finance.voucher.out.method', ['method'=>'cash','series'=>'CP','embed'=>1])],
+                    'CR' => ['Credit Voucher (CR)', route('finance.voucher.in', ['series'=>'CR','embed'=>1])],
+                    'DR' => ['Debit Voucher (DR)', route('finance.voucher.out', ['series'=>'DR','embed'=>1])],
                     'CCR' => ['Cash Credit (CCR)', route('finance.voucher.in.method', ['method'=>'cash','series'=>'CCR','embed'=>1])],
                     'CDR' => ['Cash Debit (CDR)', route('finance.voucher.out.method', ['method'=>'cash','series'=>'CDR','embed'=>1])],
                     'BOR' => ['Bank Credit (BOR)', route('finance.voucher.in.method', ['method'=>'online','series'=>'BOR','embed'=>1])],
