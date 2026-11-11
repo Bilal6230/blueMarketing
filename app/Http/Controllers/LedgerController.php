@@ -1053,10 +1053,6 @@ class LedgerController extends Controller
                     ->whereHas('projectHeadSubhead', fn ($query) => $query->where('project_id', $projectId))
                     ->lockForUpdate()->firstOrFail();
 
-                if ($ledger->customer_ledger_id !== null) {
-                    app(\App\Services\Finance\VoucherApprovalMutationGuard::class)
-                        ->assertLegacyMutationAllowed($projectId, 'customer_ledger', (int) $ledger->customer_ledger_id);
-                }
                 if ((int) $ledger->is_active === 0) return false;
 
                 $reason = trim((string) $validated['delete_reason']);
@@ -1066,8 +1062,30 @@ class LedgerController extends Controller
                         ->where('project_id', $projectId)
                         ->where('transaction_type', $ledger->type)
                         ->lockForUpdate()->firstOrFail();
-                    app(\App\Services\Finance\VoucherApprovalMutationGuard::class)
-                        ->assertLegacyMutationAllowed($projectId, 'customer_ledger', (int) $source->id);
+                    $trackedApproval = \App\Models\DailyVoucherApproval::query()
+                        ->where('project_id', $projectId)
+                        ->where('source_table', 'customer_ledger')
+                        ->where('source_id', $source->id)->lockForUpdate()->first();
+                    $approvedCashVoid = $trackedApproval && $trackedApproval->status === 'approved'
+                        && (int) $source->payment_type === 1
+                        && (int) $source->is_active === 1;
+                    if ($trackedApproval && !$approvedCashVoid) {
+                        app(\App\Services\Finance\VoucherApprovalMutationGuard::class)
+                            ->assertLegacyMutationAllowed($projectId, 'customer_ledger', (int) $source->id);
+                    }
+                    // Approved CASH vouchers may be administratively voided,
+                    // never hard-deleted. Settled bank/cheque sources require an
+                    // independent clearing reversal and remain blocked.
+                    if ($approvedCashVoid) {
+                        abort_unless(auth()->user()?->can('delete voucher'), 403);
+                        DB::table('daily_voucher_approval_events')->insert([
+                            'approval_id' => $trackedApproval->id,
+                            'event' => 'approved_cash_soft_deactivated',
+                            'actor_id' => (int) auth()->id(),
+                            'remarks' => $reason,
+                            'created_at' => now(),
+                        ]);
+                    }
 
                     // A voucher's linked accounting legs must be deactivated
                     // together, never just one side of a multi-leg posting.
