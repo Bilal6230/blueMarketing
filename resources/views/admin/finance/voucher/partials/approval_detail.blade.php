@@ -21,6 +21,9 @@
   <div><strong>Amount</strong><span>{{ $money($detail['amount'] ?? null) }}</span></div>
   <div><strong>Reference</strong><span>{{ $detail['reference'] ?: '—' }}</span></div>
   <div><strong>Payment Type</strong><span>{{ $detail['payment_type'] ?: '—' }}</span></div>
+  @if(!empty($detail['attachment_url']))
+  <div class="vap-detail-wide"><strong>Attachment</strong><span><a href="{{ $detail['attachment_url'] }}" target="_blank" rel="noopener">{{ $detail['attachment_name'] ?? 'Download attachment' }}</a></span></div>
+  @endif
   <div><strong>Transaction / Cheque No</strong><span>{{ $detail['transaction_reference'] ?: '—' }}</span></div>
   <div><strong>Bank</strong><span>{{ $detail['bank'] ?: '—' }}</span></div>
   <div><strong>Passing Date</strong><span>{{ $detail['passing_date'] ?: '—' }}</span></div>
