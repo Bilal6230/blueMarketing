@@ -107,3 +107,11 @@ Use `COMPLETE`, `PARTIAL`, `PENDING`, `BLOCKED` grounded in evidence. Never inve
 
 ## 2026-11-11 — Latest owner correction: eight common fields for SIX voucher forms
 - Supersedes earlier six/seven-field summaries: CR/CP/CCR/CDR/BOR/BOP all show **Voucher No, Date, Amount, Account Type, Accounts, Child Account, Attachment/File Uploader (optional), Description/Narration (required)**. CCR/CDR hide only bank/cheque/online-specific fields; CR/CP and BOR/BOP preserve previously specified conditional flow. Full canonical spec updated; docs only, no application code changes.
+
+## 2026-11-11 — Existing six-voucher UI: CR/DR full-method wiring batch (browser gate OPEN)
+- Owner screenshots confirmed the SIX existing modern Daily Voucher Directory pages and Bootstrap modal are the *only* UI surfaces to modify. **No new voucher forms/pages/routes have been created** in this batch.
+- CR New Voucher now loads existing unfixed Cash In route with `series=CR&embed=1`; DR loads existing unfixed Cash Out route with `series=DR&embed=1`, enabling the original Cash/Online/Cheque conditional fields instead of hard-coding Cash mode.
+- VoucherController admits CR/DR series for all 1/2/3 methods and labels the existing embedded form Credit Voucher / Debit Voucher while preserving all old settlement paths.
+- LedgerController accepts and validates DR display series against CP's legacy source type for all methods; **legacy DB type CP is preserved**, not mass-renamed or converted. CR stays CR source. Approval and V2 safety branches unmodified. The UI/identity and storage type are deliberately not conflated.
+- DailyVoucherDirectoryController CR/DR directory filter now includes all payment methods, and DR still recognizes historic CP series; existing legacy history remains available. **This does NOT implement real DR persisted transaction_type nor CCR/CDR/BOR/BOP backend posting.**
+- Pending in subsequent gated batches: uploader and secure persistence (all six), actual CCR/CDR ledger types and separate lists, verified-source BOR/BOP and idempotent bank posting; DR typed migration compatibility analysis; full browser acceptance. Browser verification has NOT occurred; no production migration or writes. Owner browser PASS required before another functional batch.
