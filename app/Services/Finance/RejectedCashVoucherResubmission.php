@@ -16,8 +16,8 @@ final class RejectedCashVoucherResubmission
             $old = CustomerLedger::query()->where('project_id', $projectId)
                 ->whereKey($sourceId)->whereIn('transaction_type', ['CR','CP'])
                 ->lockForUpdate()->firstOrFail();
-            if (!in_array((int)$old->payment_type,[1,2,3],true) || (int)$old->is_active !== 0)
-                throw new \DomainException('Only inactive rejected CR/CP can be revised.');
+            if (!in_array((int)$old->payment_type,[1,2,3],true))
+                throw new \DomainException('Unsupported cash voucher method.');
             $method=(int)$old->payment_type;
             if ($method !== 1) {
                 if (!in_array($old->passing_status === null ? 0 : (int)$old->passing_status,[0],true)
@@ -42,8 +42,13 @@ final class RejectedCashVoucherResubmission
                 ->where('source_table','customer_ledger')->where('source_id',$sourceId)
                 ->where('voucher_type',$old->transaction_type)
                 ->lockForUpdate()->firstOrFail();
-            if ($approval->status !== 'rejected')
-                throw new \DomainException('Voucher is no longer rejected.');
+            $approvedCorrection = $approval->status === 'approved';
+            if (!in_array($approval->status, ['rejected','approved'], true))
+                throw new \DomainException('Voucher must be approved or rejected before revision.');
+            if ($approvedCorrection && ($method !== 1 || (int)$old->is_active !== 1))
+                throw new \DomainException('Approved bank/cheque vouchers need a cleared-source reversal before correction.');
+            if (!$approvedCorrection && (int)$old->is_active !== 0)
+                throw new \DomainException('Rejected voucher must be inactive before resubmission.');
             if (!VoucherApproverAccess::isSuperAdmin($actor) &&
                 ((int)$approval->submitted_by !== $actorId ||
                  (int)$actor->project_id !== $projectId))
@@ -55,7 +60,7 @@ final class RejectedCashVoucherResubmission
             $legs=Ledger::query()->withoutGlobalScopes()
                 ->where('customer_ledger_id',$old->id)->where('type',$old->transaction_type)
                 ->lockForUpdate()->get();
-            if ($legs->count() !== 1 || (int)$legs->first()->is_active !== 0)
+            if ($legs->count() !== 1 || (int)$legs->first()->is_active !== ($approvedCorrection ? 1 : 0))
                 throw new \DomainException('Unsafe source ledger provenance. Revision blocked.');
             $account=ProjectHeadSubhead::availableForPosting()
                 ->where('project_id',$projectId)->whereKey((int)$data['account_id'])
@@ -123,6 +128,7 @@ final class RejectedCashVoucherResubmission
                 [$approval->id,'revised_to_new_source',[
                     'new_source_id'=>$new->id,'new_approval_id'=>$newApproval->id,
                     'previous_rejection_reason'=>$approval->rejection_reason,
+                    'original_status'=>$approval->status,
                     'revision_reason'=>$data['revision_reason'],
                     'original_account_id'=>$legs->first()->project_head_subheads_id,
                     'original_amount_in'=>$old->amount_in,'original_amount_out'=>$old->amount_out,
@@ -130,7 +136,7 @@ final class RejectedCashVoucherResubmission
                     'new_instrument'=>$method===1?null:$data['t_number'],
                     'old_bank_id'=>$old->bank_id,'new_bank_id'=>$method===1?null:$data['bank_id'],
                 ]],
-                [$newApproval->id,'revision_from_rejected',[
+                [$newApproval->id,$approvedCorrection ? 'revision_from_approved' : 'revision_from_rejected',[
                     'old_source_id'=>$sourceId,'old_approval_id'=>$approval->id,
                     'revision_reason'=>$data['revision_reason'],
                 ]],
@@ -140,7 +146,8 @@ final class RejectedCashVoucherResubmission
                     'remarks'=>json_encode($context,JSON_THROW_ON_ERROR),'created_at'=>now(),
                 ]);
             }
-            return ['source_id'=>(int)$new->id,'display'=>$display??$type.'-'.$number];
+            return ['source_id'=>(int)$new->id,'display'=>$display??$type.'-'.$number,
+                'original_status'=>$approval->status];
         },3);
     }
 }
