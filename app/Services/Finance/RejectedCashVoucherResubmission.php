@@ -68,10 +68,13 @@ final class RejectedCashVoucherResubmission
             $workflow=app(DailyVoucherApprovalWorkflow::class);
             $policy=$workflow->policy($projectId,$old->transaction_type);
             $approver=$policy?->approver_user_id ? User::query()->find($policy->approver_user_id) : null;
-            if (!$policy || !VoucherApproverAccess::eligibleForAssignment($approver,$projectId))
+            $approvalPending = $policy !== null;
+            if ($approvalPending && !VoucherApproverAccess::eligibleForAssignment($approver,$projectId))
                 throw new \DomainException('Active authorized approver is required.');
-            if ((int)$approver->id === $actorId && !VoucherApproverAccess::isSuperAdmin($actor))
+            if ($approvalPending && (int)$approver->id === $actorId && !VoucherApproverAccess::isSuperAdmin($actor))
                 throw new \DomainException('Submitter cannot be their own approver.');
+            if (!$approvalPending && $approvedCorrection)
+                throw new \DomainException('Approved correction without approval policy uses guarded direct correction workflow.');
             if ($method !== 1) {
                 foreach(['t_number','bank_id','passing_date'] as $field) {
                     if (empty($data[$field]))
@@ -102,7 +105,7 @@ final class RejectedCashVoucherResubmission
                 'passing_date'=>$method===1?null:$data['passing_date'],
                 'passing_status'=>$method===1?null:0,
                 'cheque_purpose'=>$method===3?$data['cheque_purpose']:null,
-                'is_active'=>0,'is_approve'=>0,
+                'is_active'=>$approvalPending?0:1,'is_approve'=>$approvalPending?0:1,
             ]);
             $series=app(ProjectVoucherDisplayIdentity::class)
                 ->series($projectId,'customer_ledger',$sourceId) ?: ($type==='CR'?'CCR':'CDR');
@@ -117,16 +120,19 @@ final class RejectedCashVoucherResubmission
                 'project_head_subheads_id'=>$account->id,'reference'=>$reference,
                 'amount_in'=>$type==='CR'?$amount:0,'amount_out'=>$type==='CP'?$amount:0,
                 'date'=>$data['date'],'detail'=>$data['description'],
-                'create_by'=>$actorId,'is_active'=>0,'status'=>0,
+                'create_by'=>$actorId,'is_active'=>$approvalPending?0:1,'status'=>0,
             ]);
-            if (!$workflow->submitIfRequired($projectId,$type,'customer_ledger',(int)$new->id,$actorId))
-                throw new \DomainException('Voucher approval policy disabled.');
-            $newApproval=DailyVoucherApproval::query()->where('project_id',$projectId)
-                ->where('source_table','customer_ledger')->where('source_id',$new->id)
-                ->firstOrFail();
+            $newApproval=null;
+            if ($approvalPending) {
+                if (!$workflow->submitIfRequired($projectId,$type,'customer_ledger',(int)$new->id,$actorId))
+                    throw new \DomainException('Expected active approval policy.');
+                $newApproval=DailyVoucherApproval::query()->where('project_id',$projectId)
+                    ->where('source_table','customer_ledger')->where('source_id',$new->id)
+                    ->firstOrFail();
+            }
             foreach ([
                 [$approval->id,'revised_to_new_source',[
-                    'new_source_id'=>$new->id,'new_approval_id'=>$newApproval->id,
+                    'new_source_id'=>$new->id,'new_approval_id'=>$newApproval?->id,
                     'previous_rejection_reason'=>$approval->rejection_reason,
                     'original_status'=>$approval->status,
                     'revision_reason'=>$data['revision_reason'],
@@ -136,18 +142,20 @@ final class RejectedCashVoucherResubmission
                     'new_instrument'=>$method===1?null:$data['t_number'],
                     'old_bank_id'=>$old->bank_id,'new_bank_id'=>$method===1?null:$data['bank_id'],
                 ]],
-                [$newApproval->id,$approvedCorrection ? 'revision_from_approved' : 'revision_from_rejected',[
+                [$newApproval?->id,$approvedCorrection ? 'revision_from_approved' : 'revision_from_rejected',[
                     'old_source_id'=>$sourceId,'old_approval_id'=>$approval->id,
                     'revision_reason'=>$data['revision_reason'],
                 ]],
             ] as [$approvalId,$event,$context]) {
+                if (!$approvalId) continue;
                 DB::table('daily_voucher_approval_events')->insert([
                     'approval_id'=>$approvalId,'event'=>$event,'actor_id'=>$actorId,
                     'remarks'=>json_encode($context,JSON_THROW_ON_ERROR),'created_at'=>now(),
                 ]);
             }
             return ['source_id'=>(int)$new->id,'display'=>$display??$type.'-'.$number,
-                'original_status'=>$approval->status];
+                'original_status'=>$approval->status,
+                'approval_pending'=>$approvalPending];
         },3);
     }
 }
