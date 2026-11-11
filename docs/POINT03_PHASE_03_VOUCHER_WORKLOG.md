@@ -85,3 +85,6 @@
 - Screenshots show both Add and Edit iframe forms offset about one collapsed sidebar width (~80px), clipping right-hand Date and submit button. Root cause is AdminLTE's higher-specificity sidebar-collapse margin on the *nested .content-wrapper*; previous low-specificity CSS overrides and master .main-content reset did not defeat it.
 - Added scoped, high-specificity embedded-only CSS for `body.sidebar-mini.sidebar-collapse .main-content.page-content > .content-wrapper`, nested .content/.container-fluid, and box-sizing. Parent jQuery iframe load handler also removes only iframe body layout classes and explicitly resets offset/width as defensive fallback. Standalone pages and parent sidebar are untouched, as are voucher save/ledger logic.
 - Browser test: Add and Edit both aligned with equal inner gutters, Date and Save/Update entirely visible; no horizontal clipping.
+
+## 2026-11-11 — JV font readability adjustment
+- Owner confirmed embedded Add/Edit modal layout browser PASS. Increased font sizes slightly on JV listing, filters, column inputs, buttons and pagination, as well as embedded Add/Edit form labels, fields and debit/credit table. Blue theme, layout heights, scoped iframe alignment, and voucher accounting logic are unchanged. Browser recheck pending for font readability and clipping.

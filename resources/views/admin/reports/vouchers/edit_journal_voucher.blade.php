@@ -38,15 +38,15 @@ html body .main-content.page-content > .content-wrapper .card-body{
 #journalForm>.row>[class*="col-"]{padding-left:6px!important;padding-right:6px!important}
 #journalForm .input-group{display:flex!important;flex-direction:column!important;width:100%!important;min-width:0!important}
 #journalForm .input-group>.form-control,#journalForm .input-group>input{width:100%!important;max-width:100%!important;flex:0 0 auto!important}
-#journalForm .fbox,#journalForm label{font-size:12px!important;font-weight:700!important;color:#203758!important;margin-bottom:5px!important}
-#journalForm .form-control{font-size:13px!important;min-height:34px;border-radius:5px!important}
+#journalForm .fbox,#journalForm label{font-size:13px!important;font-weight:700!important;color:#203758!important;margin-bottom:5px!important}
+#journalForm .form-control{font-size:14px!important;min-height:34px;border-radius:5px!important}
 #journalForm textarea{min-height:75px!important;resize:vertical}
 #journalForm .table-responsive{width:100%!important;margin:0 0 12px!important;overflow-x:auto!important}
-#journalForm #journalTable{width:100%!important;min-width:760px!important;table-layout:fixed!important;margin-bottom:0!important;font-size:12px}
+#journalForm #journalTable{width:100%!important;min-width:760px!important;table-layout:fixed!important;margin-bottom:0!important;font-size:13px}
 #journalForm #journalTable th{background:#e8f1ff!important;color:#203758!important;border-bottom:2px solid #087cff!important;vertical-align:middle!important;padding:9px 6px!important}
 #journalForm #journalTable td{vertical-align:middle!important;padding:6px!important}
 #journalForm #journalTable td .form-control{min-width:0!important;width:100%!important}
-#journalForm #journalTable .btn{padding:5px 8px!important}
+#journalForm #journalTable .btn{padding:5px 8px!important;font-size:13px!important}
 #journalForm>.text-center{text-align:right!important;margin:0!important;padding-top:10px!important;border-top:1px solid #e3eaf6}
 #journalForm>.text-center .btn-primary{background:#0876ef!important;border-color:#0876ef!important}
 @media(max-width:720px){.content-wrapper .card-body{padding:10px!important}#journalForm #journalTable{min-width:760px!important}}
