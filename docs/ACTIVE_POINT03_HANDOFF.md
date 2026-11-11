@@ -85,3 +85,5 @@ No claim of local migration, browser or PHP test execution unless actually verif
 
 ## 2026-11-11 — Batch 3B1 started
 - Owner confirmed 3A browser PASS. Implemented rejected JV Revise & Resubmit only: `app/Services/Finance/RejectedJournalVoucherResubmission.php`, POST `journal-vouchers/{id}/resubmit`, Revise button in JV list and modal edit form with revision reason. Uses existing UNIQUE approval row; old rejected reason and complete before-image in resubmitted event, status to pending. Strict provenance and inactive checks; same-number-of-lines only. Do not auto-approve or invoke original legacy JV correction. Browser PASS pending. CR/CP rejected revisions still NOT IMPLEMENTED; next sub-batch only after JV test passes.
+
+- Batch 3B1 append-only correction: old rejected ledger history stays inactive/untouched, new detail/ledger rows inserted inactive; approval only activates current non-archived details. Browser verification still pending.

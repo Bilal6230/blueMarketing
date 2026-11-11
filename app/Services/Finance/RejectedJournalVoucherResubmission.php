@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Revision of rejected, unposted JV only. Reuse the same voucher/approval/leg IDs.
- * Original rejected decision, reason and complete before-image are retained as events.
+ * Revision of rejected, unposted JV only. Reuse same voucher/approval IDs, append inactive revisions.
+ * Old inactive ledger legs stay immutable; before-image and rejected reason are retained as events.
  * No existing active posting can be changed by this workflow.
  */
 final class RejectedJournalVoucherResubmission
@@ -47,14 +47,13 @@ final class RejectedJournalVoucherResubmission
                 ->where('type','JV')->where('type_id',$voucherId)
                 ->whereIn('project_head_subheads_id',ProjectHeadSubhead::query()->where('project_id',$projectId)->select('id'))
                 ->lockForUpdate()->get();
-            if($details->count()!==count($lines) || $details->count()!==$ledgers->count() || $details->count()<2)
+            if(count($lines)<2 || $details->count()<2 || $ledgers->count()<$details->count())
                 throw new \DomainException('JV detail/ledger counts do not match. Revision stopped.');
             if($ledgers->contains(fn($ledger)=>(int)$ledger->is_active!==0) ||
                 $ledgers->contains(fn($ledger)=>!$ledger->journal_voucher_detail_id))
                 throw new \DomainException('JV has active/unattributed ledger rows; revision stopped.');
             $byDetail=$ledgers->keyBy('journal_voucher_detail_id');
-            if($byDetail->count()!==$details->count() ||
-               $details->contains(fn($detail)=>!$byDetail->has($detail->id)))
+            if($details->contains(fn($detail)=>!$byDetail->has($detail->id)))
                 throw new \DomainException('JV detail provenance is inconsistent; revision stopped.');
             $before=[
                 'reference'=>$voucher->reference,'date'=>$voucher->date,
@@ -75,22 +74,32 @@ final class RejectedJournalVoucherResubmission
             if(strlen($audit)>60000)
                 throw new \DomainException('JV revision history exceeds safe audit storage size.');
             $debit=0;$credit=0;
-            foreach($details as $index=>$detail){
-                $line=$lines[$index];
-                $account=ProjectHeadSubhead::availableForPosting()->where('project_id',$projectId)
-                    ->whereKey((int)$line['account_id'])->firstOrFail();
+            // Preserve old rejected ledger rows; archive previous details only.
+            foreach($details as $detail) $detail->delete();
+            foreach($lines as $line){
+                $account=ProjectHeadSubhead::availableForPosting()
+                    ->where('project_id',$projectId)->whereKey((int)$line['account_id'])->firstOrFail();
                 $debit+=(int)$line['debit_cents'];$credit+=(int)$line['credit_cents'];
                 $amountIn=number_format($line['debit_cents']/100,2,'.','');
                 $amountOut=number_format($line['credit_cents']/100,2,'.','');
-                $detail->update(['account_id'=>$account->id,'debit'=>$amountIn,
-                    'credit'=>$amountOut,'description'=>$line['description']]);
-                $leg=$byDetail->get($detail->id);
-                $leg->update([
+                $newDetail=JournalVoucherDetail::create([
+                    'journal_voucher_id'=>$voucherId,'account_id'=>$account->id,
+                    'debit'=>$amountIn,'credit'=>$amountOut,
+                    'description'=>$line['description'],'created_by'=>$actorId,
+                ]);
+                $newLeg=Ledger::create([
+                    'voucher_number'=>$voucher->voucher_number,'type'=>'JV','type_id'=>$voucherId,
+                    'journal_voucher_detail_id'=>$newDetail->id,
                     'project_head_subheads_id'=>$account->id,'reference'=>$data['reference']??null,
                     'amount_in'=>$amountIn,'amount_out'=>$amountOut,
                     'detail'=>$line['description'],'date'=>$data['date'],
-                    'update_by'=>$actorId,'is_active'=>0,
+                    'create_by'=>$actorId,'is_active'=>0,'status'=>'0',
                 ]);
+                if(app(FinancePostingSchemaGate::class)->mode()==='typed'){
+                    app(LedgerSourceAttributionWriter::class)->recordNewPosting(
+                        (int)$newLeg->id,$projectId,'journal_voucher',$voucherId
+                    );
+                }
             }
             if($debit<=0 || $debit!==$credit)
                 throw new \DomainException('Unbalanced JV revision is not allowed.');

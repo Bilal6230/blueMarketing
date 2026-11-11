@@ -139,10 +139,24 @@ final class DailyVoucherApprovalWorkflow
             if (!$voucher) throw new \DomainException('DAILY_VOUCHER_SOURCE_NOT_FOUND');
             DB::table('journal_vouchers')->where('id', $voucher->id)->where('project_id', $approval->project_id)
                 ->update(['status' => $active ? 'approved' : 'rejected', 'updated_at' => now()]);
-            DB::table('ledgers')->where('type', $approval->voucher_type)->where('type_id', $voucher->id)
-                ->whereIn('project_head_subheads_id', DB::table('project_head_subheads')
-                    ->select('id')->where('project_id', $approval->project_id))
-                ->update(['is_active' => $active ? 1 : 0]);
+            if (Schema::hasColumn('ledgers', 'journal_voucher_detail_id')
+                && Schema::hasColumn('journal_voucher_details', 'deleted_at')) {
+                // Approve only current detail-linked JV legs. Older rejected revisions stay inactive.
+                $currentIds = DB::table('journal_voucher_details')->where('journal_voucher_id', $voucher->id)
+                    ->whereNull('deleted_at')->pluck('id');
+                $currentLegs = DB::table('ledgers')->where('type', 'JV')->where('type_id', $voucher->id)
+                    ->whereIn('journal_voucher_detail_id', $currentIds)
+                    ->whereIn('project_head_subheads_id', DB::table('project_head_subheads')
+                        ->select('id')->where('project_id', $approval->project_id));
+                if ($currentIds->count() < 2 || (clone $currentLegs)->count() !== $currentIds->count())
+                    throw new \DomainException('DAILY_VOUCHER_JV_CURRENT_POSTING_PROVENANCE_INVALID');
+                $currentLegs->update(['is_active' => $active ? 1 : 0]);
+            } else {
+                DB::table('ledgers')->where('type', $approval->voucher_type)->where('type_id', $voucher->id)
+                    ->whereIn('project_head_subheads_id', DB::table('project_head_subheads')
+                        ->select('id')->where('project_id', $approval->project_id))
+                    ->update(['is_active' => $active ? 1 : 0]);
+            }
             return;
         }
 
