@@ -58,7 +58,7 @@
        <td>{{ $item->assignedApprover?->name ?? 'User #'.$item->assigned_approver_id }}</td>
        <td><span class="vap-status pending">Pending</span></td>
        @php
-          $revisionEvent = $item->events->first(fn($event) => in_array($event->event, ['revision_from_approved','revision_from_rejected','resubmitted','legacy_cash_correction'], true));
+          $revisionEvent = $item->events->reverse()->first(fn($event) => in_array($event->event, ['revision_from_approved','revision_from_rejected','resubmitted','legacy_cash_correction','same_source_edit'], true));
           $revisionData = $revisionEvent ? json_decode((string)$revisionEvent->remarks, true) : null;
           $revisionReason = is_array($revisionData) ? ($revisionData['revision_reason'] ?? null) : null;
        @endphp
@@ -108,7 +108,7 @@
        <td>{{ $item->assignedApprover?->name ?? 'User #'.$item->assigned_approver_id }}</td>
        <td style="max-width:280px;white-space:normal">{{ $item->rejection_reason ?: '—' }}</td>
        @php
-          $historyEvent = $item->events->first(fn($event) => in_array($event->event, ['revision_from_approved','revision_from_rejected','resubmitted','legacy_cash_correction'], true));
+          $historyEvent = $item->events->first(fn($event) => in_array($event->event, ['revision_from_approved','revision_from_rejected','resubmitted','legacy_cash_correction','same_source_edit'], true));
           $historyData = $historyEvent ? json_decode((string)$historyEvent->remarks, true) : null;
        @endphp
        <td style="max-width:280px;white-space:normal">{{ is_array($historyData) ? ($historyData['revision_reason'] ?? '—') : '—' }}</td>
