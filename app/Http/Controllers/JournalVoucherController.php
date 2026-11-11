@@ -172,7 +172,7 @@ class JournalVoucherController extends Controller
                     continue;
                 }
                 if(!in_array($field,$allowedExcelColumns,true) || !is_array($values) ||
-                    !$values || count($values)>50) abort(422,'Invalid column selections.');
+                    !$values || count($values)>250) abort(422,'Invalid column selections.');
                 foreach($values as $value) {
                     if(!is_scalar($value) || mb_strlen((string)$value)>255)
                         abort(422,'Invalid filter value.');
