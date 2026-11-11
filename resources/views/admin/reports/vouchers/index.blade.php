@@ -49,6 +49,21 @@ body.jv-directory-active{overflow:hidden!important}
 .jv-page .badge-warning{background:#f5b51e;color:#231d12}
 @media(max-width:1000px){.jv-filter-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.jv-filter-buttons{grid-column:1/-1}}
 @media(max-width:650px){.jv-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.jv-table{border-collapse:separate;border-spacing:0}
+.jv-table th,.jv-table td{border-right:1px solid #d3dfec!important;border-bottom:1px solid #d3dfec!important}
+.jv-filter-heading{white-space:nowrap}
+.jv-excel-trigger{float:right;background:transparent;border:1px solid transparent;border-radius:4px;color:#64748b;min-width:24px}
+.jv-excel-trigger:hover,.jv-excel-trigger.jv-filter-on,.jv-excel-trigger[aria-expanded=true]{background:white;border-color:#087cff;color:#087cff}
+.jv-excel-pop{position:fixed;z-index:1100;width:285px;max-width:calc(100vw - 20px);border:1px solid #cad5e2;border-radius:8px;background:white;box-shadow:0 12px 36px rgba(12,32,55,.22);padding:12px;font-size:12px}
+.jv-excel-pop.d-none{display:none!important}
+.jv-excel-sort{display:block;width:100%;border:0;background:white;text-align:left;padding:8px;border-radius:4px}
+.jv-excel-sort:hover{background:#eef5ff}
+.jv-excel-items{height:185px;overflow:auto;border:1px solid #dbe4ed;border-radius:4px;margin-top:8px;padding:4px}
+.jv-excel-choice{display:flex;align-items:center;gap:7px;padding:5px 2px;margin:0;cursor:pointer;overflow-wrap:anywhere}
+.jv-excel-choice:hover{background:#f0f5fc}
+.jv-excel-choice input{margin:0;flex-shrink:0}
+.jv-excel-bottom{display:flex;gap:5px;justify-content:flex-end;margin-top:10px}
 </style>
 <div class="content-wrapper jv-page">
  <div class="jv-head">
@@ -71,22 +86,23 @@ body.jv-directory-active{overflow:hidden!important}
   <div class="jv-table-wrap">
    <table id="jv-directory" class="table table-sm table-bordered table-hover jv-table">
     <thead>
-     <tr><th>ID</th><th>Voucher #</th><th>Reference</th><th>Date</th><th>Description</th><th class="text-right">Amount</th>@if($type==='JV')<th>Status</th>@endif<th>Actions</th></tr>
-     <tr class="jv-column-search">
-      <th><input type="search" data-col="0" class="form-control" placeholder="ID"></th>
-      <th><input type="search" data-col="1" class="form-control" placeholder="Filter"></th>
-      <th><input type="search" data-col="2" class="form-control" placeholder="Filter"></th>
-      <th><input type="date" data-col="3" class="form-control" aria-label="Filter date"></th>
-      <th><input type="search" data-col="4" class="form-control" placeholder="Filter"></th>
-      <th><input type="number" step="0.01" min="0" data-col="5" class="form-control" placeholder="Amount"></th>
-      @if($type==='JV')<th><select class="form-control" data-col="6"><option value="">All</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="posted">Posted</option></select></th>@endif
-      <th></th>
+     <tr>
+      @foreach(['id'=>'ID','voucher_number'=>'Voucher #','reference'=>'Reference','date'=>'Date','description'=>'Description','total_debit'=>'Amount'] as $field=>$title)
+      <th class="jv-filter-heading"><span>{{ $title }}</span><button type="button" class="jv-excel-trigger" data-field="{{ $field }}" data-col="{{ $loop->index }}" aria-label="Sort or filter {{ $title }}" aria-haspopup="dialog" aria-expanded="false"><i class="fas fa-caret-down"></i></button></th>
+      @endforeach
+      @if($type==='JV')<th class="jv-filter-heading"><span>Status</span><button type="button" class="jv-excel-trigger" data-field="approval_status" data-col="6" aria-label="Filter status" aria-haspopup="dialog" aria-expanded="false"><i class="fas fa-caret-down"></i></button></th>@endif
+      <th>Actions</th>
      </tr>
     </thead><tbody></tbody>
    </table>
   </div>
  </div>
 </div>
+<div id="jv-excel-pop" class="jv-excel-pop d-none" role="dialog" aria-label="Journal voucher column filter"><strong id="jv-excel-title"></strong>
+ <button type="button" class="jv-excel-sort" data-dir="asc">Sort A to Z / Small to Large</button><button type="button" class="jv-excel-sort" data-dir="desc">Sort Z to A / Large to Small</button>
+ <label for="jv-excel-search" class="sr-only">Search filter values</label><input type="search" id="jv-excel-search" class="form-control form-control-sm" placeholder="Search values…" autocomplete="off">
+ <div id="jv-excel-items" class="jv-excel-items"></div><div class="jv-excel-bottom">
+ <button type="button" class="btn btn-sm btn-light" id="jv-excel-clear">Clear</button><button type="button" class="btn btn-sm btn-light" id="jv-excel-cancel">Cancel</button><button type="button" class="btn btn-sm btn-primary" id="jv-excel-apply">Apply</button></div></div>
 <div class="modal fade jv-modal" id="jv-entry" tabindex="-1" role="dialog" aria-hidden="true">
  <div class="modal-dialog" role="document"><div class="modal-content">
   <div class="modal-header"><h5 class="modal-title" id="jv-entry-title">Journal Voucher</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
@@ -114,6 +130,7 @@ body.jv-directory-active{overflow:hidden!important}
 $(function(){
  'use strict';
  var $table=$('#jv-directory'),timer=null,table=null,entryUrl='';
+ var jvExcelSelections={},jvExcelCurrent=null,jvExcelOptions=[],jvExcelDraft=new Set(),jvExcelRequest=null,$jvExcel=$('#jv-excel-pop');
  $('body').addClass('jv-directory-active');
  function fitJournalDirectory(){
   var $page=$('.jv-page'),top=$page.offset().top;
@@ -139,6 +156,7 @@ $(function(){
    req.filter_amount_min=$('#jv-min').val();
    req.filter_amount_max=$('#jv-max').val();
    req.filter_reference=$('#jv-reference').val();
+   $.each(jvExcelSelections,function(field,values){req.excel_values??={};req.excel_values[field]=values;});
   }},
   columns:[
    {data:'id',name:'id'},
@@ -176,16 +194,9 @@ $(function(){
  fitJournalDirectory();
  $('#jv-top-filters').on('submit',function(e){e.preventDefault();apply();});
  $('#jv-reset').on('click',function(){
-  $('#jv-top-filters')[0].reset();$table.find('.jv-column-search input,.jv-column-search select').val('');
+  $('#jv-top-filters')[0].reset();$.each(jvExcelSelections,function(field){delete jvExcelSelections[field];});closeJvExcel();updateJvExcelButtons();
   table.columns().search('');table.search('');apply();
  });
- $table.find('.jv-column-search').on('input change','input,select',function(){
-  var $field=$(this),col=Number($field.attr('data-col'));
-  clearTimeout(timer);
-  var go=function(){table.column(col).search($field.val()).draw();};
-  if($field.is('select,[type=date]'))go();else timer=setTimeout(go,280);
- });
- $table.find('.jv-column-search').on('click keydown','input,select',function(e){e.stopPropagation();});
  function openEntry(url,title){
   entryUrl=url;var separator=url.indexOf('?')>=0?'&':'?';
   $('#jv-entry-title').text(title);
