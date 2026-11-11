@@ -147,3 +147,11 @@
 - Phase 04 sub-batches are 04.1 CR, 04.2 CP, 04.3 CCR, 04.4 CDR, 04.5 BOR, 04.6 BOP, 04.7 separate listings/print/attachment/regression, each gated by owner browser PASS. Six forms share eight fields including optional uploader and required narration.
 - Historical 03.3 3A/3B1 browser PASS remains valid; 3B2A/B and latest JV typography gates remain not passed and transfer to Phase 05. Existing committed code is preserved, not rewritten or claimed verified. No database or code mutation in this documentation checkpoint.
 - Full rationale and authoritative order: [Point03 roadmap](./POINT03_DAILY_ENTRIES_PHASE_ROADMAP.md).
+
+## 2026-11-11 — Existing six-voucher UI: CR/DR full-method wiring batch (browser gate OPEN)
+- Owner screenshots confirmed the SIX existing modern Daily Voucher Directory pages and Bootstrap modal are the *only* UI surfaces to modify. **No new voucher forms/pages/routes have been created** in this batch.
+- CR New Voucher now loads existing unfixed Cash In route with `series=CR&embed=1`; DR loads existing unfixed Cash Out route with `series=DR&embed=1`, enabling the original Cash/Online/Cheque conditional fields instead of hard-coding Cash mode.
+- VoucherController admits CR/DR series for all 1/2/3 methods and labels the existing embedded form Credit Voucher / Debit Voucher while preserving all old settlement paths.
+- LedgerController accepts and validates DR display series against CP's legacy source type for all methods; **legacy DB type CP is preserved**, not mass-renamed or converted. CR stays CR source. Approval and V2 safety branches unmodified. The UI/identity and storage type are deliberately not conflated.
+- DailyVoucherDirectoryController CR/DR directory filter now includes all payment methods, and DR still recognizes historic CP series; existing legacy history remains available. **This does NOT implement real DR persisted transaction_type nor CCR/CDR/BOR/BOP backend posting.**
+- Pending in subsequent gated batches: uploader and secure persistence (all six), actual CCR/CDR ledger types and separate lists, verified-source BOR/BOP and idempotent bank posting; DR typed migration compatibility analysis; full browser acceptance. Browser verification has NOT occurred; no production migration or writes. Owner browser PASS required before another functional batch.
