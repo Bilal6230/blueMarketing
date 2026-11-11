@@ -1181,7 +1181,7 @@ class LedgerController extends Controller
         $data = $request->validate([
             'id' => ['required', 'integer'], 'amount' => ['required', 'regex:/^\d[\d,]*(?:\.\d{1,2})?$/D'],
             'detail' => ['required', 'string', 'max:255'],
-            'edit_reason' => ['required', 'string', 'min:3', 'max:500'],
+            'edit_reason' => ['required', 'string', 'min:3', 'max:220'],
             'accounts_id' => ['required', 'integer'],
             'subaccounts_id' => ['required', 'integer'], 'date' => ['required', 'date_format:Y-m-d'],
             'payment_type' => ['required', 'integer', 'in:1,2,3'],
