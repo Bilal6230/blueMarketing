@@ -412,6 +412,11 @@ class LedgerController extends Controller
                 // source creation incorrectly skips the just-created number.
                 $resolvedVoucherNumber = app(\App\Services\Finance\ProjectVoucherAllocator::class)
                     ->next((int) $selectedProjectId, $effectiveVoucherType);
+                // Never save a different number than the one displayed in the
+                // active form. Transaction rollback also releases the counter.
+                if ($resolvedVoucherNumber !== $voucherNumber) {
+                    throw new \DomainException('Voucher number changed since this form was opened. Refresh and retry to get the current database number.');
+                }
 
                 $customerLedger = CustomerLedger::create([
                     'transaction_type' => $effectiveVoucherType,
