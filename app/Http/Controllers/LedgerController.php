@@ -212,7 +212,7 @@ class LedgerController extends Controller
             ->where('project_id', $selectedProjectId)
             ->first();
 
-        if ($projectHeadSubhead && (int) $projectHeadSubhead->headAccounting?->account_type_id !== (int) $request->input('acct_type')) {
+        if ($projectHeadSubhead && (int) $projectHeadSubhead->headAccounting?->acct_type !== (int) $request->input('acct_type')) {
             return response()->json([
                 'status' => 'error',
                 'error_key' => 'invalid_account_type',
