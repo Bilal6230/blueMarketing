@@ -46,18 +46,11 @@ final class LegacyCashVoucherCorrection
                 (int)($changes['payment_type'] ?? 0) !== 1)) {
                 throw new \DomainException('Approval-controlled correction requires cash-to-cash. Bank/cheque changes need verified clearing reversal.');
             }
-            if ($approvalRequired) {
-                $corrections = DB::table('daily_voucher_approval_events')
-                    ->where('event','legacy_cash_correction')
-                    ->where('remarks','like','%"original_source_id":'.$sourceId.',%')
-                    ->get(['remarks']);
-                if ($corrections->contains(function ($event) use ($sourceId) {
-                    $meta=json_decode((string)$event->remarks,true);
-                    return is_array($meta) && (int)($meta['original_source_id']??0)===$sourceId;
-                })) {
-                    throw new \DomainException('This original voucher already has an audited correction request.');
-                }
-            }
+            // Only in-flight corrections block editing. Historical decided
+            // corrections must remain auditable without permanently locking
+            // the original voucher from another authorized correction.
+            app(VoucherApprovalMutationGuard::class)
+                ->assertNoPendingCorrection($projectId,(int)$source->id);
             $account = ProjectHeadSubhead::availableForPosting()->whereKey($accountId)->where('project_id', $projectId)
                 ->lockForUpdate()->firstOrFail();
             $type = (string) $source->transaction_type;
