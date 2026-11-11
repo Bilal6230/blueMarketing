@@ -127,5 +127,8 @@
 
 ## 2026-11-11 — Owner clarified CR/CP/CCR/CDR/BOR/BOP requirements
 - Original CR/CP routes and payment-type conditional logic inspected in LedgerController, VoucherController and cash_voucher.blade.php. Preserve old logic but modern UI. CP Online/Check has pending-clearance list with locked original amount and Pass/Return/Bounce.
-- CCR/CDR are new actual stored database types with exactly six visible fields (Voucher No, Date, Amount, Account Type, Accounts, Child Account); no details or bank inputs. BOR/BOP are new actual types and source-linked bank receipt/payment, Online or Check only, from confirmed Online Management or passed Cheque Management. All six types need independent lists.
+- CCR/CDR are new actual stored database types with seven visible fields (Voucher No, Date, Amount, Account Type, Accounts, Child Account, mandatory Details); only bank/cheque/online inputs removed. BOR/BOP are new actual types and source-linked bank receipt/payment, Online or Check only, from confirmed Online Management or passed Cheque Management. All six types need independent lists.
 - Important gap: current DB code persists CR/CP while CCR/CDR/BOR/BOP are display-series only, and current server requires detail. No feature implementation in this turn; full source-based spec saved at docs/POINT03_CR_CP_CCR_CDR_BOR_BOP_FUNCTIONAL_SPEC.md. Phase 03 testing HOLD.
+
+## 2026-11-11 — Owner correction for CCR/CDR fields
+- Previous six-field interpretation was incorrect. **Keep mandatory Details / Description** alongside Voucher No, Date, Amount, Account Type, Accounts, Child Account. Remove only bank/cheque/online-related fields. Updated functional spec, roadmap and handoff. No code change.

@@ -100,5 +100,7 @@ No claim of local migration, browser or PHP test execution unless actually verif
 
 ## 2026-11-11 — Six voucher specification documented
 - User explicitly asked to discuss existing CR/CP old business logic and document CCR/CDR/BOR/BOP requirements. Canonical file: docs/POINT03_CR_CP_CCR_CDR_BOR_BOP_FUNCTIONAL_SPEC.md.
-- CR/CP: old Cash/Online/Check switching and CP pending clearance preserved, visual UI modern. CCR/CDR: real transaction_type/ledger.type and only six visible fields (no Details). BOR/BOP: real types, Online/Check only, source-linked to eligible passed Cheque Management and confirmed Online Management transactions. Six separate lists.
+- CR/CP: old Cash/Online/Check switching and CP pending clearance preserved, visual UI modern. CCR/CDR: real transaction_type/ledger.type and seven visible fields including required Details / Description; remove only bank/cheque/online-related inputs. BOR/BOP: real types, Online/Check only, source-linked to eligible passed Cheque Management and confirmed Online Management transactions. Six separate lists.
 - Current code uses CCR/CDR/BOR/BOP as display series over CR/CP: full backend implementation NOT done. Do not claim done. CR/CP validation repair and 3B2A/B browser gate held. No live data/schema changed.
+
+- Latest explicit correction: CCR/CDR Details / Description must stay. Seven fields in total. Do not automatically generate narration or remove Details. All earlier six-field statements are superseded.

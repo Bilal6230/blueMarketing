@@ -19,12 +19,12 @@ Date: 2026-11-11 | Branch: upgrade/laravel-framework | Status: Requirements capt
 - CP database type remains CP. Own CP-only list.
 ### CCR — NEW Cash Credit / Cash Receipt Voucher
 - Must be a real database type CCR in transaction_type / ledgers.type, not display series only. Cash-only.
-- EXACT six visible fields: (1) Voucher No, (2) Date, (3) Amount, (4) Account Type, (5) Accounts, (6) Child Account.
-- NO Details, Remarks, Payment Type selector, Number, Bank, Passing Date, Cheque Purpose or clearance fields.
-- Backend validates only applicable fields; fixed internal cash method if schema needs it. Current mandatory detail conflicts with six-field spec and must be redesigned safely (system narration/nullable strategy to be decided during implementation).
+- Seven visible fields: (1) Voucher No, (2) Date, (3) Amount, (4) Account Type, (5) Accounts, (6) Child Account, (7) Details / Description.
+- Details / Description stays visible and required. NO Payment Type selector, transaction/cheque Number, Bank, Passing Date, Cheque Purpose, bank/cheque clearance panel, or other bank/online instrument fields.
+- Backend must require and validate Details / Description in addition to the six core fields; use the entered details as ledger narration. Fixed internal Cash method (payment_type=1) if schema needs it; no bank/cheque/online fields required.
 - Own CCR-only listing.
 ### CDR — NEW Cash Debit / Cash Payment Voucher
-- Must be real database type CDR; outgoing cash; same EXACT six visible fields as CCR and no other fields.
+- Must be real database type CDR; outgoing cash; same seven visible fields as CCR, including required Details / Description. No bank, cheque, or online instrument fields.
 - Own CDR-only listing, correct outgoing ledger amount, project scope and approvals.
 ### BOR — NEW Bank Receipt Voucher
 - Display title Bank Receipt Voucher. Must persist real BOR type.
@@ -50,11 +50,14 @@ Date: 2026-11-11 | Branch: upgrade/laravel-framework | Status: Requirements capt
 3. Ensure BOR/BOP source-linked issuance from confirmed online/passed cheque management with immutable amount, one-time idempotent posting, no duplicate ledger or bank movement.
 4. Historical CR/CP and existing display-series identities remain readable; no irreversible backfill without separate review.
 5. Original CR/CP Create validation is currently reported broken: investigate and repair before 3B2A/B browser tests are claimed PASS.
-6. Browser acceptance: all six persistence types, correct conditional field visibility, CCR/CDR six-field-only form, six independent lists, permission and approval gates, negative duplicate/cross-project/source-status tests, print, return/bounce, ledger and history.
+6. Browser acceptance: all six persistence types, correct conditional field visibility, CCR/CDR seven-field form including required Details and no bank/cheque fields, six independent lists, permission and approval gates, negative duplicate/cross-project/source-status tests, print, return/bounce, ledger and history.
 7. Phase 03 currently open; 3B2A/B testing temporarily HOLD per user. This document records requirements ONLY, not production implementation.
 
 ## PROPOSED SEQUENCE (for discussion; not executed)
 - Phase 03 corrective milestone: fix old CR/CP creation and conditional validation, then 3B2A/B browser tests.
-- Phase 04.1: CCR/CDR true persistent types + exactly-six-field forms + separate lists, browser gate.
+- Phase 04.1: CCR/CDR true persistent types + seven-field forms (including Details) + separate lists, browser gate.
 - Phase 04.2: BOR source-linked verified incoming posting and BOP verified outgoing posting, each independently browser gated.
 - Phase 04.3–04.4 and Phases 05–09 proceed under established browser PASS gates.
+
+## Owner correction — 2026-11-11 (supersedes previous six-field wording)
+- CCR/CDR **Details / Description MUST remain**; user only requested removing bank/cheque/online-related fields. Exactly seven visible fields listed above; prior six-field/no-details requirement is withdrawn. No financial code changed in this correction.

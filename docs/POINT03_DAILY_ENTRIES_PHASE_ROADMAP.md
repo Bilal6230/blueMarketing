@@ -64,5 +64,7 @@ Use `COMPLETE`, `PARTIAL`, `PENDING`, `BLOCKED` grounded in evidence. Never inve
 
 ## 2026-11-11 — Clarified six-voucher type requirements
 - Owner specification: docs/POINT03_CR_CP_CCR_CDR_BOR_BOP_FUNCTIONAL_SPEC.md (source-inspected, documentation only).
-- CR/CP retain original conditional Cash/Online/Check flows and CP pending clearance, modern UI only. CCR/CDR require real database types and exactly six visible fields. BOR/BOP require real database types, Online/Check only, created from eligible confirmed online or cleared cheque sources, with six independent voucher lists.
+- CR/CP retain original conditional Cash/Online/Check flows and CP pending clearance, modern UI only. CCR/CDR require real database types and seven visible fields including mandatory Details / Description (only bank/cheque/online-related inputs removed). BOR/BOP require real database types, Online/Check only, created from eligible confirmed online or cleared cheque sources, with six independent voucher lists.
 - Current app only persists CR/CP source and ledger types; other four are display series. Phase 04 implementation cannot be marked complete. CR/CP create validation blocker and 3B2A/B browser HOLD remain unchanged.
+
+- Owner correction: CCR/CDR keep **Details / Description**. Their seven visible fields are Voucher No, Date, Amount, Account Type, Accounts, Child Account, Details. Previous six-field wording superseded.
