@@ -40,7 +40,17 @@ final class DailyVoucherApprovalController extends Controller
             });
         if (!$isSuperAdmin) $historyQuery->where('assigned_approver_id', (int) auth()->id());
         $history = $historyQuery->latest('decided_at')->limit(50)->get();
-        return view('admin.finance.voucher.approvals', compact('policies', 'approvers', 'queue', 'history'));
+        $reader=app(\App\Services\Finance\VoucherApprovalDetailReader::class);
+        $voucherDetails=collect($queue->items())->concat($history)->unique('id')
+            ->mapWithKeys(fn($approval)=>[$approval->id=>$reader->read($approval)])->all();
+        $auditUserIds=collect($queue->items())->concat($history)
+            ->flatMap(fn($approval)=>$approval->events->pluck('actor_id'))
+            ->filter()->unique()->values()->all();
+        $auditActors=$auditUserIds
+            ? User::query()->whereIn('id',$auditUserIds)->pluck('name','id')->all()
+            : [];
+        return view('admin.finance.voucher.approvals',
+            compact('policies','approvers','queue','history','voucherDetails','auditActors'));
     }
 
     public function savePolicy(Request $request)
