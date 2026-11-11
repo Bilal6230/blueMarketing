@@ -48,6 +48,10 @@ final class DailyVoucherDirectoryController extends Controller
             'length' => ['sometimes', 'integer', 'min:1', 'max:100'],
             'sort_column' => ['sometimes','string','in:date,number,head,subhead,amount,detail'],
             'sort_direction' => ['sometimes','string','in:asc,desc'],
+            'facet_column' => ['sometimes','string','in:date,number,head,subhead,detail,amount,status'],
+            'column_values' => ['sometimes','array','max:7'],
+            'column_values.*' => ['array','max:50'],
+            'column_values.*.*' => ['string','max:255'],
         ]);
         $rows = collect();
         $total = 0;
@@ -61,9 +65,13 @@ final class DailyVoucherDirectoryController extends Controller
         // A merged page needs the first (offset + size) rows from every source.
         // Cross-source column filters require a bounded complete candidate set.
         $filterCandidateLimit = 5000;
+        $facetColumn=$filters['facet_column']??null;
+        $selectedValues=array_intersect_key($filters['column_values']??[],
+            array_flip(['date','number','head','subhead','detail','amount','status']));
         $sortColumn = (string) ($filters['sort_column'] ?? 'date');
         $sortDirection = (string) ($filters['sort_direction'] ?? 'desc');
-        $requiresFullCandidateSet = (bool) $columnFilters || $sortColumn !== 'date' || $sortDirection !== 'desc';
+        $requiresFullCandidateSet = (bool) $columnFilters || (bool)$selectedValues
+            || $facetColumn !== null || $sortColumn !== 'date' || $sortDirection !== 'desc';
         $window = $requiresFullCandidateSet ? $filterCandidateLimit : $start + $length;
         $identities = app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class);
 
@@ -537,7 +545,27 @@ final class DailyVoucherDirectoryController extends Controller
                 return true;
             })->values();
         }
-        $filteredTotal = $columnFilters ? $rows->count() : $total;
+        if ($selectedValues) {
+            $rows=$rows->filter(function(array $row) use($selectedValues) {
+                foreach($selectedValues as $key=>$choices) {
+                    if (!$choices) return false;
+                    $actual=$key==='amount'
+                        ? number_format((float)($row[$key]??0),2,'.','')
+                        : (string)($row[$key]??'');
+                    if (!in_array($actual,array_map('strval',$choices),true)) return false;
+                }
+                return true;
+            })->values();
+        }
+        if ($facetColumn !== null) {
+            $options=$rows->map(fn($row)=>$facetColumn==='amount'
+                ? number_format((float)($row['amount']??0),2,'.','')
+                : (string)($row[$facetColumn]??''))
+                ->unique()->sort(SORT_NATURAL|SORT_FLAG_CASE)->values()->take(500);
+            return response()->json(['options'=>$options,'truncated'=>$rows->count()>5000,
+                'more_options'=>$rows->pluck($facetColumn)->unique()->count()>500]);
+        }
+        $filteredTotal = ($columnFilters || $selectedValues) ? $rows->count() : $total;
         return response()->json([
             'draw' => (int) $request->input('draw', 1), 'recordsTotal' => $total,
             'recordsFiltered' => $filteredTotal, 'data' => $rows->slice($start, $length)->values(),
