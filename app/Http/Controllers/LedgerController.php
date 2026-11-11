@@ -1057,7 +1057,7 @@ class LedgerController extends Controller
         try {
             $changed = DB::transaction(function () use ($validated, $projectId): bool {
                 $ledger = Ledger::query()->whereKey((int) $validated['id'])
-                    ->whereIn('type', ['CR', 'CP'])
+                    ->whereIn('type', ['CR', 'CP','CCR','CDR'])
                     ->whereHas('projectHeadSubhead', fn ($query) => $query->where('project_id', $projectId))
                     ->lockForUpdate()->firstOrFail();
 
