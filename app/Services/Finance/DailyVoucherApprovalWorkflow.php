@@ -87,6 +87,15 @@ final class DailyVoucherApprovalWorkflow
                 throw new \DomainException('DAILY_VOUCHER_APPROVER_NOT_AUTHORIZED');
             }
 
+            $sameSourceEdit = false;
+            if ($locked->source_table === 'customer_ledger' &&
+                Schema::hasTable('daily_voucher_edit_snapshots')) {
+                $sameSourceEdit=app(SameSourceCashVoucherEdit::class)
+                    ->decide($locked,$actorId,$decision);
+            }
+            // Old append-only requests already submitted before the same-ID
+            // migration retain their original settlement behavior.
+            if (!$sameSourceEdit) {
             // Legacy posted cash edit: original stays posted while correction
             // is awaiting approval. Only after approval activate its matched
             // reversal and corrected leg together, in this one transaction.
@@ -213,8 +222,23 @@ final class DailyVoucherApprovalWorkflow
                 }
             }
             $this->setPostingState($locked, $decision === 'approved');
+            }
+            $previousStatus=null;
+            $previousDecisionActor=null;
+            if ($sameSourceEdit && $decision==='rejected') {
+                $submission=DB::table('daily_voucher_approval_events')
+                    ->where('approval_id',$locked->id)->where('event','same_source_edit')
+                    ->orderByDesc('id')->first(['remarks']);
+                $context=$submission ? json_decode((string)$submission->remarks,true) : null;
+                $previousStatus=is_array($context) ? ($context['previous_status']??'posted') : 'posted';
+                $previousDecisionActor=is_array($context) ? ($context['previous_decided_by']??null) : null;
+                if (!in_array($previousStatus,['posted','approved','rejected'],true)) {
+                    throw new \DomainException('INVALID_PREVIOUS_VOUCHER_STATUS');
+                }
+            }
             $locked->forceFill([
-                'status' => $decision, 'decided_by' => $actorId,
+                'status' => $previousStatus ?? $decision,
+                'decided_by' => $previousStatus === 'approved' ? $previousDecisionActor : $actorId,
                 'rejection_reason' => $decision === 'rejected' ? $reason : null,
                 'decided_at' => now(),
             ])->save();
