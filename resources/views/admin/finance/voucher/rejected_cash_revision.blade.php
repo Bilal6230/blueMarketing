@@ -1,6 +1,11 @@
 @extends('admin.layouts.master')
 @section('title','Voucher Correction')
 @section('content')
+@php
+    $editStatus = $approval?->status ?? 'posted';
+    $usesApproval = app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
+        ->policy((int)getSelectedTown(),(string)$source->transaction_type) !== null;
+@endphp
 @if(request()->boolean('embed'))
 <style>
 .main-sidebar,.main-header,.main-footer,.navbar,.control-sidebar,#load_screen,.preloader{display:none!important}
@@ -10,20 +15,23 @@ body{overflow:auto!important}
 @endif
 <style>
 .cr-revise{max-width:none;margin:0;background:#fff;padding:16px 18px;font-size:13px;min-height:0}
-.cr-revise h4{font-size:16px;color:{{ $approval->status === 'approved' ? '#1b7d52' : '#b17408' }};font-weight:700;margin:0 0 12px}
+.cr-revise h4{font-size:16px;color:{{ $editStatus === 'approved' ? '#1b7d52' : '#b17408' }};font-weight:700;margin:0 0 12px}
 .cr-revise label{font-size:13px;font-weight:700}
 .cr-revise .form-control{font-size:14px;min-height:34px;border-radius:5px}
-.cr-revise .fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:8px}.cr-revise .fields>.form-group{min-width:0}.cr-revise .form-group{margin-bottom:10px}.cr-revise textarea.form-control{min-height:72px}.cr-revise .alert{padding:10px 12px}.cr-revise button[type=submit]{background:{{ $approval->status === 'approved' ? '#18824a' : '#cf911a' }};border-color:transparent}.cr-revise .reason-label{font-weight:700}
+.cr-revise .fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:8px}.cr-revise .fields>.form-group{min-width:0}.cr-revise .form-group{margin-bottom:10px}.cr-revise textarea.form-control{min-height:72px}.cr-revise .alert{padding:10px 12px}.cr-revise button[type=submit]{background:{{ $editStatus === 'approved' ? '#18824a' : '#cf911a' }};border-color:transparent}.cr-revise .reason-label{font-weight:700}
 @media(max-width:650px){.cr-revise .fields{grid-template-columns:1fr}}
 </style>
 <div class="content-wrapper" style="margin:0!important;min-height:0!important;"><div class="cr-revise">
-<h4>{{ $approval->status === 'approved' ? 'Correct Approved' : 'Revise Rejected' }} {{ $source->transaction_type }} Voucher</h4>
+<h4>{{ $editStatus === 'rejected' ? 'Revise Rejected' : 'Edit' }} {{ $source->transaction_type === 'CP' ? 'DR' : $source->transaction_type }} Voucher</h4>
 <div class="alert alert-warning">
-@if($approval->status === 'approved')
-Original approved voucher #{{ $source->type_id }} remains active while this correction is Pending. On approval the old voucher will be soft-deactivated and only the revised voucher will be posted. If rejected, the original remains active.
+@if($editStatus === 'rejected')
+Original voucher #{{ $source->type_id }} was rejected. Rejection Reason: {{ $approval?->rejection_reason ?? 'Not recorded' }}.
+@elseif($editStatus === 'approved')
+Original approved voucher #{{ $source->type_id }} remains preserved. Correction will use an auditable new posting.
 @else
-Original voucher #{{ $source->type_id }} will remain rejected. Reason: {{ $approval->rejection_reason ?? 'Not recorded' }}. Revised voucher gets a new number and remains Pending until approved.
+Original posted voucher #{{ $source->type_id }} remains preserved. Correction will use an auditable new posting.
 @endif
+{{ $usesApproval ? 'Approval is ON: the correction will remain Pending until approved.' : 'Approval is OFF: the authorized correction will post directly.' }}
 </div>
 <form id="cash-revision-form" action="{{ route('finance.daily-vouchers.revise.store',$source->id) }}" method="post">
 @csrf
@@ -78,9 +86,9 @@ Original voucher #{{ $source->type_id }} will remain rejected. Reason: {{ $appro
 <div class="alert alert-info">Revised bank/cheque voucher will start with Pending clearance status. Existing bank decisions are never copied. Source with settled/bounced/returned history cannot be revised.</div>
 @endif
 <div class="form-group"><label for="cr-revise-description">Purpose / Description *</label><textarea id="cr-revise-description" name="description" class="form-control" rows="3" required>{{ $source->description }}</textarea></div>
-<div class="form-group"><label class="reason-label" for="cr-revise-reason">{{ $approval->status === 'approved' ? 'Reason for Edit *' : 'Reason for revision *' }}</label><textarea id="cr-revise-reason" name="revision_reason" class="form-control" minlength="3" maxlength="500" rows="2" required></textarea></div>
+<div class="form-group"><label class="reason-label" for="cr-revise-reason">{{ $editStatus === 'rejected' ? 'Reason for revision *' : 'Reason for Edit *' }}</label><textarea id="cr-revise-reason" name="revision_reason" class="form-control" minlength="3" maxlength="500" rows="2" required></textarea></div>
 <div class="text-danger mb-2" id="cash-revision-error" role="alert"></div>
-<div class="text-right"><button type="submit" class="btn btn-primary" id="cash-revision-save">{{ $approval->status === 'approved' ? 'Submit Correction for Approval' : 'Revise & Resubmit for Approval' }}</button></div>
+<div class="text-right"><button type="submit" class="btn btn-primary" id="cash-revision-save">{{ $usesApproval ? ($editStatus === 'rejected' ? 'Revise & Resubmit for Approval' : 'Submit Correction for Approval') : 'Save Correction' }}</button></div>
 </form></div></div>
 @endsection
 @section('js')
