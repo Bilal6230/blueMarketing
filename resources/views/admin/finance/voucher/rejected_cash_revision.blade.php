@@ -22,11 +22,35 @@ body{overflow:auto!important}
 <form id="cash-revision-form" action="{{ route('finance.daily-vouchers.revise.store',$source->id) }}" method="post">
 @csrf
 <div class="fields">
+<div class="form-group"><label>Voucher No</label><input class="form-control" value="{{ app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->lookup((int)getSelectedTown(), 'customer_ledger', (int)$source->id) ?: $source->transaction_type.'-'.$source->type_id }}" readonly></div>
+<div class="form-group"><label>Payment Type</label><input class="form-control" value="{{ [1=>'Cash',2=>'Online',3=>'Cheque'][(int)$source->payment_type] ?? 'Unknown' }}" readonly></div>
+</div>
+<div class="fields">
 <div class="form-group"><label for="cr-revise-date">Date *</label><input id="cr-revise-date" name="date" class="form-control" type="date" value="{{ substr((string)$source->date,0,10) }}" required></div>
 <div class="form-group"><label for="cr-revise-amount">Amount *</label><input id="cr-revise-amount" name="amount" class="form-control" type="number" min="0.01" step="0.01" value="{{ max((float)$source->amount_in,(float)$source->amount_out) }}" required></div>
+</div>
+@php
+    $currentAccount = $accounts->firstWhere('id', (int) ($leg?->project_head_subheads_id ?? 0));
+    $currentHead = (int) ($currentAccount?->head_accounting_id ?? 0);
+    $currentType = (int) ($currentAccount?->acct_type ?? 0);
+@endphp
+<div class="fields">
+<div class="form-group"><label for="cr-revise-type">Account Type *</label>
+<select id="cr-revise-type" class="form-control" required>
+<option value="">Select account type</option>
+@foreach($accountTypes as $accountType)<option value="{{ $accountType->id }}" @selected($currentType === (int)$accountType->id)>{{ $accountType->name }}</option>@endforeach
+</select></div>
+<div class="form-group"><label for="cr-revise-head">Accounts *</label>
+<select id="cr-revise-head" class="form-control" required><option value="">Select account</option>
+@foreach($accounts->unique('head_accounting_id') as $account)
+<option value="{{ $account->head_accounting_id }}" data-acct-type="{{ $account->acct_type }}" @selected($currentHead === (int)$account->head_accounting_id)>{{ $account->head_name }}</option>
+@endforeach
+</select></div>
 <div class="form-group"><label for="cr-revise-account">Child Account *</label><select class="form-control" id="cr-revise-account" name="account_id" required>
-<option value="">Select account</option>
-@foreach($accounts as $account)<option value="{{ $account->id }}" @selected((int)$leg?->project_head_subheads_id===(int)$account->id)>{{ $account->head_name }} / {{ $account->sub_name }}</option>@endforeach
+<option value="">Select child account</option>
+@foreach($accounts as $account)
+<option value="{{ $account->id }}" data-head-id="{{ $account->head_accounting_id }}" data-acct-type="{{ $account->acct_type }}" @selected((int)($leg?->project_head_subheads_id ?? 0)===(int)$account->id)>{{ $account->sub_name }}</option>
+@endforeach
 </select></div>
 </div>
 @if((int)$source->payment_type !== 1)
@@ -59,6 +83,28 @@ body{overflow:auto!important}
 <script>
 $(function(){
  var $form=$('#cash-revision-form');
+ var $type=$('#cr-revise-type'),$head=$('#cr-revise-head'),$child=$('#cr-revise-account');
+ function filterHeads(){
+   var type=String($type.val()||''),previous=String($head.val()||'');
+   $head.find('option').each(function(){
+     var $option=$(this),visible=!$option.val()||String($option.attr('data-acct-type'))===type;
+     $option.prop('disabled',!visible).prop('hidden',!visible);
+   });
+   if($head.find('option:selected').prop('disabled'))$head.val('');
+   filterChildren();
+ }
+ function filterChildren(){
+   var type=String($type.val()||''),head=String($head.val()||'');
+   $child.find('option').each(function(){
+     var $option=$(this),visible=!$option.val()||
+       (String($option.attr('data-acct-type'))===type && String($option.attr('data-head-id'))===head);
+     $option.prop('disabled',!visible).prop('hidden',!visible);
+   });
+   if($child.find('option:selected').prop('disabled'))$child.val('');
+ }
+ $type.on('change',function(){$head.val('');filterHeads();});
+ $head.on('change',function(){$child.val('');filterChildren();});
+ filterHeads();
  if(window.parent!==window)window.parent.postMessage({type:'daily-voucher-edit-ready'},window.location.origin);
  $form.on('submit',function(event){
   event.preventDefault();var $button=$('#cash-revision-save');
