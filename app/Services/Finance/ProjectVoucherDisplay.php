@@ -9,7 +9,7 @@ final class ProjectVoucherDisplay
 {
     // Cheque is a payment method under the bank voucher series, not a separate
     // numbered voucher series. Keep CHR/CHP decoding at legacy read sites only.
-    public const SERIES = ['CR', 'CP', 'CCR', 'CDR', 'BOR', 'BOP', 'JV', 'CV', 'BO', 'BR', 'PPR', 'SV', 'EC', 'ECP'];
+    public const SERIES = ['CR', 'DR', 'CP', 'CCR', 'CDR', 'BOR', 'BOP', 'JV', 'CV', 'BO', 'BR', 'PPR', 'SV', 'EC', 'ECP'];
 
     public function format(int $projectId, string $series, int $number, string $date): string
     {
