@@ -34,6 +34,15 @@ final class VoucherApprovalDetailReader
                 'payment_type'=>[1=>'Cash',2=>'Online',3=>'Cheque'][(int)$s->payment_type]??'Other',
                 'transaction_reference'=>$s->t_number??null,'passing_date'=>$s->passing_date??null,
             ]);
+            if (in_array($type,['CCR','CDR'],true) && Schema::hasTable('cash_voucher_attachments')) {
+                $file=DB::table('cash_voucher_attachments')
+                    ->where('project_id',$project)->where('customer_ledger_id',$s->id)
+                    ->orderByDesc('id')->first(['id','original_name']);
+                if ($file) {
+                    $base['attachment_url']=route('finance.voucher.cash-only.attachment',['attachment'=>$file->id]);
+                    $base['attachment_name']=$file->original_name;
+                }
+            }
             if ($s->bank_id && Schema::hasTable('banks')) {
                 $base['bank']=DB::table('banks')->where('id',$s->bank_id)->value('name');
             }
