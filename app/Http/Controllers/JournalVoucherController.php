@@ -147,7 +147,7 @@ class JournalVoucherController extends Controller
                     $ids=array_keys(array_filter($numbers,
                         fn($display)=>in_array($display,array_map('strval',$values),true)));
                     $query->whereNotIn('journal_vouchers.id',$ids);
-                }elseif($values)$query->whereNotIn($field,array_map('strval',$values));
+                }elseif($values)$this->applyExcelValueFilter($query,$field,$values,false);
             }
             $selected=(array)$request->input('excel_values',[]);
             foreach($selected as $field=>$values) {
@@ -193,7 +193,7 @@ class JournalVoucherController extends Controller
                     $ids=array_keys(array_filter($numbers,
                         fn($display)=>in_array($display,array_map('strval',$values),true)));
                     $query->whereIn('journal_vouchers.id',$ids);
-                }else $query->whereIn($field,array_map('strval',$values));
+                }else $this->applyExcelValueFilter($query,$field,$values,true);
             }
         }
         // Column filters are applied in SQL before paging (not just the first page).
@@ -384,8 +384,7 @@ class JournalVoucherController extends Controller
                         $include?$query->whereIn('journal_vouchers.id',$ids)
                             :$query->whereNotIn('journal_vouchers.id',$ids);
                     }else{
-                        $include?$query->whereIn($field,array_map('strval',$values))
-                            :$query->whereNotIn($field,array_map('strval',$values));
+                        $this->applyExcelValueFilter($query,$field,$values,$include);
                     }
                 }
             }
@@ -445,6 +444,26 @@ class JournalVoucherController extends Controller
         $x['vouchers'] = $query->orderByDesc('id')->get(); // Fetch all vouchers initially
 
         return view('admin.reports.vouchers.index', $x);
+    }
+
+    private function applyExcelValueFilter($query,string $column,array $values,bool $include): void
+    {
+        $strings=array_map('strval',$values);
+        $hasBlank=in_array('',$strings,true);
+        $nonBlank=array_values(array_filter($strings,fn($v)=>$v!==''));
+        if($include){
+            $query->where(function($scope)use($column,$hasBlank,$nonBlank){
+                if($nonBlank)$scope->whereIn($column,$nonBlank);
+                if($hasBlank)$scope->orWhereNull($column)->orWhere($column,'');
+            });
+        }else{
+            $query->where(function($scope)use($column,$hasBlank,$nonBlank){
+                if($nonBlank)$scope->whereNotIn($column,$nonBlank);
+                if($hasBlank){
+                    $scope->whereNotNull($column)->where($column,'<>','');
+                }else $scope->orWhereNull($column);
+            });
+        }
     }
 
     /**
