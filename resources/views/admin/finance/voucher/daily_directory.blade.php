@@ -348,15 +348,15 @@
     const tableSearch=$('#dv-table-search')[0];
     $('#dv-page-length').on('change',function(){length=Number($(this).val());start=0;load();});
     $('#dv-table-search').on('input',()=>{clearTimeout(timer);timer=setTimeout(()=>{start=0;load();},300);});
-    const excelSelections={};
+    const excelSelections={},excelExclusions={};
     let excelCurrent=null,excelOptions=[],excelDraft=new Set(),excelFacetRequest=null;
     const $excel=$('#dv-excel-popover');
     function updateSortArrows(){
         $('.dv-excel-trigger').each(function(){
             const $button=$(this),field=$button.data('column');
-            $button.toggleClass('dv-has-filter',Object.prototype.hasOwnProperty.call(excelSelections,field));
+            $button.toggleClass('dv-has-filter',Object.prototype.hasOwnProperty.call(excelSelections,field)||Object.prototype.hasOwnProperty.call(excelExclusions,field));
             $button.attr('title',(field===sortColumn?(sortDirection==='asc'?'Sorted ascending. ':'Sorted descending. '):'')+
-                (Object.prototype.hasOwnProperty.call(excelSelections,field)?'Filter active. ':'')+'Sort or filter '+field);
+                ((Object.prototype.hasOwnProperty.call(excelSelections,field)||Object.prototype.hasOwnProperty.call(excelExclusions,field))?'Filter active. ':'')+'Sort or filter '+field);
             $button.closest('th').attr('aria-sort',field===sortColumn?(sortDirection==='asc'?'ascending':'descending'):'none');
         });
     }
@@ -393,6 +393,9 @@
         $.each(excelSelections,(field,values)=>{
             $.each(values,(_,value)=>{(query['column_values['+field+']']??=[]).push(value);});
         });
+        $.each(excelExclusions,(field,values)=>{
+            $.each(values,(_,value)=>{(query['column_excluded['+field+']']??=[]).push(value);});
+        });
         return query;
     }
     $('.dv-excel-trigger').on('click',function(event){
@@ -411,12 +414,17 @@
             top:Math.max(8,Math.min(top,$(window).height()-355))+'px'});
         const params=queryParams();
         delete params['column_values['+field+']'];
+        delete params['column_excluded['+field+']'];
         params.facet_column=field;
         excelFacetRequest=$.ajax({url:@json(route('finance.daily-vouchers.data')),method:'GET',
             data:params,dataType:'json'}).done(result=>{
             if(excelCurrent!==field)return;
             excelOptions=(result.options||[]).map(String);
-            excelOptions.forEach(value=>{if(!Object.prototype.hasOwnProperty.call(excelSelections,field))excelDraft.add(value);});
+            if(Object.prototype.hasOwnProperty.call(excelExclusions,field))
+                excelDraft=new Set(excelOptions.filter(v=>!excelExclusions[field].includes(v)));
+            else excelOptions.forEach(value=>{
+                if(!Object.prototype.hasOwnProperty.call(excelSelections,field))excelDraft.add(value);
+            });
             renderExcelValues();
             if(result.more_options)$('#dv-excel-values').prepend($('<div>',{'class':'small text-warning p-1',
                 text:'Showing first 500 distinct values. Narrow date/search for more.'}));
@@ -445,14 +453,20 @@
                 text:'Select at least one value, or use Clear.'}));
             return;
         }
-        if(excelDraft.size===excelOptions.length&&excelOptions.every(v=>excelDraft.has(String(v))))
-            delete excelSelections[excelCurrent];
-        else excelSelections[excelCurrent]=[...excelDraft];
+        const removed=excelOptions.filter(v=>!excelDraft.has(String(v)));
+        if(!removed.length){
+            delete excelSelections[excelCurrent];delete excelExclusions[excelCurrent];
+        }else if(removed.length<excelDraft.size){
+            delete excelSelections[excelCurrent];excelExclusions[excelCurrent]=removed;
+        }else{
+            delete excelExclusions[excelCurrent];excelSelections[excelCurrent]=[...excelDraft];
+        }
         closeExcel();start=0;updateSortArrows();load();
     });
     $('#dv-excel-clear').on('click',()=>{
         if(!excelCurrent)return;
-        delete excelSelections[excelCurrent];closeExcel();start=0;updateSortArrows();load();
+        delete excelSelections[excelCurrent];delete excelExclusions[excelCurrent];
+        closeExcel();start=0;updateSortArrows();load();
     });
     $('#dv-excel-cancel').on('click',closeExcel);
     $excel.on('click','.dv-excel-sort',function(){
@@ -535,7 +549,8 @@
         $('#dv-from,#dv-to,#dv-account,#dv-search').val('');
         if($('#dv-type').is('select'))$('#dv-type').val('');
         $('#dv-table-search').val('');
-        $.each(excelSelections,(field)=>{delete excelSelections[field];});closeExcel();
+        $.each(excelSelections,(field)=>{delete excelSelections[field];});
+        $.each(excelExclusions,(field)=>{delete excelExclusions[field];});closeExcel();
         start=0;sortColumn='date';sortDirection='desc';updateSortArrows();load();
     });
     $('#dv-type').on('change',function(){
