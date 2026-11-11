@@ -46,7 +46,7 @@
    </div>
    <div class="table-responsive vap-table-wrap">
     <table class="table table-sm table-bordered table-hover vap-table">
-     <thead><tr><th>#</th><th>Submitted</th><th>Voucher Type</th><th>Original Source</th><th>Submitted By</th><th>Assigned Approver</th><th>Status</th><th>Actions</th></tr></thead>
+     <thead><tr><th>#</th><th>Submitted</th><th>Voucher Type</th><th>Original Source</th><th>Submitted By</th><th>Assigned Approver</th><th>Status</th><th>Reason for Revision / Edit</th><th>Actions</th></tr></thead>
      <tbody>
      @forelse($queue as $item)
       <tr id="vap-row-{{ $item->id }}">
@@ -57,6 +57,12 @@
        <td>{{ $item->submitter?->name ?? 'User #'.$item->submitted_by }}</td>
        <td>{{ $item->assignedApprover?->name ?? 'User #'.$item->assigned_approver_id }}</td>
        <td><span class="vap-status pending">Pending</span></td>
+       @php
+          $revisionEvent = $item->events->first(fn($event) => in_array($event->event, ['revision_from_approved','revision_from_rejected','resubmitted'], true));
+          $revisionData = $revisionEvent ? json_decode((string)$revisionEvent->remarks, true) : null;
+          $revisionReason = is_array($revisionData) ? ($revisionData['revision_reason'] ?? null) : null;
+       @endphp
+       <td style="min-width:180px;max-width:330px;white-space:normal">{{ $revisionReason ?: '—' }}</td>
        <td>
         <div class="vap-actions">
          @if(\App\Services\Finance\VoucherApproverAccess::mayDecide(auth()->user(),(int)$item->project_id,(int)$item->assigned_approver_id,(int)$item->submitted_by))
@@ -79,7 +85,7 @@
        </td>
       </tr>
      @empty
-      <tr><td colspan="8" class="text-center text-muted py-4">No pending voucher approvals.</td></tr>
+      <tr><td colspan="9" class="text-center text-muted py-4">No pending voucher approvals.</td></tr>
      @endforelse
      </tbody>
     </table>
@@ -90,7 +96,7 @@
   <div class="vap-card">
    <div class="vap-card-head"><strong>Recent Approval History</strong><span class="text-muted small">Last 50 decisions · Read-only</span></div>
    <div class="table-responsive vap-table-wrap"><table class="table table-sm table-bordered table-hover vap-table">
-    <thead><tr><th>Decided At</th><th>Voucher</th><th>Source</th><th>Submitted By</th><th>Decision</th><th>Assigned Approver</th><th>Reason</th><th>Audit</th></tr></thead>
+    <thead><tr><th>Decided At</th><th>Voucher</th><th>Source</th><th>Submitted By</th><th>Decision</th><th>Assigned Approver</th><th>Rejection Reason</th><th>Revision / Edit Reason</th><th>Audit</th></tr></thead>
     <tbody>
      @forelse($history as $item)
       <tr>
@@ -100,7 +106,12 @@
        <td>{{ $item->submitter?->name ?? 'User #'.$item->submitted_by }}</td>
        <td><span class="vap-status {{ $item->status }}">{{ ucfirst($item->status) }}</span></td>
        <td>{{ $item->assignedApprover?->name ?? 'User #'.$item->assigned_approver_id }}</td>
-       <td>{{ $item->rejection_reason ?: '—' }}</td>
+       <td style="max-width:280px;white-space:normal">{{ $item->rejection_reason ?: '—' }}</td>
+       @php
+          $historyEvent = $item->events->first(fn($event) => in_array($event->event, ['revision_from_approved','revision_from_rejected','resubmitted'], true));
+          $historyData = $historyEvent ? json_decode((string)$historyEvent->remarks, true) : null;
+       @endphp
+       <td style="max-width:280px;white-space:normal">{{ is_array($historyData) ? ($historyData['revision_reason'] ?? '—') : '—' }}</td>
        <td>
         <button type="button" class="btn btn-outline-secondary btn-sm vap-history" data-target="#vap-events-{{ $item->id }}">History</button>
         <div id="vap-events-{{ $item->id }}" class="d-none">
@@ -111,7 +122,7 @@
        </td>
       </tr>
      @empty
-      <tr><td colspan="8" class="text-muted text-center py-4">No completed decisions yet.</td></tr>
+      <tr><td colspan="9" class="text-muted text-center py-4">No completed decisions yet.</td></tr>
      @endforelse
     </tbody>
    </table></div>
