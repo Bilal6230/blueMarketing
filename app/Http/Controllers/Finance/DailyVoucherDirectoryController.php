@@ -87,13 +87,15 @@ final class DailyVoucherDirectoryController extends Controller
             if (!empty($filters['type'])) {
                 $methodSeries = [
                     'CR' => ['CR', [1, 2, 3]], 'CP' => ['CP', 1], 'DR' => ['CP', [1, 2, 3]],
-                    'CCR' => ['CR', 1], 'CDR' => ['CP', 1],
+                    'CCR' => ['CCR', 1], 'CDR' => ['CDR', 1],
                     'BOR' => ['CR', [2, 3]], 'BOP' => ['CP', [2, 3]],
                 ];
                 if (isset($methodSeries[$filters['type']])) {
                     [$sourceType, $paymentType] = $methodSeries[$filters['type']];
                     $query->where('source.transaction_type', $sourceType);
-                    if (in_array($filters['type'], ['CR', 'CP', 'DR'], true)) {
+                    if (in_array($filters['type'], ['CCR','CDR'], true)) {
+                        $query->where('source.payment_type',1);
+                    } elseif (in_array($filters['type'], ['CR', 'CP', 'DR'], true)) {
                         // Keep historical CR/CP source rows visible even before
                         // display identities are installed. With identities,
                         // exclude rows assigned to one of the new dedicated series.
