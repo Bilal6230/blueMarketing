@@ -229,14 +229,14 @@ final class DailyVoucherDirectoryController extends Controller
                     ], fn ($value) => $value !== null && $value !== ''),
                     'revise_url' => ($sourceApprovals[$source->id]['status'] ?? '') === 'rejected'
                         && in_array((int)$source->payment_type,[1,2,3],true)
-                        && in_array((string)$source->transaction_type,['CR','CP'],true)
+                        && in_array((string)$source->transaction_type,['CR','CP','CCR','CDR'],true)
                         && auth()->user()?->can('update voucher')
                         && (\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())
                             || ((int)($sourceApprovals[$source->id]['submitted_by'] ?? 0)===(int)auth()->id()
                                 && (int)auth()->user()->project_id===$projectId))
                         ? route('finance.daily-vouchers.revise.edit',['customerLedger'=>$source->id]) : null,
                     'delete_url' => $ledgerId && auth()->user()?->can('delete voucher')
-                        && in_array((string) $source->transaction_type, ['CR', 'CP'], true)
+                        && in_array((string) $source->transaction_type, ['CR', 'CP','CCR','CDR'], true)
                         && (empty($sourceApprovals[$source->id]) ||
                             (($sourceApprovals[$source->id]['status'] ?? '') === 'approved'
                                 && (int) $source->payment_type === 1 && (int) $source->is_active === 1))
@@ -251,7 +251,7 @@ final class DailyVoucherDirectoryController extends Controller
                                 && (int)auth()->user()->project_id===$projectId))
                         ? route('finance.daily-vouchers.revise.edit',['customerLedger'=>$source->id])
                         : ($ledgerId && empty($sourceApprovals[$source->id]) && auth()->user()?->can('update voucher')
-                            && in_array((string) $source->transaction_type, ['CR','CP'],true)
+                            && in_array((string) $source->transaction_type, ['CR','CP','CCR','CDR'],true)
                             && (int)$source->is_active === 1
                             ? route('finance.daily-vouchers.revise.edit', ['customerLedger'=>$source->id]) : null),
                     'url' => $ledgerId
