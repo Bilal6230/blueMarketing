@@ -1,21 +1,3 @@
-# LATEST OWNER CORRECTION — 2026-11-11 (READ BEFORE HISTORICAL TEXT BELOW)
-
-**Canonical six voucher identities are CR, DR, CCR, CDR, BOR, BOP**. Earlier specification of CP as second target form is superseded. Existing Cash In business flow goes to **Credit Voucher (CR)**; existing Cash Out business flow goes to **Debit Voucher (DR)**. The `CP` DB type is historical legacy accounting evidence, not the new form identity; preserve old rows/links, with explicit compatibility/migration audit before any DR backend rollout.
-
-Six target titles:
-- CR — Credit Voucher; original Cash In behavior, Cash/Online/Cheque conditional fields.
-- DR — Debit Voucher; original Cash Out behavior, Cash/Online/Cheque and existing pending clearance semantics.
-- CCR — Cash Credit Voucher; cash only, no payment selector/bank/cheque inputs.
-- CDR — Cash Debit Voucher; cash only, no payment selector/bank/cheque inputs.
-- BOR — Bank Online Receipt Voucher; verified incoming online/cheque only, never cash.
-- BOP — Bank Online Payment Voucher; verified outgoing online/cheque only, never cash.
-
-**Each form's eight common fields:** Voucher No, Date, Amount, Account Type, Accounts, Child Account, optional Attachment/File Uploader, required Description/Narration. All other existing conditional behavior remains.
-
-**Implementation checkpoint:** First batch introduces six project-scoped GET-only form layouts and jQuery account/method controls, with SAVE DISABLED until safe backend type, numbering, approval, verified source binding and attachment storage exist. No real DR/CCR/CDR/BOR/BOP accounting writes are enabled, no browser PASS claimed. The rest of this document is preserved as historical implementation analysis but CR/CP final-target claims below are superseded.
-
----
-
 # BlueMarketing — CR, CP, CCR, CDR, BOR, BOP Functional Specification (Roman Urdu)
 Date: 2026-11-11 | Branch: upgrade/laravel-framework | Status: Requirements captured; implementation NOT started.
 

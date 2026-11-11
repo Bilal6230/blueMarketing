@@ -323,11 +323,6 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
     Route::post('finance/cheques', [\App\Http\Controllers\Finance\ChequeIntakeController::class, 'store'])
         ->middleware(['permission:create voucher', 'throttle:20,1'])->name('finance.cheques.store');
 
-    // Six owner-defined voucher form identities. GET-only until type-safe posting is verified.
-    Route::get('finance/voucher/forms/{type}', [\App\Http\Controllers\Finance\SixVoucherFormController::class, 'create'])
-        ->where('type', 'CR|DR|CCR|CDR|BOR|BOP|cr|dr|ccr|cdr|bor|bop')
-        ->middleware(['permission:create voucher'])->name('finance.voucher.six-form');
-
     Route::controller(App\Http\Controllers\Finance\VoucherController::class)->group(function () {
 
         //accounting routes
