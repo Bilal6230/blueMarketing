@@ -314,8 +314,8 @@ class VoucherController extends Controller
         }
 
         $allowed = [
-            'CR' => [true, 1], 'CCR' => [true, 1], 'BOR' => [true, [2, 3]],
-            'CP' => [false, 1], 'CDR' => [false, 1], 'BOP' => [false, [2, 3]],
+            'CR' => [true, [1, 2, 3]], 'CCR' => [true, 1], 'BOR' => [true, [2, 3]],
+            'DR' => [false, [1, 2, 3]], 'CP' => [false, 1], 'CDR' => [false, 1], 'BOP' => [false, [2, 3]],
         ];
         abort_unless(isset($allowed[$series]) && $allowed[$series][0] === $incoming
             && ($paymentType === null || (is_array($allowed[$series][1])
@@ -341,7 +341,7 @@ class VoucherController extends Controller
         $fixedPaymentType = $this->cashVoucherPaymentType($method);
         $displaySeries = $this->cashVoucherDisplaySeries($request, true, $fixedPaymentType);
         $power = Auth::user()->roles[0]->name;
-        $x['title'] = $fixedPaymentType === null ? 'Cash In Voucher' : $this->cashVoucherTitle(true, $fixedPaymentType);
+        $x['title'] = $displaySeries === 'CR' ? 'Credit Voucher (CR)' : ($fixedPaymentType === null ? 'Cash In Voucher' : $this->cashVoucherTitle(true, $fixedPaymentType));
         $x['fixedPaymentType'] = $fixedPaymentType;
         $x['displaySeries'] = $displaySeries;
         $x['embeddedVoucher'] = $request->boolean('embed');
@@ -611,7 +611,7 @@ class VoucherController extends Controller
         $fixedPaymentType = $this->cashVoucherPaymentType($method);
         $displaySeries = $this->cashVoucherDisplaySeries($request, false, $fixedPaymentType);
         $power = Auth::user()->roles[0]->name;
-        $x['title'] = $fixedPaymentType === null ? 'Cash Out Voucher' : $this->cashVoucherTitle(false, $fixedPaymentType);
+        $x['title'] = $displaySeries === 'DR' ? 'Debit Voucher (DR)' : ($fixedPaymentType === null ? 'Cash Out Voucher' : $this->cashVoucherTitle(false, $fixedPaymentType));
         $x['fixedPaymentType'] = $fixedPaymentType;
         $x['displaySeries'] = $displaySeries;
         $x['embeddedVoucher'] = $request->boolean('embed');
