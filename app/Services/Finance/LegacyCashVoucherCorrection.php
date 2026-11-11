@@ -27,6 +27,23 @@ final class LegacyCashVoucherCorrection
                 throw new \DomainException('CASH_VOUCHER_SINGLE_SOURCE_LEG_REQUIRED');
             }
             $oldLedger = $old->first();
+            $workflow = app(DailyVoucherApprovalWorkflow::class);
+            $approvalRequired = $workflow->policy($projectId, (string)$source->transaction_type) !== null;
+            if ($approvalRequired && (int)$source->payment_type !== 1) {
+                throw new \DomainException('Approved bank/cheque correction requires verified clearing reversal before a new approval request.');
+            }
+            if ($approvalRequired) {
+                $corrections = DB::table('daily_voucher_approval_events')
+                    ->where('event','legacy_cash_correction')
+                    ->where('remarks','like','%"original_source_id":'.$sourceId.',%')
+                    ->get(['remarks']);
+                if ($corrections->contains(function ($event) use ($sourceId) {
+                    $meta=json_decode((string)$event->remarks,true);
+                    return is_array($meta) && (int)($meta['original_source_id']??0)===$sourceId;
+                })) {
+                    throw new \DomainException('This original voucher already has an audited correction request.');
+                }
+            }
             $account = ProjectHeadSubhead::availableForPosting()->whereKey($accountId)->where('project_id', $projectId)
                 ->lockForUpdate()->firstOrFail();
             $type = (string) $source->transaction_type;
@@ -36,6 +53,7 @@ final class LegacyCashVoucherCorrection
             $reversalVoucherNumber = $allocator->next($projectId, $type);
             $correctedVoucherNumber = $allocator->next($projectId, $type);
             $date = (string) $changes['date'];
+            $postingActive = !$approvalRequired;
             $reversalReference = 'REV-'.$type.'-'.$source->id.'-'.$next;
 
             $base = $source->getAttributes();
@@ -47,7 +65,7 @@ final class LegacyCashVoucherCorrection
                 // Append-only source keeps the correction reason; original
                 // narration and instrument metadata remain untouched.
                 'note' => 'Edit Reason: '.trim((string) ($changes['edit_reason'] ?? '')),
-                'is_active' => 1,
+                'is_active' => $postingActive ? 1 : 0,
             ]));
             $correctionFields = $changes;
             unset($correctionFields['edit_reason']);
@@ -55,7 +73,7 @@ final class LegacyCashVoucherCorrection
                 'type_id' => $correctedSourceId, 'project_id' => $projectId,
                 'customer_id' => $changes['customer_id'] ?? $account->customer_id ?? $source->customer_id,
                 'plot_id' => $changes['plot_id'] ?? $account->plot_id ?? $source->plot_id,
-                'transaction_type' => $type, 'is_active' => 1,
+                'transaction_type' => $type, 'is_active' => $postingActive ? 1 : 0,
             ]));
             $displayIdentity = app(ProjectVoucherDisplayIdentity::class);
             $displayIdentity->assign($projectId, 'customer_ledger', (int) $reversalSource->id, $type, $date);
@@ -63,7 +81,7 @@ final class LegacyCashVoucherCorrection
 
             $common = [
                 'type' => $type, 'project_head_subheads_id' => $oldLedger->project_head_subheads_id,
-                'create_by' => $userId, 'is_active' => 1, 'status' => '0', 'date' => $date,
+                'create_by' => $userId, 'is_active' => $postingActive ? 1 : 0, 'status' => '0', 'date' => $date,
             ];
             $reversalLedger = Ledger::create(array_merge($common, [
                 'type_id' => $reversalSource->type_id, 'voucher_number' => $reversalVoucherNumber,
@@ -77,11 +95,33 @@ final class LegacyCashVoucherCorrection
                 'customer_ledger_id' => $correctedSource->id, 'reference' => $correctedSource->reference,
                 'amount_in' => $correctedSource->amount_in, 'amount_out' => $correctedSource->amount_out,
                 'detail' => $this->correctedDetail($correctedSource), 'create_by' => $userId,
-                'is_active' => 1, 'status' => '0', 'date' => $date,
+                'is_active' => $postingActive ? 1 : 0, 'status' => '0', 'date' => $date,
             ]);
+            if ($approvalRequired) {
+                if (!$workflow->submitIfRequired($projectId, $type, 'customer_ledger',
+                    (int) $correctedSource->id, $userId)) {
+                    throw new \DomainException('Approval policy is required for this correction.');
+                }
+                $approval = DB::table('daily_voucher_approvals')
+                    ->where('project_id',$projectId)->where('source_table','customer_ledger')
+                    ->where('source_id',$correctedSource->id)->first(['id']);
+                if (!$approval) throw new \DomainException('Correction approval not created.');
+                DB::table('daily_voucher_approval_events')->insert([
+                    'approval_id'=>$approval->id,
+                    'event'=>'legacy_cash_correction',
+                    'actor_id'=>$userId,
+                    'remarks'=>json_encode([
+                        'original_source_id'=>(int)$source->id,
+                        'reversal_source_id'=>(int)$reversalSource->id,
+                        'revision_reason'=>(string)($changes['edit_reason']??''),
+                    ],JSON_THROW_ON_ERROR),
+                    'created_at'=>now(),
+                ]);
+            }
 
             return ['source' => $correctedSource, 'ledger' => $correctedLedger,
-                'reversal_source' => $reversalSource, 'reversal_ledger' => $reversalLedger];
+                'reversal_source' => $reversalSource, 'reversal_ledger' => $reversalLedger,
+                'approval_pending' => $approvalRequired];
         });
     }
 
