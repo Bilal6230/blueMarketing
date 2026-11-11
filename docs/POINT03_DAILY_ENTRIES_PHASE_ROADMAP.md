@@ -5,6 +5,42 @@
 **State:** Phase 01 and Phase 02 COMPLETE — owner browser PASS 2026-11-10. Phase 03 ACTIVE, 03.1 and 03.2 owner browser PASS; 03.3 Batch 1 owner browser PASS, Batch 2 JV modal alignment browser PASS, typography adjustment browser gate PENDING; Batch 3A and 3B1 browser PASS; 3B2A/B implemented with browser testing ON HOLD due to CR/CP create validation. Phase 04+ LOCKED.
 **Rules:** `docs/README.md`, root `AGENTS.md`. Changes to business logic only within current approved milestone. Non-V2 code may be used safely; V2 pilot safety guards remain untouched.
 
+## ACTIVE DELIVERY ORDER — OWNER RESEQUENCED 2026-11-11 (AUTHORITATIVE)
+
+Owner explicitly changed phase priority to resolve the dependency inversion: do NOT require end-to-end CR/CP revision and approval browser PASS while six voucher forms and their persistence are still incomplete. **This delivery-order section supersedes the earlier 01–09 sequencing table and all older 'Phase 04 LOCKED until Phase 03.3 PASS' notes below.** Prior milestone IDs, existing code, browser evidence and historic notes remain unchanged for traceability. A reordering is NOT a browser PASS and does NOT complete Phase 03.3.
+
+| Delivery order | Phase / gate | Scope | Current state |
+| --- | --- | --- | --- |
+| 01 | Cheque Management | Receipts, verification, clearing and cheque source evidence | COMPLETE, owner PASS |
+| 02 | Online Transaction Management | Receipt/payment confirmation, eligible sources | COMPLETE, owner PASS |
+| 03 | Voucher Foundation (completed portions) | 03.1 common UI, 03.2 approval settings, 03.3 Batch 1 and verified JV/guard sub-batches; preserve all existing code and evidence | FOUNDATION PRESENT; **03.3 not closed**, typography and 3B2A/B gates carried to Phase 05 |
+| **04** | **Six Functional Vouchers — NOW FIRST ACTIVE IMPLEMENTATION PRIORITY** | **04.1 CR; 04.2 CP; 04.3 CCR; 04.4 CDR; 04.5 BOR; 04.6 BOP; 04.7 six lists, print, safe attachments and regression** | **NEXT**; each batch needs owner browser PASS before following batch |
+| 05 | Final Voucher Approval & Lifecycle | Pending/Approved/Rejected, edit/reverse/delete safety and resubmission acceptance across actual voucher types; finish old 03.3 3B2A/B gates, JV typography gate, preserve history | DEPENDS ON Phase 04 functional voucher browser PASS |
+| 06 | Bank Narration, Bank Movement & Linked Voucher History | Verified bank source-to-voucher links, bank deposit/withdrawal, linked audit and print, no duplicate posting | DEPENDS ON BOR/BOP and eligible Phase 01–02 sources |
+| 07 | Plot Receive Payment Voucher | Cash and verified bank/cheque plot receipts, multi-plot allocation, printable receipts | DEPENDS ON functional cash/bank vouchers and bank links |
+| 08 | Plot Purchase & Auto Purchase Voucher | Seller, plot cost/inventory and auto voucher audit/reversal | DEPENDS ON voucher and ledger safety foundation |
+| 09 | Cheque & Online Dashboard | Live source and voucher reporting, counts, filters, drilldowns | DEPENDS ON settled source-to-voucher relationships |
+| 10 | Cross-Module Acceptance & Delivery | Regression, authorizations, accounting, duplicate/source uniqueness, historic data | DEPENDS ON 01–09 owner PASS |
+
+### Phase 04 implementation order and acceptance
+- **04.1 CR** — existing cash/online/cheque conditional behavior, create validation fixes, real CR source and ledger, modern form, list, print, permission and appropriate approval-pending guard.
+- **04.2 CP** — existing cash/online/cheque, selected pending receipt and locked amount, Pass/Return/Bounce clearance semantics, real CP saving and list; do not convert clearance actions into BOP.
+- **04.3 CCR** — new real persisted CCR type; cash-only; no bank/cheque/online fields; list, print, correct cash incoming direction.
+- **04.4 CDR** — new real persisted CDR type; cash-only; no bank/cheque/online fields; list, print, correct cash outgoing direction.
+- **04.5 BOR** — real persisted BOR; online/cheque ONLY; incoming confirmed/cleared source required, immutable source amount, one-time link and bank posting protections.
+- **04.6 BOP** — real persisted BOP; online/cheque ONLY; outgoing confirmed/cleared source required, immutable amount, unique source link and correct payment direction.
+- **04.7 Shared completion** — all six independent type-filtered listings, modern jQuery UI, print, optional safe attachment/file upload, complete validation, accounting and historical regressions.
+- **All six show the same eight fields:** Voucher No, Date, Amount, Account Type, Accounts, Child Account, Attachment/File Uploader (optional), Description/Narration (required). See [canonical voucher spec](./POINT03_CR_CP_CCR_CDR_BOR_BOP_FUNCTIONAL_SPEC.md).
+- Implement basic approval/ledger protections within each voucher batch to prevent unsafe posting; Phase 05 owns full cross-type approval, revision and resubmission browser acceptance. No bypassing existing security, source checks, V2 pilot guards, or mutation policies.
+- No production data migrations or mutation without explicit authorization. A browser HOLD is not PASS. Owner's message authorizes **reordering**, not inventing browser evidence.
+
+### Re-sequenced gating rule
+Phase 04 is the next authorized implementation priority even though the **historical** Phase 03.3 end-to-end browser gate is still open, because its remaining CR/CP tests depend on Phase 04 functionality. Run Phase 04 batches in order, with owner browser PASS required **for each completed batch** before progressing. Old 03.3 acceptance is deferred—not waived—to Phase 05. Other later phases stay gated on their prerequisites and owner PASS. All older milestone tables below are preserved as historical records, not the active execution order.
+
+---
+
+## Historical original sequence (superseded by ACTIVE DELIVERY ORDER above)
+
 ## Strict sequence and browser gates
 A phase is complete ONLY when (1) its milestones and relevant automated tests pass, (2) owner performs real browser testing on their running application, (3) failures are repaired/retested, and (4) owner explicitly confirms **PHASE PASS**. A failed milestone or phase blocks every subsequent milestone/phase's implementation, including cross-phase dependencies. Record browser environment/URL, scenarios, observed outcomes, date and tester. "Source inspected" is NOT browser PASS.
 
