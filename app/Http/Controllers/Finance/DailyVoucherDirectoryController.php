@@ -206,7 +206,11 @@ final class DailyVoucherDirectoryController extends Controller
                             || ((int)($sourceApprovals[$source->id]['submitted_by'] ?? 0)===(int)auth()->id()
                                 && (int)auth()->user()->project_id===$projectId))
                         ? route('finance.daily-vouchers.revise.edit',['customerLedger'=>$source->id]) : null,
-                    'delete_url' => $ledgerId && empty($sourceApprovals[$source->id]) && auth()->user()?->can('delete voucher') && in_array((string) $source->transaction_type, ['CR', 'CP'], true)
+                    'delete_url' => $ledgerId && auth()->user()?->can('delete voucher')
+                        && in_array((string) $source->transaction_type, ['CR', 'CP'], true)
+                        && (empty($sourceApprovals[$source->id]) ||
+                            (($sourceApprovals[$source->id]['status'] ?? '') === 'approved'
+                                && (int) $source->payment_type === 1 && (int) $source->is_active === 1))
                         ? route('ledger.destroy') : null,
                     'delete_id' => $ledgerId,
                     'edit_url' => $ledgerId && empty($sourceApprovals[$source->id]) && auth()->user()?->can('update voucher')
