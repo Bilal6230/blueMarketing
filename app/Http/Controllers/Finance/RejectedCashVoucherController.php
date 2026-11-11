@@ -6,6 +6,9 @@ use App\Models\CustomerLedger;
 use App\Models\DailyVoucherApproval;
 use App\Models\Ledger;
 use App\Services\Finance\RejectedCashVoucherResubmission;
+use App\Services\Finance\LegacyCashVoucherCorrection;
+use App\Services\Finance\DailyVoucherApprovalWorkflow;
+use App\Models\ProjectHeadSubhead;
 use App\Services\Finance\VoucherApproverAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,16 +24,23 @@ final class RejectedCashVoucherController extends Controller
         abort_unless(in_array((int)$source->payment_type,[1,2,3],true),409,'Unsupported payment method.');
         $approval=DailyVoucherApproval::query()->where('project_id',$project)
             ->where('source_table','customer_ledger')->where('source_id',$source->id)
-            ->whereIn('status',['rejected','approved'])->firstOrFail();
-        if ($approval->status === 'approved') {
+            ->whereIn('status',['rejected','approved'])->first();
+        if (!$approval) abort_unless((int)$source->is_active===1,409,'Inactive voucher is not editable.');
+        if ($approval && $approval->status === 'approved') {
             abort_unless((int)$source->payment_type === 1 && (int)$source->is_active === 1,409,
                 'Approved bank/cheque voucher correction requires a separately audited bank reversal.');
         }
         $actor=auth()->user();
-        abort_unless(VoucherApproverAccess::isSuperAdmin($actor)
+        abort_unless($actor?->can('update voucher'),403);
+        if ($approval) abort_unless(VoucherApproverAccess::isSuperAdmin($actor)
             || ((int)$approval->submitted_by===(int)$actor->id
                 && (int)$actor->project_id===$project),403);
-        $leg=Ledger::query()->withoutGlobalScopes()->where('customer_ledger_id',$source->id)->first();
+        abort_unless(VoucherApproverAccess::isSuperAdmin($actor)
+            || (int)$actor->project_id===$project,403);
+        $leg=Ledger::query()->withoutGlobalScopes()
+            ->where('customer_ledger_id',$source->id)
+            ->where('type',$source->transaction_type)
+            ->whereHas('projectHeadSubhead',fn($q)=>$q->where('project_id',$project))->first();
         $accounts=DB::table('project_head_subheads as p')
             ->leftJoin('head_accountings as h','h.id','=','p.head_accounting_id')
             ->leftJoin('subhead_accountings as s','s.id','=','p.subhead_accounting_id')
@@ -64,14 +74,52 @@ final class RejectedCashVoucherController extends Controller
             ]);
         }
         $data=array_merge($data,$request->only(['t_number','bank_id','passing_date','cheque_purpose']));
+        $project=(int)getSelectedTown();
+        $actor=auth()->user();
+        abort_unless($actor?->can('update voucher') &&
+            (VoucherApproverAccess::isSuperAdmin($actor) || (int)$actor->project_id===$project),403);
+        $tracked=DailyVoucherApproval::query()->where('project_id',$project)
+            ->where('source_table','customer_ledger')->where('source_id',$source->id)->first();
+        if ($tracked) abort_unless(VoucherApproverAccess::isSuperAdmin($actor)
+            || ((int)$tracked->submitted_by===(int)$actor->id
+                && (int)$actor->project_id===$project),403);
+        $policy=app(DailyVoucherApprovalWorkflow::class)->policy($project,(string)$source->transaction_type);
         try {
-            $saved=app(RejectedCashVoucherResubmission::class)->resubmit(
-                (int)getSelectedTown(),$customerLedger,(int)auth()->id(),$data);
+            if ($tracked && $tracked->status==='rejected') {
+                $saved=app(RejectedCashVoucherResubmission::class)->resubmit(
+                    $project,$customerLedger,(int)$actor->id,$data);
+                $pending=$saved['approval_pending'] ?? true;
+            } else {
+                // Untracked historical Posted and tracked Approved share the
+                // same append-only cash correction. The policy is checked at
+                // request time, not inferred from historical approval status.
+                abort_unless((int)$source->is_active===1,409,'Original voucher is no longer active.');
+                $account=ProjectHeadSubhead::availableForPosting()->where('project_id',$project)
+                    ->whereKey((int)$data['account_id'])->firstOrFail();
+                $amount=number_format((float)$data['amount'],2,'.','');
+                $saved=app(LegacyCashVoucherCorrection::class)->correct(
+                    $project,(int)$source->id,(int)$account->id,[
+                        'date'=>$data['date'],'description'=>$data['description'],
+                        'amount_in'=>$source->transaction_type==='CR'?$amount:0,
+                        'amount_out'=>$source->transaction_type==='CP'?$amount:0,
+                        'payment_type'=>(int)$source->payment_type,
+                        't_number'=>$source->payment_type==1?null:($data['t_number']??null),
+                        'bank_id'=>$source->payment_type==1?null:($data['bank_id']??null),
+                        'passing_date'=>$source->payment_type==1?null:($data['passing_date']??null),
+                        'cheque_purpose'=>$source->payment_type==3?($data['cheque_purpose']??null):null,
+                        'edit_reason'=>$data['revision_reason'],
+                        'reference'=>(string)$source->reference.'-CORR-'.now()->format('YmdHisu')
+                    ],(int)$actor->id);
+                $pending=(bool)($saved['approval_pending']??false);
+            }
         } catch (\DomainException $e) {
             return response()->json(['message'=>$e->getMessage()],409);
         }
         return response()->json([
-            'message'=>'New voucher '.$saved['display'].' saved as Pending Approval. Original '.($saved['original_status'] === 'approved' ? 'remains active until the correction is approved.' : 'remains Rejected.')
-        ]+$saved);
+            'message'=>$pending
+                ? 'Correction submitted for approval. Original accounting remains protected until decision.'
+                : 'Correction posted directly with original and reversal preserved in audit history.',
+            'approval_pending'=>$pending,
+        ]);
     }
 }
