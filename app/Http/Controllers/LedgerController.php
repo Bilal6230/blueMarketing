@@ -1208,33 +1208,31 @@ class LedgerController extends Controller
         $account = ProjectHeadSubhead::availableForPosting()->where('project_id', $projectId)
             ->where('head_accounting_id', (int) $data['accounts_id'])
             ->where('subhead_accounting_id', (int) $data['subaccounts_id'])->firstOrFail();
-        $amount = str_replace(',', '', $data['amount']);
-        $cash = (int) $data['payment_type'] === 1;
+        abort_unless(auth()->user()?->can('update voucher'),403);
+        $source=$ledger->customerLedger;
+        abort_unless($source && (int)$source->project_id===$projectId,403);
+        abort_unless((int)$data['payment_type']===(int)$source->payment_type,409,
+            'Changing the original payment method needs a separate verified financial workflow.');
         try {
-            $correction = app(\App\Services\Finance\LegacyCashVoucherCorrection::class)->correct(
-                $projectId, (int) $ledger->customer_ledger_id, (int) $account->id,
-                [
-                    'reference' => (string) $ledger->reference.'-CORR-'.now()->format('YmdHisu'),
-                    'date' => $data['date'], 'description' => $data['detail'],
-                    'edit_reason' => $data['edit_reason'],
-                    'amount_in' => $ledger->type === 'CR' ? $amount : 0,
-                    'amount_out' => $ledger->type === 'CP' ? $amount : 0,
-                    'payment_type' => $data['payment_type'], 't_number' => $cash ? null : $data['t_number'],
-                    'bank_id' => $cash ? null : $data['bank_id'], 'passing_date' => $cash ? null : $data['passing_date'],
-                    'cheque_purpose' => $cash ? null : ($data['cheque_purpose'] ?? null),
-                    'passing_status' => $data['passing_status'] ?? 0,
-                ], (int) Auth::id()
-            );
+            $result=app(\App\Services\Finance\SameSourceCashVoucherEdit::class)->submit(
+                $projectId,(int)$source->id,(int)Auth::id(),[
+                    'date'=>$data['date'],
+                    'amount'=>str_replace(',','',(string)$data['amount']),
+                    'account_id'=>(int)$account->id,
+                    'description'=>$data['detail'],
+                    'revision_reason'=>$data['edit_reason'],
+                ]);
         } catch (\DomainException $e) {
-            abort(409, 'Cash voucher correction rejected to protect accounting history.');
+            return response()->json(['status'=>'error','message'=>$e->getMessage()],409);
         }
-        $pending = (bool) ($correction['approval_pending'] ?? false);
-        $response = ['status' => 'success',
-            'flow_type' => $pending ? 'pending_approval' : 'posted_correction',
-            'message' => $pending
-                ? 'Correction submitted for approval. Original posting stays active; revised entry and reversal remain inactive until approved.'
-                : 'Voucher corrected; original posting and reversal preserved.'];
-        return ($request->expectsJson() || $request->ajax()) ? response()->json($response) : back()->with('success', $response['message']);
+        $message=$result['pending']
+            ? 'Same voucher sent for approval; current posting preserved until decision.'
+            : 'Same voucher updated directly with a retained audit snapshot.';
+        $response=['status'=>'success','flow_type'=>$result['pending']?'pending_approval':'direct_update',
+            'message'=>$message,'voucher_number'=>$result['voucher_number'],
+            'customer_ledger_id'=>$source->id];
+        return ($request->expectsJson() || $request->ajax())
+            ? response()->json($response) : back()->with('success',$message);
 
         /* Legacy mutation retained temporarily below for forensic reference; it
          * is unreachable and should not be restored as an edit workflow.
