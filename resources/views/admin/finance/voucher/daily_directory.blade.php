@@ -140,8 +140,8 @@
     .daily-voucher-page.dv-cash-only .daily-voucher-table tbody td:nth-child(5){
         overflow-wrap:anywhere
     }
-    .daily-voucher-page.dv-cash-only .daily-voucher-table tbody td:nth-last-child(3){
-        font-weight:600;font-variant-numeric:tabular-nums
+    .daily-voucher-page.dv-cash-only .daily-voucher-table tbody td:nth-child(7){
+        font-weight:650;font-variant-numeric:tabular-nums;text-align:right
     }
     .daily-voucher-page.dv-cash-only .daily-voucher-table tbody td:last-child{
         padding:.45rem .35rem;white-space:nowrap
