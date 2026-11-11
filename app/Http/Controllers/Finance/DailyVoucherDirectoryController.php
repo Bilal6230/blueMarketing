@@ -86,7 +86,7 @@ final class DailyVoucherDirectoryController extends Controller
             if (!empty($filters['to'])) $query->whereDate('source.date', '<=', $filters['to']);
             if (!empty($filters['type'])) {
                 $methodSeries = [
-                    'CR' => ['CR', 1], 'CP' => ['CP', 1], 'DR' => ['CP', 1],
+                    'CR' => ['CR', [1, 2, 3]], 'CP' => ['CP', 1], 'DR' => ['CP', [1, 2, 3]],
                     'CCR' => ['CR', 1], 'CDR' => ['CP', 1],
                     'BOR' => ['CR', [2, 3]], 'BOP' => ['CP', [2, 3]],
                 ];
@@ -98,7 +98,7 @@ final class DailyVoucherDirectoryController extends Controller
                         // display identities are installed. With identities,
                         // exclude rows assigned to one of the new dedicated series.
                         if (Schema::hasTable('project_voucher_display_numbers')) {
-                            $legacySeries = $filters['type'] === 'CR' ? 'CR' : 'CP';
+                            $legacySeries = $filters['type'] === 'CR' ? 'CR' : ($filters['type'] === 'DR' ? 'DR' : 'CP');
                             $query->where(function ($seriesQuery) use ($projectId, $legacySeries) {
                                 $seriesQuery->whereNotExists(function ($identity) use ($projectId) {
                                     $identity->selectRaw('1')->from('project_voucher_display_numbers as display_number')
@@ -110,7 +110,7 @@ final class DailyVoucherDirectoryController extends Controller
                                         ->whereColumn('display_number.source_id', 'source.id')
                                         ->where('display_number.source_kind', 'customer_ledger')
                                         ->where('display_number.project_id', $projectId)
-                                        ->where('display_number.series', $legacySeries);
+                                        ->whereIn('display_number.series', $legacySeries === 'DR' ? ['DR', 'CP'] : [$legacySeries]);
                                 });
                             });
                         }
