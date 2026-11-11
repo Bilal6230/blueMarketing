@@ -5,7 +5,9 @@
 <style>
 .main-sidebar,.main-header,.main-footer,.navbar,.control-sidebar,#load_screen,.preloader{display:none!important;visibility:hidden!important;pointer-events:none!important}
 html,body{width:100%!important;min-width:0!important;margin:0!important;padding:0!important;overflow-x:hidden!important;background:#fff!important}
-.main-content.page-content{margin:0!important;padding:0!important;width:100%!important;max-width:none!important;min-height:0!important;height:auto!important;overflow:visible!important}
+.wrapper{margin:0!important;padding:0!important;width:100%!important;max-width:none!important;min-height:0!important}
+.main-content.page-content{margin:0!important;margin-left:0!important;left:0!important;right:0!important;padding:0!important;width:100%!important;max-width:none!important;min-height:0!important;height:auto!important;overflow:visible!important}
+body.sidebar-collapse .main-content.page-content,body.sidebar-mini .main-content.page-content{margin-left:0!important}
 .content-wrapper{margin:0!important;padding:0!important;width:100%!important;max-width:none!important;min-height:0!important;background:#fff!important}
 .content-wrapper>.content,.content-wrapper>.content>.container-fluid{margin:0!important;padding:0!important;width:100%!important;max-width:none!important}
 .content-wrapper .card{width:100%!important;max-width:none!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important}

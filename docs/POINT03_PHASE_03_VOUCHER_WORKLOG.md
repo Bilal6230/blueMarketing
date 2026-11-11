@@ -75,3 +75,8 @@
 ## 2026-11-10 — JV modal layout alignment
 - User confirmed form loads, but screenshot showed narrow inset form within a wide parent modal. Embed-only CSS removes nested content/layout max-width and padding, makes form full-width, uses compact CR-style 3-column fields, blue accented table headers, reduced padding and right-aligned Save button. Keeps original journal form inputs, names, scripts, validation, debit/credit and save controllers intact. Parent modal width expanded slightly to 1180px while maintaining viewport bounds. Both create and edit embedded views updated; full-page routes unchanged.
 - Browser re-test required for modal layout, dynamic Add/Remove row, Account/Subaccount dropdowns and save flow.
+
+## 2026-11-11 — Embed offset and Edit route fix
+- User screenshot showed embedded Add JV form displaced ~80px to right and cut off at modal edge. Corrected embedded (iframe-only) master-layout `.main-content.page-content` sidebar margin, position and width; reset wrapper width. Standalone create/edit views are unaffected.
+- Actual Edit URL uses plural `/journal-vouchers/{id}/edit` while old jQuery delegated click selector used singular `/journal-voucher/`. Changed delegated selector to match the actual plural route (and legacy singular), with iframe modal reuse. Existing Print/Reversal handling unchanged.
+- Needs browser retest for Add + Edit modal alignment/field interactions and existing print actions before gating next batch.

@@ -194,11 +194,14 @@ $(function(){
   $('#jv-entry').modal('show');
  }
  $('#jv-add').on('click',function(){openEntry(createUrl,'Add New Journal Voucher');});
- $table.on('click','a[href*="/journal-voucher/"]',function(e){
+ $table.on('click','a[href*="/journal-vouchers/"][href$="/edit"],a[href*="/journal-voucher/"][href$="/edit"]',function(e){
+  // The real edit route is /admin/journal-vouchers/{id}/edit (plural).
+  // Handle only the JV page; print links remain unchanged.
   if($(this).attr('target')==='_blank')return;
   var url=$(this).attr('href');
-  if(!url||url.indexOf('/edit')===-1)return;
-  e.preventDefault();openEntry(url,'Edit Journal Voucher');
+  if(!url)return;
+  e.preventDefault();
+  openEntry(url,'Edit Journal Voucher');
  });
  $('#jv-entry-frame').on('load',function(){
   if(!entryUrl)return;
