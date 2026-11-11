@@ -158,6 +158,14 @@ final class DailyVoucherDirectoryController extends Controller
                     return trim(implode(' ', array_filter([$lead->first_name ?? null, $lead->last_name ?? null]))) ?: (string) ($lead->business ?? '—');
                 }) : collect();
             $sourceApprovals=app(\App\Services\Finance\VoucherApprovalStatusReader::class)->forSources($projectId,'customer_ledger',$sources->pluck('id'));
+            $attachments=collect();
+            if (Schema::hasTable('cash_voucher_attachments') && $sources->isNotEmpty()) {
+                $attachments=DB::table('cash_voucher_attachments')
+                    ->where('project_id',$projectId)
+                    ->whereIn('customer_ledger_id',$sources->pluck('id'))
+                    ->orderByDesc('id')->get(['id','customer_ledger_id','original_name'])
+                    ->unique('customer_ledger_id')->keyBy('customer_ledger_id');
+            }
             $pendingEdits=collect();
             if (Schema::hasTable('daily_voucher_edit_snapshots') && $sources->isNotEmpty()) {
                 $pendingEdits=DB::table('daily_voucher_edit_snapshots')
@@ -192,6 +200,10 @@ final class DailyVoucherDirectoryController extends Controller
                 $rows->push([
                     'date' => is_array($proposed) ? (string)$proposed['date'] : (string) $source->date, 'type' => $displayType,
                     'number' => $display, 'reference' => (string) ($source->reference ?? ''),
+                    'attachment_url' => $attachments->has($source->id)
+                        ? route('finance.voucher.cash-only.attachment',
+                            ['attachment'=>$attachments->get($source->id)->id]) : null,
+                    'attachment_name' => $attachments->get($source->id)?->original_name,
                     'head' => (string) ($proposedAccount?->head_name ?? $linkedLines->first()->head_name ?? '—'),
                     'subhead' => (string) ($proposedAccount?->sub_name ?? $linkedLines->first()->subhead_name ?? '—'),
                     'account' => $leadNames->get($source->customer_id)
