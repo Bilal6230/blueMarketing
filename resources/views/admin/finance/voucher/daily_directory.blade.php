@@ -522,6 +522,12 @@
         };
         const $fields=$('#dv-detail-fields').empty();
         [['Date',row.date],['Voucher type',row.type],['Voucher number',row.number],['Reference',row.reference],['Account / customer',row.account],['Amount',Number(row.amount||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})],['Status',row.status],['Narration / detail',row.detail]].forEach(([label,value])=>appendDefinition($fields,label,value));
+        if(row.attachment_url){
+            $fields.append($('<dt>',{'class':'col-sm-4',text:'Attachment'}));
+            $fields.append($('<dd>',{'class':'col-sm-8'}).append(
+                $('<a>',{href:row.attachment_url,target:'_blank',rel:'noopener noreferrer',
+                    text:row.attachment_name||'View attachment'})));
+        }
         const $audit=$('#dv-detail-audit').empty();
         Object.entries(row.audit||{}).forEach(([label,value])=>{
             if(value===null||value===undefined||value==='')return;
