@@ -122,6 +122,22 @@ final class DailyVoucherApprovalWorkflow
                         round((float)$reversal->amount_out,2) !== round((float)$original->amount_in,2)) {
                         throw new \DomainException('LEGACY_CASH_REVERSAL_INTEGRITY_FAILED');
                     }
+                    $originalLeg = DB::table('ledgers as ledger')
+                        ->join('project_head_subheads as account','account.id','=','ledger.project_head_subheads_id')
+                        ->where('ledger.customer_ledger_id',$oldId)
+                        ->where('ledger.type',$locked->voucher_type)
+                        ->where('account.project_id',$locked->project_id)
+                        ->lockForUpdate()->get(['ledger.id','ledger.is_active']);
+                    $correctedLeg = DB::table('ledgers as ledger')
+                        ->join('project_head_subheads as account','account.id','=','ledger.project_head_subheads_id')
+                        ->where('ledger.customer_ledger_id',$locked->source_id)
+                        ->where('ledger.type',$locked->voucher_type)
+                        ->where('account.project_id',$locked->project_id)
+                        ->lockForUpdate()->get(['ledger.id','ledger.is_active']);
+                    if ($originalLeg->count()!==1 || (int)$originalLeg->first()->is_active!==1 ||
+                        $correctedLeg->count()!==1 || (int)$correctedLeg->first()->is_active!==0) {
+                        throw new \DomainException('LEGACY_CASH_CORRECTION_LEDGER_INVALID');
+                    }
                     $leg=DB::table('ledgers as ledger')
                         ->join('project_head_subheads as account','account.id','=','ledger.project_head_subheads_id')
                         ->where('ledger.customer_ledger_id',$reverseId)
