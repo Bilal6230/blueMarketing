@@ -1204,7 +1204,7 @@ class LedgerController extends Controller
         $amount = str_replace(',', '', $data['amount']);
         $cash = (int) $data['payment_type'] === 1;
         try {
-            app(\App\Services\Finance\LegacyCashVoucherCorrection::class)->correct(
+            $correction = app(\App\Services\Finance\LegacyCashVoucherCorrection::class)->correct(
                 $projectId, (int) $ledger->customer_ledger_id, (int) $account->id,
                 [
                     'reference' => (string) $ledger->reference.'-CORR-'.now()->format('YmdHisu'),
@@ -1221,7 +1221,12 @@ class LedgerController extends Controller
         } catch (\DomainException $e) {
             abort(409, 'Cash voucher correction rejected to protect accounting history.');
         }
-        $response = ['status' => 'success', 'message' => 'Voucher corrected; original posting and reversal preserved.'];
+        $pending = (bool) ($correction['approval_pending'] ?? false);
+        $response = ['status' => 'success',
+            'flow_type' => $pending ? 'pending_approval' : 'posted_correction',
+            'message' => $pending
+                ? 'Correction submitted for approval. Original posting stays active; revised entry and reversal remain inactive until approved.'
+                : 'Voucher corrected; original posting and reversal preserved.'];
         return ($request->expectsJson() || $request->ajax()) ? response()->json($response) : back()->with('success', $response['message']);
 
         /* Legacy mutation retained temporarily below for forensic reference; it
