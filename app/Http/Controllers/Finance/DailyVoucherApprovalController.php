@@ -30,7 +30,14 @@ final class DailyVoucherApprovalController extends Controller
         if (!$isSuperAdmin) $queueQuery->where('assigned_approver_id', (int) auth()->id());
         $queue = $queueQuery->latest()->paginate(25);
         $historyQuery = DailyVoucherApproval::query()->with(['assignedApprover:id,name', 'submitter:id,name', 'events'])
-            ->where('project_id', $projectId)->whereIn('status', ['approved', 'rejected']);
+            ->where('project_id', $projectId)
+            ->where(function ($query) {
+                $query->whereIn('status', ['approved', 'rejected'])
+                    ->orWhere(function ($posted) {
+                        $posted->where('status', 'posted')
+                            ->whereHas('events', fn ($event) => $event->where('event','rejected'));
+                    });
+            });
         if (!$isSuperAdmin) $historyQuery->where('assigned_approver_id', (int) auth()->id());
         $history = $historyQuery->latest('decided_at')->limit(50)->get();
         return view('admin.finance.voucher.approvals', compact('policies', 'approvers', 'queue', 'history'));
@@ -70,6 +77,11 @@ final class DailyVoucherApprovalController extends Controller
         abort_unless(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())
             || (int) auth()->user()->project_id === (int) $approval->project_id, 403);
         abort_unless(in_array($approval->voucher_type, self::TYPES, true), 403);
+        $sameSourceRequest = Schema::hasTable('daily_voucher_edit_snapshots')
+            && DB::table('daily_voucher_edit_snapshots')
+                ->where('project_id',$approval->project_id)
+                ->where('approval_id',$approval->id)
+                ->where('status','pending')->exists();
         try {
             app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)->decide(
                 $approval, (int) auth()->id(), $decision === 'approve' ? 'approved' : 'rejected', $data['reason'] ?? null
@@ -83,10 +95,17 @@ final class DailyVoucherApprovalController extends Controller
                 default => 'The voucher approval could not be completed safely.',
             });
         }
-        $message = $decision === 'approve' ? 'Voucher approved and existing guarded posting activated.' : 'Voucher rejected; posting remains inactive.';
+        $message = $sameSourceRequest
+            ? ($decision === 'approve'
+                ? 'Original voucher updated under the same number and ID. Audit snapshot saved.'
+                : 'Proposed edit rejected. Original voucher fields and accounting posting are unchanged.')
+            : ($decision === 'approve'
+                ? 'Voucher approved and existing guarded posting activated.'
+                : 'Voucher rejected; posting remains inactive.');
+        $actualStatus=$approval->fresh()?->status;
         if ($request->expectsJson()) {
             return response()->json(['success' => true, 'message' => $message,
-                'data' => ['id' => $approval->id, 'status' => $decision === 'approve' ? 'approved' : 'rejected']])
+                'data' => ['id' => $approval->id, 'status' => $actualStatus]])
                 ->header('Cache-Control', 'private, no-store');
         }
         return back()->with('success', $message);
