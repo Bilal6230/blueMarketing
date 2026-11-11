@@ -215,6 +215,12 @@ class JournalVoucherController extends Controller
 
             $recordsTotal = (clone $baseQuery)->count();
             $recordsFiltered = (clone $query)->count();
+            $orderable=[0=>'id',1=>'voucher_number',2=>'reference',
+                3=>'date',4=>'description',5=>'total_debit'];
+            $requested=(int)$request->input('order.0.column',0);
+            $direction=$request->input('order.0.dir')==='asc'?'asc':'desc';
+            $query->reorder()->orderBy($orderable[$requested]??'id',$direction)
+                ->orderBy('id','desc');
             $vouchers = $query->skip($start)->take($length)->get();
             $displayNumbers = \Illuminate\Support\Facades\Schema::hasTable('project_voucher_display_numbers')
                 ? DB::table('project_voucher_display_numbers')->where('project_id', (int) getSelectedTown())
