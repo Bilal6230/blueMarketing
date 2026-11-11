@@ -20,7 +20,7 @@ final class RejectedCashVoucherController extends Controller
         $project=(int)getSelectedTown();
         abort_unless($project>0,403);
         $source=CustomerLedger::query()->where('project_id',$project)
-            ->whereKey($customerLedger)->whereIn('transaction_type',['CR','CP'])->firstOrFail();
+            ->whereKey($customerLedger)->whereIn('transaction_type',['CR','CP','CCR','CDR'])->firstOrFail();
         abort_unless(in_array((int)$source->payment_type,[1,2,3],true),409,'Unsupported payment method.');
         $approval=DailyVoucherApproval::query()->where('project_id',$project)
             ->where('source_table','customer_ledger')->where('source_id',$source->id)
@@ -65,6 +65,7 @@ final class RejectedCashVoucherController extends Controller
         ]);
         $source=CustomerLedger::query()->where('project_id',(int)getSelectedTown())
             ->whereKey($customerLedger)->firstOrFail();
+        abort_unless(in_array((string)$source->transaction_type,['CR','CP','CCR','CDR'],true),404);
         if (in_array((int)$source->payment_type,[2,3],true)) {
             $request->validate([
                 't_number'=>['required','string','max:255'],
