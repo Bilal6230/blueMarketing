@@ -1720,14 +1720,14 @@
                         'background-color': '#28a745',
                         'color': '#fff'
                     });
-                    $title.text('Edit Cash In Voucher');
+                    $title.text('Edit Credit Voucher (CR)');
                     $updateButton.removeClass('btn-primary').addClass('btn-success');
                 } else if (voucherType === 'CP') {
                     $header.css({
                         'background-color': '#dc3545',
                         'color': '#fff'
                     });
-                    $title.text('Edit Cash Out Voucher');
+                    $title.text('Edit Debit Voucher (DR)');
                     $updateButton.removeClass('btn-primary').addClass('btn-danger');
                 } else {
                     $header.addClass('bg-secondary');
@@ -3525,7 +3525,7 @@
                                 <div class="row">
                                     <div class="col-sm-4">
                                         <div class="input-group">
-                                            <label class="fbox">Reference No.</label>
+                                            <label class="fbox">Voucher No</label>
                                             <div class="input-group">
                                                 <input type="text" value="1" name="action" hidden />
                                                 <input id="edit_voucher_number" type="text" class="form-control"
@@ -3782,7 +3782,7 @@
                         <div class="row">
                             <div class="col-sm-12">
                                 <div class="input-group">
-                                    <label class="fbox">Detail</label>
+                                    <label class="fbox">Description / Narration</label>
                                     <div class="input-group">
                                         <textarea id="edit_detail" class="form-control @error('detail') is-invalid @enderror" placeholder="Detail"
                                             name="detail" style=" height: 150px;" maxlength="255">{{ old('detail') }}</textarea>
