@@ -75,10 +75,6 @@ final class RejectedCashVoucherResubmission
                 'date'=>$data['date'],'detail'=>$data['description'],
                 'create_by'=>$actorId,'is_active'=>0,'status'=>0,
             ]);
-            if (app(FinancePostingSchemaGate::class)->mode()==='typed') {
-                app(LedgerSourceAttributionWriter::class)->recordNewPosting(
-                    (int)$ledger->id,$projectId,'customer_ledger',(int)$new->id);
-            }
             if (!$workflow->submitIfRequired($projectId,$type,'customer_ledger',(int)$new->id,$actorId))
                 throw new \DomainException('Voucher approval policy disabled.');
             $newApproval=DailyVoucherApproval::query()->where('project_id',$projectId)
