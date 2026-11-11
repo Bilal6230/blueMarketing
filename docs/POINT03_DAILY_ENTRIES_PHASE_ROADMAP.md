@@ -46,3 +46,6 @@ Use `COMPLETE`, `PARTIAL`, `PENDING`, `BLOCKED` grounded in evidence. Never inve
 ### Phase 03.3 — 3B1 (2026-11-11)
 - **3A owner browser PASS.**
 - **3B1 rejected JV revision & resubmit** coded, browser gate pending; reuses unique approval row and appends historical audit event, never activates ledger before re-approval. CR/CP resubmission **not implemented** (3B2), Phase 04 remains locked.
+
+### Phase 03.3 3B2A — 2026-11-11
+- Batch 3B1 owner browser PASS. Rejected cash CR/CP append-only revise/resubmit **implemented, browser PASS pending**. Bank/online/cheque resubmit 3B2B pending separate clearance-safe audit. Phase 04 remains locked.

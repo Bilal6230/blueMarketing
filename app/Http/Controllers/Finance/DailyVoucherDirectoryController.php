@@ -198,10 +198,17 @@ final class DailyVoucherDirectoryController extends Controller
                         'Bank passing date' => (int) ($source->payment_type ?? 0) === 2 ? $source->passing_date : null,
                         'Bank status' => (int) ($source->payment_type ?? 0) === 2 ? $source->passing_status : null,
                     ], fn ($value) => $value !== null && $value !== ''),
-                    'delete_url' => $ledgerId && auth()->user()?->can('delete voucher') && in_array((string) $source->transaction_type, ['CR', 'CP'], true)
+                    'revise_url' => ($sourceApprovals[$source->id]['status'] ?? '') === 'rejected'
+                        && (int)$source->payment_type === 1
+                        && in_array((string)$source->transaction_type,['CR','CP'],true)
+                        && auth()->user()?->can('update voucher')
+                        && (\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())
+                            || (int)($source->created_by ?? $source->create_by)===(int)auth()->id())
+                        ? route('finance.daily-vouchers.revise.edit',['customerLedger'=>$source->id]) : null,
+                    'delete_url' => $ledgerId && empty($sourceApprovals[$source->id]) && auth()->user()?->can('delete voucher') && in_array((string) $source->transaction_type, ['CR', 'CP'], true)
                         ? route('ledger.destroy') : null,
                     'delete_id' => $ledgerId,
-                    'edit_url' => $ledgerId && auth()->user()?->can('update voucher')
+                    'edit_url' => $ledgerId && empty($sourceApprovals[$source->id]) && auth()->user()?->can('update voucher')
                         ? route(in_array($displayType, ['CR', 'CCR', 'BOR'], true) ? 'finance.voucher.in.method' : 'finance.voucher.out.method', [
                             'method' => in_array((int) ($source->payment_type ?? 1), [2, 3], true)
                                 ? ((int) $source->payment_type === 3 ? 'cheque' : 'online') : 'cash',

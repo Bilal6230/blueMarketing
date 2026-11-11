@@ -380,6 +380,10 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::get('/data', 'data')->name('data');
         Route::get('/sources/{customerLedger}/print', 'printSource')->whereNumber('customerLedger')->name('source.print');
     });
+    Route::get('finance/daily-vouchers/revise/{customerLedger}', [\App\Http\Controllers\Finance\RejectedCashVoucherController::class,'edit'])
+        ->middleware(['permission:update voucher'])->name('finance.daily-vouchers.revise.edit');
+    Route::post('finance/daily-vouchers/revise/{customerLedger}', [\App\Http\Controllers\Finance\RejectedCashVoucherController::class,'store'])
+        ->middleware(['permission:update voucher','throttle:20,1'])->name('finance.daily-vouchers.revise.store');
     Route::get('finance/voucher-settings', [\App\Http\Controllers\Finance\VoucherSettingsController::class,'index'])
         ->middleware('permission:read setting')->name('finance.voucher-settings.index');
     Route::post('finance/voucher-settings', [\App\Http\Controllers\Finance\VoucherSettingsController::class,'save'])

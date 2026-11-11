@@ -89,3 +89,6 @@ No claim of local migration, browser or PHP test execution unless actually verif
 - Batch 3B1 append-only correction: old rejected ledger history stays inactive/untouched, new detail/ledger rows inserted inactive; approval only activates current non-archived details. Browser verification still pending.
 
 - JV listing regression from malformed Edit/Revise handler regex diagnosed and fixed in 3B1: script parse error prevented DataTables from starting, no records deleted. Owner browser retest pending.
+
+## 2026-11-11 — Batch 3B2A
+- User marked rejected JV 3B1 browser PASS. Cash CR/CP rejected revision now implemented in `RejectedCashVoucherResubmission`, `RejectedCashVoucherController`, `rejected_cash_revision.blade.php`, Daily Voucher Directory row action and routes. Original rejected source/ledger stays inactive; revised voucher gets new source, ledger, identity and pending approval; approval events link old/new. No migration. Browser PASS pending. Bank/online/cheque 3B2B NOT STARTED. Read current source before next batch.
