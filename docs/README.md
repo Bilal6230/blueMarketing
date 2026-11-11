@@ -32,3 +32,6 @@ This is a new documentation starting point for the `upgrade/laravel-framework` b
 - [Phase 02 Online worklog — COMPLETE](./POINT03_PHASE_02_ONLINE_WORKLOG.md)
 - [Active Phase 03 Voucher worklog](./POINT03_PHASE_03_VOUCHER_WORKLOG.md)
 - Phase 04+ must not start before Phase 03 owner browser PASS.
+
+## 2026-11-11 — CURRENT dependency-based order (supersedes previous Phase 04 lock)
+Owner explicitly prioritized completing the functional six vouchers before full CR/CP browser approval/resubmission acceptance. **Authoritative sequence:** 01 Cheque PASS; 02 Online PASS; 03 completed voucher foundation preserved (remaining 03.3 tests deferred, not passed); **04 CR/CP/CCR/CDR/BOR/BOP forms, persisted types, separate listings, safe optional attachments and regression** (batch-by-batch owner browser PASS); 05 final approval/mutation/resubmission tests, including previously held 3B2A/B; 06 bank narration/link/withdrawal/deposit; 07 plot receive; 08 plot purchase; 09 dashboard; 10 end-to-end acceptance. Phase 04 is next implementation scope, not blocked by circular CR/CP acceptance dependence. No phase/batch bypasses per-batch browser PASS or ledger/V2 safety. See [authoritative active roadmap](./POINT03_DAILY_ENTRIES_PHASE_ROADMAP.md).
