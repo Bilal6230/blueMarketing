@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Schema;
 
 final class DailyVoucherApprovalController extends Controller
 {
-    private const TYPES = ['CR', 'CP', 'JV'];
+    private const TYPES = ['CR', 'CP', 'CCR', 'CDR', 'JV'];
 
     public function index()
     {
