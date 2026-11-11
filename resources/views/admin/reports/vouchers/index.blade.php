@@ -197,6 +197,97 @@ $(function(){
   $('#jv-top-filters')[0].reset();$.each(jvExcelSelections,function(field){delete jvExcelSelections[field];});closeJvExcel();updateJvExcelButtons();
   table.columns().search('');table.search('');apply();
  });
+
+ function closeJvExcel(){
+  $jvExcel.addClass('d-none');$('.jv-excel-trigger').attr('aria-expanded','false');
+  if(jvExcelRequest){jvExcelRequest.abort();jvExcelRequest=null;}jvExcelCurrent=null;
+ }
+ function updateJvExcelButtons(){
+  $('.jv-excel-trigger').each(function(){
+   $(this).toggleClass('jv-filter-on',Object.prototype.hasOwnProperty.call(jvExcelSelections,$(this).data('field')));
+  });
+ }
+ function renderJvExcel(){
+  var search=$.trim($('#jv-excel-search').val()).toLocaleLowerCase(),$box=$('#jv-excel-items').empty();
+  var visible=jvExcelOptions.filter(function(v){return String(v).toLocaleLowerCase().includes(search);});
+  $box.append($('<label>',{'class':'jv-excel-choice'})
+   .append($('<input>',{type:'checkbox','class':'jv-check-all',
+    checked:visible.length>0&&visible.every(function(v){return jvExcelDraft.has(String(v));})}))
+   .append($('<span>',{text:'(Select All Results)'})));
+  $.each(visible,function(_,v){
+   var str=String(v);
+   $box.append($('<label>',{'class':'jv-excel-choice'})
+    .append($('<input>',{type:'checkbox','class':'jv-excel-item',value:str,checked:jvExcelDraft.has(str)}))
+    .append($('<span>',{text:str||'(Blank)'})));
+  });
+  if(!visible.length)$box.append($('<div>',{'class':'small text-muted p-2',text:'No values found'}));
+ }
+ $('.jv-excel-trigger').on('click',function(e){
+  e.preventDefault();e.stopPropagation();
+  var $btn=$(this),field=$btn.data('field');
+  if(jvExcelCurrent===field){closeJvExcel();return;}
+  closeJvExcel();jvExcelCurrent=field;jvExcelOptions=[];
+  jvExcelDraft=new Set(jvExcelSelections[field]||[]);
+  $('.jv-excel-trigger').attr('aria-expanded','false');$btn.attr('aria-expanded','true');
+  $('#jv-excel-title').text($btn.closest('th').find('span:first').text());
+  $('#jv-excel-search').val('');$('#jv-excel-items').text('Loading filter values…');
+  $jvExcel.removeClass('d-none');
+  var pos=$btn.offset();
+  $jvExcel.css({left:Math.max(8,Math.min(pos.left-$(window).scrollLeft(),$(window).width()-300))+'px',
+   top:Math.max(8,Math.min(pos.top-$(window).scrollTop()+$btn.outerHeight(),$(window).height()-345))+'px'});
+  $jvExcel.find('.jv-excel-sort').toggle(field!=='approval_status');
+  var params={excel_facet:field,filter_voucher_number:$('#jv-from').val(),filter_date:$('#jv-date').val(),
+   filter_amount_min:$('#jv-min').val(),filter_amount_max:$('#jv-max').val(),
+   filter_reference:$('#jv-reference').val()};
+  jvExcelRequest=$.ajax({url:baseUrl,type:'GET',data:params,dataType:'json',
+   headers:{'X-Requested-With':'XMLHttpRequest'}}).done(function(res){
+    if(jvExcelCurrent!==field)return;
+    jvExcelOptions=(res.options||[]).map(String);
+    if(!Object.prototype.hasOwnProperty.call(jvExcelSelections,field))
+     $.each(jvExcelOptions,function(_,v){jvExcelDraft.add(v);});
+    renderJvExcel();
+    if(res.more_options)$('#jv-excel-items').prepend($('<p>',{'class':'small text-warning',
+     text:'First 500 values shown. Narrow the date/search range.'}));
+   }).fail(function(xhr,status){
+    if(status!=='abort'&&jvExcelCurrent===field)
+     $('#jv-excel-items').text(xhr.responseJSON?.message||'Unable to load values.');
+   });
+ });
+ $jvExcel.on('change','.jv-excel-item',function(){
+  if($(this).is(':checked'))jvExcelDraft.add($(this).val());else jvExcelDraft.delete($(this).val());
+  renderJvExcel();
+ }).on('change','.jv-check-all',function(){
+  var search=$.trim($('#jv-excel-search').val()).toLocaleLowerCase(),enabled=$(this).is(':checked');
+  $.each(jvExcelOptions,function(_,v){if(String(v).toLocaleLowerCase().includes(search)){
+   if(enabled)jvExcelDraft.add(String(v));else jvExcelDraft.delete(String(v));
+  }});renderJvExcel();
+ });
+ $('#jv-excel-search').on('input',renderJvExcel);
+ $('#jv-excel-apply').on('click',function(){
+  if(!jvExcelCurrent)return;
+  if(!jvExcelDraft.size&&jvExcelOptions.length){
+   $('#jv-excel-items').prepend($('<p>',{'class':'small text-danger',text:'Select a value or Clear.'}));return;
+  }
+  if(jvExcelDraft.size===jvExcelOptions.length&&
+   jvExcelOptions.every(function(v){return jvExcelDraft.has(String(v));}))
+   delete jvExcelSelections[jvExcelCurrent];
+  else jvExcelSelections[jvExcelCurrent]=[...jvExcelDraft];
+  closeJvExcel();updateJvExcelButtons();apply();
+ });
+ $('#jv-excel-cancel').on('click',closeJvExcel);
+ $('#jv-excel-clear').on('click',function(){
+  if(!jvExcelCurrent)return;delete jvExcelSelections[jvExcelCurrent];
+  closeJvExcel();updateJvExcelButtons();apply();
+ });
+ $jvExcel.on('click','.jv-excel-sort',function(){
+  if(!jvExcelCurrent)return;
+  var field=jvExcelCurrent,idx=Number($('.jv-excel-trigger[data-field="'+field+'"]').data('col'));
+  var dir=$(this).data('dir');closeJvExcel();table.order([[idx,dir]]).draw();
+ });
+ $(document).on('pointerdown.jvExcel',function(e){
+  if(!$(e.target).closest('#jv-excel-pop,.jv-excel-trigger').length)closeJvExcel();
+ }).on('keydown.jvExcel',function(e){if(e.key==='Escape')closeJvExcel();});
+ $('.jv-record-scroll').on('scroll',function(){if(jvExcelCurrent)closeJvExcel();});
  function openEntry(url,title){
   entryUrl=url;var separator=url.indexOf('?')>=0?'&':'?';
   $('#jv-entry-title').text(title);
