@@ -187,6 +187,8 @@ final class SameSourceCashVoucherEdit
             (int)$source->is_active!==(int)$before['active'] ||
             (int)$leg->is_active!==(int)$before['active'] ||
             (int)$leg->project_head_subheads_id!==(int)$before['account_id'] ||
+            substr((string)$source->date,0,10)!==substr((string)$before['date'],0,10) ||
+            (string)$source->description!==(string)$before['description'] ||
             round((float)$source->amount_in,2)!==round((float)$before['amount_in'],2) ||
             round((float)$source->amount_out,2)!==round((float)$before['amount_out'],2)) {
             throw new \DomainException('Voucher changed while approval pending; decision blocked.');
