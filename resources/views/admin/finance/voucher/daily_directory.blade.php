@@ -93,13 +93,27 @@
     .daily-voucher-page.dv-theme-credit .dv-skeleton-bar{background-image:linear-gradient(90deg,#daeee2 22%,#f3fbf6 42%,#daeee2 67%)}
     .daily-voucher-page.dv-theme-debit .dv-skeleton-bar{background-image:linear-gradient(90deg,#f2dce0 22%,#fff5f6 42%,#f2dce0 67%)}
     .daily-voucher-table tbody tr.dv-skeleton-row td{height:44px;vertical-align:middle;padding:.65rem .45rem}
+    /* The new cash-only voucher series can have just a few entries. Keep
+       their directory dense like CR/DR without a full-screen empty table. */
+    .daily-voucher-page.dv-cash-only .daily-voucher-table th,
+    .daily-voucher-page.dv-cash-only .daily-voucher-table td{font-size:12px;line-height:1.4;vertical-align:middle}
+    .daily-voucher-page.dv-cash-only .daily-voucher-table tbody td{padding:.48rem .42rem;border-bottom:1px solid #e7ecf0}
+    .daily-voucher-page.dv-cash-only .daily-voucher-table tbody tr:nth-child(even){background:color-mix(in srgb,var(--dv-pale) 24%,white)}
+    .daily-voucher-page.dv-cash-only .daily-voucher-table th:nth-child(3),
+    .daily-voucher-page.dv-cash-only .daily-voucher-table td:nth-child(3){font-weight:700}
+    .daily-voucher-page.dv-cash-only.dv-sparse-records .daily-voucher-table-card{flex:0 0 auto}
+    .daily-voucher-page.dv-cash-only.dv-sparse-records .daily-voucher-table-wrap{flex:0 0 auto;max-height:calc(100dvh - 310px);overflow:auto}
+    .daily-voucher-page.dv-cash-only.dv-sparse-records .dv-pagination-footer{border-top:1px solid #e7edf1}
+    .daily-voucher-page.dv-cash-only .daily-voucher-table tbody td:nth-child(4),
+    .daily-voucher-page.dv-cash-only .daily-voucher-table tbody td:nth-child(5){overflow-wrap:anywhere}
+
     @keyframes dv-skeleton-pulse{0%{background-position:100% 0}100%{background-position:-100% 0}}
     @media(prefers-reduced-motion:reduce){.dv-skeleton-bar{animation:none}}
     @media(max-width:1200px){.daily-voucher-filters{grid-template-columns:repeat(3,minmax(115px,1fr))}.daily-voucher-actions{grid-column:1/-1;justify-content:flex-end}}
     @media(max-width:900px){.daily-voucher-filters{grid-template-columns:repeat(2,minmax(130px,1fr))}.daily-voucher-actions{grid-column:1/-1;justify-content:flex-end}}
     @media(max-width:520px){.daily-voucher-filters{grid-template-columns:1fr}.daily-voucher-page .daily-voucher-actions{grid-column:1;justify-content:flex-end}.content-wrapper.daily-voucher-page{padding:.35rem!important}}
 </style>
-<div class="content-wrapper daily-voucher-page {{ in_array($presetType, ['CR','CCR','BOR'], true) ? 'dv-theme-credit' : (in_array($presetType, ['DR','CDR','BOP','CP'], true) ? 'dv-theme-debit' : '') }}" id="dv-page">
+<div class="content-wrapper daily-voucher-page {{ in_array($presetType, ['CCR','CDR'], true) ? 'dv-cash-only' : '' }} {{ in_array($presetType, ['CR','CCR','BOR'], true) ? 'dv-theme-credit' : (in_array($presetType, ['DR','CDR','BOP','CP'], true) ? 'dv-theme-debit' : '') }}" id="dv-page">
     <section class="content-header"><div class="container-fluid d-flex justify-content-between align-items-center">
         <div>
             <h1 class="h3 mb-1">
@@ -308,6 +322,7 @@
             if(requestId!==activeRequest)return;
             filtered=Number(result.recordsFiltered||0);
             total=Number(result.recordsTotal||0);
+            $(dvPage).toggleClass('dv-sparse-records', filtered<=5);
             renderPagination();
             $('#dv-rows').html(result.data.length?result.data.map((row,index)=>`<tr><td>${start+index+1}</td><td>${esc(row.date)}</td><td class="font-weight-bold">${esc(row.number)}</td><td>${esc(row.head)||'—'}</td><td>${esc(row.subhead)||'—'}</td><td class="text-truncate" style="max-width:420px" title="${esc(row.detail)}">${esc(row.detail)||'—'}</td><td class="text-right">${Number(row.amount||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td><span class="badge badge-${row.status==='Pending'?'warning':row.status==='Approved'?'success':row.status==='Rejected'?'danger':'secondary'}" title="${esc(row.status==='Rejected' ? 'Rejection Reason: '+(row.rejection_reason||'Not recorded') : (row.approval_approver||''))}">${esc(row.status||'Posted')}</span>${row.last_edit_status==='rejected'? ` <span class="badge badge-danger" title="${esc('Edit rejected: '+(row.last_edit_reason||'Reason not recorded'))}">Edit Rejected</span>` : ''}</td>${showApprovedBy ? `<td class="small">${esc(row.approved_by)||'—'}</td>` : ''}<td class="text-nowrap"><button type="button" class="btn btn-sm btn-outline-secondary dv-details" data-row="${esc(JSON.stringify(row))}">Details</button> ${row.edit_url?`<button type="button" class="btn btn-sm btn-outline-primary dv-edit" data-url="${esc(row.edit_url)}" data-number="${esc(row.number)}" title="Edit voucher" aria-label="Edit voucher ${esc(row.number)}"><i class="fas fa-edit" aria-hidden="true"></i></button>`:''} ${row.revise_url?`<button type="button" class="btn btn-sm btn-outline-warning dv-edit" data-url="${esc(row.revise_url)}" data-number="${esc(row.number)}" title="Revise rejected cash voucher"><i class="fas fa-redo"></i> Revise</button>`:''} ${row.delete_url?`<button type="button" class="btn btn-sm btn-outline-danger dv-delete" title="Delete voucher" aria-label="Delete voucher ${esc(row.number)}" data-url="${esc(row.delete_url)}" data-id="${esc(row.delete_id||'')}" data-number="${esc(row.number)}"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>`:''} ${row.url?`<a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" href="${esc(row.url)}" aria-label="Print ${esc(row.number)}"><i class="fas fa-print"></i></a>`:'<span class="small text-muted">—</span>'}</td></tr>`).join(''):'<tr><td colspan="${rowColumnCount}" class="text-center text-muted p-4">No vouchers match these filters.</td></tr>' );
         }).fail((xhr,status)=>{
