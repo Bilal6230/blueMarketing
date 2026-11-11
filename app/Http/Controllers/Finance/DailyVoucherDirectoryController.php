@@ -50,7 +50,7 @@ final class DailyVoucherDirectoryController extends Controller
             'sort_direction' => ['sometimes','string','in:asc,desc'],
             'facet_column' => ['sometimes','string','in:date,number,head,subhead,detail,amount,status'],
             'column_values' => ['sometimes','array','max:7'],
-            'column_values.*' => ['array','max:50'],
+            'column_values.*' => ['array','max:250'],
             'column_values.*.*' => ['string','max:255'],
             'column_excluded' => ['sometimes','array','max:7'],
             'column_excluded.*' => ['array','max:100'],
