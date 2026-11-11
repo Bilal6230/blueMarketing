@@ -2,7 +2,7 @@
 **Source:** [Original Roman Urdu requirements](./BLUEMARKETING_POINT03_DAILY_ENTRIES_REQUIREMENTS_ROMAN_URDU.md) (preserved without rewriting).
 **Branch:** `upgrade/laravel-framework`
 **Start:** 2026-11-10
-**State:** Phase 01 and Phase 02 COMPLETE — owner browser PASS 2026-11-10. Phase 03 ACTIVE, 03.1 and 03.2 owner browser PASS; 03.3 Batch 1 owner browser PASS, Batch 2 JV modal alignment browser PASS, typography adjustment browser gate PENDING; Batch 3 NOT STARTED. Phase 04+ LOCKED.
+**State:** Phase 01 and Phase 02 COMPLETE — owner browser PASS 2026-11-10. Phase 03 ACTIVE, 03.1 and 03.2 owner browser PASS; 03.3 Batch 1 owner browser PASS, Batch 2 JV modal alignment browser PASS, typography adjustment browser gate PENDING; Batch 3A and 3B1 browser PASS; 3B2A/B implemented with browser testing ON HOLD due to CR/CP create validation. Phase 04+ LOCKED.
 **Rules:** `docs/README.md`, root `AGENTS.md`. Changes to business logic only within current approved milestone. Non-V2 code may be used safely; V2 pilot safety guards remain untouched.
 
 ## Strict sequence and browser gates
@@ -12,7 +12,7 @@ A phase is complete ONLY when (1) its milestones and relevant automated tests pa
 | --- | --- | --- | --- | --- |
 | **01** | **E** | **Cheque & Online Transaction Management — CHEQUE scope only** | **01.1** Existing source, ownership, permissions and safe cheque-entry flow; mandatory Purpose/Description and original amount identity. **01.2** Cheque Receiving Slip view/print with live status, no financial posting on receipt. **01.3** Send for Bank Clearing vs Direct Bank Withdrawal, fixed amount, person/CNIC where applicable and bank details. **01.4** Cleared/returned/memo/withdrawn states, mandatory server-backed verification popup, actor/time/audit history; eligible-source gating; full phase browser regression. | COMPLETE — owner browser PASS |
 | **02** | **F** | **Online Transaction Management** | **02.1** Receipt/payment source capture, fields, proof and reference uniqueness. **02.2** Pending→Confirmed confirmation popup, server-side authorization, bank verification, actor/time and immutable amount. **02.3** eligible confirmed source exposure for future bank vouchers, no pending/duplicate posting, history and full browser regression. | COMPLETE — 02.1, 02.2 and 02.3 owner browser PASS |
-| 03 | A + B | Common Voucher UI and Voucher Approval Settings | **03.1** standard views/print and shared fields/filters, **03.2** per-type configuration and approver permissions, **03.3** pending/approve/reject/remarks/history and no posting before approval. | ACTIVE — 03.1 and 03.2 PASS; 03.3 Batch 1 PASS, Batch 2 typography browser gate PENDING; Batch 3 next |
+| 03 | A + B | Common Voucher UI and Voucher Approval Settings | **03.1** standard views/print and shared fields/filters, **03.2** per-type configuration and approver permissions, **03.3** pending/approve/reject/remarks/history and no posting before approval. | ACTIVE — 03.1 and 03.2 PASS; 03.3 Batch 1 PASS, Batch 2 typography browser gate PENDING; Batch 3B2A/B HOLD |
 | 04 | C.1–C.7 | Cash, Bank, Deposit, Withdrawal and Debit/Credit Vouchers | **04.1** CR/CP cash mappings, **04.2** confirmed-source-only bank receipt/payment and opposite-side allocations, **04.3** deposit/withdrawal and cheque-linked withdrawal, **04.4** debit/credit multi-line balancing, view/print and regression. | LOCKED |
 | 05 | C.8 | Plot Receive Payment Voucher | **05.1** cash receipt, **05.2** verified cheque/online source and fixed bank side, **05.3** multiple plots/customers, allocation sum, one bank posting, per-plot printable receipts. | LOCKED |
 | 06 | D | Plot Purchase & Auto Purchase Voucher | **06.1** seller/plot purchase form, **06.2** auto voucher and exact source link, **06.3** inventory sync/cost and duplicate guard, **06.4** authorized edit/cancel/reversal and history; preserve plot sale. | LOCKED |
@@ -52,3 +52,12 @@ Use `COMPLETE`, `PARTIAL`, `PENDING`, `BLOCKED` grounded in evidence. Never inve
 
 ### Phase 03.3 — 3B2B (2026-11-11)
 - Owner places 3B2A browser testing **ON HOLD** due to existing CR/CP create validation errors, explicitly authorizes 3B2B next. Bank/online/cheque rejected revision code prepared; only unsettled and inactive sources eligible. Full browser gate held until CR/CP validation fixed. Phase 03 NOT complete. 04–09 remain locked.
+
+### Remaining acceptance work after 3B2B (checkpoint 2026-11-11)
+- Phase 03: fix CR/CP create validation blockers (not yet diagnosed); run 3B2A and 3B2B browser/DB scenarios; cover negative rejected/approved/pending, clearance and financial-history regression, QA and close 03.3/Phase 03 only after owner PASS.
+- Phase 04 (04.1–04.4): cash CR/CP mapping, verified-source bank receipt/payment, bank deposit/withdrawal, debit/credit balance and regression.
+- Phase 05 (05.1–05.3): plot receiving and bank/cheque allocations.
+- Phase 06 (06.1–06.4): plot purchase and automatic purchase accounting.
+- Phase 07 (07.1–07.3): narration and bank-linked voucher history.
+- Phase 08 (08.1–08.3): cheque/online dashboard.
+- Phase 09 (09.1–09.3): end-to-end acceptance and delivery.

@@ -95,3 +95,5 @@ No claim of local migration, browser or PHP test execution unless actually verif
 
 ## 2026-11-11 — 3B2B and testing hold
 - Owner explicitly put CR/CP 3B2A browser testing HOLD because CR/CP create validation fails. They authorized implementation of 3B2B despite gate. 3B2B extends rejected CR/CP revision to payment_type 2/3 only if source and its single ledger inactive, no bank clearance outcome/posted date, no subsequent finance cheque/online lifecycle decisions. New pending source keeps instrument metadata; old history immutable. Browser test of 3B2A/3B2B still HOLD; investigate create validation next. Phase 03 remains ACTIVE, Phase 04–09 remain locked.
+
+- Final 3B2B UI review: replaced raw numeric bank_id input with getPakistanBanks list-backed select, matching existing CR/CP voucher form bank values. Browser testing remains ON HOLD.

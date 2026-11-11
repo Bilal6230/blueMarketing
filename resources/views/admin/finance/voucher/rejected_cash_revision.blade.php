@@ -34,7 +34,12 @@ body{overflow:auto!important}
 <div class="form-group"><label for="cr-revise-number">{{ (int)$source->payment_type === 3 ? 'Cheque Number' : 'Transaction Reference' }} *</label>
 <input id="cr-revise-number" name="t_number" class="form-control" value="{{ $source->t_number }}" maxlength="255" required></div>
 <div class="form-group"><label for="cr-revise-bank">Bank ID *</label>
-<input id="cr-revise-bank" type="number" min="1" name="bank_id" class="form-control" value="{{ $source->bank_id }}" required></div>
+<select id="cr-revise-bank" name="bank_id" class="form-control js-tomselect" required>
+<option value="">Select bank</option>
+@foreach(getPakistanBanks() as $bank)
+<option value="{{ $bank['id'] }}" @selected((int)$source->bank_id===(int)$bank['id'])>{{ $bank['name'] }}</option>
+@endforeach
+</select></div>
 <div class="form-group"><label for="cr-revise-passing-date">Bank / Passing Date *</label>
 <input id="cr-revise-passing-date" name="passing_date" type="date" class="form-control" value="{{ $source->passing_date ? substr((string)$source->passing_date,0,10) : substr((string)$source->date,0,10) }}" required></div>
 </div>
