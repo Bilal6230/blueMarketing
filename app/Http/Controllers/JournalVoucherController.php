@@ -95,6 +95,10 @@ class JournalVoucherController extends Controller
         if ($request->ajax()) {
             $allowedExcelColumns=['id','voucher_number','reference','date','description','total_debit'];
             $excelColumn=(string)$request->input('excel_facet','');
+            if ($excelColumn==='approval_status') {
+                return response()->json(['options'=>['Pending','Approved','Rejected','Posted'],
+                    'more_options'=>false]);
+            }
             if (in_array($excelColumn,$allowedExcelColumns,true)) {
                 $options=(clone $query)->reorder()->select($excelColumn)->distinct()
                     ->orderBy($excelColumn)->limit(501)->pluck($excelColumn)
@@ -104,6 +108,37 @@ class JournalVoucherController extends Controller
             }
             $selected=(array)$request->input('excel_values',[]);
             foreach($selected as $field=>$values) {
+                if($field==='approval_status' && is_array($values)) {
+                    $statuses=array_unique(array_map('strtolower',array_map('strval',$values)));
+                    if(!$statuses || count($statuses)>4 ||
+                        array_diff($statuses,['pending','approved','rejected','posted']))
+                        abort(422,'Invalid approval status filter.');
+                    if(\Illuminate\Support\Facades\Schema::hasTable('daily_voucher_approvals')) {
+                        $query->where(function($scope)use($selectedProjectId,$statuses) {
+                            if(in_array('posted',$statuses,true)) {
+                                $scope->whereNotExists(function($sub)use($selectedProjectId){
+                                    $sub->selectRaw('1')->from('daily_voucher_approvals as a')
+                                        ->whereColumn('a.source_id','journal_vouchers.id')
+                                        ->where('a.project_id',$selectedProjectId)
+                                        ->where('a.source_table','journal_vouchers');
+                                });
+                            }
+                            $other=array_diff($statuses,['posted']);
+                            if($other) {
+                                $scope->orWhereExists(function($sub)use($selectedProjectId,$other){
+                                    $sub->selectRaw('1')->from('daily_voucher_approvals as a')
+                                        ->whereColumn('a.source_id','journal_vouchers.id')
+                                        ->where('a.project_id',$selectedProjectId)
+                                        ->where('a.source_table','journal_vouchers')
+                                        ->whereIn('a.status',$other);
+                                });
+                            }
+                        });
+                    } elseif(!in_array('posted',$statuses,true)) {
+                        $query->whereRaw('1=0');
+                    }
+                    continue;
+                }
                 if(!in_array($field,$allowedExcelColumns,true) || !is_array($values) ||
                     !$values || count($values)>50) abort(422,'Invalid column selections.');
                 foreach($values as $value) {
