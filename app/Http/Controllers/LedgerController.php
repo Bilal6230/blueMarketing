@@ -1092,7 +1092,7 @@ class LedgerController extends Controller
                         abort_unless(auth()->user()?->can('delete voucher'), 403);
                         DB::table('daily_voucher_approval_events')->insert([
                             'approval_id' => $trackedApproval->id,
-                            'event' => 'approved_cash_soft_deactivated',
+                            'event' => 'approved_cash_void',
                             'actor_id' => (int) auth()->id(),
                             'remarks' => $reason,
                             'created_at' => now(),
