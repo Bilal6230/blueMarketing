@@ -34,10 +34,17 @@ final class FinancialSourceOwnership
         $isReceiptClearance = $type === 'CP' && $source &&
             in_array((string) $source->transaction_type, ['CR', 'PPR'], true) &&
             (string) ($leg['reference'] ?? '') === 'CASH_OUT_CLEARANCE#' . $sourceId;
+        // Approval-controlled revisions create an INACTIVE replacement source
+        // and matching INACTIVE ledger. Never require the source to be posted
+        // before its approver activates both records. Active legs still require
+        // an active source; a mismatched source/leg state is always rejected.
+        $sourceAndLegMatch = $source &&
+            ((int) $source->is_active === 1 ||
+             ((int) $source->is_active === 0 && (int) ($leg['is_active'] ?? 1) === 0));
         if (!$source || !$account ||
             (!$isReceiptClearance && (string) $source->transaction_type !== $type) ||
             (int) $source->project_id !== (int) $account->project_id ||
-            (int) $source->is_active !== 1) {
+            !$sourceAndLegMatch) {
             throw new \DomainException('FINANCE_SOURCE_OWNER_MISMATCH');
         }
         if (in_array($type, ['EC', 'ECP'], true) &&
