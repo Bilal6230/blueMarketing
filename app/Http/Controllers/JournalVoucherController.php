@@ -332,6 +332,28 @@ class JournalVoucherController extends Controller
             });
         }
 
+        // Shared JV/SV listing uses the same Excel-style column controls.
+        if ($request->ajax()) {
+            $allowed=['id','voucher_number','reference','date','description','total_debit'];
+            $facet=(string)$request->input('excel_facet','');
+            if(in_array($facet,$allowed,true)){
+                $options=(clone $query)->reorder()->select($facet)->distinct()
+                    ->orderBy($facet)->limit(501)->pluck($facet)
+                    ->map(fn($v)=>(string)$v)->all();
+                return response()->json(['options'=>array_slice($options,0,500),
+                    'more_options'=>count($options)>500]);
+            }
+            foreach(['excel_values'=>true,'excel_excluded'=>false] as $param=>$include){
+                foreach((array)$request->input($param,[]) as $field=>$values){
+                    if(!in_array($field,$allowed,true)||!is_array($values)||
+                        !$values||count($values)>100)abort(422,'Invalid sales voucher filter.');
+                    foreach($values as $v)if(!is_scalar($v)||mb_strlen((string)$v)>255)
+                        abort(422,'Invalid sales voucher filter value.');
+                    $include?$query->whereIn($field,array_map('strval',$values))
+                        :$query->whereNotIn($field,array_map('strval',$values));
+                }
+            }
+        }
         // If it's an AJAX request, return JSON data
         if ($request->ajax()) {
             // Pagination parameters
