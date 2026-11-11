@@ -21,6 +21,13 @@
 .vap-status.pending{background:#fef3d3;color:#775400}
 .vap-status.approved{background:#dcf4e5;color:#076235}
 .vap-status.rejected{background:#fee5e7;color:#9c1c2d}
+.vap-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 18px}
+.vap-detail-grid>div{display:flex;gap:8px;min-width:0;font-size:13px;border-bottom:1px solid #edf1f4;padding:5px 0}
+.vap-detail-grid strong{min-width:130px}.vap-detail-grid span{overflow-wrap:anywhere}
+.vap-detail-wide{grid-column:1/-1}
+.vap-lines th{background:#eaf4fc}
+.vap-voucher-no{white-space:nowrap;font-weight:700;color:#087840}
+@media(max-width:650px){.vap-detail-grid{grid-template-columns:1fr}}
 .vap-error{color:#c52a39;font-size:12px}
 .vap-alert{position:fixed;top:78px;right:20px;max-width:420px;z-index:2200;display:none}
 .swal2-container{z-index:20000!important}
@@ -46,14 +53,13 @@
    </div>
    <div class="table-responsive vap-table-wrap">
     <table class="table table-sm table-bordered table-hover vap-table">
-     <thead><tr><th>#</th><th>Submitted</th><th>Voucher Type</th><th>Original Source</th><th>Submitted By</th><th>Assigned Approver</th><th>Status</th><th>Reason for Revision / Edit</th><th>Actions</th></tr></thead>
+     <thead><tr><th>#</th><th>Submitted</th><th>Voucher No</th><th>Submitted By</th><th>Assigned Approver</th><th>Status</th><th>Reason for Revision / Edit</th><th>Actions</th></tr></thead>
      <tbody>
      @forelse($queue as $item)
       <tr id="vap-row-{{ $item->id }}">
        <td>{{ $item->id }}</td>
        <td>{{ $item->created_at?->format('d-M-Y H:i') }}</td>
-       <td><strong>{{ $item->voucher_type }}</strong></td>
-       <td>{{ $item->source_table }} #{{ $item->source_id }}</td>
+       <td class="vap-voucher-no">{{ $voucherDetails[$item->id]['number'] ?? '—' }}</td>
        <td>{{ $item->submitter?->name ?? 'User #'.$item->submitted_by }}</td>
        <td>{{ $item->assignedApprover?->name ?? 'User #'.$item->assigned_approver_id }}</td>
        <td><span class="vap-status pending">Pending</span></td>
@@ -69,23 +75,21 @@
           <button type="button" class="btn btn-sm btn-outline-success vap-decision"
            data-url="{{ route('finance.daily-vouchers.approvals.decide',[$item,'approve']) }}"
            data-action="approve" data-id="{{ $item->id }}" data-type="{{ $item->voucher_type }}"
-           data-source="{{ $item->source_table }} #{{ $item->source_id }}">Approve</button>
+           data-source="{{ $voucherDetails[$item->id]['number'] ?? '—' }}">Approve</button>
           <button type="button" class="btn btn-sm btn-outline-danger vap-decision"
            data-url="{{ route('finance.daily-vouchers.approvals.decide',[$item,'reject']) }}"
            data-action="reject" data-id="{{ $item->id }}" data-type="{{ $item->voucher_type }}"
-           data-source="{{ $item->source_table }} #{{ $item->source_id }}">Reject</button>
+           data-source="{{ $voucherDetails[$item->id]['number'] ?? '—' }}">Reject</button>
          @else <small class="text-muted">Assigned approver only</small>@endif
-         <button type="button" class="btn btn-sm btn-outline-secondary vap-history" data-target="#vap-events-{{ $item->id }}">History</button>
+         <button type="button" class="btn btn-sm btn-outline-secondary vap-history" data-target="#vap-events-{{ $item->id }}">Details / History</button>
         </div>
         <div id="vap-events-{{ $item->id }}" class="d-none">
-         @foreach($item->events as $event)
-          <div class="vap-event">{{ $event->created_at?->format('d-M-Y H:i:s') }} · {{ ucfirst($event->event) }} · User #{{ $event->actor_id }}{{ $event->remarks ? ' · '.$event->remarks : '' }}</div>
-         @endforeach
+         @include('admin.finance.voucher.partials.approval_detail', ['item'=>$item])
         </div>
        </td>
       </tr>
      @empty
-      <tr><td colspan="9" class="text-center text-muted py-4">No pending voucher approvals.</td></tr>
+      <tr><td colspan="8" class="text-center text-muted py-4">No pending voucher approvals.</td></tr>
      @endforelse
      </tbody>
     </table>
@@ -96,13 +100,12 @@
   <div class="vap-card">
    <div class="vap-card-head"><strong>Recent Approval History</strong><span class="text-muted small">Last 50 decisions · Read-only</span></div>
    <div class="table-responsive vap-table-wrap"><table class="table table-sm table-bordered table-hover vap-table">
-    <thead><tr><th>Decided At</th><th>Voucher</th><th>Source</th><th>Submitted By</th><th>Decision</th><th>Assigned Approver</th><th>Rejection Reason</th><th>Revision / Edit Reason</th><th>Audit</th></tr></thead>
+    <thead><tr><th>Decided At</th><th>Voucher No</th><th>Submitted By</th><th>Decision</th><th>Assigned Approver</th><th>Rejection Reason</th><th>Revision / Edit Reason</th><th>Audit</th></tr></thead>
     <tbody>
      @forelse($history as $item)
       <tr>
        <td>{{ $item->decided_at?->format('d-M-Y H:i:s') }}</td>
-       <td>{{ $item->voucher_type }}</td>
-       <td>{{ $item->source_table }} #{{ $item->source_id }}</td>
+       <td class="vap-voucher-no">{{ $voucherDetails[$item->id]['number'] ?? '—' }}</td>
        <td>{{ $item->submitter?->name ?? 'User #'.$item->submitted_by }}</td>
        <td><span class="vap-status {{ $item->status }}">{{ ucfirst($item->status) }}</span></td>
        <td>{{ $item->assignedApprover?->name ?? 'User #'.$item->assigned_approver_id }}</td>
@@ -113,16 +116,14 @@
        @endphp
        <td style="max-width:280px;white-space:normal">{{ is_array($historyData) ? ($historyData['revision_reason'] ?? '—') : '—' }}</td>
        <td>
-        <button type="button" class="btn btn-outline-secondary btn-sm vap-history" data-target="#vap-events-{{ $item->id }}">History</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm vap-history" data-target="#vap-events-{{ $item->id }}">Details / History</button>
         <div id="vap-events-{{ $item->id }}" class="d-none">
-         @foreach($item->events as $event)
-          <div class="vap-event">{{ $event->created_at?->format('d-M-Y H:i:s') }} · {{ ucfirst($event->event) }} · User #{{ $event->actor_id }}{{ $event->remarks ? ' · '.$event->remarks : '' }}</div>
-         @endforeach
+         @include('admin.finance.voucher.partials.approval_detail', ['item'=>$item])
         </div>
        </td>
       </tr>
      @empty
-      <tr><td colspan="9" class="text-muted text-center py-4">No completed decisions yet.</td></tr>
+      <tr><td colspan="8" class="text-muted text-center py-4">No completed decisions yet.</td></tr>
      @endforelse
     </tbody>
    </table></div>
@@ -150,8 +151,8 @@
  </div></div>
 </div>
 <div class="modal fade vap-modal" id="vap-history-modal" tabindex="-1" aria-hidden="true" role="dialog">
- <div class="modal-dialog modal-dialog-centered modal-lg" role="document"><div class="modal-content">
-  <div class="modal-header"><h5 class="modal-title">Voucher Approval History</h5><button class="close" type="button" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
+ <div class="modal-dialog modal-dialog-centered modal-xl" role="document"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title">Voucher Details &amp; Approval History</h5><button class="close" type="button" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
   <div class="modal-body"><div id="vap-history-content"></div></div>
   <div class="modal-footer"><button class="btn btn-outline-secondary" type="button" data-dismiss="modal">Close</button></div>
  </div></div>
@@ -183,7 +184,7 @@ $(function(){
   var $b=$(this);
   selected={url:$b.attr('data-url'),type:$b.attr('data-type'),
    action:$b.attr('data-action'),source:$b.attr('data-source'),id:$b.attr('data-id')};
-  $('#vap-source').text(selected.type+' · '+selected.source);
+  $('#vap-source').text(selected.source);
   $('#vap-reason-error').text('');
   $('#vap-reason').val('');
   $('#vap-reason-group').toggle(selected.action==='reject');
