@@ -53,7 +53,7 @@ final class DailyVoucherDirectoryController extends Controller
             'column_values.*' => ['array','max:250'],
             'column_values.*.*' => ['string','max:255'],
             'column_excluded' => ['sometimes','array','max:7'],
-            'column_excluded.*' => ['array','max:100'],
+            'column_excluded.*' => ['array','max:250'],
             'column_excluded.*.*' => ['string','max:255'],
         ]);
         $rows = collect();
