@@ -85,7 +85,8 @@ final class RejectedCashVoucherController extends Controller
                 && (int)$actor->project_id===$project),403);
         $policy=app(DailyVoucherApprovalWorkflow::class)->policy($project,(string)$source->transaction_type);
         try {
-            if ($tracked && $tracked->status==='rejected') {
+            if ($tracked && ($tracked->status==='rejected' ||
+                ($tracked->status==='approved' && $policy !== null))) {
                 $saved=app(RejectedCashVoucherResubmission::class)->resubmit(
                     $project,$customerLedger,(int)$actor->id,$data);
                 $pending=$saved['approval_pending'] ?? true;
