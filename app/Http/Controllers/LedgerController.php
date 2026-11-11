@@ -1077,7 +1077,11 @@ class LedgerController extends Controller
                     $approvedCashVoid = $trackedApproval && $trackedApproval->status === 'approved'
                         && (int) $source->payment_type === 1
                         && (int) $source->is_active === 1;
-                    if ($trackedApproval && !$approvedCashVoid) {
+                    // Pending edits/corrections must finish before the original
+                    // can be soft-deactivated, even for approved cash sources.
+                    app(\App\Services\Finance\VoucherApprovalMutationGuard::class)
+                        ->assertNoPendingCorrection($projectId, (int) $source->id);
+                    if (!$approvedCashVoid) {
                         app(\App\Services\Finance\VoucherApprovalMutationGuard::class)
                             ->assertLegacyMutationAllowed($projectId, 'customer_ledger', (int) $source->id);
                     }
