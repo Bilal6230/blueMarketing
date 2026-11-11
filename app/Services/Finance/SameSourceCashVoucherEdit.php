@@ -92,7 +92,8 @@ final class SameSourceCashVoucherEdit
                 'amount_out'=>$source->transaction_type==='CP'?$amount:'0.00',
                 'description'=>(string)$data['description'],
                 'account_id'=>(int)$account->id,
-                'customer_id'=>$account->customer_id,'plot_id'=>$account->plot_id,
+                'customer_id'=>$account->customer_id ?? $source->customer_id,
+                'plot_id'=>$account->plot_id ?? $source->plot_id,
             ];
             $reason=trim((string)$data['revision_reason']);
             if (mb_strlen($reason)<3) throw new \DomainException('Reason for Edit/Revision is required.');
@@ -222,7 +223,7 @@ final class SameSourceCashVoucherEdit
         $fields=[
             'date'=>$next['date'],'amount_in'=>$next['amount_in'],
             'amount_out'=>$next['amount_out'],'description'=>$next['description'],
-            'customer_id'=>$account->customer_id,'plot_id'=>$account->plot_id,
+            'customer_id'=>$next['customer_id'],'plot_id'=>$next['plot_id'],
             'is_active'=>1,'is_approve'=>1,'updated_at'=>now(),
         ];
         DB::table('customer_ledger')->where('id',$source->id)
