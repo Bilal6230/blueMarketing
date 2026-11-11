@@ -4,6 +4,11 @@
 
     @php
         $voucherType = is_string($type) && in_array($type, ['CR', 'CP', 'CCR', 'CDR'], true) ? $type : '';
+        // Avoid resolving newly added route names while rendering the iframe:
+        // deployments with stale route caches otherwise raise RouteNotFound.
+        // Route registration is checked separately when the form is submitted.
+        $cashOnlyAction = url('admin/finance/voucher/cash-only');
+        $cashOnlyDraftAction = url('admin/finance/voucher/cash-only/draft');
     @endphp
     <style>
         @if($embeddedVoucher ?? false)
@@ -208,7 +213,7 @@
 
 
                                 @can('create voucher')
-                                    <form action="{{ in_array($voucherType, ['CCR','CDR'], true) ? route('finance.voucher.cash-only.store') : ($fixedPaymentType !== null ? route('ledger.store.fixed_method', ['paymentType' => $fixedPaymentType]) : route('ledger.store')) }}" method="POST" enctype="multipart/form-data"
+                                    <form action="{{ in_array($voucherType, ['CCR','CDR'], true) ? $cashOnlyAction : ($fixedPaymentType !== null ? route('ledger.store.fixed_method', ['paymentType' => $fixedPaymentType]) : route('ledger.store')) }}" method="POST" enctype="multipart/form-data"
                                         id="voucherForm">
                                         @csrf
                                         @if(!empty($displaySeries))<input type="hidden" name="display_series" value="{{ $displaySeries }}">@endif
@@ -866,7 +871,7 @@
     <script>
         function saveAsDraft() {
             $('#voucherForm').attr('action', @json(in_array($voucherType,['CCR','CDR'],true)
-                ? route('finance.voucher.cash-only.draft')
+                ? $cashOnlyDraftAction
                 : ($fixedPaymentType !== null ? route('ledger.save_as_draft.fixed_method',['paymentType'=>$fixedPaymentType]) : route('ledger.save_as_draft'))));
         }
 
@@ -2278,7 +2283,7 @@
             $(document).on("click", "#submit-button", function(e) {
                 e.preventDefault();
                 @if(in_array($voucherType,['CCR','CDR'],true))
-                    $('#voucherForm').attr('action', @json(route('finance.voucher.cash-only.store')));
+                    $('#voucherForm').attr('action', @json($cashOnlyAction));
                 @endif
                 let isValid = true;
                 let messages = [];
