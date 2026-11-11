@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Finance;
 
 use App\Http\Controllers\Controller;
 use App\Models\CustomerLedger;
+use App\Models\DraftLedger;
 use App\Models\Ledger;
 use App\Models\ProjectHeadSubhead;
 use App\Services\Finance\DailyVoucherApprovalWorkflow;
@@ -123,6 +124,58 @@ final class CashOnlyVoucherController extends Controller
         return response()->json(['status'=>'success','flow_type'=>$result['pending']?'pending_approval':'posted',
             'message'=>$result['pending']?'Voucher saved Pending Approval.':'Cash voucher saved successfully.',
             'voucher_display'=>$result['number'],'source_id'=>$result['source_id']]);
+    }
+
+    /**
+     * Drafts never post a source or ledger and never reserve a new sequence.
+     * Final Save revalidates the current allocated number.
+     */
+    public function draft(Request $request)
+    {
+        abort_unless(Auth::user()?->can('create voucher'),403);
+        $projectId=(int)getSelectedTown();
+        abort_unless($projectId>0,403);
+        $data=$request->validate([
+            'display_series'=>['required','in:CCR,CDR'],
+            'voucher'=>['required','regex:/^(CCR|CDR)-[1-9][0-9]*$/D'],
+            'voucher_number'=>['required','same:voucher'],
+            'date'=>['required','date'],
+            'amount'=>['required','regex:/^\\d[\\d,]*(?:\\.\\d{1,2})?$/D'],
+            'acct_type'=>['required','integer','min:1'],
+            'accounts_id'=>['required','integer','min:1'],
+            'subaccounts_id'=>['required','integer','min:1'],
+            'detail'=>['required','string','max:255'],
+            'payment_type'=>['required','in:1'],
+            'attachment'=>['nullable','file','mimes:pdf,jpg,jpeg,png,webp','max:5120'],
+        ]);
+        abort_if($request->hasFile('attachment'),422,
+            'Please attach the file when saving the final voucher, not the draft.');
+        $series=$data['display_series'];
+        abort_unless(str_starts_with($data['voucher'],$series.'-'),422);
+        abort_unless(!$request->filled('bank_id') && !$request->filled('t_number')
+            && !$request->filled('passing_date') && !$request->filled('cheque_purpose'),422);
+        $amount=round((float)str_replace(',','',(string)$data['amount']),2);
+        abort_unless($amount>0,422,'Amount must be positive.');
+        $account=ProjectHeadSubhead::availableForPosting()->with('headAccounting')
+            ->where('project_id',$projectId)
+            ->where('head_accounting_id',$data['accounts_id'])
+            ->where('subhead_accounting_id',$data['subaccounts_id'])->first();
+        abort_unless($account && (int)$account->headAccounting?->acct_type===(int)$data['acct_type'],
+            422,'Select a matching project account.');
+        $draft=DraftLedger::create([
+            'project_id'=>$projectId,'transaction_type'=>$series,
+            'type'=>$series,'type_id'=>(int)substr($data['voucher'],strlen($series)+1),
+            'date'=>$data['date'],'description'=>$data['detail'],'detail'=>$data['detail'],
+            'project_head_subheads_id'=>$account->id,
+            'customer_id'=>$account->customer_id,'plot_id'=>$account->plot_id,
+            'amount_in'=>$series==='CCR'?$amount:0,
+            'amount_out'=>$series==='CDR'?$amount:0,
+            'payment_type'=>1,'is_active'=>0,'is_approve'=>0,
+            'create_by'=>Auth::id(),'update_by'=>Auth::id(),'status'=>'draft',
+        ]);
+        return response()->json(['status'=>'success','flow_type'=>'draft',
+            'message'=>'Cash voucher draft saved. No ledger posting or number reservation occurred.',
+            'draft_id'=>$draft->id]);
     }
 
     public function attachment(int $attachment)
