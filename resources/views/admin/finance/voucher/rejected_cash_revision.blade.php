@@ -17,8 +17,14 @@ body{overflow:auto!important}
 @media(max-width:650px){.cr-revise .fields{grid-template-columns:1fr}}
 </style>
 <div class="content-wrapper"><div class="cr-revise">
-<h4>Revise Rejected {{ $source->transaction_type }} Voucher</h4>
-<div class="alert alert-warning">Original voucher #{{ $source->type_id }} will remain rejected. Reason: {{ $approval->rejection_reason ?? 'Not recorded' }}. Revised voucher gets a new number and remains Pending until approved.</div>
+<h4>{{ $approval->status === 'approved' ? 'Correct Approved' : 'Revise Rejected' }} {{ $source->transaction_type }} Voucher</h4>
+<div class="alert alert-warning">
+@if($approval->status === 'approved')
+Original approved voucher #{{ $source->type_id }} remains active while this correction is Pending. On approval the old voucher will be soft-deactivated and only the revised voucher will be posted. If rejected, the original remains active.
+@else
+Original voucher #{{ $source->type_id }} will remain rejected. Reason: {{ $approval->rejection_reason ?? 'Not recorded' }}. Revised voucher gets a new number and remains Pending until approved.
+@endif
+</div>
 <form id="cash-revision-form" action="{{ route('finance.daily-vouchers.revise.store',$source->id) }}" method="post">
 @csrf
 <div class="fields">
@@ -76,7 +82,7 @@ body{overflow:auto!important}
 <div class="form-group"><label for="cr-revise-description">Purpose / Description *</label><textarea id="cr-revise-description" name="description" class="form-control" rows="3" required>{{ $source->description }}</textarea></div>
 <div class="form-group"><label for="cr-revise-reason">Reason for revision *</label><textarea id="cr-revise-reason" name="revision_reason" class="form-control" minlength="3" maxlength="500" rows="2" required></textarea></div>
 <div class="text-danger mb-2" id="cash-revision-error" role="alert"></div>
-<div class="text-right"><button type="submit" class="btn btn-primary" id="cash-revision-save">Revise & Resubmit for Approval</button></div>
+<div class="text-right"><button type="submit" class="btn btn-primary" id="cash-revision-save">{{ $approval->status === 'approved' ? 'Submit Correction for Approval' : 'Revise & Resubmit for Approval' }}</button></div>
 </form></div></div>
 @endsection
 @section('js')
