@@ -359,6 +359,17 @@ final class SameSourceCashVoucherEdit
                     round(max((float)$next['amount_in'],(float)$next['amount_out']),2)) {
                 throw new \DomainException('Verified bank revision source/allocation no longer matches.');
             }
+            // The persisted proposal is independently verified before posting.
+            // Matching max(in,out) alone could accept BOTH sides populated or a
+            // sign/direction swap in an altered edit snapshot.
+            $proposedAmounts=(object)[
+                'amount_in'=>$next['amount_in'] ?? null,
+                'amount_out'=>$next['amount_out'] ?? null,
+            ];
+            BankVoucherLegIntegrity::assert(
+                $series,$proposedAmounts,$proposedAmounts,(float)$allocation->amount);
+            BankVoucherLegIntegrity::assert(
+                $series,$source,$leg,(float)$allocation->amount);
         }
         $account=ProjectHeadSubhead::availableForPosting()
             ->where('project_id',$projectId)->whereKey((int)$next['account_id'])->firstOrFail();
