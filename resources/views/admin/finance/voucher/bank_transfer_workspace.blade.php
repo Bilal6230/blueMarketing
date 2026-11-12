@@ -57,8 +57,7 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
             <a class="btn btn-outline-secondary btn-sm" href="{{ route('dashboard') }}">Dashboard</a>
         </div>
     </div>
-    <section class="card bm-card bm-filter bt-filter-card">
-        <div class="card-body">
+    <x-finance.voucher-filter-card class="bt-filter-card">
             <form id="btFilterForm" class="bt-filter-row">
                 <div><label for="transferFrom">From</label><input type="date" class="form-control" id="transferFrom"></div>
                 <div><label for="transferTo">To</label><input type="date" class="form-control" id="transferTo"></div>
@@ -73,9 +72,8 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
                     <button type="button" class="btn btn-success btn-sm" id="openTransferCreate" data-toggle="modal" data-target="#bankTransferCreateModal"><i class="fas fa-plus mr-1"></i> New voucher</button>
                 </div>
             </form>
-        </div>
-    </section>
-    <section class="card bm-card bt-table-card">
+    </x-finance.voucher-filter-card>
+    <x-finance.voucher-table-card class="bt-table-card">
         <div class="bt-tools bm-records-toolbar">
             <label>Show <select class="form-control form-control-sm" id="btLength"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option></select> entries</label>
             <label>Search: <input class="form-control form-control-sm" id="btQuickSearch" placeholder="Search vouchers"></label>
@@ -92,7 +90,7 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
             <span id="btRecordSummary" class="bt-record-count">Loading records…</span>
             <div id="btPagination" class="d-flex align-items-center flex-wrap" style="gap:4px"></div>
         </div>
-    </section>
+    </x-finance.voucher-table-card>
 </div>
 @endsection
 
