@@ -25,14 +25,57 @@ final class SameSourceCashVoucherEdit
                 ->where('id',$sourceId)->whereIn('transaction_type',['CR','CP','CCR','CDR'])
                 ->lockForUpdate()->first();
             if (!$source) throw new \DomainException('Voucher not found.');
-            if ((int)$source->payment_type!==1) {
-                throw new \DomainException('Bank/cheque voucher edit requires separate instrument lifecycle verification.');
+            $isBank=(int)$source->payment_type!==1;
+            if ($isBank && !in_array((int)$source->payment_type,[2,3],true)) {
+                throw new \DomainException('Unsupported instrument payment method.');
             }
             $approvals=DailyVoucherApproval::query()->where('project_id',$projectId)
                 ->where('source_table','customer_ledger')->where('source_id',$sourceId)
                 ->lockForUpdate()->first();
             if ($approvals && !in_array($approvals->status,['approved','rejected','posted'],true)) {
                 throw new \DomainException('This voucher already has a pending decision.');
+            }
+            $bankSeries=null;
+            if ($isBank) {
+                // Only rejected verified BOR/BOP entries are eligible. Posted or
+                // approved bank vouchers require a separately audited reversal.
+                if (!$approvals || $approvals->status!=='rejected'
+                    || !in_array((string)$approvals->voucher_type,['BOR','BOP'],true)
+                    || !Schema::hasTable('finance_bank_voucher_allocations')
+                    || !Schema::hasTable('project_voucher_display_numbers')) {
+                    throw new \DomainException('Only rejected verified BOR/BOP vouchers can be revised in place.');
+                }
+                $bankSeries=(string)$approvals->voucher_type;
+                $expectedSourceType=$bankSeries==='BOR'?'CR':'CP';
+                if ((string)$source->transaction_type!==$expectedSourceType
+                    || (int)$source->is_active!==0) {
+                    throw new \DomainException('Rejected bank voucher identity/posting state changed.');
+                }
+                $identity=DB::table('project_voucher_display_numbers')
+                    ->where('project_id',$projectId)->where('source_kind','customer_ledger')
+                    ->where('source_id',$sourceId)->where('series',$bankSeries)
+                    ->lockForUpdate()->first();
+                $allocation=DB::table('finance_bank_voucher_allocations')
+                    ->where('project_id',$projectId)->where('voucher_type',$bankSeries)
+                    ->where('voucher_id',$sourceId)->lockForUpdate()->first();
+                if (!$identity || !$allocation
+                    || (($allocation->source_method==='online'?2:($allocation->source_method==='cheque'?3:0))
+                        !==(int)$source->payment_type)
+                    || round((float)$allocation->amount,2)!==
+                        round(max((float)$source->amount_in,(float)$source->amount_out),2)) {
+                    throw new \DomainException('Verified bank allocation/display identity mismatch.');
+                }
+                if ((string)($data['t_number']??'')!==(string)($source->t_number??'')
+                    || (int)($data['bank_id']??0)!==(int)$source->bank_id
+                    || substr((string)($data['passing_date']??''),0,10)
+                        !==substr((string)($source->passing_date??''),0,10)
+                    || (int)$source->payment_type===3 &&
+                        trim((string)($data['cheque_purpose']??''))!==trim((string)($source->cheque_purpose??''))) {
+                    throw new \DomainException('Cheque/Online reference, bank, passing date and purpose cannot change in this revision.');
+                }
+                if (round((float)$data['amount'],2)!==round((float)$allocation->amount,2)) {
+                    throw new \DomainException('Allocated amount cannot change in this revision. A separately audited allocation adjustment is required.');
+                }
             }
             if (!$approvals && (int)$source->is_active!==1) {
                 throw new \DomainException('Inactive untracked voucher cannot be edited.');
@@ -111,7 +154,7 @@ final class SameSourceCashVoucherEdit
             $reason=trim((string)$data['revision_reason']);
             if (mb_strlen($reason)<3) throw new \DomainException('Reason for Edit/Revision is required.');
             $workflow=app(DailyVoucherApprovalWorkflow::class);
-            $policy=$workflow->policy($projectId,(string)$source->transaction_type);
+            $policy=$workflow->policy($projectId,$bankSeries ?? (string)$source->transaction_type);
             if ($policy) {
                 $approver=\App\Models\User::find($policy->approver_user_id);
                 $user=\App\Models\User::find($userId);
@@ -131,7 +174,7 @@ final class SameSourceCashVoucherEdit
                 } else {
                     $previous='posted';
                     $previousDecidedBy=null;
-                    if (!$workflow->submitIfRequired($projectId,(string)$source->transaction_type,
+                    if (!$workflow->submitIfRequired($projectId,$bankSeries ?? (string)$source->transaction_type,
                         'customer_ledger',$sourceId,$userId)) {
                         throw new \DomainException('Approval submission failed.');
                     }
@@ -156,7 +199,9 @@ final class SameSourceCashVoucherEdit
                     ],JSON_THROW_ON_ERROR),'created_at'=>now(),
                 ]);
                 return ['pending'=>true,'source_id'=>$sourceId,
-                    'voucher_number'=>$source->transaction_type.'-'.$source->type_id];
+                    'voucher_number'=>$bankSeries
+                        ? (string)$identity->display_number
+                        : $source->transaction_type.'-'.$source->type_id];
             }
             $this->applyLocked($projectId,$source,$leg->first(),$before,$proposed);
             $snapshotId=DB::table('daily_voucher_edit_snapshots')->insertGetId([
@@ -182,7 +227,9 @@ final class SameSourceCashVoucherEdit
                 ]);
             }
             return ['pending'=>false,'source_id'=>$sourceId,
-                'voucher_number'=>$source->transaction_type.'-'.$source->type_id];
+                'voucher_number'=>$bankSeries
+                    ? (string)$identity->display_number
+                    : $source->transaction_type.'-'.$source->type_id];
         },3);
     }
 
@@ -255,8 +302,32 @@ final class SameSourceCashVoucherEdit
 
     private function applyLocked(int $projectId,object $source,object $leg,array $before,array $next): void
     {
-        if ((int)$source->payment_type!==1 || !in_array($source->transaction_type,['CR','CP','CCR','CDR'],true)) {
-            throw new \DomainException('Only same-method cash correction is supported.');
+        if (!in_array($source->transaction_type,['CR','CP','CCR','CDR'],true)) {
+            throw new \DomainException('Unsupported original voucher accounting type.');
+        }
+        if ((int)$source->payment_type!==1) {
+            // Recheck immutable source allocation and display family under the
+            // original transaction lock before activating the edited posting.
+            $id=(int)$source->id;
+            $identity=Schema::hasTable('project_voucher_display_numbers')
+                ? DB::table('project_voucher_display_numbers')
+                    ->where('project_id',$projectId)->where('source_kind','customer_ledger')
+                    ->where('source_id',$id)->lockForUpdate()->first() : null;
+            $series=(string)($identity->series??'');
+            $allocation=Schema::hasTable('finance_bank_voucher_allocations')
+                ? DB::table('finance_bank_voucher_allocations')
+                    ->where('project_id',$projectId)->where('voucher_type',$series)
+                    ->where('voucher_id',$id)->lockForUpdate()->first() : null;
+            if (!in_array($series,['BOR','BOP'],true) || !$allocation
+                || ($series==='BOR'?'CR':'CP')!==(string)$source->transaction_type
+                || !in_array((int)$source->payment_type,[2,3],true)
+                || (int)$source->is_active!==0 || (int)$leg->is_active!==0
+                || round((float)$allocation->amount,2)!==
+                    round(max((float)$source->amount_in,(float)$source->amount_out),2)
+                || round((float)$allocation->amount,2)!==
+                    round(max((float)$next['amount_in'],(float)$next['amount_out']),2)) {
+                throw new \DomainException('Verified bank revision source/allocation no longer matches.');
+            }
         }
         $account=ProjectHeadSubhead::availableForPosting()
             ->where('project_id',$projectId)->whereKey((int)$next['account_id'])->firstOrFail();
