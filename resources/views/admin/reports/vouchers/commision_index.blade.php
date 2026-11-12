@@ -16,7 +16,8 @@
                         </div>
 
                         <!-- Filter Section -->
-                        <div id="filtersSection" class="row mb-3" >
+                        <x-finance.voucher-filter-card id="filtersSection" class="mb-3">
+                        <div class="row">
                             <!-- Voucher Number -->
                             <div class="col-md-3">
                                 <label for="filter_voucher_number">Voucher Number</label>
@@ -47,8 +48,10 @@
                                 <button id="resetFilters" class="btn btn-secondary btn-sm">Reset</button>
                             </div>
                         </div>
+                        </x-finance.voucher-filter-card>
 
                         <!-- Table -->
+                        <x-finance.voucher-table-card class="mb-3">
                         <table id="journalTable" class="table table-bordered">
                             <thead class="bg-primary text-white">
                                 <tr>
@@ -67,6 +70,7 @@
                                 <!-- Data will be dynamically loaded by AJAX -->
                             </tbody>
                         </table>
+                        </x-finance.voucher-table-card>
                     </div>
                 </div>
             </div>
