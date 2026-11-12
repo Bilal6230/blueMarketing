@@ -57,31 +57,12 @@ final class PassedBankVoucherClaim
         if(substr($verifiedDate,0,10)!==substr($passingDate,0,10)){
             throw new \DomainException('Passing date must match the verified bank management decision.');
         }
-        $sourceBank=$kind==='online'
-            ? (string)($direction==='receipt'?$source->receiving_bank:$source->sending_bank)
-            : (string)($evidence->bank_name?:$source->bank_name);
+        // The selected voucher Bank is an independently chosen accounting field.
+        // It need not equal the source's sending/receiving/clearing bank.
+        // Still require a real known bank; never accept an arbitrary bank ID.
         $selectedBank=$bankId>0?(string)getBankNameById($bankId):'';
-        // Management banks are free-text, while voucher banks come from the
-        // controlled list. Strip harmless legal/name suffixes and known spacing
-        // differences, but never accept two different bank identities.
-        $normalise=function(string $value): string {
-            $words=preg_split('/[^a-z0-9]+/i',strtolower(trim($value))) ?: [];
-            $stop=['bank','limited','ltd','pvt','private','pakistan','pk','the','branch','plc','co','company'];
-            $words=array_values(array_filter($words,fn($word)=>
-                $word!=='' && !in_array($word,$stop,true)));
-            return implode('',$words);
-        };
-        $actual=$normalise($sourceBank);
-        $provided=$normalise($selectedBank);
-        // Names such as "Bank Al Falah" and "Bank Alfalah Limited" normalize
-        // to the same identity; unrelated banks must remain blocked.
-        if($actual==='' || $provided==='' || $actual!==$provided) {
-            throw new \DomainException(
-                'Bank mismatch. Verified management bank: '.
-                ($sourceBank!==''?$sourceBank:'Not specified').
-                '. Voucher bank: '.($selectedBank!==''?$selectedBank:'Not selected').
-                '. Select the matching bank or correct the management record.'
-            );
+        if($selectedBank==='') {
+            throw new \DomainException('Select a valid voucher bank.');
         }
         if($sourceNumber!==trim($number)) {
             throw new \DomainException('Voucher reference does not match the verified source.');
