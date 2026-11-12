@@ -206,7 +206,7 @@
         <div>
             <h1 class="h3 mb-1">
                 @if($presetType)
-                    {{ $presetType }} Vouchers
+                    {{ ['BOR'=>'Bank Receipt Voucher (BOR)','BOP'=>'Bank Payment Voucher (BOP)'][$presetType] ?? $presetType.' Vouchers' }}
                 @else
                     Voucher Directory
                 @endif
@@ -641,7 +641,7 @@
     function updateDirectoryTheme(type){
         $(dvPage).toggleClass('dv-theme-credit',['CR','CCR','BOR'].includes(type));
         $(dvPage).toggleClass('dv-theme-debit',['DR','CDR','BOP','CP'].includes(type));
-        const label=type ? type+' Vouchers' : 'Voucher Directory';
+        const label=type ? (voucherTypeLabels[type]||type+' Vouchers') : 'Voucher Directory';
         $('#dv-page .content-header h1').text(label);
         $('title').text(label+' - '+@json(Setting::getValue('app_name')));
     }
@@ -722,8 +722,9 @@
         $('#dv-entry-title').text($(button).data('title'));
         $(methodWrap).toggleClass('d-none',!$(button).data('chequeUrl'));
         $('#dv-bank-method').val('online');
-        $('#dv-bank-method-wrap').data('onlineUrl',button.dataset.url).data('chequeUrl',button.dataset.chequeUrl);
-        loadEntry(button.dataset.url);
+        $(methodWrap).data('onlineUrl',$(button).attr('data-url'))
+            .data('chequeUrl',$(button).attr('data-cheque-url'));
+        loadEntry($(button).attr('data-url'));
         $('#dv-entry-modal').modal('show');
     }
     $('#dv-entry-type').on('change',function(){
