@@ -251,8 +251,8 @@
                     'DR' => ['Debit Voucher (DR)', route('finance.voucher.out', ['series'=>'DR','embed'=>1])],
                     'CCR' => ['Cash Credit (CCR)', route('finance.voucher.in.method', ['method'=>'cash','series'=>'CCR','embed'=>1])],
                     'CDR' => ['Cash Debit (CDR)', route('finance.voucher.out.method', ['method'=>'cash','series'=>'CDR','embed'=>1])],
-                    'BOR' => ['Bank Receipt Voucher (BOR)', route('finance.voucher.in.method', ['method'=>'online','series'=>'BOR','embed'=>1])],
-                    'BOP' => ['Bank Payment Voucher (BOP)', route('finance.voucher.out.method', ['method'=>'online','series'=>'BOP','embed'=>1])],
+                    'BOR' => ['Bank Receipt Voucher (BOR)', route('finance.voucher.in', ['series'=>'BOR','embed'=>1])],
+                    'BOP' => ['Bank Payment Voucher (BOP)', route('finance.voucher.out', ['series'=>'BOP','embed'=>1])],
                 ] as $series => [$label, $url])
                     <button type="button" class="dv-create" data-url="{{$url}}" data-cheque-url="{{ in_array($series, ['BOR','BOP'], true) ? route($series === 'BOR' ? 'finance.voucher.in.method' : 'finance.voucher.out.method', ['method'=>'cheque','series'=>$series,'embed'=>1]) : '' }}" data-title="{{$label}}" data-series="{{$series}}"></button>
                 @endforeach
@@ -720,7 +720,8 @@
         $(entryChoose).addClass('d-none');
         $('#dv-entry-frame').css('display','block');
         $('#dv-entry-title').text($(button).data('title'));
-        $(methodWrap).toggleClass('d-none',!$(button).data('chequeUrl'));
+        // BOR/BOP select Online or Cheque inside their own form, then open the passed-source picker.
+        $(methodWrap).addClass('d-none');
         $('#dv-bank-method').val('online');
         $(methodWrap).data('onlineUrl',$(button).attr('data-url'))
             .data('chequeUrl',$(button).attr('data-cheque-url'));
