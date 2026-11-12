@@ -12,7 +12,8 @@ final class PassedBankVoucherClaim
      * transaction. The database unique claim keys prevent concurrent reuse.
      */
     public function verify(int $projectId,string $kind,int $id,string $direction,
-        int $paymentType,float $amount,string $number,int $accountMappingId): object
+        int $paymentType,float $amount,string $number,int $accountMappingId,
+        string $passingDate): object
     {
         if($id<=0 || !in_array($kind,['online','cheque'],true)
             || !in_array($direction,['receipt','payment'],true)
@@ -48,6 +49,12 @@ final class PassedBankVoucherClaim
             $sourceNumber=(string)$source->cheque_number;
         }
         if(!$valid)throw new \DomainException('Selected bank source has not passed verified management.');
+        $verifiedDate=(string)($kind==='online'
+            ? ($evidence->verification_date??'')
+            : ($evidence->action_date??''));
+        if(substr($verifiedDate,0,10)!==substr($passingDate,0,10)){
+            throw new \DomainException('Passing date must match the verified bank management decision.');
+        }
         if(round((float)$source->amount,2)!==round($amount,2) ||
             $sourceNumber!==trim($number)) {
             throw new \DomainException('Voucher amount/reference does not match the verified bank source.');
