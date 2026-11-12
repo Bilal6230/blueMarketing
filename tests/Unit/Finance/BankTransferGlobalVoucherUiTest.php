@@ -35,7 +35,7 @@ final class BankTransferGlobalVoucherUiTest extends TestCase
             'id="btLength"', 'id="btQuickSearch"', 'id="btRecordSummary"',
             'id="btPagination"', 'id="transferRows"',
             'id="bankTransferCreateModal"', 'id="bankTransferViewModal"',
-            'class="bt-page-btn"', 'blue-actions-cell', '$.blueActionMenu.enhance', 'bt-filter-card',
+            '$.blueVoucherPagination.render', 'blue-actions-cell', '$.blueActionMenu.enhance', 'bt-filter-card',
             'bt-table-card', 'bt-debit', 'bt-credit',
         ] as $identifier) {
             $this->assertStringContainsString($identifier, $view);
