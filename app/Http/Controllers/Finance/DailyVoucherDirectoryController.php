@@ -121,9 +121,9 @@ final class DailyVoucherDirectoryController extends Controller
                     if(Schema::hasTable('finance_bank_voucher_allocation_releases')){
                         $visible->orWhereExists(function($released)use($projectId){
                             $released->selectRaw('1')
-                                ->from('finance_bank_voucher_allocation_releases as release')
-                                ->where('release.project_id',$projectId)
-                                ->whereColumn('release.voucher_id','source.id');
+                                ->from('finance_bank_voucher_allocation_releases as rls')
+                                ->where('rls.project_id',$projectId)
+                                ->whereColumn('rls.voucher_id','source.id');
                         });
                     }
                 });
@@ -300,7 +300,7 @@ final class DailyVoucherDirectoryController extends Controller
                         'Original Amount' => $pending ? max((float)$source->amount_in,(float)$source->amount_out) : null,
                     ], fn ($value) => $value !== null && $value !== ''),
                     'release_url' => !$bankRelease
-                        && in_array($displayType,['BOR','BOP'],true)
+                        && in_array($displayType,['CR','DR','BOR','BOP'],true)
                         && in_array((int)$source->payment_type,[2,3],true)
                         && (
                             (($sourceApprovals[$source->id]['status']??'')==='rejected'
