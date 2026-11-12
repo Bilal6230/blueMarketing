@@ -71,10 +71,10 @@ final class DailyVoucherDirectoryController extends Controller
             'facet_column' => ['sometimes','string','in:date,number,head,subhead,detail,amount,status,approved_by'],
             'column_values' => ['sometimes','array','max:7'],
             'column_values.*' => ['array','max:250'],
-            'column_values.*.*' => ['string','max:255'],
+            'column_values.*.*' => ['nullable','string','max:255'],
             'column_excluded' => ['sometimes','array','max:7'],
             'column_excluded.*' => ['array','max:250'],
-            'column_excluded.*.*' => ['string','max:255'],
+            'column_excluded.*.*' => ['nullable','string','max:255'],
         ]);
         $rows = collect();
         $total = 0;
