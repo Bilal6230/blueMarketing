@@ -60,6 +60,7 @@
     .cheque-register-page .cheque-filter-panel, .cheque-register-page .cheque-table-panel { border: 1px solid var(--cheque-border); border-top: 3px solid var(--cheque-green); border-radius: 12px; background: #fff; padding: 12px; margin-bottom: 10px; }
     .cheque-register-page .cheque-table-panel th { background: #e6f4eb; border-bottom: 2px solid var(--cheque-green); white-space: nowrap; }
     .cheque-register-page .cheque-table-panel td { vertical-align: middle; }
+    .cheque-register-page #cheque-register-table th:last-child{width:72px;min-width:72px;text-align:center}
     .cheque-register-page .cheque-table-panel .table { margin-bottom: 0; }
     .cheque-register-page .cheque-table-panel .form-control-sm { min-width: 85px; }
     .cheque-register-page .cheque-table-panel tbody tr:nth-child(even) { background: #f7fbf8; }
@@ -458,6 +459,7 @@ $(function () {
         .done(function(data){
             if(seq!==listSeq)return;
             $.blueTableSkeleton.clear($('#cheque-table-body'));
+            $.blueActionMenu.close();
             var $body=$('#cheque-table-body').empty();
             $.each(data.data||[],function(i,r){$body.append(row(r,((data.current_page-1)*data.per_page)+i+1));});
             if(!(data.data||[]).length)$body.append($('<tr>').append($('<td colspan="11" class="text-center text-muted py-4">').text('No matching cheques found.')));
