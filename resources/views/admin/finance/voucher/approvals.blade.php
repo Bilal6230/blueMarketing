@@ -13,7 +13,7 @@
 .vap-table td{vertical-align:middle;white-space:nowrap}
 .vap-table tbody tr:nth-child(even){background:#f6fbf8}
 .vap-card-footer{padding:9px 13px;border-top:1px solid #edf2ee}
-.vap-actions{display:flex;gap:5px;align-items:center}
+.vap-table th:last-child{width:75px;min-width:75px;text-align:center}
 .vap-modal .modal-header{background:#e9f7ed;border-bottom:2px solid #168348}
 .vap-modal .modal-title{color:#087840;font-weight:700}
 .vap-event{font-size:12px;padding:4px 7px;border-left:2px solid #abd9bb;margin:3px 0;background:#f7faf8;white-space:normal}
@@ -69,8 +69,7 @@
           $revisionReason = is_array($revisionData) ? ($revisionData['revision_reason'] ?? null) : null;
        @endphp
        <td style="min-width:180px;max-width:330px;white-space:normal">{{ $revisionReason ?: '—' }}</td>
-       <td>
-        <div class="vap-actions">
+       <td class="blue-actions-cell">
          @if(\App\Services\Finance\VoucherApproverAccess::mayDecide(auth()->user(),(int)$item->project_id,(int)$item->assigned_approver_id,(int)$item->submitted_by))
           <button type="button" class="btn btn-sm btn-outline-success vap-decision"
            data-url="{{ route('finance.daily-vouchers.approvals.decide',[$item,'approve']) }}"
@@ -80,9 +79,8 @@
            data-url="{{ route('finance.daily-vouchers.approvals.decide',[$item,'reject']) }}"
            data-action="reject" data-id="{{ $item->id }}" data-type="{{ $item->voucher_type }}"
            data-source="{{ $voucherDetails[$item->id]['number'] ?? '—' }}">Reject</button>
-         @else <small class="text-muted">Assigned approver only</small>@endif
+         @endif
          <button type="button" class="btn btn-sm btn-outline-secondary vap-history" data-target="#vap-events-{{ $item->id }}">Details / History</button>
-        </div>
         <div id="vap-events-{{ $item->id }}" class="d-none">
          @include('admin.finance.voucher.partials.approval_detail', ['item'=>$item])
         </div>
@@ -128,7 +126,7 @@
           $historyData = $historyEvent ? json_decode((string)$historyEvent->remarks, true) : null;
        @endphp
        <td style="max-width:280px;white-space:normal">{{ is_array($historyData) ? ($historyData['revision_reason'] ?? '—') : '—' }}</td>
-       <td>
+       <td class="blue-actions-cell">
         <button type="button" class="btn btn-outline-secondary btn-sm vap-history" data-target="#vap-events-{{ $item->id }}">Details / History</button>
         <div id="vap-events-{{ $item->id }}" class="d-none">
          @include('admin.finance.voucher.partials.approval_detail', ['item'=>$item])
@@ -178,6 +176,7 @@
 $(function(){
  'use strict';
  var selected=null,busy=false;
+ $.blueActionMenu.enhance($('.vap-table td.blue-actions-cell'));
  function toast(msg,failed){
   if(window.toastr&&$.isFunction(window.toastr.error)){
    if(failed)window.toastr.error(msg);else window.toastr.success(msg);
