@@ -2,62 +2,95 @@
 @section('title', $kind === 'deposit' ? 'Bank Deposit Voucher' : 'Bank Withdrawal Voucher')
 @section('content')
 <style>
-/* Align with the master voucher list; apply frame compensation to this page only. */
-body:has(#bankTransferApp) .main-content.page-content {margin-left:250px!important;width:calc(100% - 250px)!important;max-width:calc(100% - 250px);padding:76px 24px 28px!important;box-sizing:border-box;overflow-x:hidden}
+/* Use the same dashboard chrome, density, and credit/debit palettes as daily_directory. */
+body:has(#bankTransferApp) .main-content.page-content {margin-left:250px!important;width:calc(100% - 250px)!important;max-width:calc(100% - 250px);padding:48px 7px 0!important;box-sizing:border-box;overflow:hidden}
 body.sidebar-collapse:has(#bankTransferApp) .main-content.page-content {margin-left:4.6rem!important;width:calc(100% - 4.6rem)!important;max-width:calc(100% - 4.6rem)}
-#bankTransferApp {max-width:1600px;margin:0 auto}
-#bankTransferApp .bt-heading h2 {font-size:1.55rem;font-weight:600;color:#223750}
-#bankTransferApp .bt-list-card {border-radius:10px;border:1px solid #e0e7f0}
-#bankTransferApp .bt-list-card>.card-header {background:#f8fafc;padding:16px 20px}
-#bankTransferApp .bt-filter-box {background:#f7f9fd;border:1px solid #e0e8f2;border-radius:9px;padding:16px}
-#bankTransferApp .bt-filter-box label {font-weight:600;font-size:13px}
-#bankTransferApp #transferTable thead th {background:#edf3fa;color:#263e59;white-space:nowrap;font-size:13px}
-#bankTransferApp #transferTable td {vertical-align:middle;font-size:13px}
-#bankTransferApp .bt-actions .dropdown-menu {min-width:140px}
-#bankTransferCreateModal .modal-body label {font-weight:600}
-#bankTransferCreateModal .form-control {min-height:39px;border-radius:7px}
-#bankTransferCreateModal .modal-content,#bankTransferViewModal .modal-content {border-radius:12px}
-@media(max-width:991.98px) {body:has(#bankTransferApp) .main-content.page-content,body.sidebar-collapse:has(#bankTransferApp) .main-content.page-content {margin-left:0!important;width:100%!important;max-width:100%;padding:74px 12px 24px!important}}
+body:has(#bankTransferApp) .main-footer{display:none!important}
+#bankTransferApp {--dv-accent:#128044;--dv-pale:#e9f8ef;display:flex;flex-direction:column;height:calc(100dvh - 124px);min-height:350px;padding:.3rem .15rem!important;overflow:hidden}
+#bankTransferApp.bt-debit {--dv-accent:#bd3140;--dv-pale:#fff0f1}
+#bankTransferApp .bt-heading{flex:0 0 auto;padding:.15rem .25rem .35rem;margin:0!important}
+#bankTransferApp .bt-heading h2 {font-size:1.35rem;color:var(--dv-accent);font-weight:700}
+#bankTransferApp .bt-subtitle {color:#758397;font-size:.83rem}
+#bankTransferApp .bt-filter-card,#bankTransferApp .bt-table-card{border:0;border-top:3px solid var(--dv-accent);border-radius:11px;box-shadow:0 5px 18px rgba(16,36,64,.08);overflow:hidden}
+#bankTransferApp .bt-filter-card {flex:0 0 auto;margin-bottom:.55rem!important}
+#bankTransferApp .bt-filter-card .card-body{padding:.58rem .75rem;background:#fff}
+#bankTransferApp .bt-filter-row {display:grid;grid-template-columns:repeat(4,minmax(120px,1fr)) auto;gap:.55rem;align-items:end}
+#bankTransferApp .bt-filter-row label{font-size:.8rem;font-weight:700;margin:0 0 .15rem}
+#bankTransferApp .bt-filter-row .form-control{height:34px;padding:.22rem .55rem;font-size:.85rem}
+#bankTransferApp .bt-filter-actions{display:flex;gap:.4rem;white-space:nowrap}
+#bankTransferApp .bt-filter-actions .btn-primary,#bankTransferApp .bt-filter-actions .btn-success {background:var(--dv-accent);border-color:var(--dv-accent);color:#fff}
+#bankTransferApp .bt-table-card{flex:1 1 0;min-height:0;margin:0!important;display:flex;flex-direction:column;background:#fff}
+#bankTransferApp .bt-tools{flex:0 0 auto;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:.4rem .55rem;background:#fff}
+#bankTransferApp .bt-tools label{font-size:.82rem;display:flex;gap:6px;align-items:center;margin:0}
+#bankTransferApp .bt-tools select{width:73px}
+#bankTransferApp .bt-tools input{width:195px}
+#bankTransferApp .bt-table-wrap{flex:1 1 0;min-height:0;overflow:auto}
+#bankTransferApp #transferTable{border-collapse:separate;border-spacing:0;min-width:1050px;margin:0;table-layout:fixed;font-size:.8rem}
+#bankTransferApp #transferTable thead th {background:var(--dv-pale);border-bottom:2px solid var(--dv-accent);position:sticky;top:0;z-index:2;font-weight:700;padding:.52rem .45rem;white-space:nowrap}
+#bankTransferApp #transferTable td {padding:.5rem .45rem;height:42px;vertical-align:middle;border-bottom:1px solid #dce3eb}
+#bankTransferApp #transferTable tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--dv-pale) 19%,white)}
+#bankTransferApp #transferTable tbody tr:hover td{background:color-mix(in srgb,var(--dv-pale) 48%,white)}
+#bankTransferApp #transferTable td:nth-child(3){color:var(--dv-accent);font-weight:700}
+#bankTransferApp #transferTable td:last-child,#bankTransferApp #transferTable th:last-child{text-align:center;width:74px}
+#bankTransferApp .bt-plus{width:30px;height:30px;padding:2px;border-radius:10px;border:1px solid #c9ded1;background:#fff;color:var(--dv-accent);box-shadow:0 1px 4px #0001}
+#bankTransferApp.bt-debit .bt-plus{border-color:#efc5cb}
+#bankTransferApp .bt-footer{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:43px;padding:.35rem .65rem;background:#fff}
+#bankTransferApp .bt-page-btn{border:1px solid var(--dv-accent);background:#fff;color:var(--dv-accent);border-radius:5px;padding:4px 9px;min-width:30px}
+#bankTransferApp .bt-page-btn.active{background:var(--dv-accent);color:#fff}
+#bankTransferApp .bt-page-btn:disabled{opacity:.45}
+#bankTransferApp .bt-record-count{font-size:.79rem;color:#657286}
+#bankTransferCreateModal .modal-body label{font-weight:600}
+#bankTransferCreateModal .form-control{min-height:39px}
+@media(max-width:1150px){#bankTransferApp .bt-filter-row{grid-template-columns:repeat(2,minmax(120px,1fr))}#bankTransferApp .bt-filter-actions{grid-column:1/-1;justify-content:flex-end}}
+@media(max-width:991.98px){body:has(#bankTransferApp) .main-content.page-content,body.sidebar-collapse:has(#bankTransferApp) .main-content.page-content{margin-left:0!important;width:100%!important;max-width:100%;padding:48px 6px 0!important}}
+@media(max-width:520px){#bankTransferApp .bt-filter-row{grid-template-columns:1fr}#bankTransferApp .bt-footer{flex-wrap:wrap}}
 </style>
-<div class="container-fluid bt-page" id="bankTransferApp" data-kind="{{ $kind }}"
+<div class="container-fluid bt-page {{ $kind === 'deposit' ? 'bt-credit' : 'bt-debit' }}" id="bankTransferApp" data-kind="{{ $kind }}"
     data-post-url="{{ route('finance.voucher.transfer.post',['kind'=>$kind]) }}"
     data-history-url="{{ route('finance.voucher.transfer.history',['kind'=>$kind]) }}"
     data-source-url="{{ route('finance.voucher.transfer.sources',['kind'=>$kind]) }}"
     data-print-base="{{ url('admin/finance/voucher/bank-transfer/'.$kind) }}">
-    <div class="d-flex align-items-center justify-content-between flex-wrap mb-3 bt-heading">
-        <div><h2 class="mb-1">{{ $kind === 'deposit' ? 'Bank Deposit Vouchers' : 'Bank Withdrawal Vouchers' }}</h2>
-            <div class="text-muted">Daily Entries / {{ $kind === 'deposit' ? 'Bank Deposit' : 'Bank Withdrawal' }} · Project #{{ (int)getSelectedTown() }}</div></div>
-        <div class="d-flex align-items-center mt-2 mt-sm-0" style="gap:8px">
-            <button type="button" class="btn btn-outline-secondary" id="refreshTransfers"><i class="fas fa-sync-alt"></i> Refresh</button>
-            <button type="button" class="btn btn-primary" id="openTransferCreate" data-toggle="modal" data-target="#bankTransferCreateModal"><i class="fas fa-plus"></i> Add Voucher</button>
+    <div class="bt-heading d-flex justify-content-between align-items-center">
+        <div><h2 class="mb-0">{{ $kind === 'deposit' ? 'BD Vouchers' : 'BW Vouchers' }}</h2>
+            <div class="bt-subtitle">Selected project records · Read-only history</div></div>
+        <div class="d-flex align-items-center" style="gap:8px">
+            <a class="btn btn-outline-secondary btn-sm" href="{{ route('dashboard') }}">Dashboard</a>
         </div>
     </div>
-    <section class="card shadow-sm bt-list-card">
-        <div class="card-header d-flex align-items-center justify-content-between flex-wrap">
-            <strong>{{ $kind === 'deposit' ? 'Bank Deposit' : 'Bank Withdrawal' }} Voucher List</strong>
-            <button type="button" class="btn btn-sm btn-outline-primary" id="toggleTransferFilters" aria-expanded="true" aria-controls="transferFilters"><i class="fas fa-filter"></i> Filters</button>
-        </div>
+    <section class="card bt-filter-card">
         <div class="card-body">
-            <div id="transferFilters" class="bt-filter-box mb-3">
-                <div class="row">
-                    <div class="form-group col-md-3"><label for="transferFrom">From date</label><input type="date" class="form-control" id="transferFrom"></div>
-                    <div class="form-group col-md-3"><label for="transferTo">To date</label><input type="date" class="form-control" id="transferTo"></div>
-                    <div class="form-group col-md-3"><label for="transferBankFilter">Bank account</label>
-                        <select class="form-control" id="transferBankFilter"><option value="">All bank accounts</option>
-                        @foreach($bankAccounts as $bank)<option value="{{ $bank->bank_name }} / {{ $bank->account_title }}">{{ $bank->bank_name }} / {{ $bank->account_title }}</option>@endforeach
-                        </select></div>
-                    <div class="form-group col-md-3"><label for="transferSearch">Search vouchers</label><input class="form-control" id="transferSearch" maxlength="120" placeholder="Voucher, cash, cheque or note"></div>
+            <form id="btFilterForm" class="bt-filter-row">
+                <div><label for="transferFrom">From</label><input type="date" class="form-control" id="transferFrom"></div>
+                <div><label for="transferTo">To</label><input type="date" class="form-control" id="transferTo"></div>
+                <div><label for="transferBankFilter">Account</label><select id="transferBankFilter" class="form-control">
+                    <option value="">All accounts</option>
+                    @foreach($bankAccounts as $bank)<option value="{{ $bank->bank_name }} / {{ $bank->account_title }}">{{ $bank->bank_name }} / {{ $bank->account_title }}</option>@endforeach
+                </select></div>
+                <div><label for="transferSearch">Search</label><input class="form-control" id="transferSearch" maxlength="120" placeholder="Number, reference, account or detail"></div>
+                <div class="bt-filter-actions">
+                    <button class="btn btn-primary btn-sm" type="submit" id="applyTransferFilters"><i class="fas fa-filter mr-1"></i> Apply</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="clearTransferFilters">Reset</button>
+                    <button type="button" class="btn btn-success btn-sm" id="openTransferCreate" data-toggle="modal" data-target="#bankTransferCreateModal"><i class="fas fa-plus mr-1"></i> New voucher</button>
                 </div>
-                <button type="button" class="btn btn-sm btn-outline-secondary" id="clearTransferFilters">Reset filters</button>
-            </div>
-            <div id="transferListError" class="alert alert-danger d-none" role="alert"></div>
-            <div class="table-responsive">
-                <table class="table table-bordered table-striped table-hover w-100" id="transferTable">
-                    <thead><tr><th>Voucher No.</th><th>Date</th><th>Cash account</th><th>Bank account</th><th>Cheque reference</th><th>Amount</th><th>Action</th></tr></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-            <div class="small text-muted mt-2">Posted vouchers are immutable. View and Print are available; financial correction requires an approved reversal workflow.</div>
+            </form>
+        </div>
+    </section>
+    <section class="card bt-table-card">
+        <div class="bt-tools">
+            <label>Show <select class="form-control form-control-sm" id="btLength"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option></select> entries</label>
+            <label>Search: <input class="form-control form-control-sm" id="btQuickSearch" placeholder="Search vouchers"></label>
+        </div>
+        <div id="transferListError" class="alert alert-danger d-none m-2" role="alert"></div>
+        <div class="bt-table-wrap">
+            <table class="table table-bordered table-hover table-sm w-100" id="transferTable">
+                <colgroup><col style="width:48px"><col style="width:112px"><col style="width:120px"><col style="width:200px"><col style="width:195px"><col><col style="width:110px"><col style="width:92px"><col style="width:74px"></colgroup>
+                <thead><tr><th>#</th><th>Date</th><th>Voucher #</th><th>Head</th><th>Sub Head</th><th>Details</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody id="transferRows"><tr><td colspan="9" class="text-center text-muted py-4">Loading vouchers…</td></tr></tbody>
+            </table>
+        </div>
+        <div class="bt-footer">
+            <span id="btRecordSummary" class="bt-record-count">Loading records…</span>
+            <div id="btPagination" class="d-flex align-items-center flex-wrap" style="gap:4px"></div>
         </div>
     </section>
 </div>
