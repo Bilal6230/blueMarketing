@@ -738,7 +738,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="alert alert-info py-2 small mb-2">
-                        Sirf verified records available hain. Ek record select karein; amount aur reference selected record se fill honge.
+                        Sirf verified records available hain. Ek source ke multiple vouchers ban sakte hain, sirf remaining amount tak.
                     </div>
                     <label class="sr-only" for="passed-bank-search">Search passed records</label>
                     <input id="passed-bank-search" type="search" class="form-control form-control-sm mb-2"
@@ -746,8 +746,8 @@
                     <div class="table-responsive" style="max-height:340px;overflow-y:auto">
                         <table class="table table-sm table-bordered table-hover" id="passed-bank-table">
                             <thead><tr><th>Select</th><th>Date</th><th>Reference</th><th>Bank</th>
-                                <th>Amount</th><th>Passed On</th><th>Status</th></tr></thead>
-                            <tbody><tr><td colspan="7" class="text-muted text-center">Select payment type first.</td></tr></tbody>
+                                <th>Total</th><th>Remaining</th><th>Passed On</th><th>Status</th></tr></thead>
+                            <tbody><tr><td colspan="8" class="text-muted text-center">Select payment type first.</td></tr></tbody>
                         </table>
                     </div>
                     <p class="small text-danger mb-0 d-none" id="passed-bank-error" role="alert"></p>
@@ -1753,16 +1753,20 @@
             // Bind after the initial form setup: opening the source picker is a user action.
             // One project-scoped verified source can be selected for this form at a time.
             let passedBankRows=[],passedBankRequest=null,passedBankTimer=null;
+            let selectedPassedRemainingCents=null;
             // Avoid the named-route lookup during Blade render while route caches are refreshed.
             const passedBankUrl=@json($passedBankSourceUrl);
             const passedBankDirection=@json($passedBankDirection);
             function resetPassedBankSelection(){
                 const hadSource=!!$('#passed_source_id').val();
                 $('#passed_source_id,#passed_source_method').val('');
-                $('#numberInput').prop('readonly',false).removeAttr('data-bank-source-amount');
+                selectedPassedRemainingCents=null;
+                $('#numberInput').prop('readonly',false).removeAttr('data-bank-source-remaining').removeClass('is-invalid');
+                $('#passed-bank-remaining-warning').remove();
+                $('#submitForm').prop('disabled',false);
                 $('#t_number').prop('readonly',false);
                 if(hadSource){
-                    $('#t_number,#numberInput,#passing_date,#cheque_purpose').val('').trigger('change');
+                    $('#t_number,#passing_date,#cheque_purpose').val('').trigger('change');
                     const $bank=$('#bank_id'),select=$bank.prop('tomselect');
                     if(select)select.clear(true);else $bank.val('').trigger('change');
                     $('#voucherForm').removeData('passed-account-pair');
@@ -1784,7 +1788,7 @@
                 if(passedBankRequest)passedBankRequest.abort();
                 $('#passed-bank-apply').prop('disabled',true);
                 $('#passed-bank-table tbody').empty().append(
-                    $('<tr>').append($('<td>',{colspan:7,'class':'text-center text-muted',text:'Loading verified records…'}))
+                    $('<tr>').append($('<td>',{colspan:8,'class':'text-center text-muted',text:'Loading verified records…'}))
                 );
                 passedBankRequest=$.ajax({
                     url:passedBankUrl,type:'GET',dataType:'json',
@@ -1795,13 +1799,13 @@
                     const $body=$('#passed-bank-table tbody').empty();
                     if(!passedBankRows.length){
                         $body.append($('<tr>').append($('<td>',{colspan:7,'class':'text-center text-muted',
-                            text:'No unclaimed verified records for this project and payment type.'})));
+                            text:'No verified records with remaining balance.'})));
                     }
                     $.each(passedBankRows,function(_,source){
                         const $row=$('<tr>');
                         $row.append($('<td>').append($('<input>',{type:'radio',name:'passed-bank-radio',
                             'class':'passed-bank-radio',value:source.id,'aria-label':'Select '+source.reference})));
-                        $.each(['date','reference','bank','amount','passing_date','status'],function(_,field){
+                        $.each(['date','reference','bank','amount','remaining_amount','passing_date','status'],function(_,field){
                             $row.append($('<td>',{text:source[field]??''}));
                         });
                         $body.append($row);
@@ -1810,7 +1814,7 @@
                     if(status==='abort')return;
                     passedBankRows=[];
                     $('#passed-bank-table tbody').empty().append($('<tr>').append($('<td>',{
-                        colspan:7,'class':'text-danger',
+                        colspan:8,'class':'text-danger',
                         text:xhr.responseJSON?.message||'Unable to retrieve verified records.'})));
                 });
             }
@@ -1851,13 +1855,24 @@
                 $('#passed_source_id').val(source.id);
                 $('#passed_source_method').val(source.method);
                 $('#t_number').val(source.reference).prop('readonly',true).trigger('change');
-                $('#numberInput').val(source.amount).prop('readonly',true)
-                    .attr('data-bank-source-amount',source.amount).trigger('input');
+                selectedPassedRemainingCents=Math.round(Number(source.remaining_amount)*100);
+                $('#numberInput').val(source.remaining_amount).prop('readonly',false)
+                    .attr('data-bank-source-remaining',source.remaining_amount).trigger('input');
+                $('#passed-bank-remaining-warning').remove();
+                $('#numberInput').after($('<div>',{id:'passed-bank-remaining-warning',
+                    'class':'small text-muted mt-1',
+                    text:'Remaining: '+source.remaining_amount+' / Original: '+source.amount}));
                 const $pass=$('#passing_date');
                 const datePicker=$pass.prop('_flatpickr');
                 if(datePicker)datePicker.setDate(source.passing_date,true,'Y-m-d');
                 else $pass.val(source.passing_date).trigger('change');
-                if(source.purpose)$('#cheque_purpose').val(source.purpose).trigger('change');
+                if(source.method==='cheque'){
+                    $('#cheque_purpose').val(source.purpose||'').trigger('change');
+                    $('.cheque-purpose-group').show();
+                }else{
+                    $('#cheque_purpose').val('');
+                    $('.cheque-purpose-group').hide();
+                }
                 const $bank=$('#bank_id');
                 let matchedBank='';
                 $bank.find('option').each(function(){
@@ -1877,24 +1892,29 @@
                     $('#passed-bank-error').removeClass('d-none')
                         .text('Bank name requires manual mapping. Please select the matching Bank in the voucher form.');
                 }
-                if(source.account_type && source.head_id && source.subhead_id){
-                    // Wait for real dependent AJAX option sets, never guess with timing.
-                    $('#voucherForm').data('passed-account-pair',{
-                        head:String(source.head_id),sub:String(source.subhead_id)
-                    });
-                    const $type=$('#acct_type'),control=$type.prop('tomselect');
-                    if(control)control.setValue(String(source.account_type));
-                    else $type.val(source.account_type).trigger('change');
-                }
+                // Accounts and Child Account remain user-selected per partial voucher.
                 if(passedBankDirection==='payment'){
                     $('#pendingPaymentsSection').hide();
                     $('#selected_pending_payment_id').val('');
                     $('#pending_status').prop('disabled',true);
                     $('.pending_status_group').hide();
                 }
-                $('.cheque-purpose-group').toggle(payment==='3'&&!source.purpose);
-                $('#cheque_purpose').prop('required',false);
+                $('.cheque-purpose-group').toggle(payment==='3');
+                $('#cheque_purpose').prop('required',payment==='3');
                 $('#passed-bank-source-modal').modal('hide');
+            });
+            $('#numberInput').on('input.passedBankLimit change.passedBankLimit',function(){
+                if(selectedPassedRemainingCents===null)return;
+                const raw=String($(this).val()||'').replace(/,/g,'').trim();
+                const cents=/^\\d+(?:\\.\\d{1,2})?$/.test(raw)?Math.round(Number(raw)*100):0;
+                const invalid=cents<=0||cents>selectedPassedRemainingCents;
+                $('#passed-bank-remaining-warning').removeClass('text-muted text-danger')
+                    .addClass(invalid?'text-danger':'text-muted')
+                    .text(invalid?'Amount cannot exceed remaining balance: '+
+                        (selectedPassedRemainingCents/100).toFixed(2):
+                        'Remaining balance: '+(selectedPassedRemainingCents/100).toFixed(2));
+                $(this).toggleClass('is-invalid',invalid);
+                $('#submitForm').prop('disabled',invalid);
             });
             @endif
             function normalizeDateForInput(value) {
@@ -2537,6 +2557,14 @@
                 });
                 const paymentTypeCode = String($('#voucherForm #payment_type').val() || '');
                 const pendingId = String($('#voucherForm #selected_pending_payment_id').val() || '').trim();
+                if($('#passed_source_id').val() && selectedPassedRemainingCents!==null){
+                    const raw=String($('#numberInput').val()||'').replace(/,/g,'').trim();
+                    const cents=/^\\d+(?:\\.\\d{1,2})?$/.test(raw)?Math.round(Number(raw)*100):0;
+                    if(cents<=0||cents>selectedPassedRemainingCents){
+                        isValid=false;
+                        checkField("[name='amount']", "Amount exceeds remaining source balance.",()=>false);
+                    }
+                }
                 if (paymentTypeCode === '2' || paymentTypeCode === '3') {
                     checkField("[name='t_number']", "Transaction / Cheque Number is required.");
                     checkField("[name='bank_id']", "Bank is required.");
