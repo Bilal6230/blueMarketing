@@ -70,6 +70,19 @@ final class VoucherGlobalVisualParityTest extends TestCase
         }
     }
 
+    public function test_plot_and_bank_linked_history_reuse_original_actions_through_shared_menu(): void
+    {
+        foreach([
+            'admin/finance/voucher/plot_receipt_workspace.blade.php',
+            'admin/finance/voucher/plot_purchase_workspace.blade.php',
+            'admin/finance/voucher/bank_linked_workspace.blade.php',
+        ] as $name) {
+            $view=file_get_contents(resource_path('views/'.$name));
+            $this->assertStringContainsString('$.blueVoucherRegisterActions.enhance(', $view);
+            $this->assertStringContainsString('<x-finance.voucher-table-card', $view);
+        }
+    }
+
     public function test_shared_action_adapter_is_globally_loaded_and_preserves_original_handlers(): void
     {
         $master=file_get_contents(resource_path('views/admin/layouts/master.blade.php'));
