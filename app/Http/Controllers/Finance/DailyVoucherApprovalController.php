@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Schema;
 
 final class DailyVoucherApprovalController extends Controller
 {
-    private const TYPES = ['CR', 'CP', 'CCR', 'CDR', 'JV'];
+    private const TYPES = ['CR', 'CP', 'CCR', 'CDR', 'BOR', 'BOP', 'JV'];
 
     public function index()
     {
@@ -68,7 +68,7 @@ final class DailyVoucherApprovalController extends Controller
         $this->authorizeManager();
         $projectId = (int) getSelectedTown();
         $data = $request->validate([
-            'voucher_type' => ['required', 'in:CR,CP,CCR,CDR,JV'],
+            'voucher_type' => ['required', 'in:CR,CP,CCR,CDR,BOR,BOP,JV'],
             'approval_required' => ['nullable', 'boolean'],
             'approver_user_id' => ['nullable', 'integer', 'min:1'],
         ]);
