@@ -437,3 +437,8 @@ Owner screenshot: Bank Receipt Voucher (BOR) outer modal renders `Voucher form u
 - The release service additionally rejects invalid nonpositive amount, soft-deleted voucher sources and voucher sources with extra/global ledger legs; direct legacy edit/delete remains blocked for all allocation-backed vouchers. Commits `588027c8`, `73490382`, `ff1269b1`.
 - Isolated regression tests committed `fd71992e` and fixture corrected `25e192a6`. Browser gate remains OPEN. Owner must validate local `php artisan migrate --path=database/migrations/2026_11_12_000044_create_finance_bank_voucher_allocation_releases.php` on a backed-up local database FIRST; only then use source picker/save/release. Do not run production migration automatically.
 - Required local gates: `php artisan view:cache`, `php artisan route:list --name=finance.daily-vouchers.bank-allocation.release`, `php artisan test --filter=BankVoucherAllocationReleaseTest`, browser and financial SQL verification. None of these were executed against owner's local project by assistant; do not claim PASS. Next milestone blocked until owner explicit PASS.
+
+
+### 2026-11-12 — Shared mutation-guard follow-up
+- Strengthened `VoucherApprovalMutationGuard::assertLegacyMutationAllowed` to reject any financial `customer_ledger` source with an existing verified bank allocation, even if an approval table is unavailable; other unallocated cash/JV sources retain their previous guard behavior. Code commits `0d3b8146`, `c64f9de6`.
+- This blocks legacy mutation paths from evading the explicit audited Release/Void contract. No schema or existing financial data changed by these guard commits. Owner browser & automated test gates remain OPEN.
