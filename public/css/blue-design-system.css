@@ -77,7 +77,7 @@
 
 /* Voucher directory shell: identical structural rhythm, each series retains
    its own --voucher-accent and --voucher-tint (green/red/blue/etc). */
-.bm-ui.bm-voucher-directory{--voucher-accent:var(--bm-success);--voucher-tint:#eaf7ee;--bm-border:color-mix(in srgb,var(--voucher-accent) 30%,#fff);--bm-success:var(--voucher-accent)}
+.bm-ui.bm-voucher-directory{--voucher-accent:var(--bm-success);--voucher-tint:#eaf7ee;--bm-border:color-mix(in srgb,var(--voucher-accent) 30%,#fff)}
 .bm-ui.bm-voucher-directory .bm-voucher-filter-card,
 .bm-ui.bm-voucher-directory .bm-voucher-table-card{border:1px solid var(--bm-border);border-top:3px solid var(--voucher-accent);border-radius:10px;background:#fff;box-shadow:0 3px 12px rgba(19,45,68,.06)}
 .bm-ui.bm-voucher-directory .bm-voucher-filter-card>.card-body{padding:10px 12px}
@@ -88,6 +88,7 @@
 .bm-ui.bm-voucher-directory .bm-voucher-table-card table>thead>tr>th{background:var(--voucher-tint)!important;color:#243a52!important;border-bottom:2px solid var(--voucher-accent)!important;vertical-align:middle;font-size:12px;font-weight:700}
 .bm-ui.bm-voucher-directory .bm-voucher-table-card table>tbody>tr>td{font-size:12px;padding:6px 7px;vertical-align:middle;border-color:#d8e1e9}
 .bm-ui.bm-voucher-directory .bm-voucher-table-card table>tbody>tr:nth-child(even)>td{background:color-mix(in srgb,var(--voucher-tint) 19%,#fff)}
+.bm-ui.bm-voucher-directory .blue-actions-toggle:not([aria-expanded="true"]){color:var(--voucher-accent)}
 .bm-ui.bm-voucher-directory .bm-voucher-table-card table .blue-actions-cell{width:var(--bm-action-col,72px)!important}
 .bm-ui.bm-voucher-directory .bm-voucher-table-card .dataTables_wrapper .pagination .page-item.active .page-link{background:var(--voucher-accent);border-color:var(--voucher-accent);color:#fff}
 .bm-ui.bm-voucher-directory .bm-voucher-table-card .dataTables_wrapper .pagination .page-link{color:var(--voucher-accent)}
