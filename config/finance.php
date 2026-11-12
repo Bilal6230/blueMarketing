@@ -6,6 +6,8 @@ return [
     // authenticated, project-authorized API session.
     'v2_pilot_api_enabled' => env('V2_FINANCE_PILOT_API_ENABLED', false),
     'v2_pilot_write_enabled' => env('V2_FINANCE_PILOT_WRITE_ENABLED', false),
+    // Exact opt-in only for the existing local bluenew test DB, never production.
+    'v2_local_test_database' => env('V2_FINANCE_LOCAL_TEST_DATABASE', ''),
 
     /*
      * Extra Charge project accounts are resolved automatically inside the
