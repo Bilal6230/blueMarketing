@@ -11,6 +11,7 @@
         $cashOnlyDraftAction = url('admin/finance/voucher/cash-only/draft');
         $isCashOnlySeries = in_array($voucherType, ['CCR','CDR'], true);
         $isBankVoucherSeries = in_array($displaySeries ?? '', ['BOR','BOP'], true);
+        $supportsPassedSources = in_array($displaySeries ?? '', ['CR','DR','BOR','BOP'], true);
         $voucherCreateAction = $isCashOnlySeries ? $cashOnlyAction
             : ($fixedPaymentType !== null
                 ? route('ledger.store.fixed_method', ['paymentType' => $fixedPaymentType])
@@ -227,6 +228,10 @@
                                         id="voucherForm">
                                         @csrf
                                         @if(!empty($displaySeries))<input type="hidden" name="display_series" value="{{ $displaySeries }}">@endif
+                                        @if($supportsPassedSources)
+                                        <input type="hidden" name="passed_source_method" id="passed_source_method" value="">
+                                        <input type="hidden" name="passed_source_id" id="passed_source_id" value="">
+                                        @endif
  @include('admin.finance.voucher.typed_posting_fields')
                                         <div class="row">
                                             <div class="col-10">
@@ -359,9 +364,9 @@
                                                         <label class="fbox mb-1">Payment Type</label>
                                                         <select class="js-tomselect form-select form-select-sm"
                                                             placeholder=" " name="payment_type" id="payment_type">
-                                                            @unless($isBankVoucherSeries)
+                                                            @if($isBankVoucherSeries)<option value="" selected>Select Online or Cheque</option>@else
                                                             <option value="1" {{ $fixedPaymentType === 1 ? 'selected' : '' }}>Cash</option>
-                                                            @endunless
+                                                            @endif
                                                             <option value="2" {{ $fixedPaymentType === 2 ? 'selected' : '' }}>Online</option>
                                                             <option value="3" {{ $fixedPaymentType === 3 ? 'selected' : '' }}>Cheque</option>
                                                         </select>
@@ -718,6 +723,40 @@
     </div>
 
 
+
+@if($supportsPassedSources)
+    <div class="modal fade" id="passed-bank-source-modal" tabindex="-1" role="dialog"
+        aria-labelledby="passed-bank-source-title" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="passed-bank-source-title">Select Passed Online/Cheque Record</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2 small mb-2">
+                        Sirf verified records available hain. Ek record select karein; amount aur reference selected record se fill honge.
+                    </div>
+                    <label class="sr-only" for="passed-bank-search">Search passed records</label>
+                    <input id="passed-bank-search" type="search" class="form-control form-control-sm mb-2"
+                        placeholder="Search transaction / cheque number" autocomplete="off">
+                    <div class="table-responsive" style="max-height:340px;overflow-y:auto">
+                        <table class="table table-sm table-bordered table-hover" id="passed-bank-table">
+                            <thead><tr><th>Select</th><th>Date</th><th>Reference</th><th>Bank</th>
+                                <th>Amount</th><th>Passed On</th><th>Status</th></tr></thead>
+                            <tbody><tr><td colspan="7" class="text-muted text-center">Select payment type first.</td></tr></tbody>
+                        </table>
+                    </div>
+                    <p class="small text-danger mb-0 d-none" id="passed-bank-error" role="alert"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="passed-bank-apply" disabled>Apply Selected Record</button>
+                </div>
+            </div>
+        </div>
+    </div>
+@endif
 
 @endsection
 
@@ -2341,7 +2380,7 @@
                 checkField("[name='subaccounts_id']", "Child Account is required.");
                 checkField("[name='detail']", "Details are required.");
                 checkField("[name='payment_type']", "Payment Type is required.", function(val) {
-                    return ['1', '2', '3'].includes(val);
+                    return @json($isBankVoucherSeries) ? ['2','3'].includes(val) : ['1', '2', '3'].includes(val);
                 });
                 const paymentTypeCode = String($('#voucherForm #payment_type').val() || '');
                 const pendingId = String($('#voucherForm #selected_pending_payment_id').val() || '').trim();
@@ -2349,14 +2388,14 @@
                     checkField("[name='t_number']", "Transaction / Cheque Number is required.");
                     checkField("[name='bank_id']", "Bank is required.");
                     checkField("[name='passing_date']", "Passing Date is required.");
-                    if (@json($voucherType) === 'CP') {
+                    if (@json($voucherType) === 'CP' && !$('#passed_source_id').val()) {
                         checkField("[name='selected_pending_payment_id']", "Select a pending receipt before clearance.");
                         checkField("[name='pending_status']", "Clearance status is required.", function(val) {
                             return ['1', '2', '3'].includes(val);
                         });
                     }
                 }
-                if (paymentTypeCode === '3' && !pendingId) {
+                if (paymentTypeCode === '3' && !pendingId && !$('#passed_source_id').val()) {
                     checkField("[name='cheque_purpose']", "Cheque Purpose is required.");
                 }
 
@@ -3188,7 +3227,8 @@
                 const tabNumber = parseInt($('#submit-button').attr('tab-number'), 10) || currentTab;
                 const $form = $('#voucherForm');
                 const paymentType = String($('#payment_type').val() || '');
-                const isCashOutBankFlow = VOUCHER_TYPE === 'CP' && (paymentType === '2' || paymentType === '3');
+                const isCashOutBankFlow = VOUCHER_TYPE === 'CP'
+                    && !$('#passed_source_id').val() && (paymentType === '2' || paymentType === '3');
                 if (isCashOutBankFlow) {
                     const selectedPendingId = String($('#selected_pending_payment_id').val() || '').trim();
                     const pendingStatus = String($('#pending_status').val() || '').trim();
