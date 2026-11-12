@@ -17,6 +17,36 @@ class DailyVoucherApprovalWorkflowTest extends TestCase
         Schema::dropAllTables();
         $migration = require database_path('migrations/2026_11_05_000001_create_daily_voucher_approval_workflow_tables.php');
         $migration->up();
+        // This isolated test wipes all tables. Recreate the minimum authentic
+        // user/role schema required by the live VoucherApproverAccess policy;
+        // never bypass authorization or modify production approval rules.
+        Schema::create('users', function (Blueprint $t): void {
+            $t->id();
+            $t->string('name');
+            $t->unsignedBigInteger('project_id');
+            $t->unsignedInteger('status_id');
+        });
+        Schema::create('roles', function (Blueprint $t): void {
+            $t->id();
+            $t->string('name');
+            $t->string('guard_name');
+        });
+        Schema::create('model_has_roles', function (Blueprint $t): void {
+            $t->unsignedBigInteger('role_id');
+            $t->string('model_type');
+            $t->unsignedBigInteger('model_id');
+            $t->primary(['role_id', 'model_id', 'model_type']);
+        });
+        DB::table('users')->insert([
+            ['id'=>10,'name'=>'Voucher Submitter','project_id'=>1,'status_id'=>1],
+            ['id'=>20,'name'=>'Authorized Super Admin','project_id'=>1,'status_id'=>1],
+        ]);
+        DB::table('roles')->insert([
+            'id'=>1,'name'=>'superadmin','guard_name'=>'web',
+        ]);
+        DB::table('model_has_roles')->insert([
+            'role_id'=>1,'model_type'=>\\App\\Models\\User::class,'model_id'=>20,
+        ]);
         Schema::create('customer_ledger', function (Blueprint $t): void { $t->id(); $t->unsignedBigInteger('project_id'); $t->boolean('is_active')->default(false); $t->integer('is_approve')->default(0); });
         Schema::create('project_head_subheads', function (Blueprint $t): void { $t->id(); $t->unsignedBigInteger('project_id'); });
         Schema::create('ledgers', function (Blueprint $t): void {
