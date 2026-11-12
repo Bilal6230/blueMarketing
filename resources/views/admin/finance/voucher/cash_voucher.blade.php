@@ -25,6 +25,13 @@
                 : route('ledger.save_as_draft'));
     @endphp
     <style>
+        @keyframes passedBankAmountShake {
+            0%,100% { transform:translateX(0) }
+            20%,60% { transform:translateX(-5px) }
+            40%,80% { transform:translateX(5px) }
+        }
+        #numberInput.passed-bank-amount-shake { animation:passedBankAmountShake .38s ease-in-out; }
+
         @if($embeddedVoucher ?? false)
         /* Embedded correction editor is displayed directly within the parent modal;
            no nested overlay or old voucher listing is visible. */
@@ -432,6 +439,11 @@
                                                             <div class="invalid-feedback d-block">{{ $message }}</div>
                                                         @enderror
                                                     </div>
+                                                    @if($supportsPassedSources)
+                                                    <div class="col-6 col-md-3 col-lg-4 bank-source-balance-slot" style="display:none" aria-live="polite">
+                                                        <div id="passed-bank-balance" class="small py-2 px-3 rounded" style="background:#eef6ff;border:1px solid #c9dff6;color:#264967;min-height:38px;"></div>
+                                                    </div>
+                                                    @endif
                                                     <div class="col-12 col-md-6 col-lg-4 cheque-purpose-group" style="display:none">
                                                         <label class="fbox mb-1" for="cheque_purpose">Cheque purpose</label>
                                                         <input type="text" name="cheque_purpose" id="cheque_purpose" maxlength="500"
@@ -1750,10 +1762,78 @@
             });
             $('#payment_type').trigger('change');
             let selectedPassedRemainingCents=null;
+            // A short original warning tone, generated locally after user interaction.
+            // No music file, external network request or global layout mutation.
+            function playVoucherErrorTone(){
+                try {
+                    const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+                    if(!AudioContextClass)return;
+                    const context=new AudioContextClass();
+                    const start=context.currentTime, oscillator=context.createOscillator(), gain=context.createGain();
+                    oscillator.type='sine';
+                    oscillator.frequency.setValueAtTime(480,start);
+                    oscillator.frequency.exponentialRampToValueAtTime(240,start+0.16);
+                    gain.gain.setValueAtTime(0.0001,start);
+                    gain.gain.exponentialRampToValueAtTime(0.065,start+0.018);
+                    gain.gain.exponentialRampToValueAtTime(0.0001,start+0.20);
+                    oscillator.connect(gain);gain.connect(context.destination);
+                    oscillator.start(start);oscillator.stop(start+0.21);
+                    oscillator.onended=()=>{context.close().catch(()=>{});};
+                }catch(error){} // Audio may be disabled by browser/user settings.
+            }
+            // Cover existing voucher error/warning SweetAlert dialogs as well as source-limit toasts.
+            if(window.Swal && !window.Swal.__blueVoucherErrorSound){
+                const originalFire=Swal.fire.bind(Swal);
+                Swal.fire=function(...args){
+                    if(args[0] && typeof args[0]==='object' && ['error','warning'].includes(args[0].icon)){
+                        playVoucherErrorTone();
+                    }
+                    return originalFire(...args);
+                };
+                Swal.__blueVoucherErrorSound=true;
+            }
             @if($supportsPassedSources)
             // Bind after the initial form setup: opening the source picker is a user action.
             // One project-scoped verified source can be selected for this form at a time.
             let passedBankRows=[],passedBankRequest=null,passedBankTimer=null;
+            let lastSourceOverLimit=false;
+            const sourceMoney=cents=>'Rs. '+(cents/100).toLocaleString('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2});
+            const sourceCents=value=>{
+                const raw=String(value??'').replace(/,/g,'').trim();
+                return /^\d+(?:\.\d{1,2})?$/.test(raw)?Math.round(Number(raw)*100):null;
+            };
+            function updateSourceBalance(){
+                const $amount=$('#numberInput');
+                if(selectedPassedRemainingCents===null)return;
+                const raw=String($amount.val()||'').trim();
+                const cents=raw===''?null:sourceCents(raw);
+                const overflow=cents!==null && cents>selectedPassedRemainingCents;
+                const remaining=cents===null?selectedPassedRemainingCents:Math.max(0,selectedPassedRemainingCents-cents);
+                const $slot=$('.bank-source-balance-slot').show(),$balance=$('#passed-bank-balance');
+                if(overflow){
+                    const extra=cents-selectedPassedRemainingCents;
+                    $balance.text('Extra '+sourceMoney(extra)+' entered — available '+sourceMoney(selectedPassedRemainingCents))
+                        .css({background:'#fff1f2',borderColor:'#f3a6ad',color:'#a22132'});
+                }else{
+                    $balance.text('Available after this voucher: '+sourceMoney(remaining))
+                        .css({background:'#eef6ff',borderColor:'#c9dff6',color:'#264967'});
+                }
+                $amount.toggleClass('is-invalid',overflow);
+                $('#submitForm,#submit-button').prop('disabled',overflow);
+                if(overflow && !lastSourceOverLimit){
+                    $amount.removeClass('passed-bank-amount-shake');
+                    // Re-adding after a short delay restarts animation via jQuery.
+                    setTimeout(()=>$amount.addClass('passed-bank-amount-shake'),0);
+                    setTimeout(()=>$amount.removeClass('passed-bank-amount-shake'),430);
+                    playVoucherErrorTone();
+                    Swal.fire({toast:true,position:'top-end',icon:'error',
+                        title:'Extra '+sourceMoney(cents-selectedPassedRemainingCents)+' entered',
+                        text:'Amount must not exceed available balance of '+sourceMoney(selectedPassedRemainingCents),
+                        showConfirmButton:false,timer:3200,timerProgressBar:true});
+                }
+                lastSourceOverLimit=overflow;
+                $slot.toggleClass('text-danger',overflow);
+            }
             // Avoid the named-route lookup during Blade render while route caches are refreshed.
             const passedBankUrl=@json($passedBankSourceUrl);
             const passedBankDirection=@json($passedBankDirection);
@@ -1762,8 +1842,10 @@
                 $('#passed_source_id,#passed_source_method').val('');
                 selectedPassedRemainingCents=null;
                 $('#numberInput').prop('readonly',false).removeAttr('data-bank-source-remaining').removeClass('is-invalid');
-                $('#passed-bank-remaining-warning').remove();
-                $('#submitForm').prop('disabled',false);
+                $('.bank-source-balance-slot').hide();
+                $('#passed-bank-balance').empty();
+                lastSourceOverLimit=false;
+                $('#submitForm,#submit-button').prop('disabled',false);
                 $('#t_number').prop('readonly',false);
                 if(hadSource){
                     $('#t_number,#passing_date,#cheque_purpose').val('').trigger('change');
@@ -1858,10 +1940,8 @@
                 selectedPassedRemainingCents=Math.round(Number(source.remaining_amount)*100);
                 $('#numberInput').val('').prop('readonly',false)
                     .attr('data-bank-source-remaining',source.remaining_amount);
-                $('#passed-bank-remaining-warning').remove();
-                $('#numberInput').after($('<div>',{id:'passed-bank-remaining-warning',
-                    'class':'small text-muted mt-1',
-                    text:'Remaining: '+source.remaining_amount+' / Original: '+source.amount}));
+                lastSourceOverLimit=false;
+                updateSourceBalance();
                 const $pass=$('#passing_date');
                 const datePicker=$pass.prop('_flatpickr');
                 if(datePicker)datePicker.setDate(source.passing_date,true,'Y-m-d');
@@ -1889,19 +1969,7 @@
                 $('#passed-bank-source-modal').modal('hide');
                 $('#numberInput').trigger('input.passedBankLimit');
             });
-            $('#numberInput').on('input.passedBankLimit change.passedBankLimit',function(){
-                if(selectedPassedRemainingCents===null)return;
-                const raw=String($(this).val()||'').replace(/,/g,'').trim();
-                const cents=/^\d+(?:\.\d{1,2})?$/.test(raw)?Math.round(Number(raw)*100):0;
-                const invalid=cents<=0||cents>selectedPassedRemainingCents;
-                $('#passed-bank-remaining-warning').removeClass('text-muted text-danger')
-                    .addClass(invalid?'text-danger':'text-muted')
-                    .text(invalid?'Amount cannot exceed remaining balance: '+
-                        (selectedPassedRemainingCents/100).toFixed(2):
-                        'Remaining balance: '+(selectedPassedRemainingCents/100).toFixed(2));
-                $(this).toggleClass('is-invalid',invalid);
-                $('#submitForm').prop('disabled',invalid);
-            });
+            $('#numberInput').on('input.passedBankLimit change.passedBankLimit',updateSourceBalance);
             @endif
             function normalizeDateForInput(value) {
                 if (!value) return '';
@@ -2544,11 +2612,10 @@
                 const paymentTypeCode = String($('#voucherForm #payment_type').val() || '');
                 const pendingId = String($('#voucherForm #selected_pending_payment_id').val() || '').trim();
                 if($('#passed_source_id').val() && selectedPassedRemainingCents!==null){
-                    const raw=String($('#numberInput').val()||'').replace(/,/g,'').trim();
-                    const cents=/^\d+(?:\.\d{1,2})?$/.test(raw)?Math.round(Number(raw)*100):0;
-                    if(cents<=0||cents>selectedPassedRemainingCents){
+                    const cents=sourceCents($('#numberInput').val());
+                    if(cents!==null && cents>selectedPassedRemainingCents){
                         isValid=false;
-                        checkField("[name='amount']", "Amount exceeds remaining source balance.",()=>false);
+                        updateSourceBalance();
                     }
                 }
                 if (paymentTypeCode === '2' || paymentTypeCode === '3') {
@@ -2663,7 +2730,7 @@
             input.value = value;
         }
 
-        // Voucher Tab Management with LocalStorage + full Tom Select option persistence
+        // Voucher Tab Management: in-memory only (browser local storage temporarily disabled).
         // Voucher Tabs with reliable saving on tab switch + new tab, including Tom Select options
         (async function($) {
             const FORM_ID = '#voucherForm';
@@ -2737,47 +2804,10 @@
             let nextTabNumber = 2;
 
             // ---------- utils ----------
-            const persist = () => localStorage.setItem(VOUCHER_STORAGE_KEY, JSON.stringify(store));
-
-            const hydrate = () => {
-                try {
-                    localStorage.removeItem(`bluemarketing_${'{{ getSelectedTown() }}'}_voucher_tabs_${VOUCHER_TYPE}_v1`);
-                    localStorage.removeItem(`bluemarketing_voucher_tabs_${VOUCHER_TYPE}_${window.location.pathname}_v2`);
-                    const raw = localStorage.getItem(VOUCHER_STORAGE_KEY);
-                    if (!raw) return;
-                    const parsed = JSON.parse(raw);
-                    if (parsed && parsed.tabs) {
-                        const tabKeys = Object.keys(parsed.tabs || {});
-                        for (const tabKey of tabKeys) {
-                            const storedVoucher = parsed.tabs?.[tabKey]?.formData?.voucher_number ?? '';
-                            if (storedVoucher && parseVoucherNumber(storedVoucher) === null) {
-                                localStorage.removeItem(VOUCHER_STORAGE_KEY);
-                                return;
-                            }
-                            const accountId = parsed.tabs?.[tabKey]?.formData?.accounts_id ?? '';
-                            const subAccountId = parsed.tabs?.[tabKey]?.formData?.subaccounts_id ?? '';
-                            if ((accountId && !subAccountId) || (!accountId && subAccountId)) {
-                                parsed.tabs[tabKey].formData.accounts_id = '';
-                                parsed.tabs[tabKey].formData.subaccounts_id = '';
-                            }
-                            // Do not blindly restore account/subaccount; force validated re-selection.
-                            parsed.tabs[tabKey].formData.accounts_id = '';
-                            parsed.tabs[tabKey].formData.subaccounts_id = '';
-                            if (parsed.tabs?.[tabKey]?.selects?.accounts_id) {
-                                parsed.tabs[tabKey].selects.accounts_id.selected = '';
-                            }
-                            if (parsed.tabs?.[tabKey]?.selects?.subaccounts_id) {
-                                parsed.tabs[tabKey].selects.subaccounts_id.selected = '';
-                            }
-                        }
-                        store = parsed;
-                        currentTab = store.currentTab || 1;
-                        nextTabNumber = store.nextTabNumber || 2;
-                    }
-                } catch (e) {
-                    console.warn('hydrate failed', e);
-                }
-            };
+            // Keep existing tab switching inside this open modal, but do not
+            // read/write/remove stored drafts or restore stale source allocations.
+            const persist = () => {};
+            const hydrate = () => {};
 
             const ensureTab = (n) => {
                 if (!store.tabs[n]) store.tabs[n] = {
