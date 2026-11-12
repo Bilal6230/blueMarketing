@@ -65,13 +65,13 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
 @media(max-width:1199px){.online-filter-row{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:650px){.online-filter-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
-<div class="content-wrapper online-register-page">
+<div class="content-wrapper bm-ui online-register-page">
  <div class="container-fluid px-2 pt-2">
-  <div class="online-heading d-flex justify-content-between align-items-center flex-wrap">
+  <div class="online-heading bm-page-heading d-flex justify-content-between align-items-center flex-wrap">
    <div><h4 class="mb-0">Online Transaction Management</h4><small class="text-muted">Selected project records · Pending Source Register</small></div>
    @can('create voucher')<button class="btn btn-success btn-sm" type="button" id="online-add"><i class="fas fa-plus mr-1"></i> Add Transaction</button>@endcan
   </div>
-  <div class="online-filter mt-2">
+  <div class="online-filter bm-card bm-filter mt-2">
    <form id="online-filters" autocomplete="off">
     <div class="online-filter-row">
      <div><label for="online-from">From</label><input type="date" name="from" id="online-from" class="form-control form-control-sm"></div>
@@ -84,13 +84,13 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
     </div>
    </form>
   </div>
-  <div class="online-table">
+  <div class="online-table bm-card">
    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap">
     <div class="d-flex align-items-center"><strong class="mr-2">Show</strong><select id="online-per-page" class="js-tomselect form-select form-select-sm mr-2" style="width:80px"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option></select><span>entries</span></div>
     <div><label for="online-quick-search" class="mb-0">Search:</label><input id="online-quick-search" class="form-control form-control-sm ml-1 d-inline-block" style="width:185px" placeholder="Search transactions"></div>
    </div>
    <div class="table-responsive">
-    <table class="table table-bordered table-hover table-sm">
+    <table class="table bm-table table-bordered table-hover table-sm">
      <thead>
       <tr><th>#</th><th>Date</th><th>Transaction Ref</th><th>Type</th><th>Sending Bank</th><th>Receiving Bank</th><th>Sender / Receiver</th><th>Purpose</th><th>Amount</th><th>Status</th><th>Proof</th><th>Actions</th></tr>
       <tr class="online-column-filters">
