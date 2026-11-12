@@ -35,7 +35,7 @@
 <div class="content-wrapper vap-page">
  <div class="container-fluid">
   <div class="vap-heading d-flex justify-content-between align-items-center flex-wrap">
-   <div><h4>Voucher Approval Dashboard</h4><small class="text-muted">Project #{{ (int)getSelectedTown() }} · CR, CP, CCR, CDR &amp; JV approvals · {{ \App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user()) ? 'Super Admin: all project requests' : 'Assigned requests only' }}</small></div>
+   <div><h4>Voucher Approval Dashboard</h4><small class="text-muted">Project #{{ (int)getSelectedTown() }} · CR, CP, CCR, CDR, BOR, BOP &amp; JV approvals · {{ \App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user()) ? 'Super Admin: all project requests' : 'Assigned requests only' }}</small></div>
    <a href="{{ route('finance.voucher-settings.index') }}" class="btn btn-outline-success btn-sm"><i class="fas fa-cog mr-1"></i> Voucher Settings</a>
   </div>
   <div class="alert alert-info small mb-3">
