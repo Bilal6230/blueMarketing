@@ -81,7 +81,9 @@ final class BankVoucherAllocationRelease
                 ->where('ledger.customer_ledger_id',$voucherId)
                 ->lockForUpdate()->get(['ledger.id','ledger.type','ledger.is_active',
                     'ledger.amount_in','ledger.amount_out']);
-            if($legs->count()!==1 || (string)$legs->first()->type!==(string)$source->transaction_type
+            if($legs->count()!==1
+                || DB::table('ledgers')->where('customer_ledger_id',$voucherId)->count()!==1
+                || (string)$legs->first()->type!==(string)$source->transaction_type
                 || round(max((float)$legs->first()->amount_in,(float)$legs->first()->amount_out),2)
                     !==round((float)$allocation->amount,2)) {
                 throw new \DomainException('Single-leg project financial integrity check failed.');
