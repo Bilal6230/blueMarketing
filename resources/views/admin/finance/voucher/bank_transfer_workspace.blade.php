@@ -162,189 +162,190 @@ $(function () {
     if (!$root.length) return;
     var $form = $('#bankTransferCreateForm');
     var $save = $('#saveTransfer');
-    var table = null, rows = [], busy = false, chequeLoading = false, pendingRequestKey = null;
-    var escapeHtml = function (value) { return $('<div>').text(value == null ? '' : String(value)).html(); };
-    var showError = function ($box, message) { $box.text(message || 'Request failed').removeClass('d-none'); };
+    var allRows = [], page = 1, busy = false, chequeLoading = false;
+    var pendingRequestKey = null;
     var printUrl = function (id) { return $root.attr('data-print-base') + '/' + encodeURIComponent(id) + '/print'; };
-    var valid = function () {
-        var amount = Number($('#voucherAmount').val());
-        var ok = !busy && !chequeLoading && !!$('#voucherDate').val() && Number.isFinite(amount)
-            && amount > 0 && !!$('#cashAccount').val() && !!$('#bankAccount').val()
-            && !!$.trim($('#voucherDescription').val());
-        $save.prop('disabled', !ok);
-        return ok;
-    };
+    var formatMoney = function (value) { return Number(value || 0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); };
+    var showError = function ($box, message) { $box.text(message || 'Request failed').removeClass('d-none'); };
     var notify = function (type, title, message) {
         if (window.Swal) Swal.fire({icon:type,title:title,text:message});
         else window.alert(title + ': ' + message);
     };
-    var dateValue = function (row) { return String(row.date || '').slice(0,10); };
-    var selectedRows = function () {
-        var from = $('#transferFrom').val(), to = $('#transferTo').val();
-        var bank = $('#transferBankFilter').val().toLowerCase();
-        var term = $.trim($('#transferSearch').val()).toLowerCase();
-        return $.grep(rows, function (row) {
-            var date = dateValue(row);
-            var haystack = [row.voucher,row.date,row.cash_account,row.bank,row.cheque,row.narration,row.amount].join(' ').toLowerCase();
-            return (!from || date >= from) && (!to || date <= to)
-                && (!bank || String(row.bank || '').toLowerCase() === bank)
-                && (!term || haystack.indexOf(term) !== -1);
+    var valid = function () {
+        var amount = Number($('#voucherAmount').val());
+        var ok = !busy && !chequeLoading && !!$('#voucherDate').val()
+            && Number.isFinite(amount) && amount > 0 && !!$('#cashAccount').val()
+            && !!$('#bankAccount').val() && !!$.trim($('#voucherDescription').val());
+        $save.prop('disabled', !ok);
+        return ok;
+    };
+    // Apply the toolbar only when requested, as in CR/DR. Quick search filters
+    // the already loaded project-scoped entries without server mutations.
+    var activeFilters = {from:'',to:'',bank:'',search:''};
+    var selectRows = function () {
+        var quick = $.trim($('#btQuickSearch').val()).toLowerCase();
+        return $.grep(allRows, function (r) {
+            var date = String(r.date || '').slice(0,10);
+            var bank = String(r.bank || '').toLowerCase();
+            var haystack = [r.voucher,r.date,r.cash_account,r.bank,r.cheque,r.narration,r.amount].join(' ').toLowerCase();
+            return (!activeFilters.from || date >= activeFilters.from)
+                && (!activeFilters.to || date <= activeFilters.to)
+                && (!activeFilters.bank || bank === activeFilters.bank)
+                && (!activeFilters.search || haystack.indexOf(activeFilters.search) >= 0)
+                && (!quick || haystack.indexOf(quick) >= 0);
         });
     };
     var drawRows = function () {
-        if (table) {
-            table.clear().rows.add(selectedRows()).draw();
-        } else {
-            var $tbody = $('#transferTable tbody').empty(), filtered = selectedRows();
-            if (!filtered.length) $tbody.append('<tr><td colspan="7" class="text-center text-muted py-4">No matching vouchers</td></tr>');
-            $.each(filtered, function (_, row) { $tbody.append(renderRow(row)); });
+        var rows = selectRows();
+        var length = Math.max(1, Number($('#btLength').val()) || 25);
+        var pages = Math.max(1, Math.ceil(rows.length / length));
+        page = Math.min(page,pages);
+        var start = (page - 1) * length;
+        var $tbody = $('#transferRows').empty();
+        if (!rows.length) {
+            $('<tr>').append($('<td>').attr('colspan',9).addClass('text-center text-muted py-4').text('No matching vouchers')).appendTo($tbody);
         }
-    };
-    var renderRow = function (r) {
-        var id = Number(r.posting_batch_id);
-        var $tr = $('<tr>');
-        $('<td>').text(r.voucher || '').appendTo($tr);
-        $('<td>').text(r.date || '').appendTo($tr);
-        $('<td>').text(r.cash_account || '').appendTo($tr);
-        $('<td>').text(r.bank || '').appendTo($tr);
-        $('<td>').text(r.cheque || '—').appendTo($tr);
-        $('<td>').addClass('text-right').text(Number(r.amount || 0).toFixed(2)).appendTo($tr);
-        var $action = $('<td>').addClass('bt-actions text-nowrap');
-        var $group = $('<div class="dropdown"><button type="button" class="btn btn-sm btn-outline-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Actions</button><div class="dropdown-menu dropdown-menu-right"></div></div>');
-        $('<button type="button" class="dropdown-item bt-view"><i class="far fa-eye mr-2"></i>View</button>').attr('data-id', id).appendTo($group.find('.dropdown-menu'));
-        $('<a class="dropdown-item"><i class="fas fa-print mr-2"></i>Print</a>').attr({href:printUrl(id),target:'_blank',rel:'noopener'}).appendTo($group.find('.dropdown-menu'));
-        $action.append($group).appendTo($tr);
-        return $tr;
-    };
-    if ($.fn.DataTable) {
-        table = $('#transferTable').DataTable({
-            data:[], columns:[
-                {data:'voucher',render: function (d,type) {return type === 'display' ? escapeHtml(d) : d;}},
-                {data:'date',render:function(d,type){return type === 'display' ? escapeHtml(d) : d;}},
-                {data:'cash_account',render:function(d,type){return type === 'display' ? escapeHtml(d) : d;}},
-                {data:'bank',render:function(d,type){return type === 'display' ? escapeHtml(d) : d;}},
-                {data:'cheque',render:function(d,type){return type === 'display' ? escapeHtml(d || '—') : d;}},
-                {data:'amount',className:'text-right',render:function(d,type){return type === 'display' ? Number(d||0).toFixed(2) : Number(d||0);}},
-                {data:null,orderable:false,searchable:false,render:function(d,type,row){
-                    if (type !== 'display') return '';
-                    var id = Number(row.posting_batch_id);
-                    return '<div class="dropdown bt-actions"><button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="false">Actions</button>'
-                        + '<div class="dropdown-menu dropdown-menu-right"><button type="button" class="dropdown-item bt-view" data-id="' + id + '"><i class="far fa-eye mr-2"></i>View</button>'
-                        + '<a class="dropdown-item" target="_blank" rel="noopener" href="' + escapeHtml(printUrl(id)) + '"><i class="fas fa-print mr-2"></i>Print</a></div></div>';
-                }}
-            ],order:[[1,'desc']],pageLength:10,responsive:false,autoWidth:false,
-            dom:'Bfrtip',
-            buttons: $.fn.dataTable.Buttons ? [
-                {extend:'copyHtml5',text:'Copy',className:'btn btn-sm btn-outline-secondary'},
-                {extend:'csvHtml5',text:'CSV',className:'btn btn-sm btn-outline-secondary'},
-                {extend:'excelHtml5',text:'Excel',className:'btn btn-sm btn-outline-success'},
-                {extend:'pdfHtml5',text:'PDF',className:'btn btn-sm btn-outline-danger'},
-                {extend:'print',text:'Print list',className:'btn btn-sm btn-outline-primary'},
-                {extend:'colvis',text:'Column visibility',className:'btn btn-sm btn-outline-info'}
-            ] : [],
-            language:{emptyTable:'No vouchers posted yet'}
+        $.each(rows.slice(start,start+length),function(index,r){
+            var batch = Number(r.posting_batch_id);
+            if (!Number.isSafeInteger(batch) || batch < 1) return;
+            var cashParts = String(r.cash_account || '').split(' / ');
+            var head = cashParts.shift() || '';
+            var subhead = cashParts.join(' / ');
+            var $tr = $('<tr>');
+            $('<td>').text(start + index + 1).appendTo($tr);
+            $('<td>').text(r.date || '').appendTo($tr);
+            $('<td>').addClass('bt-voucher-number').text(r.voucher || '').appendTo($tr);
+            $('<td>').text(head).appendTo($tr);
+            $('<td>').text(subhead).appendTo($tr);
+            $('<td>').text(r.narration || '—').appendTo($tr);
+            $('<td>').addClass('text-right').text(formatMoney(r.amount)).appendTo($tr);
+            $('<td>').append($('<span class="badge badge-secondary">').text('Posted')).appendTo($tr);
+            $('<td>').append($('<button type="button" class="bt-plus bt-view" title="View voucher actions" aria-label="View voucher actions"><i class="fas fa-plus"></i></button>').attr('data-id',batch)).appendTo($tr);
+            $tbody.append($tr);
         });
-    }
+        var shown = rows.length ? start + 1 : 0;
+        $('#btRecordSummary').text('Showing ' + shown + '–' + Math.min(start + length,rows.length) + ' of ' + rows.length + ' records');
+        var $nav = $('#btPagination').empty();
+        var addPage = function(label,p,disabled,current) {
+            var $button = $('<button type="button" class="bt-page-btn">').text(label).prop('disabled',disabled);
+            if (current) $button.addClass('active').attr('aria-current','page');
+            $button.on('click',function(){page=p;drawRows();});
+            $nav.append($button);
+        };
+        addPage('Previous',page-1,page<=1,false);
+        var first = Math.max(1,page-3),last = Math.min(pages,first+6);
+        first = Math.max(1,last-6);
+        for (var n=first;n<=last;n++) addPage(String(n),n,false,n===page);
+        addPage('Next',page+1,page>=pages,false);
+    };
     var loadHistory = function () {
         $('#transferListError').addClass('d-none');
-        return $.ajax({url:$root.attr('data-history-url'),dataType:'json',headers:{Accept:'application/json'}})
-            .done(function (data) { rows = $.isArray(data.data) ? data.data : []; drawRows(); })
-            .fail(function (xhr) { showError($('#transferListError'), (xhr.responseJSON || {}).message || 'Could not load voucher history'); });
+        return $.ajax({
+            url:$root.attr('data-history-url'),dataType:'json',headers:{Accept:'application/json'}
+        }).done(function (json) {
+            allRows = $.isArray(json.data) ? json.data : [];
+            page = 1;drawRows();
+        }).fail(function(xhr) {
+            showError($('#transferListError'),(xhr.responseJSON || {}).message || 'Could not load voucher history');
+        });
     };
-    $('#transferFrom,#transferTo,#transferBankFilter,#transferSearch').on('change input', drawRows);
-    $('#clearTransferFilters').on('click',function () {
-        $('#transferFrom,#transferTo,#transferSearch,#transferBankFilter').val(''); drawRows();
+    $('#btFilterForm').on('submit',function(event) {
+        event.preventDefault();
+        var from=$('#transferFrom').val(),to=$('#transferTo').val();
+        if (from && to && from>to) { notify('error','Invalid date range','From date must be on or before To date.');return; }
+        activeFilters = {
+            from:from,to:to,
+            bank:String($('#transferBankFilter').val() || '').toLowerCase(),
+            search:$.trim($('#transferSearch').val()).toLowerCase()
+        };
+        page=1;drawRows();
     });
-    $('#toggleTransferFilters').on('click',function () {
-        var $filters = $('#transferFilters');
-        $filters.toggleClass('d-none');
-        $(this).attr('aria-expanded', !$filters.hasClass('d-none'));
+    $('#clearTransferFilters').on('click',function(){
+        $('#transferFrom,#transferTo,#transferBankFilter,#transferSearch,#btQuickSearch').val('');
+        activeFilters={from:'',to:'',bank:'',search:''};page=1;drawRows();
     });
-    $('#refreshTransfers').on('click', loadHistory);
-    $('#transferTable').on('click','.bt-view',function () {
-        var id = Number($(this).attr('data-id')), row = $.grep(rows,function(r){return Number(r.posting_batch_id)===id;})[0];
+    $('#btQuickSearch').on('input',function(){page=1;drawRows();});
+    $('#btLength').on('change',function(){page=1;drawRows();});
+    $('#transferRows').on('click','.bt-view',function() {
+        var id=Number($(this).attr('data-id'));
+        var row=$.grep(allRows,function(r){return Number(r.posting_batch_id)===id;})[0];
         if (!row) return;
         $('#bankTransferViewTitle').text(row.voucher || 'Voucher details');
-        var detail = [
-            ['Voucher', row.voucher],['Date', row.date],['Cash account', row.cash_account],
-            ['Bank account', row.bank],['Cheque', row.cheque || '—'],
-            ['Amount', Number(row.amount || 0).toFixed(2)],['Narration', row.narration]
-        ];
-        var $body = $('#transferViewBody').empty();
-        $.each(detail,function(_,item){
-            var $line = $('<div class="d-flex justify-content-between py-2 border-bottom">');
-            $('<strong class="mr-3">').text(item[0]).appendTo($line);
-            $('<span class="text-right" style="overflow-wrap:anywhere">').text(item[1] || '—').appendTo($line);
+        var $body=$('#transferViewBody').empty();
+        $.each([
+            ['Voucher',row.voucher],['Date',row.date],
+            ['Cash account',row.cash_account],['Bank account',row.bank],
+            ['Cheque reference',row.cheque || '—'],['Amount',formatMoney(row.amount)],
+            ['Status','Posted'],['Details',row.narration]
+        ],function(_,field){
+            var $line=$('<div class="d-flex justify-content-between py-2 border-bottom">');
+            $('<strong class="mr-3">').text(field[0]).appendTo($line);
+            $('<span class="text-right" style="overflow-wrap:anywhere">').text(field[1] || '—').appendTo($line);
             $body.append($line);
         });
         $('#transferViewPrint').attr('href',printUrl(id));
         $('#bankTransferViewModal').modal('show');
     });
     var loadCheques = function () {
-        var $cheque = $('#chequeSource');
+        var $cheque=$('#chequeSource');
         if (!$cheque.length) return;
-        chequeLoading = true;valid();
+        chequeLoading=true;valid();
         $.ajax({url:$root.attr('data-source-url'),dataType:'json',headers:{Accept:'application/json'}})
-            .done(function (json) {
-                $cheque.empty().append($('<option>').val('').text('Manual bank withdrawal'));
-                $.each(json.data || [],function(_,source){
-                    $('<option>').val(source.id).text([source.voucher,source.party,source.amount,source.reference].join(' · '))
-                        .attr({'data-amount':source.amount,'data-date':source.date,'data-ref':source.reference,'data-voucher':source.voucher})
-                        .appendTo($cheque);
-                });
-            })
-            .fail(function(xhr){showError($('#transferFormError'),(xhr.responseJSON || {}).message || 'Failed to load verified cheques');})
-            .always(function(){chequeLoading=false;valid();});
+        .done(function(json) {
+            $cheque.empty().append($('<option>').val('').text('Manual bank withdrawal'));
+            $.each(json.data || [],function(_,source){
+                $('<option>').val(source.id).text([source.voucher,source.party,source.amount,source.reference].join(' · '))
+                    .attr({'data-amount':source.amount,'data-date':source.date,'data-ref':source.reference,'data-voucher':source.voucher})
+                    .appendTo($cheque);
+            });
+        }).fail(function(xhr){
+            showError($('#transferFormError'),(xhr.responseJSON || {}).message || 'Could not load cleared cheques');
+        }).always(function(){chequeLoading=false;valid();});
     };
-    $('#chequeSource').on('change',function () {
-        var $opt = $(this).find('option:selected'), linked = !!$opt.val();
-        $('#voucherAmount').val(linked ? $opt.attr('data-amount') : '').prop('readonly',linked);
-        if (linked) {
-            $('#voucherDate').val($opt.attr('data-date'));
-            $('#voucherReference').val($opt.attr('data-ref'));
-            $('#voucherDescription').val('Withdrawal against ' + $opt.attr('data-voucher') + ' cheque ' + $opt.attr('data-ref'));
+    $('#chequeSource').on('change',function(){
+        var $selected=$(this).find('option:selected'),linked=!!$selected.val();
+        $('#voucherAmount').val(linked?$selected.attr('data-amount'):'').prop('readonly',linked);
+        if(linked) {
+            $('#voucherDate').val($selected.attr('data-date'));
+            $('#voucherReference').val($selected.attr('data-ref'));
+            $('#voucherDescription').val('Withdrawal against ' + $selected.attr('data-voucher') + ' cheque ' + $selected.attr('data-ref'));
         }
+        if(!busy) pendingRequestKey=null;
         valid();
     });
-    $('#bankTransferCreateModal').on('show.bs.modal',function () {
-        $form[0].reset();
-        pendingRequestKey = null;
+    $('#bankTransferCreateModal').on('show.bs.modal',function(){
+        $form[0].reset();pendingRequestKey=null;
         $('#voucherAmount').prop('readonly',false);
         $('#transferFormError').addClass('d-none');
-        loadCheques();
+        loadCheques();valid();
+    });
+    $('#voucherDate,#voucherAmount,#cashAccount,#bankAccount,#voucherReference,#voucherDescription').on('input change',function(){
+        if(!busy) pendingRequestKey=null;
         valid();
     });
-    $('#voucherDate,#voucherAmount,#cashAccount,#bankAccount,#voucherReference,#voucherDescription,#chequeSource').on('input change',function(){
-        if (!busy) pendingRequestKey = null;
-        valid();
-    });
-    $form.on('submit',function(e){
-        e.preventDefault();if (!valid() || busy) return;
+    $form.on('submit',function(event){
+        event.preventDefault();
+        if(!valid()||busy)return;
         busy=true;valid();$('#transferFormError').addClass('d-none');
-        // Keep the same key after an uncertain network failure: the writer
-        // can safely replay this exact payload instead of double-posting it.
-        if (!pendingRequestKey) pendingRequestKey = 'transfer' + Date.now().toString(36) + Math.random().toString(36).slice(2,14);
-        var data = {
+        if(!pendingRequestKey) pendingRequestKey='transfer'+Date.now().toString(36)+Math.random().toString(36).slice(2,14);
+        var payload={
             date:$('#voucherDate').val(),amount:Number($('#voucherAmount').val()).toFixed(2),
             cash_account_id:Number($('#cashAccount').val()),bank_account_id:Number($('#bankAccount').val()),
             reference:$('#voucherReference').val(),description:$('#voucherDescription').val(),
-            request_key:pendingRequestKey,
-            cheque_source_id:$('#chequeSource').val() ? Number($('#chequeSource').val()) : null
+            request_key:pendingRequestKey,cheque_source_id:$('#chequeSource').val()?Number($('#chequeSource').val()):null
         };
-        $.ajax({url:$root.attr('data-post-url'),method:'POST',data:JSON.stringify(data),
+        $.ajax({
+            url:$root.attr('data-post-url'),method:'POST',data:JSON.stringify(payload),
             contentType:'application/json',dataType:'json',
-            headers:{'X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content'),Accept:'application/json'}})
-            .done(function(json){
-                pendingRequestKey = null;
-                $('#bankTransferCreateModal').modal('hide');
-                notify('success','Voucher posted','Posting batch #' + json.data.posting_batch_id);
-                loadHistory();
-            })
-            .fail(function(xhr){
-                var response = xhr.responseJSON || {};
-                showError($('#transferFormError'),response.message || 'Voucher could not be posted');
-            })
-            .always(function(){busy=false;valid();});
+            headers:{'X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content'),Accept:'application/json'}
+        }).done(function(json){
+            pendingRequestKey=null;
+            $('#bankTransferCreateModal').modal('hide');
+            notify('success','Voucher posted','Posting batch #'+json.data.posting_batch_id);
+            loadHistory();
+        }).fail(function(xhr){
+            showError($('#transferFormError'),(xhr.responseJSON || {}).message || 'Voucher could not be posted');
+        }).always(function(){busy=false;valid();});
     });
     loadHistory();
 });
