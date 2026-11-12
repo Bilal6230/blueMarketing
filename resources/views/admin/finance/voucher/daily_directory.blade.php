@@ -105,11 +105,11 @@
     }
     .daily-voucher-page.dv-cash-only .daily-voucher-table{
         border-collapse:separate;border-spacing:0;
-        font-size:13px;line-height:1.45
+        font-size:var(--bm-font-md);line-height:1.45
     }
     .daily-voucher-page.dv-cash-only .daily-voucher-table thead tr:first-child th{
         position:sticky;top:0;z-index:5;vertical-align:middle;
-        font-size:12px;font-weight:700;letter-spacing:.01em;
+        font-size:var(--bm-font-sm);font-weight:700;letter-spacing:.01em;
         padding:.65rem .55rem;box-shadow:0 1px 0 var(--dv-accent)
     }
     .daily-voucher-page.dv-cash-only .daily-voucher-table thead .dv-column-filters th{
@@ -118,11 +118,11 @@
     }
     .daily-voucher-page.dv-cash-only .daily-voucher-table thead .dv-column-filters input{
         height:31px;min-width:0;width:100%;border-radius:5px;
-        border:1px solid #d4dee5;font-size:12px
+        border:1px solid #d4dee5;font-size:var(--bm-font-sm)
     }
     .daily-voucher-page.dv-cash-only .daily-voucher-table tbody td{
         height:51px;padding:.65rem .55rem;vertical-align:middle;
-        font-size:13px;color:#344354;background:#fff;
+        font-size:var(--bm-font-md);color:#344354;background:#fff;
         border-bottom:1px solid #e5ebf0
     }
     .daily-voucher-page.dv-cash-only .daily-voucher-table tbody tr:nth-child(even) td{
@@ -172,9 +172,9 @@
     .daily-voucher-page .dv-excel-trigger{float:right;min-width:25px;height:24px;border:1px solid transparent;border-radius:4px;color:#607086;background:transparent}
     .daily-voucher-page .dv-excel-trigger:hover,.daily-voucher-page .dv-excel-trigger[aria-expanded=true]{border-color:var(--dv-accent);background:#fff;color:var(--dv-accent)}
     .daily-voucher-page .dv-excel-trigger.dv-has-filter{color:var(--dv-accent);background:#fff;border-color:var(--dv-accent)}
-    .dv-excel-popover{position:fixed;z-index:1100;width:288px;max-width:calc(100vw - 20px);background:white;border:1px solid #c9d3de;border-radius:8px;box-shadow:0 14px 38px rgba(13,34,56,.22);padding:10px;color:#273549;font-size:12px}
+    .dv-excel-popover{position:fixed;z-index:1100;width:288px;max-width:calc(100vw - 20px);background:white;border:1px solid #c9d3de;border-radius:8px;box-shadow:0 14px 38px rgba(13,34,56,.22);padding:10px;color:#273549;font-size:var(--bm-font-sm)}
     .dv-excel-popover.d-none{display:none!important}
-    .dv-excel-title{font-weight:700;font-size:13px;margin:0 0 7px}
+    .dv-excel-title{font-weight:700;font-size:var(--bm-font-md);margin:0 0 7px}
     .dv-excel-sort{width:100%;display:block;border:0;background:white;text-align:left;padding:8px;border-radius:4px;color:#273549}
     .dv-excel-sort:hover,.dv-excel-sort:focus-visible{background:#ecf4fc}
     .dv-excel-divider{border-top:1px solid #e1e7ed;margin:8px 0}
@@ -184,7 +184,7 @@
     .dv-excel-choice input{flex:0 0 auto;margin:0}
     .dv-excel-footer{display:flex;gap:6px;justify-content:flex-end;margin-top:10px}
     .dv-excel-footer .btn-primary{background:#2165b4;border-color:#2165b4}
-    .dv-excel-date-label{display:block;font-size:12px;font-weight:600;margin:8px 0 4px}
+    .dv-excel-date-label{display:block;font-size:var(--bm-font-sm);font-weight:600;margin:8px 0 4px}
     .dv-excel-popover.dv-search-mode .dv-excel-values,
     .dv-excel-popover.dv-search-mode .dv-excel-footer,
     .dv-excel-popover.dv-date-mode .dv-excel-values,
