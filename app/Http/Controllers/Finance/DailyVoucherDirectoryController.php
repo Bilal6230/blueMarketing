@@ -214,6 +214,12 @@ final class DailyVoucherDirectoryController extends Controller
                     ->orderByDesc('id')->get(['id','customer_ledger_id','original_name'])
                     ->unique('customer_ledger_id')->keyBy('customer_ledger_id');
             }
+            $bankAllocations=collect();
+            if(Schema::hasTable('finance_bank_voucher_allocations') && $sources->isNotEmpty()){
+                $bankAllocations=DB::table('finance_bank_voucher_allocations')
+                    ->where('project_id',$projectId)
+                    ->whereIn('voucher_id',$sources->pluck('id'))->get()->keyBy('voucher_id');
+            }
             $bankReleases=collect();
             if(Schema::hasTable('finance_bank_voucher_allocation_releases') && $sources->isNotEmpty()){
                 $bankReleases=DB::table('finance_bank_voucher_allocation_releases')
@@ -300,6 +306,7 @@ final class DailyVoucherDirectoryController extends Controller
                         'Original Amount' => $pending ? max((float)$source->amount_in,(float)$source->amount_out) : null,
                     ], fn ($value) => $value !== null && $value !== ''),
                     'release_url' => !$bankRelease
+                        && $bankAllocations->has($source->id)
                         && in_array($displayType,['CR','DR','BOR','BOP'],true)
                         && in_array((int)$source->payment_type,[2,3],true)
                         && (
@@ -321,7 +328,8 @@ final class DailyVoucherDirectoryController extends Controller
                             || ((int)($sourceApprovals[$source->id]['submitted_by'] ?? 0)===(int)auth()->id()
                                 && (int)auth()->user()->project_id===$projectId))
                         ? route('finance.daily-vouchers.revise.edit',['customerLedger'=>$source->id]) : null,
-                    'delete_url' => $ledgerId && auth()->user()?->can('delete voucher')
+                    'delete_url' => !$bankAllocations->has($source->id)
+                        && $ledgerId && auth()->user()?->can('delete voucher')
                         && in_array((string) $source->transaction_type, ['CR', 'CP','CCR','CDR'], true)
                         && (empty($sourceApprovals[$source->id]) ||
                             (($sourceApprovals[$source->id]['status'] ?? '') === 'approved'
