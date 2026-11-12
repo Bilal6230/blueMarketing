@@ -4,7 +4,7 @@
 <style>
  .pr-page{--ink:#14243b;--muted:#657891;--line:#dce6f2;color:var(--ink)}.pr-hero{padding:20px 24px;border-radius:15px;background:linear-gradient(120deg,#12243d,#1769e0);color:#fff;margin-bottom:16px}.pr-hero p{margin:5px 0 0;color:#dceaff}.pr-card{background:#fff;border:1px solid var(--line);border-radius:13px;box-shadow:0 6px 20px #152a4510;overflow:hidden}.pr-card h5{margin:0;padding:14px 17px;border-bottom:1px solid var(--line);font-size:15px;font-weight:700}.pr-body{padding:16px}.pr-scroll{max-height:390px;overflow:auto}.pr-scroll thead th{position:sticky;top:0;z-index:1;background:#edf4fc}.pr-page table{font-size:13px}.pr-page .form-control{border-radius:8px}.pr-muted{color:var(--muted)}.pr-picked{background:#eaf3ff}.pr-total{font-size:23px;font-weight:750;color:#1769e0}.pr-stat{background:#f4f8fd;border:1px solid var(--line);border-radius:10px;padding:12px}.pr-stat small{display:block;color:var(--muted)}
 </style>
-<div class="container-fluid pr-page" id="plotReceiptApp"
+<div class="container-fluid bm-ui pr-page" id="plotReceiptApp"
  data-options-url="{{ route('finance.voucher.plot-receipt.options') }}"
  data-history-url="{{ route('finance.voucher.plot-receipt.history') }}"
  data-post-url="{{ route('finance.voucher.plot-receipt.post') }}"
@@ -22,9 +22,9 @@
    <button id="prPost" class="btn btn-primary" disabled><i class="fas fa-check-circle mr-1"></i> Post receipt</button>
    <small class="d-block pr-muted mt-2">Each allocation posts to its own customer/plot receivable. Posted receipts are immutable; corrections use reversal.</small>
   </div></section></div>
-  <div class="col-xl-7 mb-3"><section class="pr-card"><h5>Active plot bookings</h5><div class="pr-body pb-2"><input id="prSearch" class="form-control" placeholder="Search plot or customer…"></div><div class="pr-scroll"><table class="table table-hover mb-0"><thead><tr><th></th><th>Plot / Booking</th><th>Customer</th><th>Receivable account</th><th style="width:145px">Allocate amount</th></tr></thead><tbody id="prBookingRows"><tr><td colspan="5" class="text-center pr-muted p-4">Select a customer to load their bookings.</td></tr></tbody></table></div></section></div>
+  <div class="col-xl-7 mb-3"><x-finance.voucher-table-card class="pr-card"><h5>Active plot bookings</h5><div class="pr-body pb-2"><input id="prSearch" class="form-control" placeholder="Search plot or customer…"></div><div class="pr-scroll"><table class="table table-hover mb-0"><thead><tr><th></th><th>Plot / Booking</th><th>Customer</th><th>Receivable account</th><th style="width:145px">Allocate amount</th></tr></thead><tbody id="prBookingRows"><tr><td colspan="5" class="text-center pr-muted p-4">Select a customer to load their bookings.</td></tr></tbody></table></div></x-finance.voucher-table-card></div>
  </div>
- <section class="pr-card"><h5>Recent plot receipts</h5><div class="pr-scroll"><table class="table table-hover mb-0"><thead><tr><th>Receipt / Date</th><th>Customer</th><th class="text-right">Total</th><th>Narration</th><th>Action</th></tr></thead><tbody id="prHistoryRows"><tr><td colspan="5" class="text-center pr-muted p-4">Loading receipts…</td></tr></tbody></table></div></section>
+ <x-finance.voucher-table-card class="pr-card"><h5>Recent plot receipts</h5><div class="pr-scroll"><table class="table table-hover mb-0"><thead><tr><th>Receipt / Date</th><th>Customer</th><th class="text-right">Total</th><th>Narration</th><th>Action</th></tr></thead><tbody id="prHistoryRows"><tr><td colspan="5" class="text-center pr-muted p-4">Loading receipts…</td></tr></tbody></table></div></x-finance.voucher-table-card>
 </div>
 <div class="modal fade" id="prDetailsModal" tabindex="-1" role="dialog" aria-labelledby="prDetailsTitle" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-scrollable" role="document"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="prDetailsTitle">Receipt details</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div><div class="modal-body" id="prDetailsBody"></div></div></div></div>
 
