@@ -15,7 +15,7 @@
         approve:['approve','fas fa-check'],confirm:['approve','fas fa-check'],
         clearing:['approve','fas fa-check'],withdrawal:['approve','fas fa-check'],
         reject:['danger','fas fa-times'],release:['danger','fas fa-unlink'],
-        void:['danger','fas fa-unlink'],delete:['danger','fas fa-trash'],
+        void:['danger','fas fa-unlink'],reverse:['danger','fas fa-undo'],delete:['danger','fas fa-trash'],
         returned:['danger','fas fa-undo'],bounced:['danger','fas fa-undo']
     };
     const readLabel=$source=>{
