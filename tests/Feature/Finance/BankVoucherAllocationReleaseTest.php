@@ -159,7 +159,7 @@ final class BankVoucherAllocationReleaseTest extends TestCase
 
     public function test_bank_funded_dr_rejected_release_is_supported(): void
     {
-        $this->source(16,'DR','online','rejected',300.00);
+        $this->source(16,'DR','online','rejected',300.00,300.00);
         $out=app(BankVoucherAllocationRelease::class)
             ->release(1,16,42,'Rejected DR source release');
         $this->assertSame('rejected_release',$out['action']);
