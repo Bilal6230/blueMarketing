@@ -199,7 +199,7 @@
     .dv-excel-popover.dv-search-mode #dv-excel-dates,
     .dv-excel-popover.dv-checkbox-mode #dv-excel-dates{display:none!important}
 </style>
-<div class="content-wrapper daily-voucher-page {{ in_array($presetType, ['CCR','CDR'], true) ? 'dv-cash-only' : '' }} {{ in_array($presetType, ['CR','CCR','BOR'], true) ? 'dv-theme-credit' : (in_array($presetType, ['DR','CDR','BOP','CP'], true) ? 'dv-theme-debit' : '') }}" id="dv-page">
+<div class="content-wrapper bm-ui daily-voucher-page {{ in_array($presetType, ['CCR','CDR'], true) ? 'dv-cash-only' : '' }} {{ in_array($presetType, ['CR','CCR','BOR'], true) ? 'dv-theme-credit' : (in_array($presetType, ['DR','CDR','BOP','CP'], true) ? 'dv-theme-debit' : '') }}" id="dv-page">
     <section class="content-header"><div class="container-fluid d-flex justify-content-between align-items-center">
         <div>
             <h1 class="h3 mb-1">
@@ -219,8 +219,8 @@
         </div>
     </div></section>
     <section class="content"><div class="container-fluid">
-        <div class="card daily-voucher-card mb-3"><div class="card-body">
-            <form id="daily-voucher-filters" class="daily-voucher-filters {{ $presetType ? 'dv-preset' : '' }}">
+        <div class="card bm-card bm-filter daily-voucher-card mb-3"><div class="card-body">
+            <form id="daily-voucher-filters" class="bm-filter daily-voucher-filters {{ $presetType ? 'dv-preset' : '' }}">
                 <div><label for="dv-from">From</label><input id="dv-from" name="from" type="date" class="form-control"></div>
                 <div><label for="dv-to">To</label><input id="dv-to" name="to" type="date" class="form-control"></div>
                 @if($presetType)
@@ -256,12 +256,12 @@
                 @endforeach
             </div>
         </div></div>
-        <div class="card daily-voucher-card daily-voucher-table-card">
-            <div class="dv-table-tools">
+        <div class="card bm-card daily-voucher-card daily-voucher-table-card">
+            <div class="dv-table-tools bm-records-toolbar">
                 <label for="dv-page-length">Show <select class="form-control form-control-sm" id="dv-page-length"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option></select> entries</label>
                 <label for="dv-table-search">Search: <input id="dv-table-search" class="form-control form-control-sm" type="search" placeholder="Search vouchers" autocomplete="off"></label>
             </div>
-            <div class="daily-voucher-table-wrap" id="dv-table-wrap"><table class="table table-sm table-hover mb-0 daily-voucher-table">
+            <div class="daily-voucher-table-wrap" id="dv-table-wrap"><table class="table bm-table table-sm table-hover mb-0 daily-voucher-table">
                 <colgroup><col style="width:48px"><col style="width:100px"><col style="width:125px"><col style="width:160px"><col style="width:180px"><col><col style="width:115px"><col style="width:90px">@if(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user()))<col style="width:140px">@endif<col class="dv-col-actions"></colgroup>
                 <thead>
                 <tr>
