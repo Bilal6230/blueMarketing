@@ -3,7 +3,7 @@
 namespace Tests\Unit\Finance;
 
 use App\Services\Finance\V2IsolatedConnectionGuard;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 final class V2LocalTestDatabaseGuardTest extends TestCase
 {
