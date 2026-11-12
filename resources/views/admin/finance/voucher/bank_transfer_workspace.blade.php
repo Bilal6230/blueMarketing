@@ -226,20 +226,12 @@ $(function () {
             $tbody.append($tr);
         });
         if ($.blueActionMenu) $.blueActionMenu.enhance($('#transferRows > tr > td.blue-actions-cell'));
-        var shown = rows.length ? start + 1 : 0;
-        $('#btRecordSummary').text('Showing ' + shown + '–' + Math.min(start + length,rows.length) + ' of ' + rows.length + ' records');
-        var $nav = $('#btPagination').empty();
-        var addPage = function(label,p,disabled,current) {
-            var $button = $('<button type="button" class="bt-page-btn">').text(label).prop('disabled',disabled);
-            if (current) $button.addClass('active').attr('aria-current','page');
-            $button.on('click',function(){page=p;drawRows();});
-            $nav.append($button);
-        };
-        addPage('Previous',page-1,page<=1,false);
-        var first = Math.max(1,page-3),last = Math.min(pages,first+6);
-        first = Math.max(1,last-6);
-        for (var n=first;n<=last;n++) addPage(String(n),n,false,n===page);
-        addPage('Next',page+1,page>=pages,false);
+        $.blueVoucherPagination.render({
+            container:'#btPagination', summary:'#btRecordSummary',
+            total:rows.length,start:start,length:length,
+            buttonClass:'bt-page-btn',
+            onPage:function(nextStart){page=Math.floor(nextStart/length)+1;drawRows();}
+        });
     };
     var loadHistory = function () {
         $('#transferListError').addClass('d-none');
