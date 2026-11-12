@@ -51,7 +51,8 @@ final class RejectedCashVoucherController extends Controller
         $accountTypes=\App\Models\AccountType::query()->where('status',1)->orderBy('id')->get(['id','name']);
         $currentAttachment=null;
         if (in_array((string)$source->transaction_type,['CCR','CDR'],true)
-            && Schema::hasTable('cash_voucher_attachments')) {
+            && Schema::hasTable('cash_voucher_attachments')
+            && Schema::hasColumn('cash_voucher_attachments','status')) {
             $currentAttachment=DB::table('cash_voucher_attachments')
                 ->where('project_id',$project)->where('customer_ledger_id',$source->id)
                 ->where('status','applied')->orderByDesc('id')
