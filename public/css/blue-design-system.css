@@ -1,0 +1,32 @@
+/* BlueMarketing UI foundation v1. Change this file to reskin opted-in pages.
+ * Use bm-ui on page root, bm-card on panels, bm-table on tables,
+ * bm-filter on filter panels. No financial behavior here.
+ */
+:root{
+  --bm-success:#168348;--bm-danger:#dc3545;--bm-info:#237ac7;
+  --bm-ink:#263848;--bm-muted:#637587;--bm-paper:#ffffff;
+  --bm-panel-tint:#eaf7ee;--bm-border:#b9e1c6;
+  --bm-radius:11px;--bm-card-border-top:3px;
+  --bm-shadow:0 5px 20px rgba(18,65,49,.07);
+  --bm-font-family:"Source Sans Pro",Arial,sans-serif;
+  --bm-font-xs:11px;--bm-font-sm:12px;--bm-font-md:13px;
+  --bm-font-lg:20px;--bm-control-height:32px;
+  --bm-filter-gap:10px;--bm-panel-padding:12px;
+  --bm-table-head-height:34px;--bm-table-cell-padding:.43rem .5rem;
+  --bm-action-toggle:34px;--bm-action-col:72px;--bm-action-gap:8px;
+}
+.bm-ui{font-family:var(--bm-font-family);font-size:var(--bm-font-md);color:var(--bm-ink)}
+.bm-ui .bm-card{border:1px solid var(--bm-border);border-top:var(--bm-card-border-top) solid var(--bm-success);border-radius:var(--bm-radius);background:var(--bm-paper);box-shadow:var(--bm-shadow)}
+.bm-ui .bm-page-heading h1,.bm-ui .bm-page-heading h4{font-size:var(--bm-font-lg)!important;font-weight:700}
+.bm-ui .bm-filter label{font-size:var(--bm-font-sm);font-weight:700}
+.bm-ui .bm-filter :is(input.form-control,select.form-control){min-height:var(--bm-control-height);font-size:var(--bm-font-md)}
+.bm-ui .bm-filter .btn-sm{font-size:var(--bm-font-sm)}
+.bm-ui .bm-table thead th{font-size:var(--bm-font-sm);font-weight:700;vertical-align:middle;min-height:var(--bm-table-head-height)}
+.bm-ui .bm-table tbody td{font-size:var(--bm-font-md);padding:var(--bm-table-cell-padding);vertical-align:middle}
+.bm-ui .bm-table tbody tr:nth-child(even){background:#f7fbf8}
+.bm-ui .bm-table .blue-actions-cell{padding:.24rem!important}
+.bm-ui .bm-records-toolbar{font-size:var(--bm-font-sm)}
+.bm-ui .bm-records-toolbar :is(input,select){font-size:var(--bm-font-sm)}
+.bm-ui .bm-chip{font-size:var(--bm-font-xs);border-radius:5px;font-weight:700}
+.bm-ui .bm-panel-heading{background:var(--bm-panel-tint);border-bottom:2px solid var(--bm-success)}
+@media(prefers-reduced-motion:reduce){.bm-ui *{scroll-behavior:auto!important}}
