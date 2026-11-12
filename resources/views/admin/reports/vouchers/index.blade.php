@@ -10,6 +10,8 @@ body.jv-directory-active{overflow:hidden!important}
 .jv-head h4{margin:0;font-size:19px;font-weight:700;color:#0861d4}
 .jv-head small{color:#6c7d91;font-size:13px}
 .jv-filters,.jv-card{background:#fff;border:1px solid #c9d9f2;border-top:3px solid #0780ff;border-radius:10px;padding:11px}
+.jv-page .jv-filters>.card-body{padding:0}
+.jv-page .jv-filters,.jv-page .jv-card{border-top-color:#0780ff}
 .jv-filter-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) auto;align-items:end;gap:9px}
 .jv-filter-grid label{font-size:13px;font-weight:700;margin:0 0 4px}
 .jv-filter-grid .form-control{height:34px;font-size:13px}
@@ -71,14 +73,14 @@ body.jv-directory-active{overflow:hidden!important}
 .jv-excel-pop.jv-date-mode .jv-excel-bottom{display:flex!important}
 .jv-excel-pop #jv-excel-dates label{display:block;font-size:12px;font-weight:600;margin-bottom:4px}
 </style>
-<div class="content-wrapper jv-page">
+<div class="content-wrapper bm-ui jv-page">
  <div class="jv-head">
   <div><h4>{{ $title }}</h4><small>Selected project records · Approval-aware voucher register</small></div>
   @if($type==='JV')<button type="button" id="jv-add" class="btn btn-primary btn-sm"><i class="fas fa-plus mr-1"></i> New Voucher</button>@endif
  </div>
  @if(session('success'))<div class="alert alert-success m-0" role="status">{{ session('success') }}</div>@endif
  @if($errors->any())<div class="alert alert-danger m-0">{{ $errors->first() }}</div>@endif
- <div class="jv-filters">
+ <x-finance.voucher-filter-card class="jv-filters">
   <form id="jv-top-filters" class="jv-filter-grid" autocomplete="off">
    <div><label for="jv-from">Voucher Number</label><input type="search" class="form-control" id="jv-from" placeholder="Voucher #"></div>
    <div><label for="jv-date">Date</label><input type="date" class="form-control" id="jv-date"></div>
@@ -87,8 +89,8 @@ body.jv-directory-active{overflow:hidden!important}
    <div><label for="jv-reference">Reference / Details</label><input type="search" class="form-control" id="jv-reference" placeholder="Reference"></div>
    <div class="jv-filter-buttons"><button class="btn btn-sm btn-primary" type="submit"><i class="fas fa-filter mr-1"></i> Apply</button><button class="btn btn-sm btn-outline-secondary" type="button" id="jv-reset">Reset</button></div>
   </form>
- </div>
- <div class="jv-card">
+ </x-finance.voucher-filter-card>
+ <x-finance.voucher-table-card class="jv-card">
   <div class="jv-table-wrap">
    <table id="jv-directory" class="table table-sm table-bordered table-hover jv-table">
     <thead>
@@ -102,7 +104,7 @@ body.jv-directory-active{overflow:hidden!important}
     </thead><tbody></tbody>
    </table>
   </div>
- </div>
+ </x-finance.voucher-table-card>
 </div>
 <div id="jv-excel-pop" class="jv-excel-pop d-none" role="dialog" aria-label="Journal voucher column filter"><strong id="jv-excel-title"></strong>
  <button type="button" class="jv-excel-sort" data-dir="asc">Sort A to Z / Small to Large</button><button type="button" class="jv-excel-sort" data-dir="desc">Sort Z to A / Large to Small</button>
