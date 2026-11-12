@@ -182,12 +182,14 @@ final class CashOnlyVoucherController extends Controller
     {
         abort_unless(Auth::user()?->can('read voucher'),403);
         $projectId=(int)getSelectedTown();
-        abort_unless($projectId>0 && Schema::hasTable('cash_voucher_attachments'),404);
+        abort_unless($projectId>0 && Schema::hasTable('cash_voucher_attachments')
+            && Schema::hasColumn('cash_voucher_attachments','status'),404);
         $row=DB::table('cash_voucher_attachments as file')
             ->join('customer_ledger as source','source.id','=','file.customer_ledger_id')
             ->where('file.id',$attachment)
             ->where('file.project_id',$projectId)
             ->where('source.project_id',$projectId)
+            ->where('file.status','applied')
             ->whereIn('source.transaction_type',['CCR','CDR'])
             ->first(['file.path','file.disk','file.original_name']);
         abort_unless($row && $row->disk==='local' && Storage::disk('local')->exists($row->path),404);
