@@ -20,8 +20,8 @@
         return 'fas fa-angle-right';
     };
     const labelFor=$source=>{
-        const label=$source.attr('data-blue-action-label')||$source.attr('title')||
-            $source.attr('aria-label')||$.trim($source.text());
+        const label=$source.attr('data-blue-action-label')||$.trim($source.text())||
+            $source.attr('title')||$source.attr('aria-label');
         return $.trim(label.replace(/\s+/g,' '))||'Open';
     };
     const isDanger=($source,label)=>/delete|void|release|reject|bounce|return|cancel|remove/i.test(label)||
@@ -72,8 +72,7 @@
                 close();
                 // Trigger on the original in-table element; existing delegated
                 // financial action handlers keep working without rebinding.
-                if($source.is('a') && source.click)source.click();
-                else $source.trigger('click');
+                $source.trigger('click');
             });
             $panel.append($item);
         });
@@ -83,7 +82,7 @@
         $toggle.attr({'aria-expanded':'true','aria-controls':id});
         place();
         // A paint boundary lets opacity/scale animate instead of appearing instantly.
-        window.requestAnimationFrame(()=>{if($panel)$panel.addClass('is-open');});
+        setTimeout(()=>{if($panel)$panel.addClass('is-open');},15);
     };
     const enhance=$cells=>{
         $($cells).each(function(){
@@ -112,7 +111,12 @@
     });
     $(document).on('keydown.blueActionMenu',function(event){
         if(!$panel)return;
-        if(event.key==='Escape'){event.preventDefault();close();$openToggle?.trigger('focus');}
+        if(event.key==='Escape'){
+            event.preventDefault();
+            const $focus=$openToggle;
+            close();
+            if($focus)$focus.trigger('focus');
+        }
     });
     $(window).on('resize.blueActionMenu scroll.blueActionMenu',close);
     $(document).on('scroll.blueActionMenu','.table-responsive,.dataTables_scrollBody',close);
