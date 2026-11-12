@@ -42,7 +42,7 @@ final class CashOnlyVoucherController extends Controller
             'subaccounts_id'=>['required','integer','min:1'],
             'detail'=>['required','string','max:255'],
             'payment_type'=>['required','integer','in:1'],
-            'attachment'=>['nullable','file','mimes:pdf,jpg,jpeg,png,webp','max:5120'],
+            'attachment'=>\App\Services\Finance\VoucherAttachmentRules::optional(),
         ])->validate();
         $series=$data['display_series'];
         abort_unless(str_starts_with($data['voucher'],$series.'-'),422,'Voucher series mismatch.');
@@ -146,7 +146,7 @@ final class CashOnlyVoucherController extends Controller
             'subaccounts_id'=>['required','integer','min:1'],
             'detail'=>['required','string','max:255'],
             'payment_type'=>['required','in:1'],
-            'attachment'=>['nullable','file','mimes:pdf,jpg,jpeg,png,webp','max:5120'],
+            'attachment'=>\App\Services\Finance\VoucherAttachmentRules::optional(),
         ]);
         abort_if($request->hasFile('attachment'),422,
             'Please attach the file when saving the final voucher, not the draft.');
