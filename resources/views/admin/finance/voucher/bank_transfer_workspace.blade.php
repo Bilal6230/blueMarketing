@@ -82,7 +82,12 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
         <div class="bt-table-wrap">
             <table class="table bm-table table-bordered table-hover table-sm w-100" id="transferTable">
                 <colgroup><col style="width:48px"><col style="width:112px"><col style="width:120px"><col style="width:200px"><col style="width:195px"><col><col style="width:110px"><col style="width:92px"><col style="width:74px"></colgroup>
-                <thead><tr><th>#</th><th>Date</th><th>Voucher #</th><th>Head</th><th>Sub Head</th><th>Details</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead>
+                <thead><tr><th>#</th>
+                    @foreach(['date'=>'Date','number'=>'Voucher #','head'=>'Head','subhead'=>'Sub Head','detail'=>'Details','amount'=>'Amount','status'=>'Status'] as $field=>$label)
+                    <th class="dv-filter-heading" data-field="{{ $field }}"><span>{{ $label }}</span>
+                        <button type="button" class="dv-excel-trigger" data-column="{{ $field }}" aria-label="Sort or filter {{ $label }}" aria-expanded="false" aria-haspopup="dialog" title="Sort and filter {{ $label }}"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                    @endforeach
+                    <th>Actions</th></tr></thead>
                 <tbody id="transferRows"><tr><td colspan="9" class="text-center text-muted py-4">Loading vouchers…</td></tr></tbody>
             </table>
         </div>
@@ -92,6 +97,7 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
         </div>
     </x-finance.voucher-table-card>
 </div>
+<x-finance.voucher-column-filters />
 @endsection
 
 @section('modal')
@@ -162,6 +168,13 @@ $(function () {
     var $save = $('#saveTransfer');
     var allRows = [], page = 1, busy = false, chequeLoading = false;
     var pendingRequestKey = null;
+    var columnSort='date',columnDirection='desc',columnFilters=null;
+    var columnValue=function(r,field){
+        var cash=String(r.cash_account||'').split(' / ');
+        var fields={date:r.date,number:r.voucher,head:cash[0]||'',subhead:cash.slice(1).join(' / '),
+            detail:r.narration,amount:r.amount,status:'Posted'};
+        return String(fields[field] == null ? '' : fields[field]);
+    };
     var printUrl = function (id) { return $root.attr('data-print-base') + '/' + encodeURIComponent(id) + '/print'; };
     var formatMoney = function (value) { return Number(value || 0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); };
     var showError = function ($box, message) { $box.text(message || 'Request failed').removeClass('d-none'); };
@@ -182,7 +195,7 @@ $(function () {
     var activeFilters = {from:'',to:'',bank:'',search:''};
     var selectRows = function () {
         var quick = $.trim($('#btQuickSearch').val()).toLowerCase();
-        return $.grep(allRows, function (r) {
+        var filtered=$.grep(allRows, function (r) {
             var date = String(r.date || '').slice(0,10);
             var bank = String(r.bank || '').toLowerCase();
             var haystack = [r.voucher,r.date,r.cash_account,r.bank,r.cheque,r.narration,r.amount].join(' ').toLowerCase();
@@ -192,6 +205,7 @@ $(function () {
                 && (!activeFilters.search || haystack.indexOf(activeFilters.search) >= 0)
                 && (!quick || haystack.indexOf(quick) >= 0);
         });
+        return columnFilters ? columnFilters.filterRows(filtered, columnValue) : filtered;
     };
     var drawRows = function () {
         var rows = selectRows();
@@ -244,6 +258,20 @@ $(function () {
             showError($('#transferListError'),(xhr.responseJSON || {}).message || 'Could not load voucher history');
         });
     };
+    columnFilters=$.blueVoucherColumnFilters.init({
+        initialOptions:{head:[],subhead:[],status:['Posted'],account_relations:[]},
+        formSelector:'#btFilterForm',quickSearchSelector:'#btQuickSearch',
+        triggerSelector:'#bankTransferApp .dv-excel-trigger',
+        tableWrapSelector:'.bt-table-wrap',
+        getStart:()=>Math.max(0,(page-1)*(Number($('#btLength').val())||25)),
+        getLength:()=>Number($('#btLength').val())||25,
+        getSortColumn:()=>columnSort,getSortDirection:()=>columnDirection,
+        onSort:(column,direction)=>{columnSort=column;columnDirection=direction;},
+        onChange:()=>{page=1;drawRows();},
+        choicesFor:function(field){
+            return [...new Set(allRows.map(row=>columnValue(row,field)))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+        }
+    });
     $('#btFilterForm').on('submit',function(event) {
         event.preventDefault();
         var from=$('#transferFrom').val(),to=$('#transferTo').val();
@@ -257,7 +285,8 @@ $(function () {
     });
     $('#clearTransferFilters').on('click',function(){
         $('#transferFrom,#transferTo,#transferBankFilter,#transferSearch,#btQuickSearch').val('');
-        activeFilters={from:'',to:'',bank:'',search:''};page=1;drawRows();
+        activeFilters={from:'',to:'',bank:'',search:''};
+        columnSort='date';columnDirection='desc';columnFilters.reset();page=1;drawRows();
     });
     $('#btQuickSearch').on('input',function(){page=1;drawRows();});
     $('#btLength').on('change',function(){page=1;drawRows();});
