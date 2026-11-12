@@ -1892,7 +1892,7 @@
             $('#numberInput').on('input.passedBankLimit change.passedBankLimit',function(){
                 if(selectedPassedRemainingCents===null)return;
                 const raw=String($(this).val()||'').replace(/,/g,'').trim();
-                const cents=/^\\d+(?:\\.\\d{1,2})?$/.test(raw)?Math.round(Number(raw)*100):0;
+                const cents=/^\d+(?:\.\d{1,2})?$/.test(raw)?Math.round(Number(raw)*100):0;
                 const invalid=cents<=0||cents>selectedPassedRemainingCents;
                 $('#passed-bank-remaining-warning').removeClass('text-muted text-danger')
                     .addClass(invalid?'text-danger':'text-muted')
@@ -2545,7 +2545,7 @@
                 const pendingId = String($('#voucherForm #selected_pending_payment_id').val() || '').trim();
                 if($('#passed_source_id').val() && selectedPassedRemainingCents!==null){
                     const raw=String($('#numberInput').val()||'').replace(/,/g,'').trim();
-                    const cents=/^\\d+(?:\\.\\d{1,2})?$/.test(raw)?Math.round(Number(raw)*100):0;
+                    const cents=/^\d+(?:\.\d{1,2})?$/.test(raw)?Math.round(Number(raw)*100):0;
                     if(cents<=0||cents>selectedPassedRemainingCents){
                         isValid=false;
                         checkField("[name='amount']", "Amount exceeds remaining source balance.",()=>false);
