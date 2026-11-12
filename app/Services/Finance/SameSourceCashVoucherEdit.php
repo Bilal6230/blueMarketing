@@ -147,7 +147,7 @@ final class SameSourceCashVoucherEdit
             ];
             $attachment=$data['attachment_metadata']??null;
             if ($attachment) {
-                if(!in_array((string)$source->transaction_type,['CCR','CDR'],true) ||
+                if(!in_array((string)$source->transaction_type,['CR','CP','CCR','CDR'],true) ||
                     !Schema::hasTable('cash_voucher_attachments') ||
                     !Schema::hasColumn('cash_voucher_attachments','status') ||
                     !Schema::hasColumn('cash_voucher_attachments','edit_snapshot_id')) {
