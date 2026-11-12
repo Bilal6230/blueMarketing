@@ -49,6 +49,16 @@ final class VoucherApprovalMutationGuard
         if (!Schema::hasTable('daily_voucher_approvals')) return;
         if ($sourceTable === 'customer_ledger') {
             $this->assertNoPendingCorrection($projectId, $sourceId);
+            // All bank-funded vouchers, even those posted with approval OFF,
+            // must use their audited allocation-aware Release/Void lifecycle.
+            if (Schema::hasTable('finance_bank_voucher_allocations') &&
+                DB::table('finance_bank_voucher_allocations')
+                    ->where('project_id',$projectId)
+                    ->where('voucher_id',$sourceId)->exists()) {
+                throw new \DomainException(
+                    'Verified bank allocation blocks legacy edit/delete/reversal. Use audited Release/Void.'
+                );
+            }
         }
 
         $approval = DB::table('daily_voucher_approvals')
