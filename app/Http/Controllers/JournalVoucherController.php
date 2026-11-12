@@ -90,6 +90,8 @@ class JournalVoucherController extends Controller
             });
         }
 
+        $this->applyLiveExcelFilters($query,$request);
+
         // Excel-style per-column menus share the same scoped SQL query.
         // Never fetch only the first visible DataTables page for filter choices.
         if ($request->ajax()) {
@@ -389,6 +391,7 @@ class JournalVoucherController extends Controller
                 }
             }
         }
+        $this->applyLiveExcelFilters($query,$request);
         // If it's an AJAX request, return JSON data
         if ($request->ajax()) {
             // Pagination parameters
@@ -444,6 +447,26 @@ class JournalVoucherController extends Controller
         $x['vouchers'] = $query->orderByDesc('id')->get(); // Fetch all vouchers initially
 
         return view('admin.reports.vouchers.index', $x);
+    }
+
+    private function applyLiveExcelFilters($query, Request $request): void
+    {
+        $live=$request->validate([
+            'excel_date_from'=>['nullable','date_format:Y-m-d'],
+            'excel_date_to'=>['nullable','date_format:Y-m-d','after_or_equal:excel_date_from'],
+            'excel_text'=>['nullable','array','max:5'],
+            'excel_text.*'=>['nullable','string','max:100'],
+        ]);
+        if(!empty($live['excel_date_from']))$query->whereDate('date','>=',$live['excel_date_from']);
+        if(!empty($live['excel_date_to']))$query->whereDate('date','<=',$live['excel_date_to']);
+        foreach(($live['excel_text']??[]) as $column=>$value){
+            if(!in_array($column,['voucher_number','reference','description','total_debit'],true))
+                abort(422,'Unsupported column search.');
+            $text=trim((string)$value);
+            if($text==='')continue;
+            $needle='%'.addcslashes($text,'%_\\').'%';
+            $query->where($column,'like',$needle);
+        }
     }
 
     private function applyExcelValueFilter($query,string $column,array $values,bool $include): void
