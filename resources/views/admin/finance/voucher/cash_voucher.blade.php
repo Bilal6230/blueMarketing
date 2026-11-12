@@ -3479,8 +3479,16 @@
 
 
             // Submit/save handler
+            let voucherSaveInFlight=false;
+            $('#confirmedModal').on('show.bs.modal',function(){
+                $('#voucher-save-error').addClass('d-none').text('');
+                if(!voucherSaveInFlight)$('#submitForm').prop('disabled',false).text('Save');
+            });
             $(document).on('click', '#submitForm', function(e) {
                 e.preventDefault();
+                if(voucherSaveInFlight)return;
+                voucherSaveInFlight=true;
+                $('#voucher-save-error').addClass('d-none').text('');
 
                 const tabNumber = parseInt($('#submit-button').attr('tab-number'), 10) || currentTab;
                 const $form = $('#voucherForm');
@@ -3544,7 +3552,7 @@
                         'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                     }
                 });
-                $.ajax({
+                const request=$.ajax({
                     url: $form.attr('action'),
                     type: $form.attr('method') || 'POST',
                     data: formData,
@@ -3556,6 +3564,7 @@
                         $('#submit-button').prop('disabled', true);
                     },
                     success: function(response) {
+                        $('#confirmedModal').modal('hide');
                         console.log(response, tabNumber);
 
                         if (response?.flow_type === 'pending_payment_status_updated') {
@@ -3592,20 +3601,30 @@
                         // });
                     },
                     error: function(xhr) {
-                        console.error('❌ Error:', xhr.responseText);
-                        markVoucherServerErrors(xhr.responseJSON,$('#voucherForm'));
-                        const msg = xhr.responseJSON?.message || 'Something went wrong while saving the voucher.';
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: msg
-                        });
-                    },
-                    complete: function() {
-                        $('#confirmedModal').modal('hide');
-                        $('#submitForm').prop('disabled', false).text('Save');
-                        $('#submit-button').prop('disabled', false);
+                        const result=xhr.responseJSON||{};
+                        const msg=result.message||'Voucher could not be saved. Check the fields and retry.';
+                        // Display inside the CURRENT confirmation dialog. A nested
+                        // SweetAlert can sit behind Bootstrap's iframe modal,
+                        // leaving users looking at an apparently stuck Saving state.
+                        $('#voucher-save-error').removeClass('d-none').text(msg);
+                        try {
+                            markVoucherServerErrors(result,$form);
+                            if(result.error_key==='bank_source_conflict' &&
+                                /bank/i.test(msg)){
+                                const $bank=$('#bank_id');
+                                $bank.addClass('is-invalid');
+                                shakeVoucherField($bank);
+                            }
+                            playVoucherErrorTone();
+                        }catch(error){console.warn('Voucher error decoration failed',error);}
                     }
+                });
+                // Attach independently of error decoration and modal callbacks:
+                // always recover Retry/Save, even on HTTP 409/422/500.
+                request.always(function(){
+                    voucherSaveInFlight=false;
+                    $('#submitForm').prop('disabled',false).text('Save');
+                    $('#submit-button').prop('disabled',false);
                 });
             });
             $(document).ready(function() {
@@ -4187,6 +4206,7 @@
                     </button>
                 </div>
                 <div class="modal-body">
+                    <div id="voucher-save-error" class="alert alert-danger d-none mb-3" role="alert" aria-live="assertive"></div>
                     <center>
                         {{-- <img
                             src="https://mir-s3-cdn-cf.behance.net/project_modules/disp/cd514331234507.564a1d2324e4e.gif"
