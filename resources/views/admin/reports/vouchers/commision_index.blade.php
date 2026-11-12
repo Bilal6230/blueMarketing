@@ -1,7 +1,7 @@
 @extends('admin.layouts.master')
 
 @section('content')
-    <div class="content-wrapper">
+    <div class="content-wrapper bm-ui bm-voucher-directory cv-directory">
         <div class="content">
             <div class="container-fluid mt-1">
                 <div class="card shadow-lg border-0">
