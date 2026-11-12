@@ -1744,6 +1744,140 @@
                 }
             });
             $('#payment_type').trigger('change');
+            @if($supportsPassedSources)
+            // Bind after the initial form setup: opening the source picker is a user action.
+            // One project-scoped verified source can be selected for this form at a time.
+            let passedBankRows=[],passedBankRequest=null,passedBankTimer=null;
+            const passedBankUrl=@json(route('finance.voucher.passed_sources'));
+            const passedBankDirection=@json(in_array(($displaySeries ?? ''),['CR','BOR'],true)?'receipt':'payment');
+            function resetPassedBankSelection(){
+                $('#passed_source_id,#passed_source_method').val('');
+                $('#numberInput').prop('readonly',false).removeAttr('data-bank-source-amount');
+                $('#t_number').prop('readonly',false);
+                $('#passed-bank-apply').prop('disabled',true);
+            }
+            function showPassedBankPicker(){
+                const payment=String($('#payment_type').val()||'');
+                if(payment!=='2'&&payment!=='3')return;
+                $('#passed-bank-search').val('');
+                $('#passed-bank-error').addClass('d-none').text('');
+                $('#passed-bank-source-title').text('Select Passed '+(payment==='2'?'Online':'Cheque')+' Record');
+                $('#passed-bank-source-modal').modal('show');
+                fetchPassedBankRows();
+            }
+            function fetchPassedBankRows(){
+                const payment=String($('#payment_type').val()||'');
+                if(payment!=='2'&&payment!=='3')return;
+                if(passedBankRequest)passedBankRequest.abort();
+                $('#passed-bank-apply').prop('disabled',true);
+                $('#passed-bank-table tbody').empty().append(
+                    $('<tr>').append($('<td>',{colspan:7,'class':'text-center text-muted',text:'Loading verified records…'}))
+                );
+                passedBankRequest=$.ajax({
+                    url:passedBankUrl,type:'GET',dataType:'json',
+                    data:{method:payment==='2'?'online':'cheque',
+                        direction:passedBankDirection,search:$('#passed-bank-search').val()}
+                }).done(function(response){
+                    passedBankRows=response.data||[];
+                    const $body=$('#passed-bank-table tbody').empty();
+                    if(!passedBankRows.length){
+                        $body.append($('<tr>').append($('<td>',{colspan:7,'class':'text-center text-muted',
+                            text:'No unclaimed verified records for this project and payment type.'})));
+                    }
+                    $.each(passedBankRows,function(_,source){
+                        const $row=$('<tr>');
+                        $row.append($('<td>').append($('<input>',{type:'radio',name:'passed-bank-radio',
+                            'class':'passed-bank-radio',value:source.id,'aria-label':'Select '+source.reference})));
+                        $.each(['date','reference','bank','amount','passing_date','status'],function(_,field){
+                            $row.append($('<td>',{text:source[field]??''}));
+                        });
+                        $body.append($row);
+                    });
+                }).fail(function(xhr,status){
+                    if(status==='abort')return;
+                    passedBankRows=[];
+                    $('#passed-bank-table tbody').empty().append($('<tr>').append($('<td>',{
+                        colspan:7,'class':'text-danger',
+                        text:xhr.responseJSON?.message||'Unable to retrieve verified records.'})));
+                });
+            }
+            $('#payment_type').on('change.passedBankSource',function(){
+                resetPassedBankSelection();
+                if(['2','3'].includes(String($(this).val()||''))){
+                    showPassedBankPicker();
+                }
+            });
+            $('#passed-bank-search').on('input',function(){
+                clearTimeout(passedBankTimer);
+                passedBankTimer=setTimeout(fetchPassedBankRows,250);
+            });
+            $('#passed-bank-table').on('change','.passed-bank-radio',function(){
+                $('#passed-bank-apply').prop('disabled',!$(this).is(':checked'));
+            });
+            $('#passed-bank-apply').on('click',function(){
+                const selectedId=String($('#passed-bank-table input[name="passed-bank-radio"]:checked').val()||'');
+                const source=passedBankRows.find(v=>String(v.id)===selectedId);
+                if(!source){$('#passed-bank-error').removeClass('d-none').text('Select one verified record.');return;}
+                const payment=String($('#payment_type').val()||'');
+                if(source.method!==(payment==='2'?'online':'cheque'))return;
+                resetPassedBankSelection();
+                $('#passed_source_id').val(source.id);
+                $('#passed_source_method').val(source.method);
+                $('#t_number').val(source.reference).prop('readonly',true).trigger('change');
+                $('#numberInput').val(source.amount).prop('readonly',true)
+                    .attr('data-bank-source-amount',source.amount).trigger('input');
+                const $pass=$('#passing_date');
+                const datePicker=$pass.prop('_flatpickr');
+                if(datePicker)datePicker.setDate(source.passing_date,true,'Y-m-d');
+                else $pass.val(source.passing_date).trigger('change');
+                if(source.purpose)$('#cheque_purpose').val(source.purpose).trigger('change');
+                const $bank=$('#bank_id');
+                let matchedBank='';
+                $bank.find('option').each(function(){
+                    const label=$.trim($(this).text()).toLowerCase();
+                    const target=$.trim(String(source.bank||'')).toLowerCase();
+                    if(target && (label===target || label.includes(target) || target.includes(label)) && label){
+                        matchedBank=$(this).val();return false;
+                    }
+                });
+                if(matchedBank){
+                    const select=$bank.prop('tomselect');
+                    if(select)select.setValue(String(matchedBank));
+                    else $bank.val(matchedBank).trigger('change');
+                }else{
+                    $('#passed-bank-error').removeClass('d-none')
+                        .text('Bank name requires manual mapping. Please select the matching Bank in the voucher form.');
+                }
+                if(source.account_type){
+                    const $type=$('#acct_type'),control=$type.prop('tomselect');
+                    if(control)control.setValue(String(source.account_type));
+                    else $type.val(source.account_type).trigger('change');
+                }
+                if(source.head_id){
+                    const $head=$('#accounts_id'),control=$head.prop('tomselect');
+                    if(control)control.setValue(String(source.head_id));
+                    else $head.val(source.head_id).trigger('change');
+                }
+                if(source.subhead_id){
+                    const sub=String(source.subhead_id);
+                    // Account options may be loaded asynchronously after Head changes.
+                    setTimeout(function(){
+                        const $sub=$('#subaccounts_id'),control=$sub.prop('tomselect');
+                        if(control)control.setValue(sub);
+                        else $sub.val(sub).trigger('change');
+                    },350);
+                }
+                if(passedBankDirection==='payment'){
+                    $('#pendingPaymentsSection').hide();
+                    $('#selected_pending_payment_id').val('');
+                    $('#pending_status').prop('disabled',true);
+                    $('.pending_status_group').hide();
+                }
+                $('.cheque-purpose-group').toggle(payment==='3'&&!source.purpose);
+                $('#cheque_purpose').prop('required',false);
+                $('#passed-bank-source-modal').modal('hide');
+            });
+            @endif
             function normalizeDateForInput(value) {
                 if (!value) return '';
                 const raw = String(value).trim();
