@@ -180,7 +180,9 @@ final class CashOnlyVoucherController extends Controller
 
     public function attachment(int $attachment)
     {
-        abort_unless(Auth::user()?->can('read voucher'),403);
+        $actor=Auth::user();
+        abort_unless($actor && ($actor->can('read voucher')
+            || \App\Services\Finance\VoucherApproverAccess::mayApprove($actor)),403);
         $projectId=(int)getSelectedTown();
         abort_unless($projectId>0 && Schema::hasTable('cash_voucher_attachments')
             && Schema::hasColumn('cash_voucher_attachments','status'),404);
@@ -189,10 +191,29 @@ final class CashOnlyVoucherController extends Controller
             ->where('file.id',$attachment)
             ->where('file.project_id',$projectId)
             ->where('source.project_id',$projectId)
-            ->where('file.status','applied')
+            ->whereIn('file.status',['applied','pending'])
             ->whereIn('source.transaction_type',['CCR','CDR'])
-            ->first(['file.path','file.disk','file.original_name']);
+            ->first(['file.path','file.disk','file.original_name','file.status',
+                'file.customer_ledger_id','file.edit_snapshot_id']);
         abort_unless($row && $row->disk==='local' && Storage::disk('local')->exists($row->path),404);
+        if($row->status==='pending') {
+            $approval=\App\Models\DailyVoucherApproval::query()
+                ->where('project_id',$projectId)
+                ->where('source_table','customer_ledger')
+                ->where('source_id',$row->customer_ledger_id)
+                ->where('status','pending')->first();
+            abort_unless($approval && $row->edit_snapshot_id
+                && DB::table('daily_voucher_edit_snapshots')
+                    ->where('id',$row->edit_snapshot_id)
+                    ->where('project_id',$projectId)
+                    ->where('approval_id',$approval->id)
+                    ->where('status','pending')->exists()
+                && \App\Services\Finance\VoucherApproverAccess::mayDecide(
+                    $actor,$projectId,(int)$approval->assigned_approver_id,(int)$approval->submitted_by),403);
+        } else {
+            abort_unless($actor->can('read voucher')
+                || \App\Services\Finance\VoucherApproverAccess::isSuperAdmin($actor),403);
+        }
         return Storage::disk('local')->download($row->path,$row->original_name);
     }
 }
