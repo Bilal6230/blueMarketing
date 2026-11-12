@@ -305,6 +305,7 @@ final class DailyVoucherApprovalWorkflow
                     ->where('account.project_id',$approval->project_id)
                     ->lockForUpdate()->get(['leg.id','leg.type','leg.amount_in','leg.amount_out','leg.is_active']);
                 if (!$identity || !$allocation || $legs->count()!==1
+                    || DB::table('ledgers')->where('customer_ledger_id',$source->id)->count()!==1
                     || !Schema::hasTable('finance_bank_voucher_allocation_releases')
                     || DB::table('finance_bank_voucher_allocation_releases')
                         ->where('allocation_id',$allocation?->id)->exists()
@@ -318,6 +319,7 @@ final class DailyVoucherApprovalWorkflow
                     || (int)$legs->first()->is_active!==0) {
                     throw new \DomainException('BANK_APPROVAL_LEDGER_OR_ALLOCATION_MISMATCH');
                 }
+                BankVoucherLegIntegrity::assert($series,$source,$legs->first(),(float)$allocation->amount);
             }
             // A CCR/CDR decision must never activate a different series or a
             // bank/cheque instrument. The original voucher numbers are fixed.
