@@ -73,3 +73,29 @@
     .dv-excel-popover.dv-search-mode #dv-excel-dates,
     .dv-excel-popover.dv-checkbox-mode #dv-excel-dates{display:none!important}
 
+
+
+/* Voucher directory shell: identical structural rhythm, each series retains
+   its own --voucher-accent and --voucher-tint (green/red/blue/etc). */
+.bm-ui.bm-voucher-directory{--voucher-accent:var(--bm-success);--voucher-tint:#eaf7ee;--bm-border:color-mix(in srgb,var(--voucher-accent) 30%,#fff);--bm-success:var(--voucher-accent)}
+.bm-ui.bm-voucher-directory .bm-voucher-filter-card,
+.bm-ui.bm-voucher-directory .bm-voucher-table-card{border:1px solid var(--bm-border);border-top:3px solid var(--voucher-accent);border-radius:10px;background:#fff;box-shadow:0 3px 12px rgba(19,45,68,.06)}
+.bm-ui.bm-voucher-directory .bm-voucher-filter-card>.card-body{padding:10px 12px}
+.bm-ui.bm-voucher-directory .bm-voucher-filter-card label{font-size:12px;font-weight:700}
+.bm-ui.bm-voucher-directory .bm-voucher-filter-card :is(input.form-control,select.form-control){height:32px;min-height:32px;font-size:13px}
+.bm-ui.bm-voucher-directory .bm-voucher-table-card :is(.dataTables_length,.dataTables_filter,.bm-records-toolbar){font-size:12px}
+.bm-ui.bm-voucher-directory .bm-voucher-table-card table{font-size:12px;border-collapse:separate;border-spacing:0}
+.bm-ui.bm-voucher-directory .bm-voucher-table-card table>thead>tr>th{background:var(--voucher-tint)!important;color:#243a52!important;border-bottom:2px solid var(--voucher-accent)!important;vertical-align:middle;font-size:12px;font-weight:700}
+.bm-ui.bm-voucher-directory .bm-voucher-table-card table>tbody>tr>td{font-size:12px;padding:6px 7px;vertical-align:middle;border-color:#d8e1e9}
+.bm-ui.bm-voucher-directory .bm-voucher-table-card table>tbody>tr:nth-child(even)>td{background:color-mix(in srgb,var(--voucher-tint) 19%,#fff)}
+.bm-ui.bm-voucher-directory .bm-voucher-table-card table .blue-actions-cell{width:var(--bm-action-col,72px)!important}
+.bm-ui.bm-voucher-directory .bm-voucher-table-card .dataTables_wrapper .pagination .page-item.active .page-link{background:var(--voucher-accent);border-color:var(--voucher-accent);color:#fff}
+.bm-ui.bm-voucher-directory .bm-voucher-table-card .dataTables_wrapper .pagination .page-link{color:var(--voucher-accent)}
+/* Dedicated V2 plot workspaces must obey the same app sidebar grid as CR/DR.
+   Overrides are scoped to these two pages; global legacy layouts untouched. */
+.main-content.page-content:has(> .bm-plot-workspace){margin-left:250px!important;width:calc(100% - 250px)!important;max-width:calc(100% - 250px)!important;padding:76px 14px 24px!important;box-sizing:border-box;overflow-x:hidden}
+body.sidebar-collapse .main-content.page-content:has(> .bm-plot-workspace){margin-left:4.6rem!important;width:calc(100% - 4.6rem)!important;max-width:calc(100% - 4.6rem)!important}
+.main-content.page-content>.bm-plot-workspace{width:100%;max-width:100%;min-width:0;margin:0 auto;padding:0!important;box-sizing:border-box}
+.main-content.page-content>.bm-plot-workspace>.row{margin-left:-7px;margin-right:-7px}
+.main-content.page-content>.bm-plot-workspace>.row>[class*="col-"]{min-width:0;padding-left:7px;padding-right:7px}
+@media(max-width:991.98px){.main-content.page-content:has(> .bm-plot-workspace),body.sidebar-collapse .main-content.page-content:has(> .bm-plot-workspace){margin-left:0!important;width:100%!important;max-width:100%!important;padding:74px 10px 20px!important}}
