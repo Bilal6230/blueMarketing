@@ -45,7 +45,7 @@ class DailyVoucherApprovalWorkflowTest extends TestCase
             'id'=>1,'name'=>'superadmin','guard_name'=>'web',
         ]);
         DB::table('model_has_roles')->insert([
-            'role_id'=>1,'model_type'=>\\App\\Models\\User::class,'model_id'=>20,
+            'role_id'=>1,'model_type'=>\App\Models\User::class,'model_id'=>20,
         ]);
         Schema::create('customer_ledger', function (Blueprint $t): void { $t->id(); $t->unsignedBigInteger('project_id'); $t->boolean('is_active')->default(false); $t->integer('is_approve')->default(0); });
         Schema::create('project_head_subheads', function (Blueprint $t): void { $t->id(); $t->unsignedBigInteger('project_id'); });
