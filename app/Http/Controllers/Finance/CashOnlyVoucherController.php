@@ -202,7 +202,8 @@ final class CashOnlyVoucherController extends Controller
                 ->where('source_table','customer_ledger')
                 ->where('source_id',$row->customer_ledger_id)
                 ->where('status','pending')->first();
-            abort_unless($approval && $row->edit_snapshot_id
+            abort_unless(Schema::hasTable('daily_voucher_edit_snapshots')
+                && $approval && $row->edit_snapshot_id
                 && DB::table('daily_voucher_edit_snapshots')
                     ->where('id',$row->edit_snapshot_id)
                     ->where('project_id',$projectId)
