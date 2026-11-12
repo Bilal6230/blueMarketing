@@ -51,6 +51,32 @@ final class BankVoucherLegIntegrityTest extends TestCase
         }
     }
 
+    public function test_valid_proposed_bank_revision_keeps_the_original_direction(): void
+    {
+        foreach ([
+            ['BOR', 400.50, 0.0, 400.50],
+            ['BOP', 0.0, 315.25, 315.25],
+        ] as [$series,$in,$out,$allocation]) {
+            $proposed=(object)['amount_in'=>$in,'amount_out'=>$out];
+            BankVoucherLegIntegrity::assert($series,$proposed,$proposed,$allocation);
+            $this->addToAssertionCount(1);
+        }
+    }
+
+    public function test_proposed_revision_with_both_sides_filled_is_rejected(): void
+    {
+        $proposal=(object)['amount_in'=>400.00,'amount_out'=>400.00];
+        $this->expectException(\DomainException::class);
+        BankVoucherLegIntegrity::assert('BOR',$proposal,$proposal,400.00);
+    }
+
+    public function test_proposed_revision_reversing_payment_direction_is_rejected(): void
+    {
+        $proposal=(object)['amount_in'=>315.25,'amount_out'=>0.0];
+        $this->expectException(\DomainException::class);
+        BankVoucherLegIntegrity::assert('BOP',$proposal,$proposal,315.25);
+    }
+
     public function test_wrong_allocation_amount_is_rejected(): void
     {
         $this->expectException(\DomainException::class);
