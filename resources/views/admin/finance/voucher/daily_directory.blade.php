@@ -556,28 +556,14 @@
     const pager=$('#dv-pages')[0];
     const recordSummary=$('#dv-record-summary')[0];
     function renderPagination(){
-        const pages=Math.ceil(filtered/length);
-        const current=Math.floor(start/length)+1;
-        const renderButton=(label,page,disabled=false,active=false)=>{
-            const $button=$('<button>',{type:'button','class':'dv-page-btn'+(active?' active':''),text:label,disabled,'aria-label':label==='Previous'||label==='Next'?label+' page':'Page '+label});
-            if(active)$button.attr('aria-current','page');
-            if(!disabled)$button.on('click',()=>{start=(page-1)*length;load();$('#dv-table-wrap').scrollTop(0);});
-            $('#dv-pages').append($button);
-        };
-        $('#dv-pages').empty();
-        renderButton('Previous',current-1,current<=1);
-        const shown=new Set([1,2,3,4,5,6,pages-1,pages]);
-        for(let offset=-2;offset<=2;offset++)shown.add(current+offset);
-        let previous=0;
-        [...shown].filter(page=>page>=1&&page<=pages).sort((a,b)=>a-b).forEach(page=>{
-            if(previous&&page>previous+1){
-                $('#dv-pages').append($('<span>',{'class':'dv-page-ellipsis',text:'…'}));
+        $.blueVoucherPagination.render({
+            container:'#dv-pages',summary:'#dv-record-summary',
+            total:filtered,allTotal:total,start:start,length:length,
+            buttonClass:'dv-page-btn',
+            onPage:function(nextStart){
+                start=nextStart;load();$('#dv-table-wrap').scrollTop(0);
             }
-            renderButton(String(page),page,false,page===current);previous=page;
         });
-        renderButton('Next',current+1,current>=pages);
-        const first=filtered?start+1:0, last=Math.min(start+length,filtered);
-        $('#dv-record-summary').text('Showing '+first+'–'+last+' of '+filtered.toLocaleString()+' records'+(total!==filtered?' (from '+total.toLocaleString()+' total)':''));
     }
     const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
     const showApprovedBy = @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user()));
