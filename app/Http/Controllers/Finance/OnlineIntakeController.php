@@ -349,6 +349,8 @@ final class OnlineIntakeController extends Controller
                 'e.transaction_type','e.actor_id','e.confirmed_at','u.name as actor_name']);
         return response()->json([
             'transaction'=>$record,'events'=>$events,
+            'linked_vouchers'=>app(\App\Services\Finance\BankSourceLinkedVoucherHistory::class)
+                ->forSource($project,'online',$id),
             'eligibility'=>[
                 'eligible'=>$eligibleForFutureVoucher,
                 'reason'=>$eligibilityReason,
