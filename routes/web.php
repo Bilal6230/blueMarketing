@@ -305,6 +305,9 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
     Route::post('finance/online-transactions', [\App\Http\Controllers\Finance\OnlineIntakeController::class,'store'])
         ->middleware(['permission:create voucher','throttle:20,1'])->name('finance.online.store');
 
+    Route::get('finance/voucher/passed-sources', [\App\Http\Controllers\Finance\PassedBankSourcePickerController::class,'index'])
+        ->middleware('permission:read voucher')->name('finance.voucher.passed_sources');
+
     // Phase 01: receipt-only cheque intake; deliberately separate from cash voucher posting.
     Route::get('finance/cheques', [\App\Http\Controllers\Finance\ChequeIntakeController::class, 'index'])
         ->middleware('permission:read voucher')->name('finance.cheques.index');
