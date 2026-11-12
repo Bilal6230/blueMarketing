@@ -59,6 +59,9 @@ final class SameSourceCashVoucherEdit
                     ->where('project_id',$projectId)->where('voucher_type',$bankSeries)
                     ->where('voucher_id',$sourceId)->lockForUpdate()->first();
                 if (!$identity || !$allocation
+                    || (Schema::hasTable('finance_bank_voucher_allocation_releases')
+                        && DB::table('finance_bank_voucher_allocation_releases')
+                            ->where('allocation_id',$allocation?->id)->exists())
                     || (($allocation->source_method==='online'?2:($allocation->source_method==='cheque'?3:0))
                         !==(int)$source->payment_type)
                     || round((float)$allocation->amount,2)!==
@@ -324,6 +327,9 @@ final class SameSourceCashVoucherEdit
                     ->where('project_id',$projectId)->where('voucher_type',$series)
                     ->where('voucher_id',$id)->lockForUpdate()->first() : null;
             if (!in_array($series,['BOR','BOP'],true) || !$allocation
+                || (Schema::hasTable('finance_bank_voucher_allocation_releases')
+                    && DB::table('finance_bank_voucher_allocation_releases')
+                        ->where('allocation_id',$allocation?->id)->exists())
                 || ($series==='BOR'?'CR':'CP')!==(string)$source->transaction_type
                 || !in_array((int)$source->payment_type,[2,3],true)
                 || (int)$source->is_active!==0 || (int)$leg->is_active!==0
