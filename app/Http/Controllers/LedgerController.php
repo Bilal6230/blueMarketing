@@ -1165,6 +1165,14 @@ class LedgerController extends Controller
                         ->where('project_id', $projectId)
                         ->where('transaction_type', $ledger->type)
                         ->lockForUpdate()->firstOrFail();
+                    // Bank-funded vouchers must be voided through the explicit,
+                    // audited release endpoint; legacy delete would strand funds.
+                    if (\Illuminate\Support\Facades\Schema::hasTable('finance_bank_voucher_allocations')
+                        && DB::table('finance_bank_voucher_allocations')
+                            ->where('project_id',$projectId)
+                            ->where('voucher_id',$source->id)->exists()) {
+                        throw new \DomainException('Bank allocation vouchers require the audited Release/Void action.');
+                    }
                     $trackedApproval = \App\Models\DailyVoucherApproval::query()
                         ->where('project_id', $projectId)
                         ->where('source_table', 'customer_ledger')
@@ -1402,6 +1410,14 @@ class LedgerController extends Controller
                 throw new \DomainException('CASH_VOUCHER_SOURCE_CONFLICT');
             }
 
+            // Reject direct updates of ANY verified bank allocation. Only
+            // the audited same-ID revision or Release/Void flows are allowed.
+            if (\Illuminate\Support\Facades\Schema::hasTable('finance_bank_voucher_allocations')
+                && DB::table('finance_bank_voucher_allocations')
+                    ->where('project_id',$selectedProjectId)
+                    ->where('voucher_id',$source->id)->exists()) {
+                throw new \DomainException('Verified bank allocation cannot be changed using legacy voucher update.');
+            }
             $projectHeadSubhead = ProjectHeadSubhead::availableForPosting()
                 ->where('head_accounting_id', $request->accounts_id)
                 ->where('subhead_accounting_id', $request->subaccounts_id)
