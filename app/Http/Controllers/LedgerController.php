@@ -142,8 +142,8 @@ class LedgerController extends Controller
             'passed_source_id' => ['nullable','integer','min:1'],
             'custom_payment_method_id' => ['nullable', 'integer', 'min:1'],
             'date' => ['required', 'date'],
-            'voucher' => ['required', 'string', 'regex:/^(CR|CP)-\d+$/'],
-            'voucher_number' => ['required', 'string', 'regex:/^(CR|CP)-\d+$/'],
+            'voucher' => ['required', 'string', 'regex:/^(CR|DR|CP|BOR|BOP)-\d+$/'],
+            'voucher_number' => ['required', 'string', 'regex:/^(CR|DR|CP|BOR|BOP)-\d+$/'],
             't_number' => ['required_if:payment_type,2,3', 'nullable', 'string', 'max:255'],
             'bank_id' => ['required_if:payment_type,2,3', 'nullable', 'integer', 'min:1'],
             'passing_date' => ['required_if:payment_type,2,3', 'nullable', 'date_format:Y-m-d'],
@@ -180,7 +180,7 @@ class LedgerController extends Controller
         $voucherPrefix = $voucherParts[0] ?? '';
         $voucherNumberPrefix = $voucherNumberParts[0] ?? '';
 
-        if (!in_array($voucherPrefix, ['CR', 'CP'], true) || $voucherPrefix !== $voucherNumberPrefix) {
+        if (!in_array($voucherPrefix, ['CR', 'DR', 'CP', 'BOR', 'BOP'], true) || $voucherPrefix !== $voucherNumberPrefix) {
             return response()->json([
                 'status' => 'error',
                 'error_key' => 'invalid_voucher_number',
@@ -191,14 +191,28 @@ class LedgerController extends Controller
         // Client-entered voucher labels cannot be trusted as independent
         // financial identities: both controls must agree and be positive.
         if ($voucherValue !== $voucherNumberValue ||
-            !preg_match('/^(CR|CP)-[1-9][0-9]*$/D', $voucherValue)) {
+            !preg_match('/^(CR|DR|CP|BOR|BOP)-[1-9][0-9]*$/D', $voucherValue)) {
             return response()->json([
                 'status' => 'error',
                 'error_key' => 'invalid_voucher_number',
                 'message' => 'Voucher numbers do not match. Please refresh and try again.',
             ], 422);
         }
-        $effectiveVoucherType = $voucherPrefix;
+        // Form identity is authoritative for its own listing/sequence.
+        // Legacy CR/CP source and ledger types remain intact until the
+        // dedicated bank-ledger migration/approval workflow is accepted.
+        $effectiveVoucherType = match ($voucherPrefix) {
+            'DR', 'BOP' => 'CP',
+            'BOR' => 'CR',
+            default => $voucherPrefix,
+        };
+        $requestedSeries = strtoupper(trim((string)$request->input('display_series','')));
+        if (($requestedSeries !== '' && $requestedSeries !== $voucherPrefix)
+            || (in_array($voucherPrefix,['BOR','BOP'],true)
+                && $requestedSeries !== $voucherPrefix)) {
+            return response()->json(['status'=>'error',
+                'message'=>'Voucher number series does not match the opened voucher page.'],422);
+        }
         $voucherNumber = (int) ($voucherNumberParts[1] ?? 0);
         $cleanAmount = (float) str_replace(',', '', (string) $request->input('amount'));
         $paymentType = (int) $request->input('payment_type');
@@ -269,7 +283,7 @@ class LedgerController extends Controller
                 $amount_in,
                 $amount_out,
                 $isCashOutPendingClearance,
-                $linkedVerifiedSource,$passedKind,$passedSourceId
+                $linkedVerifiedSource,$passedKind,$passedSourceId,$voucherPrefix
             ) {
                 // Coordinate manual CR/CP posting with other project-scoped
                 // financial writers, including first-time voucher creation.
@@ -456,7 +470,16 @@ class LedgerController extends Controller
                     ->next((int) $selectedProjectId, $effectiveVoucherType);
                 // Never save a different number than the one displayed in the
                 // active form. Transaction rollback also releases the counter.
-                if ($resolvedVoucherNumber !== $voucherNumber) {
+                $bankSeriesNumber = null;
+                if (in_array($voucherPrefix, ['BOR','BOP'], true)) {
+                    // Reserve bank-specific voucher number independently of
+                    // the underlying legacy CR/CP source identity.
+                    $bankSeriesNumber = app(\App\Services\Finance\ProjectVoucherAllocator::class)
+                        ->next((int)$selectedProjectId, $voucherPrefix);
+                    if ($bankSeriesNumber !== $voucherNumber) {
+                        throw new \DomainException('Bank voucher number changed. Refresh the form before saving.');
+                    }
+                } elseif ($resolvedVoucherNumber !== $voucherNumber) {
                     throw new \DomainException('Voucher number changed since this form was opened. Refresh and retry to get the current database number.');
                 }
 
@@ -509,7 +532,8 @@ class LedgerController extends Controller
                 }
                 $displayNumber = app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->assign(
                     (int) $selectedProjectId, 'customer_ledger', (int) $customerLedger->id,
-                    $displaySeries, \Carbon\Carbon::parse($request->input('date'))->toDateString()
+                    $displaySeries, \Carbon\Carbon::parse($request->input('date'))->toDateString(),
+                    $bankSeriesNumber
                 );
 
                 if ($t_number != null) {
