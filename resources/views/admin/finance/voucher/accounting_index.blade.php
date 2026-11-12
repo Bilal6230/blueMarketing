@@ -1,7 +1,7 @@
 @extends('admin.layouts.master')
 @section('content')
 
-    <div class="content-wrapper">
+    <div class="content-wrapper bm-ui">
         <!-- Content Header (Page header) -->
         <div class="content-header">
             <div class="container-fluid">
@@ -28,7 +28,7 @@
             <div class="container-fluid">
                 <div class="row">
                     <div class="col-12">
-                        <div class="card">
+                        <x-finance.voucher-table-card>
                             @can('create lead')
                                 <div class="card-header">
                                     <div>
@@ -286,7 +286,7 @@
                                 </table>
                             </div>
                             <!-- /.card-body -->
-                        </div>
+                        </x-finance.voucher-table-card>
                         <!-- /.card -->
 
 
