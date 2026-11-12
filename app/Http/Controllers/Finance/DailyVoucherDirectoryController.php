@@ -118,6 +118,14 @@ final class DailyVoucherDirectoryController extends Controller
                               ->whereColumn('approval.source_id','source.id')
                               ->whereIn('approval.status',['pending','rejected']);
                         });
+                    if(Schema::hasTable('finance_bank_voucher_allocation_releases')){
+                        $visible->orWhereExists(function($released)use($projectId){
+                            $released->selectRaw('1')
+                                ->from('finance_bank_voucher_allocation_releases as release')
+                                ->where('release.project_id',$projectId)
+                                ->whereColumn('release.voucher_id','source.id');
+                        });
+                    }
                 });
             }else $query->where('source.is_active',1);
             if (!empty($filters['from'])) $query->whereDate('source.date', '>=', $filters['from']);
@@ -206,6 +214,13 @@ final class DailyVoucherDirectoryController extends Controller
                     ->orderByDesc('id')->get(['id','customer_ledger_id','original_name'])
                     ->unique('customer_ledger_id')->keyBy('customer_ledger_id');
             }
+            $bankReleases=collect();
+            if(Schema::hasTable('finance_bank_voucher_allocation_releases') && $sources->isNotEmpty()){
+                $bankReleases=DB::table('finance_bank_voucher_allocation_releases')
+                    ->where('project_id',$projectId)
+                    ->whereIn('voucher_id',$sources->pluck('id'))->get()
+                    ->keyBy('voucher_id');
+            }
             $pendingEdits=collect();
             if (Schema::hasTable('daily_voucher_edit_snapshots') && $sources->isNotEmpty()) {
                 $pendingEdits=DB::table('daily_voucher_edit_snapshots')
@@ -214,6 +229,7 @@ final class DailyVoucherDirectoryController extends Controller
                     ->orderByDesc('id')->get()->unique('source_id')->keyBy('source_id');
             }
             foreach ($sources as $source) {
+                $bankRelease=$bankReleases->get($source->id);
                 $series = $identities->series($projectId, 'customer_ledger', (int) $source->id);
                 $display = $identities->lookup($projectId, 'customer_ledger', (int) $source->id)
                     ?: trim((string) $source->transaction_type.'-'.(string) ($source->type_id ?? $source->id));
@@ -253,7 +269,9 @@ final class DailyVoucherDirectoryController extends Controller
                     'amount' => is_array($proposed)
                         ? max((float)($proposed['amount_in']??0),(float)($proposed['amount_out']??0))
                         : (float) max((float) ($source->amount_in ?? 0), (float) ($source->amount_out ?? 0)),
-                    'status' => ucfirst((string)($sourceApprovals[$source->id]['status']??(!empty($source->is_active)?'posted':'inactive'))),
+                    'status' => $bankRelease
+                        ? ($bankRelease->action==='posted_void_release'?'Voided':'Released')
+                        : ucfirst((string)($sourceApprovals[$source->id]['status']??(!empty($source->is_active)?'posted':'inactive'))),
                     'approval_approver' => $sourceApprovals[$source->id]['approver']??null,
                     'approved_by' => \App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())
                         ? ($sourceApprovals[$source->id]['approved_by'] ?? null) : null,
@@ -274,12 +292,28 @@ final class DailyVoucherDirectoryController extends Controller
                         'Bank passing date' => (int) ($source->payment_type ?? 0) === 2 ? $source->passing_date : null,
                         'Bank status' => (int) ($source->payment_type ?? 0) === 2 ? $source->passing_status : null,
                         'Rejection Reason' => $sourceApprovals[$source->id]['reason'] ?? null,
+                        'Allocation release' => $bankRelease
+                            ? 'Audited '.(string)$bankRelease->action.' · '.(string)$bankRelease->reason : null,
                         'Last Edit Decision' => ($sourceApprovals[$source->id]['last_edit_status'] ?? '') === 'rejected' ? 'Rejected' : null,
                         'Edit Rejection Reason' => $sourceApprovals[$source->id]['last_edit_reason'] ?? null,
                         'Pending Edit' => $pending ? 'Proposed fields shown; original ledger posting unchanged until decision' : null,
                         'Original Amount' => $pending ? max((float)$source->amount_in,(float)$source->amount_out) : null,
                     ], fn ($value) => $value !== null && $value !== ''),
-                    'revise_url' => ($sourceApprovals[$source->id]['status'] ?? '') === 'rejected'
+                    'release_url' => !$bankRelease
+                        && in_array($displayType,['BOR','BOP'],true)
+                        && in_array((int)$source->payment_type,[2,3],true)
+                        && (
+                            (($sourceApprovals[$source->id]['status']??'')==='rejected'
+                                && (int)$source->is_active===0)
+                            || (((int)$source->is_active===1)
+                                && in_array(($sourceApprovals[$source->id]['status']??'posted'),
+                                    ['posted','approved'],true))
+                        )
+                        && auth()->user()?->can('delete voucher')
+                        && \App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())
+                        ? route('finance.daily-vouchers.bank-allocation.release',
+                            ['customerLedger'=>$source->id]) : null,
+                    'revise_url' => !$bankRelease && ($sourceApprovals[$source->id]['status'] ?? '') === 'rejected'
                         && in_array((int)$source->payment_type,[1,2,3],true)
                         && in_array((string)$source->transaction_type,['CR','CP','CCR','CDR'],true)
                         && auth()->user()?->can('update voucher')
