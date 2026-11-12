@@ -74,14 +74,20 @@ final class V2BankTransferWriter
                 if (!$cheque || !$custody || !hash_equals((string) $custody->source_sha256, V2OriginalCustomerWorkflow::fingerprint($cheque))) {
                     throw new \DomainException('V2_BANK_TRANSFER_CHEQUE_NOT_VERIFIED');
                 }
+                // Do not post a second cash movement for a previously posted
+                // or allocated cheque; direct withdrawal must be outgoing CP.
+                $hasLedger = DB::table('ledgers')
+                    ->where('customer_ledger_id', $chequeSourceId)->exists();
+                $hasAllocation = Schema::hasTable('finance_bank_voucher_allocations')
+                    && DB::table('finance_bank_voucher_allocations')
+                        ->where('voucher_id', $chequeSourceId)->exists();
+                BankTransferChequeSourceIntegrity::assert($cheque, $hasLedger, $hasAllocation);
                 $retryBatchId = DB::table('finance_posting_batches')->where('project_id', $projectId)->where('request_key', $key)->value('id');
                 if (DB::table('finance_bank_transfer_sources')->where('linked_customer_ledger_id', $chequeSourceId)
                     ->when($retryBatchId, fn ($q) => $q->where('posting_batch_id', '!=', $retryBatchId))->exists()) {
                     throw new \DomainException('V2_BANK_TRANSFER_CHEQUE_ALREADY_LINKED');
                 }
-                $in = $this->cents($cheque->amount_in); $out = $this->cents($cheque->amount_out);
-                if (($in > 0) === ($out > 0)) { throw new \DomainException('V2_BANK_TRANSFER_CHEQUE_AMOUNT_INVALID'); }
-                $chequeCents = max($in, $out);
+                $chequeCents = $this->cents($cheque->amount_out);
                 if ($chequeCents !== $total || count($lines) !== 1) {
                     throw new \DomainException('V2_BANK_TRANSFER_CHEQUE_AMOUNT_MISMATCH');
                 }
