@@ -155,6 +155,11 @@ final class SameSourceCashVoucherEdit
             if (mb_strlen($reason)<3) throw new \DomainException('Reason for Edit/Revision is required.');
             $workflow=app(DailyVoucherApprovalWorkflow::class);
             $policy=$workflow->policy($projectId,$bankSeries ?? (string)$source->transaction_type);
+            if ($isBank && !$policy) {
+                // A rejected financial instrument must never be silently
+                // reactivated by switching its approval policy OFF.
+                throw new \DomainException('Enable the independent BOR/BOP approval policy and assign an authorized approver before resubmitting a rejected bank voucher.');
+            }
             if ($policy) {
                 $approver=\App\Models\User::find($policy->approver_user_id);
                 $user=\App\Models\User::find($userId);
