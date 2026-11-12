@@ -35,7 +35,7 @@ final class ProjectVoucherDisplayIdentity
             ->where('source_kind', $sourceKind)->where('source_id', $sourceId)->value('series') ?: null;
     }
 
-    public function assign(int $projectId, string $sourceKind, int $sourceId, string $series, string $date): ?string
+    public function assign(int $projectId, string $sourceKind, int $sourceId, string $series, string $date, ?int $bankSequence = null): ?string
     {
         if (DB::transactionLevel() < 1) throw new \DomainException('VOUCHER_DISPLAY_REQUIRES_TRANSACTION');
         if (!in_array($sourceKind, ['customer_ledger', 'journal_voucher', 'commission_voucher', 'booking_voucher', 'ledger'], true)
@@ -63,6 +63,19 @@ final class ProjectVoucherDisplayIdentity
                 throw new \DomainException('VOUCHER_SOURCE_IDENTITY_MISMATCH');
             }
             $display = ($source->transaction_type === 'CP' ? 'DR' : $source->transaction_type).'-'.$source->type_id;
+        } elseif ($sourceKind === 'customer_ledger' && in_array($series, ['BOR','BOP'], true)) {
+            // This is a real, retained BOR/BOP display-series identity, separate
+            // from the legacy CR/CP accounting type and number. The caller has
+            // already reserved the bank-series number inside its project lock.
+            if ($bankSequence === null || $bankSequence < 1) {
+                throw new \DomainException('BANK_VOUCHER_SEQUENCE_REQUIRED');
+            }
+            $display = $series . '-' . $bankSequence;
+            $alreadyUsed = DB::table('project_voucher_display_numbers')
+                ->where('project_id', $projectId)->where('source_kind', 'customer_ledger')
+                ->where('series', $series)->where('display_number', $display)
+                ->lockForUpdate()->exists();
+            if ($alreadyUsed) throw new \DomainException('BANK_VOUCHER_NUMBER_ALREADY_RESERVED');
         } else {
             $sequence = app(ProjectVoucherFiscalSequence::class)->next($projectId, $series, $date);
             $display = app(ProjectVoucherDisplay::class)->format($projectId, $series, $sequence, $date);
