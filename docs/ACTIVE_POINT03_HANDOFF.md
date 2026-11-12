@@ -295,3 +295,16 @@ Before starting BOR/BOP bank settlement, completed previously documented CCR/CDR
 - Pending attachment review and direct download now explicitly require the same-source edit snapshot table before touching it. This prevents SQL errors on installations that haven't applied the edit-snapshot migration. Files can never be reviewed as Pending without a matching active edit snapshot, project, source and authorized approver.
 - Latest tested GitHub CI run `43180312310` (before the two additional snapshot-presence guards): Laravel boot/route smoke PASS, JS posting form safety PASS, PHP changed-financial-files lint PASS. Overall FAIL in existing Database V2 isolated schema lint/import planner regression and disposable MySQL 8.4 V2-only schema migration gate. The CCR/CDR attachment migration/browser behavior was NOT end-to-end tested against local MySQL; owner migration + browser pass mandatory.
 - Owner browser gate should check current attachment on CCR-1/CDR-1 (if present), a fresh edit with uploaded PDF/image, pending approval versus direct save, approve/reject (including approver-only preview and prevention of rejected downloads), same original voucher number and single ledger leg; apply migration to backed-up local test database only.
+
+
+## 2026-11-12 — CCR/CDR owner browser PASS; BOR/BOP naming and method presentation batch
+
+Owner confirms last CCR/CDR Edit/Revise attachment batch is working fine. Advance to BOR/BOP presentation with one browser gate.
+
+Owner renames Bank Credit -> Bank Receipt Voucher (BOR), and Bank Debit -> Bank Payment Voucher (BOP). Existing daily_directory page, New Voucher chooser/modal, sidebar-menu-v2, and existing VoucherController embedded form titles now use the exact requested names. Existing type keys, routes, source data and numbers remain untouched.
+
+BOR/BOP legacy shared form now says Add New Bank Voucher, displays the selected fixed payment type as Online or Cheque, and excludes Cash in its method choices. Parent modal already switches Online/Cheque on existing fixed-method routes. Backend continues to require bank-series payment types 2 or 3 via series validation and correct receipt/payment direction.
+
+Scope boundary: no bank settlement / approval policy is enabled by this naming/UI batch. Existing CR/CP bank clearing and V2 isolated bank posting have distinct audited ownership rules and could duplicate financial rows if naively joined. BOR/BOP approval remains intentionally unsupported until the relevant guarded writer is implemented. No financial migrations, ledger mutation, hard delete or plain JS DOM/AJAX introduced.
+
+Browser gate: sidebar, BOR/BOP heading, modal title, Online/Cheque switch and correct bank fields, no Cash, verify legacy source/ledger identity in an isolated test database and no duplicate writes. Owner browser PASS needed before next bank settlement/approval batch.
