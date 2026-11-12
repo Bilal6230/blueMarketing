@@ -1832,6 +1832,8 @@
                     shakeVoucherField($input);
                 });
             }
+            // Shared between the validation setup callback and the asynchronous save tab handler.
+            window.blueVoucherErrorFeedback={markFields:markVoucherServerErrors,shake:shakeVoucherField,tone:playVoucherErrorTone};
             // Cover existing voucher error/warning SweetAlert dialogs as well as source-limit toasts.
             if(window.Swal && !window.Swal.__blueVoucherErrorSound){
                 const originalFire=Swal.fire.bind(Swal);
@@ -3487,7 +3489,6 @@
             $(document).on('click', '#submitForm', function(e) {
                 e.preventDefault();
                 if(voucherSaveInFlight)return;
-                voucherSaveInFlight=true;
                 $('#voucher-save-error').addClass('d-none').text('');
 
                 const tabNumber = parseInt($('#submit-button').attr('tab-number'), 10) || currentTab;
@@ -3545,6 +3546,7 @@
                         return;
                     }
                 }
+                voucherSaveInFlight=true;
                 const formData = new FormData($form[0]);
                 formData.append('_token', $('meta[name="csrf-token"]').attr('content'));
                 $.ajaxSetup({
@@ -3608,14 +3610,14 @@
                         // leaving users looking at an apparently stuck Saving state.
                         $('#voucher-save-error').removeClass('d-none').text(msg);
                         try {
-                            markVoucherServerErrors(result,$form);
+                            window.blueVoucherErrorFeedback?.markFields(result,$form);
                             if(result.error_key==='bank_source_conflict' &&
                                 /bank/i.test(msg)){
                                 const $bank=$('#bank_id');
                                 $bank.addClass('is-invalid');
-                                shakeVoucherField($bank);
+                                window.blueVoucherErrorFeedback?.shake($bank);
                             }
-                            playVoucherErrorTone();
+                            window.blueVoucherErrorFeedback?.tone();
                         }catch(error){console.warn('Voucher error decoration failed',error);}
                     }
                 });
