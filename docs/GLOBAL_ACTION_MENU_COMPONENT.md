@@ -1,65 +1,77 @@
-# BlueMarketing — Global Action Menu (2026-11-12)
+# BlueMarketing Global UI — Design System and Floating Actions
+Updated: 2026-11-12 · branch `upgrade/laravel-framework`
 
-## Purpose
+## Principle: call/reuse, never copy visual definitions
 
-One compact animated + button per table row, instead of multiple inline actions that break table widths. On click the + morphs into − with a slower 320ms CSS transition; a floating menu opens with 230–320ms fade/scale motion. All menus are keyboard-accessible and close on Escape, outside press, scroll, resize, and AJAX table replacement.
+The admin master layout globally loads:
+- `public/css/blue-design-system.css`: **single source of truth** for typography, sizes, primary colors, card borders, filter control heights, table cells, spacing and action dimensions (CSS custom properties, `:root`).
+- `public/css/blue-action-menu.css`: floating speed-dial presentation, reusing shared token values.
+- `public/js/blue-action-menu.js`: first-party jQuery engine; original financial action controls, event handlers and authorizations remain unchanged.
+- `public/css/blue-table-skeleton.css` and `public/js/blue-table-skeleton.js`: existing reusable skeleton.
 
-## Shared assets
+**Never duplicate global component styles in new Blade views.** Add the reusable classes and override design tokens only for a documented variant. Page-local styles are reserved for real page-specific layout/behavior, not common sizes/colors.
 
-- `public/js/blue-action-menu.js` (first-party jQuery; no extra library)
-- `public/css/blue-action-menu.css` (responsive fixed-position portal, prefers-reduced-motion)
-- Globally included in `resources/views/admin/layouts/master.blade.php`, before `@stack('script')`.
+## UI tokens
 
-## Reuse — JavaScript-built table rows
+Modify `public/css/blue-design-system.css` once for shared changes:
 
-Create the original row controls as before, including their classes/data attributes and existing click handlers; DO NOT change their save/reject/void handlers or authority checks:
+| Token | Purpose |
+|---|---|
+| `--bm-font-xs/sm/md/lg` | Badge, label, body, heading sizes |
+| `--bm-success`, `--bm-danger`, `--bm-info` | Color system |
+| `--bm-panel-tint`, `--bm-border`, `--bm-shadow` | Cards and table accents |
+| `--bm-radius`, `--bm-panel-padding` | Panel corners and spacing |
+| `--bm-control-height`, `--bm-filter-gap` | Filter inputs and gaps |
+| `--bm-table-cell-padding` | Table row density |
+| `--bm-action-toggle`, `--bm-action-col`, `--bm-action-gap` | Floating actions dimensions |
 
-```javascript
-const $cell=$('<td>').addClass('blue-actions-cell');
-$('<button type="button">').addClass('btn btn-sm btn-outline-primary original-edit')
-  .text('Edit').appendTo($cell);
-$('<button type="button">').addClass('btn btn-sm btn-outline-danger original-delete')
-  .text('Delete').appendTo($cell);
-$cell.appendTo($row);
+**Reusable classes** on new finance pages: `bm-ui` on page root; `bm-page-heading` on heading; `bm-card` on cards; `bm-filter` on filters; `bm-table` on the data table; `bm-records-toolbar` for Search/Show controls; `bm-panel-heading` for the common heading variant.
+
+Example:
+```html
+<div class="content-wrapper bm-ui">
+  <div class="bm-page-heading"><h4>Records</h4></div>
+  <section class="bm-card bm-filter">...</section>
+  <section class="bm-card">
+    <table class="table bm-table">...</table>
+  </section>
+</div>
 ```
 
-After the new rows have been appended to a table, run:
+## Animated global floating action component
 
+`+` rotates into an animated **red ×**. Each permitted action appears separately as a floating, colored, rounded pill with staggered fade/slide and individual shadow. There is **no dropdown box**. Individual action colors: gray Details, slate History, violet Print, blue Edit, amber Revise, green Approve/Confirm, red Reject/Release/Void/Delete. Close restores red × to green + with reverse rotation. Repositions vertically and left/right depending on viewport. Outside click, Escape, scroll/resize and AJAX refresh close it. Reduced-motion users get instant changes.
+
+Markup stays deliberately simple, using the original buttons/actions:
+```html
+<td class="blue-actions-cell">
+  <button type="button" class="btn btn-outline-primary existing-edit">Edit</button>
+  <button type="button" class="btn btn-outline-danger existing-delete">Delete</button>
+</td>
+```
+
+Initialize **after the row is inserted**:
+```javascript
+$.blueActionMenu.enhance($('#records-body > tr > td.blue-actions-cell'));
+```
+
+On AJAX refresh, **close then re-enhance**:
 ```javascript
 $.blueActionMenu.close();
-$.blueActionMenu.enhance($('#your-tbody > tr > td.blue-actions-cell'));
+$('#records-body').html(newRows);
+$.blueActionMenu.enhance($('#records-body > tr > td.blue-actions-cell'));
 ```
 
-The helper wraps/moves original buttons into a hidden source area within the original `td`, preserving their classes, click listeners and delegated `tbody` handlers. Its floating menu uses safe text labels, no HTML rendering from row data. Clicking a menu item triggers the ORIGINAL action element; it doesn't invent a new endpoint or bypass authorization. If source control is disabled, corresponding menu entry is disabled too. For custom menu labels set `data-blue-action-label="Short label"` on the source button/link.
+Use `data-blue-action-label="Print"` and optional `data-blue-action-type="print"` on existing row buttons for explicit label and color. Original actions are **moved into an invisible container, not copied**, so existing delegated jQuery handlers and permission-gated markup continue to work. The floating buttons trigger the original click. The backend still authorizes and validates every action.
 
-## Reuse — Server-rendered Blade rows
+## Implementation scope and current gate
 
-Render buttons/links directly inside `<td class="blue-actions-cell">` and after page ready:
+The common Action Menu + design tokens are adopted in:
+1. CR/DR/BOR/BOP/CCR/CDR daily voucher directories.
+2. Cheque Management.
+3. Online Transaction Management.
+4. Voucher Approval Dashboard (queue and history).
 
-```javascript
-$(function(){
-    $.blueActionMenu.enhance($('.my-table td.blue-actions-cell'));
-});
-```
+The foundation is loaded **globally**, so future views use the component classes with no new stylesheet or JavaScript. Other legacy pages are **not** silently auto-restyled: adopting their local layouts must be reviewed individually to avoid breaking unrelated forms or financial flows.
 
-The action cell should not contain a nested action-button wrapper. Content which is not an action (e.g. hidden detail template) remains in the `td`. Do not put plain-text-only controls in the action cell if a compact appearance is desired.
-
-## Rollout completed in code
-
-1. CR/DR/BOR/BOP/CCR/CDR daily voucher directory (shared dynamic listing).
-2. Cheque Management register, original clearing/finalization/history actions.
-3. Online Transaction Management register, original confirm/history actions.
-4. Voucher Approval Dashboard pending and recent history actions.
-
-No third-party table plugin migration. Financial route methods, CSRF, project isolation, allowed action conditions, modal workflow, and V2 ledger guards remain unchanged.
-
-## Browser acceptance gate (owner PASS required)
-
-- Plus button visible, compact, single width; open + becomes −, and panel smooth with no clipping even on first/last row.
-- Every previous action opens its original modal/handler: voucher Details, Revise/Edit, Release/Void, Print; Cheque Send for Clearing/Finalize/History; Online Confirm/History; Approvals Approve/Reject/History.
-- Disabled/non-authorized actions never become available. Destructive actions remain visually red and still require their existing confirmation/reason.
-- Escape/outside click/scroll closes menu, keyboard Tab focuses menu items; small viewport does not render off-screen.
-- Pagination/search/filter AJAX rebuilds buttons; no duplicate menus, no stale actions, no horizontal table stretching.
-- Existing financial transactions and backend permissions remain unchanged. No migration or database backfill required for this UI batch.
-
-**Status:** Code committed, owner browser test pending. Do not start next milestone without explicit owner PASS.
+Browser gate **OPEN** until owner confirms: button transforms +↔red × and animates both directions, colors/individual floating pills, top/bottom row clipping, outside/Escape close, search/pagination refresh, proper authorized actions, prints, modals, Cheque/Online actions, approval actions, small screen and typography/card/filter consistency. No ledger/approval/DB mutation was introduced by this UI-only batch. GitHub static JavaScript syntax check PASS; PHP/Blade and browser runtime tests not run by assistant.
