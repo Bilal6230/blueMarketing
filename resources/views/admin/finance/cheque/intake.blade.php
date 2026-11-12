@@ -76,9 +76,9 @@
     #cheque-create-modal .modal-body { max-height: 75vh; overflow-y: auto; }
     #cheque-toast { position: fixed; top: 90px; right: 20px; z-index: 2100; min-width: 260px; max-width: 400px; display: none; }
 </style>
-<div class="content-wrapper cheque-register-page">
+<div class="content-wrapper bm-ui cheque-register-page">
     <div class="container-fluid px-2 pt-2">
-        <div class="cheque-heading d-flex align-items-center justify-content-between flex-wrap">
+        <div class="cheque-heading bm-page-heading d-flex align-items-center justify-content-between flex-wrap">
             <div><h4 class="mb-0">Cheque Management</h4><small class="text-muted">Selected project records · Receiving Register</small></div>
             <div class="d-flex align-items-center">
 
@@ -87,7 +87,7 @@
                 @endcan
             </div>
         </div>
-        <div class="cheque-filter-panel mt-2">
+        <div class="cheque-filter-panel bm-card bm-filter mt-2">
             <form id="cheque-filter-form" autocomplete="off">
                 <div class="row cheque-filter-row">
                     <div class="col-lg-2 col-md-4 mb-2"><label class="cheque-filter-label" for="cheque-from">From</label><input type="date" id="cheque-from" name="from" class="form-control form-control-sm"></div>
@@ -100,13 +100,13 @@
                 </div>
             </form>
         </div>
-        <div class="cheque-table-panel">
+        <div class="cheque-table-panel bm-card">
             <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap">
                 <div class="d-flex align-items-center"><strong class="mr-2">Show</strong><select id="cheque-per-page" class="js-tomselect form-select form-select-sm mr-2" style="width:80px"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option></select><span>entries</span></div>
                 <div><label class="mb-0" for="cheque-quick-search">Search: </label><input id="cheque-quick-search" class="form-control form-control-sm d-inline-block ml-1" style="width:190px" placeholder="Search cheques"></div>
             </div>
             <div class="table-responsive">
-                <table class="table table-sm table-bordered table-hover" id="cheque-register-table">
+                <table class="table bm-table table-sm table-bordered table-hover" id="cheque-register-table">
                     <thead>
                         <tr><th>#</th><th>Received Date</th><th>Cheque #</th><th>Direction</th><th>Bank</th><th>Received From / Issued To</th><th>Purpose</th><th>Amount</th><th>Status</th><th>Slip</th><th>Actions</th></tr>
                         <tr class="cheque-column-filters">
