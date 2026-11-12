@@ -192,7 +192,9 @@ final class CashOnlyVoucherController extends Controller
             ->where('file.project_id',$projectId)
             ->where('source.project_id',$projectId)
             ->whereIn('file.status',['applied','pending'])
-            ->whereIn('source.transaction_type',['CCR','CDR'])
+            // Shared read-only download for all six voucher forms. The attachment
+            // ID remains project- and source-scoped; no direct filesystem URL.
+            ->whereIn('source.transaction_type',['CR','CP','CCR','CDR'])
             ->first(['file.path','file.disk','file.original_name','file.status',
                 'file.customer_ledger_id','file.edit_snapshot_id']);
         abort_unless($row && $row->disk==='local' && Storage::disk('local')->exists($row->path),404);
