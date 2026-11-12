@@ -613,6 +613,17 @@ class LedgerController extends Controller
             });
 
             return response()->json($responsePayload, 200);
+        } catch (\Illuminate\Database\QueryException $e) {
+            if($linkedVerifiedSource && in_array((string)$e->getCode(),['23000','23505'],true)){
+                return response()->json(['status'=>'error','error_key'=>'bank_source_already_used',
+                    'message'=>'This verified bank source has already been linked to a voucher. Refresh the picker.'],409);
+            }
+            Log::error('bank_voucher_database_failure', ['error'=>$e->getMessage(),
+                'project_id'=>$selectedProjectId]);
+            return response()->json(['status'=>'error','message'=>'Unable to save voucher. Please retry after checking the source.'],500);
+        } catch (\DomainException $e) {
+            return response()->json(['status'=>'error','error_key'=>'bank_source_conflict',
+                'message'=>$e->getMessage()],409);
         } catch (\RuntimeException $e) {
             return response()->json([
                 'status' => 'error',
