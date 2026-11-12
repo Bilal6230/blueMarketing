@@ -33,7 +33,7 @@ Voucher #{{ $source->type_id }} will keep the same database ID and voucher numbe
 @endif
 {{ $usesApproval ? 'Approval ON: changes stay pending as an audit snapshot; current posted accounting stays unchanged until approved.' : 'Approval OFF: same voucher and ledger will be updated directly with an audit snapshot.' }}
 </div>
-<form id="cash-revision-form" action="{{ route('finance.daily-vouchers.revise.store',$source->id) }}" method="post">
+<form id="cash-revision-form" action="{{ route('finance.daily-vouchers.revise.store',$source->id) }}" method="post" enctype="multipart/form-data">
 @csrf
 <div class="fields">
 <div class="form-group"><label>Voucher No</label><input class="form-control" value="{{ ($source->transaction_type === 'CP' ? 'DR' : $source->transaction_type).'-'.$source->type_id }}" readonly></div>
@@ -86,6 +86,16 @@ Voucher #{{ $source->type_id }} will keep the same database ID and voucher numbe
 <div class="alert alert-info">Revised bank/cheque voucher will start with Pending clearance status. Existing bank decisions are never copied. Source with settled/bounced/returned history cannot be revised.</div>
 @endif
 <div class="form-group"><label for="cr-revise-description">Purpose / Description *</label><textarea id="cr-revise-description" name="description" class="form-control" rows="3" required>{{ $source->description }}</textarea></div>
+@if(in_array((string)$source->transaction_type,['CCR','CDR'],true))
+<div class="form-group">
+ <label for="cr-revise-attachment">Attachment / File Uploader (optional)</label>
+ <input type="file" name="attachment" id="cr-revise-attachment" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.webp">
+ <small class="text-muted">PDF/image up to 5 MB. If approval is enabled, uploaded file becomes visible only after approval.</small>
+ @if($currentAttachment)
+ <div class="mt-1">Current attachment: <a target="_blank" rel="noopener noreferrer" href="{{ route('finance.voucher.cash-only.attachment',['attachment'=>$currentAttachment->id]) }}">{{ $currentAttachment->original_name }}</a></div>
+ @endif
+</div>
+@endif
 <div class="form-group"><label class="reason-label" for="cr-revise-reason">{{ $editStatus === 'rejected' ? 'Reason for revision *' : 'Reason for Edit *' }}</label><textarea id="cr-revise-reason" name="revision_reason" class="form-control" minlength="3" maxlength="500" rows="2" required></textarea></div>
 <div class="text-danger mb-2" id="cash-revision-error" role="alert"></div>
 <div class="text-right"><button type="submit" class="btn btn-primary" id="cash-revision-save">{{ $usesApproval ? ($editStatus === 'rejected' ? 'Revise & Resubmit for Approval' : 'Submit Correction for Approval') : 'Save Correction' }}</button></div>
@@ -123,7 +133,8 @@ $(function(){
   if($button.prop('disabled'))return;
   if(!$form[0].checkValidity()){$form[0].reportValidity();return;}
   $button.prop('disabled',true);$('#cash-revision-error').text('');
-  $.ajax({url:$form.attr('action'),type:'POST',data:$form.serialize(),dataType:'json'})
+  $.ajax({url:$form.attr('action'),type:'POST',
+   data:new FormData($form[0]),processData:false,contentType:false,dataType:'json'})
   .done(function(result){
    if(window.parent!==window)window.parent.postMessage({type:'daily-voucher-edit-saved',message:result.message},window.location.origin);
    else window.location.assign(@json(route('finance.daily-vouchers.index',['type'=>$source->transaction_type])));
