@@ -35,13 +35,17 @@ final class BankTransferGlobalVoucherUiTest extends TestCase
             'id="btLength"', 'id="btQuickSearch"', 'id="btRecordSummary"',
             'id="btPagination"', 'id="transferRows"',
             'id="bankTransferCreateModal"', 'id="bankTransferViewModal"',
-            'class="bt-page-btn"', 'bt-plus bt-view', 'bt-filter-card',
+            'class="bt-page-btn"', 'blue-actions-cell', '$.blueActionMenu.enhance', 'bt-filter-card',
             'bt-table-card', 'bt-debit', 'bt-credit',
         ] as $identifier) {
             $this->assertStringContainsString($identifier, $view);
         }
         $this->assertStringNotContainsString('id="historyRows"', $view);
         $this->assertStringContainsString("@section('modal')", $view);
+        $this->assertStringContainsString('class="container-fluid bm-ui bt-page', $view);
+        $this->assertStringContainsString('class="card bm-card bm-filter bt-filter-card"', $view);
+        $this->assertStringContainsString('class="table bm-table', $view);
+        $this->assertStringNotContainsString('bt-plus bt-view', $view);
         $this->assertStringNotContainsString('$.fn.DataTable', $view);
         $this->assertStringNotContainsString('dom:\'Bfrtip\'', $view);
     }
