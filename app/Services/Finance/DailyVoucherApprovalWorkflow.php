@@ -305,6 +305,9 @@ final class DailyVoucherApprovalWorkflow
                     ->where('account.project_id',$approval->project_id)
                     ->lockForUpdate()->get(['leg.id','leg.type','leg.amount_in','leg.amount_out','leg.is_active']);
                 if (!$identity || !$allocation || $legs->count()!==1
+                    || !Schema::hasTable('finance_bank_voucher_allocation_releases')
+                    || DB::table('finance_bank_voucher_allocation_releases')
+                        ->where('allocation_id',$allocation?->id)->exists()
                     || $legs->first()->type!==$sourceType
                     || ((int)$source->payment_type===2 && $allocation->source_method!=='online')
                     || ((int)$source->payment_type===3 && $allocation->source_method!=='cheque')
