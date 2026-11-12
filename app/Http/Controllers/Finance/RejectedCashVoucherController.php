@@ -39,6 +39,12 @@ final class RejectedCashVoucherController extends Controller
                 && (int)$actor->project_id===$project),403);
         abort_unless(VoucherApproverAccess::isSuperAdmin($actor)
             || (int)$actor->project_id===$project,403);
+        $voucherDisplay=app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)
+            ->lookup($project,'customer_ledger',(int)$source->id)
+            ?: (($source->transaction_type==='CP'?'DR':$source->transaction_type).'-'.$source->type_id);
+        $isBankRevision=in_array((string)($approval?->voucher_type??''),['BOR','BOP'],true);
+        $revisionPolicyType=$isBankRevision ? (string)$approval->voucher_type
+            : (string)$source->transaction_type;
         $leg=Ledger::query()->withoutGlobalScopes()
             ->where('customer_ledger_id',$source->id)
             ->where('type',$source->transaction_type)
@@ -59,7 +65,8 @@ final class RejectedCashVoucherController extends Controller
                 ->first(['id','original_name']);
         }
         return view('admin.finance.voucher.rejected_cash_revision',
-            compact('source','approval','leg','accounts','accountTypes','currentAttachment'));
+            compact('source','approval','leg','accounts','accountTypes',
+                'currentAttachment','voucherDisplay','isBankRevision','revisionPolicyType'));
     }
     public function store(int $customerLedger, Request $request)
     {
