@@ -198,6 +198,15 @@ $(function () {
                         + '<a class="dropdown-item" target="_blank" rel="noopener" href="' + escapeHtml(printUrl(id)) + '"><i class="fas fa-print mr-2"></i>Print</a></div></div>';
                 }}
             ],order:[[1,'desc']],pageLength:10,responsive:false,autoWidth:false,
+            dom:'Bfrtip',
+            buttons: $.fn.dataTable.Buttons ? [
+                {extend:'copyHtml5',text:'Copy',className:'btn btn-sm btn-outline-secondary'},
+                {extend:'csvHtml5',text:'CSV',className:'btn btn-sm btn-outline-secondary'},
+                {extend:'excelHtml5',text:'Excel',className:'btn btn-sm btn-outline-success'},
+                {extend:'pdfHtml5',text:'PDF',className:'btn btn-sm btn-outline-danger'},
+                {extend:'print',text:'Print list',className:'btn btn-sm btn-outline-primary'},
+                {extend:'colvis',text:'Column visibility',className:'btn btn-sm btn-outline-info'}
+            ] : [],
             language:{emptyTable:'No vouchers posted yet'}
         });
     }
