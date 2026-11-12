@@ -604,22 +604,19 @@ class LedgerController extends Controller
                         $displaySeries,(int)$customerLedger->id,(int)Auth::id(),$cleanAmount);
                 }
 
-                // The displayed voucher family determines its approval policy.
-                // BOR/BOP settings are intentionally locked until their independent
-                // approval workflows are integrated; they must not inherit CR/CP
-                // approvals merely because their legacy ledger rows use CR/CP.
-                // Fail closed rather than silently adopting a future bank policy.
-                $approvalPending = false;
-                if (in_array($displaySeries, ['BOR','BOP'], true)) {
-                    if ($displaySeries !== $requestedDisplaySeries || !$linkedVerifiedSource) {
-                        throw new \DomainException('BANK_VOUCHER_IDENTITY_REQUIRES_VERIFIED_SOURCE');
-                    }
-                    // No policy submission, so source/ledger stay posted as written.
-                } else {
-                    $approvalPending = app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
-                        ->submitIfRequired((int) $selectedProjectId, $effectiveVoucherType,
-                            'customer_ledger', (int) $customerLedger->id, (int) Auth::id());
+                // Approval policy is determined by the actual displayed
+                // voucher family, not its CR/CP legacy accounting storage type.
+                // Bank approvals are independent of CR/CP and require a
+                // verified source; their pending ledger leg stays inactive.
+                if (in_array($displaySeries, ['BOR','BOP'], true)
+                    && ($displaySeries !== $requestedDisplaySeries || !$linkedVerifiedSource)) {
+                    throw new \DomainException('BANK_VOUCHER_IDENTITY_REQUIRES_VERIFIED_SOURCE');
                 }
+                $approvalPolicyType = in_array($displaySeries, ['BOR','BOP'], true)
+                    ? $displaySeries : $effectiveVoucherType;
+                $approvalPending = app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
+                    ->submitIfRequired((int) $selectedProjectId, $approvalPolicyType,
+                        'customer_ledger', (int) $customerLedger->id, (int) Auth::id());
                 if ($approvalPending) {
                     // The source and ledger leg are retained for review, but excluded
                     // from posting reports until the assigned approver accepts them.
