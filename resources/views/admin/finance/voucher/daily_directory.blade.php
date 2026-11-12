@@ -199,7 +199,7 @@
     .dv-excel-popover.dv-search-mode #dv-excel-dates,
     .dv-excel-popover.dv-checkbox-mode #dv-excel-dates{display:none!important}
 </style>
-<div class="content-wrapper bm-ui daily-voucher-page {{ in_array($presetType, ['CCR','CDR'], true) ? 'dv-cash-only' : '' }} {{ in_array($presetType, ['CR','CCR','BOR'], true) ? 'dv-theme-credit' : (in_array($presetType, ['DR','CDR','BOP','CP'], true) ? 'dv-theme-debit' : '') }}" id="dv-page">
+<div class="content-wrapper bm-ui bm-voucher-directory daily-voucher-page {{ in_array($presetType, ['CCR','CDR'], true) ? 'dv-cash-only' : '' }} {{ in_array($presetType, ['CR','CCR','BOR'], true) ? 'dv-theme-credit' : (in_array($presetType, ['DR','CDR','BOP','CP'], true) ? 'dv-theme-debit' : '') }}" id="dv-page">
     <section class="content-header"><div class="container-fluid d-flex justify-content-between align-items-center">
         <div>
             <h1 class="h3 mb-1">
