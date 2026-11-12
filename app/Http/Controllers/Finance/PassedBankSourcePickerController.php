@@ -61,9 +61,16 @@ final class PassedBankSourcePickerController extends Controller
                 Schema::hasTable('finance_cheque_intake_actions') &&
                 Schema::hasColumn('finance_cheque_intake_actions','verification_confirmed_at'),
                 409,'Verified cheque intake migration is required.');
+            abort_unless(Schema::hasTable('finance_cheque_voucher_claims'),409,
+                'Cheque voucher claim migration is required.');
             $rows=DB::table('finance_cheque_intakes as c')
                 ->where('c.project_id',$project)->where('c.status','cleared')
                 ->where('c.direction',$direction==='receipt'?'in':'out')
+                ->whereNotExists(function($q)use($project){
+                    $q->selectRaw('1')->from('finance_cheque_voucher_claims as claim')
+                        ->whereColumn('claim.cheque_intake_id','c.id')
+                        ->where('claim.project_id',$project);
+                })
                 ->whereExists(function($q)use($project){
                     $q->selectRaw('1')->from('finance_cheque_intake_actions as a')
                         ->whereColumn('a.cheque_intake_id','c.id')->where('a.project_id',$project)
@@ -87,6 +94,20 @@ final class PassedBankSourcePickerController extends Controller
                 ];
             });
         }
+        $mappingIds=$items->pluck('account_mapping_id')->filter()->unique()->all();
+        $mappings=$mappingIds
+            ? DB::table('project_head_subheads as p')
+                ->join('head_accountings as h','h.id','=','p.head_accounting_id')
+                ->where('p.project_id',$project)->whereIn('p.id',$mappingIds)
+                ->get(['p.id','p.head_accounting_id','p.subhead_accounting_id','h.acct_type'])
+                ->keyBy('id') : collect();
+        $items=$items->map(function(array $row)use($mappings){
+            $mapping=$mappings->get($row['account_mapping_id']);
+            $row['head_id']=$mapping?(int)$mapping->head_accounting_id:null;
+            $row['subhead_id']=$mapping?(int)$mapping->subhead_accounting_id:null;
+            $row['account_type']=$mapping?(int)$mapping->acct_type:null;
+            return $row;
+        });
         return response()->json(['data'=>$items,'count'=>$items->count(),'source_only'=>true,
             'message'=>'Verified management records. Source selection alone does not post or claim a voucher.'])
             ->header('Cache-Control','private, no-store');
