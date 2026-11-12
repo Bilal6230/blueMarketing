@@ -379,7 +379,7 @@ class VoucherController extends Controller
         $x['users'] = $x['embeddedVoucher'] ? collect() : User::get();
         $x['power'] = $power;
         $x['accountTypes'] = AccountType::where('status', 1)->orderBy('id')->get();
-        $x['type'] = $displaySeries === 'CCR' ? 'CCR' : 'CR';
+        $x['type'] = match($displaySeries) { 'CCR'=>'CCR','BOR'=>'BOR',default=>'CR' };
         $x['class'] = 'cash-in';
         $x['bg_voucher'] = 'info-cash-in';
         $x['theme'] = [
@@ -635,7 +635,7 @@ class VoucherController extends Controller
         $x['users'] = $x['embeddedVoucher'] ? collect() : User::get();
         $x['power'] = $power;
         $x['accountTypes'] = AccountType::where('status', 1)->orderBy('id')->get();
-        $x['type'] = $displaySeries === 'CDR' ? 'CDR' : 'CP';
+        $x['type'] = match($displaySeries) { 'CDR'=>'CDR','BOP'=>'BOP','DR'=>'DR',default=>'CP' };
         $x['class'] = 'cash-out';
         $x['bg_voucher'] = 'info-cash-out';
         $x['theme'] = [
@@ -2049,13 +2049,14 @@ class VoucherController extends Controller
     public function checkNewVoucherNumber(Request $request)
     {
         $data = $request->validate([
-            'type' => ['required','string','in:CR,CP,CCR,CDR,BOR,BOP'],
+            'type' => ['required','string','in:CR,DR,CP,CCR,CDR,BOR,BOP'],
             'number' => ['nullable','integer','min:1'],
         ]);
         $projectId = (int) getSelectedTown();
         abort_unless($projectId > 0,403);
         return response()->json([
-            'latest_voucher_number' => $this->previewCanonicalCashNumber($projectId, $data['type']),
+            'latest_voucher_number' => $this->previewCanonicalCashNumber($projectId,
+                $data['type'] === 'DR' ? 'CP' : $data['type']),
         ]);
     }
     public function updateVoucherNumber()
