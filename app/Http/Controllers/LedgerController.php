@@ -286,7 +286,8 @@ class LedgerController extends Controller
                         $effectiveVoucherType==='CR'?'receipt':'payment',
                         $paymentType,$cleanAmount,(string)$request->input('t_number'),
                         (int)$projectHeadSubhead->id,
-                        (string)$request->input('passing_date')
+                        (string)$request->input('passing_date'),
+                        (int)$request->input('bank_id')
                     );
                 }
                 if ($paymentType === 1) {
