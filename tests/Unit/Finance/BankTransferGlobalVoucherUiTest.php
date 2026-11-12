@@ -42,7 +42,7 @@ final class BankTransferGlobalVoucherUiTest extends TestCase
         }
         $this->assertStringNotContainsString('id="historyRows"', $view);
         $this->assertStringContainsString("@section('modal')", $view);
-        $this->assertStringContainsString('class="container-fluid bm-ui bt-page', $view);
+        $this->assertStringContainsString('class="container-fluid bm-ui bm-voucher-directory bt-page', $view);
         $this->assertStringContainsString('<x-finance.voucher-filter-card class="bt-filter-card">', $view);
         $this->assertStringContainsString('<x-finance.voucher-table-card class="bt-table-card">', $view);
         $this->assertStringContainsString('$.blueVoucherPagination.render', $view);
