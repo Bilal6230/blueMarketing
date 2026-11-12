@@ -21,7 +21,25 @@ final class DailyVoucherDirectoryController extends Controller
             ->leftJoin('subhead_accountings as sub', 'sub.id', '=', 'account.subhead_accounting_id')
             ->where('account.project_id', $projectId)->orderBy('head.name')->orderBy('sub.name')
             ->get(['account.id', 'head.name as head_name', 'sub.name as sub_name']);
-        return view('admin.finance.voucher.daily_directory', compact('accounts', 'presetType'));
+        $headOptions=$accounts->pluck('head_name')->filter(fn($name)=>$name!==null && trim((string)$name)!=='')->unique()->sort()->values();
+        $subheadOptions=$accounts->pluck('sub_name')->filter(fn($name)=>$name!==null && trim((string)$name)!=='')->unique()->sort()->values();
+        $accountRelations=$accounts->map(fn($account)=>[
+            'head'=>(string)($account->head_name??''),'subhead'=>(string)($account->sub_name??'')
+        ])->unique(fn($pair)=>$pair['head'].'|'.$pair['subhead'])->values();
+        $approverOptions=collect(['']);
+        if (\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())) {
+            // Anyone allowed to decide an approval for this project: active
+            // project approvers plus active Super Admin override users.
+            $approverOptions=\App\Models\User::query()->where('status_id',1)->orderBy('name')->get()
+                ->filter(fn($user)=>\App\Services\Finance\VoucherApproverAccess::isSuperAdmin($user)
+                    || \App\Services\Finance\VoucherApproverAccess::eligibleForAssignment($user,$projectId))
+                ->pluck('name')->filter()->unique()->sort()->values()->prepend('');
+        }
+        $initialFilterOptions=[
+            'head'=>$headOptions->all(),'subhead'=>$subheadOptions->all(),
+            'approved_by'=>$approverOptions->all(),'account_relations'=>$accountRelations->all(),
+        ];
+        return view('admin.finance.voucher.daily_directory', compact('accounts','presetType','initialFilterOptions'));
     }
 
     public function data(Request $request)
@@ -44,6 +62,8 @@ final class DailyVoucherDirectoryController extends Controller
             'column_amount' => ['nullable', 'string', 'max:100'],
             'column_status' => ['nullable', 'string', 'max:100'],
             'column_detail' => ['nullable', 'string', 'max:100'],
+            'column_date_from' => ['nullable','date_format:Y-m-d'],
+            'column_date_to' => ['nullable','date_format:Y-m-d','after_or_equal:column_date_from'],
             'start' => ['sometimes', 'integer', 'min:0', 'max:50000'],
             'length' => ['sometimes', 'integer', 'min:1', 'max:100'],
             'sort_column' => ['sometimes','string','in:date,number,head,subhead,amount,detail,status,approved_by'],
@@ -78,7 +98,8 @@ final class DailyVoucherDirectoryController extends Controller
             ($filters['sort_column']??null)==='approved_by'))abort(403);
         $sortColumn = (string) ($filters['sort_column'] ?? 'date');
         $sortDirection = (string) ($filters['sort_direction'] ?? 'desc');
-        $requiresFullCandidateSet = (bool) $columnFilters || (bool)$selectedValues
+        $requiresFullCandidateSet = !empty($filters['column_date_from']) || !empty($filters['column_date_to'])
+            || (bool) $columnFilters || (bool)$selectedValues
             || (bool)$excludedValues
             || $facetColumn !== null || $sortColumn !== 'date' || $sortDirection !== 'desc';
         $window = $requiresFullCandidateSet ? $filterCandidateLimit : $start + $length;
@@ -534,6 +555,12 @@ final class DailyVoucherDirectoryController extends Controller
             }
             return $sortDirection === 'asc' ? $comparison : -$comparison;
         })->values();
+        if (!empty($filters['column_date_from']) || !empty($filters['column_date_to'])) {
+            $rows=$rows->filter(fn(array $row)=>
+                (empty($filters['column_date_from']) || ($row['date']??'') >= $filters['column_date_from'])
+                && (empty($filters['column_date_to']) || ($row['date']??'') <= $filters['column_date_to'])
+            )->values();
+        }
         if ($columnFilters) {
             $keys = [
                 'column_date' => 'date', 'column_type' => 'type', 'column_number' => 'number',
@@ -585,7 +612,9 @@ final class DailyVoucherDirectoryController extends Controller
             return response()->json(['options'=>$options,'truncated'=>$rows->count()>5000,
                 'more_options'=>$rows->pluck($facetColumn)->unique()->count()>500]);
         }
-        $filteredTotal = ($columnFilters || $selectedValues || $excludedValues) ? $rows->count() : $total;
+        $filteredTotal = ($columnFilters || $selectedValues || $excludedValues
+            || !empty($filters['column_date_from']) || !empty($filters['column_date_to']))
+            ? $rows->count() : $total;
         return response()->json([
             'draw' => (int) $request->input('draw', 1), 'recordsTotal' => $total,
             'recordsFiltered' => $filteredTotal, 'data' => $rows->slice($start, $length)->values(),
