@@ -64,6 +64,12 @@ body.jv-directory-active{overflow:hidden!important}
 .jv-excel-choice:hover{background:#f0f5fc}
 .jv-excel-choice input{margin:0;flex-shrink:0}
 .jv-excel-bottom{display:flex;gap:5px;justify-content:flex-end;margin-top:10px}
+.jv-excel-pop.jv-date-mode #jv-excel-items,.jv-excel-pop.jv-date-mode #jv-excel-search-wrap,
+.jv-excel-pop.jv-date-mode #jv-excel-apply,.jv-excel-pop.jv-date-mode #jv-excel-cancel,
+.jv-excel-pop.jv-search-mode #jv-excel-items,.jv-excel-pop.jv-search-mode .jv-excel-bottom{display:none!important}
+.jv-excel-pop.jv-date-mode #jv-excel-dates{display:block!important}
+.jv-excel-pop.jv-date-mode .jv-excel-bottom{display:flex!important}
+.jv-excel-pop #jv-excel-dates label{display:block;font-size:12px;font-weight:600;margin-bottom:4px}
 </style>
 <div class="content-wrapper jv-page">
  <div class="jv-head">
@@ -100,7 +106,11 @@ body.jv-directory-active{overflow:hidden!important}
 </div>
 <div id="jv-excel-pop" class="jv-excel-pop d-none" role="dialog" aria-label="Journal voucher column filter"><strong id="jv-excel-title"></strong>
  <button type="button" class="jv-excel-sort" data-dir="asc">Sort A to Z / Small to Large</button><button type="button" class="jv-excel-sort" data-dir="desc">Sort Z to A / Large to Small</button>
- <label for="jv-excel-search" class="sr-only">Search filter values</label><input type="search" id="jv-excel-search" class="form-control form-control-sm" placeholder="Search values…" autocomplete="off">
+ <div id="jv-excel-dates" class="d-none">
+  <label for="jv-excel-date-from">From Date</label><input type="date" id="jv-excel-date-from" class="form-control form-control-sm">
+  <label for="jv-excel-date-to" class="mt-2">To Date</label><input type="date" id="jv-excel-date-to" class="form-control form-control-sm">
+ </div>
+ <div id="jv-excel-search-wrap"><label for="jv-excel-search" class="sr-only">Search filter values</label><input type="search" id="jv-excel-search" class="form-control form-control-sm" placeholder="Search values…" autocomplete="off"></div>
  <div id="jv-excel-items" class="jv-excel-items"></div><div class="jv-excel-bottom">
  <button type="button" class="btn btn-sm btn-light" id="jv-excel-clear">Clear</button><button type="button" class="btn btn-sm btn-light" id="jv-excel-cancel">Cancel</button><button type="button" class="btn btn-sm btn-primary" id="jv-excel-apply">Apply</button></div></div>
 <div class="modal fade jv-modal" id="jv-entry" tabindex="-1" role="dialog" aria-hidden="true">
@@ -130,7 +140,17 @@ body.jv-directory-active{overflow:hidden!important}
 $(function(){
  'use strict';
  var $table=$('#jv-directory'),timer=null,table=null,entryUrl='';
- var jvExcelSelections={},jvExcelExclusions={},jvExcelCurrent=null,jvExcelOptions=[],jvExcelDraft=new Set(),jvExcelRequest=null,$jvExcel=$('#jv-excel-pop');
+ var jvExcelSelections={},jvExcelExclusions={},jvExcelText={},
+  jvExcelDates={from:'',to:''},jvExcelCurrent=null,jvExcelOptions=[],jvExcelDraft=new Set(),
+  jvExcelTimer=null,$jvExcel=$('#jv-excel-pop');
+ var initialJvFilters={approval_status:['Pending','Approved','Rejected','Posted']};
+ function jvMode(field){return field==='date'?'date':
+  ['voucher_number','reference','description','total_debit'].includes(field)?'search':'checkbox';}
+ function jvFilterActive(field){return !!(jvExcelSelections[field]||jvExcelExclusions[field]||
+  jvExcelText[field]||(field==='date'&&(jvExcelDates.from||jvExcelDates.to)));}
+ function scheduleJvFilter(){clearTimeout(jvExcelTimer);jvExcelTimer=setTimeout(function(){
+  updateJvExcelButtons();apply();
+ },300);}
  $('body').addClass('jv-directory-active');
  function fitJournalDirectory(){
   var $page=$('.jv-page'),top=$page.offset().top;
@@ -158,6 +178,8 @@ $(function(){
    req.filter_reference=$('#jv-reference').val();
    $.each(jvExcelSelections,function(field,values){req.excel_values??={};req.excel_values[field]=values;});
    $.each(jvExcelExclusions,function(field,values){req.excel_excluded??={};req.excel_excluded[field]=values;});
+   req.excel_date_from=jvExcelDates.from;req.excel_date_to=jvExcelDates.to;
+   req.excel_text=jvExcelText;
   }},
   columns:[
    {data:'id',name:'id'},
@@ -196,18 +218,20 @@ $(function(){
  $('#jv-top-filters').on('submit',function(e){e.preventDefault();apply();});
  $('#jv-reset').on('click',function(){
   $('#jv-top-filters')[0].reset();$.each(jvExcelSelections,function(field){delete jvExcelSelections[field];});
-  $.each(jvExcelExclusions,function(field){delete jvExcelExclusions[field];});closeJvExcel();updateJvExcelButtons();
+  $.each(jvExcelExclusions,function(field){delete jvExcelExclusions[field];});
+  $.each(jvExcelText,function(field){delete jvExcelText[field];});
+  jvExcelDates.from='';jvExcelDates.to='';closeJvExcel();updateJvExcelButtons();
   table.columns().search('');table.search('');apply();
  });
 
+
  function closeJvExcel(){
-  $jvExcel.addClass('d-none');$('.jv-excel-trigger').attr('aria-expanded','false');
-  if(jvExcelRequest){jvExcelRequest.abort();jvExcelRequest=null;}jvExcelCurrent=null;
+  $jvExcel.addClass('d-none').removeClass('jv-date-mode jv-search-mode jv-checkbox-mode');
+  $('.jv-excel-trigger').attr('aria-expanded','false');jvExcelCurrent=null;
  }
  function updateJvExcelButtons(){
   $('.jv-excel-trigger').each(function(){
-   $(this).toggleClass('jv-filter-on',Object.prototype.hasOwnProperty.call(jvExcelSelections,$(this).data('field'))||
-    Object.prototype.hasOwnProperty.call(jvExcelExclusions,$(this).data('field')));
+   $(this).toggleClass('jv-filter-on',jvFilterActive($(this).data('field')));
   });
  }
  function renderJvExcel(){
@@ -223,40 +247,33 @@ $(function(){
     .append($('<input>',{type:'checkbox','class':'jv-excel-item',value:str,checked:jvExcelDraft.has(str)}))
     .append($('<span>',{text:str||'(Blank)'})));
   });
-  if(!visible.length)$box.append($('<div>',{'class':'small text-muted p-2',text:'No values found'}));
  }
  $('.jv-excel-trigger').on('click',function(e){
   e.preventDefault();e.stopPropagation();
   var $btn=$(this),field=$btn.data('field');
   if(jvExcelCurrent===field){closeJvExcel();return;}
   closeJvExcel();jvExcelCurrent=field;jvExcelOptions=[];
-  jvExcelDraft=new Set(jvExcelSelections[field]||[]);
+  var mode=jvMode(field);
+  $jvExcel.addClass('jv-'+mode+'-mode').removeClass('d-none');
   $('.jv-excel-trigger').attr('aria-expanded','false');$btn.attr('aria-expanded','true');
   $('#jv-excel-title').text($btn.closest('th').find('span:first').text());
-  $('#jv-excel-search').val('');$('#jv-excel-items').text('Loading filter values…');
-  $jvExcel.removeClass('d-none');
-  var pos=$btn.offset();
-  $jvExcel.css({left:Math.max(8,Math.min(pos.left-$(window).scrollLeft(),$(window).width()-300))+'px',
-   top:Math.max(8,Math.min(pos.top-$(window).scrollTop()+$btn.outerHeight(),$(window).height()-345))+'px'});
+  $('#jv-excel-search').val(mode==='search'?(jvExcelText[field]||''):'');
+  $('#jv-excel-date-from').val(jvExcelDates.from);
+  $('#jv-excel-date-to').val(jvExcelDates.to);
   $jvExcel.find('.jv-excel-sort').toggle(field!=='approval_status');
-  var params={excel_facet:field,filter_voucher_number:$('#jv-from').val(),filter_date:$('#jv-date').val(),
-   filter_amount_min:$('#jv-min').val(),filter_amount_max:$('#jv-max').val(),
-   filter_reference:$('#jv-reference').val()};
-  jvExcelRequest=$.ajax({url:baseUrl,type:'GET',data:params,dataType:'json',
-   headers:{'X-Requested-With':'XMLHttpRequest'}}).done(function(res){
-    if(jvExcelCurrent!==field)return;
-    jvExcelOptions=(res.options||[]).map(String);
-    if(Object.prototype.hasOwnProperty.call(jvExcelExclusions,field))
-     jvExcelDraft=new Set(jvExcelOptions.filter(function(v){return !jvExcelExclusions[field].includes(v);}));
-    else if(!Object.prototype.hasOwnProperty.call(jvExcelSelections,field))
-     $.each(jvExcelOptions,function(_,v){jvExcelDraft.add(v);});
-    renderJvExcel();
-    if(res.more_options)$('#jv-excel-items').prepend($('<p>',{'class':'small text-warning',
-     text:'First 500 values shown. Narrow the date/search range.'}));
-   }).fail(function(xhr,status){
-    if(status!=='abort'&&jvExcelCurrent===field)
-     $('#jv-excel-items').text(xhr.responseJSON?.message||'Unable to load values.');
-   });
+  if(mode==='checkbox'){
+   jvExcelOptions=(initialJvFilters[field]||[]).map(String);
+   jvExcelDraft=new Set(jvExcelSelections[field]||[]);
+   if(Object.prototype.hasOwnProperty.call(jvExcelExclusions,field))
+    jvExcelDraft=new Set(jvExcelOptions.filter(function(v){return !jvExcelExclusions[field].includes(v);}));
+   else if(!Object.prototype.hasOwnProperty.call(jvExcelSelections,field))
+    $.each(jvExcelOptions,function(_,v){jvExcelDraft.add(v);});
+   renderJvExcel();
+  }
+  var pos=$btn.offset(),height=mode==='date'?250:mode==='search'?180:355;
+  $jvExcel.css({left:Math.max(8,Math.min(pos.left-$(window).scrollLeft(),$(window).width()-300))+'px',
+   top:Math.max(8,Math.min(pos.top-$(window).scrollTop()+$btn.outerHeight(),$(window).height()-height))+'px'});
+  if(mode==='search')$('#jv-excel-search').trigger('focus');
  });
  $jvExcel.on('change','.jv-excel-item',function(){
   if($(this).is(':checked'))jvExcelDraft.add($(this).val());else jvExcelDraft.delete($(this).val());
@@ -267,12 +284,21 @@ $(function(){
    if(enabled)jvExcelDraft.add(String(v));else jvExcelDraft.delete(String(v));
   }});renderJvExcel();
  });
- $('#jv-excel-search').on('input',renderJvExcel);
+ $('#jv-excel-search').on('input',function(){
+  if(jvExcelCurrent&&jvMode(jvExcelCurrent)==='search'){
+   jvExcelText[jvExcelCurrent]=$.trim($(this).val());scheduleJvFilter();
+  }else renderJvExcel();
+ });
+ $('#jv-excel-date-from,#jv-excel-date-to').on('change',function(){
+  var from=$('#jv-excel-date-from').val(),to=$('#jv-excel-date-to').val();
+  if(from&&to&&from>to){$(this).addClass('is-invalid');return;}
+  $('#jv-excel-date-from,#jv-excel-date-to').removeClass('is-invalid');
+  jvExcelDates.from=from;jvExcelDates.to=to;scheduleJvFilter();
+ });
  $('#jv-excel-apply').on('click',function(){
-  if(!jvExcelCurrent)return;
-  if(!jvExcelDraft.size&&jvExcelOptions.length){
-   $('#jv-excel-items').prepend($('<p>',{'class':'small text-danger',text:'Select a value or Clear.'}));return;
-  }
+  if(!jvExcelCurrent||jvMode(jvExcelCurrent)!=='checkbox')return;
+  if(!jvExcelDraft.size){$('#jv-excel-items').prepend($('<p>',{'class':'text-danger mb-1',
+   text:'Select a value or Clear.'}));return;}
   var removed=jvExcelOptions.filter(function(v){return !jvExcelDraft.has(String(v));});
   if(!removed.length){
    delete jvExcelSelections[jvExcelCurrent];delete jvExcelExclusions[jvExcelCurrent];
@@ -285,8 +311,11 @@ $(function(){
  });
  $('#jv-excel-cancel').on('click',closeJvExcel);
  $('#jv-excel-clear').on('click',function(){
-  if(!jvExcelCurrent)return;delete jvExcelSelections[jvExcelCurrent];
-  delete jvExcelExclusions[jvExcelCurrent];closeJvExcel();updateJvExcelButtons();apply();
+  if(!jvExcelCurrent)return;
+  if(jvExcelCurrent==='date'){jvExcelDates.from='';jvExcelDates.to='';}
+  else if(jvMode(jvExcelCurrent)==='search')delete jvExcelText[jvExcelCurrent];
+  else{delete jvExcelSelections[jvExcelCurrent];delete jvExcelExclusions[jvExcelCurrent];}
+  closeJvExcel();updateJvExcelButtons();apply();
  });
  $jvExcel.on('click','.jv-excel-sort',function(){
   if(!jvExcelCurrent)return;
@@ -297,6 +326,7 @@ $(function(){
   if(!$(e.target).closest('#jv-excel-pop,.jv-excel-trigger').length)closeJvExcel();
  }).on('keydown.jvExcel',function(e){if(e.key==='Escape')closeJvExcel();});
  $('.jv-record-scroll').on('scroll',function(){if(jvExcelCurrent)closeJvExcel();});
+ updateJvExcelButtons();
  function openEntry(url,title){
   entryUrl=url;var separator=url.indexOf('?')>=0?'&':'?';
   $('#jv-entry-title').text(title);
