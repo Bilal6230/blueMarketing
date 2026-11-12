@@ -35,13 +35,16 @@ final class BankVoucherAllocationRelease
             $source=DB::table('customer_ledger')->where('project_id',$projectId)
                 ->where('id',$voucherId)->lockForUpdate()->first();
             if(!$source || (string)$source->transaction_type!==(in_array($series,['CR','BOR'],true)?'CR':'CP')
-                || !in_array((int)$source->payment_type,[2,3],true)) {
+                || !in_array((int)$source->payment_type,[2,3],true)
+                || (\Illuminate\Support\Facades\Schema::hasColumn('customer_ledger','deleted_at')
+                    && $source->deleted_at!==null)) {
                 throw new \DomainException('Voucher source identity changed.');
             }
             $allocation=DB::table('finance_bank_voucher_allocations')
                 ->where('project_id',$projectId)->where('voucher_type',$series)
                 ->where('voucher_id',$voucherId)->lockForUpdate()->first();
-            if(!$allocation || !in_array($allocation->source_method,['online','cheque'],true)
+            if(!$allocation || (float)($allocation->amount??0)<=0
+                || !in_array($allocation->source_method,['online','cheque'],true)
                 || (($allocation->source_method==='online'?2:3)!==(int)$source->payment_type)
                 || round((float)$allocation->amount,2)!==
                     round(max((float)$source->amount_in,(float)$source->amount_out),2)) {
