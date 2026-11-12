@@ -231,6 +231,8 @@ final class ChequeIntakeController extends Controller
             'cheque' => ['id' => $cheque->id, 'cheque_number' => $cheque->cheque_number,
                 'status' => $cheque->status, 'amount' => $cheque->amount,
                 'direction' => $cheque->direction],
+            'linked_vouchers' => app(\App\Services\Finance\BankSourceLinkedVoucherHistory::class)
+                ->forSource($project,'cheque',$id),
             'events' => $events->map(function ($event) use ($id) {
                 $event->has_memo = (bool) $event->memo_path;
                 $event->memo_url = $event->has_memo
