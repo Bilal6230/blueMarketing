@@ -332,7 +332,7 @@ $(function(){
   if(x.has_proof && x.proof_url)$('<a>').attr({href:x.proof_url,target:'_blank',rel:'noopener'}).text('Download').addClass('btn btn-outline-primary btn-sm').appendTo($proof);
   else $proof.addClass('text-muted').text('—');
   $proof.appendTo($r);
-  var $actions=$('<td>').addClass('text-nowrap');
+  var $actions=$('<td>').addClass('blue-actions-cell');
   @can('create voucher')
   if(x.status==='pending'){
    $('<button type="button">').addClass('btn btn-outline-success btn-sm mr-1 online-confirm-button')
@@ -369,6 +369,7 @@ $(function(){
     $rows.empty();
     $.each(data.data||[],function(i,x){$rows.append(renderRow(x,(data.current_page-1)*data.per_page+i+1));});
     if(!(data.data||[]).length)$rows.append($('<tr>').append($('<td colspan="12" class="text-center text-muted py-4">').text('No matching online transactions.')));
+    $.blueActionMenu.enhance($rows.find('> tr > td.blue-actions-cell'));
     pageLinks(data);
    }).fail(function(xhr,status){
     if(status==='abort'||seq!==sequence)return;
