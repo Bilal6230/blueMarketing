@@ -394,6 +394,11 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         ->middleware(['permission:update voucher'])->name('finance.daily-vouchers.revise.edit');
     Route::post('finance/daily-vouchers/revise/{customerLedger}', [\App\Http\Controllers\Finance\RejectedCashVoucherController::class,'store'])
         ->middleware(['permission:update voucher','throttle:20,1'])->name('finance.daily-vouchers.revise.store');
+    Route::post('finance/daily-vouchers/bank-allocation/{customerLedger}/release',
+        [\App\Http\Controllers\Finance\BankVoucherAllocationReleaseController::class,'store'])
+        ->whereNumber('customerLedger')
+        ->middleware(['permission:delete voucher','throttle:10,1'])
+        ->name('finance.daily-vouchers.bank-allocation.release');
     Route::get('finance/voucher-settings', [\App\Http\Controllers\Finance\VoucherSettingsController::class,'index'])
         ->middleware('permission:read setting')->name('finance.voucher-settings.index');
     Route::post('finance/voucher-settings', [\App\Http\Controllers\Finance\VoucherSettingsController::class,'save'])
