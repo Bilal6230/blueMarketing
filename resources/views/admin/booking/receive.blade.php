@@ -1,7 +1,7 @@
 @extends('admin.layouts.master')
 @section('content')
 
-    <div class="content-wrapper">
+    <div class="content-wrapper bm-ui bm-voucher-directory bm-booking-vouchers" style="--voucher-accent:#7145bd;--voucher-tint:#f2edff">
         <!-- Content Header (Page header) -->
         <div class="content-header">
             <div class="container-fluid">
@@ -311,7 +311,7 @@
                             @endcan
                             <!-- /.card-header -->
                             @can('read slip')
-                                <div class="card-body">
+                                <x-finance.voucher-filter-card class="mb-2">
                                     <form action="{{ route('payment_schedule.cash') }}" method="GET" class="mb-3">
                                         <div class="row">
                                             <div class="col-md-2">
@@ -368,8 +368,9 @@
                                             <a href="{{ route('payment_schedule.cash') }}" class="btn btn-default">Reset</a>
                                         </div>
                                     </form>
-                                </div>
-                                <div class="card-body table-responsive">
+                                </x-finance.voucher-filter-card>
+                                <x-finance.voucher-table-card class="mb-2">
+                                <div class="table-responsive">
                                     <table id="example1" class="table table-striped table-bordered " style="width:100%">
                                         <thead>
                                             <tr>
@@ -593,6 +594,7 @@
 
                                     </table>
                                 </div>
+                                </x-finance.voucher-table-card>
                             @endcan
 
                             <!-- /.card-body -->
