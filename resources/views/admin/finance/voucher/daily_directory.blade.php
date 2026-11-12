@@ -186,6 +186,20 @@
     .dv-excel-choice input{flex:0 0 auto;margin:0}
     .dv-excel-footer{display:flex;gap:6px;justify-content:flex-end;margin-top:10px}
     .dv-excel-footer .btn-primary{background:#2165b4;border-color:#2165b4}
+    .dv-excel-date-label{display:block;font-size:12px;font-weight:600;margin:8px 0 4px}
+    .dv-excel-popover.dv-search-mode .dv-excel-values,
+    .dv-excel-popover.dv-search-mode .dv-excel-footer,
+    .dv-excel-popover.dv-date-mode .dv-excel-values,
+    .dv-excel-popover.dv-date-mode #dv-excel-search-area,
+    .dv-excel-popover.dv-date-mode #dv-excel-apply,
+    .dv-excel-popover.dv-date-mode #dv-excel-cancel{display:none!important}
+    .dv-excel-popover.dv-search-mode #dv-excel-apply,
+    .dv-excel-popover.dv-search-mode #dv-excel-cancel{display:none!important}
+    .dv-excel-popover.dv-date-mode .dv-excel-footer{display:flex!important}
+    .dv-excel-popover.dv-date-mode #dv-excel-clear{display:inline-block!important}
+    .dv-excel-popover.dv-date-mode #dv-excel-dates{display:block!important}
+    .dv-excel-popover.dv-search-mode #dv-excel-dates,
+    .dv-excel-popover.dv-checkbox-mode #dv-excel-dates{display:none!important}
 </style>
 <div class="content-wrapper daily-voucher-page {{ in_array($presetType, ['CCR','CDR'], true) ? 'dv-cash-only' : '' }} {{ in_array($presetType, ['CR','CCR','BOR'], true) ? 'dv-theme-credit' : (in_array($presetType, ['DR','CDR','BOP','CP'], true) ? 'dv-theme-debit' : '') }}" id="dv-page">
     <section class="content-header"><div class="container-fluid d-flex justify-content-between align-items-center">
@@ -283,8 +297,16 @@
     <button type="button" class="dv-excel-sort" data-direction="asc"><i class="fas fa-sort-amount-up mr-2" aria-hidden="true"></i>Sort A to Z / Small to Large</button>
     <button type="button" class="dv-excel-sort" data-direction="desc"><i class="fas fa-sort-amount-down mr-2" aria-hidden="true"></i>Sort Z to A / Large to Small</button>
     <div class="dv-excel-divider"></div>
-    <label for="dv-excel-search" class="sr-only">Find filter values</label>
-    <input id="dv-excel-search" type="search" class="form-control form-control-sm" placeholder="Search values…" autocomplete="off">
+    <div id="dv-excel-dates" class="d-none">
+        <label class="dv-excel-date-label" for="dv-column-date-from">From Date</label>
+        <input type="date" id="dv-column-date-from" class="form-control form-control-sm">
+        <label class="dv-excel-date-label mt-2" for="dv-column-date-to">To Date</label>
+        <input type="date" id="dv-column-date-to" class="form-control form-control-sm">
+    </div>
+    <div id="dv-excel-search-area">
+        <label for="dv-excel-search" class="sr-only">Search column</label>
+        <input id="dv-excel-search" type="search" class="form-control form-control-sm" placeholder="Search values…" autocomplete="off">
+    </div>
     <div class="dv-excel-values" id="dv-excel-values" role="group" aria-label="Filter choices"></div>
     <div class="dv-excel-footer">
         <button type="button" class="btn btn-sm btn-light" id="dv-excel-clear">Clear</button>
@@ -353,48 +375,77 @@
     const tableSearch=$('#dv-table-search')[0];
     $('#dv-page-length').on('change',function(){length=Number($(this).val());start=0;load();});
     $('#dv-table-search').on('input',()=>{clearTimeout(timer);timer=setTimeout(()=>{start=0;load();},300);});
-    const excelSelections={},excelExclusions={};
-    let excelCurrent=null,excelOptions=[],excelDraft=new Set(),excelFacetRequest=null;
+
+    // All static dropdown choices arrive with the page's first HTML response.
+    // No facet-request-on-open and no dependence on the visible table page.
+    const initialOptions=@json($initialFilterOptions);
+    const excelSelections={},excelExclusions={},liveColumnSearch={};
+    const dateColumn={from:'',to:''};
+    const accountRelations=initialOptions.account_relations||[];
     const $excel=$('#dv-excel-popover');
+    let excelCurrent=null,excelOptions=[],excelDraft=new Set(),filterInputTimer=null;
+    const searchOnly=['number','detail','amount'];
+    const checkboxes=['head','subhead','status','approved_by'];
+    const staticChoices={head:initialOptions.head||[],subhead:initialOptions.subhead||[],
+        approved_by:initialOptions.approved_by||[],status:['Approved','Pending','Posted','Rejected','Inactive']};
+    function modeFor(field){return field==='date'?'date':searchOnly.includes(field)?'search':'checkbox';}
+    function activeFor(field){
+        return Boolean(excelSelections[field]||excelExclusions[field]||liveColumnSearch[field]||
+            (field==='date'&&(dateColumn.from||dateColumn.to)));
+    }
     function updateSortArrows(){
         $('.dv-excel-trigger').each(function(){
             const $button=$(this),field=$button.data('column');
-            $button.toggleClass('dv-has-filter',Object.prototype.hasOwnProperty.call(excelSelections,field)||Object.prototype.hasOwnProperty.call(excelExclusions,field));
-            $button.attr('title',(field===sortColumn?(sortDirection==='asc'?'Sorted ascending. ':'Sorted descending. '):'')+
-                ((Object.prototype.hasOwnProperty.call(excelSelections,field)||Object.prototype.hasOwnProperty.call(excelExclusions,field))?'Filter active. ':'')+'Sort or filter '+field);
-            $button.closest('th').attr('aria-sort',field===sortColumn?(sortDirection==='asc'?'ascending':'descending'):'none');
+            $button.toggleClass('dv-has-filter',activeFor(field));
+            $button.closest('th').attr('aria-sort',sortColumn===field?
+                (sortDirection==='asc'?'ascending':'descending'):'none');
         });
     }
     function closeExcel(){
-        $excel.addClass('d-none');
+        $excel.addClass('d-none').removeClass('dv-search-mode dv-date-mode dv-checkbox-mode');
         $('.dv-excel-trigger').attr('aria-expanded','false');
-        if(excelFacetRequest){excelFacetRequest.abort();excelFacetRequest=null;}
         excelCurrent=null;
+    }
+    function availableChoices(field){
+        if(field==='head'||field==='subhead'){
+            const opposite=field==='head'?'subhead':'head';
+            const hasInclude=Object.prototype.hasOwnProperty.call(excelSelections,opposite);
+            const excludes=excelExclusions[opposite]||[];
+            const selected=excelSelections[opposite]||[];
+            const permitted=accountRelations.filter(pair=>
+                (!hasInclude||selected.includes(pair[opposite]))&&!excludes.includes(pair[opposite]));
+            const matched=new Set(permitted.map(pair=>pair[field]));
+            const existing=excelSelections[field]||[];
+            return [...new Set([...staticChoices[field].filter(v=>matched.has(v)),...existing])]
+                .sort((x,y)=>String(x).localeCompare(String(y),undefined,{numeric:true}));
+        }
+        return staticChoices[field]||[];
     }
     function renderExcelValues(){
         const match=$.trim($('#dv-excel-search').val()).toLocaleLowerCase();
-        const $values=$('#dv-excel-values').empty();
-        const $all=$('<label>',{'class':'dv-excel-choice'})
-            .append($('<input>',{type:'checkbox','class':'dv-check-all'}))
-            .append($('<span>',{text:'(Select All Results)'}));
         const shown=excelOptions.filter(value=>String(value).toLocaleLowerCase().includes(match));
-        $all.find('input').prop('checked',shown.length>0&&shown.every(v=>excelDraft.has(String(v))));
-        $values.append($all);
+        const $values=$('#dv-excel-values').empty();
+        $values.append($('<label>',{'class':'dv-excel-choice'})
+            .append($('<input>',{type:'checkbox','class':'dv-check-all',
+                checked:shown.length>0&&shown.every(v=>excelDraft.has(String(v)))}))
+            .append($('<span>',{text:'(Select All Results)'})));
         shown.forEach(value=>{
             const str=String(value);
-            const $label=$('<label>',{'class':'dv-excel-choice'})
-                .append($('<input>',{type:'checkbox','class':'dv-excel-item',value:str,checked:excelDraft.has(str)}))
-                .append($('<span>',{text:str||'(Blank)'}));
-            $values.append($label);
+            $values.append($('<label>',{'class':'dv-excel-choice'})
+                .append($('<input>',{type:'checkbox','class':'dv-excel-item',
+                    value:str,checked:excelDraft.has(str)}))
+                .append($('<span>',{text:str||'(Blank / Not Approved)'})));
         });
         if(!shown.length)$values.append($('<div>',{'class':'text-muted p-2',text:'No matching values'}));
     }
     function queryParams(){
-        const params=$('#daily-voucher-filters').serializeArray();
         const query={};
-        $.each(params,(_,item)=>{query[item.name]=item.value;});
+        $.each($('#daily-voucher-filters').serializeArray(),(_,item)=>{query[item.name]=item.value;});
         query.start=start;query.length=length;query.sort_column=sortColumn;query.sort_direction=sortDirection;
         if($.trim($('#dv-table-search').val()))query.search=$.trim($('#dv-table-search').val());
+        $.each(liveColumnSearch,(field,value)=>{if(value)query['column_'+field]=value;});
+        if(dateColumn.from)query.column_date_from=dateColumn.from;
+        if(dateColumn.to)query.column_date_to=dateColumn.to;
         $.each(excelSelections,(field,values)=>{
             $.each(values,(_,value)=>{(query['column_values['+field+']']??=[]).push(value);});
         });
@@ -403,74 +454,88 @@
         });
         return query;
     }
+    function applyLiveColumn(){
+        clearTimeout(filterInputTimer);
+        filterInputTimer=setTimeout(()=>{start=0;updateSortArrows();load();},300);
+    }
     $('.dv-excel-trigger').on('click',function(event){
         event.stopPropagation();
         const $button=$(this),field=$button.data('column');
         if(excelCurrent===field){closeExcel();return;}
-        closeExcel();excelCurrent=field;excelOptions=[];
-        excelDraft=new Set(excelSelections[field]||[]);
+        closeExcel();excelCurrent=field;
+        const mode=modeFor(field);
+        $excel.addClass('dv-'+mode+'-mode').removeClass('d-none');
         $('.dv-excel-trigger').attr('aria-expanded','false');$button.attr('aria-expanded','true');
         $('#dv-excel-title').text($button.closest('th').find('span:first').text());
-        $('#dv-excel-search').val('');
-        $('#dv-excel-values').text('Loading available values…');
-        $excel.removeClass('d-none');
-        const location=$button.offset(),top=location.top-$(window).scrollTop()+$button.outerHeight();
-        $excel.css({left:Math.max(8,Math.min(location.left-$(window).scrollLeft(),$(window).width()-300))+'px',
-            top:Math.max(8,Math.min(top,$(window).height()-355))+'px'});
-        const params=queryParams();
-        delete params['column_values['+field+']'];
-        delete params['column_excluded['+field+']'];
-        params.facet_column=field;
-        excelFacetRequest=$.ajax({url:@json(route('finance.daily-vouchers.data')),method:'GET',
-            data:params,dataType:'json'}).done(result=>{
-            if(excelCurrent!==field)return;
-            excelOptions=(result.options||[]).map(String);
+        $('#dv-excel-search').val(mode==='search'?(liveColumnSearch[field]||''):'');
+        $('#dv-column-date-from').val(dateColumn.from);
+        $('#dv-column-date-to').val(dateColumn.to);
+        if(mode==='checkbox'){
+            excelOptions=availableChoices(field).map(String);
+            excelDraft=new Set(excelSelections[field]||[]);
             if(Object.prototype.hasOwnProperty.call(excelExclusions,field))
                 excelDraft=new Set(excelOptions.filter(v=>!excelExclusions[field].includes(v)));
-            else excelOptions.forEach(value=>{
-                if(!Object.prototype.hasOwnProperty.call(excelSelections,field))excelDraft.add(value);
-            });
+            else if(!Object.prototype.hasOwnProperty.call(excelSelections,field))
+                excelOptions.forEach(v=>excelDraft.add(v));
             renderExcelValues();
-            if(result.more_options)$('#dv-excel-values').prepend($('<div>',{'class':'small text-warning p-1',
-                text:'Showing first 500 distinct values. Narrow date/search for more.'}));
-        }).fail((xhr,status)=>{
-            if(status!=='abort'&&excelCurrent===field)
-                $('#dv-excel-values').text(xhr.responseJSON?.message||'Cannot load filter values.');
-        });
+        }
+        const pos=$button.offset(),menuHeight=mode==='checkbox'?355:mode==='date'?250:180;
+        $excel.css({left:Math.max(8,Math.min(pos.left-$(window).scrollLeft(),$(window).width()-300))+'px',
+            top:Math.max(8,Math.min(pos.top-$(window).scrollTop()+$button.outerHeight(),
+                $(window).height()-menuHeight))+'px'});
+        if(mode==='search')$('#dv-excel-search').trigger('focus');
     });
     $excel.on('change','.dv-excel-item',function(){
         if($(this).is(':checked'))excelDraft.add($(this).val());
         else excelDraft.delete($(this).val());
         renderExcelValues();
     }).on('change','.dv-check-all',function(){
-        const checked=$(this).is(':checked');
-        const match=$.trim($('#dv-excel-search').val()).toLocaleLowerCase();
+        const checked=$(this).is(':checked'),match=$.trim($('#dv-excel-search').val()).toLocaleLowerCase();
         excelOptions.filter(v=>String(v).toLocaleLowerCase().includes(match)).forEach(v=>{
             if(checked)excelDraft.add(String(v));else excelDraft.delete(String(v));
         });
         renderExcelValues();
     });
-    $('#dv-excel-search').on('input',renderExcelValues);
-    $('#dv-excel-apply').on('click',()=>{
+    $('#dv-excel-search').on('input',function(){
         if(!excelCurrent)return;
-        if(!excelDraft.size && excelOptions.length) {
+        if(modeFor(excelCurrent)==='search'){
+            liveColumnSearch[excelCurrent]=$.trim($(this).val());
+            applyLiveColumn();
+        }else renderExcelValues();
+    });
+    $('#dv-column-date-from,#dv-column-date-to').on('change',function(){
+        const from=$('#dv-column-date-from').val(),to=$('#dv-column-date-to').val();
+        if(from&&to&&from>to){
+            $(this).addClass('is-invalid');return;
+        }
+        $('#dv-column-date-from,#dv-column-date-to').removeClass('is-invalid');
+        dateColumn.from=from;dateColumn.to=to;applyLiveColumn();
+    });
+    $('#dv-excel-apply').on('click',()=>{
+        if(!excelCurrent||modeFor(excelCurrent)!=='checkbox')return;
+        if(!excelDraft.size&&excelOptions.length){
             $('#dv-excel-values').prepend($('<p>',{'class':'text-danger mb-1',
-                text:'Select at least one value, or use Clear.'}));
-            return;
+                text:'Choose a value, or use Clear.'}));return;
         }
         const removed=excelOptions.filter(v=>!excelDraft.has(String(v)));
         if(!removed.length){
             delete excelSelections[excelCurrent];delete excelExclusions[excelCurrent];
-        }else if(removed.length<excelDraft.size){
+        }else if(removed.length<excelDraft.size&&removed.length<=250){
             delete excelSelections[excelCurrent];excelExclusions[excelCurrent]=removed;
         }else{
+            if(excelDraft.size>250){
+                $('#dv-excel-values').prepend($('<p>',{'class':'text-danger mb-1',
+                    text:'Choose fewer values or narrow account selections.'}));return;
+            }
             delete excelExclusions[excelCurrent];excelSelections[excelCurrent]=[...excelDraft];
         }
         closeExcel();start=0;updateSortArrows();load();
     });
     $('#dv-excel-clear').on('click',()=>{
         if(!excelCurrent)return;
-        delete excelSelections[excelCurrent];delete excelExclusions[excelCurrent];
+        if(excelCurrent==='date'){dateColumn.from='';dateColumn.to='';}
+        else if(modeFor(excelCurrent)==='search'){delete liveColumnSearch[excelCurrent];}
+        else{delete excelSelections[excelCurrent];delete excelExclusions[excelCurrent];}
         closeExcel();start=0;updateSortArrows();load();
     });
     $('#dv-excel-cancel').on('click',closeExcel);
@@ -555,7 +620,9 @@
         if($('#dv-type').is('select'))$('#dv-type').val('');
         $('#dv-table-search').val('');
         $.each(excelSelections,(field)=>{delete excelSelections[field];});
-        $.each(excelExclusions,(field)=>{delete excelExclusions[field];});closeExcel();
+        $.each(excelExclusions,(field)=>{delete excelExclusions[field];});
+        $.each(liveColumnSearch,(field)=>{delete liveColumnSearch[field];});
+        dateColumn.from='';dateColumn.to='';closeExcel();
         start=0;sortColumn='date';sortDirection='desc';updateSortArrows();load();
     });
     $('#dv-type').on('change',function(){
