@@ -115,3 +115,9 @@ body.sidebar-collapse .main-content.page-content:has(> .bm-plot-workspace){margi
 .bm-ui.bm-voucher-directory.bm-booking-vouchers .bm-voucher-table-card{margin:8px 14px}
 .bm-ui.bm-voucher-directory.bm-booking-vouchers .bm-voucher-table-card{padding:10px}
 .bm-ui.bm-voucher-directory.bm-booking-vouchers .bm-voucher-table-card .table-responsive{padding:0}
+
+
+/* Keep the shared + control's hover ring in the voucher's own palette.
+   Open/close danger-red state remains globally consistent. */
+.bm-ui.bm-voucher-directory .blue-actions-toggle:hover:not([aria-expanded="true"]),
+.bm-ui.bm-voucher-directory .blue-actions-toggle:focus-visible:not([aria-expanded="true"]){border-color:var(--voucher-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--voucher-accent) 15%,transparent)}
