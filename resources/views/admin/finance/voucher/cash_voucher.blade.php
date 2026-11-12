@@ -1750,7 +1750,8 @@
             // Bind after the initial form setup: opening the source picker is a user action.
             // One project-scoped verified source can be selected for this form at a time.
             let passedBankRows=[],passedBankRequest=null,passedBankTimer=null;
-            const passedBankUrl=@json(route('finance.voucher.passed_sources'));
+            // Avoid the named-route lookup during Blade render while route caches are refreshed.
+            const passedBankUrl=@json(url('admin/finance/voucher/passed-sources'));
             const passedBankDirection=@json(in_array(($displaySeries ?? ''),['CR','BOR'],true)?'receipt':'payment');
             function resetPassedBankSelection(){
                 const hadSource=!!$('#passed_source_id').val();
