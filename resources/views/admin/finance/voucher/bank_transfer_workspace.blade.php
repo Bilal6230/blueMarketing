@@ -127,7 +127,7 @@ $(function () {
     if (!$root.length) return;
     var $form = $('#bankTransferCreateForm');
     var $save = $('#saveTransfer');
-    var table = null, rows = [], busy = false, chequeLoading = false;
+    var table = null, rows = [], busy = false, chequeLoading = false, pendingRequestKey = null;
     var escapeHtml = function (value) { return $('<div>').text(value == null ? '' : String(value)).html(); };
     var showError = function ($box, message) { $box.text(message || 'Request failed').removeClass('d-none'); };
     var printUrl = function (id) { return $root.attr('data-print-base') + '/' + encodeURIComponent(id) + '/print'; };
@@ -264,26 +264,34 @@ $(function () {
     });
     $('#bankTransferCreateModal').on('show.bs.modal',function () {
         $form[0].reset();
+        pendingRequestKey = null;
         $('#voucherAmount').prop('readonly',false);
         $('#transferFormError').addClass('d-none');
         loadCheques();
         valid();
     });
-    $('#voucherDate,#voucherAmount,#cashAccount,#bankAccount,#voucherReference,#voucherDescription').on('input change',valid);
+    $('#voucherDate,#voucherAmount,#cashAccount,#bankAccount,#voucherReference,#voucherDescription,#chequeSource').on('input change',function(){
+        if (!busy) pendingRequestKey = null;
+        valid();
+    });
     $form.on('submit',function(e){
         e.preventDefault();if (!valid() || busy) return;
         busy=true;valid();$('#transferFormError').addClass('d-none');
+        // Keep the same key after an uncertain network failure: the writer
+        // can safely replay this exact payload instead of double-posting it.
+        if (!pendingRequestKey) pendingRequestKey = 'transfer' + Date.now().toString(36) + Math.random().toString(36).slice(2,14);
         var data = {
             date:$('#voucherDate').val(),amount:Number($('#voucherAmount').val()).toFixed(2),
             cash_account_id:Number($('#cashAccount').val()),bank_account_id:Number($('#bankAccount').val()),
             reference:$('#voucherReference').val(),description:$('#voucherDescription').val(),
-            request_key:'transfer' + Date.now().toString(36) + Math.random().toString(36).slice(2,14),
+            request_key:pendingRequestKey,
             cheque_source_id:$('#chequeSource').val() ? Number($('#chequeSource').val()) : null
         };
         $.ajax({url:$root.attr('data-post-url'),method:'POST',data:JSON.stringify(data),
             contentType:'application/json',dataType:'json',
             headers:{'X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content'),Accept:'application/json'}})
             .done(function(json){
+                pendingRequestKey = null;
                 $('#bankTransferCreateModal').modal('hide');
                 notify('success','Voucher posted','Posting batch #' + json.data.posting_batch_id);
                 loadHistory();
