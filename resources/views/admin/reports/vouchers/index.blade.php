@@ -73,7 +73,7 @@ body.jv-directory-active{overflow:hidden!important}
 .jv-excel-pop.jv-date-mode .jv-excel-bottom{display:flex!important}
 .jv-excel-pop #jv-excel-dates label{display:block;font-size:12px;font-weight:600;margin-bottom:4px}
 </style>
-<div class="content-wrapper bm-ui bm-voucher-directory jv-page">
+<div class="content-wrapper bm-ui bm-voucher-directory jv-page" style="--voucher-accent:#087cfa;--voucher-tint:#e7efff">
  <div class="jv-head">
   <div><h4>{{ $title }}</h4><small>Selected project records · Approval-aware voucher register</small></div>
   @if($type==='JV')<button type="button" id="jv-add" class="btn btn-primary btn-sm"><i class="fas fa-plus mr-1"></i> New Voucher</button>@endif
