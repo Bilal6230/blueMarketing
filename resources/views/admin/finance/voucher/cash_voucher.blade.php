@@ -1753,9 +1753,16 @@
             const passedBankUrl=@json(route('finance.voucher.passed_sources'));
             const passedBankDirection=@json(in_array(($displaySeries ?? ''),['CR','BOR'],true)?'receipt':'payment');
             function resetPassedBankSelection(){
+                const hadSource=!!$('#passed_source_id').val();
                 $('#passed_source_id,#passed_source_method').val('');
                 $('#numberInput').prop('readonly',false).removeAttr('data-bank-source-amount');
                 $('#t_number').prop('readonly',false);
+                if(hadSource){
+                    $('#t_number,#numberInput,#passing_date,#cheque_purpose').val('').trigger('change');
+                    const $bank=$('#bank_id'),select=$bank.prop('tomselect');
+                    if(select)select.clear(true);else $bank.val('').trigger('change');
+                    $('#voucherForm').removeData('passed-account-pair');
+                }
                 $('#passed-bank-apply').prop('disabled',true);
             }
             function showPassedBankPicker(){
@@ -1861,6 +1868,8 @@
                     if(select)select.setValue(String(matchedBank));
                     else $bank.val(matchedBank).trigger('change');
                 }else{
+                    const select=$bank.prop('tomselect');
+                    if(select)select.clear(true);else $bank.val('').trigger('change');
                     $('#passed-bank-error').removeClass('d-none')
                         .text('Bank name requires manual mapping. Please select the matching Bank in the voucher form.');
                 }
