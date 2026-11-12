@@ -91,6 +91,9 @@ final class BankVoucherAllocationRelease
                     !==round((float)$allocation->amount,2)) {
                 throw new \DomainException('Single-leg project financial integrity check failed.');
             }
+            // A matching absolute amount alone is not sufficient: receipt and
+            // payment legs must match the original allocation direction.
+            BankVoucherLegIntegrity::assert($series,$source,$legs->first(),(float)$allocation->amount);
             $rejected=$approval && $approval->status==='rejected';
             $posted=(int)$source->is_active===1 && (int)$legs->first()->is_active===1
                 && (!$approval || $approval->status==='approved' || $approval->status==='posted');
