@@ -45,7 +45,7 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
 @media(max-width:991.98px){body:has(#bankTransferApp) .main-content.page-content,body.sidebar-collapse:has(#bankTransferApp) .main-content.page-content{margin-left:0!important;width:100%!important;max-width:100%;padding:66px 6px 0!important}}
 @media(max-width:520px){#bankTransferApp .bt-filter-row{grid-template-columns:1fr}#bankTransferApp .bt-footer{flex-wrap:wrap}}
 </style>
-<div class="container-fluid bm-ui bt-page {{ $kind === 'deposit' ? 'bt-credit' : 'bt-debit' }}" id="bankTransferApp" data-kind="{{ $kind }}"
+<div class="container-fluid bm-ui bm-voucher-directory bt-page {{ $kind === 'deposit' ? 'bt-credit' : 'bt-debit' }}" id="bankTransferApp" data-kind="{{ $kind }}"
     data-post-url="{{ route('finance.voucher.transfer.post',['kind'=>$kind]) }}"
     data-history-url="{{ route('finance.voucher.transfer.history',['kind'=>$kind]) }}"
     data-source-url="{{ route('finance.voucher.transfer.sources',['kind'=>$kind]) }}"
