@@ -32,6 +32,22 @@ final class VoucherAttachmentRulesTest extends TestCase
         $this->assertFalse($this->valid(UploadedFile::fake()->create('evidence.pdf',5121,'application/pdf')));
     }
 
+    public function test_all_six_voucher_series_use_the_same_underlying_attachment_contract(): void
+    {
+        foreach (['CR','DR','CCR','CDR','BOR','BOP'] as $series) {
+            $storedType=match ($series) {
+                'DR','BOP'=>'CP',
+                'BOR'=>'CR',
+                default=>$series,
+            };
+            $this->assertTrue(VoucherAttachmentRules::supportsSourceType($storedType),
+                'Source type for '.$series.' must support attachments.');
+        }
+        foreach (['JV','PP','PR','SV','INVALID'] as $unrelated) {
+            $this->assertFalse(VoucherAttachmentRules::supportsSourceType($unrelated));
+        }
+    }
+
     public function test_executable_attachment_is_rejected(): void
     {
         $this->assertFalse($this->valid(UploadedFile::fake()->create('script.exe',30,'application/octet-stream')));
