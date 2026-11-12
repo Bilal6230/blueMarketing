@@ -1406,14 +1406,18 @@ class VoucherController extends Controller
                 $j->on('cash_line.posting_batch_id', '=', 'batch.id')->where('cash_line.debit', $kind === 'withdrawal' ? '>' : '=', $kind === 'withdrawal' ? 0 : 0);
             })->join('project_head_subheads as cash_account', 'cash_account.id', '=', 'cash_line.project_head_subhead_id')
             ->join('head_accountings as cash_head', 'cash_head.id', '=', 'cash_account.head_accounting_id')
+            ->leftJoin('subhead_accountings as cash_child', 'cash_child.id', '=', 'cash_account.subhead_accounting_id')
             ->leftJoin('customer_ledger as cheque', 'cheque.id', '=', 'transfer.linked_customer_ledger_id')
             ->where('transfer.project_id', $projectId)->where('transfer.transfer_kind', $kind)
-            ->where('cash_head.name', 'LIKE', '%cash%')->orderByDesc('batch.effective_date')->orderByDesc('batch.id')
+            ->where(function ($query) {
+                $query->where('cash_head.name', 'LIKE', '%cash%')
+                    ->orWhere('cash_child.name', 'LIKE', '%cash%');
+            })->orderByDesc('batch.effective_date')->orderByDesc('batch.id')
             ->get(['transfer.posting_batch_id', 'transfer.amount', 'transfer.narration', 'bank.bank_name', 'bank.account_title',
-                'batch.voucher_series', 'batch.voucher_number', 'batch.effective_date', 'cash_head.name as cash_name', 'cheque.type_id as cheque_number', 'cheque.t_number as cheque_reference'])
+                'batch.voucher_series', 'batch.voucher_number', 'batch.effective_date', 'cash_head.name as cash_name', 'cash_child.name as cash_child_name', 'cheque.type_id as cheque_number', 'cheque.t_number as cheque_reference'])
             ->unique('posting_batch_id')->values()->map(fn ($r) => ['posting_batch_id' => (int) $r->posting_batch_id,
-                'voucher' => trim((string) $r->voucher_series.'-'.(string) $r->voucher_number, '-'), 'date' => substr((string) $r->effective_date, 0, 10),
-                'cash_account' => (string) $r->cash_name, 'bank' => trim((string) $r->bank_name.' / '.(string) $r->account_title, ' /'),
+                'voucher' => (string) $r->voucher_series.'-'.($r->voucher_number ?: $r->posting_batch_id), 'date' => substr((string) $r->effective_date, 0, 10),
+                'cash_account' => trim((string) $r->cash_name.' / '.(string) $r->cash_child_name, ' /'), 'bank' => trim((string) $r->bank_name.' / '.(string) $r->account_title, ' /'),
                 'cheque' => $r->cheque_number ? 'CP-'.$r->cheque_number.' / '.(string) $r->cheque_reference : '', 'amount' => (string) $r->amount, 'narration' => (string) $r->narration]);
         return response()->json(['data' => $rows]);
     }
