@@ -25,14 +25,16 @@ final class PassedBankVoucherClaim
         $column=$kind==='online'?'online_intake_id':'cheque_intake_id';
         $intake=$kind==='online'?'finance_online_intakes':'finance_cheque_intakes';
         $events=$kind==='online'?'finance_online_confirmation_events':'finance_cheque_intake_actions';
-        if(!Schema::hasTable($table)||!Schema::hasTable($intake)||!Schema::hasTable($events)){
+        if(!Schema::hasTable($table)||!Schema::hasTable($intake)||!Schema::hasTable($events)
+            ||!Schema::hasTable('finance_bank_voucher_allocations')){
             throw new \DomainException('Bank source and claim migrations must be applied first.');
         }
         $source=DB::table($intake)->where('project_id',$projectId)->where('id',$id)
             ->lockForUpdate()->first();
         if(!$source)throw new \DomainException('Bank source is not available in selected project.');
+        // Legacy single-use claims stay fully reserved, never silently reallocated.
         if(DB::table($table)->where('project_id',$projectId)->where($column,$id)->exists())
-            throw new \DomainException('Bank source has already been linked to a voucher.');
+            throw new \DomainException('This source was fully claimed by an earlier voucher.');
         if($kind==='online'){
             $evidence=DB::table($events)->where('project_id',$projectId)
                 ->where('online_intake_id',$id)->where('from_status','pending')
@@ -71,25 +73,44 @@ final class PassedBankVoucherClaim
                 && !str_contains($provided,$actual) && $actual!==$initials)) {
             throw new \DomainException('Selected bank does not match the verified management source.');
         }
-        if(round((float)$source->amount,2)!==round($amount,2) ||
-            $sourceNumber!==trim($number)) {
-            throw new \DomainException('Voucher amount/reference does not match the verified bank source.');
+        if($sourceNumber!==trim($number)) {
+            throw new \DomainException('Voucher reference does not match the verified source.');
         }
-        if((int)$source->account_mapping_id>0 &&
-            (int)$source->account_mapping_id!==$accountMappingId)
-            throw new \DomainException('Voucher account does not match verified source account.');
+        // Use exact decimal cents; no floating point budget comparisons.
+        $totalCents=$this->cents((string)$source->amount);
+        $requestCents=$this->cents(number_format($amount,2,'.',''));
+        $allocated=DB::table('finance_bank_voucher_allocations')
+            ->where('project_id',$projectId)->where('source_method',$kind)
+            ->where('source_id',$id)->sum('amount');
+        $remainingCents=$totalCents-$this->cents((string)$allocated);
+        if($requestCents<=0 || $requestCents>$remainingCents) {
+            throw new \DomainException('Amount exceeds remaining verified source balance ('
+                .number_format(max(0,$remainingCents)/100,2,'.','').'). Refresh the source picker.');
+        }
+        // Voucher account is intentionally chosen independently for plot/party allocation.
+        // LedgerController still enforces selected-project account ownership.
         return $source;
     }
 
-    public function claim(int $projectId,string $kind,int $intakeId,
-        string $voucherType,int $voucherId,int $userId): void
+    private function cents(string $amount): int
     {
-        $table=$kind==='online'?'finance_online_voucher_claims':'finance_cheque_voucher_claims';
-        $key=$kind==='online'?'online_intake_id':'cheque_intake_id';
-        DB::table($table)->insert([
-            'project_id'=>$projectId,$key=>$intakeId,
+        return (int) round(((float)str_replace(',','',$amount))*100);
+    }
+
+    public function claim(int $projectId,string $kind,int $intakeId,
+        string $voucherType,int $voucherId,int $userId,float $amount): void
+    {
+        // Called after verify() while the source row remains locked in the
+        // same project-locked voucher transaction; both writes roll back together.
+        if (!Schema::hasTable('finance_bank_voucher_allocations')) {
+            throw new \DomainException('Bank partial allocation migration is required.');
+        }
+        DB::table('finance_bank_voucher_allocations')->insert([
+            'project_id'=>$projectId,
+            'source_method'=>$kind,'source_id'=>$intakeId,
             'voucher_type'=>$voucherType,'voucher_id'=>$voucherId,
-            'linked_by'=>$userId,'linked_at'=>now(),
+            'amount'=>number_format($amount,2,'.',''),
+            'allocated_by'=>$userId,'allocated_at'=>now(),
             'created_at'=>now(),'updated_at'=>now(),
         ]);
     }
