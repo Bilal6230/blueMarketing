@@ -13,7 +13,7 @@ final class PassedBankVoucherClaim
      */
     public function verify(int $projectId,string $kind,int $id,string $direction,
         int $paymentType,float $amount,string $number,int $accountMappingId,
-        string $passingDate): object
+        string $passingDate,int $bankId): object
     {
         if($id<=0 || !in_array($kind,['online','cheque'],true)
             || !in_array($direction,['receipt','payment'],true)
@@ -54,6 +54,22 @@ final class PassedBankVoucherClaim
             : ($evidence->action_date??''));
         if(substr($verifiedDate,0,10)!==substr($passingDate,0,10)){
             throw new \DomainException('Passing date must match the verified bank management decision.');
+        }
+        $sourceBank=$kind==='online'
+            ? (string)($direction==='receipt'?$source->receiving_bank:$source->sending_bank)
+            : (string)($evidence->bank_name?:$source->bank_name);
+        $selectedBank=$bankId>0?(string)getBankNameById($bankId):'';
+        $normalise=fn(string $value)=>strtolower((string)preg_replace('/[^a-z0-9]/i','',$value));
+        $actual=$normalise($sourceBank);
+        $provided=$normalise($selectedBank);
+        $initials=strtolower(implode('',array_map(
+            fn($word)=>substr($word,0,1),
+            array_filter(preg_split('/[^a-z0-9]+/i',$selectedBank))
+        )));
+        if($actual===''||$provided==='' ||
+            ($actual!==$provided && !str_contains($actual,$provided)
+                && !str_contains($provided,$actual) && $actual!==$initials)) {
+            throw new \DomainException('Selected bank does not match the verified management source.');
         }
         if(round((float)$source->amount,2)!==round($amount,2) ||
             $sourceNumber!==trim($number)) {
