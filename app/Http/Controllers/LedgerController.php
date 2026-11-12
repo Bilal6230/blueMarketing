@@ -133,6 +133,7 @@ class LedgerController extends Controller
                 }
             ],
             'detail' => ['required', 'string', 'max:255'],
+            'attachment' => ['nullable','file','mimes:pdf,jpg,jpeg,png,webp','max:5120'],
             'acct_type' => ['required', 'integer', 'min:1'],
             'accounts_id' => ['required', 'integer', 'min:1'],
             'subaccounts_id' => ['required', 'integer', 'min:1'],
@@ -245,6 +246,10 @@ class LedgerController extends Controller
                 'message' => 'Please select a pending voucher and valid status before saving.'
             ], 422);
         }
+        if ($isCashOutPendingClearance && $request->hasFile('attachment')) {
+            return response()->json(['status'=>'error','message'=>
+                'An attachment cannot be added while updating an existing pending clearance.'],422);
+        }
         $amount_in = $effectiveVoucherType === 'CR' ? $cleanAmount : 0;
         $amount_out = $effectiveVoucherType === 'CP' ? $cleanAmount : 0;
 
@@ -269,6 +274,19 @@ class LedgerController extends Controller
             ], 422);
         }
 
+        $uploadedVoucherAttachment=null;
+        if ($request->hasFile('attachment')) {
+            if (!\Illuminate\Support\Facades\Schema::hasTable('cash_voucher_attachments')
+                || !\Illuminate\Support\Facades\Schema::hasColumn('cash_voucher_attachments','status')) {
+                return response()->json(['status'=>'error','message'=>
+                    'Voucher attachment migration is required.'],409);
+            }
+            $uploadedVoucherAttachment=$request->file('attachment')->store(
+                'private/voucher-attachments/'.(int)$selectedProjectId,'local');
+            if (!$uploadedVoucherAttachment) {
+                return response()->json(['status'=>'error','message'=>'Attachment upload failed.'],422);
+            }
+        }
         try {
             $responsePayload = DB::transaction(function () use (
                 $request,
@@ -283,7 +301,8 @@ class LedgerController extends Controller
                 $amount_in,
                 $amount_out,
                 $isCashOutPendingClearance,
-                $linkedVerifiedSource,$passedKind,$passedSourceId,$voucherPrefix
+                $linkedVerifiedSource,$passedKind,$passedSourceId,$voucherPrefix,
+                $uploadedVoucherAttachment
             ) {
                 // Coordinate manual CR/CP posting with other project-scoped
                 // financial writers, including first-time voucher creation.
@@ -627,6 +646,18 @@ class LedgerController extends Controller
                         ->update(['is_active' => 0]);
                 }
 
+                if ($uploadedVoucherAttachment) {
+                    DB::table('cash_voucher_attachments')->insert([
+                        'project_id'=>(int)$selectedProjectId,
+                        'customer_ledger_id'=>(int)$customerLedger->id,
+                        'disk'=>'local','path'=>$uploadedVoucherAttachment,
+                        'original_name'=>substr((string)$request->file('attachment')->getClientOriginalName(),0,255),
+                        'mime_type'=>(string)$request->file('attachment')->getMimeType(),
+                        'size'=>(int)$request->file('attachment')->getSize(),
+                        'uploaded_by'=>(int)Auth::id(),
+                        'status'=>'applied','created_at'=>now(),'updated_at'=>now(),
+                    ]);
+                }
                 session(['last_submit_date' => $request->date]);
 
                 if ($request->id) {
@@ -653,6 +684,7 @@ class LedgerController extends Controller
 
             return response()->json($responsePayload, 200);
         } catch (\Illuminate\Database\QueryException $e) {
+            if($uploadedVoucherAttachment) \Illuminate\Support\Facades\Storage::disk('local')->delete($uploadedVoucherAttachment);
             if($linkedVerifiedSource && in_array((string)$e->getCode(),['23000','23505'],true)){
                 return response()->json(['status'=>'error','error_key'=>'bank_source_already_used',
                     'message'=>'This verified source allocation conflicts with an existing voucher. Refresh the remaining balance.'],409);
@@ -661,15 +693,18 @@ class LedgerController extends Controller
                 'project_id'=>$selectedProjectId]);
             return response()->json(['status'=>'error','message'=>'Unable to save voucher. Please retry after checking the source.'],500);
         } catch (\DomainException $e) {
+            if($uploadedVoucherAttachment) \Illuminate\Support\Facades\Storage::disk('local')->delete($uploadedVoucherAttachment);
             return response()->json(['status'=>'error','error_key'=>'bank_source_conflict',
                 'message'=>$e->getMessage()],409);
         } catch (\RuntimeException $e) {
+            if($uploadedVoucherAttachment) \Illuminate\Support\Facades\Storage::disk('local')->delete($uploadedVoucherAttachment);
             return response()->json([
                 'status' => 'error',
                 'error_key' => 'pending_payment_invalid_state',
                 'message' => $e->getMessage(),
             ], 422);
         } catch (\Throwable $th) {
+            if($uploadedVoucherAttachment) \Illuminate\Support\Facades\Storage::disk('local')->delete($uploadedVoucherAttachment);
             Log::error('voucher_store_failed', [
                 'user_id' => Auth::id(),
                 'project_id' => getSelectedTown(),
