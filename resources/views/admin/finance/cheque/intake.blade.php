@@ -283,12 +283,20 @@
                     <tbody id="cheque-history-rows"></tbody>
                 </table>
             </div>
+            <h6 class="mt-3 font-weight-bold">Linked Voucher Allocations</h6>
+            <div class="table-responsive" style="max-height:35vh;overflow:auto">
+                <table class="table table-sm table-bordered">
+                    <thead><tr><th>Voucher</th><th class="text-right">Amount (Rs.)</th><th>Approval</th><th>Allocated At</th><th>Release / Void</th></tr></thead>
+                    <tbody id="cheque-linked-voucher-rows"></tbody>
+                </table>
+            </div>
         </div>
     </div></div>
 </div>
 <div id="cheque-toast" class="alert alert-success shadow" role="status" aria-live="polite"></div>
 @endsection
 @push('script')
+<script src="{{ asset('js/finance-bank-linked-history.js') }}?v=1"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 $(function () {
@@ -682,10 +690,12 @@ $(function () {
         var id=$(this).attr('data-id'), number=$(this).attr('data-cheque');
         $('#cheque-history-heading').text('Cheque #'+number);
         var $body=$('#cheque-history-rows').empty();
+        $.bankLinkedHistory.loading($('#cheque-linked-voucher-rows'));
         $('<tr>').append($('<td colspan="5">').text('Loading history...')).appendTo($body);
         $('#cheque-history-modal').modal('show');
         $.ajax({url:historyUrlTemplate.replace('__CHEQUE_ID__',id),dataType:'json'}).done(function(result){
             $body.empty();
+            $.bankLinkedHistory.render($('#cheque-linked-voucher-rows'),result.linked_vouchers||[]);
             var events=result.events||[];
             if(!events.length){
                 $('<tr>').append($('<td colspan="5">').text('Cheque received. No bank lifecycle actions recorded yet.')).appendTo($body);
@@ -702,6 +712,7 @@ $(function () {
                 $details.appendTo($row);$body.append($row);
             });
         }).fail(function(){
+            $.bankLinkedHistory.failed($('#cheque-linked-voucher-rows'));
             $body.empty().append($('<tr>').append($('<td colspan="5" class="text-danger">').text('Could not load cheque history.')));
         });
     });
