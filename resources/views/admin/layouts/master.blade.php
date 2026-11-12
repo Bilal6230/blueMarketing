@@ -61,7 +61,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
     <link rel="stylesheet" href="{{ asset('css/blue-table-skeleton.css') }}?v=1">
-    <link rel="stylesheet" href="{{ asset('css/blue-action-menu.css') }}?v=1">
+    <link rel="stylesheet" href="{{ asset('css/blue-design-system.css') }}?v=1">
+    <link rel="stylesheet" href="{{ asset('css/blue-action-menu.css') }}?v=2">
     @stack('style')
     <style>
         div#load_screen {
@@ -690,7 +691,7 @@
     });
     </script>
     <style>[data-ajax-panel],.tab-pane{transition:opacity .15s ease}.ajax-panel-loading{opacity:.58;pointer-events:none;position:relative}.ajax-panel-loading:after{content:'Saving…';position:absolute;z-index:20;top:12px;right:14px;padding:6px 12px;border-radius:999px;background:#14243a;color:#fff;font-size:12px;box-shadow:0 5px 18px #10243a33}</style>
-    <script src="{{ asset('js/blue-action-menu.js') }}?v=1"></script>
+    <script src="{{ asset('js/blue-action-menu.js') }}?v=2"></script>
     @stack('script')
 </body>
 
