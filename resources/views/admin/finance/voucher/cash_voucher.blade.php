@@ -435,6 +435,9 @@
                                                                 </option>
                                                             @endforeach
                                                         </select>
+                                                        @if($supportsPassedSources)
+                                                            <small id="passed-bank-expected-name" class="text-muted d-none" aria-live="polite"></small>
+                                                        @endif
                                                     </div>
                                                     <div class="col-6 col-md-3 col-lg-2 bank_group" style="display: none">
                                                         <label class="fbox mb-1">Passing Date</label>
@@ -1893,6 +1896,7 @@
                 $('#numberInput').prop('readonly',false).removeAttr('data-bank-source-remaining').removeClass('is-invalid');
                 $('.bank-source-balance-slot').hide();
                 $('#passed-bank-balance').empty();
+                $('#passed-bank-expected-name').addClass('d-none').text('');
                 lastSourceOverLimit=false;
                 $('#submitForm,#submit-button').prop('disabled',false);
                 $('#t_number').prop('readonly',false);
@@ -2002,7 +2006,10 @@
                     $('#cheque_purpose').val('');
                     $('.cheque-purpose-group').hide();
                 }
-                // Bank is chosen manually and checked against the verified source server-side.
+                // Bank remains manual, but show the bank from verified management
+                // so the operator can select the correct bank before saving.
+                $('#passed-bank-expected-name').removeClass('d-none')
+                    .text('Verified source bank: '+String(source.bank||'Not specified'));
                 const $bank=$('#bank_id'),bankControl=$bank.prop('tomselect');
                 if(bankControl)bankControl.clear(true);
                 else $bank.val('').trigger('change');
