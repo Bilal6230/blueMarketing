@@ -1783,7 +1783,13 @@
                 }catch(error){return null;}
             }
             $(document).one('pointerdown.voucherAudio keydown.voucherAudio touchstart.voucherAudio',unlockVoucherErrorAudio);
+            let lastVoucherErrorToneAt=0;
             function playVoucherErrorTone(){
+                // The validation handler and SweetAlert wrapper may fire together.
+                // One audible alert per action avoids duplicate overlapping tones.
+                const nowMs=Date.now();
+                if(nowMs-lastVoucherErrorToneAt<180)return;
+                lastVoucherErrorToneAt=nowMs;
                 const context=unlockVoucherErrorAudio();
                 if(!context)return;
                 const play=()=>{
@@ -1816,6 +1822,15 @@
                 // Force a fresh animation on consecutive invalid submits.
                 setTimeout(()=>control.addClass('voucher-error-shake'),0);
                 setTimeout(()=>control.removeClass('voucher-error-shake'),440);
+            }
+            function markVoucherServerErrors(response,$form){
+                const errors=response?.errors||{};
+                $.each(errors,function(field){
+                    const $input=$form.find('[name="'+String(field).replace(/[^a-zA-Z0-9_]/g,'')+'"]').first();
+                    if(!$input.length)return;
+                    $input.addClass('is-invalid');
+                    shakeVoucherField($input);
+                });
             }
             // Cover existing voucher error/warning SweetAlert dialogs as well as source-limit toasts.
             if(window.Swal && !window.Swal.__blueVoucherErrorSound){
@@ -2529,26 +2544,32 @@
                 }
 
                 if (!payload.amount || Number(String(payload.amount).replace(/,/g, '')) <= 0) {
+                    shakeVoucherField($('#edit_amount')); playVoucherErrorTone();
                     Swal.fire({ icon: 'warning', title: 'Validation error', text: 'Amount is required.' });
                     return;
                 }
                 if (!payload.accounts_id) {
+                    shakeVoucherField($('#edit_accounts_id')); playVoucherErrorTone();
                     Swal.fire({ icon: 'warning', title: 'Validation error', text: 'Account is required.' });
                     return;
                 }
                 if (!payload.subaccounts_id) {
+                    shakeVoucherField($('#edit_subaccounts_id')); playVoucherErrorTone();
                     Swal.fire({ icon: 'warning', title: 'Validation error', text: 'Child account is required.' });
                     return;
                 }
                 if (!payload.detail) {
+                    shakeVoucherField($('#edit_detail')); playVoucherErrorTone();
                     Swal.fire({ icon: 'warning', title: 'Validation error', text: 'Detail is required.' });
                     return;
                 }
                 if (payload.edit_reason.length < 3) {
+                    shakeVoucherField($('#edit_reason')); playVoucherErrorTone();
                     Swal.fire({ icon: 'warning', title: 'Validation error', text: 'Reason for Edit must be at least 3 characters.' });
                     return;
                 }
                 if (!paymentType) {
+                    shakeVoucherField($('#edit_payment_type')); playVoucherErrorTone();
                     Swal.fire({ icon: 'warning', title: 'Validation error', text: 'Payment type is required.' });
                     return;
                 }
@@ -2561,6 +2582,7 @@
                     return;
                 }
                 if (paymentType === '3' && !String(payload.cheque_purpose || '').trim()) {
+                    shakeVoucherField($('#edit_cheque_purpose')); playVoucherErrorTone();
                     Swal.fire({ icon: 'warning', title: 'Validation error', text: 'Cheque purpose is required.' });
                     return;
                 }
@@ -2585,6 +2607,7 @@
                         });
                     },
                     error: function(xhr) {
+                        markVoucherServerErrors(xhr?.responseJSON,$('#edit-voucher-form'));
                         Swal.fire({
                             icon: 'error',
                             title: 'Update failed',
@@ -3570,6 +3593,7 @@
                     },
                     error: function(xhr) {
                         console.error('❌ Error:', xhr.responseText);
+                        markVoucherServerErrors(xhr.responseJSON,$('#voucherForm'));
                         const msg = xhr.responseJSON?.message || 'Something went wrong while saving the voucher.';
                         Swal.fire({
                             icon: 'error',
