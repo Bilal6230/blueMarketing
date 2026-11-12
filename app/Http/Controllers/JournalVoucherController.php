@@ -464,6 +464,7 @@ class JournalVoucherController extends Controller
                 abort(422,'Unsupported column search.');
             $text=trim((string)$value);
             if($text==='')continue;
+            if($column==='total_debit')$text=str_replace([',',' '],'',$text);
             if($column==='voucher_number'){
                 $numbers=$this->excelVoucherNumbers($query,$projectId,$voucherType);
                 $ids=array_keys(array_filter($numbers,
