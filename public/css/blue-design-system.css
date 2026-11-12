@@ -40,3 +40,36 @@
 .bm-ui .bm-voucher-table-card{min-width:0}
 .bm-ui .bm-voucher-table-card .bm-table{width:100%}
 .bm-ui .bm-voucher-table-card .blue-actions-cell{width:var(--bm-action-col,72px);max-width:var(--bm-action-col,72px)}
+
+/* Shared CR/DR/BD/BW Excel-style column popover and header triggers. */
+    .bm-ui .dv-filter-heading{vertical-align:middle;white-space:nowrap}
+    .bm-ui .dv-excel-trigger{float:right;min-width:25px;height:24px;border:1px solid transparent;border-radius:4px;color:#607086;background:transparent}
+    .bm-ui .dv-excel-trigger:hover,.bm-ui .dv-excel-trigger[aria-expanded=true]{border-color:var(--dv-accent);background:#fff;color:var(--dv-accent)}
+    .bm-ui .dv-excel-trigger.dv-has-filter{color:var(--dv-accent);background:#fff;border-color:var(--dv-accent)}
+    .dv-excel-popover{position:fixed;z-index:1100;width:288px;max-width:calc(100vw - 20px);background:white;border:1px solid #c9d3de;border-radius:8px;box-shadow:0 14px 38px rgba(13,34,56,.22);padding:10px;color:#273549;font-size:var(--bm-font-sm)}
+    .dv-excel-popover.d-none{display:none!important}
+    .dv-excel-title{font-weight:700;font-size:var(--bm-font-md);margin:0 0 7px}
+    .dv-excel-sort{width:100%;display:block;border:0;background:white;text-align:left;padding:8px;border-radius:4px;color:#273549}
+    .dv-excel-sort:hover,.dv-excel-sort:focus-visible{background:#ecf4fc}
+    .dv-excel-divider{border-top:1px solid #e1e7ed;margin:8px 0}
+    .dv-excel-values{height:190px;overflow:auto;border:1px solid #dde4ec;border-radius:5px;margin-top:7px;padding:5px}
+    .dv-excel-choice{display:flex;align-items:center;gap:7px;margin:0;padding:5px 3px;cursor:pointer;overflow-wrap:anywhere}
+    .dv-excel-choice:hover{background:#f1f6fc}
+    .dv-excel-choice input{flex:0 0 auto;margin:0}
+    .dv-excel-footer{display:flex;gap:6px;justify-content:flex-end;margin-top:10px}
+    .dv-excel-footer .btn-primary{background:#2165b4;border-color:#2165b4}
+    .dv-excel-date-label{display:block;font-size:var(--bm-font-sm);font-weight:600;margin:8px 0 4px}
+    .dv-excel-popover.dv-search-mode .dv-excel-values,
+    .dv-excel-popover.dv-search-mode .dv-excel-footer,
+    .dv-excel-popover.dv-date-mode .dv-excel-values,
+    .dv-excel-popover.dv-date-mode #dv-excel-search-area,
+    .dv-excel-popover.dv-date-mode #dv-excel-apply,
+    .dv-excel-popover.dv-date-mode #dv-excel-cancel{display:none!important}
+    .dv-excel-popover.dv-search-mode #dv-excel-apply,
+    .dv-excel-popover.dv-search-mode #dv-excel-cancel{display:none!important}
+    .dv-excel-popover.dv-date-mode .dv-excel-footer{display:flex!important}
+    .dv-excel-popover.dv-date-mode #dv-excel-clear{display:inline-block!important}
+    .dv-excel-popover.dv-date-mode #dv-excel-dates{display:block!important}
+    .dv-excel-popover.dv-search-mode #dv-excel-dates,
+    .dv-excel-popover.dv-checkbox-mode #dv-excel-dates{display:none!important}
+
