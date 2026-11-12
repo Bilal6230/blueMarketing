@@ -32,6 +32,14 @@ final class PassedBankSourcePickerController extends Controller
                 Schema::hasTable('finance_online_voucher_claims'),409,
                 'Verified online intake and claim migrations are required.');
             $rows=DB::table('finance_online_intakes as i')
+                ->join('finance_online_confirmation_events as verified',function($join)use($project){
+                    $join->on('verified.online_intake_id','=','i.id')
+                        ->where('verified.project_id',$project)
+                        ->where('verified.from_status','pending')
+                        ->where('verified.to_status','confirmed');
+                })
+                ->whereColumn('verified.original_amount','i.amount')
+                ->whereColumn('verified.transaction_type','i.type')
                 ->where('i.project_id',$project)->where('i.status','confirmed')
                 ->where('i.type',$direction)
                 ->whereExists(function($q)use($project){
@@ -48,10 +56,10 @@ final class PassedBankSourcePickerController extends Controller
             if($search!=='')$rows->where('i.reference','like','%'.$search.'%');
             $items=$rows->orderByDesc('i.id')->limit(100)->get([
                 'i.id','i.reference','i.transaction_date','i.amount','i.sending_bank',
-                'i.receiving_bank','i.purpose','i.account_mapping_id',
+                'i.receiving_bank','i.purpose','i.account_mapping_id','verified.verification_date',
             ])->map(fn($i)=>[
                 'id'=>(int)$i->id,'method'=>'online','reference'=>(string)$i->reference,
-                'date'=>(string)$i->transaction_date,'passing_date'=>(string)$i->transaction_date,
+                'date'=>(string)$i->transaction_date,'passing_date'=>(string)$i->verification_date,
                 'amount'=>(string)$i->amount,'bank'=>(string)($direction==='receipt'?$i->receiving_bank:$i->sending_bank),
                 'purpose'=>(string)($i->purpose??''),'account_mapping_id'=>(int)$i->account_mapping_id,
                 'status'=>'Confirmed',
