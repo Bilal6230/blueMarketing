@@ -28,13 +28,13 @@ final class BankVoucherAllocationRelease
                 ?: throw new \DomainException('Project not found.');
             $identity=DB::table('project_voucher_display_numbers')
                 ->where('project_id',$projectId)->where('source_kind','customer_ledger')
-                ->where('source_id',$voucherId)->whereIn('series',['BOR','BOP'])
+                ->where('source_id',$voucherId)->whereIn('series',['CR','DR','BOR','BOP'])
                 ->lockForUpdate()->first();
-            if(!$identity) throw new \DomainException('Not a verified BOR/BOP voucher.');
+            if(!$identity) throw new \DomainException('Not a verified bank-funded CR/DR/BOR/BOP voucher.');
             $series=(string)$identity->series;
             $source=DB::table('customer_ledger')->where('project_id',$projectId)
                 ->where('id',$voucherId)->lockForUpdate()->first();
-            if(!$source || (string)$source->transaction_type!==($series==='BOR'?'CR':'CP')
+            if(!$source || (string)$source->transaction_type!==(in_array($series,['CR','BOR'],true)?'CR':'CP')
                 || !in_array((int)$source->payment_type,[2,3],true)) {
                 throw new \DomainException('Voucher source identity changed.');
             }
@@ -64,6 +64,8 @@ final class BankVoucherAllocationRelease
             if($approval && (string)$approval->voucher_type!==$series) {
                 throw new \DomainException('Legacy/mismatched approval requires manual reconciliation.');
             }
+            app(VoucherApprovalMutationGuard::class)
+                ->assertNoPendingCorrection($projectId,$voucherId);
             if(Schema::hasTable('daily_voucher_edit_snapshots') &&
                 DB::table('daily_voucher_edit_snapshots')
                   ->where('project_id',$projectId)->where('source_id',$voucherId)
