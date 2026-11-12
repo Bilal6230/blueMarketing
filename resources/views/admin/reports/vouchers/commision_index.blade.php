@@ -5,7 +5,7 @@
 /* CV retains its existing blue identity while sharing CR/DR density. */
 .cv-directory{--voucher-accent:#087cfa;--voucher-tint:#e7efff}
 .cv-directory .cv-shell{background:transparent!important;box-shadow:none!important}
-.cv-directory .cv-shell>.card-header{background:#e8f0ff!important;color:#0861d4!important;border-bottom:2px solid #087cfa;padding:12px 15px}
+.cv-directory .cv-shell>.card-header{background:#007bff!important;color:#fff!important;border-bottom:2px solid #087cfa;padding:12px 15px}
 .cv-directory .cv-shell>.card-header h4{font-size:19px;font-weight:700;margin:0}
 .cv-directory .cv-shell>.card-body{padding:10px 0}
 .cv-directory #filtersSection .row{row-gap:8px;align-items:end}
