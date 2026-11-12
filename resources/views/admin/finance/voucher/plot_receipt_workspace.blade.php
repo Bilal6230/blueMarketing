@@ -4,7 +4,7 @@
 <style>
  .pr-page{--ink:#14243b;--muted:#657891;--line:#dce6f2;color:var(--ink)}.pr-hero{padding:20px 24px;border-radius:15px;background:linear-gradient(120deg,#12243d,#1769e0);color:#fff;margin-bottom:16px}.pr-hero p{margin:5px 0 0;color:#dceaff}.pr-card{background:#fff;border:1px solid var(--line);border-radius:13px;box-shadow:0 6px 20px #152a4510;overflow:hidden}.pr-card h5{margin:0;padding:14px 17px;border-bottom:1px solid var(--line);font-size:15px;font-weight:700}.pr-body{padding:16px}.pr-scroll{max-height:390px;overflow:auto}.pr-scroll thead th{position:sticky;top:0;z-index:1;background:#edf4fc}.pr-page table{font-size:13px}.pr-page .form-control{border-radius:8px}.pr-muted{color:var(--muted)}.pr-picked{background:#eaf3ff}.pr-total{font-size:23px;font-weight:750;color:#1769e0}.pr-stat{background:#f4f8fd;border:1px solid var(--line);border-radius:10px;padding:12px}.pr-stat small{display:block;color:var(--muted)}
 </style>
-<div class="container-fluid bm-ui pr-page" id="plotReceiptApp"
+<div class="container-fluid bm-ui bm-plot-workspace pr-page" id="plotReceiptApp"
  data-options-url="{{ route('finance.voucher.plot-receipt.options') }}"
  data-history-url="{{ route('finance.voucher.plot-receipt.history') }}"
  data-post-url="{{ route('finance.voucher.plot-receipt.post') }}"
