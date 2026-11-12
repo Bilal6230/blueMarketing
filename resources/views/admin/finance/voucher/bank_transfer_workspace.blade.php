@@ -32,8 +32,8 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
 #bankTransferApp #transferTable tbody tr:hover td{background:color-mix(in srgb,var(--dv-pale) 48%,white)}
 #bankTransferApp #transferTable td:nth-child(3){color:var(--dv-accent);font-weight:700}
 #bankTransferApp #transferTable td:last-child,#bankTransferApp #transferTable th:last-child{text-align:center;width:74px}
-#bankTransferApp .bt-plus{width:30px;height:30px;padding:2px;border-radius:10px;border:1px solid #c9ded1;background:#fff;color:var(--dv-accent);box-shadow:0 1px 4px #0001}
-#bankTransferApp.bt-debit .bt-plus{border-color:#efc5cb}
+#bankTransferApp .blue-actions-cell{width:var(--bm-action-col,72px)!important}
+#bankTransferApp .blue-actions-toggle{color:var(--dv-accent)}
 #bankTransferApp .bt-footer{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:43px;padding:.35rem .65rem;background:#fff}
 #bankTransferApp .bt-page-btn{border:1px solid var(--dv-accent);background:#fff;color:var(--dv-accent);border-radius:5px;padding:4px 9px;min-width:30px}
 #bankTransferApp .bt-page-btn.active{background:var(--dv-accent);color:#fff}
@@ -45,7 +45,7 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
 @media(max-width:991.98px){body:has(#bankTransferApp) .main-content.page-content,body.sidebar-collapse:has(#bankTransferApp) .main-content.page-content{margin-left:0!important;width:100%!important;max-width:100%;padding:66px 6px 0!important}}
 @media(max-width:520px){#bankTransferApp .bt-filter-row{grid-template-columns:1fr}#bankTransferApp .bt-footer{flex-wrap:wrap}}
 </style>
-<div class="container-fluid bt-page {{ $kind === 'deposit' ? 'bt-credit' : 'bt-debit' }}" id="bankTransferApp" data-kind="{{ $kind }}"
+<div class="container-fluid bm-ui bt-page {{ $kind === 'deposit' ? 'bt-credit' : 'bt-debit' }}" id="bankTransferApp" data-kind="{{ $kind }}"
     data-post-url="{{ route('finance.voucher.transfer.post',['kind'=>$kind]) }}"
     data-history-url="{{ route('finance.voucher.transfer.history',['kind'=>$kind]) }}"
     data-source-url="{{ route('finance.voucher.transfer.sources',['kind'=>$kind]) }}"
@@ -57,7 +57,7 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
             <a class="btn btn-outline-secondary btn-sm" href="{{ route('dashboard') }}">Dashboard</a>
         </div>
     </div>
-    <section class="card bt-filter-card">
+    <section class="card bm-card bm-filter bt-filter-card">
         <div class="card-body">
             <form id="btFilterForm" class="bt-filter-row">
                 <div><label for="transferFrom">From</label><input type="date" class="form-control" id="transferFrom"></div>
@@ -75,14 +75,14 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
             </form>
         </div>
     </section>
-    <section class="card bt-table-card">
-        <div class="bt-tools">
+    <section class="card bm-card bt-table-card">
+        <div class="bt-tools bm-records-toolbar">
             <label>Show <select class="form-control form-control-sm" id="btLength"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option></select> entries</label>
             <label>Search: <input class="form-control form-control-sm" id="btQuickSearch" placeholder="Search vouchers"></label>
         </div>
         <div id="transferListError" class="alert alert-danger d-none m-2" role="alert"></div>
         <div class="bt-table-wrap">
-            <table class="table table-bordered table-hover table-sm w-100" id="transferTable">
+            <table class="table bm-table table-bordered table-hover table-sm w-100" id="transferTable">
                 <colgroup><col style="width:48px"><col style="width:112px"><col style="width:120px"><col style="width:200px"><col style="width:195px"><col><col style="width:110px"><col style="width:92px"><col style="width:74px"></colgroup>
                 <thead><tr><th>#</th><th>Date</th><th>Voucher #</th><th>Head</th><th>Sub Head</th><th>Details</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead>
                 <tbody id="transferRows"><tr><td colspan="9" class="text-center text-muted py-4">Loading vouchers…</td></tr></tbody>
@@ -201,6 +201,7 @@ $(function () {
         var pages = Math.max(1, Math.ceil(rows.length / length));
         page = Math.min(page,pages);
         var start = (page - 1) * length;
+        if ($.blueActionMenu) $.blueActionMenu.close();
         var $tbody = $('#transferRows').empty();
         if (!rows.length) {
             $('<tr>').append($('<td>').attr('colspan',9).addClass('text-center text-muted py-4').text('No matching vouchers')).appendTo($tbody);
@@ -220,9 +221,13 @@ $(function () {
             $('<td>').text(r.narration || '—').appendTo($tr);
             $('<td>').addClass('text-right').text(formatMoney(r.amount)).appendTo($tr);
             $('<td>').append($('<span class="badge badge-secondary">').text('Posted')).appendTo($tr);
-            $('<td>').append($('<button type="button" class="bt-plus bt-view" title="View voucher actions" aria-label="View voucher actions"><i class="fas fa-plus"></i></button>').attr('data-id',batch)).appendTo($tr);
+            var $actions=$('<td class="blue-actions-cell">');
+            $('<button type="button" class="btn btn-sm btn-outline-secondary bt-view" data-blue-action-type="view">View</button>').attr('data-id',batch).appendTo($actions);
+            $('<a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" data-blue-action-type="print">Print</a>').attr('href',printUrl(batch)).appendTo($actions);
+            $actions.appendTo($tr);
             $tbody.append($tr);
         });
+        if ($.blueActionMenu) $.blueActionMenu.enhance($('#transferRows > tr > td.blue-actions-cell'));
         var shown = rows.length ? start + 1 : 0;
         $('#btRecordSummary').text('Showing ' + shown + '–' + Math.min(start + length,rows.length) + ' of ' + rows.length + ' records');
         var $nav = $('#btPagination').empty();
