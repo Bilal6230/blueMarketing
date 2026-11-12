@@ -599,7 +599,7 @@
             filtered=Number(result.recordsFiltered||0);
             total=Number(result.recordsTotal||0);
             renderPagination();
-            $('#dv-rows').html(result.data.length?result.data.map((row,index)=>`<tr><td>${start+index+1}</td><td>${esc(row.date)}</td><td class="font-weight-bold">${esc(row.number)}</td><td>${esc(row.head)||'—'}</td><td>${esc(row.subhead)||'—'}</td><td class="text-truncate" style="max-width:420px" title="${esc(row.detail)}">${esc(row.detail)||'—'}</td><td class="text-right">${Number(row.amount||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td><span class="badge badge-${row.status==='Pending'?'warning':row.status==='Approved'?'success':row.status==='Rejected'?'danger':'secondary'}" title="${esc(row.status==='Rejected' ? 'Rejection Reason: '+(row.rejection_reason||'Not recorded') : (row.approval_approver||''))}">${esc(row.status||'Posted')}</span>${row.last_edit_status==='rejected'? ` <span class="badge badge-danger" title="${esc('Edit rejected: '+(row.last_edit_reason||'Reason not recorded'))}">Edit Rejected</span>` : ''}</td>${showApprovedBy ? `<td class="small">${esc(row.approved_by)||'—'}</td>` : ''}<td class="text-nowrap"><button type="button" class="btn btn-sm btn-outline-secondary dv-details" data-row="${esc(JSON.stringify(row))}">Details</button> ${row.edit_url?`<button type="button" class="btn btn-sm btn-outline-primary dv-edit" data-url="${esc(row.edit_url)}" data-number="${esc(row.number)}" title="Edit voucher" aria-label="Edit voucher ${esc(row.number)}"><i class="fas fa-edit" aria-hidden="true"></i></button>`:''} ${row.revise_url?`<button type="button" class="btn btn-sm btn-outline-warning dv-edit" data-url="${esc(row.revise_url)}" data-number="${esc(row.number)}" title="Revise rejected cash voucher"><i class="fas fa-redo"></i> Revise</button>`:''} ${row.delete_url?`<button type="button" class="btn btn-sm btn-outline-danger dv-delete" title="Delete voucher" aria-label="Delete voucher ${esc(row.number)}" data-url="${esc(row.delete_url)}" data-id="${esc(row.delete_id||'')}" data-number="${esc(row.number)}"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>`:''} ${row.url?`<a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" href="${esc(row.url)}" aria-label="Print ${esc(row.number)}"><i class="fas fa-print"></i></a>`:'<span class="small text-muted">—</span>'}</td></tr>`).join(''):'<tr><td colspan="${rowColumnCount}" class="text-center text-muted p-4">No vouchers match these filters.</td></tr>' );
+            $('#dv-rows').html(result.data.length?result.data.map((row,index)=>`<tr><td>${start+index+1}</td><td>${esc(row.date)}</td><td class="font-weight-bold">${esc(row.number)}</td><td>${esc(row.head)||'—'}</td><td>${esc(row.subhead)||'—'}</td><td class="text-truncate" style="max-width:420px" title="${esc(row.detail)}">${esc(row.detail)||'—'}</td><td class="text-right">${Number(row.amount||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td><span class="badge badge-${row.status==='Pending'?'warning':row.status==='Approved'?'success':row.status==='Rejected'?'danger':'secondary'}" title="${esc(row.status==='Rejected' ? 'Rejection Reason: '+(row.rejection_reason||'Not recorded') : (row.approval_approver||''))}">${esc(row.status||'Posted')}</span>${row.last_edit_status==='rejected'? ` <span class="badge badge-danger" title="${esc('Edit rejected: '+(row.last_edit_reason||'Reason not recorded'))}">Edit Rejected</span>` : ''}</td>${showApprovedBy ? `<td class="small">${esc(row.approved_by)||'—'}</td>` : ''}<td class="text-nowrap"><button type="button" class="btn btn-sm btn-outline-secondary dv-details" data-row="${esc(JSON.stringify(row))}">Details</button> ${row.edit_url?`<button type="button" class="btn btn-sm btn-outline-primary dv-edit" data-url="${esc(row.edit_url)}" data-number="${esc(row.number)}" title="Edit voucher" aria-label="Edit voucher ${esc(row.number)}"><i class="fas fa-edit" aria-hidden="true"></i></button>`:''} ${row.revise_url?`<button type="button" class="btn btn-sm btn-outline-warning dv-edit" data-url="${esc(row.revise_url)}" data-number="${esc(row.number)}" title="Revise rejected cash voucher"><i class="fas fa-redo"></i> Revise</button>`:''} ${row.release_url?`<button type="button" class="btn btn-sm btn-outline-danger dv-bank-release" data-url="${esc(row.release_url)}" data-number="${esc(row.number)}" data-status="${esc(row.status)}" title="Audited allocation release / administrative void"><i class="fas fa-unlink" aria-hidden="true"></i> Release / Void</button>`:''} ${row.delete_url?`<button type="button" class="btn btn-sm btn-outline-danger dv-delete" title="Delete voucher" aria-label="Delete voucher ${esc(row.number)}" data-url="${esc(row.delete_url)}" data-id="${esc(row.delete_id||'')}" data-number="${esc(row.number)}"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>`:''} ${row.url?`<a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" href="${esc(row.url)}" aria-label="Print ${esc(row.number)}"><i class="fas fa-print"></i></a>`:'<span class="small text-muted">—</span>'}</td></tr>`).join(''):'<tr><td colspan="${rowColumnCount}" class="text-center text-muted p-4">No vouchers match these filters.</td></tr>' );
         }).fail((xhr,status)=>{
             if(requestId!==activeRequest||status==='abort')return;
             const message=xhr.responseJSON?.message||'Unable to load voucher history.';
@@ -774,6 +774,32 @@
         $('#dv-entry-title').text('Edit '+$(button).data('number'));
         loadEntry(url.toString(),'edit');
         if(window.jQuery)window.jQuery('#dv-entry-modal').modal('show');
+    });
+    $('#dv-rows').on('click','.dv-bank-release',function(){
+        const $button=$(this),voucher=String($button.data('number')||'');
+        const isRejected=String($button.data('status')||'')==='Rejected';
+        const action=isRejected?'release its reserved allocation':'administratively void its active posting and release its allocation';
+        const reason=window.prompt('Reason (3-500 characters) to '+action+' for '+voucher+':');
+        if(reason===null)return;
+        if(reason.trim().length<3||reason.trim().length>500){
+            window.alert('Enter an audit reason between 3 and 500 characters.');return;
+        }
+        if(!window.confirm('Confirm '+action+' for '+voucher+'? This is one-time, audited and cannot be undone.'))return;
+        $button.prop('disabled',true);
+        $.ajax({
+            url:String($button.data('url')),
+            method:'POST',dataType:'json',
+            headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'},
+            data:{_token:@json(csrf_token()),reason:reason.trim()}
+        }).done(function(response){
+            if(window.toastr&&$.isFunction(window.toastr.success))window.toastr.success(response.message||'Bank allocation released.');
+            else window.alert(response.message||'Bank allocation released.');
+            load();
+        }).fail(function(xhr){
+            const message=xhr.responseJSON?.message||'Allocation release failed. Nothing was changed.';
+            if(window.toastr&&$.isFunction(window.toastr.error))window.toastr.error(message);
+            else window.alert(message);
+        }).always(function(){$button.prop('disabled',false);});
     });
     $('#dv-rows').on('click','.dv-delete',function(){
         const button=this;
