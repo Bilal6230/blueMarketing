@@ -90,7 +90,7 @@ class JournalVoucherController extends Controller
             });
         }
 
-        $this->applyLiveExcelFilters($query,$request);
+        $this->applyLiveExcelFilters($query,$request,'JV',(int)$selectedProjectId);
 
         // Excel-style per-column menus share the same scoped SQL query.
         // Never fetch only the first visible DataTables page for filter choices.
@@ -391,7 +391,7 @@ class JournalVoucherController extends Controller
                 }
             }
         }
-        $this->applyLiveExcelFilters($query,$request);
+        $this->applyLiveExcelFilters($query,$request,'SV',(int)$selectedProjectId);
         // If it's an AJAX request, return JSON data
         if ($request->ajax()) {
             // Pagination parameters
@@ -449,7 +449,7 @@ class JournalVoucherController extends Controller
         return view('admin.reports.vouchers.index', $x);
     }
 
-    private function applyLiveExcelFilters($query, Request $request): void
+    private function applyLiveExcelFilters($query, Request $request,string $voucherType,int $projectId): void
     {
         $live=$request->validate([
             'excel_date_from'=>['nullable','date_format:Y-m-d'],
@@ -464,6 +464,13 @@ class JournalVoucherController extends Controller
                 abort(422,'Unsupported column search.');
             $text=trim((string)$value);
             if($text==='')continue;
+            if($column==='voucher_number'){
+                $numbers=$this->excelVoucherNumbers($query,$projectId,$voucherType);
+                $ids=array_keys(array_filter($numbers,
+                    fn($display)=>stripos((string)$display,$text)!==false));
+                $query->whereIn('journal_vouchers.id',$ids);
+                continue;
+            }
             $needle='%'.addcslashes($text,'%_\\').'%';
             $query->where($column,'like',$needle);
         }
