@@ -45,6 +45,29 @@ final class VoucherApprovalDetailReader
                     $base['attachment_name']=$file->original_name;
                 }
             }
+            if (in_array($type,['CCR','CDR'],true)
+                && $approval->status==='pending'
+                && Schema::hasTable('cash_voucher_attachments')
+                && Schema::hasColumn('cash_voucher_attachments','edit_snapshot_id')
+                && Schema::hasColumn('cash_voucher_attachments','status')
+                && \App\Services\Finance\VoucherApproverAccess::mayDecide(
+                    auth()->user(),$project,(int)$approval->assigned_approver_id,
+                    (int)$approval->submitted_by)) {
+                $file=DB::table('cash_voucher_attachments as file')
+                    ->join('daily_voucher_edit_snapshots as snapshot',
+                        'snapshot.id','=','file.edit_snapshot_id')
+                    ->where('file.project_id',$project)
+                    ->where('file.customer_ledger_id',$s->id)
+                    ->where('file.status','pending')
+                    ->where('snapshot.approval_id',$approval->id)
+                    ->where('snapshot.status','pending')
+                    ->orderByDesc('file.id')->first(['file.id','file.original_name']);
+                if($file) {
+                    $base['pending_attachment_url']=route('finance.voucher.cash-only.attachment',
+                        ['attachment'=>$file->id]);
+                    $base['pending_attachment_name']=$file->original_name;
+                }
+            }
             if ($s->bank_id && Schema::hasTable('banks')) {
                 $base['bank']=DB::table('banks')->where('id',$s->bank_id)->value('name');
             }
