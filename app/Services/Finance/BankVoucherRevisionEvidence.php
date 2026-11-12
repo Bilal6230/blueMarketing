@@ -12,6 +12,10 @@ final class BankVoucherRevisionEvidence
     {
         self::assertSeries($series, $source);
         $amount = round((float) $allocation->amount, 2);
+        if (!in_array((string)$allocation->source_method,['online','cheque'],true)
+            || ((string)$allocation->source_method==='online'?2:3)!==(int)$source->payment_type) {
+            throw new \DomainException('Bank revision source method mismatch.');
+        }
         if ($amount <= 0) {
             throw new \DomainException('Invalid bank revision allocation.');
         }
