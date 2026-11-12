@@ -50,6 +50,7 @@ final class VoucherApprovalDetailReader
                 && Schema::hasTable('cash_voucher_attachments')
                 && Schema::hasColumn('cash_voucher_attachments','edit_snapshot_id')
                 && Schema::hasColumn('cash_voucher_attachments','status')
+                && Schema::hasTable('daily_voucher_edit_snapshots')
                 && \App\Services\Finance\VoucherApproverAccess::mayDecide(
                     auth()->user(),$project,(int)$approval->assigned_approver_id,
                     (int)$approval->submitted_by)) {
