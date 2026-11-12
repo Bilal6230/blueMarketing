@@ -10,6 +10,7 @@
         $cashOnlyAction = url('admin/finance/voucher/cash-only');
         $cashOnlyDraftAction = url('admin/finance/voucher/cash-only/draft');
         $isCashOnlySeries = in_array($voucherType, ['CCR','CDR'], true);
+        $isBankVoucherSeries = in_array($displaySeries ?? '', ['BOR','BOP'], true);
         $voucherCreateAction = $isCashOnlySeries ? $cashOnlyAction
             : ($fixedPaymentType !== null
                 ? route('ledger.store.fixed_method', ['paymentType' => $fixedPaymentType])
@@ -177,7 +178,7 @@
                         <div class="buttons d-flex justify-content-between align-items-baseline">
                             <div class="d-flex gap-2 mb-3" style="gap: 10px;" id="voucher-tabs-container">
                                 <button class="btn {{ $theme['primary'] }} btn-sm" id="add-new-voucher-btn">
-                                    <i class="fas fa-plus"></i> Add New Cash Voucher
+                                    <i class="fas fa-plus"></i> {{ $isBankVoucherSeries ? 'Add New Bank Voucher' : 'Add New Cash Voucher' }}
                                 </button>
                                 <div id="voucher-tabs" class="d-flex gap-2" style="gap: 10px;">
                                     <div class="voucher-tab-wrapper position-relative">
@@ -358,15 +359,25 @@
                                                         <label class="fbox mb-1">Payment Type</label>
                                                         <select class="js-tomselect form-select form-select-sm"
                                                             placeholder=" " name="payment_type" id="payment_type">
+                                                            @unless($isBankVoucherSeries)
                                                             <option value="1" {{ $fixedPaymentType === 1 ? 'selected' : '' }}>Cash</option>
+                                                            @endunless
                                                             <option value="2" {{ $fixedPaymentType === 2 ? 'selected' : '' }}>Online</option>
-                                                            <option value="3" {{ $fixedPaymentType === 3 ? 'selected' : '' }}>Check</option>
+                                                            <option value="3" {{ $fixedPaymentType === 3 ? 'selected' : '' }}>Cheque</option>
                                                         </select>
                                                         @error('payment_type')
                                                             <div class="invalid-feedback d-block">{{ $message }}</div>
                                                         @enderror
                                                     </div>
 
+                                                    @endif
+                                                    @if($isBankVoucherSeries && $fixedPaymentType !== null)
+                                                    <div class="col-6 col-md-3 col-lg-2">
+                                                        <label class="fbox mb-1">Payment Type</label>
+                                                        <input class="form-control form-control-sm" readonly
+                                                            value="{{ $fixedPaymentType === 3 ? 'Cheque' : 'Online' }}"
+                                                            aria-label="Bank voucher payment method">
+                                                    </div>
                                                     @endif
                                                     @if (!in_array($voucherType, ['CCR','CDR'], true) && isset($customPaymentMethods) && $customPaymentMethods->isNotEmpty())
                                                         <div class="col-6 col-md-3 col-lg-2">
