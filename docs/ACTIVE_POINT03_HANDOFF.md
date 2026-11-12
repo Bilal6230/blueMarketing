@@ -384,3 +384,9 @@ Owner screenshot: Bank Receipt Voucher (BOR) outer modal renders `Voucher form u
 - `PassedBankVoucherClaim::verify` now checks that the chosen Bank ID resolves to a valid named bank, but does **not** require it to equal the verified source bank. Verified source project/direction, confirmed/cleared evidence, reference number, passing date, locked remaining amount and append-only allocation still enforce financial source safety. Ledger account project ownership guard remains unchanged.
 - Removed misleading bank-name hint and bank-mismatch-specific client decoration. Bank is manual and not auto-mapped. Generic 409/422 inline Confirm Save recovery remains.
 - Code commits: `058937b2` backend, `efc22b7a` UI. No migration. Verify on local backed-up database with different valid banks, then with invalid bank ID and mismatched number/date/overallocated amount to ensure those remain blocked. Owner browser PASS pending; do not start next milestone.
+
+
+## 2026-11-12 — Approval queue SQLSTATE[42S22] invalid banks.name column (owner browser blocker)
+- Owner screenshot: `/admin/finance/daily-vouchers/approvals` throws MySQL 1054 `Unknown column 'name' in 'field list'` from `VoucherApprovalDetailReader::read()` line 73: `DB::table('banks')->where('id',$s->bank_id)->value('name')`.
+- Targeted fix: use the existing established `getBankNameById((int)$s->bank_id)` helper (already used throughout voucher create/edit, pending clearance and passed source verification) instead of assuming a nonexistent `banks.name` field. Keep project-scoped approval source queries, permissions, history and financial ledger logic unchanged. No migrations or bank data changes.
+- Code commit `558e849d`. Browser gate remains OPEN until owner pulls, clears view/config caches, reopens Approvals and confirms pending/history details and bank label render. Regression: no bank_id and multiple bank-linked vouchers; approval/reject action authorization unchanged.
