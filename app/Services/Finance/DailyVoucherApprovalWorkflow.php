@@ -321,24 +321,24 @@ final class DailyVoucherApprovalWorkflow
                 }
                 BankVoucherLegIntegrity::assert($series,$source,$legs->first(),(float)$allocation->amount);
             }
-            // A CCR/CDR decision must never activate a different series or a
-            // bank/cheque instrument. The original voucher numbers are fixed.
-            if (in_array((string)$approval->voucher_type,['CCR','CDR'],true)) {
-                if ((string)$source->transaction_type !== (string)$approval->voucher_type ||
-                    (int)$source->payment_type !== 1) {
-                    throw new \DomainException('CASH_ONLY_APPROVAL_SOURCE_TYPE_MISMATCH');
-                }
+            // First approval must never activate malformed cash-only source
+            // amounts or extra hidden/cross-project legs. An approver may
+            // still REJECT a malformed pending voucher without posting it.
+            if (in_array((string)$approval->voucher_type,['CCR','CDR'],true)
+                && $active) {
                 $legs = DB::table('ledgers as ledger')
                     ->join('project_head_subheads as account','account.id','=','ledger.project_head_subheads_id')
                     ->where('ledger.customer_ledger_id',$source->id)
                     ->where('account.project_id',$approval->project_id)
-                    ->lockForUpdate()->get(['ledger.type','ledger.type_id','ledger.voucher_number']);
-                if ($legs->count()!==1 ||
-                    $legs->first()->type !== $approval->voucher_type ||
-                    (int)$legs->first()->type_id !== (int)$source->type_id ||
-                    (int)$legs->first()->voucher_number !== (int)$source->type_id) {
-                    throw new \DomainException('CASH_ONLY_APPROVAL_LEDGER_MISMATCH');
+                    ->lockForUpdate()->get(['ledger.id','ledger.type','ledger.type_id',
+                        'ledger.voucher_number','ledger.amount_in','ledger.amount_out',
+                        'ledger.is_active']);
+                if ($legs->count()!==1
+                    || DB::table('ledgers')->where('customer_ledger_id',$source->id)->count()!==1) {
+                    throw new \DomainException('CASH_ONLY_APPROVAL_SINGLE_LEDGER_REQUIRED');
                 }
+                CashOnlyVoucherApprovalIntegrity::assert(
+                    (string)$approval->voucher_type,$source,$legs->first());
             }
             $sourceUpdate = [];
             if (Schema::hasColumn('customer_ledger', 'is_active')) $sourceUpdate['is_active'] = $active ? 1 : 0;
