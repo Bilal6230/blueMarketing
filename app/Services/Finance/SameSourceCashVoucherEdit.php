@@ -136,6 +136,12 @@ final class SameSourceCashVoucherEdit
                 'ledger_reference'=>(string)$leg->first()->reference,
                 'ledger_voucher_number'=>(int)$leg->first()->voucher_number,
             ];
+            if ($bankSeries) {
+                $before=array_merge($before,BankVoucherRevisionEvidence::capture(
+                    $source,$bankSeries,$allocation));
+                BankVoucherLegIntegrity::assert(
+                    $bankSeries,$source,$leg->first(),(float)$allocation->amount);
+            }
             $proposed=[
                 'date'=>$data['date'],
                 'amount_in'=>in_array($source->transaction_type,['CR','CCR'],true)?$amount:'0.00',
@@ -276,6 +282,20 @@ final class SameSourceCashVoucherEdit
             throw new \DomainException('Voucher changed while approval pending; decision blocked.');
         }
         if ($decision==='approved') {
+            if (in_array((string)$approval->voucher_type,['BOR','BOP'],true)) {
+                $allocation=DB::table('finance_bank_voucher_allocations')
+                    ->where('project_id',$approval->project_id)
+                    ->where('voucher_type',$approval->voucher_type)
+                    ->where('voucher_id',$approval->source_id)
+                    ->lockForUpdate()->first();
+                if (!$allocation) {
+                    throw new \DomainException('Bank revision allocation missing at approval.');
+                }
+                BankVoucherRevisionEvidence::assertUnchanged(
+                    $before,$source,$allocation,(string)$approval->voucher_type);
+                BankVoucherLegIntegrity::assert(
+                    (string)$approval->voucher_type,$source,$leg,(float)$allocation->amount);
+            }
             $this->applyLocked((int)$approval->project_id,$source,$leg,$before,$proposed);
         }
         if(Schema::hasTable('cash_voucher_attachments') &&
