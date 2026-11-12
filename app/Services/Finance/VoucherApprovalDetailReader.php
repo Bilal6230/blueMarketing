@@ -70,7 +70,9 @@ final class VoucherApprovalDetailReader
                 }
             }
             if ($s->bank_id && Schema::hasTable('banks')) {
-                $base['bank']=DB::table('banks')->where('id',$s->bank_id)->value('name');
+                // Use the canonical bank lookup used by voucher create/edit.
+                // The legacy banks table has no 'name' column in client DBs.
+                $base['bank'] = getBankNameById((int) $s->bank_id) ?: null;
             }
             if (Schema::hasTable('ledgers')) {
                 $base['lines']=DB::table('ledgers as l')
