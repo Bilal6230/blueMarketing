@@ -219,7 +219,7 @@
         </div>
     </div></section>
     <section class="content"><div class="container-fluid">
-        <div class="card bm-card bm-filter daily-voucher-card mb-3"><div class="card-body">
+        <x-finance.voucher-filter-card class="daily-voucher-card mb-3">
             <form id="daily-voucher-filters" class="bm-filter daily-voucher-filters {{ $presetType ? 'dv-preset' : '' }}">
                 <div><label for="dv-from">From</label><input id="dv-from" name="from" type="date" class="form-control"></div>
                 <div><label for="dv-to">To</label><input id="dv-to" name="to" type="date" class="form-control"></div>
@@ -255,8 +255,8 @@
                     <button type="button" class="dv-create" data-url="{{$url}}" data-cheque-url="{{ in_array($series, ['BOR','BOP'], true) ? route($series === 'BOR' ? 'finance.voucher.in.method' : 'finance.voucher.out.method', ['method'=>'cheque','series'=>$series,'embed'=>1]) : '' }}" data-title="{{$label}}" data-series="{{$series}}"></button>
                 @endforeach
             </div>
-        </div></div>
-        <div class="card bm-card daily-voucher-card daily-voucher-table-card">
+        </x-finance.voucher-filter-card>
+        <x-finance.voucher-table-card class="daily-voucher-card daily-voucher-table-card">
             <div class="dv-table-tools bm-records-toolbar">
                 <label for="dv-page-length">Show <select class="form-control form-control-sm" id="dv-page-length"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option></select> entries</label>
                 <label for="dv-table-search">Search: <input id="dv-table-search" class="form-control form-control-sm" type="search" placeholder="Search vouchers" autocomplete="off"></label>
@@ -287,7 +287,7 @@
                 <div id="dv-record-summary" class="dv-total-records" aria-live="polite">Loading records...</div>
                 <nav id="dv-pages" aria-label="Voucher pagination"></nav>
             </div>
-        </div>
+        </x-finance.voucher-table-card>
     </div></section>
 </div>
 <div id="dv-excel-popover" class="dv-excel-popover d-none" role="dialog" aria-label="Column sorting and filtering">
