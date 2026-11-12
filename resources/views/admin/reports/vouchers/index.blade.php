@@ -210,6 +210,21 @@ $(function(){
     if($b.hasClass('btn-danger'))$b.removeClass('btn-danger').addClass('btn-outline-danger').attr('title','Reverse voucher').html('<i class="fas fa-undo"></i>');
     if($b.hasClass('btn-info'))$b.removeClass('btn-info').addClass('btn-outline-primary').attr('title','Print voucher').html('<i class="fas fa-print"></i>');
    });
+   // Preserve existing original edit, reversal and print handlers.
+   // Only move actual authorized buttons into the globally shared speed dial.
+   if($.blueActionMenu){
+    $.blueActionMenu.close();
+    $table.find('tbody tr').each(function(){
+     var $cell=$(this).children('td').last();
+     var $group=$cell.children('.jv-actions');
+     if(!$group.length)return;
+     var $actions=$group.children('a,button').detach();
+     if(!$actions.length)return;
+     $group.remove();
+     $cell.addClass('blue-actions-cell').append($actions);
+    });
+    $.blueActionMenu.enhance($table.find('tbody td.blue-actions-cell'));
+   }
   },
   language:{emptyTable:'No vouchers found.',processing:'Loading vouchers...'}
  });
