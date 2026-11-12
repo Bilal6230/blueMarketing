@@ -12,6 +12,9 @@
         $isCashOnlySeries = in_array($voucherType, ['CCR','CDR'], true);
         $isBankVoucherSeries = in_array($displaySeries ?? '', ['BOR','BOP'], true);
         $supportsPassedSources = in_array($displaySeries ?? '', ['CR','DR','BOR','BOP'], true);
+        // Keep complex expressions outside Blade @json: its parser misreads nested parentheses.
+        $passedBankSourceUrl = url('admin/finance/voucher/passed-sources');
+        $passedBankDirection = in_array($displaySeries ?? '', ['CR','BOR'], true) ? 'receipt' : 'payment';
         $voucherCreateAction = $isCashOnlySeries ? $cashOnlyAction
             : ($fixedPaymentType !== null
                 ? route('ledger.store.fixed_method', ['paymentType' => $fixedPaymentType])
@@ -1751,8 +1754,8 @@
             // One project-scoped verified source can be selected for this form at a time.
             let passedBankRows=[],passedBankRequest=null,passedBankTimer=null;
             // Avoid the named-route lookup during Blade render while route caches are refreshed.
-            const passedBankUrl=@json(url('admin/finance/voucher/passed-sources'));
-            const passedBankDirection=@json(in_array(($displaySeries ?? ''),['CR','BOR'],true)?'receipt':'payment');
+            const passedBankUrl=@json($passedBankSourceUrl);
+            const passedBankDirection=@json($passedBankDirection);
             function resetPassedBankSelection(){
                 const hadSource=!!$('#passed_source_id').val();
                 $('#passed_source_id,#passed_source_method').val('');
