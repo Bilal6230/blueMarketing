@@ -61,7 +61,9 @@ body.sidebar-collapse:has(#bankTransferApp) .main-content.page-content {margin-l
         </div>
     </section>
 </div>
+@endsection
 
+@section('modal')
 <div class="modal fade" id="bankTransferCreateModal" tabindex="-1" role="dialog" aria-labelledby="bankTransferCreateTitle" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">
         <div class="modal-content">
