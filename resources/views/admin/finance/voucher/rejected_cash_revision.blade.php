@@ -4,7 +4,7 @@
 @php
     $editStatus = $approval?->status ?? 'posted';
     $usesApproval = app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
-        ->policy((int)getSelectedTown(),(string)$source->transaction_type) !== null;
+        ->policy((int)getSelectedTown(),$revisionPolicyType) !== null;
 @endphp
 @if(request()->boolean('embed'))
 <style>
@@ -22,23 +22,23 @@ body{overflow:auto!important}
 @media(max-width:650px){.cr-revise .fields{grid-template-columns:1fr}}
 </style>
 <div class="content-wrapper" style="margin:0!important;min-height:0!important;"><div class="cr-revise">
-<h4>{{ $editStatus === 'rejected' ? 'Revise Rejected' : 'Edit' }} {{ $source->transaction_type === 'CP' ? 'DR' : $source->transaction_type }} Voucher</h4>
+<h4>{{ $editStatus === 'rejected' ? 'Revise Rejected' : 'Edit' }} {{ $voucherDisplay }} Voucher</h4>
 <div class="alert alert-warning">
 @if($editStatus === 'rejected')
-Voucher #{{ $source->type_id }} was rejected. Rejection Reason: {{ $approval?->rejection_reason ?? 'Not recorded' }}. Revision keeps the same ID and voucher number.
+Voucher {{ $voucherDisplay }} was rejected. Rejection Reason: {{ $approval?->rejection_reason ?? 'Not recorded' }}. Revision keeps the same ID and voucher number.
 @elseif($editStatus === 'approved')
-Voucher #{{ $source->type_id }} will keep the same database ID and voucher number. No replacement voucher will be created.
+Voucher {{ $voucherDisplay }} will keep the same database ID and voucher number. No replacement voucher will be created.
 @else
-Voucher #{{ $source->type_id }} will keep the same database ID and voucher number. Changes are audited against this record.
+Voucher {{ $voucherDisplay }} will keep the same database ID and voucher number. Changes are audited against this record.
 @endif
 {{ $usesApproval ? 'Approval ON: changes stay pending as an audit snapshot; current posted accounting stays unchanged until approved.' : 'Approval OFF: same voucher and ledger will be updated directly with an audit snapshot.' }}
 </div>
 <form id="cash-revision-form" action="{{ route('finance.daily-vouchers.revise.store',$source->id) }}" method="post" enctype="multipart/form-data">
 @csrf
 <div class="fields">
-<div class="form-group"><label>Voucher No</label><input class="form-control" value="{{ ($source->transaction_type === 'CP' ? 'DR' : $source->transaction_type).'-'.$source->type_id }}" readonly></div>
+<div class="form-group"><label>Voucher No</label><input class="form-control" value="{{ $voucherDisplay }}" readonly></div>
 <div class="form-group"><label for="cr-revise-date">Date *</label><input id="cr-revise-date" name="date" class="form-control" type="date" value="{{ substr((string)$source->date,0,10) }}" required></div>
-<div class="form-group"><label for="cr-revise-amount">Amount *</label><input id="cr-revise-amount" name="amount" class="form-control" type="number" min="0.01" step="0.01" value="{{ max((float)$source->amount_in,(float)$source->amount_out) }}" required></div>
+<div class="form-group"><label for="cr-revise-amount">Amount *</label><input id="cr-revise-amount" name="amount" class="form-control" type="number" min="0.01" step="0.01" value="{{ max((float)$source->amount_in,(float)$source->amount_out) }}" {{ $isBankRevision ? 'readonly' : '' }} required></div>
 </div>
 @php
     $currentAccount = $accounts->firstWhere('id', (int) ($leg?->project_head_subheads_id ?? 0));
@@ -68,22 +68,30 @@ Voucher #{{ $source->type_id }} will keep the same database ID and voucher numbe
 @if((int)$source->payment_type !== 1)
 <div class="fields">
 <div class="form-group"><label for="cr-revise-number">{{ (int)$source->payment_type === 3 ? 'Cheque Number' : 'Transaction Reference' }} *</label>
-<input id="cr-revise-number" name="t_number" class="form-control" value="{{ $source->t_number }}" maxlength="255" required></div>
+<input id="cr-revise-number" name="t_number" class="form-control" value="{{ $source->t_number }}" maxlength="255" {{ $isBankRevision ? 'readonly' : '' }} required></div>
 <div class="form-group"><label for="cr-revise-bank">Bank ID *</label>
-<select id="cr-revise-bank" name="bank_id" class="form-control js-tomselect" required>
+<select id="cr-revise-bank" name="bank_id" class="form-control js-tomselect" {{ $isBankRevision ? 'disabled' : '' }} required>
 <option value="">Select bank</option>
 @foreach(getPakistanBanks() as $bank)
 <option value="{{ $bank['id'] }}" @selected((int)$source->bank_id===(int)$bank['id'])>{{ $bank['name'] }}</option>
 @endforeach
-</select></div>
+</select>
+@if($isBankRevision)<input type="hidden" name="bank_id" value="{{ (int)$source->bank_id }}">@endif
+</div>
 <div class="form-group"><label for="cr-revise-passing-date">Bank / Passing Date *</label>
-<input id="cr-revise-passing-date" name="passing_date" type="date" class="form-control" value="{{ $source->passing_date ? substr((string)$source->passing_date,0,10) : substr((string)$source->date,0,10) }}" required></div>
+<input id="cr-revise-passing-date" name="passing_date" type="date" class="form-control" value="{{ $source->passing_date ? substr((string)$source->passing_date,0,10) : substr((string)$source->date,0,10) }}" {{ $isBankRevision ? 'readonly' : '' }} required></div>
 </div>
 @if((int)$source->payment_type === 3)
 <div class="form-group"><label for="cr-revise-cheque-purpose">Cheque Purpose *</label>
-<input id="cr-revise-cheque-purpose" name="cheque_purpose" class="form-control" maxlength="500" value="{{ $source->cheque_purpose }}" required></div>
+<input id="cr-revise-cheque-purpose" name="cheque_purpose" class="form-control" maxlength="500" value="{{ $source->cheque_purpose }}" {{ $isBankRevision ? 'readonly' : '' }} required></div>
 @endif
-<div class="alert alert-info">Revised bank/cheque voucher will start with Pending clearance status. Existing bank decisions are never copied. Source with settled/bounced/returned history cannot be revised.</div>
+<div class="alert alert-info">
+@if($isBankRevision)
+Rejected BOR/BOP revision: original verified source, Amount, Cheque/Online Number, Bank, Passing Date and Cheque Purpose stay unchanged. You may revise voucher Date, Account/Child Account and Description. The same voucher number and allocation are retained; with approval ON, revised posting remains inactive until the authorized approver accepts it.
+@else
+Bank/cheque revision requires verified instrument allocation and a supported voucher identity.
+@endif
+</div>
 @endif
 <div class="form-group"><label for="cr-revise-description">Purpose / Description *</label><textarea id="cr-revise-description" name="description" class="form-control" rows="3" required>{{ $source->description }}</textarea></div>
 @if(in_array((string)$source->transaction_type,['CCR','CDR'],true))
@@ -137,7 +145,7 @@ $(function(){
    data:new FormData($form[0]),processData:false,contentType:false,dataType:'json'})
   .done(function(result){
    if(window.parent!==window)window.parent.postMessage({type:'daily-voucher-edit-saved',message:result.message},window.location.origin);
-   else window.location.assign(@json(route('finance.daily-vouchers.index',['type'=>$source->transaction_type])));
+   else window.location.assign(@json(route('finance.daily-vouchers.index',['type'=>$isBankRevision ? $revisionPolicyType : $source->transaction_type])));
   }).fail(function(xhr){
    var errors=xhr.responseJSON&&xhr.responseJSON.errors;
    $('#cash-revision-error').text(errors?Object.values(errors).flat().join(' '):(xhr.responseJSON&&xhr.responseJSON.message)||'Revision could not be saved.');
