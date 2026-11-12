@@ -27,10 +27,17 @@ final class V2IsolatedConnectionGuard
             return true;
         }
 
+        // An explicit exception for the owner's existing LOCAL-only test DB.
+        // The database name and acknowledgement must match exactly; there is
+        // deliberately no arbitrary-database override or production fallback.
+        $localTestDatabase = $environment === 'local'
+            && $database === 'bluenew'
+            && config('finance.v2_local_test_database') === 'bluenew';
+
         // Read/write replicas can override the top-level host: reject them.
         return !($driver !== 'mysql'
             || !in_array($environment, ['local', 'testing'], true)
-            || !str_starts_with($database, 'bluemarketing_v2_')
+            || !(str_starts_with($database, 'bluemarketing_v2_') || $localTestDatabase)
             || preg_match('/(?:stag|prod|live|client|dev)/i', $database)
             || !in_array($host, ['localhost', '127.0.0.1'], true)
             || $url !== ''
