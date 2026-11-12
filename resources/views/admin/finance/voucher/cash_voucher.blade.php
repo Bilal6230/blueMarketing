@@ -1749,11 +1749,11 @@
                 }
             });
             $('#payment_type').trigger('change');
+            let selectedPassedRemainingCents=null;
             @if($supportsPassedSources)
             // Bind after the initial form setup: opening the source picker is a user action.
             // One project-scoped verified source can be selected for this form at a time.
             let passedBankRows=[],passedBankRequest=null,passedBankTimer=null;
-            let selectedPassedRemainingCents=null;
             // Avoid the named-route lookup during Blade render while route caches are refreshed.
             const passedBankUrl=@json($passedBankSourceUrl);
             const passedBankDirection=@json($passedBankDirection);
@@ -1798,7 +1798,7 @@
                     passedBankRows=response.data||[];
                     const $body=$('#passed-bank-table tbody').empty();
                     if(!passedBankRows.length){
-                        $body.append($('<tr>').append($('<td>',{colspan:7,'class':'text-center text-muted',
+                        $body.append($('<tr>').append($('<td>',{colspan:8,'class':'text-center text-muted',
                             text:'No verified records with remaining balance.'})));
                     }
                     $.each(passedBankRows,function(_,source){
@@ -1856,8 +1856,8 @@
                 $('#passed_source_method').val(source.method);
                 $('#t_number').val(source.reference).prop('readonly',true).trigger('change');
                 selectedPassedRemainingCents=Math.round(Number(source.remaining_amount)*100);
-                $('#numberInput').val(source.remaining_amount).prop('readonly',false)
-                    .attr('data-bank-source-remaining',source.remaining_amount).trigger('input');
+                $('#numberInput').val('').prop('readonly',false)
+                    .attr('data-bank-source-remaining',source.remaining_amount);
                 $('#passed-bank-remaining-warning').remove();
                 $('#numberInput').after($('<div>',{id:'passed-bank-remaining-warning',
                     'class':'small text-muted mt-1',
@@ -1867,31 +1867,16 @@
                 if(datePicker)datePicker.setDate(source.passing_date,true,'Y-m-d');
                 else $pass.val(source.passing_date).trigger('change');
                 if(source.method==='cheque'){
-                    $('#cheque_purpose').val(source.purpose||'').trigger('change');
+                    $('#cheque_purpose').val('');
                     $('.cheque-purpose-group').show();
                 }else{
                     $('#cheque_purpose').val('');
                     $('.cheque-purpose-group').hide();
                 }
-                const $bank=$('#bank_id');
-                let matchedBank='';
-                $bank.find('option').each(function(){
-                    const label=$.trim($(this).text()).toLowerCase();
-                    const target=$.trim(String(source.bank||'')).toLowerCase();
-                    if(target && (label===target || label.includes(target) || target.includes(label)) && label){
-                        matchedBank=$(this).val();return false;
-                    }
-                });
-                if(matchedBank){
-                    const select=$bank.prop('tomselect');
-                    if(select)select.setValue(String(matchedBank));
-                    else $bank.val(matchedBank).trigger('change');
-                }else{
-                    const select=$bank.prop('tomselect');
-                    if(select)select.clear(true);else $bank.val('').trigger('change');
-                    $('#passed-bank-error').removeClass('d-none')
-                        .text('Bank name requires manual mapping. Please select the matching Bank in the voucher form.');
-                }
+                // Bank is chosen manually and checked against the verified source server-side.
+                const $bank=$('#bank_id'),bankControl=$bank.prop('tomselect');
+                if(bankControl)bankControl.clear(true);
+                else $bank.val('').trigger('change');
                 // Accounts and Child Account remain user-selected per partial voucher.
                 if(passedBankDirection==='payment'){
                     $('#pendingPaymentsSection').hide();
@@ -1902,6 +1887,7 @@
                 $('.cheque-purpose-group').toggle(payment==='3');
                 $('#cheque_purpose').prop('required',payment==='3');
                 $('#passed-bank-source-modal').modal('hide');
+                $('#numberInput').trigger('input.passedBankLimit');
             });
             $('#numberInput').on('input.passedBankLimit change.passedBankLimit',function(){
                 if(selectedPassedRemainingCents===null)return;
