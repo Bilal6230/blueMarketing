@@ -3,7 +3,7 @@
 @section('content')
 <style>
 /* Use the same dashboard chrome, density, and credit/debit palettes as daily_directory. */
-body:has(#bankTransferApp) .main-content.page-content {margin-left:250px!important;width:calc(100% - 250px)!important;max-width:calc(100% - 250px);padding:48px 7px 0!important;box-sizing:border-box;overflow:hidden}
+body:has(#bankTransferApp) .main-content.page-content {margin-left:250px!important;width:calc(100% - 250px)!important;max-width:calc(100% - 250px);padding:66px 7px 0!important;box-sizing:border-box;overflow:hidden}
 body.sidebar-collapse:has(#bankTransferApp) .main-content.page-content {margin-left:4.6rem!important;width:calc(100% - 4.6rem)!important;max-width:calc(100% - 4.6rem)}
 body:has(#bankTransferApp) .main-footer{display:none!important}
 #bankTransferApp {--dv-accent:#128044;--dv-pale:#e9f8ef;display:flex;flex-direction:column;height:calc(100dvh - 124px);min-height:350px;padding:.3rem .15rem!important;overflow:hidden}
@@ -42,7 +42,7 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
 #bankTransferCreateModal .modal-body label{font-weight:600}
 #bankTransferCreateModal .form-control{min-height:39px}
 @media(max-width:1150px){#bankTransferApp .bt-filter-row{grid-template-columns:repeat(2,minmax(120px,1fr))}#bankTransferApp .bt-filter-actions{grid-column:1/-1;justify-content:flex-end}}
-@media(max-width:991.98px){body:has(#bankTransferApp) .main-content.page-content,body.sidebar-collapse:has(#bankTransferApp) .main-content.page-content{margin-left:0!important;width:100%!important;max-width:100%;padding:48px 6px 0!important}}
+@media(max-width:991.98px){body:has(#bankTransferApp) .main-content.page-content,body.sidebar-collapse:has(#bankTransferApp) .main-content.page-content{margin-left:0!important;width:100%!important;max-width:100%;padding:66px 6px 0!important}}
 @media(max-width:520px){#bankTransferApp .bt-filter-row{grid-template-columns:1fr}#bankTransferApp .bt-footer{flex-wrap:wrap}}
 </style>
 <div class="container-fluid bt-page {{ $kind === 'deposit' ? 'bt-credit' : 'bt-debit' }}" id="bankTransferApp" data-kind="{{ $kind }}"
