@@ -151,6 +151,10 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
    <div class="table-responsive online-history-table"><table class="table table-sm table-bordered">
     <thead><tr><th>Time / Actor</th><th>From → To</th><th>Bank Statement Ref</th><th>Verification Date</th><th>Original Amount</th><th>Remarks</th></tr></thead>
     <tbody id="online-history-rows"></tbody></table></div>
+   <h6 class="mt-3 font-weight-bold">Linked Voucher Allocations</h6>
+   <div class="table-responsive online-history-table"><table class="table table-sm table-bordered">
+    <thead><tr><th>Voucher</th><th class="text-right">Amount (Rs.)</th><th>Approval</th><th>Allocated At</th><th>Release / Void</th></tr></thead>
+    <tbody id="online-linked-voucher-rows"></tbody></table></div>
   </div>
  </div></div>
 </div>
@@ -185,6 +189,7 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
 <div id="online-toast" class="alert" role="status"></div>
 @endsection
 @push('script')
+<script src="{{ asset('js/finance-bank-linked-history.js') }}?v=1"></script>
 {{-- Same SweetAlert2 asset used by the existing CR/Cheque voucher dialogs. --}}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
@@ -438,11 +443,13 @@ $(function(){
   $('#online-eligibility-status').removeClass('alert-success alert-warning').addClass('alert-light')
    .text('Checking confirmed-source eligibility...');
   var $body=$('#online-history-rows').empty();
+  $.bankLinkedHistory.loading($('#online-linked-voucher-rows'));
   $('<tr>').append($('<td colspan="6" class="text-center">').text('Loading history...')).appendTo($body);
   $('#online-history-modal').modal('show');
   $.ajax({url:historyUrlTemplate.replace('__ONLINE_ID__',id),dataType:'json'})
    .done(function(result){
     $body.empty();
+    $.bankLinkedHistory.render($('#online-linked-voucher-rows'),result.linked_vouchers||[]);
     var eligibility=result.eligibility||{};
     $('#online-eligibility-status')
       .removeClass('alert-light alert-success alert-warning')
@@ -466,6 +473,7 @@ $(function(){
    }).fail(function(xhr){
     var msg=xhr.responseJSON&&xhr.responseJSON.message?xhr.responseJSON.message:'Unable to load history.';
     $('#online-eligibility-status').removeClass('alert-success').addClass('alert-warning').text('Eligibility could not be checked.');
+    $.bankLinkedHistory.failed($('#online-linked-voucher-rows'));
     $body.empty().append($('<tr>').append($('<td colspan="6" class="text-danger">').text(msg)));
    });
  });
