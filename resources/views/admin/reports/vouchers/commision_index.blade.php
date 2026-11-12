@@ -1,19 +1,33 @@
 @extends('admin.layouts.master')
 
 @section('content')
+<style>
+/* CV retains its existing blue identity while sharing CR/DR density. */
+.cv-directory{--voucher-accent:#087cfa;--voucher-tint:#e7efff}
+.cv-directory .cv-shell{background:transparent!important;box-shadow:none!important}
+.cv-directory .cv-shell>.card-header{background:#e8f0ff!important;color:#0861d4!important;border-bottom:2px solid #087cfa;padding:12px 15px}
+.cv-directory .cv-shell>.card-header h4{font-size:19px;font-weight:700;margin:0}
+.cv-directory .cv-shell>.card-body{padding:10px 0}
+.cv-directory #filtersSection .row{row-gap:8px;align-items:end}
+.cv-directory #filtersSection .col-md-3{margin:0}
+.cv-directory #filtersSection label{font-size:12px;font-weight:700;margin-bottom:3px}
+.cv-directory #filtersSection .btn-sm{font-size:12px}
+.cv-directory .bm-voucher-table-card{overflow:hidden;padding:8px}
+.cv-directory #journalTable{width:100%!important;margin:0}
+.cv-directory #journalTable thead th{background:#e7efff!important;border-bottom:2px solid #087cfa!important;color:#21334e!important;font-size:12px}
+.cv-directory .dataTables_wrapper .row{margin-left:0;margin-right:0}
+.cv-directory .dataTables_wrapper .dataTables_info,.cv-directory .dataTables_wrapper .dataTables_paginate{padding:8px 0;font-size:12px}
+.cv-directory .blue-actions-toggle{color:#087cfa}
+</style>
     <div class="content-wrapper bm-ui bm-voucher-directory cv-directory" style="--voucher-accent:#087cfa;--voucher-tint:#e7efff">
         <div class="content">
             <div class="container-fluid mt-1">
-                <div class="card shadow-lg border-0">
+                <div class="card shadow-sm border-0 cv-shell">
                     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                         <h4 class="mb-0">{{ $title }}</h4>
                     </div>
                     <div class="card-body">
-                        <div class="row">
-                            <a href="{{ route('commision.voucher.create') }}" class="btn btn-success">
-                                <i class="fas fa-plus"></i> Add New Voucher
-                            </a>
-                        </div>
+
 
                         <!-- Filter Section -->
                         <x-finance.voucher-filter-card id="filtersSection" class="mb-3">
@@ -46,6 +60,7 @@
                             <div class="col-md-3 mt-4">
                                 <button id="applyFilters" class="btn btn-primary btn-sm">Apply Filters</button>
                                 <button id="resetFilters" class="btn btn-secondary btn-sm">Reset</button>
+                                <a href="{{ route('commision.voucher.create') }}" class="btn btn-primary btn-sm ml-1"><i class="fas fa-plus mr-1"></i> New voucher</a>
                             </div>
                         </div>
                         </x-finance.voucher-filter-card>
@@ -55,14 +70,14 @@
                         <table id="journalTable" class="table table-bordered">
                             <thead class="bg-primary text-white">
                                 <tr>
-                                    <th style="background-color: black !important">ID</th>
-                                    <th style="background-color: black !important">Voucher Number</th>
-                                    <th style="background-color: black !important">Reference</th>
-                                    <th style="background-color: black !important">Date</th>
-                                    <th style="background-color: black !important">Description</th>
-                                    <th style="background-color: black !important">Amount</th>
+                                    <th>ID</th>
+                                    <th>Voucher Number</th>
+                                    <th>Reference</th>
+                                    <th>Date</th>
+                                    <th>Description</th>
+                                    <th>Amount</th>
                                     @canany(['edit jv', 'delete jv'])
-                                        <th style="background-color: black !important">Actions</th>
+                                        <th>Actions</th>
                                     @endcanany
                                 </tr>
                             </thead>
@@ -163,12 +178,32 @@
             const filter_date = $('#filter_date').val();
 
             // Destroy existing DataTable if it exists
-            $('#journalTable').DataTable().destroy();
+            if ($.blueActionMenu) $.blueActionMenu.close();
+            if ($.fn.DataTable.isDataTable('#journalTable')) $('#journalTable').DataTable().destroy();
 
             // Initialize DataTable with AJAX
             $('#journalTable').DataTable({
                 processing: true,
                 serverSide: true,
+                pageLength:25,
+                lengthMenu:[[10,25,50,100],[10,25,50,100]],
+                drawCallback:function(){
+                    if(!$.blueActionMenu)return;
+                    $.blueActionMenu.close();
+                    var $table=$('#journalTable');
+                    // No extra actions are created. Keep server-authorized
+                    // edit/reversal/print elements and their existing handlers.
+                    if(!/actions/i.test($.trim($table.find('thead th:last').text())))return;
+                    $table.find('tbody tr').each(function(){
+                        var $cell=$(this).children('td').last();
+                        var $original=$cell.find('a,button').filter(function(){
+                            return !$(this).closest('.blue-actions-source').length;
+                        }).detach();
+                        if(!$original.length)return;
+                        $cell.empty().addClass('blue-actions-cell').append($original);
+                    });
+                    $.blueActionMenu.enhance($table.find('tbody td.blue-actions-cell'));
+                },
                 ajax: {
                     url: '{{ route('commision.voucher.index') }}', // Route to get data
                     type: 'GET',
