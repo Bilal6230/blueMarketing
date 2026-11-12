@@ -24,7 +24,8 @@ final class PassedBankSourcePickerController extends Controller
             'direction'=>['required',Rule::in(['receipt','payment'])],
             'search'=>['nullable','string','max:120'],
         ]);
-        abort_unless(Schema::hasTable('finance_bank_voucher_allocations'),409,
+        abort_unless(Schema::hasTable('finance_bank_voucher_allocations')
+            && Schema::hasTable('finance_bank_voucher_allocation_releases'),409,
             'Partial bank source allocation migration is required.');
         $search=trim((string)($input['search']??''));
         $direction=$input['direction']==='receipt'?'receipt':'payment';
@@ -44,7 +45,7 @@ final class PassedBankSourcePickerController extends Controller
                 ->whereColumn('verified.transaction_type','i.type')
                 ->where('i.project_id',$project)->where('i.status','confirmed')
                 ->where('i.type',$direction)
-                ->whereRaw("i.amount > COALESCE((SELECT SUM(a.amount) FROM finance_bank_voucher_allocations a WHERE a.project_id = i.project_id AND a.source_method = 'online' AND a.source_id = i.id), 0)")
+                ->whereRaw("i.amount > COALESCE((SELECT SUM(a.amount) FROM finance_bank_voucher_allocations a WHERE a.project_id = i.project_id AND a.source_method = 'online' AND a.source_id = i.id AND NOT EXISTS (SELECT 1 FROM finance_bank_voucher_allocation_releases r WHERE r.allocation_id = a.id)), 0)")
                 ->whereExists(function($q)use($project){
                     $q->selectRaw('1')->from('finance_online_confirmation_events as e')
                         ->whereColumn('e.online_intake_id','i.id')
@@ -77,7 +78,7 @@ final class PassedBankSourcePickerController extends Controller
             $rows=DB::table('finance_cheque_intakes as c')
                 ->where('c.project_id',$project)->where('c.status','cleared')
                 ->where('c.direction',$direction==='receipt'?'in':'out')
-                ->whereRaw("c.amount > COALESCE((SELECT SUM(a.amount) FROM finance_bank_voucher_allocations a WHERE a.project_id = c.project_id AND a.source_method = 'cheque' AND a.source_id = c.id), 0)")
+                ->whereRaw("c.amount > COALESCE((SELECT SUM(a.amount) FROM finance_bank_voucher_allocations a WHERE a.project_id = c.project_id AND a.source_method = 'cheque' AND a.source_id = c.id AND NOT EXISTS (SELECT 1 FROM finance_bank_voucher_allocation_releases r WHERE r.allocation_id = a.id)), 0)")
                 ->whereNotExists(function($q)use($project){
                     $q->selectRaw('1')->from('finance_cheque_voucher_claims as claim')
                         ->whereColumn('claim.cheque_intake_id','c.id')
@@ -109,10 +110,14 @@ final class PassedBankSourcePickerController extends Controller
         // Display remaining balance and explicit Partial/Available status, but never
         // trust picker values for saving: the writer recalculates under row locks.
         $ids=$items->pluck('id')->all();
-        $used=$ids ? DB::table('finance_bank_voucher_allocations')
-            ->where('project_id',$project)->where('source_method',$input['method'])
-            ->whereIn('source_id',$ids)->select('source_id')
-            ->selectRaw('SUM(amount) AS allocated')->groupBy('source_id')->get()
+        $used=$ids ? DB::table('finance_bank_voucher_allocations as a')
+            ->where('a.project_id',$project)->where('a.source_method',$input['method'])
+            ->whereIn('a.source_id',$ids)
+            ->whereNotExists(function($q){
+                $q->selectRaw('1')->from('finance_bank_voucher_allocation_releases as r')
+                    ->whereColumn('r.allocation_id','a.id');
+            })->select('a.source_id')
+            ->selectRaw('SUM(a.amount) AS allocated')->groupBy('a.source_id')->get()
             ->keyBy('source_id') : collect();
         $items=$items->map(function(array $row)use($used){
             $total=(int)round((float)$row['amount']*100);
