@@ -573,7 +573,7 @@ class LedgerController extends Controller
                 if($linkedVerifiedSource) {
                     app(\App\Services\Finance\PassedBankVoucherClaim::class)->claim(
                         (int)$selectedProjectId,$passedKind,$passedSourceId,
-                        $displaySeries,(int)$customerLedger->id,(int)Auth::id());
+                        $displaySeries,(int)$customerLedger->id,(int)Auth::id(),$cleanAmount);
                 }
 
                 $approvalPending = app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
@@ -616,7 +616,7 @@ class LedgerController extends Controller
         } catch (\Illuminate\Database\QueryException $e) {
             if($linkedVerifiedSource && in_array((string)$e->getCode(),['23000','23505'],true)){
                 return response()->json(['status'=>'error','error_key'=>'bank_source_already_used',
-                    'message'=>'This verified bank source has already been linked to a voucher. Refresh the picker.'],409);
+                    'message'=>'This verified source allocation conflicts with an existing voucher. Refresh the remaining balance.'],409);
             }
             Log::error('bank_voucher_database_failure', ['error'=>$e->getMessage(),
                 'project_id'=>$selectedProjectId]);
