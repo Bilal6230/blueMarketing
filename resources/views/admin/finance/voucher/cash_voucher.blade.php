@@ -3,7 +3,7 @@
 @section('content')
 
     @php
-        $voucherType = is_string($type) && in_array($type, ['CR', 'CP', 'CCR', 'CDR'], true) ? $type : '';
+        $voucherType = is_string($type) && in_array($type, ['CR', 'DR', 'CP', 'CCR', 'CDR', 'BOR', 'BOP'], true) ? $type : '';
         // Avoid resolving newly added route names while rendering the iframe:
         // deployments with stale route caches otherwise raise RouteNotFound.
         // Route registration is checked separately when the form is submitted.
@@ -2791,7 +2791,7 @@
             function parseVoucherNumber(value) {
                 if (typeof value !== 'string') return null;
                 if (value.includes('{') || value.includes('}') || value.includes('&quot;')) return null;
-                const match = value.match(/^(CR|CP|CCR|CDR)-(\d+)$/);
+                const match = value.match(/^(CR|DR|CP|CCR|CDR|BOR|BOP)-(\d+)$/);
                 if (!match || match[1] !== VOUCHER_TYPE) return null;
                 return parseInt(match[2], 10);
             }
