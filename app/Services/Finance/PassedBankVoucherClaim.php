@@ -26,7 +26,8 @@ final class PassedBankVoucherClaim
         $intake=$kind==='online'?'finance_online_intakes':'finance_cheque_intakes';
         $events=$kind==='online'?'finance_online_confirmation_events':'finance_cheque_intake_actions';
         if(!Schema::hasTable($table)||!Schema::hasTable($intake)||!Schema::hasTable($events)
-            ||!Schema::hasTable('finance_bank_voucher_allocations')){
+            ||!Schema::hasTable('finance_bank_voucher_allocations')
+            ||!Schema::hasTable('finance_bank_voucher_allocation_releases')){
             throw new \DomainException('Bank source and claim migrations must be applied first.');
         }
         $source=DB::table($intake)->where('project_id',$projectId)->where('id',$id)
@@ -70,9 +71,15 @@ final class PassedBankVoucherClaim
         // Use exact decimal cents; no floating point budget comparisons.
         $totalCents=$this->cents((string)$source->amount);
         $requestCents=$this->cents(number_format($amount,2,'.',''));
-        $allocated=DB::table('finance_bank_voucher_allocations')
-            ->where('project_id',$projectId)->where('source_method',$kind)
-            ->where('source_id',$id)->sum('amount');
+        // Original allocation rows are immutable. Only audited one-time releases
+        // free capacity; the release is never implemented by deleting a claim.
+        $allocated=DB::table('finance_bank_voucher_allocations as a')
+            ->where('a.project_id',$projectId)->where('a.source_method',$kind)
+            ->where('a.source_id',$id)
+            ->whereNotExists(function($q){
+                $q->selectRaw('1')->from('finance_bank_voucher_allocation_releases as r')
+                    ->whereColumn('r.allocation_id','a.id');
+            })->sum('a.amount');
         $remainingCents=$totalCents-$this->cents((string)$allocated);
         if($requestCents<=0 || $requestCents>$remainingCents) {
             throw new \DomainException('Amount exceeds remaining verified source balance ('
