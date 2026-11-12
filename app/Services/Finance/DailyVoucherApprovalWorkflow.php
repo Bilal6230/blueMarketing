@@ -278,6 +278,42 @@ final class DailyVoucherApprovalWorkflow
             if (!$source) {
                 throw new \DomainException('DAILY_VOUCHER_SOURCE_NOT_FOUND');
             }
+            // BOR/BOP are persisted as CR/CP legacy accounting legs but have
+            // distinct, immutable display identities and independent approvals.
+            // A bank approval must NEVER activate an unrelated CR/CP source.
+            if (in_array((string)$approval->voucher_type,['BOR','BOP'],true)) {
+                $series=(string)$approval->voucher_type;
+                $sourceType=$series==='BOR'?'CR':'CP';
+                if (!Schema::hasTable('project_voucher_display_numbers')
+                    || !Schema::hasTable('finance_bank_voucher_allocations')
+                    || (string)$source->transaction_type!==$sourceType
+                    || !in_array((int)$source->payment_type,[2,3],true)) {
+                    throw new \DomainException('BANK_APPROVAL_SOURCE_IDENTITY_MISMATCH');
+                }
+                $identity=DB::table('project_voucher_display_numbers')
+                    ->where('project_id',$approval->project_id)
+                    ->where('source_kind','customer_ledger')
+                    ->where('source_id',$source->id)
+                    ->where('series',$series)->lockForUpdate()->first();
+                $allocation=DB::table('finance_bank_voucher_allocations')
+                    ->where('project_id',$approval->project_id)
+                    ->where('voucher_type',$series)
+                    ->where('voucher_id',$source->id)->lockForUpdate()->first();
+                $legs=DB::table('ledgers as leg')
+                    ->join('project_head_subheads as account','account.id','=','leg.project_head_subheads_id')
+                    ->where('leg.customer_ledger_id',$source->id)
+                    ->where('account.project_id',$approval->project_id)
+                    ->lockForUpdate()->get(['leg.id','leg.type','leg.amount_in','leg.amount_out','leg.is_active']);
+                if (!$identity || !$allocation || $legs->count()!==1
+                    || $legs->first()->type!==$sourceType
+                    || ((int)$source->payment_type===2 && $allocation->source_method!=='online')
+                    || ((int)$source->payment_type===3 && $allocation->source_method!=='cheque')
+                    || abs((float)$allocation->amount - max((float)$source->amount_in,(float)$source->amount_out))>0.001
+                    || ((int)$legs->first()->is_active!==0 && !$active)
+                    || ($active && (int)$legs->first()->is_active!==0)) {
+                    throw new \DomainException('BANK_APPROVAL_LEDGER_OR_ALLOCATION_MISMATCH');
+                }
+            }
             // A CCR/CDR decision must never activate a different series or a
             // bank/cheque instrument. The original voucher numbers are fixed.
             if (in_array((string)$approval->voucher_type,['CCR','CDR'],true)) {
