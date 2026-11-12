@@ -133,7 +133,7 @@ class LedgerController extends Controller
                 }
             ],
             'detail' => ['required', 'string', 'max:255'],
-            'attachment' => ['nullable','file','mimes:pdf,jpg,jpeg,png,webp','max:5120'],
+            'attachment' => \App\Services\Finance\VoucherAttachmentRules::optional(),
             'acct_type' => ['required', 'integer', 'min:1'],
             'accounts_id' => ['required', 'integer', 'min:1'],
             'subaccounts_id' => ['required', 'integer', 'min:1'],
