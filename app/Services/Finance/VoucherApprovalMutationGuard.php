@@ -46,7 +46,6 @@ final class VoucherApprovalMutationGuard
         if (!in_array($sourceTable, ['journal_vouchers', 'customer_ledger'], true)) {
             throw new \InvalidArgumentException('Unsupported voucher source for lifecycle guard.');
         }
-        if (!Schema::hasTable('daily_voucher_approvals')) return;
         if ($sourceTable === 'customer_ledger') {
             $this->assertNoPendingCorrection($projectId, $sourceId);
             // All bank-funded vouchers, even those posted with approval OFF,
@@ -61,6 +60,7 @@ final class VoucherApprovalMutationGuard
             }
         }
 
+        if (!Schema::hasTable('daily_voucher_approvals')) return;
         $approval = DB::table('daily_voucher_approvals')
             ->where('project_id', $projectId)
             ->where('source_table', $sourceTable)
