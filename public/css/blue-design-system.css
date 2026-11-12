@@ -100,3 +100,18 @@ body.sidebar-collapse .main-content.page-content:has(> .bm-plot-workspace){margi
 .main-content.page-content>.bm-plot-workspace>.row{margin-left:-7px;margin-right:-7px}
 .main-content.page-content>.bm-plot-workspace>.row>[class*="col-"]{min-width:0;padding-left:7px;padding-right:7px}
 @media(max-width:991.98px){.main-content.page-content:has(> .bm-plot-workspace),body.sidebar-collapse .main-content.page-content:has(> .bm-plot-workspace){margin-left:0!important;width:100%!important;max-width:100%!important;padding:74px 10px 20px!important}}
+
+
+/* Existing daily voucher family color tokens are the source of truth. */
+.daily-voucher-page.bm-voucher-directory{--voucher-accent:var(--dv-accent);--voucher-tint:var(--dv-pale)}
+/* Pilot plot modules historically use blue, not the green CR/BD palette. */
+.bm-ui.bm-plot-workspace{--bm-success:#1769e0;--bm-border:#dce6f2;--bm-panel-tint:#edf4fc}
+.bm-ui.bm-plot-workspace .bm-voucher-table-card{border:1px solid #dce6f2;border-top:3px solid #1769e0;border-radius:12px;background:#fff}
+.bm-ui.bm-plot-workspace .bm-voucher-table-card table thead th{background:#edf4fc;color:#233d5e}
+.bm-ui.bm-plot-workspace .bm-voucher-table-card>h5{margin:0;font-size:15px;font-weight:700;padding:13px 16px;border-bottom:1px solid #dce6f2}
+.bm-ui.bm-plot-workspace .bm-voucher-table-card .pr-scroll,
+.bm-ui.bm-plot-workspace .bm-voucher-table-card .pp-scroll{max-width:100%;overflow:auto}
+.bm-ui.bm-voucher-directory.bm-booking-vouchers .bm-voucher-filter-card,
+.bm-ui.bm-voucher-directory.bm-booking-vouchers .bm-voucher-table-card{margin:8px 14px}
+.bm-ui.bm-voucher-directory.bm-booking-vouchers .bm-voucher-table-card{padding:10px}
+.bm-ui.bm-voucher-directory.bm-booking-vouchers .bm-voucher-table-card .table-responsive{padding:0}
