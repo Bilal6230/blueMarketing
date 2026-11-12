@@ -32,9 +32,9 @@
 .vap-alert{position:fixed;top:78px;right:20px;max-width:420px;z-index:2200;display:none}
 .swal2-container{z-index:20000!important}
 </style>
-<div class="content-wrapper vap-page">
+<div class="content-wrapper bm-ui vap-page">
  <div class="container-fluid">
-  <div class="vap-heading d-flex justify-content-between align-items-center flex-wrap">
+  <div class="vap-heading bm-page-heading d-flex justify-content-between align-items-center flex-wrap">
    <div><h4>Voucher Approval Dashboard</h4><small class="text-muted">Project #{{ (int)getSelectedTown() }} · CR, CP, CCR, CDR, BOR, BOP &amp; JV approvals · {{ \App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user()) ? 'Super Admin: all project requests' : 'Assigned requests only' }}</small></div>
    <a href="{{ route('finance.voucher-settings.index') }}" class="btn btn-outline-success btn-sm"><i class="fas fa-cog mr-1"></i> Voucher Settings</a>
   </div>
@@ -45,14 +45,14 @@
   @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
   @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
 
-  <div class="vap-card">
+  <div class="vap-card bm-card">
    <div class="vap-card-head"><strong>Pending Approval Queue</strong>
     <div><span class="badge badge-warning mr-2">{{ $queue->total() }} Pending</span>
      <a class="btn btn-sm btn-outline-secondary" href="{{ route('finance.daily-vouchers.approvals.index') }}">Refresh</a>
     </div>
    </div>
    <div class="table-responsive vap-table-wrap">
-    <table class="table table-sm table-bordered table-hover vap-table">
+    <table class="table bm-table table-sm table-bordered table-hover vap-table">
      <thead><tr><th>#</th><th>Submitted</th><th>Voucher No</th><th>Submitted By</th><th>Assigned Approver</th><th>Status</th><th>Reason for Revision / Edit</th><th>Actions</th></tr></thead>
      <tbody>
      @forelse($queue as $item)
@@ -95,9 +95,9 @@
    <div class="vap-card-footer">{{ $queue->links() }}</div>
   </div>
 
-  <div class="vap-card">
+  <div class="vap-card bm-card">
    <div class="vap-card-head"><strong>Recent Approval History</strong><span class="text-muted small">Last 50 decisions · Read-only</span></div>
-   <div class="table-responsive vap-table-wrap"><table class="table table-sm table-bordered table-hover vap-table">
+   <div class="table-responsive vap-table-wrap"><table class="table bm-table table-sm table-bordered table-hover vap-table">
     <thead><tr><th>Decided At</th><th>Voucher No</th><th>Submitted By</th><th>Decision</th><th>Assigned Approver</th><th>Rejection Reason</th><th>Revision / Edit Reason</th><th>Audit</th></tr></thead>
     <tbody>
      @forelse($history as $item)
