@@ -34,7 +34,7 @@
         excelCurrent=null;
     }
     function availableChoices(field){
-        if(field==='head'||field==='subhead'){
+        if((field==='head'||field==='subhead') && accountRelations.length){
             const opposite=field==='head'?'subhead':'head';
             const hasInclude=Object.prototype.hasOwnProperty.call(excelSelections,opposite);
             const excludes=excelExclusions[opposite]||[];
