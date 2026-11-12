@@ -197,9 +197,11 @@ final class DailyVoucherDirectoryController extends Controller
                 }) : collect();
             $sourceApprovals=app(\App\Services\Finance\VoucherApprovalStatusReader::class)->forSources($projectId,'customer_ledger',$sources->pluck('id'));
             $attachments=collect();
-            if (Schema::hasTable('cash_voucher_attachments') && $sources->isNotEmpty()) {
+            if (Schema::hasTable('cash_voucher_attachments')
+                && Schema::hasColumn('cash_voucher_attachments','status') && $sources->isNotEmpty()) {
                 $attachments=DB::table('cash_voucher_attachments')
                     ->where('project_id',$projectId)
+                    ->where('status','applied')
                     ->whereIn('customer_ledger_id',$sources->pluck('id'))
                     ->orderByDesc('id')->get(['id','customer_ledger_id','original_name'])
                     ->unique('customer_ledger_id')->keyBy('customer_ledger_id');
