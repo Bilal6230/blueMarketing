@@ -93,9 +93,13 @@ final class V2BankTransferWriter
                 }
             }
             foreach ($lines as $line) {
-                $cash = \App\Models\ProjectHeadSubhead::query()->where('project_head_subheads.id', $line['account_id'])->where('project_head_subheads.project_id', $projectId)
-                    ->join('head_accountings as cash_head', 'cash_head.id', '=', 'project_head_subheads.head_accounting_id')
-                    ->where('cash_head.name', 'LIKE', '%cash%')->exists();
+                $cash = \App\Models\ProjectHeadSubhead::availableForPosting()
+                    ->where('project_id', $projectId)
+                    ->where('id', $line['account_id'])
+                    ->where(function ($query) {
+                        $query->whereHas('headAccounting', fn ($head) => $head->where('name', 'LIKE', '%cash%'))
+                            ->orWhereHas('subheadAccounting', fn ($subhead) => $subhead->where('name', 'LIKE', '%cash%'));
+                    })->exists();
                 if (!$cash) { throw new \DomainException('V2_BANK_TRANSFER_CASH_ACCOUNT_REQUIRED'); }
             }
 
