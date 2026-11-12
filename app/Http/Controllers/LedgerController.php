@@ -589,16 +589,28 @@ class LedgerController extends Controller
                 }
 
 
-                $detail = $this->buildCashVoucherDetail(
-                    $effectiveVoucherType,
-                    $paymentType,
-                    $request->input('reference'),
-                    $request->input('date'),
-                    $request->input('passing_date'),
-                    $request->input('detail'),
-                    $bankName,
-                    $customerLedger->t_number
-                );
+                // Only a verified management-linked bank source receives
+                // immutable source metadata in its ledger narration. Preserve
+                // the user's original description on customer_ledger itself.
+                $detail = $linkedVerifiedSource
+                    ? \App\Services\Finance\VerifiedBankVoucherNarration::compose(
+                        $displaySeries,$passedKind,$passedSourceId,(string)$displayNumber,
+                        $bankName,(string)$customerLedger->t_number,
+                        (string)$request->input('passing_date'),
+                        (string)$request->input('date'),
+                        (string)$request->input('reference'),
+                        (string)$request->input('detail')
+                    )
+                    : $this->buildCashVoucherDetail(
+                        $effectiveVoucherType,
+                        $paymentType,
+                        $request->input('reference'),
+                        $request->input('date'),
+                        $request->input('passing_date'),
+                        $request->input('detail'),
+                        $bankName,
+                        $customerLedger->t_number
+                    );
 
                 $data = Ledger::create([
                     'customer_ledger_id' => $customerLedger->id,
