@@ -1141,7 +1141,11 @@ class VoucherController extends Controller
         \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
         $bankAccounts = DB::table('project_bank_accounts')->where('project_id', $projectId)->where('is_active', 1)->orderBy('bank_name')->get();
         $cashAccounts = ProjectHeadSubhead::availableForPosting()->with(['headAccounting:id,name', 'subheadAccounting:id,name'])
-            ->where('project_id', $projectId)->whereHas('headAccounting', fn ($q) => $q->where('name', 'LIKE', '%cash%'))
+            ->where('project_id', $projectId)
+            ->where(function ($query) {
+                $query->whereHas('headAccounting', fn ($head) => $head->where('name', 'LIKE', '%cash%'))
+                    ->orWhereHas('subheadAccounting', fn ($subhead) => $subhead->where('name', 'LIKE', '%cash%'));
+            })
             ->orderBy('id')->get();
         return view('admin.finance.voucher.bank_transfer_workspace', compact('kind', 'bankAccounts', 'cashAccounts'));
     }
