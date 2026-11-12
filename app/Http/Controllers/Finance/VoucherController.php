@@ -361,7 +361,12 @@ class VoucherController extends Controller
         $fixedPaymentType = $this->cashVoucherPaymentType($method);
         $displaySeries = $this->cashVoucherDisplaySeries($request, true, $fixedPaymentType);
         $power = Auth::user()->roles[0]->name;
-        $x['title'] = $displaySeries === 'CCR' ? 'Cash Credit (CCR)' : ($displaySeries === 'CR' ? 'Credit Voucher (CR)' : ($fixedPaymentType === null ? 'Cash In Voucher' : $this->cashVoucherTitle(true, $fixedPaymentType)));
+        $x['title'] = match ($displaySeries) {
+            'CCR' => 'Cash Credit (CCR)',
+            'CR' => 'Credit Voucher (CR)',
+            'BOR' => 'Bank Receipt Voucher (BOR)',
+            default => $fixedPaymentType === null ? 'Cash In Voucher' : $this->cashVoucherTitle(true, $fixedPaymentType),
+        };
         $x['fixedPaymentType'] = $fixedPaymentType;
         $x['displaySeries'] = $displaySeries;
         $x['embeddedVoucher'] = $request->boolean('embed');
@@ -612,7 +617,12 @@ class VoucherController extends Controller
         $fixedPaymentType = $this->cashVoucherPaymentType($method);
         $displaySeries = $this->cashVoucherDisplaySeries($request, false, $fixedPaymentType);
         $power = Auth::user()->roles[0]->name;
-        $x['title'] = $displaySeries === 'CDR' ? 'Cash Debit (CDR)' : ($displaySeries === 'DR' ? 'Debit Voucher (DR)' : ($fixedPaymentType === null ? 'Cash Out Voucher' : $this->cashVoucherTitle(false, $fixedPaymentType)));
+        $x['title'] = match ($displaySeries) {
+            'CDR' => 'Cash Debit (CDR)',
+            'DR' => 'Debit Voucher (DR)',
+            'BOP' => 'Bank Payment Voucher (BOP)',
+            default => $fixedPaymentType === null ? 'Cash Out Voucher' : $this->cashVoucherTitle(false, $fixedPaymentType),
+        };
         $x['fixedPaymentType'] = $fixedPaymentType;
         $x['displaySeries'] = $displaySeries;
         $x['embeddedVoucher'] = $request->boolean('embed');
@@ -1108,7 +1118,7 @@ class VoucherController extends Controller
         abort_unless(in_array($direction, ['receipt', 'payment'], true), 404);
         $projectId = (int) getSelectedTown();
         if (!\App\Services\Finance\V2IsolatedConnectionGuard::isAllowed()) {
-            return $this->unavailableV2Workspace($projectId, $direction === 'receipt' ? 'Bank Online / Cheque Credit (BOR)' : 'Bank Online / Cheque Debit (BOP)');
+            return $this->unavailableV2Workspace($projectId, $direction === 'receipt' ? 'Bank Receipt Voucher (BOR)' : 'Bank Payment Voucher (BOP)');
         }
         \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
 
