@@ -30,6 +30,7 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
 .online-table thead .online-column-filters th:nth-child(5),.online-table thead .online-column-filters th:nth-child(6),.online-table thead .online-column-filters th:nth-child(7),.online-table thead .online-column-filters th:nth-child(8){min-width:145px}
 .online-table thead .online-column-filters th:nth-child(9){min-width:95px}
 .online-table td{vertical-align:middle}
+.online-table thead th:last-child{width:72px;min-width:72px;text-align:center}
 .online-table tbody tr:nth-child(even){background:#f7fbf8}
 .online-ref{font-weight:700;color:#087a38}
 .online-badge{display:inline-block;padding:3px 7px;border-radius:4px;font-size:11px;font-weight:700}
@@ -366,6 +367,7 @@ $(function(){
    .done(function(data){
     if(seq!==sequence)return;
     $.blueTableSkeleton.clear($rows);
+    $.blueActionMenu.close();
     $rows.empty();
     $.each(data.data||[],function(i,x){$rows.append(renderRow(x,(data.current_page-1)*data.per_page+i+1));});
     if(!(data.data||[]).length)$rows.append($('<tr>').append($('<td colspan="12" class="text-center text-muted py-4">').text('No matching online transactions.')));
