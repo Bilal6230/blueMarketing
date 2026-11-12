@@ -63,7 +63,7 @@ final class ProjectVoucherDisplayIdentity
                 throw new \DomainException('VOUCHER_SOURCE_IDENTITY_MISMATCH');
             }
             $display = ($source->transaction_type === 'CP' ? 'DR' : $source->transaction_type).'-'.$source->type_id;
-        } elseif ($sourceKind === 'customer_ledger' && in_array($series, ['BOR','BOP'], true)) {
+        } elseif ($sourceKind === 'customer_ledger' && in_array($series, ['BOR','BOP'], true) && $bankSequence !== null) {
             // This is a real, retained BOR/BOP display-series identity, separate
             // from the legacy CR/CP accounting type and number. The caller has
             // already reserved the bank-series number inside its project lock.
