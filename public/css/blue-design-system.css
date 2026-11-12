@@ -30,3 +30,13 @@
 .bm-ui .bm-chip{font-size:var(--bm-font-xs);border-radius:5px;font-weight:700}
 .bm-ui .bm-panel-heading{background:var(--bm-panel-tint);border-bottom:2px solid var(--bm-success)}
 @media(prefers-reduced-motion:reduce){.bm-ui *{scroll-behavior:auto!important}}
+
+
+/* Shared voucher-card components used by the daily directory and dedicated
+ * voucher screens. Scope changes here to the reusable component classes.
+ * Voucher-specific credit/debit colors and workflows remain opt-in. */
+.bm-ui .bm-voucher-filter-card{flex:0 0 auto;min-width:0}
+.bm-ui .bm-voucher-filter-card>.card-body{min-width:0}
+.bm-ui .bm-voucher-table-card{min-width:0}
+.bm-ui .bm-voucher-table-card .bm-table{width:100%}
+.bm-ui .bm-voucher-table-card .blue-actions-cell{width:var(--bm-action-col,72px);max-width:var(--bm-action-col,72px)}
