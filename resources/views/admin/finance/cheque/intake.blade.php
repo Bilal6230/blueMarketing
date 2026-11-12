@@ -413,7 +413,7 @@ $(function () {
             href:slipUrl(r.id)+'?size=pos80&print=1',target:'_blank',rel:'noopener',title:'POS 80mm receipt'
         }).text('POS 80').appendTo($slip);
         $slip.appendTo($tr);
-        var $actions=$('<td>').addClass('text-nowrap');
+        var $actions=$('<td>').addClass('blue-actions-cell');
         if(@json(auth()->user()->can('create voucher')) && (r.status==='received'||r.status==='issued')) {
             $('<button type="button">').addClass('btn btn-sm btn-outline-success mr-1 cheque-action')
                 .attr('data-id',r.id).attr('data-cheque',r.cheque_number)
@@ -461,6 +461,7 @@ $(function () {
             var $body=$('#cheque-table-body').empty();
             $.each(data.data||[],function(i,r){$body.append(row(r,((data.current_page-1)*data.per_page)+i+1));});
             if(!(data.data||[]).length)$body.append($('<tr>').append($('<td colspan="11" class="text-center text-muted py-4">').text('No matching cheques found.')));
+            $.blueActionMenu.enhance($('#cheque-table-body > tr > td.blue-actions-cell'));
             pagination(data);
         }).fail(function(xhr,status){
             if(status==='abort'||seq!==listSeq)return;
