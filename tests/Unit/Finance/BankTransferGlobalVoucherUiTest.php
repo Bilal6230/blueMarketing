@@ -36,6 +36,9 @@ final class BankTransferGlobalVoucherUiTest extends TestCase
             $this->assertStringContainsString($identifier, $view);
         }
         $this->assertStringNotContainsString('id="historyRows"', $view);
+        $this->assertStringContainsString("@section('modal')", $view);
+        $this->assertStringContainsString("extend:'excelHtml5'", $view);
+        $this->assertStringContainsString("extend:'colvis'", $view);
     }
 
     public function test_modal_reuses_existing_bank_transfer_v2_routes(): void
