@@ -188,21 +188,7 @@
                 pageLength:25,
                 lengthMenu:[[10,25,50,100],[10,25,50,100]],
                 drawCallback:function(){
-                    if(!$.blueActionMenu)return;
-                    $.blueActionMenu.close();
-                    var $table=$('#journalTable');
-                    // No extra actions are created. Keep server-authorized
-                    // edit/reversal/print elements and their existing handlers.
-                    if(!/actions/i.test($.trim($table.find('thead th:last').text())))return;
-                    $table.find('tbody tr').each(function(){
-                        var $cell=$(this).children('td').last();
-                        var $original=$cell.find('a,button').filter(function(){
-                            return !$(this).closest('.blue-actions-source').length;
-                        }).detach();
-                        if(!$original.length)return;
-                        $cell.empty().addClass('blue-actions-cell').append($original);
-                    });
-                    $.blueActionMenu.enhance($table.find('tbody td.blue-actions-cell'));
+                    $.blueVoucherRegisterActions.enhance($('#journalTable'));
                 },
                 ajax: {
                     url: '{{ route('commision.voucher.index') }}', // Route to get data
