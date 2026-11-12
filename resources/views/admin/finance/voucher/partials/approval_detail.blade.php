@@ -24,6 +24,10 @@
   @if(!empty($detail['attachment_url']))
   <div class="vap-detail-wide"><strong>Attachment</strong><span><a href="{{ $detail['attachment_url'] }}" target="_blank" rel="noopener">{{ $detail['attachment_name'] ?? 'Download attachment' }}</a></span></div>
   @endif
+  @if(!empty($detail['pending_attachment_url']))
+  <div class="vap-detail-wide"><strong>Proposed attachment (Pending)</strong>
+   <span><a href="{{ $detail['pending_attachment_url'] }}" target="_blank" rel="noopener noreferrer">{{ $detail['pending_attachment_name'] ?? 'Review proposed attachment' }}</a></span></div>
+  @endif
   <div><strong>Transaction / Cheque No</strong><span>{{ $detail['transaction_reference'] ?: '—' }}</span></div>
   <div><strong>Bank</strong><span>{{ $detail['bank'] ?: '—' }}</span></div>
   <div><strong>Passing Date</strong><span>{{ $detail['passing_date'] ?: '—' }}</span></div>
