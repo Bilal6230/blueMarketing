@@ -31,6 +31,25 @@ class DailyVoucherApprovalWorkflowTest extends TestCase
             $t->string('name');
             $t->string('guard_name');
         });
+        // Spatie's permission registrar loads the permissions table even when
+        // the actor has no direct permissions. Keep it real and empty: user 10
+        // must still be denied by the actual authorization policy.
+        Schema::create('permissions', function (Blueprint $t): void {
+            $t->id();
+            $t->string('name');
+            $t->string('guard_name');
+        });
+        Schema::create('role_has_permissions', function (Blueprint $t): void {
+            $t->unsignedBigInteger('permission_id');
+            $t->unsignedBigInteger('role_id');
+            $t->primary(['permission_id','role_id']);
+        });
+        Schema::create('model_has_permissions', function (Blueprint $t): void {
+            $t->unsignedBigInteger('permission_id');
+            $t->string('model_type');
+            $t->unsignedBigInteger('model_id');
+            $t->primary(['permission_id','model_id','model_type']);
+        });
         Schema::create('model_has_roles', function (Blueprint $t): void {
             $t->unsignedBigInteger('role_id');
             $t->string('model_type');
@@ -47,6 +66,7 @@ class DailyVoucherApprovalWorkflowTest extends TestCase
         DB::table('model_has_roles')->insert([
             'role_id'=>1,'model_type'=>\App\Models\User::class,'model_id'=>20,
         ]);
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
         Schema::create('customer_ledger', function (Blueprint $t): void { $t->id(); $t->unsignedBigInteger('project_id'); $t->boolean('is_active')->default(false); $t->integer('is_approve')->default(0); });
         Schema::create('project_head_subheads', function (Blueprint $t): void { $t->id(); $t->unsignedBigInteger('project_id'); });
         Schema::create('ledgers', function (Blueprint $t): void {
