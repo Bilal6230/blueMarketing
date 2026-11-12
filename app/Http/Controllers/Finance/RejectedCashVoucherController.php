@@ -12,6 +12,8 @@ use App\Models\ProjectHeadSubhead;
 use App\Services\Finance\VoucherApproverAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 final class RejectedCashVoucherController extends Controller
 {
@@ -47,8 +49,16 @@ final class RejectedCashVoucherController extends Controller
             ->where('p.project_id',$project)->orderBy('h.name')->orderBy('s.name')
             ->get(['p.id','p.head_accounting_id','p.subhead_accounting_id','h.acct_type','h.name as head_name','s.name as sub_name']);
         $accountTypes=\App\Models\AccountType::query()->where('status',1)->orderBy('id')->get(['id','name']);
+        $currentAttachment=null;
+        if (in_array((string)$source->transaction_type,['CCR','CDR'],true)
+            && Schema::hasTable('cash_voucher_attachments')) {
+            $currentAttachment=DB::table('cash_voucher_attachments')
+                ->where('project_id',$project)->where('customer_ledger_id',$source->id)
+                ->where('status','applied')->orderByDesc('id')
+                ->first(['id','original_name']);
+        }
         return view('admin.finance.voucher.rejected_cash_revision',
-            compact('source','approval','leg','accounts','accountTypes'));
+            compact('source','approval','leg','accounts','accountTypes','currentAttachment'));
     }
     public function store(int $customerLedger, Request $request)
     {
@@ -58,6 +68,7 @@ final class RejectedCashVoucherController extends Controller
             'account_id'=>['required','integer'],
             'description'=>['required','string','max:255'],
             'revision_reason'=>['required','string','min:3','max:500'],
+            'attachment'=>['nullable','file','mimes:pdf,jpg,jpeg,png,webp','max:5120'],
             't_number'=>['required_if:payment_type,2,3','nullable','string','max:255'],
             'bank_id'=>['nullable','integer','min:1'],
             'passing_date'=>['nullable','date_format:Y-m-d'],
@@ -84,11 +95,31 @@ final class RejectedCashVoucherController extends Controller
         if ($tracked) abort_unless(VoucherApproverAccess::isSuperAdmin($actor)
             || ((int)$tracked->submitted_by===(int)$actor->id
                 && (int)$actor->project_id===$project),403);
+        $path=null;
+        if ($request->hasFile('attachment')) {
+            abort_unless(in_array((string)$source->transaction_type,['CCR','CDR'],true),422,
+                'Attachment revision is available for CCR/CDR only.');
+            abort_unless(Schema::hasTable('cash_voucher_attachments')
+                && Schema::hasColumn('cash_voucher_attachments','status')
+                && Schema::hasColumn('cash_voucher_attachments','edit_snapshot_id'),409,
+                'Apply the cash voucher edit-attachment migration.');
+            $path=$request->file('attachment')->store('private/voucher-attachments/'.$project,'local');
+            abort_unless($path,422,'Attachment could not be saved.');
+            $data['attachment_metadata']=[
+                'path'=>$path,'disk'=>'local',
+                'original_name'=>mb_substr($request->file('attachment')->getClientOriginalName(),0,255),
+                'mime_type'=>$request->file('attachment')->getMimeType(),
+                'size'=>$request->file('attachment')->getSize(),
+            ];
+        }
         try {
             $saved=app(\App\Services\Finance\SameSourceCashVoucherEdit::class)
                 ->submit($project,$customerLedger,(int)$actor->id,$data);
-        } catch (\DomainException $e) {
-            return response()->json(['message'=>$e->getMessage()],409);
+        } catch (\Throwable $e) {
+            if ($path) Storage::disk('local')->delete($path);
+            if ($e instanceof \DomainException)
+                return response()->json(['message'=>$e->getMessage()],409);
+            throw $e;
         }
         return response()->json([
             'message'=>$saved['pending']
