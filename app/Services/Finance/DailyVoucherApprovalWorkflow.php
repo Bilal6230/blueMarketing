@@ -309,8 +309,10 @@ final class DailyVoucherApprovalWorkflow
                     || ((int)$source->payment_type===2 && $allocation->source_method!=='online')
                     || ((int)$source->payment_type===3 && $allocation->source_method!=='cheque')
                     || abs((float)$allocation->amount - max((float)$source->amount_in,(float)$source->amount_out))>0.001
-                    || ((int)$legs->first()->is_active!==0 && !$active)
-                    || ($active && (int)$legs->first()->is_active!==0)) {
+                    || abs(max((float)$legs->first()->amount_in,(float)$legs->first()->amount_out)
+                        - max((float)$source->amount_in,(float)$source->amount_out))>0.001
+                    || (int)$source->is_active!==0
+                    || (int)$legs->first()->is_active!==0) {
                     throw new \DomainException('BANK_APPROVAL_LEDGER_OR_ALLOCATION_MISMATCH');
                 }
             }
