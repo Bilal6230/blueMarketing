@@ -290,28 +290,7 @@
         </x-finance.voucher-table-card>
     </div></section>
 </div>
-<div id="dv-excel-popover" class="dv-excel-popover d-none" role="dialog" aria-label="Column sorting and filtering">
-    <div class="dv-excel-title" id="dv-excel-title"></div>
-    <button type="button" class="dv-excel-sort" data-direction="asc"><i class="fas fa-sort-amount-up mr-2" aria-hidden="true"></i>Sort A to Z / Small to Large</button>
-    <button type="button" class="dv-excel-sort" data-direction="desc"><i class="fas fa-sort-amount-down mr-2" aria-hidden="true"></i>Sort Z to A / Large to Small</button>
-    <div class="dv-excel-divider"></div>
-    <div id="dv-excel-dates" class="d-none">
-        <label class="dv-excel-date-label" for="dv-column-date-from">From Date</label>
-        <input type="date" id="dv-column-date-from" class="form-control form-control-sm">
-        <label class="dv-excel-date-label mt-2" for="dv-column-date-to">To Date</label>
-        <input type="date" id="dv-column-date-to" class="form-control form-control-sm">
-    </div>
-    <div id="dv-excel-search-area">
-        <label for="dv-excel-search" class="sr-only">Search column</label>
-        <input id="dv-excel-search" type="search" class="form-control form-control-sm" placeholder="Search values…" autocomplete="off">
-    </div>
-    <div class="dv-excel-values" id="dv-excel-values" role="group" aria-label="Filter choices"></div>
-    <div class="dv-excel-footer">
-        <button type="button" class="btn btn-sm btn-light" id="dv-excel-clear">Clear</button>
-        <button type="button" class="btn btn-sm btn-light" id="dv-excel-cancel">Cancel</button>
-        <button type="button" class="btn btn-sm btn-primary" id="dv-excel-apply">Apply</button>
-    </div>
-</div>
+<x-finance.voucher-column-filters />
 <div class="modal fade" id="dv-detail-modal" tabindex="-1" role="dialog" aria-labelledby="dv-detail-title" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-scrollable" role="document"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="dv-detail-title">Voucher details</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div><div class="modal-body"><div class="dv-common-print-heading"><h3 class="mb-1">Voucher Details</h3><div id="dv-print-identity" class="small text-muted"></div><div class="small">Read-only voucher record · not a new accounting posting</div></div><dl class="row mb-0" id="dv-detail-fields"></dl><div id="dv-detail-lines-wrap" class="mt-3 d-none"><h6>Voucher lines</h6><div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>Account</th><th>Description</th><th class="text-right">Debit</th><th class="text-right">Credit</th></tr></thead><tbody id="dv-detail-lines"></tbody></table></div></div><div id="dv-detail-prints-wrap" class="mt-3 d-none"><h6>Plot receipt print views</h6><div id="dv-detail-prints" class="d-flex flex-wrap" style="gap:.5rem"></div></div><div id="dv-detail-audit-wrap" class="mt-3 d-none"><h6>Payment and audit information</h6><dl class="row mb-0" id="dv-detail-audit"></dl></div></div><div class="modal-footer"><button type="button" class="btn btn-outline-primary dv-common-print-button" id="dv-common-print"><i class="fas fa-print mr-1"></i> Print Details (A4)</button><a id="dv-detail-print" class="btn btn-primary" target="_blank" rel="noopener"><i class="fas fa-print mr-1"></i> Open print view</a><span id="dv-no-print" class="small text-muted d-none">No posted print record is available.</span><button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button></div></div></div></div>
 <div class="modal fade" id="dv-entry-modal" tabindex="-1" role="dialog" aria-labelledby="dv-entry-title" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
