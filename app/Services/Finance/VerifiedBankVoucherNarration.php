@@ -31,7 +31,7 @@ final class VerifiedBankVoucherNarration
             'Method' => $method==='online' ? 'Online' : 'Cheque',
             'Source' => ucfirst($method).' #'.$sourceId,
             'Bank' => $bankName,
-            $method==='online' ? 'Txn' : 'Chq' => $instrumentNumber,
+            ($method==='online' ? 'Txn' : 'Chq') => $instrumentNumber,
             'Pass' => $passingDate,
             'Ref' => $reference,
             'Date' => $voucherDate,
