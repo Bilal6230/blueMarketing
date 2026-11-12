@@ -574,8 +574,7 @@
                                     id="toggleFilters">Filters</button>
 
                                 <div id="filtersSection" class="col-12 mb-4" style="display:none;">
-                                    <div class="custom_card h-100">
-                                        <div class="card-body">
+                                    <x-finance.voucher-filter-card class="custom_card h-100">
                                             <div class="mb-3">
                                                 <h5 class="text-lg font-semibold mb-3">Cash Voucher List</h5>
                                                 <div class="row g-3 align-items-end">
@@ -668,8 +667,7 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </div>
+                                    </x-finance.voucher-filter-card>
                                 </div>
                             </div>
                         </div>
@@ -679,6 +677,7 @@
 
                     <!-- Table -->
                     @can('read voucher')
+                        <x-finance.voucher-table-card class="mb-3">
                         <div class="table-responsive">
                             <table id="vouchersTable" class="table table-bordered table-striped"
                                 data-source="{{ $table_data_route }}">
@@ -700,6 +699,7 @@
                                 </tbody>
                             </table>
                         </div>
+                        </x-finance.voucher-table-card>
                     @endcan
 
 
