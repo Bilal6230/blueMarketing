@@ -67,6 +67,11 @@ class LedgerController extends Controller
         } else {
             $request->merge(['custom_payment_method_id' => null]);
         }
+        // Isolated V2 posting is a different writer and cannot consume legacy management claims.
+        if($request->filled('passed_source_method')||$request->filled('passed_source_id')) {
+            abort_if(\App\Services\Finance\V2OriginalWorkflowAccess::selected(),409,
+                'Selected management sources require the audited standard voucher writer.');
+        }
         if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
             $project = (int) getSelectedTown();
             \App\Services\Finance\V2OriginalWorkflowAccess::authorize($project);
@@ -133,6 +138,8 @@ class LedgerController extends Controller
             'subaccounts_id' => ['required', 'integer', 'min:1'],
             'payment_type' => ['required', 'integer', 'in:1,2,3'],
             'display_series' => ['nullable', 'string', 'in:CR,DR,CP,CCR,CDR,BOR,BOP'],
+            'passed_source_method' => ['nullable','in:online,cheque'],
+            'passed_source_id' => ['nullable','integer','min:1'],
             'custom_payment_method_id' => ['nullable', 'integer', 'min:1'],
             'date' => ['required', 'date'],
             'voucher' => ['required', 'string', 'regex:/^(CR|CP)-\d+$/'],
@@ -194,7 +201,20 @@ class LedgerController extends Controller
         $voucherNumber = (int) ($voucherNumberParts[1] ?? 0);
         $cleanAmount = (float) str_replace(',', '', (string) $request->input('amount'));
         $paymentType = (int) $request->input('payment_type');
-        $isCashOutPendingClearance = in_array($paymentType, [2, 3], true) && $effectiveVoucherType === 'CP';
+        $passedKind=(string)$request->input('passed_source_method','');
+        $passedSourceId=(int)$request->input('passed_source_id',0);
+        if(($passedKind==='')!==($passedSourceId===0) ||
+            ($passedKind!=='' && !in_array($paymentType,[2,3],true))) {
+            return response()->json(['status'=>'error','message'=>'Select one verified Online/Cheque source.'],422);
+        }
+        $linkedVerifiedSource=$passedKind!=='' && $passedSourceId>0;
+        if(in_array((string)$request->input('display_series'),['BOR','BOP'],true)
+            && !$linkedVerifiedSource) {
+            return response()->json(['status'=>'error',
+                'message'=>'Select a passed Online/Cheque Management record before saving this bank voucher.'],422);
+        }
+        $isCashOutPendingClearance = !$linkedVerifiedSource
+            && in_array($paymentType, [2, 3], true) && $effectiveVoucherType === 'CP';
         $selectedPendingPaymentId = (int) $request->input('selected_pending_payment_id');
         $pendingStatus = (int) $request->input('pending_status');
         if ($isCashOutPendingClearance && (!$selectedPendingPaymentId || !in_array($pendingStatus, [1, 2, 3], true))) {
@@ -241,7 +261,8 @@ class LedgerController extends Controller
                 $voucherNumber,
                 $amount_in,
                 $amount_out,
-                $isCashOutPendingClearance
+                $isCashOutPendingClearance,
+                $linkedVerifiedSource,$passedKind,$passedSourceId
             ) {
                 // Coordinate manual CR/CP posting with other project-scoped
                 // financial writers, including first-time voucher creation.
@@ -251,6 +272,14 @@ class LedgerController extends Controller
                     ->lockForUpdate()
                     ->exists()) {
                     throw new \DomainException('CASH_VOUCHER_PROJECT_NOT_FOUND');
+                }
+                if($linkedVerifiedSource) {
+                    app(\App\Services\Finance\PassedBankVoucherClaim::class)->verify(
+                        (int)$selectedProjectId,$passedKind,$passedSourceId,
+                        $effectiveVoucherType==='CR'?'receipt':'payment',
+                        $paymentType,$cleanAmount,(string)$request->input('t_number'),
+                        (int)$projectHeadSubhead->id
+                    );
                 }
                 if ($paymentType === 1) {
                     $t_number = $bank_id = null;
@@ -394,7 +423,8 @@ class LedgerController extends Controller
                 $customerID = $projectHeadSubhead?->customer_id;
                 $plotID = $projectHeadSubhead?->plot_id;
                 $bankName = $bank_id ? getBankNameById($bank_id) : null;
-                $isPendingCashInBankPayment = in_array($paymentType, [2, 3], true) && $effectiveVoucherType === 'CR';
+                $isPendingCashInBankPayment = !$linkedVerifiedSource
+                    && in_array($paymentType, [2, 3], true) && $effectiveVoucherType === 'CR';
 
                 // A cash voucher's project, series, account ownership and slip
                 // reference form its submission identity. A retry must never
@@ -483,7 +513,7 @@ class LedgerController extends Controller
                             'bank_post_at' => null,
                         ]);
                     } else {
-                        $passing_status = $effectiveVoucherType === 'CP' ? 1 : 0;
+                        $passing_status = ($effectiveVoucherType === 'CP' || $linkedVerifiedSource) ? 1 : 0;
                         $customerLedger->update([
                             'passing_status' => $passing_status,
                             'note' => '(' . $check_slip . ') ' . $request->detail,
@@ -530,6 +560,12 @@ class LedgerController extends Controller
                     'create_by' => Auth::user()->id,
                     'status' => 0,
                 ]);
+
+                if($linkedVerifiedSource) {
+                    app(\App\Services\Finance\PassedBankVoucherClaim::class)->claim(
+                        (int)$selectedProjectId,$passedKind,$passedSourceId,
+                        $displaySeries,(int)$customerLedger->id,(int)Auth::id());
+                }
 
                 $approvalPending = app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
                     ->submitIfRequired((int) $selectedProjectId, $effectiveVoucherType, 'customer_ledger', (int) $customerLedger->id, (int) Auth::id());
