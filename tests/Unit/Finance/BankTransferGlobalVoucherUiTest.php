@@ -24,21 +24,26 @@ final class BankTransferGlobalVoucherUiTest extends TestCase
         $this->assertStringContainsString('transferTable', $compiled);
     }
 
-    public function test_global_table_filters_and_action_menu_are_present(): void
+    public function test_cr_dr_daily_directory_table_and_filter_layout_is_present(): void
     {
         $view = $this->template();
         foreach ([
-            'id="transferFrom"', 'id="transferTo"', 'id="transferBankFilter"',
-            'id="transferSearch"', 'id="clearTransferFilters"', 'id="transferTable"',
-            'id="openTransferCreate"', 'id="bankTransferCreateModal"',
-            'id="bankTransferViewModal"', 'class="dropdown-menu dropdown-menu-right"',
+            'id="btFilterForm"', 'id="transferFrom"', 'id="transferTo"',
+            'id="transferBankFilter"', 'id="transferSearch"',
+            'id="applyTransferFilters"', 'id="clearTransferFilters"',
+            'id="openTransferCreate"', 'id="transferTable"',
+            'id="btLength"', 'id="btQuickSearch"', 'id="btRecordSummary"',
+            'id="btPagination"', 'id="transferRows"',
+            'id="bankTransferCreateModal"', 'id="bankTransferViewModal"',
+            'class="bt-page-btn"', 'bt-plus bt-view', 'bt-filter-card',
+            'bt-table-card', 'bt-debit', 'bt-credit',
         ] as $identifier) {
             $this->assertStringContainsString($identifier, $view);
         }
         $this->assertStringNotContainsString('id="historyRows"', $view);
         $this->assertStringContainsString("@section('modal')", $view);
-        $this->assertStringContainsString("extend:'excelHtml5'", $view);
-        $this->assertStringContainsString("extend:'colvis'", $view);
+        $this->assertStringNotContainsString('$.fn.DataTable', $view);
+        $this->assertStringNotContainsString('dom:\'Bfrtip\'', $view);
     }
 
     public function test_modal_reuses_existing_bank_transfer_v2_routes(): void
