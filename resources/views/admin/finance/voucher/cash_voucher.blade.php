@@ -30,7 +30,12 @@
             20%,60% { transform:translateX(-5px) }
             40%,80% { transform:translateX(5px) }
         }
-        #numberInput.passed-bank-amount-shake { animation:passedBankAmountShake .38s ease-in-out; }
+        #numberInput.passed-bank-amount-shake,
+        #voucherForm .voucher-error-shake,
+        #voucherForm .ts-wrapper.voucher-error-shake,
+        #edit-voucher-form .voucher-error-shake {
+            animation:passedBankAmountShake .38s ease-in-out;
+        }
 
         @if($embeddedVoucher ?? false)
         /* Embedded correction editor is displayed directly within the parent modal;
@@ -449,7 +454,7 @@
                                                         <input type="text" name="cheque_purpose" id="cheque_purpose" maxlength="500"
                                                             class="form-control form-control-sm" placeholder="Purpose of this cheque">
                                                     </div>
-                                                    @if ($voucherType === 'CP')
+                                                    @if (in_array($voucherType, ['CP','DR'], true))
                                                         <div class="col-6 col-md-3 col-lg-2 bank_group pending_status_group"
                                                             style="display: none">
                                                             <label class="fbox mb-1">Status</label>
@@ -478,7 +483,7 @@
                                                             <small class="text-muted">PDF or image, maximum 5 MB.</small>
                                                         </div>
                                                     @endif
-                                                    @if ($voucherType === 'CP')
+                                                    @if (in_array($voucherType, ['CP','DR'], true))
                                                         <div class="col-12 mt-3" id="pendingPaymentsSection"
                                                             style="display: none;">
                                                             <div class="card border">
@@ -1497,7 +1502,7 @@
                 });
             }
 
-            @if ($voucherType === 'CP')
+            @if (in_array($voucherType, ['CP','DR'], true))
                 const pendingFetchUrl = "{{ route('finance.voucher.pending_bank_payments') }}";
                 window.pendingRowsCache = window.pendingRowsCache || [];
                 window.activePendingPaymentType = window.activePendingPaymentType || '2';
@@ -1738,7 +1743,7 @@
                 const pendingClearance = isCheque && String($('#selected_pending_payment_id').val() || '').trim() !== '';
                 $('.cheque-purpose-group').toggle(isCheque && !pendingClearance);
                 $('#cheque_purpose').prop('required', isCheque && !pendingClearance);
-                @if ($voucherType === 'CP')
+                @if (in_array($voucherType, ['CP','DR'], true))
                     if (typeof window.syncPendingPanelFromPaymentType === 'function') {
                         window.syncPendingPanelFromPaymentType();
                     }
@@ -1762,24 +1767,55 @@
             });
             $('#payment_type').trigger('change');
             let selectedPassedRemainingCents=null;
-            // A short original warning tone, generated locally after user interaction.
-            // No music file, external network request or global layout mutation.
+            // Original short alert tone: no remote audio file or autoplay on page load.
+            // Reuse the same AudioContext and resume from actual user gestures
+            // (required by browsers, particularly inside an embedded iframe).
+            let voucherAudioContext=null;
+            function unlockVoucherErrorAudio(){
+                const Context=window.AudioContext||window.webkitAudioContext;
+                if(!Context)return null;
+                try{
+                    voucherAudioContext=voucherAudioContext||new Context();
+                    if(voucherAudioContext.state==='suspended'){
+                        voucherAudioContext.resume().catch(()=>{});
+                    }
+                    return voucherAudioContext;
+                }catch(error){return null;}
+            }
+            $(document).one('pointerdown.voucherAudio keydown.voucherAudio touchstart.voucherAudio',unlockVoucherErrorAudio);
             function playVoucherErrorTone(){
-                try {
-                    const AudioContextClass=window.AudioContext||window.webkitAudioContext;
-                    if(!AudioContextClass)return;
-                    const context=new AudioContextClass();
-                    const start=context.currentTime, oscillator=context.createOscillator(), gain=context.createGain();
-                    oscillator.type='sine';
-                    oscillator.frequency.setValueAtTime(480,start);
-                    oscillator.frequency.exponentialRampToValueAtTime(240,start+0.16);
-                    gain.gain.setValueAtTime(0.0001,start);
-                    gain.gain.exponentialRampToValueAtTime(0.065,start+0.018);
-                    gain.gain.exponentialRampToValueAtTime(0.0001,start+0.20);
-                    oscillator.connect(gain);gain.connect(context.destination);
-                    oscillator.start(start);oscillator.stop(start+0.21);
-                    oscillator.onended=()=>{context.close().catch(()=>{});};
-                }catch(error){} // Audio may be disabled by browser/user settings.
+                const context=unlockVoucherErrorAudio();
+                if(!context)return;
+                const play=()=>{
+                    try{
+                        const now=context.currentTime;
+                        // Two short descending tones have enough volume to be audible
+                        // without depending on an absent MP3 or WAV asset.
+                        $.each([0,0.17],function(index,delay){
+                            const osc=context.createOscillator(),gain=context.createGain();
+                            const t=now+delay;
+                            osc.type='triangle';
+                            osc.frequency.setValueAtTime(index===0?660:520,t);
+                            osc.frequency.exponentialRampToValueAtTime(index===0?400:310,t+0.14);
+                            gain.gain.setValueAtTime(0.0001,t);
+                            gain.gain.exponentialRampToValueAtTime(0.14,t+0.018);
+                            gain.gain.exponentialRampToValueAtTime(0.0001,t+0.15);
+                            osc.connect(gain);gain.connect(context.destination);
+                            osc.start(t);osc.stop(t+0.16);
+                        });
+                    }catch(error){}
+                };
+                if(context.state==='running')play();
+                else context.resume().then(play).catch(()=>{});
+            }
+            function shakeVoucherField($field){
+                if(!$field || !$field.length)return;
+                const control=$field[0]?.tomselect
+                    ? $($field[0].tomselect.wrapper) : $field;
+                control.removeClass('voucher-error-shake');
+                // Force a fresh animation on consecutive invalid submits.
+                setTimeout(()=>control.addClass('voucher-error-shake'),0);
+                setTimeout(()=>control.removeClass('voucher-error-shake'),440);
             }
             // Cover existing voucher error/warning SweetAlert dialogs as well as source-limit toasts.
             if(window.Swal && !window.Swal.__blueVoucherErrorSound){
@@ -1821,10 +1857,7 @@
                 $amount.toggleClass('is-invalid',overflow);
                 $('#submitForm,#submit-button').prop('disabled',overflow);
                 if(overflow && !lastSourceOverLimit){
-                    $amount.removeClass('passed-bank-amount-shake');
-                    // Re-adding after a short delay restarts animation via jQuery.
-                    setTimeout(()=>$amount.addClass('passed-bank-amount-shake'),0);
-                    setTimeout(()=>$amount.removeClass('passed-bank-amount-shake'),430);
+                    shakeVoucherField($amount);
                     Swal.fire({toast:true,position:'top-end',icon:'error',
                         title:'Extra '+sourceMoney(cents-selectedPassedRemainingCents)+' entered',
                         text:'Amount must not exceed available balance of '+sourceMoney(selectedPassedRemainingCents),
@@ -2119,7 +2152,7 @@
                 syncEditPaymentFields($(this).val(), $('#edit_passing_status').val());
             });
 
-            @if ($voucherType === 'CP')
+            @if (in_array($voucherType, ['CP','DR'], true))
                 setTimeout(function() {
                     if (typeof window.syncPendingPanelFromPaymentType === 'function') {
                         window.syncPendingPanelFromPaymentType();
@@ -2586,6 +2619,7 @@
                     if (!valid) {
                         isValid = false;
                         messages.push(message);
+                        shakeVoucherField($field);
                         if (!$error.length) {
                             $error = $('<div/>', { id: errorId, class: 'invalid-feedback d-block cash-create-validation-error' });
                             $control.after($error);
@@ -2621,7 +2655,7 @@
                     checkField("[name='t_number']", "Transaction / Cheque Number is required.");
                     checkField("[name='bank_id']", "Bank is required.");
                     checkField("[name='passing_date']", "Passing Date is required.");
-                    if (@json($voucherType) === 'CP' && !$('#passed_source_id').val()) {
+                    if (['CP','DR'].includes(@json($voucherType)) && !$('#passed_source_id').val()) {
                         checkField("[name='selected_pending_payment_id']", "Select a pending receipt before clearance.");
                         checkField("[name='pending_status']", "Clearance status is required.", function(val) {
                             return ['1', '2', '3'].includes(val);
@@ -2640,7 +2674,7 @@
 
                 const voucherVisible = String($('#voucherForm [name="voucher_number"]').val() || '');
                 const voucherHidden = String($('#voucherForm [name="voucher"]').val() || '');
-                const voucherRegex = /^(CR|CP|CCR|CDR)-\d+$/;
+                const voucherRegex = /^(CR|DR|CP|CCR|CDR|BOR|BOP)-\d+$/;
                 const visibleMatch = voucherVisible.match(voucherRegex);
                 const hiddenMatch = voucherHidden.match(voucherRegex);
                 if (!visibleMatch || !hiddenMatch || voucherVisible !== voucherHidden || visibleMatch[1] !== @json($voucherType)) {
@@ -2658,11 +2692,16 @@
                     ? !!subAccountSelect.tomselect.options[subAccountId] : !!$('#subaccounts_id option').filter(function() { return $(this).val() === subAccountId; }).length;
                 if (!accountId || !subAccountId || !accountExists || !subAccountExists) {
                     isValid = false;
+                    if(!accountId || !accountExists)shakeVoucherField($('#accounts_id'));
+                    if(!subAccountId || !subAccountExists)shakeVoucherField($('#subaccounts_id'));
                     messages.push("Please reselect Account and Child Account.");
                 }
 
                 if (!isValid) {
                     e.preventDefault();
+                    // Sound is tied to this validation action, not dependent
+                    // on the global SweetAlert wrapper.
+                    playVoucherErrorTone();
                     Swal.fire({
                         icon: 'warning',
                         title: 'Validation error',
@@ -3423,7 +3462,7 @@
                 const tabNumber = parseInt($('#submit-button').attr('tab-number'), 10) || currentTab;
                 const $form = $('#voucherForm');
                 const paymentType = String($('#payment_type').val() || '');
-                const isCashOutBankFlow = VOUCHER_TYPE === 'CP'
+                const isCashOutBankFlow = ['CP','DR'].includes(VOUCHER_TYPE)
                     && !$('#passed_source_id').val() && (paymentType === '2' || paymentType === '3');
                 if (isCashOutBankFlow) {
                     const selectedPendingId = String($('#selected_pending_payment_id').val() || '').trim();
