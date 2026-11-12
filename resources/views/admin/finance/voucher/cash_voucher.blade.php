@@ -1825,7 +1825,6 @@
                     // Re-adding after a short delay restarts animation via jQuery.
                     setTimeout(()=>$amount.addClass('passed-bank-amount-shake'),0);
                     setTimeout(()=>$amount.removeClass('passed-bank-amount-shake'),430);
-                    playVoucherErrorTone();
                     Swal.fire({toast:true,position:'top-end',icon:'error',
                         title:'Extra '+sourceMoney(cents-selectedPassedRemainingCents)+' entered',
                         text:'Amount must not exceed available balance of '+sourceMoney(selectedPassedRemainingCents),
@@ -3354,7 +3353,7 @@
                             // localStorage.removeItem('tabs');
                             // localStorage.removeItem('nextTabNumber');
                             // localStorage.removeItem('currentTab');
-                            localStorage.removeItem(VOUCHER_STORAGE_KEY);
+                            // Browser local-storage vouchers disabled; nothing persisted to remove.
                             // Or to wipe all (careful, only if safe):
                             // localStorage.clear();
 
