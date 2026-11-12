@@ -1179,6 +1179,7 @@
                                 tsSubAccounts.refreshOptions(false);
                                 tsSubAccounts.disable();
                             }
+                            $('#voucherForm').trigger('passed-bank:heads-loaded');
                         },
                         error: function() {
                             if (reqSeq !== accountTypeRequestSeq) return;
@@ -1270,6 +1271,7 @@
                                 tsSubAccounts.refreshOptions(false);
                                 tsSubAccounts.enable();
                             }
+                            $('#voucherForm').trigger('passed-bank:subheads-loaded');
 
                         }
 
@@ -1811,6 +1813,20 @@
                 clearTimeout(passedBankTimer);
                 passedBankTimer=setTimeout(fetchPassedBankRows,250);
             });
+            $('#voucherForm').on('passed-bank:heads-loaded',function(){
+                const pair=$(this).data('passed-account-pair');
+                if(!pair)return;
+                const $head=$('#accounts_id'),control=$head.prop('tomselect');
+                if(control)control.setValue(pair.head);
+                else $head.val(pair.head).trigger('change');
+            }).on('passed-bank:subheads-loaded',function(){
+                const pair=$(this).data('passed-account-pair');
+                if(!pair)return;
+                const $sub=$('#subaccounts_id'),control=$sub.prop('tomselect');
+                if(control)control.setValue(pair.sub);
+                else $sub.val(pair.sub).trigger('change');
+                $(this).removeData('passed-account-pair');
+            });
             $('#passed-bank-table').on('change','.passed-bank-radio',function(){
                 $('#passed-bank-apply').prop('disabled',!$(this).is(':checked'));
             });
@@ -1848,24 +1864,14 @@
                     $('#passed-bank-error').removeClass('d-none')
                         .text('Bank name requires manual mapping. Please select the matching Bank in the voucher form.');
                 }
-                if(source.account_type){
+                if(source.account_type && source.head_id && source.subhead_id){
+                    // Wait for real dependent AJAX option sets, never guess with timing.
+                    $('#voucherForm').data('passed-account-pair',{
+                        head:String(source.head_id),sub:String(source.subhead_id)
+                    });
                     const $type=$('#acct_type'),control=$type.prop('tomselect');
                     if(control)control.setValue(String(source.account_type));
                     else $type.val(source.account_type).trigger('change');
-                }
-                if(source.head_id){
-                    const $head=$('#accounts_id'),control=$head.prop('tomselect');
-                    if(control)control.setValue(String(source.head_id));
-                    else $head.val(source.head_id).trigger('change');
-                }
-                if(source.subhead_id){
-                    const sub=String(source.subhead_id);
-                    // Account options may be loaded asynchronously after Head changes.
-                    setTimeout(function(){
-                        const $sub=$('#subaccounts_id'),control=$sub.prop('tomselect');
-                        if(control)control.setValue(sub);
-                        else $sub.val(sub).trigger('change');
-                    },350);
                 }
                 if(passedBankDirection==='payment'){
                     $('#pendingPaymentsSection').hide();
