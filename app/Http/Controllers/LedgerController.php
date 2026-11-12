@@ -472,6 +472,10 @@ class LedgerController extends Controller
                 // active form. Transaction rollback also releases the counter.
                 $bankSeriesNumber = null;
                 if (in_array($voucherPrefix, ['BOR','BOP'], true)) {
+                    if (!\Illuminate\Support\Facades\Schema::hasTable('ledger_voucher_counters')
+                        || !\Illuminate\Support\Facades\Schema::hasTable('project_voucher_display_numbers')) {
+                        throw new \DomainException('Bank voucher numbering and display migrations are required.');
+                    }
                     // Reserve bank-specific voucher number independently of
                     // the underlying legacy CR/CP source identity.
                     $bankSeriesNumber = app(\App\Services\Finance\ProjectVoucherAllocator::class)
