@@ -99,6 +99,15 @@ final class SameSourceCashVoucherEdit
                 'customer_id'=>$account->customer_id ?? $source->customer_id,
                 'plot_id'=>$account->plot_id ?? $source->plot_id,
             ];
+            $attachment=$data['attachment_metadata']??null;
+            if ($attachment) {
+                if(!in_array((string)$source->transaction_type,['CCR','CDR'],true) ||
+                    !Schema::hasTable('cash_voucher_attachments') ||
+                    !Schema::hasColumn('cash_voucher_attachments','status') ||
+                    !Schema::hasColumn('cash_voucher_attachments','edit_snapshot_id')) {
+                    throw new \DomainException('Cash voucher attachment staging is not ready.');
+                }
+            }
             $reason=trim((string)$data['revision_reason']);
             if (mb_strlen($reason)<3) throw new \DomainException('Reason for Edit/Revision is required.');
             $workflow=app(DailyVoucherApprovalWorkflow::class);
@@ -136,6 +145,7 @@ final class SameSourceCashVoucherEdit
                     'reason'=>$reason,'submitted_by'=>$userId,
                     'created_at'=>now(),'updated_at'=>now(),
                 ]);
+                if($attachment) $this->recordAttachment($projectId,$sourceId,$userId,$snapshotId,$attachment,'pending');
                 DB::table('daily_voucher_approval_events')->insert([
                     'approval_id'=>$approval->id,'event'=>'same_source_edit',
                     'actor_id'=>$userId,
@@ -156,6 +166,7 @@ final class SameSourceCashVoucherEdit
                 'reason'=>$reason,'submitted_by'=>$userId,'decided_by'=>$userId,
                 'created_at'=>now(),'updated_at'=>now(),
             ]);
+            if($attachment) $this->recordAttachment($projectId,$sourceId,$userId,$snapshotId,$attachment,'applied');
             if ($approvals) {
                 if ($approvals->status==='rejected') {
                     $approvals->forceFill([
@@ -212,11 +223,34 @@ final class SameSourceCashVoucherEdit
         if ($decision==='approved') {
             $this->applyLocked((int)$approval->project_id,$source,$leg,$before,$proposed);
         }
+        if(Schema::hasTable('cash_voucher_attachments') &&
+           Schema::hasColumn('cash_voucher_attachments','edit_snapshot_id') &&
+           Schema::hasColumn('cash_voucher_attachments','status')) {
+            DB::table('cash_voucher_attachments')
+                ->where('project_id',$approval->project_id)
+                ->where('customer_ledger_id',$approval->source_id)
+                ->where('edit_snapshot_id',$snapshot->id)->where('status','pending')
+                ->update(['status'=>$decision==='approved'?'applied':'rejected',
+                    'updated_at'=>now()]);
+        }
         DB::table('daily_voucher_edit_snapshots')->where('id',$snapshot->id)->update([
             'status'=>$decision==='approved'?'applied':'rejected',
             'decided_by'=>$actorId,'updated_at'=>now(),
         ]);
         return true;
+    }
+
+    private function recordAttachment(int $projectId,int $sourceId,int $actorId,
+        int $snapshotId,array $file,string $status): void
+    {
+        DB::table('cash_voucher_attachments')->insert([
+            'project_id'=>$projectId,'customer_ledger_id'=>$sourceId,
+            'edit_snapshot_id'=>$snapshotId,'status'=>$status,
+            'path'=>$file['path'],'disk'=>'local',
+            'original_name'=>$file['original_name'],'mime_type'=>$file['mime_type'],
+            'size'=>$file['size'],'uploaded_by'=>$actorId,
+            'created_at'=>now(),'updated_at'=>now(),
+        ]);
     }
 
     private function applyLocked(int $projectId,object $source,object $leg,array $before,array $next): void
