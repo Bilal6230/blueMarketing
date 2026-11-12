@@ -295,7 +295,7 @@ class VoucherController extends Controller
      */
     private function previewCanonicalCashNumber(int $projectId, string $type): int
     {
-        abort_unless($projectId > 0 && in_array($type, ['CR','CP','CCR','CDR'], true), 422);
+        abort_unless($projectId > 0 && in_array($type, ['CR','CP','CCR','CDR','BOR','BOP'], true), 422);
         $sourceMax = (int) DB::table('customer_ledger')->where('project_id', $projectId)
             ->where('transaction_type', $type)->max('type_id');
         $ledgerMax = (int) DB::table('ledgers as ledger')
@@ -435,7 +435,7 @@ class VoucherController extends Controller
         $x['table_data_route'] = $fixedPaymentType === null
             ? route('voucher.cash_in.data')
             : route('voucher.cash_in.method.data', ['method' => $method]);
-        $nextNumber = $this->previewCanonicalCashNumber((int) $selectedProjectId, $displaySeries === 'CCR' ? 'CCR' : 'CR');
+        $nextNumber = $this->previewCanonicalCashNumber((int) $selectedProjectId, $displaySeries === 'CCR' ? 'CCR' : ($displaySeries === 'BOR' ? 'BOR' : 'CR'));
 
         $x['latest_voucher_number'] = $nextNumber;
 
@@ -726,7 +726,7 @@ class VoucherController extends Controller
         $x['table_data_route'] = $fixedPaymentType === null
             ? route('voucher.cash_out.data')
             : route('voucher.cash_out.method.data', ['method' => $method]);
-        $nextNumber = $this->previewCanonicalCashNumber((int) $selectedProjectId, $displaySeries === 'CDR' ? 'CDR' : 'CP');
+        $nextNumber = $this->previewCanonicalCashNumber((int) $selectedProjectId, $displaySeries === 'CDR' ? 'CDR' : ($displaySeries === 'BOP' ? 'BOP' : 'CP'));
 
         $x['latest_voucher_number'] = $nextNumber;
 
@@ -2049,7 +2049,7 @@ class VoucherController extends Controller
     public function checkNewVoucherNumber(Request $request)
     {
         $data = $request->validate([
-            'type' => ['required','string','in:CR,CP,CCR,CDR'],
+            'type' => ['required','string','in:CR,CP,CCR,CDR,BOR,BOP'],
             'number' => ['nullable','integer','min:1'],
         ]);
         $projectId = (int) getSelectedTown();
