@@ -150,7 +150,8 @@ class LedgerController extends Controller
             'cheque_purpose' => [
                 'nullable', 'string', 'max:500',
                 \Illuminate\Validation\Rule::requiredIf(fn () => (int) $request->input('payment_type') === 3
-                    && !$request->filled('selected_pending_payment_id')),
+                    && !$request->filled('selected_pending_payment_id')
+                    && !$request->filled('passed_source_id')),
             ],
         ]);
 
@@ -208,6 +209,12 @@ class LedgerController extends Controller
             return response()->json(['status'=>'error','message'=>'Select one verified Online/Cheque source.'],422);
         }
         $linkedVerifiedSource=$passedKind!=='' && $passedSourceId>0;
+        if($linkedVerifiedSource &&
+            (($passedKind==='online' && $paymentType!==2) ||
+             ($passedKind==='cheque' && $paymentType!==3))) {
+            return response()->json(['status'=>'error',
+                'message'=>'Selected passed source does not match payment method.'],422);
+        }
         if(in_array((string)$request->input('display_series'),['BOR','BOP'],true)
             && !$linkedVerifiedSource) {
             return response()->json(['status'=>'error',
