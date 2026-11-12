@@ -16,7 +16,7 @@
             <h2>{{ $kind === 'deposit' ? 'Bank Deposit Voucher' : 'Bank Withdrawal Voucher' }}</h2>
         </header>
         <section class="meta">
-            <div><b>Voucher No.</b>{{ trim((string) $source->voucher_series.'-'.(string) $source->voucher_number, '-') ?: '—' }}</div>
+            <div><b>Voucher No.</b>{{ (string) $source->voucher_series.'-'.($source->voucher_number ?: $source->posting_batch_id) }}</div>
             <div><b>Date</b>{{ $source->effective_date }}</div>
             <div><b>Bank</b>{{ $source->bank_name }} / {{ $source->account_title }}</div>
             <div><b>Amount</b>{{ number_format((float) $source->amount, 2) }}</div>
