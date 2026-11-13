@@ -152,6 +152,7 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
     <thead><tr><th>Time / Actor</th><th>From → To</th><th>Bank Statement Ref</th><th>Verification Date</th><th>Original Amount</th><th>Remarks</th></tr></thead>
     <tbody id="online-history-rows"></tbody></table></div>
    <h6 class="mt-3 font-weight-bold">Linked Voucher Allocations</h6>
+  <a id="online-linked-vouchers-print" class="btn btn-sm btn-outline-primary mb-2" target="_blank" rel="noopener" href="#" aria-label="Print linked voucher allocation history"><i class="fas fa-print mr-1"></i> Print Linked History</a>
    <div class="table-responsive online-history-table"><table class="table table-sm table-bordered">
     <thead><tr><th>Voucher</th><th class="text-right">Amount (Rs.)</th><th>Approval</th><th>Allocated At</th><th>Release / Void</th></tr></thead>
     <tbody id="online-linked-voucher-rows"></tbody></table></div>
@@ -200,6 +201,7 @@ $(function(){
  var request=null,sequence=0,busy=false,searchTimer=null,confirmBusy=false,confirmRecord=null;
  var confirmUrlTemplate=@json(route('finance.online.confirm',['id'=>'__ONLINE_ID__']));
  var historyUrlTemplate=@json(route('finance.online.history',['id'=>'__ONLINE_ID__']));
+ var linkedPrintUrlTemplate=@json(route('finance.bank_source.linked_print',['method'=>'online','source'=>'__ONLINE_ID__']));
  var mappings=@json($mappings);
  function fit(){
   var $page=$('.online-register-page');
@@ -445,6 +447,7 @@ $(function(){
   var $body=$('#online-history-rows').empty();
   $.bankLinkedHistory.loading($('#online-linked-voucher-rows'));
   $('<tr>').append($('<td colspan="6" class="text-center">').text('Loading history...')).appendTo($body);
+  $('#online-linked-vouchers-print').attr('href',linkedPrintUrlTemplate.replace('__ONLINE_ID__',encodeURIComponent(id)));
   $('#online-history-modal').modal('show');
   $.ajax({url:historyUrlTemplate.replace('__ONLINE_ID__',id),dataType:'json'})
    .done(function(result){
