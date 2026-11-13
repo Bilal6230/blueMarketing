@@ -298,6 +298,9 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         ->whereNumber('id')->middleware('permission:read voucher')->name('finance.online.proof');
     Route::get('finance/online-transactions/eligible', [\App\Http\Controllers\Finance\OnlineIntakeController::class,'eligible'])
         ->middleware('permission:read voucher')->name('finance.online.eligible');
+    Route::get('finance/bank-source/{method}/{source}/linked-vouchers/print', [\App\Http\Controllers\Finance\BankSourceLinkedVoucherPrintController::class, 'show'])
+        ->where(['method' => 'online|cheque', 'source' => '[0-9]+'])
+        ->middleware('permission:read voucher')->name('finance.bank_source.linked_print');
     Route::get('finance/online-transactions/{id}/history', [\App\Http\Controllers\Finance\OnlineIntakeController::class,'history'])
         ->whereNumber('id')->middleware('permission:read voucher')->name('finance.online.history');
     Route::post('finance/online-transactions/{id}/confirm', [\App\Http\Controllers\Finance\OnlineIntakeController::class,'confirm'])
