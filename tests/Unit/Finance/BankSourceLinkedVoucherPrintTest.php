@@ -64,7 +64,7 @@ final class BankSourceLinkedVoucherPrintTest extends TestCase
     public function test_controller_requires_project_bound_source_and_uses_read_only_history_service(): void
     {
         $content=file_get_contents(app_path('Http/Controllers/Finance/BankSourceLinkedVoucherPrintController.php'));
-        $this->assertStringContainsString("->where('project_id', $projectId)->where('id', $source)",$content);
+        $this->assertStringContainsString("->where('project_id', \$projectId)->where('id', \$source)",$content);
         $this->assertStringContainsString('$history->forSource($projectId, $method, $source)', $content);
         $this->assertStringContainsString("private, no-store, max-age=0",$content);
         $this->assertStringNotContainsString("->insert(",$content);
