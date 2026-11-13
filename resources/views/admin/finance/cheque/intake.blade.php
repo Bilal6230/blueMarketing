@@ -284,6 +284,7 @@
                 </table>
             </div>
             <h6 class="mt-3 font-weight-bold">Linked Voucher Allocations</h6>
+  <a id="cheque-linked-vouchers-print" class="btn btn-sm btn-outline-primary mb-2" target="_blank" rel="noopener" href="#" aria-label="Print linked voucher allocation history"><i class="fas fa-print mr-1"></i> Print Linked History</a>
             <div class="table-responsive" style="max-height:35vh;overflow:auto">
                 <table class="table table-sm table-bordered">
                     <thead><tr><th>Voucher</th><th class="text-right">Amount (Rs.)</th><th>Approval</th><th>Allocated At</th><th>Release / Void</th></tr></thead>
@@ -306,6 +307,7 @@ $(function () {
     var actionUrlTemplate=@json(route('finance.cheques.action',['id'=>'__CHEQUE_ID__']));
     var finalizeUrlTemplate=@json(route('finance.cheques.finalize',['id'=>'__CHEQUE_ID__']));
     var historyUrlTemplate=@json(route('finance.cheques.history',['id'=>'__CHEQUE_ID__']));
+ var linkedPrintUrlTemplate=@json(route('finance.bank_source.linked_print',['method'=>'cheque','source'=>'__CHEQUE_ID__']));
     var finalizeBusy=false,finalizeTarget=null;
     var actionBusy=false;
     var actionTarget=null;
@@ -692,6 +694,7 @@ $(function () {
         var $body=$('#cheque-history-rows').empty();
         $.bankLinkedHistory.loading($('#cheque-linked-voucher-rows'));
         $('<tr>').append($('<td colspan="5">').text('Loading history...')).appendTo($body);
+        $('#cheque-linked-vouchers-print').attr('href',linkedPrintUrlTemplate.replace('__CHEQUE_ID__',encodeURIComponent(id)));
         $('#cheque-history-modal').modal('show');
         $.ajax({url:historyUrlTemplate.replace('__CHEQUE_ID__',id),dataType:'json'}).done(function(result){
             $body.empty();
