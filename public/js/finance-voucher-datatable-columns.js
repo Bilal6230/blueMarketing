@@ -23,6 +23,9 @@ $(function(){
     .append($('<button>',{type:'button','class':'btn btn-outline-primary btn-sm fvd-sort-asc'}).text('Sort ascending'))
     .append($('<button>',{type:'button','class':'btn btn-outline-primary btn-sm fvd-sort-desc'}).text('Sort descending'))
     .append($('<button>',{type:'button','class':'btn btn-outline-secondary btn-sm fvd-clear'}).text('Clear')));
+  var $page=$table.closest('.bm-voucher-directory');
+  $popover.css('--fvd-accent',$page.css('--fvd-accent')||
+    (opts.id==='Extra'?'#7145bd':'#087cfa'));
   $('body').append($popover);
   function refresh(){
     if(opts.server)api.ajax.reload(null,true);
