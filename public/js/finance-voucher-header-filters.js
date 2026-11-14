@@ -119,8 +119,11 @@
             var $link=$root.find(cfg[3]);
             var $form=$root.find('#'+cfg[5]);
             if ($link.length && $form.length) {
+                var $oldLinkRow=$link.parent();
                 var $wrap=$('<label>',{'class':'bm-inline-link-filter mb-0'}).text('Voucher Links ');
                 $link.detach().appendTo($wrap);
+                // Do not leave a label-only second filter row in the popup.
+                if($oldLinkRow.is('div'))$oldLinkRow.remove();
                 var $bar=$root.find(cfg[4]).first();
                 if ($bar.length) $bar.append($wrap);
                 var $hidden=$('<input>',{type:'hidden',name:'link_status'}).appendTo($form);
