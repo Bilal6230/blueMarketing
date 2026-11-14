@@ -4,6 +4,20 @@
  */
 (function ($) {
     'use strict';
+    // Central popover anatomy shared by Cheque, Online, CV, Draft, Extra.
+    // CR/JV already ship their own controls; the same CSS tokens style them.
+    $.financeVoucherUi=$.financeVoucherUi||{};
+    $.financeVoucherUi.normalizePopover=function($popup){
+        if(!$popup||!$popup.length||$popup.data('fvd-normalized'))return;
+        var $actions=$popup.find('.bm-heading-column-actions,.fvd-pop-actions').first();
+        var $control=$popup.find('.bm-heading-column-control,.fvd-pop-filter').first();
+        if(!$actions.length||!$control.length)return;
+        var $sort=$('<div>',{'class':'fvd-sort-options'});
+        $actions.find('.bm-col-asc,.bm-col-desc,.fvd-sort-asc,.fvd-sort-desc')
+            .detach().appendTo($sort);
+        $control.before($sort);
+        $popup.data('fvd-normalized',true);
+    };
     $(function () {
         // Popovers are attached to body, so explicitly inherit page palette.
         if($('.jv-page').length)$('#jv-excel-pop').css('--fvd-accent','#087cfa');
@@ -149,21 +163,6 @@
         }
         fitDirectories();
         $(window).on('resize.fvdLayout',fitDirectories);
-        // Filter popup structure exactly follows CR: full-width sort lines at
-        // top, separator, field control(s), then Clear in the footer.
-        $(document).on('click.fvdPopup',
-            '.bm-column-heading-trigger,.fvd-column-trigger',function(){
-            var $popup=$('.bm-heading-column-popover:visible,.fvd-data-popover:visible').first();
-            if(!$popup.length||$popup.data('fvd-normalized'))return;
-            var $actions=$popup.find('.bm-heading-column-actions,.fvd-pop-actions').first();
-            var $search=$popup.find('.bm-heading-column-control,.fvd-pop-filter').first();
-            if(!$actions.length||!$search.length)return;
-            var $sort=$('<div>',{'class':'fvd-sort-options'});
-            $actions.find('.bm-col-asc,.bm-col-desc,.fvd-sort-asc,.fvd-sort-desc')
-                .detach().appendTo($sort);
-            $search.before($sort);
-            $popup.data('fvd-normalized',true);
-        });
         // Draft vouchers: style existing server-rendered list, preserve approval/reject/edit buttons.
         var $draft=$('.bm-modern-draft');
         if ($draft.length) {
