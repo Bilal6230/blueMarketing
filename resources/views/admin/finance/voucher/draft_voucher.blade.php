@@ -1,7 +1,11 @@
 @extends('admin.layouts.master')
 @section('content')
 
-    <div class="content-wrapper">
+    <div class="content-wrapper bm-ui bm-voucher-directory bm-modern-draft">
+        <div class="bm-draft-heading">
+            <div><h4>Draft Vouchers</h4><small>Selected project records · Pending draft history</small></div>
+            <div class="bm-draft-actions"><a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm">Dashboard</a></div>
+        </div>
         <div class="content-header">
             <div class="container-fluid">
                 <div class="row mb-2">
@@ -138,8 +142,8 @@
                                                 </div>
 
                                                 <!-- Table -->
-                                                <div class="table-responsive">
-                                                    <table class="table table-hover align-middle mb-0">
+                                                <div class="table-responsive bm-draft-scroll">
+                                                    <table class="table bm-table table-bordered table-hover align-middle mb-0">
                                                         <thead class="table-light border-bottom">
                                                             <tr>
                                                                 <th>#</th>
