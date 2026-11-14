@@ -135,6 +135,35 @@
                 $form.on('reset.bmLinks',function(){$native.val('');$hidden.val('');});
             }
         });
+        // One viewport-height contract for every modern voucher directory.
+        // CR remains the verified reference and keeps its own matching sizing code.
+        var $directories=$('.bm-voucher-directory').not('.daily-voucher-page');
+        $directories.addClass('fvd-fit-viewport');
+        function fitDirectories(){
+            var $footer=$('.main-footer:visible').first(),footerHeight=$footer.length?$footer.outerHeight():0;
+            $directories.each(function(){
+                var $page=$(this),top=$page.offset().top;
+                var h=Math.max(320,$(window).height()-top-footerHeight-8);
+                $page.css('--fvd-directory-height',h+'px');
+            });
+        }
+        fitDirectories();
+        $(window).on('resize.fvdLayout',fitDirectories);
+        // Filter popup structure exactly follows CR: full-width sort lines at
+        // top, separator, field control(s), then Clear in the footer.
+        $(document).on('click.fvdPopup',
+            '.bm-column-heading-trigger,.fvd-column-trigger',function(){
+            var $popup=$('.bm-heading-column-popover:visible,.fvd-data-popover:visible').first();
+            if(!$popup.length||$popup.data('fvd-normalized'))return;
+            var $actions=$popup.find('.bm-heading-column-actions,.fvd-pop-actions').first();
+            var $search=$popup.find('.bm-heading-column-control,.fvd-pop-filter').first();
+            if(!$actions.length||!$search.length)return;
+            var $sort=$('<div>',{'class':'fvd-sort-options'});
+            $actions.find('.bm-col-asc,.bm-col-desc,.fvd-sort-asc,.fvd-sort-desc')
+                .detach().appendTo($sort);
+            $search.before($sort);
+            $popup.data('fvd-normalized',true);
+        });
         // Draft vouchers: style existing server-rendered list, preserve approval/reject/edit buttons.
         var $draft=$('.bm-modern-draft');
         if ($draft.length) {
