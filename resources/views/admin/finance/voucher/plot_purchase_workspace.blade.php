@@ -66,8 +66,7 @@
   <div class="modal-header"><h5 class="modal-title" id="ppCreateTitle">New Plot Purchase Voucher</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
   <div class="modal-body">
 <div id="ppAlert" class="alert d-none" role="status"></div>
- <div class="row">
-  <div class="col-xl-5 mb-3"><section class="pp-card"><h5>Purchase details</h5><div class="pp-body">
+<div class="pp-body">
    <div class="form-row"><div class="form-group col-md-6"><label>Purchase voucher no.</label><input id="ppNumber" class="form-control" maxlength="64" placeholder="e.g. PP-2026-0001"></div><div class="form-group col-md-6"><label>Date</label><input id="ppDate" type="date" class="form-control" value="{{ now()->toDateString() }}"></div></div>
    <div class="form-group"><label>Seller / payable account</label><select id="ppSeller" class="form-control"><option value="">Select project account</option>@foreach($accounts as $account)<option value="{{ $account->id }}">{{ $account->headAccounting?->name }}{{ $account->subheadAccounting?->name ? ' / '.$account->subheadAccounting->name : '' }}</option>@endforeach</select></div>
    <div class="form-group"><label>Narration</label><textarea id="ppNarration" class="form-control" rows="2" maxlength="2000" placeholder="Purchase agreement, seller reference, or notes"></textarea></div>
