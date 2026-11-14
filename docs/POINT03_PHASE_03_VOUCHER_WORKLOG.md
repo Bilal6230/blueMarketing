@@ -760,3 +760,10 @@ Owner screenshot: Bank Receipt Voucher (BOR) outer modal renders `Voucher form u
   `php artisan finance:audit-v2-bank-transfers 3`
 - **Acceptance:** owner shares CLI reconciliation rows for Project #3; BD-1 must show its original Rs100 debit/credit equal, and correct directions. Do not mark phase 06 database reconciliation PASS before owner runs actual local audit; report full count of batches and exceptions.
 - Application-wide design-system future milestone remains parked in `docs/FUTURE_APPLICATION_WIDE_DESIGN_SYSTEM_WORKFLOW.md`.
+
+
+## 2026-11-14 — Local BD/BW reconciliation PASS; SQLite cheque test-fixture fix
+- Owner ran `php artisan finance:audit-v2-bank-transfers 3` on local `bluenew`: one batch, `BD-1`, deposit Rs100.00, debit Rs100.00, credit Rs100.00, **2 lines, PASS, zero exceptions**. **This is actual local read-only database acceptance for the existing BD-1**, not merely a screenshot of the voucher print. No BW row exists in this local audit; BW live browser/source acceptance remains outstanding.
+- `BankTransferChequeSourceIntegrityTest`: **8 PASS / 11 assertions**. `V2BankTransferWriterTest`: **6 PASS, 1 FAIL / 38 assertions**. Failure is *not* a posting writer regression: the isolated SQLite fixture omitted the production `ledgers` table, which existing cheque-reuse protection correctly queries before writing. Added minimal test-only `ledgers` table with indexed nullable `customer_ledger_id` to `tests/Feature/Finance/V2BankTransferWriterTest.php`. No production app, DB migrations, source records, or writer changes.
+- Owner gate: `git pull --ff-only origin upgrade/laravel-framework` then `php artisan test --filter=V2BankTransferWriterTest` and `php artisan test --filter=BankTransferChequeSourceIntegrityTest`. Do **not** claim the failed scenario PASS before the owner reruns it. Reconciliation for project #3 is already PASS for its only BD-1 row.
+- BD/BW A5 printing is explicitly **ON HOLD** per owner; no further work on this issue unless requested. The future application-wide Design System also remains deferred.
