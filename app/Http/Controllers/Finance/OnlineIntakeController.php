@@ -55,6 +55,8 @@ final class OnlineIntakeController extends Controller
             'to'=>['nullable','date_format:Y-m-d','after_or_equal:from'],
             'type'=>['nullable',Rule::in(['receipt','payment'])],
             'status'=>['nullable',Rule::in(['pending','confirmed'])],
+            'sort_column'=>['nullable',Rule::in(['transaction_date','reference','type','sending_bank','receiving_bank','sender_name','purpose','amount','status'])],
+            'sort_direction'=>['nullable',Rule::in(['asc','desc'])],
             'link_status'=>['nullable',Rule::in(['linked','unlinked'])],
             'account_mapping_id'=>['nullable','integer',Rule::exists('project_head_subheads','id')->where('project_id',$project)],
             'search'=>['nullable','string','max:150'],
@@ -151,7 +153,11 @@ final class OnlineIntakeController extends Controller
                 $summary['payment_amount']+=$amount;
             }
         }
-        $page=$query->orderByDesc('id')->paginate((int)($input['per_page']??25),[
+        $sort=$input['sort_column']??'id';
+        $direction=$input['sort_direction']??'desc';
+        $query->orderBy($sort,$direction);
+        if($sort!=='id')$query->orderByDesc('id');
+        $page=$query->paginate((int)($input['per_page']??25),[
             'id','reference','transaction_date','amount','type','sending_bank','receiving_bank',
             'sender_name','receiver_name','purpose','status','account_mapping_id','proof_path'
         ],'page',(int)($input['page']??1));
