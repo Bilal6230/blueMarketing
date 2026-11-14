@@ -28,7 +28,10 @@ class FinanceVoucherCrVisualParityTest extends TestCase
         $this->assertStringContainsString('finance-voucher-system.css',$layout);
         $this->assertStringContainsString('fitDirectories()', $script);
         $this->assertStringContainsString('alignActions($header)', $script);
-        $this->assertStringContainsString('fvd-sort-options', $script);
+        $core=file_get_contents(public_path('js/finance-voucher-components.js'));
+        $this->assertStringContainsString('fvd-sort-options', $core);
+        $this->assertStringContainsString('createFilter', $core);
+        $this->assertStringContainsString('attachDataTablePager', $core);
         $this->assertStringContainsString('fvd-voucher-links', $script);
         $this->assertStringContainsString("option", $pager);
         $this->assertStringNotContainsString('addFilterModal(', $script);
