@@ -19,6 +19,10 @@
 .bm-quick-filter-modal .bm-quick-filter-form .bt-filter-actions,
 .bm-quick-filter-modal .bm-quick-filter-form .pr-filter-actions{display:flex;gap:7px;grid-column:1/-1;justify-content:flex-end}
 .bm-quick-filter-modal .bm-quick-filter-form .form-control[type=hidden]{display:none}
+.bm-quick-filter-modal .bm-quick-filter-form .row{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;align-items:end;margin:0}
+.bm-quick-filter-modal .bm-quick-filter-form .row>div,
+.bm-quick-filter-modal .bm-quick-filter-form .cheque-filter-row>div,
+.bm-quick-filter-modal .bm-quick-filter-form .online-filter-row>div{width:100%!important;max-width:none!important;min-width:0;flex:initial!important;margin:0!important;padding:0!important}
 .bm-quick-filter-modal .bm-quick-filter-form .cheque-filter-row,
 .bm-quick-filter-modal .bm-quick-filter-form .online-filter-row{display:contents}
 .bm-quick-filter-modal .bm-quick-filter-form .cheque-filter-actions,
@@ -93,7 +97,15 @@ body.modal-open .bm-quick-filter-modal{overflow-y:auto}
 .bm-extra-entry-modal #voucherForm label{font-size:12px;font-weight:700}
 .bm-extra-entry-modal #voucherForm .row{row-gap:8px}
 @media(max-width:780px){
- .bm-quick-filter-modal .bm-quick-filter-form,.bm-quick-filter-modal #filtersSection .row{grid-template-columns:1fr}
+ .bm-quick-filter-modal .bm-quick-filter-form,.bm-quick-filter-modal .bm-quick-filter-form .row,.bm-quick-filter-modal #filtersSection .row{grid-template-columns:1fr!important}
  .cheque-register-page .bm-inline-link-filter,.online-register-page .bm-inline-link-filter{margin-left:0}
  .bm-modern-draft,.bm-modern-extra{height:calc(100dvh - 125px)}
 }
+
+.bm-commission-entry-modal .modal-dialog{max-width:min(1200px,97vw);width:97vw;height:calc(100vh - 46px);margin:23px auto}
+.bm-commission-entry-modal .modal-content{height:100%;overflow:hidden}
+.bm-commission-entry-modal .modal-header{background:#e7efff;border-bottom:2px solid #087cfa;padding:10px 14px}
+.bm-commission-entry-modal .modal-title{color:#0861d4;font-size:17px;font-weight:700}
+.bm-commission-entry-modal .modal-body{flex:1;min-height:0;padding:0}
+.bm-commission-entry-modal iframe{display:block;width:100%;height:100%;border:0}
+.bm-commission-entry-modal .modal-footer{padding:7px 12px}
