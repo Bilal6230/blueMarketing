@@ -89,6 +89,13 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
      <div><label for="online-search">Search</label><input name="search" id="online-search" class="form-control form-control-sm" placeholder="Reference, bank, party, purpose"></div>
      <div class="online-filter-actions"><button type="submit" class="btn btn-success btn-sm">Apply</button><button type="button" class="btn btn-outline-secondary btn-sm" id="online-reset">Reset</button></div>
     </div>
+    <div class="d-flex align-items-center flex-wrap mt-1" style="gap:8px">
+     <label for="online-link-filter" class="mb-0 font-weight-bold">Voucher Links</label>
+     <select id="online-link-filter" name="link_status" class="form-control form-control-sm" style="width:190px">
+      <option value="">All sources</option><option value="linked">Linked (including released)</option><option value="unlinked">Never linked</option>
+     </select>
+     <small class="text-muted">Linked counts include historical released / voided allocations.</small>
+    </div>
    </form>
   </div>
   <div class="online-live-summary" id="online-live-summary" aria-live="polite">
@@ -362,6 +369,11 @@ $(function(){
     .text('Confirm').appendTo($actions);
   }
   @endcan
+  if(Number(x.linked_voucher_count||0)>0){
+   $('<button type="button">').addClass('btn btn-outline-primary btn-sm mr-1 online-history-button')
+    .attr({'data-id':x.id,'data-reference':x.reference,'title':'Open linked voucher allocation history'})
+    .text('Vouchers ('+Number(x.linked_voucher_count)+')').appendTo($actions);
+  }
   $('<button type="button">').addClass('btn btn-outline-secondary btn-sm online-history-button')
    .attr({'data-id':x.id,'data-reference':x.reference}).text('History').appendTo($actions);
   $actions.appendTo($r);
@@ -428,6 +440,7 @@ $(function(){
   $('#online-filters').trigger('reset');
   $.each(['#online-account-filter','#online-type-filter','#online-status-filter'],function(_,id){tsSet($(id),'');});
   $('#online-quick-search').val('');
+  $('#online-link-filter').val('');
   $('.online-column-filters [data-column]').val('');
   load(1);
  });
