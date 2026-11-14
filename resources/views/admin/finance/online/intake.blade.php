@@ -382,17 +382,17 @@ $(function(){
   return $r;
  }
  function pageLinks(data){
-  var $nav=$('#online-pages').empty(),page=data.current_page||1,last=data.last_page||1;
-  function btn(text,p,disabled,active){
-   $('<button type="button">').addClass('btn '+(active?'btn-success':'btn-outline-success'))
-    .prop('disabled',disabled).text(text).on('click',function(){load(p);}).appendTo($nav);
-  }
-  btn('Previous',page-1,page<=1,false);
-  for(var p=Math.max(1,page-2);p<=Math.min(last,page+2);p++)btn(String(p),p,false,p===page);
-  btn('Next',page+1,page>=last,false);
-  $('#online-count').text(data.total?'Showing '+data.from+'–'+data.to+' of '+data.total+' records':'Showing 0 records');
+  var $nav=$('#online-pages').removeClass('btn-group btn-group-sm');
+  var page=Math.max(1,Number(data.current_page)||1);
+  var length=Math.max(1,Number(data.per_page)||25);
+  $.blueVoucherPagination.render({
+    container:$nav,summary:'#online-count',total:Number(data.total)||0,
+    length:length,start:(page-1)*length,
+    buttonClass:'dv-page-btn fvc-page-btn',
+    onPage:function(start){load(Math.floor(start/length)+1);}
+  });
  }
- function showOnlineSummary(summary){
+  function showOnlineSummary(summary){
   if(!summary){
    $('#online-live-summary .online-kpi-value').text('—');
    $('#online-live-summary .online-kpi-count').text('Unavailable');
