@@ -140,3 +140,16 @@
  }
  .bm-voucher-directory .fvc-pagination-footer{gap:8px!important;flex-wrap:wrap!important}
 }
+
+/* Bootstrap DataTables footer columns are no longer the paginator container;
+   remove their reserved widths after the canonical footer has been attached. */
+.bm-voucher-directory .fvc-pagination-footer > [class*="col-"]:has(.dataTables_paginate),
+.bm-voucher-directory .fvc-pagination-footer > [class*="col-"]:has(.dataTables_info){
+ display:none!important;flex:0 0 0!important;width:0!important;max-width:0!important;
+}
+.bm-voucher-directory .fvc-pagination-footer>.fvc-pagination-info{
+ margin-right:auto!important;
+}
+.bm-voucher-directory .fvc-pagination-footer>.fvc-pagination{
+ margin-left:auto!important;margin-right:auto!important;
+}
