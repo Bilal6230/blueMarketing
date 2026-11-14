@@ -25,6 +25,10 @@
                             .append($('<h5>',{'class':'modal-title'}).text(label+' Filters'))
                             .append($('<button>',{'class':'close',type:'button','data-dismiss':'modal','aria-label':'Close'}).html('&times;')))
                         .append($('<div>',{'class':'modal-body'}))));
+            // Inherit each voucher's green/red/blue accent rather than flattening colors.
+            var accent=$root.css('--dv-accent') || $root.css('--voucher-accent') ||
+                $root.css('--cheque-green') || $root.css('--online-green') || '#1769e0';
+            $modal.css('--bm-modal-accent',accent);
             $form.detach().addClass('bm-quick-filter-form').appendTo($modal.find('.modal-body'));
             $panel.remove();
             $('body').append($modal);
