@@ -103,6 +103,61 @@ class V2PlotEntryWriterTest extends TestCase
         $this->assertSame('PR-TEST-1', collect($register)->firstWhere('source_kind', 'plot_receipt')['source_reference']);
     }
 
+    public function test_single_plot_receipt_posts_balanced_and_details_are_project_scoped(): void
+    {
+        $writer = new V2PlotEntryWriter();
+        $payload = [
+            'date' => '2026-11-14',
+            'receipt_number' => 'PR-SINGLE-PLOT',
+            'amount' => '75.50',
+            'cash_account_id' => 101,
+            'narration' => 'Single plot payment',
+            'allocations' => [[
+                'booking_id' => 31, 'plot_id' => 11,
+                'receivable_account_id' => 102, 'amount' => '75.50',
+            ]],
+        ];
+        $created = $writer->receive(1, 5, 'PLOT-SINGLE-REQUEST-0001', $payload, 7);
+        $this->assertFalse($created['replayed']);
+        $this->assertDatabaseCount('finance_plot_receipts', 1);
+        $this->assertDatabaseCount('finance_plot_receipt_allocations', 1);
+        $lines = DB::table('finance_posting_lines')->where('posting_batch_id', $created['posting_batch_id'])->get();
+        $this->assertCount(2, $lines);
+        $this->assertSame(75.5, (float) $lines->sum('debit'));
+        $this->assertSame(75.5, (float) $lines->sum('credit'));
+        $details = $writer->receipt(1, $created['source_id']);
+        $this->assertCount(1, $details['allocations']);
+        $this->assertSame('A-11', $details['allocations'][0]->plot_name);
+        $this->assertSame(31, (int) $details['allocations'][0]->booking_id);
+        $this->assertSame(5, (int) $details['receipt']->customer_id);
+        try {
+            $writer->receipt(2, $created['source_id']);
+            $this->fail('Another project may not open this receipt.');
+        } catch (\DomainException $exception) {
+            $this->assertSame('V2_PLOT_RECEIPT_NOT_FOUND', $exception->getMessage());
+        }
+        $replay = $writer->receive(1, 5, 'PLOT-SINGLE-REQUEST-0001', $payload, 7);
+        $this->assertTrue($replay['replayed']);
+        $this->assertDatabaseCount('finance_posting_batches', 1);
+    }
+
+    public function test_zero_plot_allocations_rejected_without_financial_posting(): void
+    {
+        $writer = new V2PlotEntryWriter();
+        try {
+            $writer->receive(1, 5, 'PLOT-ZERO-REQUEST-00001', [
+                'date' => '2026-11-14', 'receipt_number' => 'PR-EMPTY',
+                'amount' => '100.00', 'cash_account_id' => 101,
+                'narration' => 'Empty allocation', 'allocations' => [],
+            ], 7);
+            $this->fail('Receipt with no plot allocations should fail.');
+        } catch (\DomainException $exception) {
+            $this->assertSame('V2_PLOT_RECEIPT_REQUIRES_ALLOCATION', $exception->getMessage());
+        }
+        $this->assertDatabaseCount('finance_plot_receipts', 0);
+        $this->assertDatabaseCount('finance_posting_batches', 0);
+    }
+
     public function test_plot_purchase_posts_inventory_cost_to_seller_and_is_idempotent(): void
     {
         $writer = new V2PlotEntryWriter();
