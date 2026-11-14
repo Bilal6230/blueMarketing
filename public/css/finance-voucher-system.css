@@ -428,3 +428,41 @@
  min-height:31px!important;display:block!important;opacity:1!important;visibility:visible!important;
  appearance:menulist!important;
 }
+
+/* DataTables is a three-zone layout: toolbar / independently scrollable rows / pager.
+   Same height model as CR for CV, Draft and Extra Charges. */
+.bm-voucher-directory .fvd-datatable-wrapper{
+ display:flex!important;flex:1 1 0!important;flex-direction:column!important;
+ min-height:0!important;height:100%!important;overflow:hidden!important;
+}
+.bm-voucher-directory .fvd-datatable-wrapper>.fvd-datatable-scroll{
+ display:block!important;flex:1 1 0!important;min-height:0!important;
+ overflow:auto!important;overscroll-behavior:contain!important;
+ width:100%!important;
+}
+.bm-voucher-directory .fvd-datatable-wrapper>.fvd-datatable-scroll>table{
+ margin:0!important;width:100%!important;
+}
+.bm-voucher-directory .fvd-datatable-wrapper>.row:last-child,
+.bm-voucher-directory .fvd-datatable-wrapper>.d-flex:last-child{
+ flex:0 0 auto!important;min-height:var(--fvd-footer-height)!important;
+ margin-top:auto!important;padding:5px 7px!important;
+ border-top:1px solid #e1e8f0!important;background:#fff!important;
+}
+.bm-modern-draft .bm-draft-scroll,
+.bm-modern-extra .bm-voucher-table-card,
+.cv-directory .bm-voucher-table-card{
+ display:flex!important;flex-direction:column!important;
+ flex:1 1 0!important;min-height:0!important;overflow:hidden!important;
+}
+/* Keep the same minimum table scroll area while cards occupy remaining viewport. */
+.bm-modern-draft .fvd-datatable-wrapper,
+.bm-modern-extra .fvd-datatable-wrapper,.cv-directory .fvd-datatable-wrapper{
+ min-height:0!important;flex:1 1 0!important;
+}
+/* Fix the database-empty case: the pager belongs at the bottom, never directly
+   under the single No records row as seen in Draft/CV/Extra screenshots. */
+.bm-voucher-directory .fvd-datatable-wrapper .dataTables_info,
+.bm-voucher-directory .fvd-datatable-wrapper .dataTables_paginate{
+ margin-top:0!important;padding-top:0!important;align-self:center!important;
+}
