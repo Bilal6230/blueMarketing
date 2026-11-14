@@ -117,7 +117,7 @@
 }
 :is(.daily-voucher-page,.jv-page,.cv-directory,.cheque-register-page,.online-register-page,
  .bt-page,.bm-modern-extra,.bm-modern-draft) 
- :is(.btn-group .btn,.dv-pagination-footer .btn,.jv-footer .paginate_button,
+ :is(.dv-pagination-footer .btn,.jv-footer .paginate_button,
  .dataTables_paginate .paginate_button,.bt-page-btn,.cheque-table-panel #cheque-pagination .btn,
  .online-table #online-pages .btn){
  border:1px solid var(--fvd-accent)!important;background:#fff!important;
@@ -127,7 +127,7 @@
 }
 :is(.daily-voucher-page,.jv-page,.cv-directory,.cheque-register-page,.online-register-page,
  .bt-page,.bm-modern-extra,.bm-modern-draft) 
- :is(.btn-group .btn.active,.dv-pagination-footer .btn.active,
+ :is(.dv-pagination-footer .btn.active,
  .dataTables_paginate .paginate_button.current,.bt-page-btn.active,
  #cheque-pagination .active,#online-pages .active){
  background:var(--fvd-accent)!important;color:#fff!important;
@@ -144,3 +144,37 @@
  .online-register-page .online-heading,.bm-modern-extra .bm-extra-heading){flex-wrap:wrap!important}
  .bm-inline-link-filter{margin:4px!important}
 }
+
+/* DataTables Bootstrap pagination and export toolbars are shared, not module-specific. */
+:is(.jv-page,.cv-directory,.bm-modern-extra,.bm-modern-draft)
+ .dataTables_paginate .pagination{display:flex;gap:3px;justify-content:flex-end;margin:0}
+:is(.jv-page,.cv-directory,.bm-modern-extra,.bm-modern-draft)
+ .dataTables_paginate .page-item .page-link{
+ border:1px solid var(--fvd-accent)!important;border-radius:5px!important;
+ background:#fff!important;color:var(--fvd-accent)!important;min-width:29px;
+ padding:4px 8px!important;font-size:var(--fvd-caption)!important;
+}
+:is(.jv-page,.cv-directory,.bm-modern-extra,.bm-modern-draft)
+ .dataTables_paginate .page-item.active .page-link{
+ background:var(--fvd-accent)!important;color:#fff!important;
+}
+:is(.jv-page,.cv-directory,.bm-modern-extra,.bm-modern-draft)
+ .dataTables_paginate .page-item.disabled .page-link{opacity:.48!important;pointer-events:none}
+:is(.jv-page,.cv-directory,.bm-modern-extra,.bm-modern-draft) .dataTables_length,
+:is(.jv-page,.cv-directory,.bm-modern-extra,.bm-modern-draft) .dataTables_filter,
+:is(.jv-page,.cv-directory,.bm-modern-extra,.bm-modern-draft) .dataTables_info{
+ font-size:var(--fvd-caption)!important;color:var(--fvd-ink)!important;
+}
+:is(.jv-page,.cv-directory,.bm-modern-extra,.bm-modern-draft) :is(.dataTables_filter input,.dataTables_length select){
+ height:30px!important;min-height:30px!important;border:1px solid var(--fvd-border)!important;
+ border-radius:5px!important;font-size:var(--fvd-caption)!important;padding:3px 6px!important;
+}
+.fvd-data-popover{position:fixed;z-index:1400;width:280px;max-width:calc(100vw - 16px);
+ display:none;padding:11px;background:#fff;border:1px solid var(--fvd-border);
+ border-top:3px solid var(--fvd-accent,#168348);border-radius:var(--fvd-radius);
+ box-shadow:0 12px 28px rgba(15,39,64,.16);font-size:var(--fvd-caption);}
+.fvd-pop-title{display:block;font-size:13px;color:var(--fvd-ink);margin-bottom:9px}
+.fvd-pop-filter{margin-bottom:9px}
+.fvd-pop-filter .form-control{font-size:13px;height:34px;width:100%}
+.fvd-pop-actions{display:flex;gap:5px;flex-wrap:wrap}
+.fvd-pop-actions .btn{font-size:11px!important;padding:4px 6px!important}
