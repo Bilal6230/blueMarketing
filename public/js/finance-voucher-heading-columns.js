@@ -22,6 +22,7 @@
                     .append($('<button>',{type:'button','class':'btn btn-outline-primary btn-sm bm-col-desc'}).text('Sort descending'))
                     .append($('<button>',{type:'button','class':'btn btn-outline-secondary btn-sm bm-col-clear'}).text('Clear')));
             $('body').append($popover);
+            if($.financeVoucherUi)$.financeVoucherUi.normalizePopover($popover);
             var active=null,activeTrigger=null;
             function close() {
                 $popover.removeClass('bm-col-open').hide();
