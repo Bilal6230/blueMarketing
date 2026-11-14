@@ -19,10 +19,10 @@ final class BankTransferPrintLayoutTest extends TestCase
         $this->assertStringContainsString('Authorized by',$template);
     }
 
-    public function test_print_layout_is_content_height_not_full_a4_body_height(): void
+    public function test_print_layout_is_content_height_a5_portrait(): void
     {
         $template=file_get_contents(resource_path('views/admin/finance/voucher/bank_transfer_print.blade.php'));
-        $this->assertStringContainsString('@page{size:A4 portrait;margin:10mm}', $template);
+        $this->assertStringContainsString('@page{size:A5 portrait;margin:8mm}', $template);
         $this->assertStringContainsString('width:auto!important;height:auto!important;', $template);
         $this->assertStringContainsString('min-height:0!important;max-height:none!important;', $template);
         $this->assertStringContainsString('position:static!important;display:block!important;', $template);
@@ -30,6 +30,8 @@ final class BankTransferPrintLayoutTest extends TestCase
         $this->assertStringContainsString('.toolbar{display:none!important}', $template);
         $this->assertStringContainsString('page-break-after:auto!important;', $template);
         $this->assertStringNotContainsString('height:297mm!important', $template);
+        $this->assertStringContainsString('font-size:11px!important;', $template);
+        $this->assertStringContainsString('margin-top:20mm!important', $template);
         $this->assertStringNotContainsString('position:absolute!important', $template);
     }
 
