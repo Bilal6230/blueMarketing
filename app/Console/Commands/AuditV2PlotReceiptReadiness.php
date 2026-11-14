@@ -53,11 +53,11 @@ final class AuditV2PlotReceiptReadiness extends Command
                 ->select('CONSTRAINT_NAME', 'COLUMN_NAME', 'REFERENCED_COLUMN_NAME')
                 ->get()->groupBy('CONSTRAINT_NAME');
             $hasClaim = $constraints->contains(static function ($columns): bool {
-                return $columns->mapWithKeys(static fn ($column): array =>
-                    [$column->COLUMN_NAME => $column->REFERENCED_COLUMN_NAME])->all() === [
-                    'posting_batch_id' => 'posting_batch_id',
-                    'source_kind' => 'source_kind',
-                ];
+                $actual = $columns->mapWithKeys(static fn ($column): array =>
+                    [$column->COLUMN_NAME => $column->REFERENCED_COLUMN_NAME])->all();
+                return count($actual) === 2
+                    && ($actual['posting_batch_id'] ?? null) === 'posting_batch_id'
+                    && ($actual['source_kind'] ?? null) === 'source_kind';
             });
             if (!$hasClaim) {
                 $this->error('V2_PLOT_RECEIPT_INCOMPLETE_FK: missing composite posting claim constraint.');
