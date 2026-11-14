@@ -697,7 +697,9 @@
     <script src="{{ asset('js/blue-voucher-pagination.js') }}?v=1"></script>
     <script src="{{ asset('js/blue-voucher-column-filter.js') }}?v=1"></script>
     @stack('script')
-<script src="{{ asset('js/finance-voucher-header-filters.js') }}?v=1"></script>
+{{-- Canonical design system loads after every page-specific style and script. --}}
+<link rel="stylesheet" href="{{ asset('css/finance-voucher-system.css') }}?v=1">
+<script src="{{ asset('js/finance-voucher-header-filters.js') }}?v=2"></script>
 <script src="{{ asset('js/finance-voucher-heading-columns.js') }}?v=1"></script>
 </body>
 
