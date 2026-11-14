@@ -67,7 +67,9 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('where(\'c.project_id\', $project)', $cheque);
         $this->assertStringContainsString('where(\'project_id\',$project)', $online);
         $this->assertStringContainsString('where(\'project_id\', $selectedProjectId)', $cv);
-        $this->assertStringContainsString('DataTables still owns page state', $core);
+        // Assert the actual DataTables paging operation, not a stale code comment.
+        $this->assertStringContainsString("api.page(Math.floor(start/length)).draw('page')", $core);
+        $this->assertStringContainsString('api.page.info()', $core);
     }
 
     public function test_pager_detaches_native_controls_and_mounts_at_voucher_card_bottom(): void
