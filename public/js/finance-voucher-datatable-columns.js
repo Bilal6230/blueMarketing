@@ -41,18 +41,11 @@ $(function(){
   // Remove DataTables header-click sorting. The same sorting stays available
   // exclusively inside the canonical heading filter popover.
   $table.find('thead tr:first th').off('click.DT keypress.DT');
-  var $popover=$('<div>',{'class':'fvd-data-popover','role':'dialog','aria-label':'Voucher column filter'})
-   .append($('<strong>',{'class':'fvd-pop-title'}))
-   .append($('<div>',{'class':'fvd-pop-filter'}))
-   .append($('<div>',{'class':'fvd-pop-actions'})
-    .append($('<button>',{type:'button','class':'btn btn-outline-primary btn-sm fvd-sort-asc'}).text('Sort ascending'))
-    .append($('<button>',{type:'button','class':'btn btn-outline-primary btn-sm fvd-sort-desc'}).text('Sort descending'))
-    .append($('<button>',{type:'button','class':'btn btn-outline-secondary btn-sm fvd-clear'}).text('Clear')));
-  var $page=$table.closest('.bm-voucher-directory');
-  $popover.css('--fvd-accent',$page.css('--fvd-accent')||
-    (opts.id==='Extra'?'#7145bd':'#087cfa'));
-  $('body').append($popover);
-  if($.financeVoucherUi)$.financeVoucherUi.normalizePopover($popover);
+  // Shared CR-style filter popup: same markup as Cheque / Online.
+  var widget=$.financeVoucherComponents.createFilter({kind:'datatable',
+    accent:$table.closest('.bm-voucher-directory').css('--fvd-accent')||
+      (opts.id==='Extra'?'#7145bd':'#087cfa')});
+  var $popover=widget.$popup;
   function refresh(){
     if(opts.server)api.ajax.reload(null,true);
     else api.draw();
@@ -62,7 +55,7 @@ $(function(){
     });
   }
   function close(){
-    $popover.hide();$table.find('.fvd-column-trigger').attr('aria-expanded','false');active=null;
+    widget.close();$table.find('.fvd-column-trigger').attr('aria-expanded','false');active=null;
   }
   $.each(fields,function(index,key){
     var $th=$table.find('thead tr:first th').eq(Number(index));
@@ -75,15 +68,11 @@ $(function(){
       event.preventDefault();event.stopPropagation();
       if(active===Number(index)){close();return;}
       close();active=Number(index);
-      $popover.find('.fvd-pop-title').text($.trim($th.text()));
+      widget.setTitle($.trim($th.text()));
       var $body=$popover.find('.fvd-pop-filter').empty(),$input;
       if(key==='date'){
-        $.each([['From Date','from'],['To Date','to']],function(_,field){
-          var $label=$('<label>',{'class':'fvd-date-range-label'}).text(field[0]);
-          var $date=$('<input>',{'class':'form-control form-control-sm fvd-date-control',type:'date'})
-            .val(state.dates[field[1]]);
-          $date.on('change',function(){state.dates[field[1]]=$(this).val()||'';refresh();});
-          $body.append($label.append($date));
+        widget.dates(state.dates,function(field,value){
+          state.dates[field]=value;refresh();
         });
       }else{
         $input=$('<input>',{'class':'form-control form-control-sm fvd-search-input',
@@ -96,10 +85,7 @@ $(function(){
           refresh();
         });
       }
-      var offset=$trigger.offset();
-      $popover.css({left:Math.max(8,Math.min(offset.left-$(window).scrollLeft(),$(window).width()-290))+'px',
-        top:Math.max(8,Math.min(offset.top-$(window).scrollTop()+$trigger.outerHeight()+4,$(window).height()-235))+'px'})
-        .show();
+      widget.position($trigger);
       $trigger.attr('aria-expanded','true');$body.find('input:first').trigger('focus');
     });
   });
