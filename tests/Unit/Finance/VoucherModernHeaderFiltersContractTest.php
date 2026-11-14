@@ -13,12 +13,13 @@ class VoucherModernHeaderFiltersContractTest extends TestCase
         $script=file_get_contents(public_path('js/finance-voucher-heading-columns.js'));
 
         $this->assertStringContainsString('finance-voucher-heading-columns.js', $master);
-        $this->assertStringContainsString('bm-column-filter-storage', $css);
+        $this->assertStringContainsString('bm-column-filter-storage', $script);
+        $this->assertStringContainsString('cheque-column-filters', $css);
+        $this->assertStringContainsString('online-column-filters', $css);
         $this->assertStringContainsString('bm-heading-column-popover', $css);
         $this->assertStringContainsString('sort_column', $script);
         $this->assertStringContainsString('sort_direction', $script);
         $this->assertStringContainsString('trigger(\'input\')', $script);
-        $this->assertStringContainsString('sort_column', $script);
         $this->assertStringContainsString('reset:\'#cheque-reset\'', $script);
         $this->assertStringContainsString('reset:\'#online-reset\'', $script);
         $this->assertStringNotContainsString('document.createElement(', $script);
