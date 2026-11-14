@@ -178,14 +178,19 @@
             const filter_reference = $('#filter_reference').val();
             const filter_date = $('#filter_date').val();
 
-            // Destroy existing DataTable if it exists
+            // Preserve the shared column-filter adapter and pagination DOM.
+            // Reinitialize only once; subsequent filter changes reload existing AJAX data.
             if ($.blueActionMenu) $.blueActionMenu.close();
-            if ($.fn.DataTable.isDataTable('#journalTable')) $('#journalTable').DataTable().destroy();
+            if ($.fn.DataTable.isDataTable('#journalTable')) {
+                $('#journalTable').DataTable().ajax.reload(null,true);
+                return;
+            }
 
             // Initialize DataTable with AJAX
             $('#journalTable').DataTable({
                 processing: true,
                 serverSide: true,
+                autoWidth: false,
                 pageLength:25,
                 lengthMenu:[[10,25,50,100],[10,25,50,100]],
                 drawCallback:function(){
@@ -195,9 +200,9 @@
                     url: '{{ route('commision.voucher.index') }}', // Route to get data
                     type: 'GET',
                     data: function(d) {
-                        d.filter_voucher_number = filter_voucher_number;
-                        d.filter_amount = filter_amount;
-                        d.filter_reference = filter_reference;
+                        d.filter_voucher_number = $('#filter_voucher_number').val();
+                        d.filter_amount = $('#filter_amount').val();
+                        d.filter_reference = $('#filter_reference').val();
                         if ($.financeVoucherDataColumns) {
                             const columnState = $.financeVoucherDataColumns.values('#journalTable');
                             d.fvd_column_filters = columnState.filters;
@@ -207,7 +212,7 @@
                             d.fvd_sort_direction = columnState.direction;
                         }
                         if (isDateChanged) {
-                            d.filter_date = filter_date; // Send date filter if it has changed
+                            d.filter_date = $('#filter_date').val(); // Use current date filter
                         }
                     },
                     dataSrc: 'data'
