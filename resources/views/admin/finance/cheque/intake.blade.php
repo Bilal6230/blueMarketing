@@ -106,6 +106,13 @@
                     <div class="col-lg-2 col-md-8 mb-2"><label class="cheque-filter-label" for="cheque-search">Search</label><input name="search" id="cheque-search" class="form-control form-control-sm" placeholder="Cheque number, bank, person, purpose"></div>
                     <div class="col-lg-2 col-md-4 mb-2 cheque-filter-actions"><button type="submit" class="btn btn-success btn-sm"><i class="fas fa-filter mr-1"></i> Apply</button><button type="button" id="cheque-reset" class="btn btn-outline-secondary btn-sm">Reset</button></div>
                 </div>
+                <div class="d-flex align-items-center flex-wrap mt-1" style="gap:8px">
+                    <label class="cheque-filter-label mb-0" for="cheque-link-filter">Voucher Links</label>
+                    <select id="cheque-link-filter" name="link_status" class="form-control form-control-sm" style="width:190px">
+                        <option value="">All sources</option><option value="linked">Linked (including released)</option><option value="unlinked">Never linked</option>
+                    </select>
+                    <small class="text-muted">Linked counts include historical released / voided allocations.</small>
+                </div>
             </form>
         </div>
         <div class="cheque-live-summary" id="cheque-live-summary" aria-live="polite">
@@ -455,6 +462,11 @@ $(function () {
                     .text(item[1]).appendTo($actions);
             });
         }
+        if(Number(r.linked_voucher_count||0)>0){
+            $('<button type="button">').addClass('btn btn-sm btn-outline-primary cheque-history mr-1')
+                .attr({'data-id':r.id,'data-cheque':r.cheque_number,'title':'Open linked voucher allocation history'})
+                .text('Vouchers ('+Number(r.linked_voucher_count)+')').appendTo($actions);
+        }
         $('<button type="button">').addClass('btn btn-sm btn-outline-secondary cheque-history')
             .attr({'data-id':r.id,'data-cheque':r.cheque_number}).text('History').appendTo($actions);
         $actions.appendTo($tr);
@@ -520,6 +532,7 @@ $(function () {
         setTs($('#cheque-customer'),'');
         setTs($('#cheque-direction-filter'),'');
         setTs($('#cheque-status'),'');
+        $('#cheque-link-filter').val('');
         $('#cheque-quick-search').val('');
         $('.cheque-column-filters [data-column]').val('');
         load(1);
