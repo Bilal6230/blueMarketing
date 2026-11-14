@@ -540,7 +540,9 @@
         loadEntry($(this).val()==='cheque'?$('#dv-bank-method-wrap').data('chequeUrl'):$('#dv-bank-method-wrap').data('onlineUrl'));
     });
     $('#dv-create-voucher').on('click',()=>{
-        const selected=$('#dv-type').val();
+        // Dedicated CR/DR/CCR/CDR/BOR/BOP pages always open their own voucher.
+        // Only the generic Voucher Directory may ask the user to choose a type.
+        const selected=@json($presetType) || $('#dv-type').val();
         if(!selected || (!seriesMap[selected] && !dedicatedRoutes[selected]))chooseVoucher();
         else openVoucherType(selected);
     });
