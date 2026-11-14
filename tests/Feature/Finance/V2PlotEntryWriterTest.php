@@ -214,8 +214,8 @@ class V2PlotEntryWriterTest extends TestCase
     public function test_phase07_readiness_audit_is_project_scoped_and_read_only(): void
     {
         $before = DB::table('finance_posting_batches')->count();
-        $this->assertSame(0, \\Illuminate\\Support\\Facades\\Artisan::call('finance:audit-v2-plot-receipt', ['project'=>1]));
-        $this->assertSame(1, \\Illuminate\\Support\\Facades\\Artisan::call('finance:audit-v2-plot-receipt', ['project'=>2]));
+        $this->assertSame(0, \Illuminate\Support\Facades\Artisan::call('finance:audit-v2-plot-receipt', ['project'=>1]));
+        $this->assertSame(1, \Illuminate\Support\Facades\Artisan::call('finance:audit-v2-plot-receipt', ['project'=>2]));
         $this->assertSame($before, DB::table('finance_posting_batches')->count());
         $this->assertDatabaseCount('finance_plot_receipts', 0);
     }
