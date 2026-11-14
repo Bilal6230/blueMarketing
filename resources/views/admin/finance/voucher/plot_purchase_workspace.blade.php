@@ -1,14 +1,71 @@
 @extends('admin.layouts.master')
-@section('title', 'Plot Purchase Voucher')
+@section('title','Plot Purchase Voucher')
 @section('content')
 <style>
-.pp-page{--ink:#14243b;--muted:#657891;--line:#dce6f2;color:var(--ink)}.pp-hero{padding:18px 22px;border-radius:14px;background:linear-gradient(120deg,#12243d,#1769e0);color:#fff;margin-bottom:15px}.pp-hero p{margin:5px 0 0;color:#dceaff}.pp-card{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 5px 18px #152a450c;overflow:hidden}.pp-card h5{font-size:15px;font-weight:700;margin:0;padding:13px 16px;border-bottom:1px solid var(--line)}.pp-body{padding:14px}.pp-scroll{max-height:360px;overflow:auto}.pp-scroll thead th{position:sticky;top:0;background:#edf4fc;z-index:1}.pp-page table{font-size:13px}.pp-page .form-control{border-radius:7px}.pp-muted{color:var(--muted)}.pp-total{font-size:22px;font-weight:750;color:#1769e0}.pp-item{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;background:#fbfdff}.pp-item-grid{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:9px}.pp-item label{font-size:12px;margin-bottom:4px}.pp-item .form-control{height:34px;font-size:13px}.pp-item .wide{grid-column:span 2}@media(max-width:900px){.pp-item-grid{grid-template-columns:repeat(2,minmax(120px,1fr))}}@media(max-width:560px){.pp-item-grid{grid-template-columns:1fr}.pp-item .wide{grid-column:auto}}
+/* Standard CR/DR directory layout is global; only purchase form-specific CSS lives here. */
+#plotPurchaseApp #ppTable td:nth-child(3){color:var(--voucher-accent);font-weight:700}
+#plotPurchaseCreateModal .pp-item{border:1px solid #dce6f2;border-radius:10px;padding:12px;margin-bottom:10px;background:#fbfdff}
+#plotPurchaseCreateModal .pp-item-grid{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:9px}
+#plotPurchaseCreateModal .pp-item label{font-size:12px;margin-bottom:4px}
+#plotPurchaseCreateModal .pp-item .form-control{height:34px;font-size:13px}
+#plotPurchaseCreateModal .pp-item .wide{grid-column:span 2}
+#plotPurchaseCreateModal .pp-total{font-size:22px;font-weight:700;color:var(--voucher-accent)}
+#plotPurchaseCreateModal .pp-muted{color:#657891}
+#plotPurchaseCreateModal #ppItems{max-height:350px;overflow:auto}
+@media(max-width:900px){#plotPurchaseCreateModal .pp-item-grid{grid-template-columns:repeat(2,minmax(120px,1fr))}}
+@media(max-width:560px){#plotPurchaseCreateModal .pp-item-grid{grid-template-columns:1fr}#plotPurchaseCreateModal .pp-item .wide{grid-column:auto}}
 </style>
-<main class="container-fluid bm-ui bm-plot-workspace pp-page" id="plotPurchaseApp"
- data-options-url="{{ route('finance.voucher.plot-purchase.options') }}" data-history-url="{{ route('finance.voucher.plot-purchase.history') }}"
- data-post-url="{{ route('finance.voucher.plot-purchase.post') }}" data-details-base="{{ url('admin/finance/voucher/plot-purchase') }}">
- <header class="pp-hero d-flex justify-content-between align-items-center flex-wrap"><div><h2 class="mb-0">Plot Purchase Voucher</h2><p>Record acquired plots, create available inventory, and post purchase cost · Project #{{ (int)getSelectedTown() }}</p></div><span class="badge badge-light">Isolated finance pilot</span></header>
- <div id="ppAlert" class="alert d-none" role="status"></div>
+<main class="container-fluid bm-ui bm-voucher-directory bm-voucher-workspace pp-page" id="plotPurchaseApp"
+ style="--voucher-accent:#1769e0;--voucher-tint:#eaf2ff"
+ data-options-url="{{ route('finance.voucher.plot-purchase.options') }}"
+ data-history-url="{{ route('finance.voucher.plot-purchase.history') }}"
+ data-post-url="{{ route('finance.voucher.plot-purchase.post') }}"
+ data-details-base="{{ url('admin/finance/voucher/plot-purchase') }}">
+ <div class="bm-voucher-heading d-flex justify-content-between align-items-center">
+  <div><h2>Plot Purchase Voucher</h2><div class="bm-voucher-subtitle">Selected project records · Read-only history</div></div>
+  <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm">Dashboard</a>
+ </div>
+ <x-finance.voucher-filter-card class="bm-voucher-filter-card pp-filter-card">
+  <form id="ppFilterForm" class="bm-voucher-filter-grid">
+   <div><label for="ppFrom">From</label><input id="ppFrom" class="form-control" type="date"></div>
+   <div><label for="ppTo">To</label><input id="ppTo" class="form-control" type="date"></div>
+   <div><label for="ppSellerFilter">Seller</label><input id="ppSellerFilter" class="form-control" placeholder="Seller account"></div>
+   <div><label for="ppFilterSearch">Search</label><input id="ppFilterSearch" class="form-control" placeholder="Number, plot or details"></div>
+   <div class="bm-voucher-filter-actions">
+    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter mr-1"></i> Apply</button>
+    <button type="button" id="ppResetFilters" class="btn btn-outline-secondary btn-sm">Reset</button>
+    <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#plotPurchaseCreateModal"><i class="fas fa-plus mr-1"></i> New voucher</button>
+   </div>
+  </form>
+ </x-finance.voucher-filter-card>
+ <x-finance.voucher-table-card class="bm-voucher-table-card pp-table-card">
+  <div class="bm-voucher-table-toolbar bm-records-toolbar">
+   <label>Show <select id="ppLength" class="form-control form-control-sm"><option>10</option><option selected>25</option><option>50</option><option>100</option></select> entries</label>
+   <label>Search: <input id="ppQuickSearch" class="form-control form-control-sm" placeholder="Search purchases"></label>
+  </div>
+  <div class="bm-voucher-table-scroll pp-scroll">
+   <table id="ppTable" class="table bm-table bm-voucher-table table-bordered table-hover table-sm w-100">
+    <colgroup><col style="width:45px"><col style="width:125px"><col style="width:155px"><col style="width:225px"><col><col style="width:75px"><col style="width:120px"><col style="width:85px"></colgroup>
+    <thead><tr><th>#</th>
+      @foreach(['date'=>'Date','number'=>'Voucher #','seller'=>'Seller','detail'=>'Details','items'=>'Plots','amount'=>'Amount'] as $field=>$label)
+      <th class="dv-filter-heading" data-field="{{ $field }}"><span>{{ $label }}</span><button type="button" class="dv-excel-trigger" data-column="{{ $field }}" aria-label="Sort or filter {{ $label }}" aria-expanded="false" aria-haspopup="dialog"><i class="fas fa-caret-down"></i></button></th>
+      @endforeach
+      <th>Actions</th>
+    </tr></thead>
+    <tbody id="ppHistory"><tr><td colspan="8" class="text-center text-muted p-4">Loading purchases…</td></tr></tbody>
+   </table>
+  </div>
+  <div class="bm-voucher-table-footer"><small id="ppSummary" class="bm-voucher-count">Loading records…</small><div id="ppPages" class="d-flex align-items-center flex-wrap" style="gap:4px"></div></div>
+ </x-finance.voucher-table-card>
+</main>
+<x-finance.voucher-column-filters />
+@endsection
+@section('modal')
+<div class="modal fade" id="plotPurchaseCreateModal" tabindex="-1" role="dialog" aria-labelledby="ppCreateTitle" aria-hidden="true">
+ <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title" id="ppCreateTitle">New Plot Purchase Voucher</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
+  <div class="modal-body">
+<div id="ppAlert" class="alert d-none" role="status"></div>
  <div class="row">
   <div class="col-xl-5 mb-3"><section class="pp-card"><h5>Purchase details</h5><div class="pp-body">
    <div class="form-row"><div class="form-group col-md-6"><label>Purchase voucher no.</label><input id="ppNumber" class="form-control" maxlength="64" placeholder="e.g. PP-2026-0001"></div><div class="form-group col-md-6"><label>Date</label><input id="ppDate" type="date" class="form-control" value="{{ now()->toDateString() }}"></div></div>
@@ -16,20 +73,24 @@
    <div class="form-group"><label>Narration</label><textarea id="ppNarration" class="form-control" rows="2" maxlength="2000" placeholder="Purchase agreement, seller reference, or notes"></textarea></div>
    <div class="d-flex justify-content-between align-items-center mb-2"><b>Purchased plots</b><button type="button" id="ppAdd" class="btn btn-sm btn-outline-primary">+ Add plot</button></div>
    <div id="ppItems"></div><div class="d-flex justify-content-between align-items-center border-top pt-3 mb-3"><span>Total purchase cost</span><span class="pp-total" id="ppTotal">0.00</span></div>
-   <button type="button" id="ppPost" class="btn btn-primary" disabled><i class="fas fa-check mr-1"></i> Post purchase</button><small class="d-block pp-muted mt-2">Posts plot inventory debit and seller credit. Posting is append-only; corrections require reversal.</small>
-  </div></section></div>
-  <div class="col-xl-7 mb-3"><x-finance.voucher-table-card class="pp-card"><h5>Recent plot purchases</h5><div class="pp-scroll"><table class="table table-hover mb-0"><thead><tr><th>Voucher / Date</th><th>Seller</th><th>Plots</th><th class="text-right">Amount</th><th>Action</th></tr></thead><tbody id="ppHistory"><tr><td colspan="5" class="text-center pp-muted p-4">Loading purchases…</td></tr></tbody></table></div></x-finance.voucher-table-card>
-   <section class="pp-card mt-3"><h5>Posting behavior</h5><div class="pp-body pp-muted">Each line creates a plot under the selected project and records acquisition cost against its inventory account. Existing plot selling price remains unchanged. Duplicate plot codes and cross-project accounts are rejected.</div></section></div>
- </div>
-</main>
-<div class="modal fade" id="ppDetailsModal" tabindex="-1" role="dialog" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-scrollable" role="document"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Purchase details</h5><button type="button" class="close" data-dismiss="modal"><span>&times;</span></button></div><div class="modal-body" id="ppDetails"></div></div></div></div>
+   <small class="d-block pp-muted mt-2">Posts plot inventory debit and seller credit. Posting is append-only; corrections require reversal.</small>
+
+  </div>
+  <div class="modal-footer"><button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button><button type="button" id="ppPost" class="btn btn-primary btn-sm" disabled><i class="fas fa-check mr-1"></i> Post purchase</button></div>
+ </div></div>
+</div>
+<div class="modal fade" id="ppDetailsModal" tabindex="-1" role="dialog" aria-label="Purchase details" aria-hidden="true">
+ <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title">Purchase details</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
+  <div class="modal-body" id="ppDetails"></div>
+ </div></div>
+</div>
 <template id="ppItemTemplate"><div class="pp-item"><div class="d-flex justify-content-between mb-2"><strong class="pp-item-title">Plot</strong><button type="button" class="btn btn-sm btn-outline-danger pp-remove" aria-label="Remove plot">Remove</button></div><div class="pp-item-grid">
  <div><label>Plot code</label><input data-field="plot_code" class="form-control" maxlength="64" placeholder="e.g. A-101"></div><div class="wide"><label>Description</label><input data-field="description" class="form-control" maxlength="255" placeholder="Plot description"></div><div><label>Area</label><input data-field="area" class="form-control" type="number" min="0.0001" step="0.0001" placeholder="0"></div><div><label>Unit</label><input data-field="unit" class="form-control" maxlength="24" placeholder="Marla / Sq Ft"></div>
  <div><label>Plot class</label><select data-field="type" class="form-control"><option value="1">Residential</option><option value="2">Commercial</option></select></div><div><label>Road</label><select data-field="road_id" class="form-control"><option value="">Select road</option></select></div><div><label>Facing</label><select data-field="facing_id" class="form-control"><option value="">Select facing</option></select></div><div><label>Inventory account</label><select data-field="inventory_account_id" class="form-control"><option value="">Select project account</option>@foreach($accounts as $account)<option value="{{ $account->id }}">{{ $account->headAccounting?->name }}{{ $account->subheadAccounting?->name ? ' / '.$account->subheadAccounting->name : '' }}</option>@endforeach</select></div>
  <div><label>Unit rate</label><input data-field="unit_rate" class="form-control" type="number" min="0.01" step="0.01" placeholder="0.00"></div><div><label>Corner plot</label><select data-field="is_corner" class="form-control"><option value="0">No</option><option value="1">Yes</option></select></div>
  <div data-definition="category"><label>Category</label><select data-field="plot_category_definition_id" class="form-control"><option value="">Select category</option></select></div><div data-definition="type"><label>Plot type definition</label><select data-field="plot_type_definition_id" class="form-control"><option value="">Select type</option></select></div><div data-definition="size"><label>Size definition</label><select data-field="plot_size_definition_id" class="form-control"><option value="">Select size</option></select></div><div data-definition="unit"><label>Unit definition</label><select data-field="plot_unit_definition_id" class="form-control"><option value="">Select unit</option></select></div>
  </div></div></template>
-
 @endsection
 
 @section('js')
