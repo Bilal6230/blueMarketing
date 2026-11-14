@@ -52,6 +52,7 @@ $(function(){
   $popover.css('--fvd-accent',$page.css('--fvd-accent')||
     (opts.id==='Extra'?'#7145bd':'#087cfa'));
   $('body').append($popover);
+  if($.financeVoucherUi)$.financeVoucherUi.normalizePopover($popover);
   function refresh(){
     if(opts.server)api.ajax.reload(null,true);
     else api.draw();
