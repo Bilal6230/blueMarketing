@@ -13,6 +13,9 @@ $(function(){
   var state={filters:{},sort:'',direction:''};
   registry[opts.table]=state;
   var api=$table.DataTable(),fields=opts.fields,active=null;
+  // Remove DataTables header-click sorting. The same sorting stays available
+  // exclusively inside the canonical heading filter popover.
+  $table.find('thead tr:first th').off('click.DT keypress.DT');
   var $popover=$('<div>',{'class':'fvd-data-popover','role':'dialog','aria-label':'Voucher column filter'})
    .append($('<strong>',{'class':'fvd-pop-title'}))
    .append($('<div>',{'class':'fvd-pop-filter'}))
