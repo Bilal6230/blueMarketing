@@ -1,6 +1,26 @@
 @extends('admin.layouts.master')
 
 @section('content')
+@if(request()->boolean('embed'))
+<style>
+html,body{margin:0!important;padding:0!important;overflow-x:hidden!important;background:white!important}
+.main-sidebar,.main-header,.main-footer,.navbar,.control-sidebar,#load_screen,.preloader{display:none!important;visibility:hidden!important;pointer-events:none!important}
+.main-content.page-content{margin:0!important;padding:0!important;min-height:0!important;width:100%!important;max-width:100%!important;position:static!important}
+html body.sidebar-mini.sidebar-collapse .main-content.page-content>.content-wrapper,
+html body.sidebar-collapse .main-content.page-content>.content-wrapper,
+html body.sidebar-mini .main-content.page-content>.content-wrapper,
+html body .main-content.page-content>.content-wrapper{margin:0!important;padding:0!important;left:0!important;right:auto!important;width:100%!important;max-width:100%!important;min-height:0!important;box-sizing:border-box!important}
+.content-wrapper>.content,.content-wrapper>.content>.container-fluid{padding:0!important;margin:0!important;max-width:100%!important;width:100%!important}
+.content-wrapper .card{margin:0!important;border:0!important;box-shadow:none!important;border-radius:0!important}
+.content-wrapper .card-header{display:none!important}
+.content-wrapper .card-body{padding:14px 18px 20px!important}
+#journalForm .row{row-gap:9px}
+#journalForm label{font-size:13px;font-weight:700}
+#journalForm .form-control{min-height:34px;font-size:13px}
+@media(max-width:720px){.content-wrapper .card-body{padding:10px!important}}
+</style>
+@endif
+
     <div class="content-wrapper">
         <div class="content">
             <div class="container-fluid mt-1">
