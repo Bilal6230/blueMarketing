@@ -5,22 +5,35 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>{{ $kind === 'deposit' ? 'Bank Deposit' : 'Bank Withdrawal' }} Voucher</title>
     <style>
-        *{box-sizing:border-box}body{margin:0;background:#eef2f7;color:#15243a;font:14px/1.45 Arial,sans-serif}.toolbar{max-width:900px;margin:18px auto;text-align:right}.toolbar button{border:0;border-radius:6px;background:#1769e0;color:#fff;padding:10px 16px;cursor:pointer}.sheet{max-width:900px;margin:0 auto 28px;padding:34px;background:#fff;box-shadow:0 8px 28px #15243a18}.heading{text-align:center;border-bottom:2px solid #26384d;padding-bottom:16px;margin-bottom:20px}.heading h1{font-size:22px;margin:0 0 5px}.heading h2{font-size:17px;margin:0}.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-bottom:20px}.meta div{padding:8px 0;border-bottom:1px solid #dce4ed}.meta b{display:inline-block;min-width:145px}.lines{width:100%;border-collapse:collapse}.lines th,.lines td{border:1px solid #aab6c4;padding:10px;text-align:left}.lines thead th{background:#263b55;color:#fff}.lines .number{text-align:right;white-space:nowrap}.narration{margin-top:20px;padding:14px;border:1px solid #dce4ed;min-height:72px}.signatures{display:grid;grid-template-columns:1fr 1fr;gap:80px;margin-top:70px}.signatures div{border-top:1px solid #44556a;text-align:center;padding-top:8px}/* Print area has its own page margins. Do not stack .sheet padding on
-           top of @page margins: on Chrome that can create a second blank page. */
+        *{box-sizing:border-box}body{margin:0;background:#eef2f7;color:#15243a;font:14px/1.45 Arial,sans-serif}.toolbar{max-width:900px;margin:18px auto;text-align:right}.toolbar button{border:0;border-radius:6px;background:#1769e0;color:#fff;padding:10px 16px;cursor:pointer}.sheet{max-width:900px;margin:0 auto 28px;padding:34px;background:#fff;box-shadow:0 8px 28px #15243a18}.heading{text-align:center;border-bottom:2px solid #26384d;padding-bottom:16px;margin-bottom:20px}.heading h1{font-size:22px;margin:0 0 5px}.heading h2{font-size:17px;margin:0}.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-bottom:20px}.meta div{padding:8px 0;border-bottom:1px solid #dce4ed}.meta b{display:inline-block;min-width:145px}.lines{width:100%;border-collapse:collapse}.lines th,.lines td{border:1px solid #aab6c4;padding:10px;text-align:left}.lines thead th{background:#263b55;color:#fff}.lines .number{text-align:right;white-space:nowrap}.narration{margin-top:20px;padding:14px;border:1px solid #dce4ed;min-height:72px}.signatures{display:grid;grid-template-columns:1fr 1fr;gap:80px;margin-top:70px}.signatures div{border-top:1px solid #44556a;text-align:center;padding-top:8px}/* BD/BW print always has exactly two ledger lines. Bound the printable
+           document to one A4 sheet; Chrome's otherwise empty trailing page
+           must not be caused by flowing/absolutely positioned overflow. */
         @page{size:A4 portrait;margin:0}
         @media print{
-            /* Short BD/BW vouchers have only two posting lines. Chrome can emit
-               an empty trailing page when a full-width block participates in
-               paginated body flow. Position the sheet outside that flow and
-               own the A4 inset here instead of the browser's default margins. */
-            html,body{width:210mm!important;height:0!important;min-height:0!important;margin:0!important;padding:0!important;background:#fff!important;overflow:visible!important}
+            html,body{
+                box-sizing:border-box!important;
+                width:210mm!important;height:297mm!important;
+                min-height:0!important;max-height:297mm!important;
+                margin:0!important;padding:0!important;
+                overflow:hidden!important;background:#fff!important;
+            }
             .toolbar{display:none!important}
-            .sheet{position:absolute!important;top:12mm!important;left:12mm!important;right:12mm!important;display:block;width:186mm!important;max-width:none!important;min-height:0!important;height:auto!important;margin:0!important;padding:0!important;box-shadow:none!important;overflow:visible!important;break-after:auto;page-break-after:auto}
-            .heading,.meta,.narration,.signatures{break-inside:avoid;page-break-inside:avoid}
-            .lines{break-inside:auto}
-            .lines tr{break-inside:avoid;page-break-inside:avoid}
+            .sheet{
+                position:static!important;display:block!important;
+                box-sizing:border-box!important;
+                top:auto!important;left:auto!important;right:auto!important;
+                width:210mm!important;max-width:none!important;
+                min-height:0!important;height:auto!important;
+                margin:0!important;padding:12mm!important;
+                overflow:hidden!important;box-shadow:none!important;
+                break-before:avoid!important;break-after:avoid!important;
+                page-break-after:avoid!important;
+            }
+            .heading,.meta,.narration,.signatures,.lines tr{
+                break-inside:avoid!important;page-break-inside:avoid!important;
+            }
             .lines thead{display:table-header-group}
-            .signatures{margin-top:28mm}
+            .signatures{margin-top:28mm!important}
         }
     </style>
 </head>
