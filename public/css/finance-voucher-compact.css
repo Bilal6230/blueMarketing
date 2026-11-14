@@ -5,8 +5,8 @@
 .bm-inline-link-filter{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;white-space:nowrap}
 .bm-inline-link-filter select{width:185px!important;height:31px;min-height:31px;padding:3px 7px;font-size:12px!important}
 .bm-quick-filter-modal{z-index:1060}
-.bm-quick-filter-modal .modal-header{background:#eaf2ff;border-bottom:2px solid #1769e0;padding:11px 15px}
-.bm-quick-filter-modal .modal-title{font-size:16px;font-weight:700;color:#165cbd}
+.bm-quick-filter-modal .modal-header{background:#f6f8fc;border-bottom:2px solid var(--bm-modal-accent,#1769e0);padding:11px 15px}
+.bm-quick-filter-modal .modal-title{font-size:16px;font-weight:700;color:var(--bm-modal-accent,#165cbd)}
 .bm-quick-filter-modal .modal-body{padding:17px;max-height:70vh;overflow-y:auto}
 .bm-quick-filter-modal .bm-quick-filter-form,
 .bm-quick-filter-modal #filtersSection .row{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;align-items:end}
