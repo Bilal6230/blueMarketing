@@ -14,18 +14,13 @@
             var $sortDirection=$('<input>',{type:'hidden',name:'sort_direction'}).appendTo($form);
             var $dateFrom=$('<input>',{type:'hidden',name:'column_date_from'}).appendTo($form);
             var $dateTo=$('<input>',{type:'hidden',name:'column_date_to'}).appendTo($form);
-            var $popover=$('<div>',{'class':'bm-heading-column-popover','role':'dialog','aria-label':'Column sort and filter'})
-                .append($('<div>',{'class':'bm-heading-column-title'}))
-                .append($('<div>',{'class':'bm-heading-column-control'}))
-                .append($('<div>',{'class':'bm-heading-column-actions'})
-                    .append($('<button>',{type:'button','class':'btn btn-outline-primary btn-sm bm-col-asc'}).text('Sort ascending'))
-                    .append($('<button>',{type:'button','class':'btn btn-outline-primary btn-sm bm-col-desc'}).text('Sort descending'))
-                    .append($('<button>',{type:'button','class':'btn btn-outline-secondary btn-sm bm-col-clear'}).text('Clear')));
-            $('body').append($popover);
-            if($.financeVoucherUi)$.financeVoucherUi.normalizePopover($popover);
+            // Every register uses the very same canonical CR-style popup DOM.
+            var widget=$.financeVoucherComponents.createFilter({kind:'heading',
+                accent:$root.css('--fvd-accent')||'#168348'});
+            var $popover=widget.$popup;
             var active=null,activeTrigger=null;
             function close() {
-                $popover.removeClass('bm-col-open').hide();
+                widget.close();
                 if(activeTrigger)activeTrigger.attr('aria-expanded','false');
                 active=null;activeTrigger=null;
             }
@@ -53,24 +48,16 @@
                     event.preventDefault();event.stopPropagation();
                     if(active===Number(index)){close();return;}
                     close();active=Number(index);activeTrigger=$button;
-                    $popover.find('.bm-heading-column-title').text($.trim($th.text()));
+                    widget.setTitle($.trim($th.text()));
                     var $container=$popover.find('.bm-heading-column-control').empty();
                     var $origin=$cells.eq(active).find('[data-column]').first();
                     if($origin.length && $origin.is('[type=date]')){
-                        var $dates=$('<div>',{'class':'fvd-date-range'});
-                        $.each([['From Date',$dateFrom],['To Date',$dateTo]],function(_,spec){
-                            var $group=$('<label>',{'class':'fvd-date-range-label'}).text(spec[0]);
-                            var $date=$('<input>',{type:'date','class':'form-control form-control-sm fvd-date-control'})
-                                .val(spec[1].val());
-                            $date.on('change',function(){
-                                spec[1].val($(this).val());
-                                $origin.val('').trigger('change');
-                                updateButtons();
-                                $form.trigger('submit');
-                            });
-                            $group.append($date);$dates.append($group);
+                        widget.dates({from:$dateFrom.val(),to:$dateTo.val()},function(key,value){
+                            (key==='from'?$dateFrom:$dateTo).val(value);
+                            $origin.val('');
+                            updateButtons();
+                            $form.trigger('submit');
                         });
-                        $container.append($dates).removeClass('d-none');
                     }else if($origin.length){
                         var $copy=$origin.clone(false).removeAttr('id').removeAttr('name')
                             .removeClass('tomselected').addClass('bm-heading-column-input');
@@ -81,10 +68,8 @@
                         });
                         $container.append($copy).removeClass('d-none');
                     }else{$container.addClass('d-none');}
-                    var offset=$button.offset(),left=Math.max(8,Math.min(offset.left-$(window).scrollLeft(),$(window).width()-290));
-                    var top=Math.max(8,Math.min(offset.top-$(window).scrollTop()+$button.outerHeight()+4,$(window).height()-225));
-                    $popover.css({left:left+'px',top:top+'px'}).addClass('bm-col-open').show();
-                    $popover.find('.bm-heading-column-input').trigger('focus');
+                    widget.position($button);
+                    $popover.find('.bm-heading-column-input,.fvc-date-input').first().trigger('focus');
                 });
             });
             function sort(direction){
