@@ -198,6 +198,12 @@
                         d.filter_voucher_number = filter_voucher_number;
                         d.filter_amount = filter_amount;
                         d.filter_reference = filter_reference;
+                        if ($.financeVoucherDataColumns) {
+                            const columnState = $.financeVoucherDataColumns.values('#journalTable');
+                            d.fvd_column_filters = columnState.filters;
+                            d.fvd_sort_column = columnState.sort;
+                            d.fvd_sort_direction = columnState.direction;
+                        }
                         if (isDateChanged) {
                             d.filter_date = filter_date; // Send date filter if it has changed
                         }
