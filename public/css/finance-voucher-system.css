@@ -193,3 +193,183 @@
 }
 :is(.jv-page,.cv-directory,.bm-modern-extra,.bm-modern-draft,.bm-voucher-directory)
  .dt-buttons :is(.dt-button,.btn):hover{background:var(--fvd-pale)!important}
+
+/* === Canonical CR visual parity — all finance voucher directories ===
+   Change these tokens only; every directory inherits identical dimensions. */
+:root{
+ --fvd-filter-width:288px;--fvd-popup-pad:10px;
+ --fvd-control-height:30px;--fvd-pagination-gap:4px;
+ --fvd-page-width:31px;--fvd-toolbar-pad:7px;
+ --fvd-page-border-radius:5px;--fvd-body-bottom:8px;
+}
+/* Fit the remaining viewport consistently, preserving the footer and toolbar
+   instead of using page-specific fixed heights. CR keeps its own verified fit. */
+.bm-voucher-directory.fvd-fit-viewport:not(.daily-voucher-page){
+ height:var(--fvd-directory-height,calc(100dvh - 150px))!important;
+ max-height:var(--fvd-directory-height,calc(100dvh - 150px))!important;
+ min-height:320px!important;overflow:hidden!important;
+ display:flex!important;flex-direction:column!important;
+ gap:var(--fvd-gap)!important;
+}
+/* All list panels fill the available height; table BODY scrolls, footer stays. */
+.bm-voucher-directory.fvd-fit-viewport
+ :is(.jv-card,.cv-shell,.cheque-table-panel,.online-table,.bt-table-card,
+ .pr-table-card,.pp-table-card,.bm-voucher-table-card,.custom_card){
+ min-height:0!important;
+}
+.bm-voucher-directory.fvd-fit-viewport
+ :is(.jv-card,.cheque-table-panel,.online-table,.bt-table-card,.pr-table-card,.pp-table-card){
+ flex:1 1 0!important;display:flex!important;flex-direction:column!important;
+ overflow:hidden!important;
+}
+.bm-voucher-directory.fvd-fit-viewport
+ :is(.jv-table-wrap,.jv-record-scroll,.bt-table-wrap,.pr-table-wrap,.pp-scroll,
+ .cheque-table-panel>.table-responsive,.online-table>.table-responsive,
+ .bm-voucher-table-scroll,.bm-draft-scroll){
+ flex:1 1 0!important;min-height:0!important;overflow:auto!important;
+}
+/* One consistent, non-wrapping Show 25 entries control. The old tiny
+   native spinner/arrow in JV/CV/Draft/Extra was caused by conflicting widths. */
+.bm-voucher-directory :is(.dataTables_length, .bm-records-toolbar,
+ .jv-card .dataTables_length,.cv-directory .dataTables_length){
+ white-space:nowrap!important;
+}
+.bm-voucher-directory :is(.dataTables_length select,.bm-records-toolbar select,
+ #cheque-per-page,#online-per-page,#btLength,#prLength,#ppLength){
+ width:66px!important;min-width:66px!important;max-width:66px!important;
+ height:var(--fvd-control-height)!important;min-height:var(--fvd-control-height)!important;
+ appearance:menulist!important;-webkit-appearance:menulist!important;
+ display:inline-block!important;visibility:visible!important;opacity:1!important;
+ padding:3px 8px!important;font-size:var(--fvd-caption)!important;
+ font-variant-numeric:tabular-nums!important;border:1px solid #cbd9e5!important;
+ border-radius:5px!important;color:var(--fvd-ink)!important;background:#fff!important;
+}
+.bm-voucher-directory .dataTables_length label{display:inline-flex!important;gap:6px;align-items:center!important;margin:0!important}
+.bm-voucher-directory :is(.dataTables_filter label,.bm-records-toolbar label){font-size:var(--fvd-caption)!important;margin:0!important}
+.bm-voucher-directory :is(.dataTables_filter input,.bm-records-toolbar input){
+ height:var(--fvd-control-height)!important;min-height:var(--fvd-control-height)!important;
+ font-size:var(--fvd-caption)!important;border:1px solid #cbd9e5!important;
+ border-radius:5px!important;background:#fff!important;
+}
+/* Match CR's plain single-border page buttons, regardless of renderer.
+   DataTables Bootstrap must not add an extra parent-button frame. */
+.bm-voucher-directory :is(.dv-pagination-footer,.bt-footer,.pr-footer,.bm-voucher-table-footer,
+ .jv-footer,.dataTables_wrapper>.d-flex:last-child,
+ .cheque-table-panel>.d-flex:last-child,.online-table>.d-flex:last-child){
+ display:flex!important;align-items:center!important;justify-content:space-between!important;
+ flex-wrap:nowrap!important;min-height:var(--fvd-footer-height)!important;
+ margin-top:auto!important;padding:5px 7px!important;gap:12px!important;
+ background:#fff!important;border-top:1px solid #e1e8f0!important;flex:0 0 auto!important;
+}
+.bm-voucher-directory :is(#dv-pages,#btPagination,#prPages,#ppPages,
+ #cheque-pagination,#online-pages,.dataTables_paginate,.dataTables_paginate .pagination,
+ .jv-footer .dataTables_paginate){
+ display:flex!important;align-items:center!important;justify-content:flex-end!important;
+ flex-wrap:nowrap!important;gap:var(--fvd-pagination-gap)!important;
+ margin:0!important;padding:0!important;width:auto!important;float:none!important;
+}
+.bm-voucher-directory :is(#dv-pages,#btPagination,#prPages,#ppPages,
+ #cheque-pagination,#online-pages)>.btn-group{border:0!important;box-shadow:none!important}
+.bm-voucher-directory :is(#dv-pages,#btPagination,#prPages,#ppPages,
+ #cheque-pagination,#online-pages) button,
+.bm-voucher-directory :is(.dataTables_paginate .page-link,.dataTables_paginate .paginate_button,
+ .jv-footer .paginate_button){
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ border:1px solid var(--fvd-accent)!important;border-radius:var(--fvd-page-border-radius)!important;
+ box-shadow:none!important;outline:none!important;
+ min-width:var(--fvd-page-width)!important;height:30px!important;min-height:30px!important;
+ margin:0!important;padding:3px 8px!important;font-size:var(--fvd-caption)!important;
+ line-height:20px!important;background:#fff!important;color:var(--fvd-accent)!important;
+ text-decoration:none!important;
+}
+.bm-voucher-directory :is(.dataTables_paginate .page-item,.dataTables_paginate .paginate_button){
+ border:0!important;border-radius:0!important;box-shadow:none!important;
+ padding:0!important;margin:0!important;background:none!important;
+}
+.bm-voucher-directory :is(#dv-pages,#btPagination,#prPages,#ppPages,
+ #cheque-pagination,#online-pages) button.active,
+.bm-voucher-directory :is(.dataTables_paginate .page-item.active .page-link,
+ .dataTables_paginate .paginate_button.current){
+ background:var(--fvd-accent)!important;color:#fff!important;
+}
+.bm-voucher-directory :is(#dv-pages,#btPagination,#prPages,#ppPages,
+ #cheque-pagination,#online-pages) button:disabled,
+.bm-voucher-directory :is(.dataTables_paginate .page-item.disabled .page-link,
+ .dataTables_paginate .paginate_button.disabled){
+ background:#fff!important;color:var(--fvd-accent)!important;opacity:.48!important;
+ cursor:default!important;pointer-events:none!important;
+}
+/* Same CR 288px filter surface: sort rows ABOVE search, divider,
+   value choices, date range and footer action sizes. */
+:is(.dv-excel-popover,.jv-excel-pop,.bm-heading-column-popover,.fvd-data-popover){
+ width:var(--fvd-filter-width)!important;max-width:calc(100vw - 16px)!important;
+ padding:var(--fvd-popup-pad)!important;border-radius:8px!important;
+ box-shadow:0 14px 38px rgba(13,38,63,.16)!important;
+ background:#fff!important;
+}
+:is(.jv-excel-pop,.bm-heading-column-popover,.fvd-data-popover){
+ --fvd-accent:var(--fvd-pop-accent,#087cfa);
+}
+:is(.jv-excel-pop,.bm-heading-column-popover,.fvd-data-popover)
+ :is(.jv-excel-sort,.bm-col-asc,.bm-col-desc,.fvd-sort-asc,.fvd-sort-desc){
+ display:block!important;width:100%!important;
+ border:0!important;border-radius:4px!important;background:#fff!important;
+ text-align:left!important;padding:7px 6px!important;font-size:var(--fvd-caption)!important;
+ color:var(--fvd-ink)!important;font-weight:400!important;min-height:30px!important;
+ box-shadow:none!important;
+}
+:is(.jv-excel-pop,.bm-heading-column-popover,.fvd-data-popover)
+ :is(.jv-excel-sort,.bm-col-asc,.bm-col-desc,.fvd-sort-asc,.fvd-sort-desc):hover{
+ background:var(--fvd-pale,#eef5ff)!important;
+}
+:is(.bm-heading-column-actions,.fvd-pop-actions){
+ display:flex!important;flex-direction:column!important;gap:0!important;
+ border-top:1px solid #e0e6ed!important;padding-top:6px!important;margin-top:6px!important;
+}
+:is(.bm-heading-column-actions,.fvd-pop-actions) :is(.bm-col-clear,.fvd-clear){
+ align-self:flex-end!important;margin-top:7px!important;
+ width:auto!important;min-height:25px!important;
+ border:1px solid #ced9e4!important;color:#51637b!important;
+ border-radius:5px!important;background:#fff!important;
+ font-size:var(--fvd-caption)!important;
+}
+:is(.bm-heading-column-title,.fvd-pop-title,#jv-excel-title,#dv-excel-title){
+ display:block!important;margin-bottom:6px!important;font-size:var(--fvd-caption)!important;
+ font-weight:700!important;color:#293749!important;
+}
+:is(.bm-heading-column-input,.fvd-search-input,.fvd-date-control,.jv-excel-pop input,
+ .bm-heading-column-popover input,.fvd-data-popover input){
+ box-sizing:border-box!important;min-height:31px!important;font-size:var(--fvd-caption)!important;
+ border:1px solid #ced9e4!important;border-radius:5px!important;
+}
+.fvd-date-range{display:flex;flex-direction:column;gap:9px;margin-top:8px}
+.fvd-date-range-label{display:flex;flex-direction:column;gap:4px;
+ margin:0!important;font-weight:600!important;font-size:var(--fvd-caption)!important}
+.fvd-date-range-label input{width:100%!important}
+.fvd-pop-filter{margin-top:8px!important}
+.bm-heading-column-actions .btn:not(.bm-col-clear),
+.fvd-pop-actions .btn:not(.fvd-clear){text-align:left!important}
+.bm-voucher-directory :is(.bm-column-heading-trigger,.fvd-column-trigger,
+ .jv-excel-trigger,.dv-excel-trigger){
+ width:23px!important;height:23px!important;min-width:23px!important;min-height:23px!important;
+ float:right!important;margin-left:4px!important;vertical-align:middle!important;
+ border:1px solid transparent!important;background:transparent!important;border-radius:4px!important;
+ box-shadow:none!important;color:var(--fvd-accent)!important;padding:2px!important;
+}
+/* Respect page-specific density only for business content, not shared chrome. */
+.bm-voucher-directory table thead tr:first-child th{
+ min-height:var(--fvd-table-header-height,35px)!important;
+ height:var(--fvd-table-header-height,35px)!important;
+ padding:6px 7px!important;white-space:nowrap!important;
+}
+.bm-voucher-directory table tbody td{
+ height:var(--fvd-row-height)!important;max-height:none!important;
+ padding:6px 7px!important;font-size:var(--fvd-caption)!important;
+}
+@media(max-width:850px){
+ .bm-voucher-directory :is(.dv-pagination-footer,.bt-footer,.pr-footer,.bm-voucher-table-footer,.jv-footer){
+ flex-wrap:wrap!important;gap:6px!important;
+ }
+ .bm-voucher-directory :is(#dv-pages,#btPagination,#prPages,#ppPages,
+ #cheque-pagination,#online-pages,.dataTables_paginate){flex-wrap:wrap!important}
+}
