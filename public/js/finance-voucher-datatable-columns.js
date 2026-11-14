@@ -16,6 +16,16 @@ $(function(){
   var state={filters:{},dates:{from:'',to:''},sort:'',direction:''};
   registry[opts.table]=state;
   var api=$table.DataTable(),fields=opts.fields,active=null;
+  if(!opts.server){
+    // Scope Date From/To checks to this exact DataTable, never other modules.
+    $.fn.dataTable.ext.search.push(function(settings,row){
+      if(settings.nTable!==$table[0])return true;
+      var date=String(row[1]||'').trim().slice(0,10);
+      if(state.dates.from&&date<state.dates.from)return false;
+      if(state.dates.to&&date>state.dates.to)return false;
+      return true;
+    });
+  }
   // Remove DataTables header-click sorting. The same sorting stays available
   // exclusively inside the canonical heading filter popover.
   $table.find('thead tr:first th').off('click.DT keypress.DT');
