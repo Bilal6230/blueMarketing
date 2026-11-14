@@ -55,6 +55,35 @@
             var $ch=$cv.find('.cv-shell>.card-header').first();
             addFilterModal($cv,$cv.find('#filtersSection').first(),$ch,headerActions($ch),'Commission');
         }
+        // Commission uses its original create route/form in an iframe: do not duplicate its posting logic.
+        if ($cv.length) {
+            var $commissionCreate = $cv.find('a.bm-header-new[href]').first();
+            if ($commissionCreate.length) {
+                var $commissionModal = $('<div>',{'class':'modal fade bm-commission-entry-modal',id:'bmCommissionEntryModal',tabindex:'-1',role:'dialog','aria-hidden':'true'})
+                    .append($('<div>',{'class':'modal-dialog',role:'document'})
+                        .append($('<div>',{'class':'modal-content'})
+                            .append($('<div>',{'class':'modal-header'})
+                                .append($('<h5>',{'class':'modal-title'}).text('New Commission Voucher'))
+                                .append($('<button>',{'class':'close',type:'button','data-dismiss':'modal','aria-label':'Close'}).html('&times;')))
+                            .append($('<div>',{'class':'modal-body'})
+                                .append($('<iframe>',{id:'bmCommissionFrame',title:'Commission Voucher Form',src:'about:blank'})))
+                            .append($('<div>',{'class':'modal-footer'})
+                                .append($('<button>',{type:'button','class':'btn btn-outline-secondary btn-sm','data-dismiss':'modal'}).text('Close')))));
+                $('body').append($commissionModal);
+                $commissionCreate.on('click.bmCommission',function(e){
+                    e.preventDefault();
+                    var url=$(this).attr('href');
+                    $('#bmCommissionFrame').attr('src',url+(url.indexOf('?')===-1?'?':'&')+'embed=1');
+                    $commissionModal.modal('show');
+                });
+                $commissionModal.on('hidden.bs.modal',function(){
+                    $('#bmCommissionFrame').attr('src','about:blank');
+                    if($.fn.DataTable && $.fn.DataTable.isDataTable('#journalTable')){
+                        $('#journalTable').DataTable().ajax.reload(null,false);
+                    }
+                });
+            }
+        }
         $.each([
             ['#bankTransferApp','.bt-filter-card','.bt-heading','Bank Transfer'],
             ['#plotReceiptApp','.pr-filter-card','.pr-heading','Plot Receipt'],
@@ -123,6 +152,18 @@
                     .append($('<div>',{'class':'modal-body'}))));
                 $form.detach().appendTo($modal.find('.modal-body'));
                 $('body').append($modal);
+                // The legacy save button opens its own validation/confirmation modal.
+                // Avoid stacking two Bootstrap focus traps over the posting form.
+                $form.on('click.bmExtraConfirm','[data-target="#confirmModal"]',function(event){
+                    event.preventDefault();
+                    event.stopPropagation();
+                    $modal.one('hidden.bs.modal',function(){$('#confirmModal').modal('show');});
+                    $modal.modal('hide');
+                });
+                $('#confirmModal').on('hidden.bs.modal.bmExtraConfirm',function(){
+                    // Allow correction after the user cancels a confirmation.
+                    if(!$('body').hasClass('modal-open'))$modal.modal('show');
+                });
                 $('<button>',{type:'button','class':'btn btn-primary btn-sm'})
                     .html('<i class="fas fa-plus mr-1"></i> New voucher')
                     .on('click',function(){$modal.modal('show');})
