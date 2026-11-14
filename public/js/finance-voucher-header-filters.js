@@ -48,7 +48,9 @@
         var $jv=$('.jv-page');
         if ($jv.length) {
             var $jh=$jv.find('.jv-head').first();
-            addFilterModal($jv,$jv.find('.jv-filters').first(),$jh,headerActions($jh),'Journal');
+            var $ja=headerActions($jh);
+            $jh.find('#jv-add').detach().appendTo($ja);
+            addFilterModal($jv,$jv.find('.jv-filters').first(),$jh,$ja,'Journal');
         }
         var $cv=$('.cv-directory');
         if ($cv.length) {
@@ -125,7 +127,11 @@
                 $form.on('reset.bmLinks',function(){ $link.val(''); $hidden.val(''); });
             }
             var $head=$root.find(cfg[2]).first();
-            addFilterModal($root,$root.find(cfg[1]).first(),$head,headerActions($head),
+            var $actions=headerActions($head);
+            if(cfg[0].indexOf('online')!==-1){
+                $head.find('#online-add').detach().appendTo($actions);
+            }
+            addFilterModal($root,$root.find(cfg[1]).first(),$head,$actions,
                 cfg[0].indexOf('cheque')!==-1?'Cheque':'Online Transaction');
         });
         // Draft vouchers: style existing server-rendered list, preserve approval/reject/edit buttons.
