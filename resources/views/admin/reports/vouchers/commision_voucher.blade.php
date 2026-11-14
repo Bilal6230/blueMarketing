@@ -29,7 +29,7 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                         <h4 class="mb-0">{{ $title }}</h4>
                     </div>
                     <div class="card-body">
-                        <form id="journalForm" action="{{ route('commision.voucher.store') }}" method="POST">
+                        <form id="journalForm" action="{{ route('commision.voucher.store', request()->boolean('embed') ? ['embed'=>1] : []) }}" method="POST">
                             @csrf
                             <!-- Voucher Details -->
                             <div class="row mb-4">
