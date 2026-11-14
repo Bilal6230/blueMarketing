@@ -26,7 +26,7 @@
             $panel.remove();
             $('body').append($modal);
             var $button = $('<button>',{'class':'btn btn-outline-primary btn-sm bm-heading-filter',type:'button'})
-                .append($('<i>',{'class':'fas fa-filter mr-1'})).append(document.createTextNode(' Filters'));
+                .append($('<i>',{'class':'fas fa-filter mr-1'})).append($('<span>').text(' Filters'));
             $button.on('click', function () {$modal.modal('show');});
             $headerActions.prepend($button);
             $form.on('submit.bmFilter', function () {$modal.modal('hide');});
