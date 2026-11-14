@@ -121,3 +121,44 @@ body.sidebar-collapse .main-content.page-content:has(> .bm-plot-workspace){margi
    Open/close danger-red state remains globally consistent. */
 .bm-ui.bm-voucher-directory .blue-actions-toggle:hover:not([aria-expanded="true"]),
 .bm-ui.bm-voucher-directory .blue-actions-toggle:focus-visible:not([aria-expanded="true"]){border-color:var(--voucher-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--voucher-accent) 15%,transparent)}
+
+
+/* Global CR/DR-style voucher workspace. This is a structural contract used by
+   Plot Receipt and future voucher directories. Original voucher accent remains
+   an explicit per-screen token, not a shared hardcoded color. */
+.main-content.page-content:has(> .bm-voucher-workspace){margin-left:250px!important;width:calc(100% - 250px)!important;max-width:calc(100% - 250px)!important;padding:66px 7px 0!important;overflow:hidden;box-sizing:border-box}
+body.sidebar-collapse .main-content.page-content:has(> .bm-voucher-workspace){margin-left:4.6rem!important;width:calc(100% - 4.6rem)!important;max-width:calc(100% - 4.6rem)!important}
+body:has(.bm-voucher-workspace) .main-footer{display:none!important}
+.bm-ui.bm-voucher-directory.bm-voucher-workspace{--dv-accent:var(--voucher-accent);--dv-pale:var(--voucher-tint);display:flex;flex-direction:column;height:calc(100dvh - 124px);min-height:350px;overflow:hidden;padding:.3rem .15rem!important}
+.bm-voucher-workspace .bm-voucher-heading{flex:0 0 auto;padding:.15rem .25rem .35rem}
+.bm-voucher-workspace .bm-voucher-heading h2{font-size:1.35rem;color:var(--voucher-accent);font-weight:700;margin:0}
+.bm-voucher-workspace .bm-voucher-subtitle{color:#758397;font-size:.83rem}
+.bm-voucher-workspace .bm-voucher-filter-card,.bm-voucher-workspace .bm-voucher-table-card{border:0;border-top:3px solid var(--voucher-accent);border-radius:11px;box-shadow:0 5px 18px rgba(16,36,64,.08);overflow:hidden;background:#fff}
+.bm-voucher-workspace .bm-voucher-filter-card{flex:0 0 auto;margin-bottom:.55rem!important}
+.bm-voucher-workspace .bm-voucher-filter-card>.card-body{padding:.58rem .75rem}
+.bm-voucher-workspace .bm-voucher-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr)) auto;gap:.55rem;align-items:end}
+.bm-voucher-workspace .bm-voucher-filter-grid label{font-size:.8rem;font-weight:700;margin:0 0 .15rem}
+.bm-voucher-workspace .bm-voucher-filter-grid .form-control{height:34px;padding:.22rem .55rem;font-size:.85rem}
+.bm-voucher-workspace .bm-voucher-filter-actions{display:flex;align-items:center;gap:.4rem;white-space:nowrap}
+.bm-voucher-workspace .bm-voucher-filter-actions .btn-primary{background:var(--voucher-accent);border-color:var(--voucher-accent);color:#fff}
+.bm-voucher-workspace .bm-voucher-table-card{flex:1 1 0;min-height:0;display:flex;flex-direction:column;margin:0!important}
+.bm-voucher-workspace .bm-voucher-table-toolbar{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:.4rem .55rem;background:#fff}
+.bm-voucher-workspace .bm-voucher-table-toolbar label{display:flex;gap:6px;align-items:center;font-size:.82rem;margin:0}
+.bm-voucher-workspace .bm-voucher-table-toolbar select{width:73px}
+.bm-voucher-workspace .bm-voucher-table-toolbar input{width:195px}
+.bm-voucher-workspace .bm-voucher-table-scroll{flex:1 1 0;min-height:0;overflow:auto}
+.bm-voucher-workspace .bm-voucher-table{border-collapse:separate;border-spacing:0;min-width:1000px;margin:0;table-layout:fixed;font-size:.8rem}
+.bm-voucher-workspace .bm-voucher-table thead th{background:var(--voucher-tint)!important;border-bottom:2px solid var(--voucher-accent)!important;position:sticky;top:0;z-index:2;font-weight:700;padding:.52rem .45rem;white-space:nowrap}
+.bm-voucher-workspace .bm-voucher-table tbody td{padding:.5rem .45rem;height:42px;vertical-align:middle;border-bottom:1px solid #dce3eb}
+.bm-voucher-workspace .bm-voucher-table tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--voucher-tint) 19%,white)}
+.bm-voucher-workspace .bm-voucher-table tbody tr:hover td{background:color-mix(in srgb,var(--voucher-tint) 48%,white)}
+.bm-voucher-workspace .bm-voucher-table th:last-child,.bm-voucher-workspace .bm-voucher-table td:last-child{text-align:center;width:80px}
+.bm-voucher-workspace .blue-actions-toggle{color:var(--voucher-accent)}
+.bm-voucher-workspace .bm-voucher-table-footer{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:43px;padding:.35rem .65rem;background:#fff}
+.bm-voucher-workspace .bm-voucher-page-btn{border:1px solid var(--voucher-accent);background:#fff;color:var(--voucher-accent);border-radius:5px;padding:4px 9px;min-width:30px}
+.bm-voucher-workspace .bm-voucher-page-btn.active{background:var(--voucher-accent);color:#fff}
+.bm-voucher-workspace .bm-voucher-page-btn:disabled{opacity:.45}
+.bm-voucher-workspace .bm-voucher-count{font-size:.79rem;color:#657286}
+@media(max-width:1150px){.bm-voucher-workspace .bm-voucher-filter-grid{grid-template-columns:repeat(2,minmax(120px,1fr))}.bm-voucher-workspace .bm-voucher-filter-actions{grid-column:1/-1;justify-content:flex-end}}
+@media(max-width:991.98px){.main-content.page-content:has(> .bm-voucher-workspace),body.sidebar-collapse .main-content.page-content:has(> .bm-voucher-workspace){margin-left:0!important;width:100%!important;max-width:100%!important;padding:66px 6px 0!important}}
+@media(max-width:520px){.bm-voucher-workspace .bm-voucher-filter-grid{grid-template-columns:1fr}.bm-voucher-workspace .bm-voucher-table-footer{flex-wrap:wrap}}
