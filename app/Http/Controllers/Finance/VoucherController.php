@@ -1206,7 +1206,7 @@ class VoucherController extends Controller
             'receipt_number' => ['required', 'string', 'max:64'], 'date' => ['required', 'date_format:Y-m-d'],
             'amount' => ['required', 'regex:/^(0|[1-9][0-9]{0,13})(?:\.[0-9]{1,2})?$/D'],
             'cash_account_id' => ['required', 'integer', 'min:1'], 'narration' => ['required', 'string', 'max:2000'],
-            'allocations' => ['required', 'array', 'min:2', 'max:100'],
+            'allocations' => ['required', 'array', 'min:1', 'max:100'],
             'allocations.*.booking_id' => ['required', 'integer', 'min:1'], 'allocations.*.plot_id' => ['required', 'integer', 'min:1'],
             'allocations.*.receivable_account_id' => ['required', 'integer', 'min:1'],
             'allocations.*.amount' => ['required', 'regex:/^(0|[1-9][0-9]{0,13})(?:\.[0-9]{1,2})?$/D'],
