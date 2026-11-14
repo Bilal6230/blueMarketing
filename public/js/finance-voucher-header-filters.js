@@ -210,14 +210,17 @@
                     $modal.modal('hide');
                 });
                 $confirm.on('click','#bmExtraConfirmSave',function(){
+                    if($(this).prop('disabled'))return;
                     $(this).prop('disabled',true);
                     $form.trigger('submit');
-                    // Re-enable only if client validation prevented navigation.
-                    $(this).prop('disabled',false);
                 });
                 $confirm.on('hidden.bs.modal',function(){
+                    $('#bmExtraConfirmSave').prop('disabled',false);
                     if (!$('body').hasClass('modal-open')) $modal.modal('show');
                 });
+                if($extra.attr('data-extra-errors')==='1'){
+                    $modal.modal('show');
+                }
                 $('<button>',{type:'button','class':'btn btn-primary btn-sm'})
                     .html('<i class="fas fa-plus mr-1"></i> New voucher')
                     .on('click',function(){$modal.modal('show');})
