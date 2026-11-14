@@ -317,8 +317,7 @@
 
                                                     <div class="col-sm-3">
                                                         <div class="modal-footer justify-content-between">
-                                                            <button type="button" class="btn btn-primary btn-lg btn-block"
-                                                                data-toggle="modal" data-target="#confirmModal">Save</button>
+                                                            <button type="button" class="btn btn-primary btn-lg btn-block bm-extra-save">Save</button>
 
 
                                                         </div>
