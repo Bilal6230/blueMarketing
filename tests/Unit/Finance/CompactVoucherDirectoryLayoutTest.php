@@ -51,7 +51,7 @@ class CompactVoucherDirectoryLayoutTest extends TestCase
         $this->assertStringContainsString('journalTable', $commission);
         $this->assertStringContainsString("request()->boolean('embed')", $commissionCreate);
         $this->assertStringContainsString("request()->boolean('embed')", $commissionEdit);
-        $this->assertStringContainsString("route('commision.voucher.store')", $commissionCreate);
+        $this->assertStringContainsString("route('commision.voucher.store'", $commissionCreate);
         $this->assertStringContainsString("route('commision.voucher.update'", $commissionEdit);
 
         $this->assertStringContainsString('bm-modern-extra', $extra);
@@ -59,6 +59,8 @@ class CompactVoucherDirectoryLayoutTest extends TestCase
         $this->assertStringContainsString('id="voucherForm"', $extra);
         $this->assertStringContainsString("route('booking.customer.deposit')", $extra);
         $this->assertStringContainsString('bm-extra-save', $extra);
+        $this->assertStringContainsString('data-extra-errors', $extra);
+        $this->assertStringContainsString('bmDraftTable', $draft);
         $this->assertStringNotContainsString('data-target="#confirmModal"', $extra);
     }
 }
