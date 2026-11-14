@@ -19,19 +19,18 @@ final class BankTransferPrintLayoutTest extends TestCase
         $this->assertStringContainsString('Authorized by',$template);
     }
 
-    public function test_print_layout_is_content_height_a5_portrait(): void
+    public function test_a5_print_uses_single_fixed_sheet_outside_document_pagination(): void
     {
         $template=file_get_contents(resource_path('views/admin/finance/voucher/bank_transfer_print.blade.php'));
-        $this->assertStringContainsString('@page{size:A5 portrait;margin:8mm}', $template);
-        $this->assertStringContainsString('width:auto!important;height:auto!important;', $template);
-        $this->assertStringContainsString('min-height:0!important;max-height:none!important;', $template);
-        $this->assertStringContainsString('position:static!important;display:block!important;', $template);
-        $this->assertStringContainsString('margin:0!important;padding:0!important;', $template);
+        $this->assertStringContainsString('@page{size:A5 portrait;margin:0}', $template);
+        $this->assertStringContainsString('width:1px!important;height:1px!important;', $template);
+        $this->assertStringContainsString('position:fixed!important;', $template);
+        $this->assertStringContainsString('top:7mm!important;left:7mm!important;', $template);
+        $this->assertStringContainsString('width:134mm!important;max-width:134mm!important;', $template);
+        $this->assertStringContainsString('max-height:196mm!important;height:auto!important;', $template);
         $this->assertStringContainsString('.toolbar{display:none!important}', $template);
-        $this->assertStringContainsString('page-break-after:auto!important;', $template);
+        $this->assertStringContainsString('overflow:hidden!important;box-shadow:none!important;', $template);
         $this->assertStringNotContainsString('height:297mm!important', $template);
-        $this->assertStringContainsString('font-size:11px!important;', $template);
-        $this->assertStringContainsString('margin-top:20mm!important', $template);
         $this->assertStringNotContainsString('position:absolute!important', $template);
     }
 
