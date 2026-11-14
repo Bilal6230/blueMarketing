@@ -211,6 +211,15 @@ class V2PlotEntryWriterTest extends TestCase
         $this->assertDatabaseCount('finance_posting_batches', 1);
         $this->assertSame(1, (int) DB::table('plots')->where('id', $plotId)->value('is_active'));
     }
+    public function test_phase07_readiness_audit_is_project_scoped_and_read_only(): void
+    {
+        $before = DB::table('finance_posting_batches')->count();
+        $this->assertSame(0, \\Illuminate\\Support\\Facades\\Artisan::call('finance:audit-v2-plot-receipt', ['project'=>1]));
+        $this->assertSame(1, \\Illuminate\\Support\\Facades\\Artisan::call('finance:audit-v2-plot-receipt', ['project'=>2]));
+        $this->assertSame($before, DB::table('finance_posting_batches')->count());
+        $this->assertDatabaseCount('finance_plot_receipts', 0);
+    }
+
     public function test_phase07_local_migration_recreates_only_missing_receipt_storage_and_posts_two_plots(): void
     {
         Schema::drop('finance_plot_receipt_postings');
@@ -245,7 +254,7 @@ class V2PlotEntryWriterTest extends TestCase
         try {
             $pilot->up();
             $this->fail('Partially existing historical finance storage must never be rebuilt.');
-        } catch (\\RuntimeException $error) {
+        } catch (\RuntimeException $error) {
             $this->assertStringContainsString('V2_PLOT_RECEIPT_PARTIAL_STORAGE', $error->getMessage());
         }
         $this->assertTrue(Schema::hasTable('finance_plot_receipts'));
