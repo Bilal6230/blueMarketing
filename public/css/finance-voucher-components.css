@@ -153,3 +153,52 @@
 .bm-voucher-directory .fvc-pagination-footer>.fvc-pagination{
  margin-left:auto!important;margin-right:auto!important;
 }
+
+/* Pagination placement contract v2.
+   Mount exactly ONE shared footer as the final direct child of its table card.
+   Not inside a DataTables-generated footer, whose height follows the table rows.
+   This works for empty tables and for pages with 25+ scrolling rows. */
+.bm-voucher-directory .fvc-pagination-host{
+ position:relative!important;display:flex!important;flex-direction:column!important;
+ flex:1 1 0!important;min-height:0!important;
+ overflow:hidden!important;
+ padding-bottom:var(--fvd-footer-height,40px)!important;
+ box-sizing:border-box!important;
+}
+.bm-voucher-directory .fvc-pagination-host>.fvc-pagination-footer{
+ position:absolute!important;left:0!important;right:0!important;bottom:0!important;
+ width:100%!important;min-height:var(--fvd-footer-height,40px)!important;
+ margin:0!important;padding:5px 8px!important;
+ z-index:4!important;background:#fff!important;
+ border-top:1px solid #dce6ed!important;
+}
+.bm-voucher-directory .fvc-pagination-host>.table-responsive,
+.bm-voucher-directory .fvc-pagination-host>.fvd-datatable-scroll,
+.bm-voucher-directory .fvc-pagination-host>.dataTables_wrapper{
+ flex:1 1 0!important;min-height:0!important;
+ overflow:auto!important;max-height:none!important;
+}
+.bm-voucher-directory .fvc-pagination-host .fvd-datatable-wrapper{
+ min-height:0!important;flex:1 1 0!important;
+}
+.bm-voucher-directory .fvc-pagination-host .fvd-datatable-wrapper>.fvd-datatable-scroll{
+ flex:1 1 0!important;min-height:0!important;overflow:auto!important;
+}
+.bm-voucher-directory .fvc-pagination-host .fvc-pagination-footer>.fvc-pagination-info{
+ margin:0!important;padding:0!important;
+}
+.bm-voucher-directory .fvc-pagination-host .fvc-pagination-footer>.fvc-pagination{
+ left:50%!important;right:auto!important;bottom:auto!important;
+ transform:translateX(-50%)!important;
+}
+/* When the native DataTables footer is detached, hide empty leftover shells.
+   Do not hide the actual custom footer or its summary. */
+.bm-voucher-directory .fvc-pagination-host .jv-footer:empty{display:none!important}
+@media(max-width:850px){
+ .bm-voucher-directory .fvc-pagination-host>.fvc-pagination-footer{
+  min-height:40px!important;flex-wrap:wrap!important;
+ }
+ .bm-voucher-directory .fvc-pagination-host .fvc-pagination-footer>.fvc-pagination{
+  position:static!important;transform:none!important;margin-left:auto!important;
+ }
+}
