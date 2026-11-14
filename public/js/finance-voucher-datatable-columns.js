@@ -93,5 +93,7 @@ $(function(){
  init({id:'Extra',table:'#example1',server:false,fields:{
   1:'date',2:'customer',3:'plot',4:'reference',5:'description',
   6:'amount',7:'received',8:'pending',9:'outstanding',11:'type',12:'approve'}});
+ init({id:'Draft',table:'#bmDraftTable',server:false,fields:{
+  1:'date',2:'project',3:'head',4:'subhead',5:'detail',6:'amount',7:'type'}});
 });
 })(jQuery);
