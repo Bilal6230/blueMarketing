@@ -19,18 +19,18 @@ final class BankTransferPrintLayoutTest extends TestCase
         $this->assertStringContainsString('Authorized by',$template);
     }
 
-    public function test_print_sheet_is_bounded_to_one_a4_page_without_absolute_overflow(): void
+    public function test_print_layout_is_content_height_not_full_a4_body_height(): void
     {
         $template=file_get_contents(resource_path('views/admin/finance/voucher/bank_transfer_print.blade.php'));
-        $this->assertStringContainsString('@page{size:A4 portrait;margin:0}', $template);
-        $this->assertStringContainsString('width:210mm!important;height:297mm!important;', $template);
-        $this->assertStringContainsString('max-height:297mm!important;', $template);
-        $this->assertStringContainsString('overflow:hidden!important;background:#fff!important;', $template);
+        $this->assertStringContainsString('@page{size:A4 portrait;margin:10mm}', $template);
+        $this->assertStringContainsString('width:auto!important;height:auto!important;', $template);
+        $this->assertStringContainsString('min-height:0!important;max-height:none!important;', $template);
         $this->assertStringContainsString('position:static!important;display:block!important;', $template);
-        $this->assertStringContainsString('margin:0!important;padding:12mm!important;', $template);
+        $this->assertStringContainsString('margin:0!important;padding:0!important;', $template);
         $this->assertStringContainsString('.toolbar{display:none!important}', $template);
-        $this->assertStringContainsString('break-inside:avoid!important;', $template);
-        $this->assertStringNotContainsString('position:absolute!important;top:12mm', $template);
+        $this->assertStringContainsString('page-break-after:auto!important;', $template);
+        $this->assertStringNotContainsString('height:297mm!important', $template);
+        $this->assertStringNotContainsString('position:absolute!important', $template);
     }
 
     public function test_print_layout_does_not_change_financial_amounts_or_lines(): void
