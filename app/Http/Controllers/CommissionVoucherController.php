@@ -195,7 +195,7 @@ class CommissionVoucherController extends Controller
                 'voucher_number' => 'Commission draft rejected: ' . $e->getMessage(),
             ]);
         }
-        return redirect()->route('commision.voucher.edit', ['id' => $id])
+        return redirect()->route('commision.voucher.edit', ['id' => $id] + ($request->boolean('embed') ? ['embed'=>1] : []))
             ->with('success', 'Commission draft saved. Approval/posting is still required.');
     }
 
@@ -213,7 +213,10 @@ class CommissionVoucherController extends Controller
         } catch (\DomainException $e) {
             abort(409, 'Commission approval rejected to protect accounting history.');
         }
-        return redirect()->route('commision.voucher.index')->with('success', 'Commission voucher approved and posted.');
+        return redirect()->route(
+            $request->boolean('embed') ? 'commision.voucher.edit' : 'commision.voucher.index',
+            $request->boolean('embed') ? ['id'=>$id,'embed'=>1] : []
+        )->with('success', 'Commission voucher approved and posted.');
     }
 
     public function destroy($id)
@@ -407,7 +410,7 @@ class CommissionVoucherController extends Controller
                 }
             });
         }
-        return redirect()->route('commision.voucher.edit', ['id' => $id])
+        return redirect()->route('commision.voucher.edit', ['id' => $id] + ($request->boolean('embed') ? ['embed'=>1] : []))
             ->with('success', 'Commission voucher corrected successfully; previous posting history was preserved.');
     }
 
