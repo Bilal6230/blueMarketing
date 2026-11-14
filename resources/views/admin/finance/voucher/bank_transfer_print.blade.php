@@ -5,31 +5,28 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>{{ $kind === 'deposit' ? 'Bank Deposit' : 'Bank Withdrawal' }} Voucher</title>
     <style>
-        *{box-sizing:border-box}body{margin:0;background:#eef2f7;color:#15243a;font:14px/1.45 Arial,sans-serif}.toolbar{max-width:900px;margin:18px auto;text-align:right}.toolbar button{border:0;border-radius:6px;background:#1769e0;color:#fff;padding:10px 16px;cursor:pointer}.sheet{max-width:900px;margin:0 auto 28px;padding:34px;background:#fff;box-shadow:0 8px 28px #15243a18}.heading{text-align:center;border-bottom:2px solid #26384d;padding-bottom:16px;margin-bottom:20px}.heading h1{font-size:22px;margin:0 0 5px}.heading h2{font-size:17px;margin:0}.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-bottom:20px}.meta div{padding:8px 0;border-bottom:1px solid #dce4ed}.meta b{display:inline-block;min-width:145px}.lines{width:100%;border-collapse:collapse}.lines th,.lines td{border:1px solid #aab6c4;padding:10px;text-align:left}.lines thead th{background:#263b55;color:#fff}.lines .number{text-align:right;white-space:nowrap}.narration{margin-top:20px;padding:14px;border:1px solid #dce4ed;min-height:72px}.signatures{display:grid;grid-template-columns:1fr 1fr;gap:80px;margin-top:70px}.signatures div{border-top:1px solid #44556a;text-align:center;padding-top:8px}/* BD/BW: keep the printable sheet out of Chrome document pagination.
-           A5=148x210mm, 7mm inset => 134x196mm printable frame.
-           The 1px root has no flowing children in print media. */
-        @page{size:A5 portrait;margin:0}
+        *{box-sizing:border-box}body{margin:0;background:#eef2f7;color:#15243a;font:14px/1.45 Arial,sans-serif}.toolbar{max-width:900px;margin:18px auto;text-align:right}.toolbar button{border:0;border-radius:6px;background:#1769e0;color:#fff;padding:10px 16px;cursor:pointer}.sheet{max-width:900px;margin:0 auto 28px;padding:34px;background:#fff;box-shadow:0 8px 28px #15243a18}.heading{text-align:center;border-bottom:2px solid #26384d;padding-bottom:16px;margin-bottom:20px}.heading h1{font-size:22px;margin:0 0 5px}.heading h2{font-size:17px;margin:0}.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-bottom:20px}.meta div{padding:8px 0;border-bottom:1px solid #dce4ed}.meta b{display:inline-block;min-width:145px}.lines{width:100%;border-collapse:collapse}.lines th,.lines td{border:1px solid #aab6c4;padding:10px;text-align:left}.lines thead th{background:#263b55;color:#fff}.lines .number{text-align:right;white-space:nowrap}.narration{margin-top:20px;padding:14px;border:1px solid #dce4ed;min-height:72px}.signatures{display:grid;grid-template-columns:1fr 1fr;gap:80px;margin-top:70px}.signatures div{border-top:1px solid #44556a;text-align:center;padding-top:8px}/* A5 portrait, content-driven print layout. A fixed-position element repeats
+           on every Chrome page and must never be used for voucher content. */
+        @page{size:A5 portrait;margin:8mm}
         @media print{
             html,body{
-                width:1px!important;height:1px!important;
-                min-height:0!important;max-height:1px!important;
+                display:block!important;
+                width:auto!important;height:auto!important;
+                min-height:0!important;max-height:none!important;
                 margin:0!important;padding:0!important;
                 overflow:visible!important;background:#fff!important;
             }
             .toolbar{display:none!important}
             .sheet{
-                position:fixed!important;
-                top:7mm!important;left:7mm!important;
-                right:auto!important;bottom:auto!important;
-                display:block!important;box-sizing:border-box!important;
-                width:134mm!important;max-width:134mm!important;
-                min-height:0!important;max-height:196mm!important;height:auto!important;
+                position:static!important;display:block!important;
+                box-sizing:border-box!important;
+                width:100%!important;max-width:none!important;
+                height:auto!important;min-height:0!important;max-height:none!important;
                 margin:0!important;padding:0!important;
-                overflow:hidden!important;box-shadow:none!important;
-                break-after:avoid!important;page-break-after:avoid!important;
+                overflow:visible!important;box-shadow:none!important;
             }
             .heading,.meta,.narration,.signatures,.lines tr{
-                break-inside:avoid!important;page-break-inside:avoid!important;
+                break-inside:avoid;page-break-inside:avoid;
             }
             .lines thead{display:table-header-group}
             body{font-size:11px!important;line-height:1.3!important}
