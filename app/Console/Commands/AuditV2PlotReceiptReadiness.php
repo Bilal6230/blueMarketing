@@ -42,6 +42,29 @@ final class AuditV2PlotReceiptReadiness extends Command
             $this->line('Apply the reviewed local-only Phase 07 migration if only the three finance_plot_receipt* tables are missing.');
             return self::FAILURE;
         }
+        // MySQL can retain all tables after a failed FK ALTER. A table-only
+        // readiness check would incorrectly report PASS.
+        if (DB::getDriverName() === 'mysql') {
+            $constraints = DB::table('information_schema.KEY_COLUMN_USAGE')
+                ->whereRaw('TABLE_SCHEMA = DATABASE()')
+                ->where('TABLE_NAME', 'finance_plot_receipt_postings')
+                ->where('REFERENCED_TABLE_NAME', 'finance_posting_source_claims')
+                ->whereNotNull('REFERENCED_COLUMN_NAME')
+                ->select('CONSTRAINT_NAME', 'COLUMN_NAME', 'REFERENCED_COLUMN_NAME')
+                ->get()->groupBy('CONSTRAINT_NAME');
+            $hasClaim = $constraints->contains(static function ($columns): bool {
+                return $columns->mapWithKeys(static fn ($column): array =>
+                    [$column->COLUMN_NAME => $column->REFERENCED_COLUMN_NAME])->all() === [
+                    'posting_batch_id' => 'posting_batch_id',
+                    'source_kind' => 'source_kind',
+                ];
+            });
+            if (!$hasClaim) {
+                $this->error('V2_PLOT_RECEIPT_INCOMPLETE_FK: missing composite posting claim constraint.');
+                $this->line('Run the reviewed local-only 000101 claim-FK repair migration, then rerun this audit.');
+                return self::FAILURE;
+            }
+        }
         if (!DB::table('projects')->where('id', $project)->exists()) {
             $this->error('Project not found: '.$project);
             return self::FAILURE;
