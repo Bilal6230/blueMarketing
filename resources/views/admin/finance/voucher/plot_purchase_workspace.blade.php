@@ -75,6 +75,7 @@
    <small class="d-block pp-muted mt-2">Posts plot inventory debit and seller credit. Posting is append-only; corrections require reversal.</small>
 
   </div>
+  </div>
   <div class="modal-footer"><button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button><button type="button" id="ppPost" class="btn btn-primary btn-sm" disabled><i class="fas fa-check mr-1"></i> Post purchase</button></div>
  </div></div>
 </div>
