@@ -99,7 +99,9 @@ function attachDataTablePager(selector){
  var api=$table.DataTable(),$wrap=$table.closest('.dataTables_wrapper');
  if(!$wrap.length)return;
  // DataTables still owns page state / server-side AJAX; only its UI is replaced.
- var $native=$wrap.find('.dataTables_paginate').first(),$footer=$native.parent();
+ var $native=$wrap.find('.dataTables_paginate').first();
+ var $footer=$native.closest('.jv-footer,.row,.d-flex');
+ if(!$footer.length)$footer=$native.parent();
  if(!$footer.length)$footer=$wrap;
  var $nav=$('<nav>',{'class':'fvc-pagination dv-pagination','aria-label':'Voucher pages'});
  var $summary=$('<div>',{'class':'fvc-pagination-info'});
