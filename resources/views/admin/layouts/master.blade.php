@@ -62,6 +62,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
     <link rel="stylesheet" href="{{ asset('css/blue-table-skeleton.css') }}?v=1">
     <link rel="stylesheet" href="{{ asset('css/blue-design-system.css') }}?v=4">
+<link rel="stylesheet" href="{{ asset('css/finance-voucher-compact.css') }}?v=1">
     <link rel="stylesheet" href="{{ asset('css/blue-action-menu.css') }}?v=2">
     @stack('style')
     <style>
@@ -696,6 +697,7 @@
     <script src="{{ asset('js/blue-voucher-pagination.js') }}?v=1"></script>
     <script src="{{ asset('js/blue-voucher-column-filter.js') }}?v=1"></script>
     @stack('script')
+<script src="{{ asset('js/finance-voucher-header-filters.js') }}?v=1"></script>
 </body>
 
 </html>
