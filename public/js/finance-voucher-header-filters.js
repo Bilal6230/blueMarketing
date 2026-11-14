@@ -158,6 +158,19 @@
                 $draft.find('#toggleFilters').off('click').on('click',function(){$modal.modal('show');}).detach().appendTo($actions);
                 $filter.find('form').on('submit',function(){$modal.modal('hide');});
             }
+            var $draftTable=$draft.find('#bmDraftTable');
+            if($draftTable.length && $.fn.DataTable && !$.fn.DataTable.isDataTable($draftTable)){
+                // Blade's "No vouchers found" colspan row is replaced by the DataTables empty message.
+                $draftTable.find('tbody tr').filter(function(){
+                    return $(this).children('td[colspan]').length>0;
+                }).remove();
+                $draftTable.DataTable({
+                    pageLength:25,lengthMenu:[[10,25,50,100],[10,25,50,100]],
+                    order:[[1,'desc']],autoWidth:false,
+                    language:{emptyTable:'No draft vouchers found'},
+                    dom:'<"d-flex justify-content-between align-items-center flex-wrap p-2"l f>rt<"d-flex justify-content-between align-items-center flex-wrap p-2"ip>'
+                });
+            }
         }
         // Extra Charge: keep existing voucherForm/confirmation lifecycle, only relocate the entry UI.
         var $extra=$('.bm-modern-extra');
