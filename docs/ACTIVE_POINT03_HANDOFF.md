@@ -761,3 +761,34 @@ Owner explicitly requires Bank Deposit/Bank Withdrawal voucher printing on **A5 
 - `BankTransferChequeSourceIntegrityTest`: **8 PASS / 11 assertions**. `V2BankTransferWriterTest`: **6 PASS, 1 FAIL / 38 assertions**. Failure is *not* a posting writer regression: the isolated SQLite fixture omitted the production `ledgers` table, which existing cheque-reuse protection correctly queries before writing. Added minimal test-only `ledgers` table with indexed nullable `customer_ledger_id` to `tests/Feature/Finance/V2BankTransferWriterTest.php`. No production app, DB migrations, source records, or writer changes.
 - Owner gate: `git pull --ff-only origin upgrade/laravel-framework` then `php artisan test --filter=V2BankTransferWriterTest` and `php artisan test --filter=BankTransferChequeSourceIntegrityTest`. Do **not** claim the failed scenario PASS before the owner reruns it. Reconciliation for project #3 is already PASS for its only BD-1 row.
 - BD/BW A5 printing is explicitly **ON HOLD** per owner; no further work on this issue unless requested. The future application-wide Design System also remains deferred.
+
+
+## 2026-11-14 — Owner Phase 06 bank reconciliation and browser PASS; Phase 07 storage unblock batch (CODE COMMITTED, LOCAL GATES OPEN)
+
+### Completed Phase 06 evidence
+- Owner's local `bluenew`, Project #3 reconciliation command:
+  - `BD-1`: deposit, Rs100.00, debit Rs100.00, credit Rs100.00, 2 posting lines — PASS.
+  - `BW-2`: withdrawal, Rs25.00, debit Rs25.00, credit Rs25.00, 2 posting lines — PASS.
+  - **2 transfers, 0 exceptions.** Owner explicitly confirmed browser testing PASS for Bank Movement.
+- Existing `V2BankTransferWriterTest` **7/7 PASS (42 assertions)** and `BankTransferChequeSourceIntegrityTest` **8/8 PASS (11 assertions)**.
+- **A5 BD/BW print two-page issue is OWNER-HOLD**; do not touch until owner resumes. Therefore not full end-to-end Phase 06 print signoff. Linked Voucher History print browser gate is separate (automated 8/8 previous PASS).
+
+### Phase 07 delivered code: isolated local plot receipt storage/readiness
+- Existing Phase 07 plot entry writer `V2PlotEntryWriter::receive()`, `VoucherController::postPlotReceipt`, workspace, individual plot receipt print and history already exist in pilot code. Owner's screenshots had shown **storage not installed**; previous standalone `database/v2_migrations/2026_11_05_000300_create_v2_plot_receipt_purchase.php` installs BOTH receipt and purchase tables together and is not appropriate for an incremental Phase 07 rollout onto an existing `bluenew`.
+- Added explicit **local pilot only** migration `database/local_pilot_migrations/2026_11_14_000100_create_v2_plot_receipt_storage.php`. Existing `V2IsolatedConnectionGuard::assertAllowed()` is mandatory before schema operations, and mandatory baseline tables are checked. The ONLY new tables are `finance_plot_receipts`, `finance_plot_receipt_allocations`, `finance_plot_receipt_postings`; schema and relationships follow prior V2 plot migration. All three already present => no-op. Partially present => reject before modification. No alteration of plots/bookings/ledger, no backfill, `down()` explicitly refuses historical-data deletion. No Phase 08 purchase tables are installed by this new migration.
+- Added read-only CLI `php artisan finance:audit-v2-plot-receipt 3`: local-only guard, verifies storage and project, counts mapped active plot bookings, counts customers having >=2 active mapped plots, counts already created receipt records. Fails if the project lacks at least two eligible plots for one customer (the existing multi-plot writer requires 2+ allocations). Does not auto-map accounts or create test postings.
+- Added `V2PlotEntryWriterTest` integration cases covering (1) local plot receipt migration installing missing storage, repeat no-op, then posting two plots balanced and (2) partial-storage safety rejection; (3) project-scoped read-only readiness command PASS/FAIL with no postings. Existing plot posting/replay/reversal tests retained.
+- **Do not run the older full `database/v2_migrations/2026_11_05_000300_create_v2_plot_receipt_purchase.php` after applying the Phase 07-only migration** (it detects existing plot receipt tables and intentionally fails). Phase 08 requires its own separate reviewed additive migration.
+- No automatic user database migration was run from GitHub; any local migration must be executed by owner on their authorized isolated `bluenew` database. No live/staging installation.
+
+### Owner local test and browser gate
+1. `cd C:\laragon\www\blueMarketing`
+2. `git pull --ff-only origin upgrade/laravel-framework`
+3. `php artisan optimize:clear`
+4. `php artisan test --filter=V2PlotEntryWriterTest` (must PASS before applying local schema)
+5. `php artisan migrate --path=database/local_pilot_migrations/2026_11_14_000100_create_v2_plot_receipt_storage.php --force` **ONLY on local isolated `bluenew`; check .env DB_DATABASE and APP_ENV first**
+6. `php artisan finance:audit-v2-plot-receipt 3`
+7. Browser `http://localhost:8000/admin/finance/voucher/plot-receipt`, select Project #3; confirm storage banner gone; pick customer with >=2 active mapped bookings; allocate test amounts across 2 plots with sum equal to receipt total; select authorized cash/account mapping; post once. Verify receipt history, detail allocations, per-plot print and no duplicates upon refresh. Posting creates isolated test data; use only on local `bluenew`.
+8. If readiness says zero customers having 2 mapped active plots, this is a **data mapping prerequisite**, not a failed migration; do not invent customer/plot data or force a financial posting.
+- Status of new tests and browser verification: **NOT RUN in owner's local environment yet.** Phase 07 overall remains partial: cash multi-plot pilot implementation is available; verified cheque/online payment-source integration and full original workflow acceptance are separate pending requirements.
+- Future application-wide Design System remains deferred in `docs/FUTURE_APPLICATION_WIDE_DESIGN_SYSTEM_WORKFLOW.md`.
