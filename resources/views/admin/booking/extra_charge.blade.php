@@ -1,7 +1,7 @@
 @extends('admin.layouts.master')
 @section('content')
 
-    <div class="content-wrapper bm-ui bm-voucher-directory bm-booking-vouchers bm-modern-extra" style="--voucher-accent:#7145bd;--voucher-tint:#f2edff">
+    <div class="content-wrapper bm-ui bm-voucher-directory bm-booking-vouchers bm-modern-extra" style="--voucher-accent:#7145bd;--voucher-tint:#f2edff" data-extra-errors="{{ $errors->any() ? '1' : '0' }}">
         <div class="bm-extra-heading">
             <div><h4>Extra Charges</h4><small>Selected project records · Charges and collection history</small></div>
             <div class="bm-extra-actions">
