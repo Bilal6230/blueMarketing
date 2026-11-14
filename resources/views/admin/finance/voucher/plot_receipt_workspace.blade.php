@@ -1,65 +1,294 @@
 @extends('admin.layouts.master')
-@section('title', 'Plot Receive Payment')
+@section('title','Plot Receive Payment')
 @section('content')
 <style>
- .pr-page{--ink:#14243b;--muted:#657891;--line:#dce6f2;color:var(--ink)}.pr-hero{padding:20px 24px;border-radius:15px;background:linear-gradient(120deg,#12243d,#1769e0);color:#fff;margin-bottom:16px}.pr-hero p{margin:5px 0 0;color:#dceaff}.pr-card{background:#fff;border:1px solid var(--line);border-radius:13px;box-shadow:0 6px 20px #152a4510;overflow:hidden}.pr-card h5{margin:0;padding:14px 17px;border-bottom:1px solid var(--line);font-size:15px;font-weight:700}.pr-body{padding:16px}.pr-scroll{max-height:390px;overflow:auto}.pr-scroll thead th{position:sticky;top:0;z-index:1;background:#edf4fc}.pr-page table{font-size:13px}.pr-page .form-control{border-radius:8px}.pr-muted{color:var(--muted)}.pr-picked{background:#eaf3ff}.pr-total{font-size:23px;font-weight:750;color:#1769e0}.pr-stat{background:#f4f8fd;border:1px solid var(--line);border-radius:10px;padding:12px}.pr-stat small{display:block;color:var(--muted)}
+/* Same voucher-directory shell/cards/table as CR/DR; original Plot blue accent. */
+body:has(#plotReceiptApp) .main-content.page-content{margin-left:250px!important;width:calc(100% - 250px)!important;max-width:calc(100% - 250px)!important;padding:66px 7px 0!important;overflow:hidden;box-sizing:border-box}
+body.sidebar-collapse:has(#plotReceiptApp) .main-content.page-content{margin-left:4.6rem!important;width:calc(100% - 4.6rem)!important;max-width:calc(100% - 4.6rem)!important}
+body:has(#plotReceiptApp) .main-footer{display:none!important}
+#plotReceiptApp{--dv-accent:#1769e0;--dv-pale:#eaf2ff;display:flex;flex-direction:column;height:calc(100dvh - 124px);min-height:350px;overflow:hidden;padding:.3rem .15rem!important}
+#plotReceiptApp .pr-heading{flex:0 0 auto;padding:.15rem .25rem .35rem}
+#plotReceiptApp .pr-heading h2{font-size:1.35rem;color:var(--dv-accent);font-weight:700;margin:0}
+#plotReceiptApp .pr-subtitle{color:#758397;font-size:.83rem}
+#plotReceiptApp .pr-filter-card,#plotReceiptApp .pr-table-card{border:0;border-top:3px solid var(--dv-accent);border-radius:11px;box-shadow:0 5px 18px rgba(16,36,64,.08);overflow:hidden;background:#fff}
+#plotReceiptApp .pr-filter-card{flex:0 0 auto;margin-bottom:.55rem!important}
+#plotReceiptApp .pr-filter-card .card-body{padding:.58rem .75rem}
+#plotReceiptApp .pr-filter-row{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr)) auto;gap:.55rem;align-items:end}
+#plotReceiptApp .pr-filter-row label{font-size:.8rem;font-weight:700;margin:0 0 .15rem}
+#plotReceiptApp .pr-filter-row .form-control{height:34px;padding:.22rem .55rem;font-size:.85rem}
+#plotReceiptApp .pr-filter-actions{display:flex;align-items:center;gap:.4rem;white-space:nowrap}
+#plotReceiptApp .pr-filter-actions .btn-primary{background:var(--dv-accent);border-color:var(--dv-accent);color:#fff}
+#plotReceiptApp .pr-table-card{flex:1 1 0;min-height:0;display:flex;flex-direction:column;margin:0!important}
+#plotReceiptApp .pr-tools{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:.4rem .55rem;background:#fff}
+#plotReceiptApp .pr-tools label{display:flex;gap:6px;align-items:center;font-size:.82rem;margin:0}
+#plotReceiptApp .pr-tools select{width:73px}
+#plotReceiptApp .pr-tools input{width:195px}
+#plotReceiptApp .pr-table-wrap{flex:1 1 0;min-height:0;overflow:auto}
+#plotReceiptApp #prTable{border-collapse:separate;border-spacing:0;min-width:1000px;margin:0;table-layout:fixed;font-size:.8rem}
+#plotReceiptApp #prTable thead th{background:var(--dv-pale);border-bottom:2px solid var(--dv-accent);position:sticky;top:0;z-index:2;font-weight:700;padding:.52rem .45rem;white-space:nowrap}
+#plotReceiptApp #prTable tbody td{padding:.5rem .45rem;height:42px;vertical-align:middle;border-bottom:1px solid #dce3eb}
+#plotReceiptApp #prTable tbody tr:nth-child(even) td{background:#f8faff}
+#plotReceiptApp #prTable td:nth-child(3){color:var(--dv-accent);font-weight:700}
+#plotReceiptApp #prTable th:last-child,#plotReceiptApp #prTable td:last-child{text-align:center;width:80px}
+#plotReceiptApp .blue-actions-toggle{color:var(--dv-accent)}
+#plotReceiptApp .pr-footer{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:43px;padding:.35rem .65rem;background:#fff}
+#plotReceiptApp .pr-page-btn{border:1px solid var(--dv-accent);background:#fff;color:var(--dv-accent);border-radius:5px;padding:4px 9px;min-width:30px}
+#plotReceiptApp .pr-page-btn.active{background:var(--dv-accent);color:#fff}
+#plotReceiptApp .pr-page-btn:disabled{opacity:.45}
+#plotReceiptApp .pr-count{font-size:.79rem;color:#657286}
+#plotReceiptCreateModal .modal-body label{font-size:.83rem;font-weight:700}
+#plotReceiptCreateModal .pr-bookings{max-height:300px;overflow:auto}
+#plotReceiptCreateModal .pr-bookings thead th{position:sticky;top:0;background:#eaf2ff;z-index:1}
+#plotReceiptCreateModal .pr-picked{background:#eaf3ff}
+#plotReceiptCreateModal .pr-total{font-size:1.3rem;font-weight:700;color:#1769e0}
+#plotReceiptCreateModal .pr-stat{background:#f4f8fd;border:1px solid #dce6f2;border-radius:8px;padding:9px}
+#plotReceiptCreateModal .pr-muted{color:#64748b}
+@media(max-width:1150px){#plotReceiptApp .pr-filter-row{grid-template-columns:repeat(2,minmax(120px,1fr))}#plotReceiptApp .pr-filter-actions{grid-column:1/-1;justify-content:flex-end}}
+@media(max-width:991.98px){body:has(#plotReceiptApp) .main-content.page-content,body.sidebar-collapse:has(#plotReceiptApp) .main-content.page-content{margin-left:0!important;width:100%!important;max-width:100%!important;padding:66px 6px 0!important}}
+@media(max-width:520px){#plotReceiptApp .pr-filter-row{grid-template-columns:1fr}#plotReceiptApp .pr-footer{flex-wrap:wrap}}
 </style>
-<div class="container-fluid bm-ui bm-plot-workspace pr-page" id="plotReceiptApp"
+<div class="container-fluid bm-ui bm-voucher-directory pr-page" id="plotReceiptApp"
+ style="--voucher-accent:#1769e0;--voucher-tint:#eaf2ff"
  data-options-url="{{ route('finance.voucher.plot-receipt.options') }}"
  data-history-url="{{ route('finance.voucher.plot-receipt.history') }}"
  data-post-url="{{ route('finance.voucher.plot-receipt.post') }}"
  data-details-base="{{ url('admin/finance/voucher/plot-receipt') }}"
  data-print-base="{{ url('admin/finance/voucher/plot-receipt') }}">
- <header class="pr-hero"><div class="d-flex justify-content-between align-items-center flex-wrap"><div><h2 class="mb-0">Plot Receive Payment</h2><p>One receipt · allocate it across multiple active plot bookings · Project #{{ (int)getSelectedTown() }}</p></div><span class="badge badge-light">Isolated finance pilot</span></div></header>
- <div id="prAlert" class="alert d-none" role="status"></div>
- <div class="row">
-  <div class="col-xl-5 mb-3"><section class="pr-card"><h5>Receipt details</h5><div class="pr-body">
-   <div class="form-row"><div class="form-group col-md-6"><label>Receipt number</label><input id="prNumber" class="form-control" maxlength="64" placeholder="e.g. PLOT-RCPT-001"></div><div class="form-group col-md-6"><label>Date</label><input id="prDate" type="date" class="form-control" value="{{ now()->toDateString() }}"></div></div>
-   <div class="form-group"><label>Customer</label><select id="prCustomer" class="form-control"><option value="">Loading active bookings…</option></select><small class="pr-muted">Only customers with active bookings and mapped project receivable accounts are available.</small></div>
-   <div class="form-group"><label>Receiving account</label><select id="prAccount" class="form-control"><option value="">Select active project account</option>@foreach($accounts as $account)<option value="{{ $account->id }}">{{ $account->headAccounting?->name }}{{ $account->subheadAccounting?->name ? ' / '.$account->subheadAccounting->name : '' }}</option>@endforeach</select></div>
-   <div class="form-group"><label>Narration</label><textarea id="prNarration" class="form-control" rows="2" maxlength="2000" placeholder="Payment details"></textarea></div>
-   <div class="pr-stat mb-3"><small>Receipt total (allocated)</small><div class="pr-total" id="prTotal">0.00</div><small><span id="prSelected">0</span> plots selected · choose at least 2</small></div>
-   <button id="prPost" class="btn btn-primary" disabled><i class="fas fa-check-circle mr-1"></i> Post receipt</button>
-   <small class="d-block pr-muted mt-2">Each allocation posts to its own customer/plot receivable. Posted receipts are immutable; corrections use reversal.</small>
-  </div></section></div>
-  <div class="col-xl-7 mb-3"><x-finance.voucher-table-card class="pr-card"><h5>Active plot bookings</h5><div class="pr-body pb-2"><input id="prSearch" class="form-control" placeholder="Search plot or customer…"></div><div class="pr-scroll"><table class="table table-hover mb-0"><thead><tr><th></th><th>Plot / Booking</th><th>Customer</th><th>Receivable account</th><th style="width:145px">Allocate amount</th></tr></thead><tbody id="prBookingRows"><tr><td colspan="5" class="text-center pr-muted p-4">Select a customer to load their bookings.</td></tr></tbody></table></div></x-finance.voucher-table-card></div>
+ <div class="pr-heading d-flex align-items-center justify-content-between">
+  <div><h2>Plot Receive Payment</h2><div class="pr-subtitle">Selected project records · Read-only history</div></div>
+  <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm">Dashboard</a>
  </div>
- <x-finance.voucher-table-card class="pr-card"><h5>Recent plot receipts</h5><div class="pr-scroll"><table class="table table-hover mb-0"><thead><tr><th>Receipt / Date</th><th>Customer</th><th class="text-right">Total</th><th>Narration</th><th>Action</th></tr></thead><tbody id="prHistoryRows"><tr><td colspan="5" class="text-center pr-muted p-4">Loading receipts…</td></tr></tbody></table></div></x-finance.voucher-table-card>
+ <x-finance.voucher-filter-card class="pr-filter-card">
+  <form id="prFilterForm" class="pr-filter-row">
+   <div><label for="prFrom">From</label><input id="prFrom" class="form-control" type="date"></div>
+   <div><label for="prTo">To</label><input id="prTo" class="form-control" type="date"></div>
+   <div><label for="prFilterCustomer">Customer</label><select id="prFilterCustomer" class="form-control"><option value="">All customers</option></select></div>
+   <div><label for="prFilterSearch">Search</label><input id="prFilterSearch" class="form-control" maxlength="120" placeholder="Number, customer or details"></div>
+   <div class="pr-filter-actions">
+    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter mr-1"></i> Apply</button>
+    <button type="button" id="prResetFilters" class="btn btn-outline-secondary btn-sm">Reset</button>
+    <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#plotReceiptCreateModal"><i class="fas fa-plus mr-1"></i> New voucher</button>
+   </div>
+  </form>
+ </x-finance.voucher-filter-card>
+ <x-finance.voucher-table-card class="pr-table-card">
+  <div class="pr-tools bm-records-toolbar">
+   <label>Show <select id="prLength" class="form-control form-control-sm"><option>10</option><option selected>25</option><option>50</option><option>100</option></select> entries</label>
+   <label>Search: <input id="prQuickSearch" class="form-control form-control-sm" placeholder="Search vouchers"></label>
+  </div>
+  <div id="prListError" class="alert alert-danger d-none m-2" role="alert"></div>
+  <div class="pr-table-wrap">
+   <table id="prTable" class="table bm-table table-bordered table-hover table-sm w-100">
+    <colgroup><col style="width:48px"><col style="width:115px"><col style="width:140px"><col style="width:230px"><col><col style="width:120px"><col style="width:100px"><col style="width:80px"></colgroup>
+    <thead><tr><th>#</th>
+     @foreach(['date'=>'Date','number'=>'Voucher #','customer'=>'Customer','detail'=>'Details','amount'=>'Amount','status'=>'Status'] as $field=>$label)
+     <th class="dv-filter-heading" data-field="{{ $field }}"><span>{{ $label }}</span><button type="button" class="dv-excel-trigger" data-column="{{ $field }}" aria-label="Sort or filter {{ $label }}" aria-expanded="false" aria-haspopup="dialog" title="Sort and filter {{ $label }}"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+     @endforeach
+     <th>Actions</th>
+    </tr></thead>
+    <tbody id="prHistoryRows"><tr><td colspan="8" class="text-center text-muted py-4">Loading vouchers…</td></tr></tbody>
+   </table>
+  </div>
+  <div class="pr-footer"><span id="prSummary" class="pr-count">Loading records…</span><div id="prPages" class="d-flex align-items-center flex-wrap" style="gap:4px"></div></div>
+ </x-finance.voucher-table-card>
 </div>
-<div class="modal fade" id="prDetailsModal" tabindex="-1" role="dialog" aria-labelledby="prDetailsTitle" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-scrollable" role="document"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="prDetailsTitle">Receipt details</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div><div class="modal-body" id="prDetailsBody"></div></div></div></div>
+<x-finance.voucher-column-filters />
+@endsection
 
+@section('modal')
+<div class="modal fade" id="plotReceiptCreateModal" tabindex="-1" role="dialog" aria-labelledby="prCreateTitle" aria-hidden="true">
+ <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document"><div class="modal-content">
+  <div class="modal-header"><h5 id="prCreateTitle" class="modal-title">New Plot Receive Payment</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
+  <div class="modal-body">
+   <div id="prAlert" class="alert d-none" role="status"></div>
+   <div class="form-row">
+    <div class="form-group col-md-6"><label for="prNumber">Voucher No.</label><input id="prNumber" class="form-control" maxlength="64" placeholder="e.g. PLOT-RCPT-001"></div>
+    <div class="form-group col-md-6"><label for="prDate">Date</label><input id="prDate" type="date" class="form-control" value="{{ now()->toDateString() }}"></div>
+    <div class="form-group col-md-6"><label for="prCustomer">Customer</label><select id="prCustomer" class="form-control"><option value="">Loading customers…</option></select></div>
+    <div class="form-group col-md-6"><label for="prAccount">Receiving Account</label><select id="prAccount" class="form-control"><option value="">Select active project account</option>@foreach($accounts as $account)<option value="{{ $account->id }}">{{ $account->headAccounting?->name }}{{ $account->subheadAccounting?->name ? ' / '.$account->subheadAccounting->name : '' }}</option>@endforeach</select></div>
+    <div class="form-group col-12"><label for="prNarration">Description / Narration</label><textarea id="prNarration" class="form-control" rows="2" maxlength="2000" placeholder="Payment details"></textarea></div>
+   </div>
+   <div class="d-flex align-items-center justify-content-between mb-2"><label for="prSearch" class="mb-0">Allocate to active plot bookings (minimum two)</label><input id="prSearch" class="form-control form-control-sm" style="max-width:240px" placeholder="Search plots"></div>
+   <div class="table-responsive pr-bookings"><table class="table table-bordered table-hover table-sm mb-0"><thead><tr><th style="width:45px">Select</th><th>Plot / Booking</th><th>Customer</th><th>Receivable account</th><th style="width:150px">Allocate amount</th></tr></thead><tbody id="prBookingRows"><tr><td colspan="5" class="text-center text-muted p-3">Select customer to load bookings.</td></tr></tbody></table></div>
+   <div class="pr-stat mt-3"><small>Receipt total (allocated): </small><span class="pr-total" id="prTotal">0.00</span><div class="small text-muted"><span id="prSelected">0</span> plots selected · choose at least 2</div></div>
+   <small class="d-block text-muted mt-2">Each plot allocation posts to its own mapped receivable account. Corrections require reversal.</small>
+  </div>
+  <div class="modal-footer"><button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button><button id="prPost" type="button" class="btn btn-primary btn-sm" disabled><i class="fas fa-check-circle mr-1"></i> Post receipt</button></div>
+ </div></div>
+</div>
+<div class="modal fade" id="prDetailsModal" tabindex="-1" role="dialog" aria-labelledby="prDetailsTitle" aria-hidden="true">
+ <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title" id="prDetailsTitle">Receipt details</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
+  <div class="modal-body" id="prDetailsBody"></div>
+ </div></div>
+</div>
 @endsection
 
 @section('js')
 <script>
-(()=>{
-  const requestJson=async(url,options={})=>{
-    const headers=options.headers||{};
-    try{
-      const data=await $.ajax({
-        url,method:options.method||'GET',
-        data:options.body||undefined,
-        contentType:headers['Content-Type']||undefined,
-        processData:false,
-        headers,
-        dataType:'json'
-      });
-      return {ok:true,status:200,json:async()=>data};
-    }catch(xhr){
-      return {ok:false,status:xhr.status||0,json:async()=>xhr.responseJSON||{message:xhr.statusText||'Request failed'}};
-    }
-  };
-  const root=$('#plotReceiptApp')[0];if(!root)return;const byId=id=>$('#'+$.escapeSelector(id))[0],esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));let bookings=[],busy=false;
- const alert=(kind,msg)=>{const box=byId('prAlert');box.className='alert alert-'+kind;box.textContent=msg;$(box).removeClass('d-none');box.scrollIntoView({behavior:'smooth',block:'nearest'})};
- const money=n=>(Number(n)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
- function selected(){return $('.pr-check:checked').toArray().map(c=>bookings.find(x=>x.booking_id===Number(c.value))).filter(Boolean)}
- function total(){const rows=selected(),sum=rows.reduce((s,x)=>s+(Number($(`[data-amount="${x.booking_id}"]`)[0]?.value)||0),0);byId('prTotal').textContent=money(sum);byId('prSelected').textContent=rows.length;const valid=rows.length>=2&&rows.every(x=>Number($(`[data-amount="${x.booking_id}"]`)[0]?.value)>0)&&!!byId('prNumber').value.trim()&&!!byId('prDate').value&&!!byId('prCustomer').value&&!!byId('prAccount').value&&!!byId('prNarration').value.trim();byId('prPost').disabled=!valid||busy;return {rows,sum,valid}}
- function renderBookings(){const customer=Number(byId('prCustomer').value),term=byId('prSearch').value.trim().toLowerCase();const rows=bookings.filter(x=>x.customer_id===customer&&(!term||`${x.plot} ${x.customer} ${x.booking_id}`.toLowerCase().includes(term)));byId('prBookingRows').innerHTML=rows.length?rows.map(x=>`<tr data-booking="${x.booking_id}"><td><input class="pr-check" type="checkbox" value="${x.booking_id}" aria-label="Select plot ${esc(x.plot)}"></td><td><b>${esc(x.plot)}</b><br><small class="pr-muted">Booking #${x.booking_id}</small></td><td>${esc(x.customer)}</td><td>${x.receivable_account_id?`COA #${x.receivable_account_id}`:'<span class="text-danger">No mapped account</span>'}</td><td><input class="form-control form-control-sm pr-amount" data-amount="${x.booking_id}" type="number" min="0.01" step="0.01" placeholder="0.00" ${x.receivable_account_id?'':'disabled'}></td></tr>`).join(''):'<tr><td colspan="5" class="text-center pr-muted p-4">No eligible active bookings found for this customer.</td></tr>';$('.pr-check').each((_,c)=>$(c).on('change',()=>{$(c).closest('tr').toggleClass('pr-picked',$(c).prop('checked'));total()}));$('.pr-amount').each((_,i)=>$(i).on('input',total));total()}
- async function loadBookings(){try{const r=await requestJson(root.dataset.optionsUrl,{headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}}),j=await r.json();if(!r.ok)throw Error(j.message||'Could not load active bookings');bookings=j.data||[];const groups=new Map();bookings.forEach(x=>{if(!groups.has(x.customer_id))groups.set(x.customer_id,x.customer)});byId('prCustomer').innerHTML='<option value="">Select customer</option>'+[...groups].sort((a,b)=>a[1].localeCompare(b[1])).map(([id,name])=>`<option value="${id}">${esc(name)}</option>`).join('');if(!bookings.length)byId('prBookingRows').innerHTML='<tr><td colspan="5" class="text-center pr-muted p-4">No eligible active bookings with mapped receivable accounts.</td></tr>'}catch(e){alert('danger',e.message)}}
- async function loadHistory(){const body=byId('prHistoryRows');body.innerHTML='<tr><td colspan="5" class="text-center p-4">Loading receipts…</td></tr>';try{const r=await requestJson(root.dataset.historyUrl,{headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}}),j=await r.json();if(!r.ok)throw Error(j.message||'Could not load receipts');body.innerHTML=(j.data||[]).length?j.data.map(x=>`<tr><td><b>${esc(x.number)}</b><br><small>${esc(x.date)}</small></td><td>${esc(x.customer)}</td><td class="text-right">${money(x.amount)}</td><td>${esc(x.narration)}</td><td><button type="button" class="btn btn-sm btn-outline-primary pr-detail" data-id="${x.id}">Details / print</button></td></tr>`).join(''):'<tr><td colspan="5" class="text-center pr-muted p-4">No plot receipts posted yet.</td></tr>';$('.pr-detail').each((_,b)=>$(b).on('click',()=>showDetails(b.dataset.id)));$.blueVoucherRegisterActions.enhance($(body).closest('table'))}catch(e){body.innerHTML=`<tr><td colspan="5" class="text-danger p-3">${esc(e.message)}</td></tr>`}}
- async function showDetails(id){const body=byId('prDetailsBody');body.innerHTML='<div class="text-center p-4">Loading…</div>';$('#prDetailsTitle').text('Plot receipt details');$('#prDetailsModal').modal('show');try{const r=await requestJson(`${root.dataset.detailsBase}/${encodeURIComponent(id)}`,{headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}}),j=await r.json();if(!r.ok)throw Error(j.message||'Could not load receipt details');const x=j.receipt,a=j.allocations||[];$('#prDetailsTitle').text(`${x.receipt_number} · ${x.receipt_date}`);body.innerHTML=`<p><b>Customer:</b> ${esc(x.customer)} &nbsp; <b>Total:</b> ${money(x.amount)}</p><p>${esc(x.narration)}</p><div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>Plot</th><th>Booking</th><th class="text-right">Allocated</th><th></th></tr></thead><tbody>${a.map(y=>`<tr><td>${esc(y.plot_name)}</td><td>#${y.booking_id}</td><td class="text-right">${money(y.amount)}</td><td><a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" href="${esc(root.dataset.printBase+'/'+id+'/plots/'+y.plot_id+'/print')}">Print receipt</a></td></tr>`).join('')}</tbody></table></div>`}catch(e){body.innerHTML=`<div class="alert alert-danger">${esc(e.message)}</div>`}}
- $('#prCustomer').on('change',renderBookings);$('#prSearch').on('input',renderBookings);['prNumber','prDate','prAccount','prNarration'].forEach(id=>$('#'+$.escapeSelector(id)).on('input',total));
- $('#prPost').on('click',async()=>{const state=total();if(!state.valid||busy)return;busy=true;total();const payload={customer_id:Number(byId('prCustomer').value),receipt_number:byId('prNumber').value.trim(),date:byId('prDate').value,amount:state.sum.toFixed(2),cash_account_id:Number(byId('prAccount').value),narration:byId('prNarration').value.trim(),request_key:(crypto.randomUUID?crypto.randomUUID().replaceAll('-',''):'plotreceipt'+Date.now()+'request').slice(0,32),allocations:state.rows.map(x=>({booking_id:x.booking_id,plot_id:x.plot_id,receivable_account_id:x.receivable_account_id,amount:Number($(`[data-amount="${x.booking_id}"]`)[0].value).toFixed(2)}))};try{const r=await requestJson(root.dataset.postUrl,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')},body:JSON.stringify(payload)}),j=await r.json();if(!r.ok)throw Error(j.message||Object.values(j.errors||{}).flat().join(' ')||'Receipt was rejected');alert('success',`Receipt ${j.data.receipt_number||payload.receipt_number} posted. Posting batch #${j.data.posting_batch_id}.`);byId('prNumber').value='';byId('prNarration').value='';renderBookings();await loadHistory()}catch(e){alert('danger',e.message)}finally{busy=false;total()}});
- loadBookings();loadHistory();total()})();
+(function($){
+ 'use strict';
+ var $root=$('#plotReceiptApp');if(!$root.length)return;
+ var bookings=[],history=[],page=1,filters={from:'',to:'',customer:'',search:''},busy=false,pendingKey=null;
+ var sort='date',direction='desc',columns=null;
+ var escapeText=function(value){return $('<div>').text(value == null?'':String(value)).html();};
+ var money=function(n){return (Number(n)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});};
+ var key=function(){return 'plotreceipt'+Date.now().toString(36)+Math.random().toString(36).slice(2,14);};
+ var notify=function(kind,message){$('#prAlert').attr('class','alert alert-'+kind).text(message);};
+ var ajax=function(url,method,data){
+  return $.ajax({url:url,type:method||'GET',dataType:'json',
+   data:method==='POST'?JSON.stringify(data):undefined,
+   contentType:method==='POST'?'application/json':undefined,
+   headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')}});
+ };
+ var getValue=function(row,field){
+  var map={date:row.date,number:row.number,customer:row.customer,detail:row.narration,
+   amount:row.amount,status:'Posted'};
+  return String(map[field]==null?'':map[field]);
+ };
+ var selected=function(){
+  return $('.pr-check:checked').map(function(){var id=Number($(this).val());return bookings.find(function(b){return b.booking_id===id;})||null;}).get().filter(Boolean);
+ };
+ var recalc=function(){
+  var rows=selected(),sum=0,valid=rows.length>=2;
+  rows.forEach(function(b){var amount=Number($('.pr-amount[data-amount="'+b.booking_id+'"]').val())||0;sum+=amount;if(amount<=0)valid=false;});
+  $('#prTotal').text(money(sum));$('#prSelected').text(rows.length);
+  valid=valid&&$.trim($('#prNumber').val())!==''&&$('#prDate').val()&&$('#prCustomer').val()&&$('#prAccount').val()&&$.trim($('#prNarration').val())!=='';
+  $('#prPost').prop('disabled',!valid||busy);
+  return {rows:rows,sum:sum,valid:!!valid};
+ };
+ var drawBookings=function(){
+  var customer=Number($('#prCustomer').val()),term=$.trim($('#prSearch').val()).toLowerCase();
+  var rows=bookings.filter(function(b){return b.customer_id===customer&&(!term||(b.plot+' '+b.customer+' '+b.booking_id).toLowerCase().includes(term));});
+  var $body=$('#prBookingRows').empty();
+  if(!rows.length){$body.append($('<tr>').append($('<td>',{colspan:5,'class':'text-center text-muted p-3',text:'No eligible active bookings found.'})));recalc();return;}
+  rows.forEach(function(b){
+   var $tr=$('<tr>'),$check=$('<input>',{'type':'checkbox','class':'pr-check',value:b.booking_id,'aria-label':'Select plot '+b.plot});
+   $tr.append($('<td>').append($check));
+   $tr.append($('<td>').append($('<strong>').text(b.plot),$('<small>',{'class':'d-block text-muted',text:'Booking #'+b.booking_id})));
+   $tr.append($('<td>').text(b.customer));
+   $tr.append($('<td>').text(b.receivable_account_id?'COA #'+b.receivable_account_id:'No mapped account'));
+   $tr.append($('<td>').append($('<input>',{'type':'number','class':'form-control form-control-sm pr-amount','data-amount':b.booking_id,min:'0.01',step:'0.01',placeholder:'0.00',disabled:!b.receivable_account_id})));
+   $body.append($tr);
+  });
+  recalc();
+ };
+ var filtered=function(){
+  var quick=$.trim($('#prQuickSearch').val()).toLowerCase();
+  var rows=history.filter(function(r){
+   var hay=[r.number,r.date,r.customer,r.narration,r.amount].join(' ').toLowerCase();
+   return (!filters.from||r.date>=filters.from)&&(!filters.to||r.date<=filters.to)
+    &&(!filters.customer||r.customer===filters.customer)
+    &&(!filters.search||hay.includes(filters.search))
+    &&(!quick||hay.includes(quick));
+  });
+  return columns?columns.filterRows(rows,getValue):rows;
+ };
+ var drawHistory=function(){
+  var rows=filtered(),length=Number($('#prLength').val())||25,totalPages=Math.max(1,Math.ceil(rows.length/length));
+  page=Math.min(page,totalPages);var start=(page-1)*length,visible=rows.slice(start,start+length);
+  if($.blueActionMenu)$.blueActionMenu.close();
+  var $body=$('#prHistoryRows').empty();
+  if(!visible.length)$body.append($('<tr>').append($('<td>',{colspan:8,'class':'text-center text-muted py-4',text:'No matching plot receipts'})));
+  visible.forEach(function(r,index){
+   var $row=$('<tr>');
+   $row.append($('<td>').text(start+index+1),$('<td>').text(r.date));
+   $row.append($('<td>').append($('<strong>').text(r.number)));
+   $row.append($('<td>').text(r.customer),$('<td>').text(r.narration));
+   $row.append($('<td>',{'class':'text-right'}).text(money(r.amount)),$('<td>').text('Posted'));
+   $row.append($('<td>',{'class':'blue-actions-cell'}).append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pr-detail','data-id':r.id,text:'Details'})));
+   $body.append($row);
+  });
+  if($.blueActionMenu)$.blueActionMenu.enhance($body.find('td.blue-actions-cell'));
+  $.blueVoucherPagination.render({container:'#prPages',summary:'#prSummary',
+   total:rows.length,length:length,start:start,buttonClass:'pr-page-btn',
+   onPage:function(next){page=Math.floor(next/length)+1;drawHistory();}});
+ };
+ var loadHistory=function(){
+  $('#prListError').addClass('d-none').empty();
+  return ajax($root.attr('data-history-url'),'GET').done(function(res){
+   history=res.data||[];var names={};
+   history.forEach(function(r){if(r.customer)names[r.customer]=true;});
+   var $filter=$('#prFilterCustomer'),chosen=$filter.val();
+   $filter.empty().append($('<option>',{value:'',text:'All customers'}));
+   Object.keys(names).sort().forEach(function(name){$filter.append($('<option>',{value:name,text:name}));});
+   $filter.val(chosen||'');page=1;drawHistory();
+  }).fail(function(xhr){$('#prHistoryRows').empty().append($('<tr>').append($('<td>',{colspan:8,'class':'text-danger p-3',text:xhr.responseJSON&&xhr.responseJSON.message||'Unable to load receipts'})));
+   $('#prListError').removeClass('d-none').text(xhr.responseJSON&&xhr.responseJSON.message||'Unable to load receipts');});
+ };
+ var loadBookings=function(){
+  return ajax($root.attr('data-options-url'),'GET').done(function(res){
+   bookings=res.data||[];var customers={};
+   bookings.forEach(function(b){customers[b.customer_id]=b.customer;});
+   var $select=$('#prCustomer').empty().append($('<option>',{value:'',text:'Select customer'}));
+   Object.keys(customers).sort(function(a,b){return customers[a].localeCompare(customers[b]);})
+     .forEach(function(id){$select.append($('<option>',{value:id,text:customers[id]}));});
+   drawBookings();
+  }).fail(function(xhr){notify('danger',xhr.responseJSON&&xhr.responseJSON.message||'Unable to load bookings');});
+ };
+ var showDetails=function(id){
+  $('#prDetailsTitle').text('Receipt details');$('#prDetailsBody').text('Loading…');
+  $('#prDetailsModal').modal('show');
+  ajax($root.attr('data-details-base')+'/'+encodeURIComponent(id),'GET').done(function(res){
+   var item=res.receipt,items=res.allocations||[],$body=$('#prDetailsBody').empty();
+   $('#prDetailsTitle').text(item.receipt_number+' · '+item.receipt_date);
+   $body.append($('<p>').append($('<b>').text('Customer: '),document.createTextNode(item.customer+'   Total: '+money(item.amount))));
+   $body.append($('<p>').text(item.narration));
+   var $table=$('<table>',{'class':'table table-sm table-bordered'}),$tbody=$('<tbody>');
+   $table.append($('<thead>').append($('<tr>').append($('<th>').text('Plot'),$('<th>').text('Booking'),$('<th>').text('Allocated'),$('<th>').text('Print'))));
+   items.forEach(function(v){
+    var url=$root.attr('data-print-base')+'/'+encodeURIComponent(id)+'/plots/'+encodeURIComponent(v.plot_id)+'/print';
+    $tbody.append($('<tr>').append($('<td>').text(v.plot_name),$('<td>').text('#'+v.booking_id),
+     $('<td>').text(money(v.amount)),$('<td>').append($('<a>',{'class':'btn btn-sm btn-outline-primary',href:url,target:'_blank',rel:'noopener',text:'Print receipt'}))));
+   });
+   $body.append($('<div>',{'class':'table-responsive'}).append($table.append($tbody)));
+  }).fail(function(xhr){$('#prDetailsBody').text(xhr.responseJSON&&xhr.responseJSON.message||'Unable to load details');});
+ };
+ columns=$.blueVoucherColumnFilters.init({
+  initialOptions:{head:[],subhead:[],account_relations:[]},
+  formSelector:'#prFilterForm',quickSearchSelector:'#prQuickSearch',
+  triggerSelector:'#plotReceiptApp .dv-excel-trigger',tableWrapSelector:'.pr-table-wrap',
+  getStart:function(){return (page-1)*(Number($('#prLength').val())||25);},
+  getLength:function(){return Number($('#prLength').val())||25;},
+  getSortColumn:function(){return sort;},getSortDirection:function(){return direction;},
+  onSort:function(field,dir){sort=field;direction=dir;},
+  onChange:function(){page=1;drawHistory();},
+  choicesFor:function(field){return Array.from(new Set(history.map(function(r){return getValue(r,field);}))).sort();}
+ });
+ $('#prFilterForm').on('submit',function(e){e.preventDefault();filters={
+  from:$('#prFrom').val(),to:$('#prTo').val(),customer:$('#prFilterCustomer').val(),
+  search:$.trim($('#prFilterSearch').val()).toLowerCase()};page=1;drawHistory();});
+ $('#prResetFilters').on('click',function(){
+  $('#prFilterForm')[0].reset();$('#prQuickSearch').val('');filters={from:'',to:'',customer:'',search:''};
+  sort='date';direction='desc';columns.reset();page=1;drawHistory();
+ });
+ $('#prLength').on('change',function(){page=1;drawHistory();});
+ $('#prQuickSearch').on('input',function(){page=1;drawHistory();});
+ $('#prHistoryRows').on('click','.pr-detail',function(){showDetails($(this).attr('data-id'));});
+ $('#prCustomer').on('change',drawBookings);
+ $('#prSearch').on('input',drawBookings);
+ $('#prBookingRows').on('change','.pr-check',function(){$(this).closest('tr').toggleClass('pr-picked',$(this).prop('checked'));recalc();})
+  .on('input','.pr-amount',recalc);
+ $('#prNumber,#prDate,#prAccount,#prNarration').on('input change',recalc);
+ $('#plotReceiptCreateModal').on('show.bs.modal',function(){$('#prAlert').addClass('d-none');recalc();});
+ $('#prPost').on('click',function(){
+  var state=recalc();if(!state.valid||busy)return;busy=true;recalc();
+  if(!pendingKey)pendingKey=key();
+  var payload={customer_id:Number($('#prCustomer').val()),receipt_number:$.trim($('#prNumber').val()),
+   date:$('#prDate').val(),amount:state.sum.toFixed(2),cash_account_id:Number($('#prAccount').val()),
+   narration:$.trim($('#prNarration').val()),request_key:pendingKey,
+   allocations:state.rows.map(function(row){return {booking_id:row.booking_id,plot_id:row.plot_id,
+    receivable_account_id:row.receivable_account_id,
+    amount:Number($('.pr-amount[data-amount="'+row.booking_id+'"]').val()).toFixed(2)};})};
+  ajax($root.attr('data-post-url'),'POST',payload).done(function(res){
+   pendingKey=null;$('#plotReceiptCreateModal').modal('hide');$('#prNumber,#prNarration').val('');
+   $('#prCustomer').val('');$('#prSearch').val('');drawBookings();loadHistory();
+  }).fail(function(xhr){
+   var error=xhr.responseJSON||{};
+   notify('danger',error.message||Object.values(error.errors||{}).flat().join(' ')||'Receipt was rejected');
+  }).always(function(){busy=false;recalc();});
+ });
+ loadBookings();loadHistory();
+})(jQuery);
 </script>
 @endsection
