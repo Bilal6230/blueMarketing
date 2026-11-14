@@ -92,15 +92,18 @@
                 // The caller clears column-filter fields and reloads itself.
                 updateButtons();
             });
+            if(config.reset){
+                $(config.reset).on('click.bmColumn'+config.key,function(){updateButtons();});
+            }
             $filterRow.addClass('bm-column-filter-storage');
             updateButtons();
         }
         setup({key:'Cheque',root:'.cheque-register-page',table:'#cheque-register-table',
-            row:'.cheque-column-filters',form:'#cheque-filter-form',
+            row:'.cheque-column-filters',form:'#cheque-filter-form',reset:'#cheque-reset',
             fields:{1:'received_date',2:'cheque_number',3:'direction',4:'bank_name',
                 5:'received_from',6:'purpose',7:'amount',8:'status'}});
         setup({key:'Online',root:'.online-register-page',table:'.online-table table',
-            row:'.online-column-filters',form:'#online-filters',
+            row:'.online-column-filters',form:'#online-filters',reset:'#online-reset',
             fields:{1:'transaction_date',2:'reference',3:'type',4:'sending_bank',
                 5:'receiving_bank',6:'sender_name',7:'purpose',8:'amount',9:'status'}});
     });
