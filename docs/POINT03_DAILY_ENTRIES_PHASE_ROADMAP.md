@@ -755,3 +755,28 @@ Owner screenshot: Bank Receipt Voucher (BOR) outer modal renders `Voucher form u
 8. If readiness says zero customers having 2 mapped active plots, this is a **data mapping prerequisite**, not a failed migration; do not invent customer/plot data or force a financial posting.
 - Status of new tests and browser verification: **NOT RUN in owner's local environment yet.** Phase 07 overall remains partial: cash multi-plot pilot implementation is available; verified cheque/online payment-source integration and full original workflow acceptance are separate pending requirements.
 - Future application-wide Design System remains deferred in `docs/FUTURE_APPLICATION_WIDE_DESIGN_SYSTEM_WORKFLOW.md`.
+
+
+## 2026-11-14 — Phase 07 MySQL partial migration recovered safely (CODE COMMITTED, LOCAL RE-RUN OPEN)
+
+Owner pulled Phase 07 and reported **10/10 V2PlotEntryWriterTest PASS (51 assertions)**. On isolated MySQL `bluenew`, the local-only migration `2026_11_14_000100_create_v2_plot_receipt_storage` failed with **MySQL error 1059** because Laravel auto-generated the composite foreign key name `finance_plot_receipt_postings_posting_batch_id_source_kind_foreign` (>64 chars). MySQL DDL is not atomic; the three tables were already created, but the final composite claim FK was not. The old readiness command showed a **false PASS** because it only checked tables. Its reported Project #3 source data is: **36 mapped active plot bookings, 8 customers with >=2 mapped active plots, 118 available posting accounts, 0 receipts**.
+
+**Actual correction (no DROP/DELETE/ALTER of unrelated finance data):**
+- Updated `database/local_pilot_migrations/2026_11_14_000100_create_v2_plot_receipt_storage.php`: use explicit FK name `v2_plot_rcpt_post_claim_fk`; when all 3 tables exist on MySQL, require that exact two-column FK to exist before returning, otherwise fail closed with `V2_PLOT_RECEIPT_INCOMPLETE_FK`.
+- New `database/local_pilot_migrations/2026_11_14_000101_repair_v2_plot_receipt_claim_fk.php`: isolated-environment and MySQL-only; validates all required tables, detects an already valid composite FK, and otherwise **adds only that missing FK**, using a short name. If posting records already exist and missing FK, fails closed for human review; does not silently rewrite claims. No destructive rollback.
+- Updated `app/Console/Commands/AuditV2PlotReceiptReadiness.php`: for MySQL, inspect `information_schema.KEY_COLUMN_USAGE` to ensure actual composite FK binds `posting_batch_id,source_kind` to `finance_posting_source_claims`. Missing constraint => nonzero failure, not false PASS.
+- Added SQLite tests to existing `V2PlotEntryWriterTest` for FK repair refusing non-MySQL and production, and for short FK identifier/readiness source contract.
+
+**Owner's exact recovery order on local `bluenew` only:**
+1. `git pull --ff-only origin upgrade/laravel-framework`
+2. `php artisan optimize:clear`
+3. `php artisan test --filter=V2PlotEntryWriterTest` (new suite: 13 tests; expect PASS, do not assume)
+4. Verify `APP_ENV=local` and `DB_DATABASE=bluenew` before migrations.
+5. `php artisan migrate --path=database/local_pilot_migrations/2026_11_14_000101_repair_v2_plot_receipt_claim_fk.php`
+6. `php artisan migrate --path=database/local_pilot_migrations/2026_11_14_000100_create_v2_plot_receipt_storage.php`
+7. `php artisan finance:audit-v2-plot-receipt 3` (now must verify FK and expected customer mapping, all PASS).
+8. `php artisan migrate:status --path=database/local_pilot_migrations/2026_11_14_000100_create_v2_plot_receipt_storage.php` and status for `000101`, both should report Ran.
+
+**Browser gate after local tests PASS:** select Project #3 and open `http://localhost:8000/admin/finance/voucher/plot-receipt`. Missing-storage warning should be gone; choose a customer with >=2 active mapped plots, receiving account, two positive allocations totaling receipt amount, then post one *controlled local-only test receipt*. Verify recent history, detail and each plot's receipt print; refresh without duplicate. Do not create production payments. Phase 07 cash multi-plot browser acceptance remains OPEN until owner confirms.
+
+The owner's Phase 06 BD-1 and BW-2 DB reconciliation and browser tests remain PASS (2 transfers, 0 exceptions). A5 duplicate/blank print page remains **ON HOLD**, unchanged. Deferred application-wide design-system milestone remains parked.
