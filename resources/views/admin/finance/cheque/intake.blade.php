@@ -88,12 +88,11 @@
     <div class="container-fluid px-2 pt-2">
         <div class="cheque-heading bm-page-heading d-flex align-items-center justify-content-between flex-wrap">
             <div><h4 class="mb-0">Cheque Management</h4><small class="text-muted">Selected project records · Receiving Register</small></div>
-            <div class="d-flex align-items-center">
-
+            <x-finance.voucher-directory-actions>
                 @can('create voucher')
                     <button type="button" class="btn btn-success btn-sm" id="cheque-add-btn"><i class="fas fa-plus mr-1"></i> Add Cheque</button>
                 @endcan
-            </div>
+            </x-finance.voucher-directory-actions>
         </div>
         <div class="cheque-filter-panel bm-card bm-filter mt-2">
             <form id="cheque-filter-form" autocomplete="off">
