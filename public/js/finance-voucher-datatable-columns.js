@@ -7,6 +7,9 @@ $.financeVoucherDataColumns={
  values:function(selector){return registry[selector]||{filters:{},sort:'',direction:''};}
 };
 $(function(){
+ // JV and SV already implement sort inside their Excel-style column popover.
+ // Remove DataTables' second, independent header-click sorter.
+ $('#jv-directory thead th').off('click.DT keypress.DT');
  function init(opts){
   var $table=$(opts.table);
   if(!$table.length||!$.fn.DataTable||!$.fn.DataTable.isDataTable($table))return;
