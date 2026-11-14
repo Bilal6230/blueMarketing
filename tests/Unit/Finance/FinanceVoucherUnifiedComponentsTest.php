@@ -69,4 +69,20 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('where(\'project_id\', $selectedProjectId)', $cv);
         $this->assertStringContainsString('DataTables still owns page state', $core);
     }
+
+    public function test_pager_detaches_native_controls_and_mounts_at_voucher_card_bottom(): void
+    {
+        $script=file_get_contents(public_path('js/finance-voucher-components.js'));
+        $css=file_get_contents(public_path('css/finance-voucher-components.css'));
+        $this->assertStringContainsString("closest('.bm-voucher-table-card,.jv-card,.custom_card')", $script);
+        $this->assertStringContainsString('$native.detach()', $script);
+        $this->assertStringContainsString('$info.detach()', $script);
+        $this->assertStringContainsString('$host.append($footer)', $script);
+        $this->assertStringContainsString('$table.data(\'fvc-pager\',true)', $script);
+        $this->assertStringContainsString('draw.dt.fvcPaginator length.dt.fvcPaginator', $script);
+        $this->assertStringContainsString('.fvc-pagination-host>.fvc-pagination-footer', $css);
+        $this->assertStringContainsString('bottom:0!important', $css);
+        $this->assertStringContainsString('padding-bottom:var(--fvd-footer-height,40px)', $css);
+    }
+
 }
