@@ -143,7 +143,7 @@
 
                                                 <!-- Table -->
                                                 <div class="table-responsive bm-draft-scroll">
-                                                    <table class="table bm-table table-bordered table-hover align-middle mb-0">
+                                                    <table id="bmDraftTable" class="table bm-table table-bordered table-hover align-middle mb-0 w-100">
                                                         <thead class="table-light border-bottom">
                                                             <tr>
                                                                 <th>#</th>
