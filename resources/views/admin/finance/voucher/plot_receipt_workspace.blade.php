@@ -2,69 +2,34 @@
 @section('title','Plot Receive Payment')
 @section('content')
 <style>
-/* Same voucher-directory shell/cards/table as CR/DR; original Plot blue accent. */
-body:has(#plotReceiptApp) .main-content.page-content{margin-left:250px!important;width:calc(100% - 250px)!important;max-width:calc(100% - 250px)!important;padding:66px 7px 0!important;overflow:hidden;box-sizing:border-box}
-body.sidebar-collapse:has(#plotReceiptApp) .main-content.page-content{margin-left:4.6rem!important;width:calc(100% - 4.6rem)!important;max-width:calc(100% - 4.6rem)!important}
-body:has(#plotReceiptApp) .main-footer{display:none!important}
-#plotReceiptApp{--dv-accent:#1769e0;--dv-pale:#eaf2ff;display:flex;flex-direction:column;height:calc(100dvh - 124px);min-height:350px;overflow:hidden;padding:.3rem .15rem!important}
-#plotReceiptApp .pr-heading{flex:0 0 auto;padding:.15rem .25rem .35rem}
-#plotReceiptApp .pr-heading h2{font-size:1.35rem;color:var(--dv-accent);font-weight:700;margin:0}
-#plotReceiptApp .pr-subtitle{color:#758397;font-size:.83rem}
-#plotReceiptApp .pr-filter-card,#plotReceiptApp .pr-table-card{border:0;border-top:3px solid var(--dv-accent);border-radius:11px;box-shadow:0 5px 18px rgba(16,36,64,.08);overflow:hidden;background:#fff}
-#plotReceiptApp .pr-filter-card{flex:0 0 auto;margin-bottom:.55rem!important}
-#plotReceiptApp .pr-filter-card .card-body{padding:.58rem .75rem}
-#plotReceiptApp .pr-filter-row{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr)) auto;gap:.55rem;align-items:end}
-#plotReceiptApp .pr-filter-row label{font-size:.8rem;font-weight:700;margin:0 0 .15rem}
-#plotReceiptApp .pr-filter-row .form-control{height:34px;padding:.22rem .55rem;font-size:.85rem}
-#plotReceiptApp .pr-filter-actions{display:flex;align-items:center;gap:.4rem;white-space:nowrap}
-#plotReceiptApp .pr-filter-actions .btn-primary{background:var(--dv-accent);border-color:var(--dv-accent);color:#fff}
-#plotReceiptApp .pr-table-card{flex:1 1 0;min-height:0;display:flex;flex-direction:column;margin:0!important}
-#plotReceiptApp .pr-tools{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:.4rem .55rem;background:#fff}
-#plotReceiptApp .pr-tools label{display:flex;gap:6px;align-items:center;font-size:.82rem;margin:0}
-#plotReceiptApp .pr-tools select{width:73px}
-#plotReceiptApp .pr-tools input{width:195px}
-#plotReceiptApp .pr-table-wrap{flex:1 1 0;min-height:0;overflow:auto}
-#plotReceiptApp #prTable{border-collapse:separate;border-spacing:0;min-width:1000px;margin:0;table-layout:fixed;font-size:.8rem}
-#plotReceiptApp #prTable thead th{background:var(--dv-pale);border-bottom:2px solid var(--dv-accent);position:sticky;top:0;z-index:2;font-weight:700;padding:.52rem .45rem;white-space:nowrap}
-#plotReceiptApp #prTable tbody td{padding:.5rem .45rem;height:42px;vertical-align:middle;border-bottom:1px solid #dce3eb}
-#plotReceiptApp #prTable tbody tr:nth-child(even) td{background:#f8faff}
-#plotReceiptApp #prTable td:nth-child(3){color:var(--dv-accent);font-weight:700}
-#plotReceiptApp #prTable th:last-child,#plotReceiptApp #prTable td:last-child{text-align:center;width:80px}
-#plotReceiptApp .blue-actions-toggle{color:var(--dv-accent)}
-#plotReceiptApp .pr-footer{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:43px;padding:.35rem .65rem;background:#fff}
-#plotReceiptApp .pr-page-btn{border:1px solid var(--dv-accent);background:#fff;color:var(--dv-accent);border-radius:5px;padding:4px 9px;min-width:30px}
-#plotReceiptApp .pr-page-btn.active{background:var(--dv-accent);color:#fff}
-#plotReceiptApp .pr-page-btn:disabled{opacity:.45}
-#plotReceiptApp .pr-count{font-size:.79rem;color:#657286}
+/* Plot-specific modal allocation UI; directory shell is globally defined. */
+#plotReceiptApp #prTable td:nth-child(3){color:var(--voucher-accent);font-weight:700}
 #plotReceiptCreateModal .modal-body label{font-size:.83rem;font-weight:700}
 #plotReceiptCreateModal .pr-bookings{max-height:300px;overflow:auto}
 #plotReceiptCreateModal .pr-bookings thead th{position:sticky;top:0;background:#eaf2ff;z-index:1}
 #plotReceiptCreateModal .pr-picked{background:#eaf3ff}
-#plotReceiptCreateModal .pr-total{font-size:1.3rem;font-weight:700;color:#1769e0}
+#plotReceiptCreateModal .pr-total{font-size:1.3rem;font-weight:700;color:var(--voucher-accent)}
 #plotReceiptCreateModal .pr-stat{background:#f4f8fd;border:1px solid #dce6f2;border-radius:8px;padding:9px}
 #plotReceiptCreateModal .pr-muted{color:#64748b}
-@media(max-width:1150px){#plotReceiptApp .pr-filter-row{grid-template-columns:repeat(2,minmax(120px,1fr))}#plotReceiptApp .pr-filter-actions{grid-column:1/-1;justify-content:flex-end}}
-@media(max-width:991.98px){body:has(#plotReceiptApp) .main-content.page-content,body.sidebar-collapse:has(#plotReceiptApp) .main-content.page-content{margin-left:0!important;width:100%!important;max-width:100%!important;padding:66px 6px 0!important}}
-@media(max-width:520px){#plotReceiptApp .pr-filter-row{grid-template-columns:1fr}#plotReceiptApp .pr-footer{flex-wrap:wrap}}
 </style>
-<div class="container-fluid bm-ui bm-voucher-directory pr-page" id="plotReceiptApp"
+<div class="container-fluid bm-ui bm-voucher-directory bm-voucher-workspace pr-page" id="plotReceiptApp"
  style="--voucher-accent:#1769e0;--voucher-tint:#eaf2ff"
  data-options-url="{{ route('finance.voucher.plot-receipt.options') }}"
  data-history-url="{{ route('finance.voucher.plot-receipt.history') }}"
  data-post-url="{{ route('finance.voucher.plot-receipt.post') }}"
  data-details-base="{{ url('admin/finance/voucher/plot-receipt') }}"
  data-print-base="{{ url('admin/finance/voucher/plot-receipt') }}">
- <div class="pr-heading d-flex align-items-center justify-content-between">
-  <div><h2>Plot Receive Payment</h2><div class="pr-subtitle">Selected project records · Read-only history</div></div>
+ <div class="bm-voucher-heading pr-heading d-flex align-items-center justify-content-between">
+  <div><h2>Plot Receive Payment</h2><div class="bm-voucher-subtitle pr-subtitle">Selected project records · Read-only history</div></div>
   <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm">Dashboard</a>
  </div>
  <x-finance.voucher-filter-card class="pr-filter-card">
-  <form id="prFilterForm" class="pr-filter-row">
+  <form id="prFilterForm" class="bm-voucher-filter-grid pr-filter-row">
    <div><label for="prFrom">From</label><input id="prFrom" class="form-control" type="date"></div>
    <div><label for="prTo">To</label><input id="prTo" class="form-control" type="date"></div>
    <div><label for="prFilterCustomer">Customer</label><select id="prFilterCustomer" class="form-control"><option value="">All customers</option></select></div>
    <div><label for="prFilterSearch">Search</label><input id="prFilterSearch" class="form-control" maxlength="120" placeholder="Number, customer or details"></div>
-   <div class="pr-filter-actions">
+   <div class="bm-voucher-filter-actions pr-filter-actions">
     <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter mr-1"></i> Apply</button>
     <button type="button" id="prResetFilters" class="btn btn-outline-secondary btn-sm">Reset</button>
     <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#plotReceiptCreateModal"><i class="fas fa-plus mr-1"></i> New voucher</button>
@@ -72,13 +37,13 @@ body:has(#plotReceiptApp) .main-footer{display:none!important}
   </form>
  </x-finance.voucher-filter-card>
  <x-finance.voucher-table-card class="pr-table-card">
-  <div class="pr-tools bm-records-toolbar">
+  <div class="bm-voucher-table-toolbar pr-tools bm-records-toolbar">
    <label>Show <select id="prLength" class="form-control form-control-sm"><option>10</option><option selected>25</option><option>50</option><option>100</option></select> entries</label>
    <label>Search: <input id="prQuickSearch" class="form-control form-control-sm" placeholder="Search vouchers"></label>
   </div>
   <div id="prListError" class="alert alert-danger d-none m-2" role="alert"></div>
-  <div class="pr-table-wrap">
-   <table id="prTable" class="table bm-table table-bordered table-hover table-sm w-100">
+  <div class="bm-voucher-table-scroll pr-table-wrap">
+   <table id="prTable" class="table bm-table bm-voucher-table table-bordered table-hover table-sm w-100">
     <colgroup><col style="width:48px"><col style="width:115px"><col style="width:140px"><col style="width:230px"><col><col style="width:120px"><col style="width:100px"><col style="width:80px"></colgroup>
     <thead><tr><th>#</th>
      @foreach(['date'=>'Date','number'=>'Voucher #','customer'=>'Customer','detail'=>'Details','amount'=>'Amount','status'=>'Status'] as $field=>$label)
@@ -89,7 +54,7 @@ body:has(#plotReceiptApp) .main-footer{display:none!important}
     <tbody id="prHistoryRows"><tr><td colspan="8" class="text-center text-muted py-4">Loading vouchers…</td></tr></tbody>
    </table>
   </div>
-  <div class="pr-footer"><span id="prSummary" class="pr-count">Loading records…</span><div id="prPages" class="d-flex align-items-center flex-wrap" style="gap:4px"></div></div>
+  <div class="bm-voucher-table-footer pr-footer"><span id="prSummary" class="bm-voucher-count pr-count">Loading records…</span><div id="prPages" class="d-flex align-items-center flex-wrap" style="gap:4px"></div></div>
  </x-finance.voucher-table-card>
 </div>
 <x-finance.voucher-column-filters />
@@ -202,7 +167,7 @@ body:has(#plotReceiptApp) .main-footer{display:none!important}
   });
   if($.blueActionMenu)$.blueActionMenu.enhance($body.find('td.blue-actions-cell'));
   $.blueVoucherPagination.render({container:'#prPages',summary:'#prSummary',
-   total:rows.length,length:length,start:start,buttonClass:'pr-page-btn',
+   total:rows.length,length:length,start:start,buttonClass:'bm-voucher-page-btn',
    onPage:function(next){page=Math.floor(next/length)+1;drawHistory();}});
  };
  var loadHistory=function(){
