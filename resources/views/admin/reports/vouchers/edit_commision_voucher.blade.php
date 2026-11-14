@@ -29,7 +29,7 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                         <h4 class="mb-0">{{ $title }}</h4>
                     </div>
                     <div class="card-body">
-                        <form id="journalForm" action="{{ route('commision.voucher.update', $voucher->id) }}" method="POST">
+                        <form id="journalForm" action="{{ route('commision.voucher.update', request()->boolean('embed') ? ['id'=>$voucher->id,'embed'=>1] : ['id'=>$voucher->id]) }}" method="POST">
                             @csrf
                             @method('PUT')
                             <!-- Voucher Details -->
@@ -183,7 +183,7 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                         </form>
                         @if(\App\Services\Finance\V2OriginalWorkflowAccess::enabled() && $voucher->status === 'draft')
                             @can('can approve')
-                                <form action="{{ route('commision.voucher.approve', $voucher->id) }}" method="POST" class="text-center mt-3">
+                                <form action="{{ route('commision.voucher.approve', request()->boolean('embed') ? ['id'=>$voucher->id,'embed'=>1] : ['id'=>$voucher->id]) }}" method="POST" class="text-center mt-3">
                                     @csrf
                                     <input type="hidden" name="request_key" value="{{ old('request_key', (string) \Illuminate\Support\Str::uuid()) }}">
                                     <button type="submit" class="btn btn-success">Approve saved voucher and post</button>
