@@ -34,10 +34,9 @@ return new class extends Migration {
         foreach ($existing as $columns) {
             $actual = $columns->mapWithKeys(static fn ($item): array =>
                 [$item->COLUMN_NAME => $item->REFERENCED_COLUMN_NAME])->all();
-            if ($actual === [
-                'posting_batch_id' => 'posting_batch_id',
-                'source_kind' => 'source_kind',
-            ]) {
+            if (count($actual) === 2
+                && ($actual['posting_batch_id'] ?? null) === 'posting_batch_id'
+                && ($actual['source_kind'] ?? null) === 'source_kind') {
                 return; // Already protected; no duplicate constraint.
             }
         }
