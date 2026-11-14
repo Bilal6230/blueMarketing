@@ -219,6 +219,57 @@
                     .on('click',function(){$modal.modal('show');})
                     .appendTo($head.find('.bm-extra-actions'));
             }
+            // Pending online/cheque collections are a separate finance workflow:
+            // retain their original POST forms and make the panel independently accessible.
+            var $pendingHeading=$extra.find('h5').filter(function(){
+                return $.trim($(this).text()).indexOf('Extra Charge Online / Cheque Pending Clearance')===0;
+            }).first();
+            if($pendingHeading.length){
+                var $pendingPanel=$pendingHeading.closest('.card-body').detach();
+                var $pendingModal=$('<div>',{'class':'modal fade bm-extra-pending-modal',id:'bmExtraPendingModal',tabindex:'-1',role:'dialog','aria-hidden':'true'})
+                    .append($('<div>',{'class':'modal-dialog modal-dialog-scrollable modal-xl',role:'document'})
+                    .append($('<div>',{'class':'modal-content'})
+                    .append($('<div>',{'class':'modal-header'})
+                    .append($('<h5>',{'class':'modal-title'}).text('Extra Charge Pending Clearance'))
+                    .append($('<button>',{type:'button','class':'close','data-dismiss':'modal'}).html('&times;')))
+                    .append($('<div>',{'class':'modal-body'}).append($pendingPanel))));
+                $('body').append($pendingModal);
+                $('<button>',{type:'button','class':'btn btn-outline-warning btn-sm'})
+                    .text('Pending Clearance')
+                    .on('click',function(){$pendingModal.modal('show');})
+                    .appendTo($head.find('.bm-extra-actions'));
+            }
+            // Expand an existing row's Cash/Online/Cheque collection forms on demand
+            // rather than occupying a very wide table column permanently.
+            var $paymentModal=$('<div>',{'class':'modal fade bm-extra-payment-modal',id:'bmExtraPaymentModal',tabindex:'-1',role:'dialog','aria-hidden':'true'})
+                .append($('<div>',{'class':'modal-dialog modal-dialog-scrollable modal-lg',role:'document'})
+                .append($('<div>',{'class':'modal-content'})
+                .append($('<div>',{'class':'modal-header'})
+                .append($('<h5>',{'class':'modal-title'}).text('Extra Charge Collection'))
+                .append($('<button>',{type:'button','class':'close','data-dismiss':'modal'}).html('&times;')))
+                .append($('<div>',{'class':'modal-body'}))));
+            $('body').append($paymentModal);
+            var $activePayment=null;
+            $extra.find('#example1 tbody tr').each(function(){
+                var $cell=$(this).children('td').eq(10);
+                if(!$cell.find('form').length)return;
+                var $holder=$('<div>',{'class':'bm-extra-payment-fields'});
+                $holder.append($cell.contents().detach()).hide().appendTo($cell).data('bm-owner',$cell);
+                $('<button>',{type:'button','class':'btn btn-outline-primary btn-sm bm-extra-payment-open'})
+                    .text('Receive / Manage')
+                    .on('click',function(){
+                        $activePayment=$holder.detach().show();
+                        $paymentModal.find('.modal-body').append($activePayment);
+                        $paymentModal.modal('show');
+                    }).prependTo($cell);
+            });
+            $paymentModal.on('hidden.bs.modal',function(){
+                if($activePayment){
+                    var $owner=$activePayment.data('bm-owner');
+                    if($owner&&$owner.length)$activePayment.detach().hide().appendTo($owner);
+                    $activePayment=null;
+                }
+            });
         }
     });
 })(jQuery);
