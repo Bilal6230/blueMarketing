@@ -11,6 +11,13 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
 .online-heading h4{font-size:var(--bm-font-lg);font-weight:700;color:#087a38}
 .online-filter,.online-table{border:1px solid var(--online-border);border-top:3px solid var(--online-green);border-radius:12px;background:white;padding:12px;margin-bottom:9px}
 .online-filter{flex-shrink:0}
+.online-live-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;flex-shrink:0;margin-bottom:9px}
+.online-live-summary .online-kpi{min-width:0;background:#fff;border:1px solid var(--online-border);border-left:3px solid var(--bm-success);border-radius:8px;padding:6px 10px}
+.online-live-summary .online-kpi-title{display:block;font-size:12px;color:#536271;font-weight:700}
+.online-live-summary .online-kpi-value{display:block;font-size:15px;color:#174b31;font-weight:700;overflow-wrap:anywhere}
+.online-live-summary .online-kpi-count{display:block;font-size:11px;color:#607080}
+@media(max-width:850px){.online-live-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.online-live-summary .online-kpi{padding:4px 7px}}
+
 .online-filter-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) minmax(0,1.2fr) repeat(2,minmax(0,.9fr)) minmax(0,1.2fr) auto;gap:10px;align-items:end}
 .online-filter-row>div{min-width:0}
 .online-filter label{display:block;font-size:var(--bm-font-sm);font-weight:700;margin-bottom:5px}
@@ -83,6 +90,12 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
      <div class="online-filter-actions"><button type="submit" class="btn btn-success btn-sm">Apply</button><button type="button" class="btn btn-outline-secondary btn-sm" id="online-reset">Reset</button></div>
     </div>
    </form>
+  </div>
+  <div class="online-live-summary" id="online-live-summary" aria-live="polite">
+   <div class="online-kpi"><span class="online-kpi-title">Filtered Transactions</span><span class="online-kpi-value" id="online-kpi-total">—</span><span class="online-kpi-count" id="online-kpi-total-count">Loading...</span></div>
+   <div class="online-kpi"><span class="online-kpi-title">Confirmed</span><span class="online-kpi-value" id="online-kpi-confirmed">—</span><span class="online-kpi-count" id="online-kpi-confirmed-count">Loading...</span></div>
+   <div class="online-kpi"><span class="online-kpi-title">Pending</span><span class="online-kpi-value" id="online-kpi-pending">—</span><span class="online-kpi-count" id="online-kpi-pending-count">Loading...</span></div>
+   <div class="online-kpi"><span class="online-kpi-title">Receipt IN / Payment OUT</span><span class="online-kpi-value" id="online-kpi-direction">—</span><span class="online-kpi-count" id="online-kpi-direction-count">Loading...</span></div>
   </div>
   <div class="online-table bm-card">
    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap">
@@ -365,15 +378,36 @@ $(function(){
   btn('Next',page+1,page>=last,false);
   $('#online-count').text(data.total?'Showing '+data.from+'–'+data.to+' of '+data.total+' records':'Showing 0 records');
  }
+ function showOnlineSummary(summary){
+  if(!summary){
+   $('#online-live-summary .online-kpi-value').text('—');
+   $('#online-live-summary .online-kpi-count').text('Unavailable');
+   return;
+  }
+  function money(value){return 'Rs '+Number(value||0).toLocaleString('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2});}
+  function count(value){return Number(value||0).toLocaleString('en-PK')+' records';}
+  $.each([
+   ['total',summary.amount,summary.count],
+   ['confirmed',summary.confirmed_amount,summary.confirmed_count],
+   ['pending',summary.pending_amount,summary.pending_count]
+  ],function(_,item){
+   $('#online-kpi-'+item[0]).text(money(item[1]));
+   $('#online-kpi-'+item[0]+'-count').text(count(item[2]));
+  });
+  $('#online-kpi-direction').text('IN '+money(summary.receipt_amount)+' / OUT '+money(summary.payment_amount));
+  $('#online-kpi-direction-count').text('IN '+count(summary.receipt_count)+' · OUT '+count(summary.payment_count));
+ }
  function load(page){
   var seq=++sequence;
   if(request)request.abort();
   $.blueTableSkeleton.show($rows,{rows:10,columns:12,tone:'credit'});
   $('#online-count').text('Loading records...');$('#online-pages').empty();
+  $('#online-live-summary .online-kpi-count').text('Updating...');
   request=$.ajax({url:@json(route('finance.online.data')),dataType:'json',data:filters(page)})
    .done(function(data){
     if(seq!==sequence)return;
     $.blueTableSkeleton.clear($rows);
+    showOnlineSummary(data.summary);
     $.blueActionMenu.close();
     $rows.empty();
     $.each(data.data||[],function(i,x){$rows.append(renderRow(x,(data.current_page-1)*data.per_page+i+1));});
@@ -385,6 +419,7 @@ $(function(){
     $.blueTableSkeleton.clear($rows);
     $rows.empty().append($('<tr>').append($('<td colspan="12" class="text-danger text-center py-4">').text('Unable to load online transactions.')));
     $('#online-count').text('Could not load records.');
+    showOnlineSummary(null);
     toast('Online register could not be loaded.',true);
    });
  }
