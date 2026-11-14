@@ -247,6 +247,21 @@ class V2PlotEntryWriterTest extends TestCase
         $this->assertDatabaseCount('finance_plot_receipt_allocations', 2);
     }
 
+    public function test_phase07_local_migration_fails_closed_outside_isolated_testing(): void
+    {
+        $pilot = require base_path('database/local_pilot_migrations/2026_11_14_000100_create_v2_plot_receipt_storage.php');
+        config()->set('app.env', 'production');
+        try {
+            $pilot->up();
+            $this->fail('Local plot receipt migration must never run in a production environment.');
+        } catch (\RuntimeException $error) {
+            $this->assertSame('V2_ISOLATED_CONNECTION_REQUIRED', $error->getMessage());
+        } finally {
+            config()->set('app.env', 'testing');
+        }
+        $this->assertTrue(Schema::hasTable('finance_plot_receipts'));
+    }
+
     public function test_phase07_local_migration_rejects_partially_existing_receipt_storage(): void
     {
         Schema::drop('finance_plot_receipt_postings');
