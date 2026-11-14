@@ -55,6 +55,7 @@ final class OnlineIntakeController extends Controller
             'to'=>['nullable','date_format:Y-m-d','after_or_equal:from'],
             'type'=>['nullable',Rule::in(['receipt','payment'])],
             'status'=>['nullable',Rule::in(['pending','confirmed'])],
+            'link_status'=>['nullable',Rule::in(['linked','unlinked'])],
             'account_mapping_id'=>['nullable','integer',Rule::exists('project_head_subheads','id')->where('project_id',$project)],
             'search'=>['nullable','string','max:150'],
             'column_transaction_date'=>['nullable','date_format:Y-m-d'],
@@ -108,6 +109,20 @@ final class OnlineIntakeController extends Controller
                   ->orWhere('receiver_name','like',$party);
             });
         }
+        // Source linkage includes historical released/voided allocations for audit traceability.
+        $linksReady=Schema::hasTable('finance_bank_voucher_allocations');
+        if(!empty($input['link_status'])){
+            if(!$linksReady && $input['link_status']==='linked'){
+                $query->whereRaw('1 = 0');
+            }elseif($linksReady){
+                $method=$input['link_status']==='linked'?'whereExists':'whereNotExists';
+                $query->{$method}(function($sub)use($project){
+                    $sub->selectRaw('1')->from('finance_bank_voucher_allocations as a')
+                        ->where('a.project_id',$project)->where('a.source_method','online')
+                        ->whereColumn('a.source_id','finance_online_intakes.id');
+                });
+            }
+        }
         // Phase 09.2: aggregate the complete filtered selected-project result before pagination.
         // This is a read-only source summary; it must never imply accounting was posted.
         $summaryRows=(clone $query)->select('status','type')
@@ -140,7 +155,17 @@ final class OnlineIntakeController extends Controller
             'id','reference','transaction_date','amount','type','sending_bank','receiving_bank',
             'sender_name','receiver_name','purpose','status','account_mapping_id','proof_path'
         ],'page',(int)($input['page']??1));
-        $rows=collect($page->items())->map(function($row){
+        $linkedCounts=collect();
+        if($linksReady && $page->count()){
+            $ids=collect($page->items())->pluck('id')->map(fn($id)=>(int)$id)->all();
+            $linkedCounts=DB::table('finance_bank_voucher_allocations')
+                ->where('project_id',$project)->where('source_method','online')
+                ->whereIn('source_id',$ids)->select('source_id')
+                ->selectRaw('COUNT(*) as allocations_count')
+                ->groupBy('source_id')->pluck('allocations_count','source_id');
+        }
+        $rows=collect($page->items())->map(function($row)use($linkedCounts){
+            $row->linked_voucher_count=(int)($linkedCounts->get($row->id)??0);
             $row->has_proof=(bool)$row->proof_path;
             $row->proof_url=$row->has_proof
                 ? route('finance.online.proof',['id'=>$row->id]) : null;
