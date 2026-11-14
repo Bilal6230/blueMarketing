@@ -342,6 +342,76 @@ class V2PlotEntryWriterTest extends TestCase
         $this->assertStringContainsString('information_schema.KEY_COLUMN_USAGE', $audit);
     }
 
+    public function test_phase08_local_migration_installs_purchase_only_and_writer_posts_balanced_inventory_cost(): void
+    {
+        Schema::drop('finance_plot_purchase_postings');
+        Schema::drop('finance_plot_purchase_items');
+        Schema::drop('finance_plot_purchases');
+
+        $receiptCount = DB::table('finance_plot_receipts')->count();
+        $pilot = require base_path('database/local_pilot_migrations/2026_11_14_000200_create_v2_plot_purchase_storage.php');
+        $pilot->up();
+        $pilot->up(); // A repeat must not wipe already installed storage.
+        $this->assertSame($receiptCount, DB::table('finance_plot_receipts')->count());
+        $this->assertTrue(Schema::hasTable('finance_plot_purchases'));
+        $this->assertTrue(Schema::hasTable('finance_plot_purchase_items'));
+        $this->assertTrue(Schema::hasTable('finance_plot_purchase_postings'));
+
+        $created = (new V2PlotEntryWriter())->purchase(1, 'PLOT-PURCHASE-PHASE08-TEST-0001', [
+            'date' => '2026-11-14', 'purchase_number' => 'PP-PHASE08-001',
+            'seller_account_id' => 102, 'narration' => 'Phase 08 isolated pilot purchase',
+            'items' => [[
+                'plot_code' => 'PHASE08-LOT-001', 'description' => 'New plot',
+                'area' => '1.5000', 'unit' => 'Kanal', 'type' => 1,
+                'road_id' => 1, 'facing_id' => 1, 'is_corner' => false,
+                'unit_rate' => '100.00', 'inventory_account_id' => 104,
+            ]],
+        ], 7);
+        $this->assertFalse($created['replayed']);
+        $this->assertDatabaseCount('finance_plot_purchases', 1);
+        $this->assertDatabaseCount('finance_plot_purchase_items', 1);
+        $this->assertSame(150.0, (float) DB::table('finance_posting_lines')
+            ->where('posting_batch_id', $created['posting_batch_id'])->sum('debit'));
+        $this->assertSame(150.0, (float) DB::table('finance_posting_lines')
+            ->where('posting_batch_id', $created['posting_batch_id'])->sum('credit'));
+    }
+
+    public function test_phase08_local_migration_rejects_partial_storage_without_dropping_purchase_data(): void
+    {
+        Schema::drop('finance_plot_purchase_postings');
+        $pilot = require base_path('database/local_pilot_migrations/2026_11_14_000200_create_v2_plot_purchase_storage.php');
+        try {
+            $pilot->up();
+            $this->fail('Partially installed purchase storage must stop rather than rebuilding.');
+        } catch (\RuntimeException $exception) {
+            $this->assertStringContainsString('V2_PLOT_PURCHASE_PARTIAL_STORAGE', $exception->getMessage());
+        }
+        $this->assertTrue(Schema::hasTable('finance_plot_purchases'));
+        $this->assertTrue(Schema::hasTable('finance_plot_purchase_items'));
+    }
+
+    public function test_phase08_local_migration_refuses_non_isolated_production_environment(): void
+    {
+        $pilot = require base_path('database/local_pilot_migrations/2026_11_14_000200_create_v2_plot_purchase_storage.php');
+        config()->set('app.env', 'production');
+        try {
+            $pilot->up();
+            $this->fail('Plot Purchase migration must not run in production.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('V2_ISOLATED_CONNECTION_REQUIRED', $exception->getMessage());
+        } finally {
+            config()->set('app.env', 'testing');
+        }
+    }
+
+    public function test_phase08_readiness_command_is_read_only_and_project_scoped(): void
+    {
+        $before = DB::table('finance_plot_purchases')->count();
+        $this->assertSame(0, \Illuminate\Support\Facades\Artisan::call('finance:audit-v2-plot-purchase', ['project' => 1]));
+        $this->assertSame(1, \Illuminate\Support\Facades\Artisan::call('finance:audit-v2-plot-purchase', ['project' => 2]));
+        $this->assertSame($before, DB::table('finance_plot_purchases')->count());
+    }
+
     public function test_phase07_local_migration_fails_closed_outside_isolated_testing(): void
     {
         $pilot = require base_path('database/local_pilot_migrations/2026_11_14_000100_create_v2_plot_receipt_storage.php');
