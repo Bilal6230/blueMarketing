@@ -23,6 +23,24 @@
             var $button=$root.find(selector).first();
             if($button.length)$button.detach().addClass('bm-header-new btn-sm').appendTo(headerActions($header));
         }
+        // Centralize the complete header action group; do not leave Dashboard
+        // floating beside the title on Bank Transfer or Plot vouchers.
+        function alignActions($header) {
+            if(!$header.length)return;
+            var $group=headerActions($header);
+            $header.children('a[href],button').filter(function(){
+                return /dashboard|approvals/i.test($.trim($(this).text()));
+            }).detach().prependTo($group);
+            $header.children('div').not($group).each(function(){
+                var $div=$(this);
+                if(!$div.find('h1,h2,h3,h4,h5').length){
+                    $div.find('a[href],button').filter(function(){
+                        return /dashboard|approvals/i.test($.trim($(this).text()));
+                    }).detach().prependTo($group);
+                    if(!$div.children().length)$div.remove();
+                }
+            });
+        }
         var $daily=$('#dv-page');
         if($daily.length){
             var $dh=$daily.find('.content-header .container-fluid').first();
@@ -83,7 +101,9 @@
             ['#plotPurchaseApp','#ppFilterForm [data-target="#plotPurchaseCreateModal"]','.bm-voucher-heading']
         ],function(_,cfg){
             var $root=$(cfg[0]);if(!$root.length)return;
-            moveCreate($root,cfg[1],$root.find(cfg[2]).first());
+            var $header=$root.find(cfg[2]).first();
+            alignActions($header);
+            moveCreate($root,cfg[1],$header);
         });
         // Voucher Links remains a real selectable control beside Search.
         $.each([
