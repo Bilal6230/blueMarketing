@@ -7,14 +7,14 @@ use Tests\TestCase;
 
 final class PlotPurchaseGlobalVoucherDirectoryTest extends TestCase
 {
-    private function view(): string
+    private function voucherSource(): string
     {
         return file_get_contents(resource_path('views/admin/finance/voucher/plot_purchase_workspace.blade.php'));
     }
 
     public function test_plot_purchase_uses_cr_dr_shared_directory_and_original_blue_palette(): void
     {
-        $view = $this->view();
+        $view = $this->voucherSource();
         foreach ([
             'bm-voucher-directory bm-voucher-workspace',
             '--voucher-accent:#1769e0',
@@ -40,7 +40,7 @@ final class PlotPurchaseGlobalVoucherDirectoryTest extends TestCase
 
     public function test_purchase_specific_form_is_in_new_voucher_modal_with_all_original_fields(): void
     {
-        $view = $this->view();
+        $view = $this->voucherSource();
         $this->assertStringContainsString("@section('modal')", $view);
         $this->assertStringContainsString('id="plotPurchaseCreateModal"', $view);
         $this->assertStringContainsString('data-target="#plotPurchaseCreateModal"', $view);
@@ -60,7 +60,7 @@ final class PlotPurchaseGlobalVoucherDirectoryTest extends TestCase
 
     public function test_purchase_history_uses_shared_global_jquery_actions_filters_and_pagination(): void
     {
-        $view = $this->view();
+        $view = $this->voucherSource();
         $this->assertStringContainsString('$.blueVoucherColumnFilters.init(', $view);
         $this->assertStringContainsString('$.blueVoucherPagination.render(', $view);
         $this->assertStringContainsString('$.blueActionMenu.enhance(', $view);
@@ -75,7 +75,7 @@ final class PlotPurchaseGlobalVoucherDirectoryTest extends TestCase
 
     public function test_purchase_posting_endpoints_remain_project_scoped_and_unchanged(): void
     {
-        $view = $this->view();
+        $view = $this->voucherSource();
         foreach ([
             "route('finance.voucher.plot-purchase.options')",
             "route('finance.voucher.plot-purchase.history')",
