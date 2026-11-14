@@ -55,6 +55,8 @@ class CommissionVoucherController extends Controller
                 'fvd_column_filters.voucher_number' => ['nullable','string','max:100'],
                 'fvd_column_filters.reference' => ['nullable','string','max:100'],
                 'fvd_column_filters.date' => ['nullable','date_format:Y-m-d'],
+                'fvd_date_from' => ['nullable','date_format:Y-m-d'],
+                'fvd_date_to' => ['nullable','date_format:Y-m-d'],
                 'fvd_column_filters.description' => ['nullable','string','max:100'],
                 'fvd_column_filters.total_debit' => ['nullable','numeric','min:0'],
                 'fvd_sort_column' => ['nullable', \Illuminate\Validation\Rule::in(['id','voucher_number','reference','date','description','total_debit'])],
@@ -70,6 +72,8 @@ class CommissionVoucherController extends Controller
                     $query->where('voucher_number','like','%'.$normalized.'%');
                 } else $query->where($field,'like','%'.$value.'%');
             }
+            if (!empty($columnInput['fvd_date_from'])) $query->whereDate('date','>=',$columnInput['fvd_date_from']);
+            if (!empty($columnInput['fvd_date_to'])) $query->whereDate('date','<=',$columnInput['fvd_date_to']);
             $total = (clone $baseQuery)->count();
             $filtered = (clone $query)->count();
             $start = max(0, (int) $request->input('start', 0));
