@@ -66,6 +66,8 @@ final class ChequeIntakeController extends Controller
             'status' => ['nullable', 'string', 'in:received,issued,pending_clearing,cleared,returned,rejected,withdrawn'],
             'direction' => ['nullable', Rule::in(['in','out'])],
             'received_date' => ['nullable','date_format:Y-m-d'],
+            'column_date_from' => ['nullable','date_format:Y-m-d'],
+            'column_date_to' => ['nullable','date_format:Y-m-d'],
             'amount' => ['nullable','numeric','min:0'],
             'sort_column' => ['nullable', Rule::in(['received_date','cheque_number','direction','bank_name','received_from','purpose','amount','status'])],
             'sort_direction' => ['nullable', Rule::in(['asc','desc'])],
@@ -76,6 +78,8 @@ final class ChequeIntakeController extends Controller
         $query = DB::table('finance_cheque_intakes as c')->where('c.project_id', $project);
         if (!empty($filters['from'])) $query->whereDate('c.received_date', '>=', $filters['from']);
         if (!empty($filters['received_date'])) $query->whereDate('c.received_date', $filters['received_date']);
+        if (!empty($filters['column_date_from'])) $query->whereDate('c.received_date', '>=', $filters['column_date_from']);
+        if (!empty($filters['column_date_to'])) $query->whereDate('c.received_date', '<=', $filters['column_date_to']);
         if (isset($filters['amount']) && $filters['amount'] !== '') $query->where('c.amount', $filters['amount']);
         if (!empty($filters['to'])) $query->whereDate('c.received_date', '<=', $filters['to']);
         if (!empty($filters['account_mapping_id'])) $query->where('c.account_mapping_id',(int)$filters['account_mapping_id']);
