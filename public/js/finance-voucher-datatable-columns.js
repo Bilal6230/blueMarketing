@@ -13,7 +13,7 @@ $(function(){
  function init(opts){
   var $table=$(opts.table);
   if(!$table.length||!$.fn.DataTable||!$.fn.DataTable.isDataTable($table))return;
-  var state={filters:{},sort:'',direction:''};
+  var state={filters:{},dates:{from:'',to:''},sort:'',direction:''};
   registry[opts.table]=state;
   var api=$table.DataTable(),fields=opts.fields,active=null;
   // Remove DataTables header-click sorting. The same sorting stays available
@@ -35,7 +35,7 @@ $(function(){
     else api.draw();
     $table.find('.fvd-column-trigger').each(function(){
       var key=$(this).data('fvd-column');
-      $(this).toggleClass('bm-column-active',!!state.filters[key]||state.sort===key);
+      $(this).toggleClass('bm-column-active',!!state.filters[key]||state.sort===key||(key==='date'&&(state.dates.from||state.dates.to)));
     });
   }
   function close(){
@@ -53,20 +53,31 @@ $(function(){
       if(active===Number(index)){close();return;}
       close();active=Number(index);
       $popover.find('.fvd-pop-title').text($.trim($th.text()));
-      var $input=$('<input>',{'class':'form-control form-control-sm fvd-search-input',
-          type:key==='date'?'date':key==='total_debit'?'number':'search',
-          placeholder:key==='date'?'':'Search '+$.trim($th.text()),value:state.filters[key]||''});
-      $popover.find('.fvd-pop-filter').empty().append($input);
-      $input.on('input change',function(){
-        var val=$(this).val()||'';if(val)state.filters[key]=val;else delete state.filters[key];
-        if(!opts.server)api.column(active).search(val);
-        refresh();
-      });
+      var $body=$popover.find('.fvd-pop-filter').empty(),$input;
+      if(key==='date'){
+        $.each([['From Date','from'],['To Date','to']],function(_,field){
+          var $label=$('<label>',{'class':'fvd-date-range-label'}).text(field[0]);
+          var $date=$('<input>',{'class':'form-control form-control-sm fvd-date-control',type:'date'})
+            .val(state.dates[field[1]]);
+          $date.on('change',function(){state.dates[field[1]]=$(this).val()||'';refresh();});
+          $body.append($label.append($date));
+        });
+      }else{
+        $input=$('<input>',{'class':'form-control form-control-sm fvd-search-input',
+          type:key==='total_debit'?'number':'search',
+          placeholder:'Search '+$.trim($th.text()),value:state.filters[key]||''});
+        $body.append($input);
+        $input.on('input change',function(){
+          var val=$(this).val()||'';if(val)state.filters[key]=val;else delete state.filters[key];
+          if(!opts.server)api.column(active).search(val);
+          refresh();
+        });
+      }
       var offset=$trigger.offset();
       $popover.css({left:Math.max(8,Math.min(offset.left-$(window).scrollLeft(),$(window).width()-290))+'px',
         top:Math.max(8,Math.min(offset.top-$(window).scrollTop()+$trigger.outerHeight()+4,$(window).height()-235))+'px'})
         .show();
-      $trigger.attr('aria-expanded','true');$input.trigger('focus');
+      $trigger.attr('aria-expanded','true');$body.find('input:first').trigger('focus');
     });
   });
   function sort(dir){
@@ -80,6 +91,7 @@ $(function(){
   $popover.find('.fvd-clear').on('click',function(){
     if(active===null)return;
     var field=fields[active];delete state.filters[field];
+    if(field==='date'){state.dates.from='';state.dates.to='';}
     if(!opts.server)api.column(active).search('');
     if(state.sort===field){state.sort='';state.direction='';if(!opts.server)api.order([[0,'asc']]);}
     refresh();close();
