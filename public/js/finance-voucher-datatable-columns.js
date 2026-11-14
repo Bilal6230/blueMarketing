@@ -13,6 +13,8 @@ $(function(){
  function init(opts){
   var $table=$(opts.table);
   if(!$table.length||!$.fn.DataTable||!$.fn.DataTable.isDataTable($table))return;
+  if($table.data('fvc-filter-bound'))return;
+  $table.data('fvc-filter-bound',true);
   var state={filters:{},dates:{from:'',to:''},sort:'',direction:''};
   registry[opts.table]=state;
   var api=$table.DataTable(),fields=opts.fields,active=null;
@@ -109,12 +111,24 @@ $(function(){
     if(!$(e.target).closest($popover).length&&!$(e.target).closest($table.find('.fvd-column-trigger')).length)close();
   }).on('keydown.fvd'+opts.id,function(e){if(e.key==='Escape')close();});
  }
- init({id:'CV',table:'#journalTable',server:true,fields:{
-  0:'id',1:'voucher_number',2:'reference',3:'date',4:'description',5:'total_debit'}});
- init({id:'Extra',table:'#example1',server:false,fields:{
-  1:'date',2:'customer',3:'plot',4:'reference',5:'description',
-  6:'amount',7:'received',8:'pending',9:'outstanding',11:'type',12:'approve'}});
- init({id:'Draft',table:'#bmDraftTable',server:false,fields:{
-  1:'date',2:'project',3:'head',4:'subhead',5:'detail',6:'amount',7:'type'}});
+ var configurations=[
+  {id:'CV',table:'#journalTable',server:true,fields:{
+   0:'id',1:'voucher_number',2:'reference',3:'date',4:'description',5:'total_debit'}},
+  {id:'Extra',table:'#example1',server:false,fields:{
+   1:'date',2:'customer',3:'plot',4:'reference',5:'description',
+   6:'amount',7:'received',8:'pending',9:'outstanding',11:'type',12:'approve'}},
+  {id:'Draft',table:'#bmDraftTable',server:false,fields:{
+   1:'date',2:'project',3:'head',4:'subhead',5:'detail',6:'amount',7:'type'}}
+ ];
+ $.each(configurations,function(_,configuration){init(configuration);});
+ $(document).on('init.dt.fvcFilter',function(_,settings){
+  if(!settings||!settings.nTable)return;
+  $.each(configurations,function(_,configuration){
+   if('#'+settings.nTable.id===configuration.table){
+    // Let DataTables finish its own initialization before adding controls.
+    setTimeout(function(){init(configuration);},0);
+   }
+  });
+ });
 });
 })(jQuery);
