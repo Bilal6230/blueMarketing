@@ -128,6 +128,7 @@ body:has(#plotReceiptApp) .main-footer{display:none!important}
 <script>
 (function($){
  'use strict';
+ $(function(){
  var $root=$('#plotReceiptApp');if(!$root.length)return;
  var bookings=[],history=[],page=1,filters={from:'',to:'',customer:'',search:''},busy=false,pendingKey=null;
  var sort='date',direction='desc',columns=null;
@@ -232,7 +233,7 @@ body:has(#plotReceiptApp) .main-footer{display:none!important}
   ajax($root.attr('data-details-base')+'/'+encodeURIComponent(id),'GET').done(function(res){
    var item=res.receipt,items=res.allocations||[],$body=$('#prDetailsBody').empty();
    $('#prDetailsTitle').text(item.receipt_number+' · '+item.receipt_date);
-   $body.append($('<p>').append($('<b>').text('Customer: '),document.createTextNode(item.customer+'   Total: '+money(item.amount))));
+   $body.append($('<p>').append($('<b>').text('Customer: '),$('<span>').text(item.customer+'   Total: '+money(item.amount))));
    $body.append($('<p>').text(item.narration));
    var $table=$('<table>',{'class':'table table-sm table-bordered'}),$tbody=$('<tbody>');
    $table.append($('<thead>').append($('<tr>').append($('<th>').text('Plot'),$('<th>').text('Booking'),$('<th>').text('Allocated'),$('<th>').text('Print'))));
@@ -289,6 +290,7 @@ body:has(#plotReceiptApp) .main-footer{display:none!important}
   }).always(function(){busy=false;recalc();});
  });
  loadBookings();loadHistory();
+ });
 })(jQuery);
 </script>
 @endsection
