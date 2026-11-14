@@ -116,13 +116,20 @@
             var $search=$toolbar.children('div').last();
             if($link.length&&$toolbar.length){
                 var $label=$('<label>',{'class':'bm-inline-link-filter mb-0'}).text('Voucher Links');
-                // Recreate as a native selector: no hidden TomSelect wrapper.
-                var $native=$link.detach();
-                $native.removeClass('js-tomselect tomselected').addClass('form-control form-control-sm');
+                // TomSelect hides its original <select>. Keep that original
+                // inside the hidden form, and build a clean native toolbar select.
+                // This avoids the label-only bug on both registers.
+                var $native=$('<select>',{'class':'form-control form-control-sm fvd-voucher-links',
+                    id:$link.attr('id')+'-toolbar','aria-label':'Filter voucher linkage'});
+                $link.children('option').each(function(){
+                    $native.append($('<option>',{value:$(this).val(),text:$(this).text()}));
+                });
+                $link.removeAttr('name');
+                $native.val($link.val()||'');
                 $label.append($native);
                 if($search.length)$search.before($label);else $toolbar.append($label);
                 var $hidden=$('<input>',{type:'hidden',name:'link_status'}).appendTo($form);
-                var sync=function(){$hidden.val($native.val()||'');};
+                var sync=function(){$hidden.val($native.val()||'');$link.val($native.val()||'');};
                 sync();
                 $native.on('change.bmLinks',function(){sync();$form.trigger('submit');});
                 $form.on('reset.bmLinks',function(){$native.val('');$hidden.val('');});
