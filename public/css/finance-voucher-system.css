@@ -373,3 +373,58 @@
  .bm-voucher-directory :is(#dv-pages,#btPagination,#prPages,#ppPages,
  #cheque-pagination,#online-pages,.dataTables_paginate){flex-wrap:wrap!important}
 }
+
+/* The same sort/search/values sequence in every non-CR popover. */
+.fvd-sort-options{display:flex!important;flex-direction:column!important;gap:0!important;
+ border-bottom:1px solid #dde5ee!important;padding:0 0 7px!important;margin:0 0 9px!important}
+.fvd-sort-options :is(.bm-col-asc,.bm-col-desc,.fvd-sort-asc,.fvd-sort-desc){
+ display:block!important;border:0!important;width:100%!important;
+ background:#fff!important;color:var(--fvd-ink)!important;
+ text-align:left!important;padding:8px 5px!important;font-size:12px!important;
+ font-weight:400!important;box-shadow:none!important;border-radius:4px!important;
+}
+.fvd-sort-options button:hover{background:#edf5fc!important}
+/* Native paginator controls should have exactly one outline (not nested).
+   Common styles apply even when DataTables uses Bootstrap 4's .page-item/.page-link. */
+.bm-voucher-directory .dataTables_paginate .pagination,
+.bm-voucher-directory .dataTables_paginate .page-item,
+.bm-voucher-directory .dataTables_paginate .paginate_button{
+ border:0!important;outline:0!important;box-shadow:none!important;
+ background:transparent!important;padding:0!important;margin:0!important;
+}
+.bm-voucher-directory .dataTables_paginate .pagination{gap:var(--fvd-pagination-gap)!important}
+.bm-voucher-directory .dataTables_paginate .page-link,
+.bm-voucher-directory .dataTables_paginate a.paginate_button{
+ border:1px solid var(--fvd-accent)!important;border-radius:5px!important;
+ background:white!important;color:var(--fvd-accent)!important;
+ min-height:30px!important;min-width:31px!important;
+ padding:3px 8px!important;line-height:22px!important;
+ font-size:var(--fvd-caption)!important;
+}
+.bm-voucher-directory .dataTables_paginate .active .page-link,
+.bm-voucher-directory .dataTables_paginate a.paginate_button.current{
+ background:var(--fvd-accent)!important;color:white!important;
+}
+.bm-voucher-directory .dataTables_paginate .disabled .page-link{opacity:.45!important}
+/* Toolbar and footer frame: never become part of scrolling table records. */
+.bm-voucher-directory :is(.dataTables_wrapper,.jv-table-wrap,.jv-card,
+ .bt-table-card,.bm-voucher-table-card,.pr-table-card,.pp-table-card,
+ .cheque-table-panel,.online-table){min-height:0}
+.bm-voucher-directory .dataTables_wrapper{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+.bm-voucher-directory .jv-record-scroll{flex:1 1 auto!important;min-height:0!important;overflow:auto!important}
+.bm-voucher-directory :is(.dataTables_wrapper>.d-flex:first-child,
+ .jv-card .dataTables_wrapper>.d-flex:first-child,
+ .cv-directory .dataTables_wrapper>.row:first-child){
+ flex:0 0 auto!important;min-height:var(--fvd-toolbar-height)!important;
+}
+.bm-voucher-directory :is(.bt-heading,.pr-heading,.pp-page .bm-voucher-heading)
+ .bm-header-actions{margin-left:auto!important;gap:6px!important}
+.bm-voucher-directory :is(.bt-heading,.pr-heading,.pp-page .bm-voucher-heading)
+ >:first-child{margin-right:auto!important}
+.bm-voucher-directory :is(.cheque-table-panel,.online-table)
+ .bm-inline-link-filter{margin:0 10px 0 auto!important}
+.bm-voucher-directory .fvd-voucher-links{
+ width:190px!important;min-width:190px!important;max-width:190px!important;
+ min-height:31px!important;display:block!important;opacity:1!important;visibility:visible!important;
+ appearance:menulist!important;
+}
