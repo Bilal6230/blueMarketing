@@ -93,28 +93,49 @@ function createFilter(options){
 }
 function attachDataTablePager(selector){
  if(!$.fn.DataTable||!$.blueVoucherPagination)return;
- var $table=$(selector);if(!$table.length||!$.fn.DataTable.isDataTable($table))return;
+ var $table=$(selector);
+ if(!$table.length||!$.fn.DataTable.isDataTable($table))return;
  if($table.data('fvc-pager'))return;
- $table.data('fvc-pager',true);
  var api=$table.DataTable(),$wrap=$table.closest('.dataTables_wrapper');
- if(!$wrap.length)return;
- // DataTables still owns page state / server-side AJAX; only its UI is replaced.
+ // Resolve the actual voucher card, NOT the DataTables footer row.
+ // An empty Extra Charge table can have a very short DataTables wrapper,
+ // while its parent card still occupies the full viewport.
+ var $host=$table.closest('.bm-voucher-table-card,.jv-card,.custom_card');
+ if(!$wrap.length||!$host.length)return;
  var $native=$wrap.find('.dataTables_paginate').first();
- var $footer=$native.closest('.jv-footer,.row,.d-flex');
- if(!$footer.length)$footer=$native.parent();
- if(!$footer.length)$footer=$wrap;
- var $nav=$('<nav>',{'class':'fvc-pagination dv-pagination','aria-label':'Voucher pages'});
+ var $info=$wrap.find('.dataTables_info').first();
+ if(!$native.length)return;
+ var $oldFooter=$native.closest('.jv-footer,.row,.d-flex');
+ // DataTables retains references to its paging controls internally.
+ // Detach (not just .hide()) the controls, preventing page-specific
+ // display:flex!important styles from making duplicate buttons visible.
+ $native.detach();
+ $info.detach();
+ if($oldFooter.length && !$oldFooter.children().find(':input,button,a').length &&
+    !$oldFooter.children().filter('table,.dataTables_length,.dataTables_filter').length){
+  $oldFooter.remove();
+ }
+ var $footer=$host.children('.fvc-pagination-footer').first();
+ if(!$footer.length){
+  $footer=$('<div>',{'class':'fvc-pagination-footer','role':'navigation','aria-label':'Voucher pagination'});
+  $host.append($footer);
+ }
+ $host.addClass('fvc-pagination-host');
+ $footer.empty();
  var $summary=$('<div>',{'class':'fvc-pagination-info'});
- $native.hide();
- $footer.addClass('fvc-pagination-footer');
- $footer.find('.dataTables_info').hide();
+ var $nav=$('<nav>',{'class':'fvc-pagination dv-pagination','aria-label':'Voucher pages'});
  $footer.append($summary,$nav);
+ $table.data('fvc-pager',true);
  function render(){
   var info=api.page.info();if(!info)return;
-  $.blueVoucherPagination.render({container:$nav,summary:$summary,total:info.recordsDisplay,
-   allTotal:info.recordsTotal,length:info.length,start:info.start,
+  $.blueVoucherPagination.render({container:$nav,summary:$summary,
+   total:info.recordsDisplay,allTotal:info.recordsTotal,
+   length:info.length,start:info.start,
    buttonClass:'dv-page-btn fvc-page-btn',
-   onPage:function(start){api.page(Math.floor(start/Math.max(info.length,1))).draw('page');}});
+   onPage:function(start){
+    var length=Math.max(1,Number(api.page.len())||info.length||25);
+    api.page(Math.floor(start/length)).draw('page');
+   }});
  }
  $table.on('draw.dt.fvcPaginator length.dt.fvcPaginator',render);
  render();
