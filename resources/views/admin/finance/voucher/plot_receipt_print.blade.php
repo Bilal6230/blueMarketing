@@ -12,7 +12,20 @@
         .label{display:block;margin-bottom:5px;color:#68778a;font-size:11px;text-transform:uppercase}.value{font-weight:600}
         .amount{margin-top:16px;padding:18px;background:#eff6ff;border-radius:8px;text-align:center;font-size:22px;font-weight:700}
         .actions{max-width:760px;margin:12px auto;text-align:right}.actions button{padding:9px 18px;border:0;border-radius:6px;background:#1677ff;color:#fff;cursor:pointer}
-        @media print{body{padding:0;background:#fff}.receipt{border:0;border-radius:0}.actions{display:none}}
+        /* Dedicated A5 receipt printing; do not force an A5-height body or use
+           fixed positioning (fixed elements repeat across physical pages). */
+        @page{size:A5 portrait;margin:8mm}
+        @media print{
+            html,body{display:block!important;width:auto!important;height:auto!important;min-height:0!important;max-height:none!important;margin:0!important;padding:0!important;overflow:visible!important;background:#fff!important}
+            .receipt{display:block!important;position:static!important;width:100%!important;max-width:none!important;height:auto!important;min-height:0!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;overflow:visible!important}
+            .actions{display:none!important}
+            h1{font-size:19px!important;margin-bottom:4px!important}
+            h2{font-size:14px!important;margin-bottom:14px!important}
+            .grid{gap:8px!important}
+            .field{padding:8px!important;break-inside:avoid;page-break-inside:avoid}
+            .amount{margin-top:12px!important;padding:12px!important;font-size:18px!important;break-inside:avoid}
+            .receipt p{margin-top:12px!important;overflow-wrap:anywhere}
+        }
     </style>
 </head>
 <body>
