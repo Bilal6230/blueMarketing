@@ -211,4 +211,46 @@ class V2PlotEntryWriterTest extends TestCase
         $this->assertDatabaseCount('finance_posting_batches', 1);
         $this->assertSame(1, (int) DB::table('plots')->where('id', $plotId)->value('is_active'));
     }
+    public function test_phase07_local_migration_recreates_only_missing_receipt_storage_and_posts_two_plots(): void
+    {
+        Schema::drop('finance_plot_receipt_postings');
+        Schema::drop('finance_plot_receipt_allocations');
+        Schema::drop('finance_plot_receipts');
+        $pilot = require base_path('database/local_pilot_migrations/2026_11_14_000100_create_v2_plot_receipt_storage.php');
+        $pilot->up();
+        $pilot->up(); // Running again must not overwrite receipt evidence.
+        $this->assertTrue(Schema::hasTable('finance_plot_receipts'));
+        $this->assertTrue(Schema::hasTable('finance_plot_receipt_allocations'));
+        $this->assertTrue(Schema::hasTable('finance_plot_receipt_postings'));
+        $writer = new V2PlotEntryWriter();
+        $payload = ['date' => '2026-11-05', 'receipt_number' => 'PR-LOCAL-GATE-1',
+            'amount' => '75.00', 'cash_account_id' => 101,
+            'narration' => 'Isolated two plot receipt', 'allocations' => [
+                ['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'40.00'],
+                ['booking_id'=>32,'plot_id'=>12,'receivable_account_id'=>103,'amount'=>'35.00'],
+            ]];
+        $posted = $writer->receive(1, 5, 'LOCAL-PLOT-RECEIPT-REQUEST-0001', $payload, 7);
+        $this->assertFalse($posted['replayed']);
+        $this->assertSame(75.0, (float) DB::table('finance_posting_lines')
+            ->where('posting_batch_id', $posted['posting_batch_id'])->sum('debit'));
+        $this->assertSame(75.0, (float) DB::table('finance_posting_lines')
+            ->where('posting_batch_id', $posted['posting_batch_id'])->sum('credit'));
+        $this->assertDatabaseCount('finance_plot_receipt_allocations', 2);
+    }
+
+    public function test_phase07_local_migration_rejects_partially_existing_receipt_storage(): void
+    {
+        Schema::drop('finance_plot_receipt_postings');
+        $pilot = require base_path('database/local_pilot_migrations/2026_11_14_000100_create_v2_plot_receipt_storage.php');
+        try {
+            $pilot->up();
+            $this->fail('Partially existing historical finance storage must never be rebuilt.');
+        } catch (\\RuntimeException $error) {
+            $this->assertStringContainsString('V2_PLOT_RECEIPT_PARTIAL_STORAGE', $error->getMessage());
+        }
+        $this->assertTrue(Schema::hasTable('finance_plot_receipts'));
+        $this->assertTrue(Schema::hasTable('finance_plot_receipt_allocations'));
+        $this->assertFalse(Schema::hasTable('finance_plot_receipt_postings'));
+    }
+
 }
