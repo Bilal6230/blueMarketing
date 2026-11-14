@@ -24,7 +24,8 @@
             <div class="container-fluid mt-1">
                 <div class="card shadow-sm border-0 cv-shell">
                     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                        <h4 class="mb-0">{{ $title }}</h4>
+                        <div><h4 class="mb-0">{{ $title }}</h4><small>Selected project records · Commission voucher register</small></div>
+                        <x-finance.voucher-directory-actions :approvals="true" />
                     </div>
                     <div class="card-body">
 
