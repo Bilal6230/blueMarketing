@@ -1,0 +1,146 @@
+/* Finance Voucher Design System v2 — central tokens, reusable anatomy, themed accents.
+   Loaded AFTER page-local styles to eliminate competing design implementations. */
+:root{
+ --fvd-font:13px;--fvd-caption:12px;--fvd-title:19px;--fvd-row-height:42px;
+ --fvd-header-height:59px;--fvd-toolbar-height:41px;--fvd-footer-height:40px;
+ --fvd-radius:9px;--fvd-gap:8px;--fvd-pad:10px;--fvd-action-size:32px;
+ --fvd-border:#d8e5ed;--fvd-ink:#25374b;--fvd-shadow:0 4px 14px rgba(21,43,73,.07);
+}
+:is(.daily-voucher-page,.jv-page,.cv-directory,.cheque-register-page,.online-register-page,
+    .bm-voucher-workspace,.bt-page,.bm-modern-draft,.bm-modern-extra){
+ --fvd-accent:var(--voucher-accent,#168348);
+ --fvd-pale:var(--voucher-tint,#eaf7ee);
+ font-size:var(--fvd-font)!important;
+}
+.daily-voucher-page{--fvd-accent:var(--dv-accent);--fvd-pale:var(--dv-pale)}
+.bt-page{--fvd-accent:var(--dv-accent);--fvd-pale:var(--dv-pale)}
+.cheque-register-page,.online-register-page{--fvd-accent:#168348;--fvd-pale:#eaf7ee}
+.jv-page,.cv-directory{--fvd-accent:#087cfa;--fvd-pale:#e8f0ff}
+.bm-modern-extra{--fvd-accent:#7145bd;--fvd-pale:#f2edff}
+.bm-modern-draft{--fvd-accent:#1769e0;--fvd-pale:#eaf2ff}
+/* Global directory heading: same hierarchy, spacing, action alignment everywhere. */
+:is(.daily-voucher-page .content-header .container-fluid,.jv-page .jv-head,
+ .cv-directory .cv-shell>.card-header,.cheque-register-page .cheque-heading,
+ .online-register-page .online-heading,.bm-voucher-workspace .bm-voucher-heading,
+ .bt-page .bt-heading,.bm-modern-draft .bm-draft-heading,.bm-modern-extra .bm-extra-heading){
+ display:flex!important;align-items:center!important;justify-content:space-between!important;
+ flex-wrap:nowrap!important;gap:10px!important;min-height:var(--fvd-header-height);
+ padding:9px 12px!important;margin:0 0 var(--fvd-gap)!important;
+ border:0!important;border-bottom:2px solid var(--fvd-accent)!important;
+ border-radius:var(--fvd-radius)!important;background:var(--fvd-pale)!important;
+ box-shadow:none!important;color:var(--fvd-ink)!important;
+}
+:is(.daily-voucher-page .content-header h1,.jv-page .jv-head h4,
+ .cv-directory .cv-shell>.card-header h4,.cheque-register-page .cheque-heading h4,
+ .online-register-page .online-heading h4,.bm-voucher-workspace .bm-voucher-heading h2,
+ .bt-page .bt-heading h2,.bm-modern-draft .bm-draft-heading h4,.bm-modern-extra .bm-extra-heading h4){
+ color:var(--fvd-accent)!important;font-size:var(--fvd-title)!important;
+ line-height:1.25!important;font-weight:700!important;margin:0!important;
+}
+.cv-directory .cv-shell>.card-header small{color:#6b7f94!important;font-size:var(--fvd-caption)}
+/* Header actions — shared Blade component. No extra top Filters button. */
+.bm-header-actions{display:flex!important;align-items:center;justify-content:flex-end!important;
+ margin-left:auto!important;gap:6px!important;flex-wrap:wrap!important}
+.bm-header-actions .btn,
+:is(.daily-voucher-page,.bt-page,.bm-voucher-workspace,.bm-modern-extra,.bm-modern-draft) 
+ :is(.bm-header-new,.bm-dashboard-link){font-size:12px!important;font-weight:600!important;
+ border-radius:5px!important;padding:5px 9px!important;min-height:30px!important;line-height:18px!important}
+:is(.daily-voucher-page,.jv-page,.cv-directory,.cheque-register-page,.online-register-page,
+ .bm-voucher-workspace,.bt-page,.bm-modern-draft,.bm-modern-extra)
+ .bm-heading-filter{display:none!important}
+/* Hide (do not relocate) the old top filter panels. Legacy inputs remain
+   mounted for existing AJAX requests, reset and project-scoped validation. */
+.daily-voucher-page .daily-voucher-card.mb-3,
+.jv-page .jv-filters,.cv-directory #filtersSection,
+.cheque-register-page .cheque-filter-panel,.online-register-page .online-filter,
+.bt-page .bt-filter-card,.bm-voucher-workspace .pr-filter-card,
+.bm-voucher-workspace .pp-filter-card{display:none!important}
+/* Unified table panels, toolbars, typography, buttons, paging. */
+:is(.daily-voucher-page,.jv-page,.cv-directory,.cheque-register-page,.online-register-page,
+ .bm-voucher-workspace,.bt-page,.bm-modern-extra,.bm-modern-draft)
+ :is(.bm-voucher-table-card,.jv-card,.cheque-table-panel,.online-table,.daily-voucher-table-card,.bt-table-card){
+ border:1px solid var(--fvd-border)!important;border-top:3px solid var(--fvd-accent)!important;
+ background:#fff!important;border-radius:var(--fvd-radius)!important;
+ box-shadow:var(--fvd-shadow)!important;min-height:0;overflow:hidden;
+}
+:is(.daily-voucher-page,.jv-page,.cv-directory,.cheque-register-page,.online-register-page,
+ .bm-voucher-workspace,.bt-page,.bm-modern-extra,.bm-modern-draft) table thead tr:first-child th{
+ background:var(--fvd-pale)!important;color:var(--fvd-ink)!important;
+ font-size:var(--fvd-caption)!important;font-weight:700!important;
+ border-bottom:2px solid var(--fvd-accent)!important;padding:8px 7px!important;
+ height:34px!important;white-space:nowrap;vertical-align:middle!important;
+ background-image:none!important;
+}
+:is(.daily-voucher-page,.jv-page,.cv-directory,.cheque-register-page,.online-register-page,
+ .bm-voucher-workspace,.bt-page,.bm-modern-extra,.bm-modern-draft) table tbody td{
+ font-size:var(--fvd-caption)!important;height:var(--fvd-row-height)!important;
+ padding:6px 7px!important;vertical-align:middle!important;
+}
+:is(.daily-voucher-page,.jv-page,.cv-directory,.cheque-register-page,.online-register-page,
+ .bm-voucher-workspace,.bt-page,.bm-modern-extra,.bm-modern-draft) table tbody tr:nth-child(even){
+ background:color-mix(in srgb,var(--fvd-pale) 35%,white)!important;
+}
+/* DataTables stock multi-sort arrows (including CSS pseudo glyphs) are redundant. */
+:is(.jv-page,.cv-directory,.bm-modern-extra,.bm-modern-draft) table.dataTable thead
+ :is(.sorting,.sorting_asc,.sorting_desc,.sorting_disabled)::before,
+:is(.jv-page,.cv-directory,.bm-modern-extra,.bm-modern-draft) table.dataTable thead
+ :is(.sorting,.sorting_asc,.sorting_desc,.sorting_disabled)::after{
+ display:none!important;content:none!important;background:none!important;
+}
+:is(.jv-page,.cv-directory,.bm-modern-extra,.bm-modern-draft) table.dataTable thead
+ :is(.sorting,.sorting_asc,.sorting_desc){background-image:none!important}
+.jv-excel-trigger,.dv-excel-trigger,.bm-column-heading-trigger,.fvd-column-trigger{
+ border:1px solid transparent!important;border-radius:5px!important;background:transparent!important;
+ min-width:23px!important;min-height:23px!important;padding:2px 5px!important;float:right!important;
+ color:var(--fvd-accent)!important;margin:0!important;
+}
+:is(.jv-excel-trigger,.dv-excel-trigger,.bm-column-heading-trigger,.fvd-column-trigger):hover,
+:is(.jv-excel-trigger,.dv-excel-trigger,.bm-column-heading-trigger,.fvd-column-trigger)[aria-expanded=true]{
+ background:#fff!important;border-color:var(--fvd-accent)!important;
+}
+/* Shared filter popovers: JV, CR/DR, Online/Cheque, CV, Extra. */
+:is(.bm-heading-column-popover,.jv-excel-pop,.dv-excel-popover,.fvd-data-popover){
+ border:1px solid var(--fvd-border)!important;border-top:3px solid var(--fvd-accent,#168348)!important;
+ border-radius:var(--fvd-radius)!important;background:#fff!important;
+ box-shadow:0 12px 28px rgba(15,39,64,.16)!important;font-size:var(--fvd-caption)!important;
+}
+:is(.bm-heading-column-popover,.jv-excel-pop,.dv-excel-popover,.fvd-data-popover) .btn{
+ font-size:var(--fvd-caption)!important;border-radius:5px!important;
+}
+:is(.daily-voucher-page,.jv-page,.cv-directory,.cheque-register-page,.online-register-page,
+ .bt-page,.bm-modern-extra,.bm-modern-draft)
+ :is(.bm-records-toolbar,.dv-table-tools,.bt-tools,.dataTables_wrapper>.d-flex,
+ .cheque-table-panel>.d-flex:first-child,.online-table>.d-flex:first-child){
+ min-height:var(--fvd-toolbar-height)!important;display:flex!important;
+ align-items:center!important;gap:10px!important;padding:5px 7px!important;
+ background:#fff!important;
+}
+:is(.daily-voucher-page,.jv-page,.cv-directory,.cheque-register-page,.online-register-page,
+ .bt-page,.bm-modern-extra,.bm-modern-draft) 
+ :is(.btn-group .btn,.dv-pagination-footer .btn,.jv-footer .paginate_button,
+ .dataTables_paginate .paginate_button,.bt-page-btn,.cheque-table-panel #cheque-pagination .btn,
+ .online-table #online-pages .btn){
+ border:1px solid var(--fvd-accent)!important;background:#fff!important;
+ color:var(--fvd-accent)!important;border-radius:5px!important;
+ min-width:29px!important;min-height:29px!important;padding:4px 8px!important;
+ font-size:var(--fvd-caption)!important;box-shadow:none!important;
+}
+:is(.daily-voucher-page,.jv-page,.cv-directory,.cheque-register-page,.online-register-page,
+ .bt-page,.bm-modern-extra,.bm-modern-draft) 
+ :is(.btn-group .btn.active,.dv-pagination-footer .btn.active,
+ .dataTables_paginate .paginate_button.current,.bt-page-btn.active,
+ #cheque-pagination .active,#online-pages .active){
+ background:var(--fvd-accent)!important;color:#fff!important;
+}
+.bm-inline-link-filter{display:flex!important;align-items:center!important;gap:7px!important;
+ width:auto!important;white-space:nowrap!important;margin:0 12px 0 auto!important;
+ color:var(--fvd-ink)!important;font-size:var(--fvd-caption)!important}
+.bm-inline-link-filter select{display:block!important;opacity:1!important;visibility:visible!important;
+ position:static!important;min-width:185px!important;width:185px!important;
+ height:30px!important;border:1px solid #ccdbe7!important;background:#fff!important}
+@media(max-width:800px){
+ :is(.daily-voucher-page .content-header .container-fluid,.jv-page .jv-head,
+ .cv-directory .cv-shell>.card-header,.cheque-register-page .cheque-heading,
+ .online-register-page .online-heading,.bm-modern-extra .bm-extra-heading){flex-wrap:wrap!important}
+ .bm-inline-link-filter{margin:4px!important}
+}
