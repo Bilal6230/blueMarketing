@@ -8,6 +8,9 @@
         function addFilterModal($root, $panel, $heading, $headerActions, label) {
             if (!$root.length || !$panel.length || !$heading.length || !$headerActions.length) return;
             var $form = $panel.find('form').first();
+            // CV has direct filter inputs inside the card-body rather than a form.
+            // Keep their original ids and attached handlers intact.
+            if (!$form.length) $form = $panel.children('.card-body').first();
             if (!$form.length) return;
             var $create = $form.find('button,a').filter(function () {
                 return /new voucher/i.test($.trim($(this).text())) || $(this).is('#dv-create-voucher,#openTransferCreate');
