@@ -34,6 +34,12 @@ class V2BankTransferWriterTest extends TestCase
             $t->decimal('amount_in', 18, 2)->default(0); $t->decimal('amount_out', 18, 2)->default(0);
             $t->boolean('is_active')->default(true); $t->unsignedTinyInteger('passing_status')->default(0);
         });
+        // The cheque integrity guard queries legacy ledger custody before posting.
+        // Model only the columns needed by this isolated in-memory integration test.
+        Schema::create('ledgers', function (Blueprint $t): void {
+            $t->id();
+            $t->unsignedBigInteger('customer_ledger_id')->nullable()->index();
+        });
         Schema::create('finance_original_customer_requests', function (Blueprint $t): void {
             $t->id(); $t->unsignedBigInteger('project_id'); $t->unsignedBigInteger('customer_ledger_id'); $t->string('source_sha256');
         });
