@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Schema;
 final class AuditV2PlotReceiptReadiness extends Command
 {
     protected $signature = 'finance:audit-v2-plot-receipt {project : Local test project ID}';
-    protected $description = 'Read-only Phase 07 plot receipt storage, mapping and multi-booking readiness';
+    protected $description = 'Read-only Phase 07 plot receipt storage, mapping and single-/multi-booking readiness';
 
     public function handle(): int
     {
@@ -99,6 +99,7 @@ final class AuditV2PlotReceiptReadiness extends Command
             ->select('b.customer_id', 'b.plot_id')->distinct()->get();
 
         $byCustomer = $active->groupBy('customer_id');
+        $eligible = $byCustomer->count();
         $multi = $byCustomer->filter(static fn ($rows): bool => $rows->count() >= 2)->count();
         $receivingAccounts = \App\Models\ProjectHeadSubhead::availableForPosting()
             ->where('project_id', $project)->count();
@@ -107,12 +108,13 @@ final class AuditV2PlotReceiptReadiness extends Command
         $this->table(['Check', 'Result'], [
             ['Required storage', 'PASS'],
             ['Active mapped plot bookings', $active->count()],
-            ['Customers with >=2 mapped active plots', $multi],
+            ['Customers with >=1 mapped active plot', $eligible],
+            ['Of these: customers with >=2 mapped plots', $multi],
             ['Available project posting accounts', $receivingAccounts],
             ['Existing isolated plot receipts', $receipts],
         ]);
-        if ($multi === 0 || $receivingAccounts === 0) {
-            $this->warn('Storage PASS, but posting needs one eligible customer with 2 mapped active plots and an available project account.');
+        if ($eligible === 0 || $receivingAccounts === 0) {
+            $this->warn('Storage PASS, but posting needs one eligible customer with >=1 mapped active plot and an available project account.');
             return self::FAILURE;
         }
         $this->info('Phase 07 local readiness PASS. No records were changed.');
