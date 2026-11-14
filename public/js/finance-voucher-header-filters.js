@@ -5,64 +5,44 @@
 (function ($) {
     'use strict';
     $(function () {
-        function addFilterModal($root, $panel, $heading, $headerActions, label) {
-            if (!$root.length || !$panel.length || !$heading.length || !$headerActions.length) return;
-            var $form = $panel.find('form').first();
-            // CV has direct filter inputs inside the card-body rather than a form.
-            // Keep their original ids and attached handlers intact.
-            if (!$form.length) $form = $panel.children('.card-body').first();
-            if (!$form.length) return;
-            var $create = $form.find('button,a').filter(function () {
-                return /new voucher/i.test($.trim($(this).text())) || $(this).is('#dv-create-voucher,#openTransferCreate');
-            }).first();
-            if ($create.length) {
-                $create.detach().addClass('bm-header-new btn-sm').appendTo($headerActions);
-            }
-            var $modal = $('<div>', {'class':'modal fade bm-quick-filter-modal',tabindex:'-1',role:'dialog','aria-hidden':'true'})
-                .append($('<div>',{'class':'modal-dialog modal-dialog-centered modal-lg',role:'document'})
-                    .append($('<div>',{'class':'modal-content'})
-                        .append($('<div>',{'class':'modal-header'})
-                            .append($('<h5>',{'class':'modal-title'}).text(label+' Filters'))
-                            .append($('<button>',{'class':'close',type:'button','data-dismiss':'modal','aria-label':'Close'}).html('&times;')))
-                        .append($('<div>',{'class':'modal-body'}))));
-            // Inherit each voucher's green/red/blue accent rather than flattening colors.
-            var accent=$root.css('--dv-accent') || $root.css('--voucher-accent') ||
-                $root.css('--cheque-green') || $root.css('--online-green') || '#1769e0';
-            $modal.css('--bm-modal-accent',accent);
-            $form.detach().addClass('bm-quick-filter-form').appendTo($modal.find('.modal-body'));
-            $panel.remove();
-            $('body').append($modal);
-            var $button = $('<button>',{'class':'btn btn-outline-primary btn-sm bm-heading-filter',type:'button'})
-                .append($('<i>',{'class':'fas fa-filter mr-1'})).append($('<span>').text(' Filters'));
-            $button.on('click', function () {$modal.modal('show');});
-            $headerActions.prepend($button);
-            $form.on('submit.bmFilter', function () {$modal.modal('hide');});
-            $form.find('button[type=button]').filter(function(){return /reset/i.test($.trim($(this).text()));})
-                .on('click.bmFilter',function () {$modal.modal('hide');});
-        }
+        // Finance directory chrome is declarative. Legacy top filters stay in their
+        // original DOM for backwards-compatible data loading, but are never exposed
+        // as an extra toolbar/modal. Column headings own filtering and sorting.
         function headerActions($header) {
-            var $right=$header.children().last();
-            if ($right.length===1 && $right.is('div') && !$right.is('h1,h2,h4')) return $right;
-            return $('<div>',{'class':'bm-header-actions d-flex align-items-center flex-wrap'}).appendTo($header);
+            var $right=$header.children('.bm-header-actions').first();
+            if(!$right.length){
+                $right=$('<div>',{'class':'bm-header-actions d-flex align-items-center flex-wrap'});
+                $header.append($right);
+            }
+            return $right;
         }
-        // Existing finance directories keep their original form submissions, authorization and table actions.
+        function moveCreate($root, selector, $header) {
+            var $button=$root.find(selector).first();
+            if($button.length)$button.detach().addClass('bm-header-new btn-sm').appendTo(headerActions($header));
+        }
+        function dashboard($header) {
+            var $actions=headerActions($header);
+            if(!$actions.find('.bm-dashboard-link').length){
+                $('<a>',{'class':'btn btn-outline-secondary btn-sm bm-dashboard-link',
+                    href:'/admin/dashboard'}).text('Dashboard').appendTo($actions);
+            }
+        }
         var $daily=$('#dv-page');
-        if ($daily.length) {
+        if($daily.length){
             var $dh=$daily.find('.content-header .container-fluid').first();
-            addFilterModal($daily,$daily.find('.daily-voucher-card.mb-3').first(),$dh,
-                headerActions($dh),'Voucher');
+            moveCreate($daily,'#dv-create-voucher',$dh);
         }
         var $jv=$('.jv-page');
-        if ($jv.length) {
+        if($jv.length){
             var $jh=$jv.find('.jv-head').first();
-            var $ja=headerActions($jh);
-            $jh.find('#jv-add').detach().appendTo($ja);
-            addFilterModal($jv,$jv.find('.jv-filters').first(),$jh,$ja,'Journal');
+            moveCreate($jv,'#jv-add',$jh);
+            dashboard($jh);
         }
         var $cv=$('.cv-directory');
-        if ($cv.length) {
+        if($cv.length){
             var $ch=$cv.find('.cv-shell>.card-header').first();
-            addFilterModal($cv,$cv.find('#filtersSection').first(),$ch,headerActions($ch),'Commission');
+            moveCreate($cv,'#filtersSection a[href*="create"]',$ch);
+            dashboard($ch);
         }
         // Commission uses its original create route/form in an iframe: do not duplicate its posting logic.
         if ($cv.length) {
@@ -104,64 +84,42 @@
             }
         }
         $.each([
-            ['#bankTransferApp','.bt-filter-card','.bt-heading','Bank Transfer'],
-            ['#plotReceiptApp','.pr-filter-card','.pr-heading','Plot Receipt'],
-            ['#plotPurchaseApp','.pp-filter-card','.bm-voucher-heading','Plot Purchase']
-        ],function (_,cfg) {
-            var $root=$(cfg[0]);
-            if (!$root.length) return;
-            var $head=$root.find(cfg[2]).first();
-            addFilterModal($root,$root.find(cfg[1]).first(),$head,headerActions($head),cfg[3]);
+            ['#bankTransferApp','#openTransferCreate','.bt-heading'],
+            ['#plotReceiptApp','#prFilterForm [data-target="#plotReceiptCreateModal"]','.pr-heading'],
+            ['#plotPurchaseApp','#ppFilterForm [data-target="#plotPurchaseCreateModal"]','.bm-voucher-heading']
+        ],function(_,cfg){
+            var $root=$(cfg[0]);if(!$root.length)return;
+            moveCreate($root,cfg[1],$root.find(cfg[2]).first());
         });
-        // Cheque and Online have persistent live KPI cards. Keep link selector beside table Search,
-        // while opening all other source filters from the heading.
+        // Voucher Links remains a real selectable control beside Search.
         $.each([
-            ['.cheque-register-page','.cheque-filter-panel','.cheque-heading','#cheque-link-filter','.cheque-table-panel>.d-flex:first','cheque-filter-form'],
-            ['.online-register-page','.online-filter','.online-heading','#online-link-filter','.online-table>.d-flex:first','online-filters']
-        ],function (_,cfg) {
-            var $root=$(cfg[0]); if (!$root.length) return;
-            var $link=$root.find(cfg[3]);
-            var $form=$root.find('#'+cfg[5]);
-            if ($link.length && $form.length) {
-                var $oldLinkRow=$link.parent();
-                var $wrap=$('<label>',{'class':'bm-inline-link-filter mb-0'}).text('Voucher Links ');
-                $link.detach().appendTo($wrap);
-                // Do not leave a label-only second filter row in the popup.
-                if($oldLinkRow.is('div'))$oldLinkRow.remove();
-                var $bar=$root.find(cfg[4]).first();
-                if ($bar.length) $bar.append($wrap);
+            ['.cheque-register-page','#cheque-link-filter','#cheque-filter-form','.cheque-table-panel','.cheque-heading'],
+            ['.online-register-page','#online-link-filter','#online-filters','.online-table','.online-heading']
+        ],function(_,cfg){
+            var $root=$(cfg[0]);if(!$root.length)return;
+            var $link=$root.find(cfg[1]),$form=$(cfg[2]);
+            var $toolbar=$root.find(cfg[3]+'>.d-flex').first();
+            var $search=$toolbar.children('div').last();
+            if($link.length&&$toolbar.length){
+                var $label=$('<label>',{'class':'bm-inline-link-filter mb-0'}).text('Voucher Links');
+                // Recreate as a native selector: no hidden TomSelect wrapper.
+                var $native=$link.detach();
+                $native.removeClass('js-tomselect tomselected').addClass('form-control form-control-sm');
+                $label.append($native);
+                if($search.length)$search.before($label);else $toolbar.append($label);
                 var $hidden=$('<input>',{type:'hidden',name:'link_status'}).appendTo($form);
-                function syncLink(){$hidden.val($link.val()||'');}
-                syncLink();
-                $link.on('change.bmLinks',function(){syncLink();$form.trigger('submit');});
-                $form.on('reset.bmLinks',function(){ $link.val(''); $hidden.val(''); });
+                var sync=function(){$hidden.val($native.val()||'');};
+                sync();
+                $native.on('change.bmLinks',function(){sync();$form.trigger('submit');});
+                $form.on('reset.bmLinks',function(){$native.val('');$hidden.val('');});
             }
-            var $head=$root.find(cfg[2]).first();
-            var $actions=headerActions($head);
-            if(cfg[0].indexOf('online')!==-1){
-                $head.find('#online-add').detach().appendTo($actions);
-            }
-            addFilterModal($root,$root.find(cfg[1]).first(),$head,$actions,
-                cfg[0].indexOf('cheque')!==-1?'Cheque':'Online Transaction');
+            dashboard($root.find(cfg[4]).first());
         });
         // Draft vouchers: style existing server-rendered list, preserve approval/reject/edit buttons.
         var $draft=$('.bm-modern-draft');
         if ($draft.length) {
-            var $head=$draft.find('.bm-draft-heading').first(),$actions=$head.find('.bm-draft-actions').first();
-            var $filter=$draft.find('#filtersSection');
-            if ($filter.length) {
-                var $modal=$('<div>',{'class':'modal fade bm-quick-filter-modal',tabindex:'-1',role:'dialog','aria-hidden':'true'})
-                    .append($('<div>',{'class':'modal-dialog modal-dialog-centered modal-xl',role:'document'})
-                    .append($('<div>',{'class':'modal-content'})
-                    .append($('<div>',{'class':'modal-header'})
-                    .append($('<h5>',{'class':'modal-title'}).text('Draft Filters'))
-                    .append($('<button>',{'class':'close',type:'button','data-dismiss':'modal'}).html('&times;')))
-                    .append($('<div>',{'class':'modal-body'}))));
-                $filter.detach().show().appendTo($modal.find('.modal-body'));
-                $('body').append($modal);
-                $draft.find('#toggleFilters').off('click').on('click',function(){$modal.modal('show');}).detach().appendTo($actions);
-                $filter.find('form').on('submit',function(){$modal.modal('hide');});
-            }
+            // Draft has no New Voucher and no standalone top filter button.
+            $draft.find('#toggleFilters').remove();
             var $draftTable=$draft.find('#bmDraftTable');
             if($draftTable.length && $.fn.DataTable && !$.fn.DataTable.isDataTable($draftTable)){
                 // Blade's "No vouchers found" colspan row is replaced by the DataTables empty message.
