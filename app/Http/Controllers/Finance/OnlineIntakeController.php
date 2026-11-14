@@ -108,6 +108,34 @@ final class OnlineIntakeController extends Controller
                   ->orWhere('receiver_name','like',$party);
             });
         }
+        // Phase 09.2: aggregate the complete filtered selected-project result before pagination.
+        // This is a read-only source summary; it must never imply accounting was posted.
+        $summaryRows=(clone $query)->select('status','type')
+            ->selectRaw('COUNT(*) as record_count, COALESCE(SUM(amount),0) as total_amount')
+            ->groupBy('status','type')->get();
+        $summary=['count'=>0,'amount'=>0,'confirmed_count'=>0,'confirmed_amount'=>0,
+            'pending_count'=>0,'pending_amount'=>0,'receipt_count'=>0,'receipt_amount'=>0,
+            'payment_count'=>0,'payment_amount'=>0];
+        foreach($summaryRows as $item){
+            $count=(int)$item->record_count;
+            $amount=(float)$item->total_amount;
+            $summary['count']+=$count;
+            $summary['amount']+=$amount;
+            if($item->status==='confirmed'){
+                $summary['confirmed_count']+=$count;
+                $summary['confirmed_amount']+=$amount;
+            }elseif($item->status==='pending'){
+                $summary['pending_count']+=$count;
+                $summary['pending_amount']+=$amount;
+            }
+            if($item->type==='receipt'){
+                $summary['receipt_count']+=$count;
+                $summary['receipt_amount']+=$amount;
+            }elseif($item->type==='payment'){
+                $summary['payment_count']+=$count;
+                $summary['payment_amount']+=$amount;
+            }
+        }
         $page=$query->orderByDesc('id')->paginate((int)($input['per_page']??25),[
             'id','reference','transaction_date','amount','type','sending_bank','receiving_bank',
             'sender_name','receiver_name','purpose','status','account_mapping_id','proof_path'
@@ -120,6 +148,7 @@ final class OnlineIntakeController extends Controller
             return $row;
         })->all();
         return response()->json([
+            'summary'=>$summary,
             'data'=>$rows,'total'=>$page->total(),
             'current_page'=>$page->currentPage(),'last_page'=>$page->lastPage(),
             'per_page'=>$page->perPage(),'from'=>$page->firstItem(),'to'=>$page->lastItem(),
