@@ -698,6 +698,7 @@
     <script src="{{ asset('js/blue-voucher-column-filter.js') }}?v=1"></script>
     @stack('script')
 <script src="{{ asset('js/finance-voucher-header-filters.js') }}?v=1"></script>
+<script src="{{ asset('js/finance-voucher-heading-columns.js') }}?v=1"></script>
 </body>
 
 </html>
