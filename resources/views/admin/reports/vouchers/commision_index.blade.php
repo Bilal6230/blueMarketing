@@ -201,6 +201,8 @@
                         if ($.financeVoucherDataColumns) {
                             const columnState = $.financeVoucherDataColumns.values('#journalTable');
                             d.fvd_column_filters = columnState.filters;
+                            d.fvd_date_from = columnState.dates.from;
+                            d.fvd_date_to = columnState.dates.to;
                             d.fvd_sort_column = columnState.sort;
                             d.fvd_sort_direction = columnState.direction;
                         }
