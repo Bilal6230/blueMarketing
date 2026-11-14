@@ -342,6 +342,57 @@ class V2PlotEntryWriterTest extends TestCase
         $this->assertStringContainsString('information_schema.KEY_COLUMN_USAGE', $audit);
     }
 
+    public function test_phase08_read_only_purchase_reconciliation_matches_inventory_seller_and_project(): void
+    {
+        $created = (new V2PlotEntryWriter())->purchase(1, 'PLOT-RECONCILE-REQUEST-0001', [
+            'date'=>'2026-11-14', 'purchase_number'=>'PP-AUDIT-01',
+            'seller_account_id'=>102, 'narration'=>'Audit pilot',
+            'items'=>[[
+                'plot_code'=>'PP-AUDIT-PLOT-01', 'description'=>'New plot',
+                'area'=>'1.0000', 'unit'=>'Marla', 'type'=>1,
+                'road_id'=>1, 'facing_id'=>1, 'is_corner'=>false,
+                'unit_rate'=>'100.00', 'inventory_account_id'=>104,
+            ]],
+        ], 7);
+        $audit = new \App\Services\Finance\V2PlotPurchaseReconciliation();
+        $rows = $audit->audit(1);
+        $this->assertCount(1,$rows);
+        $this->assertTrue($rows[0]['ok'], implode(', ', $rows[0]['issues']));
+        $this->assertSame('100.00', $rows[0]['debit']);
+        $this->assertSame('100.00', $rows[0]['credit']);
+        $this->assertSame('100.00', $rows[0]['amount']);
+        $this->assertSame(1, $rows[0]['plots']);
+        $this->assertSame([], $audit->audit(2));
+        $this->assertSame(0, \Illuminate\Support\Facades\Artisan::call('finance:audit-v2-plot-purchases',['project'=>1]));
+        $this->assertSame(1, \Illuminate\Support\Facades\Artisan::call('finance:audit-v2-plot-purchases',['project'=>2]));
+        $this->assertDatabaseCount('finance_plot_purchases',1);
+        $this->assertDatabaseCount('finance_posting_lines',2);
+    }
+
+    public function test_phase08_purchase_reconciliation_detects_corrupted_seller_credit_without_repairing(): void
+    {
+        $created = (new V2PlotEntryWriter())->purchase(1, 'PLOT-RECONCILE-REQUEST-0002', [
+            'date'=>'2026-11-14', 'purchase_number'=>'PP-AUDIT-02',
+            'seller_account_id'=>102, 'narration'=>'Audit pilot',
+            'items'=>[[
+                'plot_code'=>'PP-AUDIT-PLOT-02', 'description'=>'New plot',
+                'area'=>'1.0000', 'unit'=>'Marla', 'type'=>1,
+                'road_id'=>1, 'facing_id'=>1, 'is_corner'=>false,
+                'unit_rate'=>'50.00', 'inventory_account_id'=>104,
+            ]],
+        ], 7);
+        DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$created['posting_batch_id'])
+            ->where('project_head_subhead_id',102)->update(['credit'=>'40.00']);
+        $rows = (new \App\Services\Finance\V2PlotPurchaseReconciliation())->audit(1);
+        $this->assertFalse($rows[0]['ok']);
+        $this->assertContains('PURCHASE_OR_SELLER_AMOUNT_MISMATCH',$rows[0]['issues']);
+        $this->assertContains('POSTING_UNBALANCED_OR_LINE_COUNT',$rows[0]['issues']);
+        $this->assertSame(40.0,(float) DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$created['posting_batch_id'])
+            ->where('project_head_subhead_id',102)->value('credit'));
+    }
+
     public function test_phase08_local_migration_installs_purchase_only_and_writer_posts_balanced_inventory_cost(): void
     {
         Schema::drop('finance_plot_purchase_postings');
