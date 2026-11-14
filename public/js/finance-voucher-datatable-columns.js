@@ -16,6 +16,18 @@ $(function(){
   var state={filters:{},dates:{from:'',to:''},sort:'',direction:''};
   registry[opts.table]=state;
   var api=$table.DataTable(),fields=opts.fields,active=null;
+  // One shared scroll-body pattern. Toolbar and pagination remain outside
+  // the scroll viewport at their CR-equivalent top/bottom positions.
+  var $wrap=$table.closest('.dataTables_wrapper');
+  if($wrap.length){
+    var $scroll=$table.parent('.fvd-datatable-scroll,.table-responsive').first();
+    if($scroll.length&&$.contains($wrap[0],$scroll[0])){
+      $scroll.addClass('fvd-datatable-scroll');
+    }else if(!$table.parent().hasClass('fvd-datatable-scroll')){
+      $table.wrap('<div class="fvd-datatable-scroll"></div>');
+    }
+    $wrap.addClass('fvd-datatable-wrapper');
+  }
   if(!opts.server){
     // Scope Date From/To checks to this exact DataTable, never other modules.
     $.fn.dataTable.ext.search.push(function(settings,row){
