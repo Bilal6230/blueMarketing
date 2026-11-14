@@ -14,7 +14,7 @@ class ChequeDashboardSummaryContractTest extends TestCase
         $this->assertStringContainsString('where(\'c.project_id\', $project)', $controller);
         $this->assertStringContainsString('(clone $query)', $controller);
         $this->assertStringContainsString("groupBy('c.status', 'c.direction')", $controller);
-        $this->assertStringContainsString("'summary' => $summary", $controller);
+        $this->assertStringContainsString("'summary' => \$summary", $controller);
         foreach (['cleared_amount', 'pending_amount', 'exception_amount'] as $key) {
             $this->assertStringContainsString($key, $controller);
         }
