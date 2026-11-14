@@ -76,7 +76,9 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
  <div class="container-fluid px-2 pt-2">
   <div class="online-heading bm-page-heading d-flex justify-content-between align-items-center flex-wrap">
    <div><h4 class="mb-0">Online Transaction Management</h4><small class="text-muted">Selected project records · Pending Source Register</small></div>
-   @can('create voucher')<button class="btn btn-success btn-sm" type="button" id="online-add"><i class="fas fa-plus mr-1"></i> Add Transaction</button>@endcan
+   <x-finance.voucher-directory-actions>
+    @can('create voucher')<button class="btn btn-success btn-sm" type="button" id="online-add"><i class="fas fa-plus mr-1"></i> Add Transaction</button>@endcan
+   </x-finance.voucher-directory-actions>
   </div>
   <div class="online-filter bm-card bm-filter mt-2">
    <form id="online-filters" autocomplete="off">
