@@ -211,12 +211,7 @@
             </h1>
             <div class="daily-voucher-muted">Selected project records · Read-only history</div>
         </div>
-        <div class="d-flex flex-wrap" style="gap:.5rem">
-            @if(\App\Http\Controllers\Finance\VoucherController::canAccessFinanceApprovalsForUser(auth()->user()))
-                <a class="btn btn-outline-primary" href="{{ route('finance.daily-vouchers.approvals.index') }}">Approvals</a>
-            @endif
-            <a class="btn btn-outline-secondary" href="{{ route('dashboard') }}">Dashboard</a>
-        </div>
+        <x-finance.voucher-directory-actions :approvals="true" />
     </div></section>
     <section class="content"><div class="container-fluid">
         <x-finance.voucher-filter-card class="daily-voucher-card mb-3">
