@@ -202,3 +202,35 @@
   position:static!important;transform:none!important;margin-left:auto!important;
  }
 }
+
+/* 2026-11-14: Regression guard — keep the record table immediately below
+   the toolbar, even when the card has hundreds of pixels of spare height.
+   The previous flex:1 scroll region stretched and allowed the table to settle
+   at its bottom in empty Extra/Draft/CV lists.  The flexible empty space must
+   come AFTER the real table, never before it. Shared for all DataTables vouchers. */
+.bm-voucher-directory .fvc-pagination-host .fvd-datatable-wrapper{
+ display:flex!important;flex-direction:column!important;
+ justify-content:flex-start!important;align-items:stretch!important;
+ min-height:0!important;overflow:hidden!important;
+}
+.bm-voucher-directory .fvc-pagination-host .fvd-datatable-wrapper>.fvd-datatable-scroll{
+ flex:0 1 auto!important;align-self:stretch!important;
+ height:auto!important;min-height:0!important;max-height:100%!important;
+ margin:0!important;padding:0!important;
+ overflow:auto!important;
+}
+.bm-voucher-directory .fvc-pagination-host .fvd-datatable-wrapper>.fvd-datatable-scroll>table{
+ display:table!important;position:static!important;
+ margin:0!important;vertical-align:top!important;
+}
+.bm-voucher-directory .fvc-pagination-host .fvd-datatable-wrapper::after{
+ content:"";display:block;flex:1 1 auto;min-height:0;
+ pointer-events:none;
+}
+/* A DataTables table wrapped in Bootstrap's responsive container obeys the
+   same top-aligned rule without changing voucher-specific columns or actions. */
+.bm-voucher-directory .fvc-pagination-host .fvd-datatable-wrapper>.table-responsive{
+ flex:0 1 auto!important;align-self:stretch!important;
+ height:auto!important;max-height:100%!important;
+ margin:0!important;overflow:auto!important;
+}
