@@ -137,3 +137,8 @@ body.modal-open .bm-quick-filter-modal{overflow-y:auto}
  .bm-extra-payment-modal .bm-extra-payment-fields form{grid-template-columns:1fr}
  .bm-modern-extra .bm-extra-actions{flex-wrap:wrap;justify-content:flex-end}
 }
+
+/* Flatten Cheque's Bootstrap row; Commission's direct row spans the whole popup. */
+.bm-quick-filter-modal .bm-quick-filter-form>.row{grid-column:1/-1}
+.bm-quick-filter-modal .bm-quick-filter-form>.cheque-filter-row{display:contents!important}
+.bm-quick-filter-modal .bm-quick-filter-form>.online-filter-row{display:contents!important}
