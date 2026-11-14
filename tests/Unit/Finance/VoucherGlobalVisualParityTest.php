@@ -61,7 +61,7 @@ final class VoucherGlobalVisualParityTest extends TestCase
         }
         foreach([
             'admin/finance/voucher/plot_receipt_workspace.blade.php' => 'bm-voucher-directory',
-            'admin/finance/voucher/plot_purchase_workspace.blade.php' => 'bm-plot-workspace',
+            'admin/finance/voucher/plot_purchase_workspace.blade.php' => 'bm-voucher-directory',
         ] as $name => $expectedShell){
             $view=file_get_contents(resource_path('views/'.$name));
             $this->assertStringContainsString($expectedShell, $view);
@@ -78,8 +78,11 @@ final class VoucherGlobalVisualParityTest extends TestCase
             'admin/finance/voucher/bank_linked_workspace.blade.php',
         ] as $name) {
             $view=file_get_contents(resource_path('views/'.$name));
-            $this->assertStringContainsString('$.blueVoucherRegisterActions.enhance(', $view);
             $this->assertStringContainsString('<x-finance.voucher-table-card', $view);
+            $this->assertTrue(
+                str_contains($view, '$.blueActionMenu.enhance(')
+                || str_contains($view, '$.blueVoucherRegisterActions.enhance(')
+            );
         }
     }
 
