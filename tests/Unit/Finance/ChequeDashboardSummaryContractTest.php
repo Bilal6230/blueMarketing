@@ -11,7 +11,7 @@ class ChequeDashboardSummaryContractTest extends TestCase
         $controller = file_get_contents(app_path('Http/Controllers/Finance/ChequeIntakeController.php'));
         $view = file_get_contents(resource_path('views/admin/finance/cheque/intake.blade.php'));
 
-        $this->assertStringContainsString("where('c.project_id', $project)", $controller);
+        $this->assertStringContainsString('where(\'c.project_id\', $project)', $controller);
         $this->assertStringContainsString('(clone $query)', $controller);
         $this->assertStringContainsString("groupBy('c.status', 'c.direction')", $controller);
         $this->assertStringContainsString("'summary' => $summary", $controller);
