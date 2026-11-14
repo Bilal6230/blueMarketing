@@ -65,6 +65,7 @@ final class ChequeIntakeController extends Controller
             'purpose' => ['nullable', 'string', 'max:150'],
             'status' => ['nullable', 'string', 'in:received,issued,pending_clearing,cleared,returned,rejected,withdrawn'],
             'direction' => ['nullable', Rule::in(['in','out'])],
+            'link_status' => ['nullable', Rule::in(['linked','unlinked'])],
             'per_page' => ['nullable', 'integer', 'in:10,25,50,100'],
             'page' => ['nullable', 'integer', 'min:1'],
         ]);
@@ -88,6 +89,21 @@ final class ChequeIntakeController extends Controller
                     ->orWhere('c.purpose', 'like', $search)
                     ->orWhere('c.cheque_title','like',$search);
             });
+        }
+        // Historic allocations count as linked, including released/voided evidence.
+        // A missing allocation table is treated as no links, never as permission to mutate.
+        $linksReady = Schema::hasTable('finance_bank_voucher_allocations');
+        if (!empty($filters['link_status'])) {
+            if (!$linksReady && $filters['link_status'] === 'linked') {
+                $query->whereRaw('1 = 0');
+            } elseif ($linksReady) {
+                $method = $filters['link_status'] === 'linked' ? 'whereExists' : 'whereNotExists';
+                $query->{$method}(function ($sub) use ($project) {
+                    $sub->selectRaw('1')->from('finance_bank_voucher_allocations as a')
+                        ->where('a.project_id', $project)->where('a.source_method', 'cheque')
+                        ->whereColumn('a.source_id', 'c.id');
+                });
+            }
         }
         // Phase 09: aggregate the complete filtered project set, not just this page.
         // Read-only: no ledger or cheque lifecycle side effects.
@@ -116,9 +132,22 @@ final class ChequeIntakeController extends Controller
         $page = $query->orderByDesc('c.id')
             ->paginate((int) ($filters['per_page'] ?? 25), ['c.id', 'c.cheque_number', 'c.cheque_date', 'c.received_date',
                 'c.amount', 'c.bank_name', 'c.received_from', 'c.purpose', 'c.status', 'c.direction','c.cheque_title'], 'page', (int) ($filters['page'] ?? 1));
+        $items = $page->items();
+        $linkedCounts = collect();
+        if ($linksReady && count($items)) {
+            $ids = collect($items)->pluck('id')->map(fn ($id) => (int) $id)->all();
+            $linkedCounts = DB::table('finance_bank_voucher_allocations')
+                ->where('project_id', $project)->where('source_method', 'cheque')
+                ->whereIn('source_id', $ids)->select('source_id')
+                ->selectRaw('COUNT(*) as allocations_count')
+                ->groupBy('source_id')->pluck('allocations_count', 'source_id');
+        }
+        foreach ($items as $item) {
+            $item->linked_voucher_count = (int) ($linkedCounts->get($item->id) ?? 0);
+        }
         return response()->json([
             'summary' => $summary,
-            'data' => $page->items(),
+            'data' => $items,
             'total' => $page->total(),
             'current_page' => $page->currentPage(),
             'last_page' => $page->lastPage(),
