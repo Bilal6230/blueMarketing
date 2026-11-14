@@ -47,7 +47,9 @@ final class PlotReceiptGlobalVoucherDirectoryTest extends TestCase
         ] as $field) {
             $this->assertStringContainsString($field, $view);
         }
-        $this->assertStringContainsString('rows.length>=2', $view);
+        $this->assertStringContainsString('rows.length>=1', $view);
+        $this->assertStringContainsString('Allocate to one or more active plot bookings', $view);
+        $this->assertStringNotContainsString('minimum two', $view);
         $this->assertStringContainsString("receivable_account_id:row.receivable_account_id", $view);
         $this->assertStringContainsString('request_key:pendingKey', $view);
     }
