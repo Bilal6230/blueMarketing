@@ -20,13 +20,6 @@
             var $button=$root.find(selector).first();
             if($button.length)$button.detach().addClass('bm-header-new btn-sm').appendTo(headerActions($header));
         }
-        function dashboard($header) {
-            var $actions=headerActions($header);
-            if(!$actions.find('.bm-dashboard-link').length){
-                $('<a>',{'class':'btn btn-outline-secondary btn-sm bm-dashboard-link',
-                    href:'/admin/dashboard'}).text('Dashboard').appendTo($actions);
-            }
-        }
         var $daily=$('#dv-page');
         if($daily.length){
             var $dh=$daily.find('.content-header .container-fluid').first();
@@ -36,13 +29,11 @@
         if($jv.length){
             var $jh=$jv.find('.jv-head').first();
             moveCreate($jv,'#jv-add',$jh);
-            dashboard($jh);
         }
         var $cv=$('.cv-directory');
         if($cv.length){
             var $ch=$cv.find('.cv-shell>.card-header').first();
             moveCreate($cv,'#filtersSection a[href*="create"]',$ch);
-            dashboard($ch);
         }
         // Commission uses its original create route/form in an iframe: do not duplicate its posting logic.
         if ($cv.length) {
@@ -113,7 +104,6 @@
                 $native.on('change.bmLinks',function(){sync();$form.trigger('submit');});
                 $form.on('reset.bmLinks',function(){$native.val('');$hidden.val('');});
             }
-            dashboard($root.find(cfg[4]).first());
         });
         // Draft vouchers: style existing server-rendered list, preserve approval/reject/edit buttons.
         var $draft=$('.bm-modern-draft');
