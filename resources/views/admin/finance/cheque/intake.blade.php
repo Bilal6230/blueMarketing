@@ -131,13 +131,16 @@
                     <thead>
                         <tr><th>#</th><th>Received Date</th><th>Cheque #</th><th>Direction</th><th>Bank</th><th>Received From / Issued To</th><th>Purpose</th><th>Amount</th><th>Status</th><th>Slip</th><th>Actions</th></tr>
                         <tr class="cheque-column-filters">
-                            <th></th><th></th>
-                            <th><input class="form-control form-control-sm" data-column="cheque_number" placeholder="Filter"></th>
                             <th></th>
-                            <th><input class="form-control form-control-sm" data-column="bank_name" placeholder="Filter"></th>
-                            <th><input class="form-control form-control-sm" data-column="received_from" placeholder="Filter"></th>
-                            <th><input class="form-control form-control-sm" data-column="purpose" placeholder="Filter"></th>
-                            <th></th><th></th><th></th><th></th>
+                            <th><input type="date" class="form-control form-control-sm" data-column="received_date" aria-label="Filter received date"></th>
+                            <th><input class="form-control form-control-sm" data-column="cheque_number" placeholder="Cheque number"></th>
+                            <th><select class="form-control form-control-sm" data-column="direction" aria-label="Filter cheque direction"><option value="">All directions</option><option value="in">IN</option><option value="out">OUT</option></select></th>
+                            <th><input class="form-control form-control-sm" data-column="bank_name" placeholder="Bank"></th>
+                            <th><input class="form-control form-control-sm" data-column="received_from" placeholder="Party"></th>
+                            <th><input class="form-control form-control-sm" data-column="purpose" placeholder="Purpose"></th>
+                            <th><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-column="amount" placeholder="Exact amount"></th>
+                            <th><select class="form-control form-control-sm" data-column="status" aria-label="Filter cheque status"><option value="">All statuses</option><option value="received">Received</option><option value="issued">Issued</option><option value="pending_clearing">Pending Clearing</option><option value="cleared">Cleared</option><option value="returned">Returned</option><option value="rejected">Rejected</option><option value="withdrawn">Withdrawn</option></select></th>
+                            <th></th><th></th>
                         </tr>
                     </thead>
                     <tbody id="cheque-table-body"><tr><td colspan="11" class="text-center text-muted py-4">Loading cheques...</td></tr></tbody>
