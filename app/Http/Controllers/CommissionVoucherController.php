@@ -48,11 +48,37 @@ class CommissionVoucherController extends Controller
         }
 
         if ($request->ajax()) {
+            // Shared finance column headings: validated, project-scoped filtering/sorting.
+            $columnInput = $request->validate([
+                'fvd_column_filters' => ['nullable','array'],
+                'fvd_column_filters.id' => ['nullable','string','max:100'],
+                'fvd_column_filters.voucher_number' => ['nullable','string','max:100'],
+                'fvd_column_filters.reference' => ['nullable','string','max:100'],
+                'fvd_column_filters.date' => ['nullable','date_format:Y-m-d'],
+                'fvd_column_filters.description' => ['nullable','string','max:100'],
+                'fvd_column_filters.total_debit' => ['nullable','numeric','min:0'],
+                'fvd_sort_column' => ['nullable', \Illuminate\Validation\Rule::in(['id','voucher_number','reference','date','description','total_debit'])],
+                'fvd_sort_direction' => ['nullable', \Illuminate\Validation\Rule::in(['asc','desc'])],
+            ]);
+            $fields = ['id','voucher_number','reference','date','description','total_debit'];
+            foreach (($columnInput['fvd_column_filters'] ?? []) as $field => $value) {
+                if (!in_array($field,$fields,true) || $value === null || $value === '') continue;
+                if ($field === 'date') $query->whereDate('date',$value);
+                elseif ($field === 'total_debit' || $field === 'id') $query->where($field,$value);
+                elseif ($field === 'voucher_number') {
+                    $normalized = preg_replace('/^CV-/i','',(string)$value);
+                    $query->where('voucher_number','like','%'.$normalized.'%');
+                } else $query->where($field,'like','%'.$value.'%');
+            }
             $total = (clone $baseQuery)->count();
             $filtered = (clone $query)->count();
             $start = max(0, (int) $request->input('start', 0));
             $length = min(100, max(1, (int) $request->input('length', 10)));
-            $vouchers = $query->orderByDesc('id')->skip($start)->take($length)->get();
+            $sortField = $columnInput['fvd_sort_column'] ?? 'id';
+            $sortDir = $columnInput['fvd_sort_direction'] ?? 'desc';
+            $query->orderBy($sortField,$sortDir);
+            if ($sortField !== 'id') $query->orderByDesc('id');
+            $vouchers = $query->skip($start)->take($length)->get();
             $displayNumbers = \Illuminate\Support\Facades\Schema::hasTable('project_voucher_display_numbers')
                 ? DB::table('project_voucher_display_numbers')->where('project_id', (int) $selectedProjectId)
                     ->where('source_kind', 'commission_voucher')->whereIn('source_id', $vouchers->pluck('id'))
