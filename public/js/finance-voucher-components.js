@@ -117,12 +117,41 @@ function attachDataTablePager(selector){
  $table.on('draw.dt.fvcPaginator length.dt.fvcPaginator',render);
  render();
 }
-$.financeVoucherComponents={createFilter,attachDataTablePager,
+function adoptLegacyFilter(selector,accent){
+ var $popup=$(selector);if(!$popup.length||$popup.data('fvc-adopted'))return;
+ $popup.data('fvc-adopted',true).addClass('fvc-filter-popover')
+   .css('--fvd-pop-accent',accent||'#087cfa');
+ var $title=$popup.find('#jv-excel-title').first();
+ if($title.length)$title.addClass('fvc-filter-title');
+ var $sort=$popup.children('.jv-excel-sort');
+ if($sort.length){
+  var $sortBox=$('<div>',{'class':'fvc-sort-options fvd-sort-options'});
+  $sort.first().before($sortBox);
+  $sort.appendTo($sortBox).addClass('fvc-sort-button');
+  $sort.each(function(index){
+    $(this).prepend($('<i>',{'class':index===0?
+     'fas fa-sort-amount-down-alt mr-2':'fas fa-sort-amount-up-alt mr-2','aria-hidden':'true'}));
+  });
+ }
+ var $firstControl=$popup.children('#jv-excel-dates').first();
+ if($firstControl.length){
+  var $control=$('<div>',{'class':'fvc-filter-control'});
+  $firstControl.before($control);
+  $popup.children('#jv-excel-dates,#jv-excel-search-wrap,#jv-excel-items')
+   .appendTo($control);
+ }
+ $popup.children('.jv-excel-bottom').addClass('fvc-filter-actions');
+ $popup.find('#jv-excel-date-from,#jv-excel-date-to').addClass('fvc-date-input');
+ $popup.find('#jv-excel-search').addClass('fvc-search-input');
+ $popup.find('#jv-excel-items').addClass('fvc-choices-list');
+}
+$.financeVoucherComponents={createFilter,adoptLegacyFilter,attachDataTablePager,
  attachAllPagers:function(){
   ['#jv-directory','#journalTable','#bmDraftTable','#example1'].forEach(attachDataTablePager);
  }};
 $(function(){
  $.financeVoucherComponents.attachAllPagers();
+ $.financeVoucherComponents.adoptLegacyFilter('#jv-excel-pop','#087cfa');
  $(document).on('init.dt.fvcPaginator',function(event,settings){
   if(!settings||!settings.nTable)return;
   var id='#'+settings.nTable.id;
