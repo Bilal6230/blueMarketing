@@ -146,4 +146,50 @@ class V2BankTransferWriterTest extends TestCase
             $this->fail('A cleared cheque may only be linked once.');
         } catch (\DomainException $e) { $this->assertSame('V2_BANK_TRANSFER_CHEQUE_ALREADY_LINKED', $e->getMessage()); }
     }
+    public function test_read_only_reconciliation_checks_deposit_withdrawal_and_project_isolation(): void
+    {
+        $writer = new V2BankTransferWriter();
+        $writer->post(1, 1, 'deposit', 'BANK-AUDIT-REQUEST-0001', '2026-11-05', '100.00',
+            'Bank deposit', [['account_id' => 102, 'amount' => '100.00']]);
+        $writer->post(1, 1, 'withdrawal', 'BANK-AUDIT-REQUEST-0002', '2026-11-05', '25.50',
+            'Bank withdrawal', [['account_id' => 102, 'amount' => '25.50']]);
+        $audit = new \App\Services\Finance\V2BankTransferReconciliation();
+        $rows = $audit->audit(1);
+        $this->assertCount(2, $rows);
+        $this->assertSame(['deposit', 'withdrawal'], array_column($rows, 'kind'));
+        $this->assertSame(['100.00', '25.50'], array_column($rows, 'amount'));
+        $this->assertSame(['100.00', '25.50'], array_column($rows, 'debit'));
+        $this->assertSame(['100.00', '25.50'], array_column($rows, 'credit'));
+        $this->assertSame([true, true], array_column($rows, 'ok'));
+        $this->assertSame([], $audit->audit(2));
+        $this->assertDatabaseCount('finance_posting_batches', 2);
+        $this->assertDatabaseCount('finance_posting_lines', 4);
+    }
+
+    public function test_read_only_reconciliation_flags_amount_and_direction_corruption_without_repairing(): void
+    {
+        $batch = (new V2BankTransferWriter())->post(1, 1, 'deposit', 'BANK-AUDIT-REQUEST-0003',
+            '2026-11-05', '75.00', 'Deposit', [['account_id' => 102, 'amount' => '75.00']])['posting_batch_id'];
+        DB::table('finance_posting_lines')->where('posting_batch_id', $batch)
+            ->where('project_head_subhead_id', 101)->update(['debit' => '0.00', 'credit' => '75.00']);
+        $rows = (new \App\Services\Finance\V2BankTransferReconciliation())->audit(1);
+        $this->assertCount(1, $rows);
+        $this->assertFalse($rows[0]['ok']);
+        $this->assertContains('BANK_DIRECTION_MISMATCH', $rows[0]['issues']);
+        $this->assertContains('UNBALANCED_POSTING', $rows[0]['issues']);
+        $this->assertContains('SOURCE_AMOUNT_MISMATCH', $rows[0]['issues']);
+        $this->assertEquals(75, (float) DB::table('finance_posting_lines')->where('posting_batch_id', $batch)
+            ->where('project_head_subhead_id', 101)->value('credit'));
+    }
+
+    public function test_read_only_reconciliation_flags_missing_source_claim(): void
+    {
+        $batch = (new V2BankTransferWriter())->post(1, 1, 'withdrawal', 'BANK-AUDIT-REQUEST-0004',
+            '2026-11-05', '10.00', 'Withdrawal', [['account_id' => 102, 'amount' => '10.00']])['posting_batch_id'];
+        DB::table('finance_posting_source_claims')->where('posting_batch_id', $batch)->delete();
+        $rows = (new \App\Services\Finance\V2BankTransferReconciliation())->audit(1);
+        $this->assertContains('SOURCE_CLAIM_MISMATCH', $rows[0]['issues']);
+        $this->assertFalse($rows[0]['ok']);
+    }
+
 }
