@@ -60,11 +60,11 @@ final class VoucherGlobalVisualParityTest extends TestCase
             $this->assertStringContainsString("route('booking.customer.deposit')", $view);
         }
         foreach([
-            'admin/finance/voucher/plot_receipt_workspace.blade.php',
-            'admin/finance/voucher/plot_purchase_workspace.blade.php',
-        ] as $name){
+            'admin/finance/voucher/plot_receipt_workspace.blade.php' => 'bm-voucher-directory',
+            'admin/finance/voucher/plot_purchase_workspace.blade.php' => 'bm-plot-workspace',
+        ] as $name => $expectedShell){
             $view=file_get_contents(resource_path('views/'.$name));
-            $this->assertStringContainsString('bm-plot-workspace', $view);
+            $this->assertStringContainsString($expectedShell, $view);
             $this->assertStringContainsString('<x-finance.voucher-table-card', $view);
             $this->assertNotFalse(Blade::compileString($view));
         }
