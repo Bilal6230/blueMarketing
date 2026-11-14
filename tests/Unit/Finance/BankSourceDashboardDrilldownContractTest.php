@@ -25,7 +25,7 @@ class BankSourceDashboardDrilldownContractTest extends TestCase
             $this->assertStringContainsString('finance_bank_voucher_allocations', $controller);
             $this->assertStringContainsString('link_status', $controller);
             $this->assertStringContainsString("'linked','unlinked'", str_replace(' ', '', $controller));
-            $this->assertStringContainsString("where('a.source_method', '".$method."')", str_replace(' ', '', $controller));
+            $this->assertStringContainsString("where('a.source_method','".$method."')", str_replace(' ', '', $controller));
             $this->assertStringContainsString("'source_method','".$method."'", str_replace(' ', '', $controller));
             $this->assertStringContainsString('whereColumn(', $controller);
             $this->assertStringContainsString($idColumn, $controller);
