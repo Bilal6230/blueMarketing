@@ -65,12 +65,18 @@ final class ChequeIntakeController extends Controller
             'purpose' => ['nullable', 'string', 'max:150'],
             'status' => ['nullable', 'string', 'in:received,issued,pending_clearing,cleared,returned,rejected,withdrawn'],
             'direction' => ['nullable', Rule::in(['in','out'])],
+            'received_date' => ['nullable','date_format:Y-m-d'],
+            'amount' => ['nullable','numeric','min:0'],
+            'sort_column' => ['nullable', Rule::in(['received_date','cheque_number','direction','bank_name','received_from','purpose','amount','status'])],
+            'sort_direction' => ['nullable', Rule::in(['asc','desc'])],
             'link_status' => ['nullable', Rule::in(['linked','unlinked'])],
             'per_page' => ['nullable', 'integer', 'in:10,25,50,100'],
             'page' => ['nullable', 'integer', 'min:1'],
         ]);
         $query = DB::table('finance_cheque_intakes as c')->where('c.project_id', $project);
         if (!empty($filters['from'])) $query->whereDate('c.received_date', '>=', $filters['from']);
+        if (!empty($filters['received_date'])) $query->whereDate('c.received_date', $filters['received_date']);
+        if (isset($filters['amount']) && $filters['amount'] !== '') $query->where('c.amount', $filters['amount']);
         if (!empty($filters['to'])) $query->whereDate('c.received_date', '<=', $filters['to']);
         if (!empty($filters['account_mapping_id'])) $query->where('c.account_mapping_id',(int)$filters['account_mapping_id']);
         if (!empty($filters['status'])) $query->where('c.status', $filters['status']);
@@ -129,8 +135,11 @@ final class ChequeIntakeController extends Controller
                 $summary['exception_amount'] += $amount;
             }
         }
-        $page = $query->orderByDesc('c.id')
-            ->paginate((int) ($filters['per_page'] ?? 25), ['c.id', 'c.cheque_number', 'c.cheque_date', 'c.received_date',
+        $sort = $filters['sort_column'] ?? 'id';
+        $direction = $filters['sort_direction'] ?? 'desc';
+        $query->orderBy('c.'.$sort, $direction);
+        if ($sort !== 'id') $query->orderByDesc('c.id');
+        $page = $query->paginate((int) ($filters['per_page'] ?? 25), ['c.id', 'c.cheque_number', 'c.cheque_date', 'c.received_date',
                 'c.amount', 'c.bank_name', 'c.received_from', 'c.purpose', 'c.status', 'c.direction','c.cheque_title'], 'page', (int) ($filters['page'] ?? 1));
         $items = $page->items();
         $linkedCounts = collect();
