@@ -136,7 +136,7 @@ final class V2PlotEntryWriter
             if (!DB::table('leads')->where('id',$customer)->where('project_id',$project)->exists()) throw new \DomainException('V2_PLOT_CUSTOMER_PROJECT_MISMATCH');
             $bank=(int)$data['cash_account_id'];
             if (!$this->projectAccount($project,$bank)) throw new \DomainException('V2_PLOT_ACCOUNT_PROJECT_MISMATCH');
-            if (count($data['allocations'])<2) throw new \DomainException('V2_PLOT_RECEIPT_REQUIRES_MULTIPLE_PLOTS');
+            if (count($data['allocations'])<1) throw new \DomainException('V2_PLOT_RECEIPT_REQUIRES_ALLOCATION');
             $allocations=[]; $sum=0; $seen=[]; $seenPlots=[]; $lines=[['account_id'=>$bank,'debit'=>$this->money($total),'credit'=>'0.00','description'=>$data['narration']]];
             foreach ($data['allocations'] as $allocation) {
                 $bookingId=(int)$allocation['booking_id']; $plotId=(int)$allocation['plot_id']; $amount=$this->cents($allocation['amount']);
@@ -214,8 +214,10 @@ final class V2PlotEntryWriter
         $source=DB::table('finance_plot_receipts')->where('project_id',$project)->where('id',$id)->first();
         if(!$source) throw new \DomainException('V2_PLOT_RECEIPT_NOT_FOUND');
         $allocations=DB::table('finance_plot_receipt_allocations as a')->join('plots as p','p.id','=','a.plot_id')
-            ->join('bookings as b','b.id','=','a.booking_id')->join('leads as customer','customer.id','=',$source->customer_id)
+            ->join('bookings as b','b.id','=','a.booking_id')->join('leads as customer','customer.id','=','b.customer_id')
             ->where('a.receipt_id',$id)->where('p.project_id',$project)->where('b.project_id',$project)
+            ->where('b.customer_id',(int) $source->customer_id)->where('customer.project_id',$project)
+            ->whereColumn('b.plot_id','a.plot_id')
             ->get(['a.plot_id','p.name as plot_name','a.booking_id','a.amount','customer.first_name','customer.last_name','customer.business']);
         return ['receipt'=>$source,'allocations'=>$allocations];
     }
