@@ -73,9 +73,9 @@
     <div class="form-group col-md-6"><label for="prAccount">Receiving Account</label><select id="prAccount" class="form-control"><option value="">Select active project account</option>@foreach($accounts as $account)<option value="{{ $account->id }}">{{ $account->headAccounting?->name }}{{ $account->subheadAccounting?->name ? ' / '.$account->subheadAccounting->name : '' }}</option>@endforeach</select></div>
     <div class="form-group col-12"><label for="prNarration">Description / Narration</label><textarea id="prNarration" class="form-control" rows="2" maxlength="2000" placeholder="Payment details"></textarea></div>
    </div>
-   <div class="d-flex align-items-center justify-content-between mb-2"><label for="prSearch" class="mb-0">Allocate to active plot bookings (minimum two)</label><input id="prSearch" class="form-control form-control-sm" style="max-width:240px" placeholder="Search plots"></div>
+   <div class="d-flex align-items-center justify-content-between mb-2"><label for="prSearch" class="mb-0">Allocate to one or more active plot bookings</label><input id="prSearch" class="form-control form-control-sm" style="max-width:240px" placeholder="Search plots"></div>
    <div class="table-responsive pr-bookings"><table class="table table-bordered table-hover table-sm mb-0"><thead><tr><th style="width:45px">Select</th><th>Plot / Booking</th><th>Customer</th><th>Receivable account</th><th style="width:150px">Allocate amount</th></tr></thead><tbody id="prBookingRows"><tr><td colspan="5" class="text-center text-muted p-3">Select customer to load bookings.</td></tr></tbody></table></div>
-   <div class="pr-stat mt-3"><small>Receipt total (allocated): </small><span class="pr-total" id="prTotal">0.00</span><div class="small text-muted"><span id="prSelected">0</span> plots selected · choose at least 2</div></div>
+   <div class="pr-stat mt-3"><small>Receipt total (allocated): </small><span class="pr-total" id="prTotal">0.00</span><div class="small text-muted"><span id="prSelected">0</span> plots selected · choose at least 1</div></div>
    <small class="d-block text-muted mt-2">Each plot allocation posts to its own mapped receivable account. Corrections require reversal.</small>
   </div>
   <div class="modal-footer"><button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button><button id="prPost" type="button" class="btn btn-primary btn-sm" disabled><i class="fas fa-check-circle mr-1"></i> Post receipt</button></div>
@@ -116,7 +116,7 @@
   return $('.pr-check:checked').map(function(){var id=Number($(this).val());return bookings.find(function(b){return b.booking_id===id;})||null;}).get().filter(Boolean);
  };
  var recalc=function(){
-  var rows=selected(),sum=0,valid=rows.length>=2;
+  var rows=selected(),sum=0,valid=rows.length>=1;
   rows.forEach(function(b){var amount=Number($('.pr-amount[data-amount="'+b.booking_id+'"]').val())||0;sum+=amount;if(amount<=0)valid=false;});
   $('#prTotal').text(money(sum));$('#prSelected').text(rows.length);
   valid=valid&&$.trim($('#prNumber').val())!==''&&$('#prDate').val()&&$('#prCustomer').val()&&$('#prAccount').val()&&$.trim($('#prNarration').val())!=='';
