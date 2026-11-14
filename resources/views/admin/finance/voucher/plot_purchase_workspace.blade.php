@@ -95,6 +95,7 @@
 @section('js')
 <script>
 (()=>{
+ $(function(){
   const requestJson=async(url,options={})=>{
     const headers=options.headers||{};
     try{
@@ -117,9 +118,89 @@
  function fillSelect(select,items,label){select.innerHTML=`<option value="">Select ${label}</option>`+items.map(x=>`<option value="${x.id}" data-legacy="${esc(x.legacy_value??'')}" data-size="${esc(x.size_value??'')}" data-unit="${esc(x.unit_code??'')}">${esc(x.code?x.code+' · ':'')}${esc(x.name)}</option>`).join('')}
  function row(){const node=byId('ppItemTemplate').content.firstElementChild.cloneNode(true);for(const kind of ['road_id','facing_id'])fillSelect($(node).find(`[data-field="${kind}"]`)[0],options[kind==='road_id'?'roads':'facings'],kind==='road_id'?'road':'facing');for(const kind of ['category','type','size','unit']){const wrap=$(node).find(`[data-definition="${kind}"]`)[0],select=$(wrap).find('select')[0];fillSelect(select,defs(kind),kind);wrap.hidden=!defs(kind).length;select.required=defs(kind).length>0;if(kind==='type')$(select).on('change',()=>{const v=select.selectedOptions[0]?.dataset.legacy;if(['1','2'].includes(v))$(node).find('[data-field="type"]')[0].value=v});if(kind==='size')$(select).on('change',()=>{const opt=select.selectedOptions[0];if(opt?.dataset.size)$(node).find('[data-field="area"]')[0].value=opt.dataset.size;if(opt?.dataset.unit)$(node).find('[data-field="unit"]')[0].value=opt.dataset.unit})}$(node).find('input,select').toArray().forEach(el=>$(el).on('input',recalc));$(node).find('.pp-remove').on('click',()=>{if(byId('ppItems').children.length>1)node.remove();recalc()});byId('ppItems').append(node);$(node).find('.pp-item-title')[0].textContent=`Plot ${byId('ppItems').children.length}`;recalc()}
  function recalc(){let total=0,valid=!!byId('ppNumber').value.trim()&&!!byId('ppDate').value&&!!byId('ppSeller').value&&!!byId('ppNarration').value.trim();$('.pp-item').each((_,el)=>{const get=k=>$(el).find(`[data-field="${k}"]`)[0],area=Number(get('area').value),rate=Number(get('unit_rate').value);total+=area*rate;for(const k of ['plot_code','description','area','unit','road_id','facing_id','inventory_account_id','unit_rate'])valid=valid&&!!get(k).value;valid=valid&&area>0&&rate>0;for(const kind of ['category','type','size','unit'])if(defs(kind).length)valid=valid&&!!get(`plot_${kind}_definition_id`).value});byId('ppTotal').textContent=money(total);byId('ppPost').disabled=!valid||busy||total<=0}
- async function loadHistory(){const body=byId('ppHistory');try{const r=await requestJson(root.dataset.historyUrl,{headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}}),j=await r.json();if(!r.ok)throw Error(j.message||'Could not load purchases');body.innerHTML=(j.data||[]).length?j.data.map(x=>`<tr><td><b>${esc(x.number)}</b><br><small>${esc(x.date)}</small></td><td>${esc(x.seller)}</td><td>${x.items}</td><td class="text-right">${money(x.amount)}</td><td class="blue-actions-cell"><button type="button" class="btn btn-sm btn-outline-primary pp-detail" data-id="${x.id}">Details / print</button></td></tr>`).join(''):'<tr><td colspan="5" class="text-center pp-muted p-4">No plot purchases recorded for this project.</td></tr>';$(body).find('.pp-detail').toArray().forEach(b=>$(b).on('click',()=>details(b.dataset.id)));if($.blueActionMenu && typeof $.blueActionMenu.enhance === 'function') $.blueActionMenu.enhance($(body).find('td.blue-actions-cell'))}catch(e){body.innerHTML=`<tr><td colspan="5" class="text-danger p-3">${esc(e.message)}</td></tr>`}}
+ let history=[],historyPage=1,historySort='date',historyDirection='desc';
+ let applied={from:'',to:'',seller:'',search:''},purchaseColumns=null;
+ function historyValue(x,field){
+   const values={date:x.date,number:x.number,seller:x.seller,detail:x.narration,items:x.items,amount:x.amount};
+   return String(values[field]==null?'':values[field]);
+ }
+ function drawHistory(){
+   const search=String($('#ppQuickSearch').val()||'').trim().toLowerCase();
+   let rows=history.filter(x=>{
+     const hay=[x.number,x.date,x.seller,x.narration,x.items,x.amount].join(' ').toLowerCase();
+     return (!applied.from||x.date>=applied.from)&&(!applied.to||x.date<=applied.to)
+       &&(!applied.seller||String(x.seller).toLowerCase().includes(applied.seller))
+       &&(!applied.search||hay.includes(applied.search))&&(!search||hay.includes(search));
+   });
+   if(purchaseColumns)rows=purchaseColumns.filterRows(rows,historyValue);
+   if(historySort){
+     rows.sort((a,b)=>{
+       const left=historyValue(a,historySort),right=historyValue(b,historySort);
+       const compare=['amount','items'].includes(historySort)
+          ?Number(left)-Number(right):left.localeCompare(right,undefined,{numeric:true});
+       return historyDirection==='asc'?compare:-compare;
+     });
+   }
+   const size=Number($('#ppLength').val())||25,pages=Math.max(1,Math.ceil(rows.length/size));
+   historyPage=Math.min(historyPage,pages);
+   const start=(historyPage-1)*size,visible=rows.slice(start,start+size);
+   if($.blueActionMenu)$.blueActionMenu.close();
+   const $body=$('#ppHistory').empty();
+   if(!visible.length)$body.append($('<tr>').append($('<td>',{colspan:8,'class':'text-center text-muted p-4',text:'No matching plot purchases'})));
+   visible.forEach((x,i)=>{
+     const $tr=$('<tr>');
+     $tr.append($('<td>').text(start+i+1),$('<td>').text(x.date));
+     $tr.append($('<td>').append($('<strong>').text(x.number)));
+     $tr.append($('<td>').text(x.seller),$('<td>').text(x.narration));
+     $tr.append($('<td>').text(x.items),$('<td>',{'class':'text-right'}).text(money(x.amount)));
+     $tr.append($('<td>',{'class':'blue-actions-cell'}).append(
+       $('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pp-detail','data-id':x.id,text:'Details / print'})));
+     $body.append($tr);
+   });
+   if($.blueActionMenu&&typeof $.blueActionMenu.enhance==='function')$.blueActionMenu.enhance($body.find('td.blue-actions-cell'));
+   if($.blueVoucherPagination)$.blueVoucherPagination.render({
+     container:'#ppPages',summary:'#ppSummary',total:rows.length,length:size,start:start,
+     buttonClass:'bm-voucher-page-btn',onPage:function(next){historyPage=Math.floor(next/size)+1;drawHistory();}
+   });
+ }
+ async function loadHistory(){
+   try{
+     const response=await requestJson(root.dataset.historyUrl,{headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}});
+     const data=await response.json();
+     if(!response.ok)throw Error(data.message||'Could not load purchases');
+     history=data.data||[];historyPage=1;drawHistory();
+   }catch(error){
+     $('#ppHistory').empty().append($('<tr>').append($('<td>',{colspan:8,'class':'text-danger p-3',text:error.message||'Unable to load'})));
+     $('#ppSummary').text('Unable to load purchases');
+   }
+ }
  async function details(id){const body=byId('ppDetails');body.innerHTML='<div class="text-center p-4">Loading…</div>';$('#ppDetailsModal').modal('show');try{const r=await requestJson(`${root.dataset.detailsBase}/${encodeURIComponent(id)}`,{headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}}),j=await r.json();if(!r.ok)throw Error(j.message||'Could not load purchase');const p=j.purchase,items=j.items||[];body.innerHTML=`<div class="d-flex justify-content-between"><div><h4>${esc(p.purchase_number)}</h4><div>${esc(p.purchase_date)} · Seller: ${esc(p.seller||'Seller account')}</div><p>${esc(p.narration)}</p></div><a class="btn btn-primary btn-sm align-self-start" target="_blank" href="${root.dataset.detailsBase}/${encodeURIComponent(id)}/print">Print</a></div><div class="table-responsive"><table class="table table-bordered"><thead><tr><th>Plot</th><th>Description</th><th>Area</th><th>Unit</th><th>Unit rate</th><th>Cost</th><th>Inventory account</th></tr></thead><tbody>${items.map(x=>`<tr><td>${esc(x.plot_code)}</td><td>${esc(x.description)}</td><td>${esc(x.area)}</td><td>${esc(x.unit)}</td><td>${money(x.unit_rate)}</td><td>${money(x.amount)}</td><td>#${x.inventory_account_id}</td></tr>`).join('')}</tbody><tfoot><tr><th colspan="5" class="text-right">Total</th><th>${money(p.amount)}</th><th></th></tr></tfoot></table></div>`}catch(e){body.innerHTML=`<div class="alert alert-danger">${esc(e.message)}</div>`}}
  async function init(){try{const r=await requestJson(root.dataset.optionsUrl,{headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}}),j=await r.json();if(!r.ok)throw Error(j.message||'Could not load plot definitions');options=j;row();await loadHistory()}catch(e){alert('danger',e.message)}}
- $('#ppAdd').on('click',row);['ppNumber','ppDate','ppSeller','ppNarration'].forEach(id=>$('#'+$.escapeSelector(id)).on('input',recalc));$('#ppPost').on('click',async()=>{recalc();if(byId('ppPost').disabled)return;busy=true;recalc();const payload={request_key:(crypto.randomUUID?crypto.randomUUID().replaceAll('-',''):'plotpurchase'+Date.now()+'request').slice(0,32),purchase_number:byId('ppNumber').value.trim(),date:byId('ppDate').value,seller_account_id:Number(byId('ppSeller').value),narration:byId('ppNarration').value.trim(),items:$('.pp-item').toArray().map(el=>{const o={};$(el).find('[data-field]').toArray().forEach(x=>o[x.dataset.field]=x.value);for(const k of ['type','road_id','facing_id','is_corner','plot_category_definition_id','plot_type_definition_id','plot_size_definition_id','plot_unit_definition_id','inventory_account_id'])if(o[k]==='')delete o[k];return o})};try{const r=await requestJson(root.dataset.postUrl,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')},body:JSON.stringify(payload)}),j=await r.json();if(!r.ok)throw Error(j.message||Object.values(j.errors||{}).flat().join(' ')||'Purchase was rejected');alert('success',`Purchase ${payload.purchase_number} posted. Posting batch #${j.data.posting_batch_id}.`);byId('ppNumber').value='';byId('ppNarration').value='';await loadHistory()}catch(e){alert('danger',e.message)}finally{busy=false;recalc()}});init()})();
+ purchaseColumns=$.blueVoucherColumnFilters.init({
+   initialOptions:{head:[],subhead:[],account_relations:[]},
+   formSelector:'#ppFilterForm',quickSearchSelector:'#ppQuickSearch',
+   triggerSelector:'#plotPurchaseApp .dv-excel-trigger',tableWrapSelector:'.pp-scroll',
+   getStart:function(){return (historyPage-1)*(Number($('#ppLength').val())||25);},
+   getLength:function(){return Number($('#ppLength').val())||25;},
+   getSortColumn:function(){return historySort;},getSortDirection:function(){return historyDirection;},
+   onSort:function(field,dir){historySort=field;historyDirection=dir;},
+   onChange:function(){historyPage=1;drawHistory();},
+   choicesFor:function(field){return Array.from(new Set(history.map(x=>historyValue(x,field)))).sort();}
+ });
+ $('#ppFilterForm').on('submit',function(event){event.preventDefault();applied={
+   from:$('#ppFrom').val(),to:$('#ppTo').val(),
+   seller:String($('#ppSellerFilter').val()||'').trim().toLowerCase(),
+   search:String($('#ppFilterSearch').val()||'').trim().toLowerCase()};
+   historyPage=1;drawHistory();
+ });
+ $('#ppResetFilters').on('click',function(){
+   $('#ppFilterForm')[0].reset();$('#ppQuickSearch').val('');
+   applied={from:'',to:'',seller:'',search:''};historySort='date';historyDirection='desc';
+   purchaseColumns.reset();historyPage=1;drawHistory();
+ });
+ $('#ppLength,#ppQuickSearch').on('input change',function(){historyPage=1;drawHistory();});
+ $('#ppHistory').on('click','.pp-detail',function(){details($(this).attr('data-id'));});
+ $('#ppAdd').on('click',row);['ppNumber','ppDate','ppSeller','ppNarration'].forEach(id=>$('#'+$.escapeSelector(id)).on('input',recalc));$('#ppPost').on('click',async()=>{recalc();if(byId('ppPost').disabled)return;busy=true;recalc();const payload={request_key:(crypto.randomUUID?crypto.randomUUID().replaceAll('-',''):'plotpurchase'+Date.now()+'request').slice(0,32),purchase_number:byId('ppNumber').value.trim(),date:byId('ppDate').value,seller_account_id:Number(byId('ppSeller').value),narration:byId('ppNarration').value.trim(),items:$('.pp-item').toArray().map(el=>{const o={};$(el).find('[data-field]').toArray().forEach(x=>o[x.dataset.field]=x.value);for(const k of ['type','road_id','facing_id','is_corner','plot_category_definition_id','plot_type_definition_id','plot_size_definition_id','plot_unit_definition_id','inventory_account_id'])if(o[k]==='')delete o[k];return o})};try{const r=await requestJson(root.dataset.postUrl,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')},body:JSON.stringify(payload)}),j=await r.json();if(!r.ok)throw Error(j.message||Object.values(j.errors||{}).flat().join(' ')||'Purchase was rejected');alert('success',`Purchase ${payload.purchase_number} posted. Posting batch #${j.data.posting_batch_id}.`);byId('ppNumber').value='';byId('ppNarration').value='';await loadHistory();$('#plotPurchaseCreateModal').modal('hide')}catch(e){alert('danger',e.message)}finally{busy=false;recalc()}});init()});
+})();
 </script>
 @endsection
