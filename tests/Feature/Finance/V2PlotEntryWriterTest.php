@@ -247,6 +247,46 @@ class V2PlotEntryWriterTest extends TestCase
         $this->assertDatabaseCount('finance_plot_receipt_allocations', 2);
     }
 
+    public function test_phase07_mysql_claim_fk_repair_refuses_sqlite_without_changes(): void
+    {
+        $before = DB::table('finance_posting_batches')->count();
+        $repair = require base_path('database/local_pilot_migrations/2026_11_14_000101_repair_v2_plot_receipt_claim_fk.php');
+        try {
+            $repair->up();
+            $this->fail('MySQL claim recovery must not execute on the SQLite fixture.');
+        } catch (\RuntimeException $error) {
+            $this->assertSame('V2_PLOT_RECEIPT_FK_REPAIR_MYSQL_ONLY', $error->getMessage());
+        }
+        $this->assertSame($before, DB::table('finance_posting_batches')->count());
+        $this->assertTrue(Schema::hasTable('finance_plot_receipt_postings'));
+    }
+
+    public function test_phase07_mysql_claim_fk_repair_refuses_production_environment(): void
+    {
+        $repair = require base_path('database/local_pilot_migrations/2026_11_14_000101_repair_v2_plot_receipt_claim_fk.php');
+        config()->set('app.env', 'production');
+        try {
+            $repair->up();
+            $this->fail('FK repair must be limited to isolated local testing.');
+        } catch (\RuntimeException $error) {
+            $this->assertSame('V2_ISOLATED_CONNECTION_REQUIRED', $error->getMessage());
+        } finally {
+            config()->set('app.env', 'testing');
+        }
+    }
+
+    public function test_phase07_original_fk_has_safe_mysql_identifier_and_audit_checks_integrity(): void
+    {
+        $migration = file_get_contents(base_path('database/local_pilot_migrations/2026_11_14_000100_create_v2_plot_receipt_storage.php'));
+        $repair = file_get_contents(base_path('database/local_pilot_migrations/2026_11_14_000101_repair_v2_plot_receipt_claim_fk.php'));
+        $audit = file_get_contents(app_path('Console/Commands/AuditV2PlotReceiptReadiness.php'));
+        $this->assertLessThanOrEqual(64, strlen('v2_plot_rcpt_post_claim_fk'));
+        $this->assertStringContainsString("'v2_plot_rcpt_post_claim_fk'", $migration);
+        $this->assertStringContainsString("'v2_plot_rcpt_post_claim_fk'", $repair);
+        $this->assertStringContainsString('V2_PLOT_RECEIPT_INCOMPLETE_FK', $audit);
+        $this->assertStringContainsString('information_schema.KEY_COLUMN_USAGE', $audit);
+    }
+
     public function test_phase07_local_migration_fails_closed_outside_isolated_testing(): void
     {
         $pilot = require base_path('database/local_pilot_migrations/2026_11_14_000100_create_v2_plot_receipt_storage.php');
