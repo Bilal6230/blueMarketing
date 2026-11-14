@@ -474,19 +474,18 @@ $(function () {
         $actions.appendTo($tr);
         return $tr;
     }
-    function pagination(data) {
-        var $nav=$('#cheque-pagination').empty(),page=data.current_page||1,last=data.last_page||1;
-        function button(name,p,disabled,active) {
-            $('<button type="button">').addClass('btn '+(active?'btn-success':'btn-outline-success'))
-                .prop('disabled',!!disabled).text(name).on('click',function(){load(p);}).appendTo($nav);
-        }
-        button('Previous',page-1,page<=1,false);
-        var first=Math.max(1,page-2),end=Math.min(last,first+4);
-        for(var i=first;i<=end;i++)button(String(i),i,false,i===page);
-        button('Next',page+1,page>=last,false);
-        $('#cheque-count').text(data.total?'Showing '+data.from+'–'+data.to+' of '+data.total+' records':'Showing 0 records');
-    }
-    function showChequeSummary(summary) {
+    function pagination(data){
+  var $nav=$('#cheque-pagination').removeClass('btn-group btn-group-sm');
+  var page=Math.max(1,Number(data.current_page)||1);
+  var length=Math.max(1,Number(data.per_page)||25);
+  $.blueVoucherPagination.render({
+    container:$nav,summary:'#cheque-count',total:Number(data.total)||0,
+    length:length,start:(page-1)*length,
+    buttonClass:'dv-page-btn fvc-page-btn',
+    onPage:function(start){load(Math.floor(start/length)+1);}
+  });
+ }
+     function showChequeSummary(summary) {
         if(!summary){$('#cheque-live-summary .cheque-kpi-value').text('—');$('#cheque-live-summary .cheque-kpi-count').text('Unavailable');return;}
         function fmt(value){return 'Rs '+Number(value||0).toLocaleString('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2});}
         $.each([
