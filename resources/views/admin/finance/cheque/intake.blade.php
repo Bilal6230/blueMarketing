@@ -6,6 +6,14 @@
     body.cheque-register-active .main-footer {position:fixed!important;bottom:0;left:0;right:0;z-index:10;margin-bottom:0!important}
     .main-content.page-content:has(> .cheque-register-page) {height:auto!important;min-height:0!important;max-height:none!important;overflow:hidden!important;padding:0!important;margin-bottom:0!important}
     .cheque-register-page .cheque-table-panel{margin-bottom:0!important}
+    .cheque-live-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;flex-shrink:0;margin:0 0 9px}
+    .cheque-live-summary .cheque-kpi{background:#fff;border:1px solid #b9e1c6;border-left:3px solid #168348;border-radius:8px;padding:6px 10px;min-width:0}
+    .cheque-live-summary .cheque-kpi-title{display:block;font-size:12px;color:#536271;font-weight:700}
+    .cheque-live-summary .cheque-kpi-value{display:block;font-size:15px;font-weight:700;color:#174b31;overflow-wrap:anywhere}
+    .cheque-live-summary .cheque-kpi-count{font-size:11px;color:#607080}
+    @media(max-width:850px){.cheque-live-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .cheque-live-summary .cheque-kpi{padding:4px 7px}}
+
     .cheque-register-page { --cheque-green:var(--bm-success); --cheque-border:#b9e1c6; height:var(--cheque-height,calc(100dvh - 165px)); max-height:var(--cheque-height,calc(100dvh - 165px)); min-height:0; display:flex; flex-direction:column; overflow:hidden; }
     .cheque-register-page .cheque-filter-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.15fr) minmax(0,.9fr) minmax(0,.95fr) minmax(0,1.25fr) auto; align-items:end; column-gap:10px; row-gap:8px; margin:0; width:100%; }
     .cheque-register-page .cheque-filter-row > div { min-width:0; width:100%; padding:0; margin:0!important; max-width:none; }
@@ -99,6 +107,12 @@
                     <div class="col-lg-2 col-md-4 mb-2 cheque-filter-actions"><button type="submit" class="btn btn-success btn-sm"><i class="fas fa-filter mr-1"></i> Apply</button><button type="button" id="cheque-reset" class="btn btn-outline-secondary btn-sm">Reset</button></div>
                 </div>
             </form>
+        </div>
+        <div class="cheque-live-summary" id="cheque-live-summary" aria-live="polite">
+            <div class="cheque-kpi"><span class="cheque-kpi-title">Filtered Cheques</span><span class="cheque-kpi-value" id="cheque-kpi-total">—</span><span class="cheque-kpi-count" id="cheque-kpi-total-count">Loading...</span></div>
+            <div class="cheque-kpi"><span class="cheque-kpi-title">Cleared</span><span class="cheque-kpi-value" id="cheque-kpi-cleared">—</span><span class="cheque-kpi-count" id="cheque-kpi-cleared-count">Loading...</span></div>
+            <div class="cheque-kpi"><span class="cheque-kpi-title">Pending Clearing</span><span class="cheque-kpi-value" id="cheque-kpi-pending">—</span><span class="cheque-kpi-count" id="cheque-kpi-pending-count">Loading...</span></div>
+            <div class="cheque-kpi"><span class="cheque-kpi-title">Returned / Rejected</span><span class="cheque-kpi-value" id="cheque-kpi-exception">—</span><span class="cheque-kpi-count" id="cheque-kpi-exception-count">Loading...</span></div>
         </div>
         <div class="cheque-table-panel bm-card">
             <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap">
@@ -458,17 +472,32 @@ $(function () {
         button('Next',page+1,page>=last,false);
         $('#cheque-count').text(data.total?'Showing '+data.from+'–'+data.to+' of '+data.total+' records':'Showing 0 records');
     }
+    function showChequeSummary(summary) {
+        if(!summary){$('#cheque-live-summary .cheque-kpi-value').text('—');$('#cheque-live-summary .cheque-kpi-count').text('Unavailable');return;}
+        function fmt(value){return 'Rs '+Number(value||0).toLocaleString('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2});}
+        $.each([
+            ['total',summary.amount,summary.count],
+            ['cleared',summary.cleared_amount,summary.cleared_count],
+            ['pending',summary.pending_amount,summary.pending_count],
+            ['exception',summary.exception_amount,summary.exception_count]
+        ],function(_,entry){
+            $('#cheque-kpi-'+entry[0]).text(fmt(entry[1]));
+            $('#cheque-kpi-'+entry[0]+'-count').text(Number(entry[2]||0).toLocaleString('en-PK')+' records');
+        });
+    }
     function load(page) {
         currentPage=page;
         var seq=++listSeq;
         if(listRequest)listRequest.abort();
         $.blueTableSkeleton.show($('#cheque-table-body'),{rows:10,columns:11,tone:'credit'});
         $('#cheque-count').text('Loading records...');
+        $('#cheque-live-summary .cheque-kpi-count').text('Updating...');
         $('#cheque-pagination').empty();
         listRequest=$.ajax({url:@json(route('finance.cheques.data')),method:'GET',data:filters(page),dataType:'json'})
         .done(function(data){
             if(seq!==listSeq)return;
             $.blueTableSkeleton.clear($('#cheque-table-body'));
+            showChequeSummary(data.summary);
             $.blueActionMenu.close();
             var $body=$('#cheque-table-body').empty();
             $.each(data.data||[],function(i,r){$body.append(row(r,((data.current_page-1)*data.per_page)+i+1));});
@@ -480,6 +509,7 @@ $(function () {
             $.blueTableSkeleton.clear($('#cheque-table-body'));
             $('#cheque-table-body').empty().append($('<tr>').append($('<td colspan="11" class="text-center text-danger py-4">').text('Unable to load cheque records.')));
             $('#cheque-count').text('Could not load records');
+            showChequeSummary(null);
             toast('Cheque list could not be loaded.',true);
         });
     }
