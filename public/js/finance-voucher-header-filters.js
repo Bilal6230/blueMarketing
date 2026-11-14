@@ -5,6 +5,9 @@
 (function ($) {
     'use strict';
     $(function () {
+        // Popovers are attached to body, so explicitly inherit page palette.
+        if($('.jv-page').length)$('#jv-excel-pop').css('--fvd-accent','#087cfa');
+        if($('#dv-page').length)$('#dv-excel-popover').css('--fvd-accent',$('#dv-page').css('--dv-accent'));
         // Finance directory chrome is declarative. Legacy top filters stay in their
         // original DOM for backwards-compatible data loading, but are never exposed
         // as an extra toolbar/modal. Column headings own filtering and sorting.
