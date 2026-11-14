@@ -162,17 +162,32 @@
                     .append($('<div>',{'class':'modal-body'}))));
                 $form.detach().appendTo($modal.find('.modal-body'));
                 $('body').append($modal);
-                // The legacy save button opens its own validation/confirmation modal.
-                // Avoid stacking two Bootstrap focus traps over the posting form.
-                $form.on('click.bmExtraConfirm','[data-target="#confirmModal"]',function(event){
+                // Original Save referenced #confirmModal, which is not present on this page.
+                // Preserve the original Laravel posting form and add an explicit confirmation
+                // without allowing two Bootstrap modals to trap focus simultaneously.
+                var $confirm=$('<div>',{'class':'modal fade',id:'bmExtraConfirmModal',tabindex:'-1',role:'dialog','aria-hidden':'true'})
+                    .append($('<div>',{'class':'modal-dialog modal-dialog-centered',role:'document'})
+                    .append($('<div>',{'class':'modal-content'})
+                    .append($('<div>',{'class':'modal-header'})
+                        .append($('<h5>',{'class':'modal-title'}).text('Confirm Extra Charge')))
+                    .append($('<div>',{'class':'modal-body'}).text('Save this extra charge using the entered project, customer and posting accounts?'))
+                    .append($('<div>',{'class':'modal-footer'})
+                        .append($('<button>',{type:'button','class':'btn btn-outline-secondary btn-sm','data-dismiss':'modal'}).text('Cancel'))
+                        .append($('<button>',{type:'button','class':'btn btn-primary btn-sm',id:'bmExtraConfirmSave'}).text('Confirm Save')))));
+                $('body').append($confirm);
+                $form.on('click.bmExtraSave','.bm-extra-save',function(event){
                     event.preventDefault();
-                    event.stopPropagation();
-                    $modal.one('hidden.bs.modal',function(){$('#confirmModal').modal('show');});
+                    $modal.one('hidden.bs.modal',function(){$confirm.modal('show');});
                     $modal.modal('hide');
                 });
-                $('#confirmModal').on('hidden.bs.modal.bmExtraConfirm',function(){
-                    // Allow correction after the user cancels a confirmation.
-                    if(!$('body').hasClass('modal-open'))$modal.modal('show');
+                $confirm.on('click','#bmExtraConfirmSave',function(){
+                    $(this).prop('disabled',true);
+                    $form.trigger('submit');
+                    // Re-enable only if client validation prevented navigation.
+                    $(this).prop('disabled',false);
+                });
+                $confirm.on('hidden.bs.modal',function(){
+                    if (!$('body').hasClass('modal-open')) $modal.modal('show');
                 });
                 $('<button>',{type:'button','class':'btn btn-primary btn-sm'})
                     .html('<i class="fas fa-plus mr-1"></i> New voucher')
