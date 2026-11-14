@@ -7,14 +7,14 @@ use Tests\TestCase;
 
 final class PlotReceiptGlobalVoucherDirectoryTest extends TestCase
 {
-    private function view(): string
+    private function voucherSource(): string
     {
         return file_get_contents(resource_path('views/admin/finance/voucher/plot_receipt_workspace.blade.php'));
     }
 
     public function test_plot_receipt_uses_cr_dr_directory_shell_and_original_blue_palette(): void
     {
-        $view = $this->view();
+        $view = $this->voucherSource();
         foreach ([
             'bm-ui bm-voucher-directory',
             '--voucher-accent:#1769e0',
@@ -35,7 +35,7 @@ final class PlotReceiptGlobalVoucherDirectoryTest extends TestCase
 
     public function test_create_form_and_multi_plot_booking_allocation_are_modal_only(): void
     {
-        $view = $this->view();
+        $view = $this->voucherSource();
         $this->assertStringContainsString("@section('modal')", $view);
         $this->assertStringContainsString('id="plotReceiptCreateModal"', $view);
         $this->assertStringContainsString('data-target="#plotReceiptCreateModal"', $view);
@@ -56,7 +56,7 @@ final class PlotReceiptGlobalVoucherDirectoryTest extends TestCase
 
     public function test_history_uses_shared_filters_pagination_and_cr_dr_action_menu(): void
     {
-        $view = $this->view();
+        $view = $this->voucherSource();
         $this->assertStringContainsString('$.blueVoucherColumnFilters.init(', $view);
         $this->assertStringContainsString('$.blueVoucherPagination.render(', $view);
         $this->assertStringContainsString('$.blueActionMenu.enhance(', $view);
@@ -71,7 +71,7 @@ final class PlotReceiptGlobalVoucherDirectoryTest extends TestCase
     public function test_shared_workspace_styling_is_declared_globally_not_copied_into_plot_page(): void
     {
         $global = file_get_contents(public_path('css/blue-design-system.css'));
-        $view = $this->view();
+        $view = $this->voucherSource();
         foreach ([
             '.bm-voucher-workspace .bm-voucher-filter-grid',
             '.bm-voucher-workspace .bm-voucher-table',
@@ -94,7 +94,7 @@ final class PlotReceiptGlobalVoucherDirectoryTest extends TestCase
 
     public function test_original_project_scoped_api_and_plot_print_routes_are_preserved(): void
     {
-        $view = $this->view();
+        $view = $this->voucherSource();
         foreach ([
             "route('finance.voucher.plot-receipt.options')",
             "route('finance.voucher.plot-receipt.history')",
