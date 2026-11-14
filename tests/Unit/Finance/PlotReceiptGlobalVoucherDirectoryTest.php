@@ -66,6 +66,30 @@ final class PlotReceiptGlobalVoucherDirectoryTest extends TestCase
         $this->assertStringContainsString('loadBookings();loadHistory();', $view);
     }
 
+    public function test_shared_workspace_styling_is_declared_globally_not_copied_into_plot_page(): void
+    {
+        $global = file_get_contents(public_path('css/blue-design-system.css'));
+        $view = $this->view();
+        foreach ([
+            '.bm-voucher-workspace .bm-voucher-filter-grid',
+            '.bm-voucher-workspace .bm-voucher-table',
+            '.bm-voucher-workspace .bm-voucher-table-footer',
+            '.bm-voucher-workspace .bm-voucher-page-btn',
+        ] as $rule) {
+            $this->assertStringContainsString($rule, $global);
+        }
+        foreach ([
+            'bm-voucher-workspace', 'bm-voucher-heading',
+            'bm-voucher-filter-grid', 'bm-voucher-table-toolbar',
+            'bm-voucher-table-scroll', 'bm-voucher-table-footer',
+            'bm-voucher-page-btn',
+        ] as $class) {
+            $this->assertStringContainsString($class, $view);
+        }
+        $this->assertStringNotContainsString('#plotReceiptApp .pr-filter-row{display:grid', $view);
+        $this->assertStringNotContainsString('#plotReceiptApp .pr-table-card{flex:', $view);
+    }
+
     public function test_original_project_scoped_api_and_plot_print_routes_are_preserved(): void
     {
         $view = $this->view();
