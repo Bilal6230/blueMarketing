@@ -89,10 +89,35 @@ final class ChequeIntakeController extends Controller
                     ->orWhere('c.cheque_title','like',$search);
             });
         }
+        // Phase 09: aggregate the complete filtered project set, not just this page.
+        // Read-only: no ledger or cheque lifecycle side effects.
+        $summaryRows = (clone $query)->select('c.status', 'c.direction')
+            ->selectRaw('COUNT(*) as record_count, COALESCE(SUM(c.amount), 0) as total_amount')
+            ->groupBy('c.status', 'c.direction')->get();
+        $summary = ['count' => 0, 'amount' => 0, 'cleared_count' => 0,
+            'cleared_amount' => 0, 'pending_count' => 0, 'pending_amount' => 0,
+            'exception_count' => 0, 'exception_amount' => 0];
+        foreach ($summaryRows as $item) {
+            $count = (int) $item->record_count;
+            $amount = (float) $item->total_amount;
+            $summary['count'] += $count;
+            $summary['amount'] += $amount;
+            if ($item->status === 'cleared') {
+                $summary['cleared_count'] += $count;
+                $summary['cleared_amount'] += $amount;
+            } elseif ($item->status === 'pending_clearing') {
+                $summary['pending_count'] += $count;
+                $summary['pending_amount'] += $amount;
+            } elseif (in_array($item->status, ['returned', 'rejected'], true)) {
+                $summary['exception_count'] += $count;
+                $summary['exception_amount'] += $amount;
+            }
+        }
         $page = $query->orderByDesc('c.id')
             ->paginate((int) ($filters['per_page'] ?? 25), ['c.id', 'c.cheque_number', 'c.cheque_date', 'c.received_date',
                 'c.amount', 'c.bank_name', 'c.received_from', 'c.purpose', 'c.status', 'c.direction','c.cheque_title'], 'page', (int) ($filters['page'] ?? 1));
         return response()->json([
+            'summary' => $summary,
             'data' => $page->items(),
             'total' => $page->total(),
             'current_page' => $page->currentPage(),
