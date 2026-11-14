@@ -109,3 +109,31 @@ body.modal-open .bm-quick-filter-modal{overflow-y:auto}
 .bm-commission-entry-modal .modal-body{flex:1;min-height:0;padding:0}
 .bm-commission-entry-modal iframe{display:block;width:100%;height:100%;border:0}
 .bm-commission-entry-modal .modal-footer{padding:7px 12px}
+
+/* Secondary Extra Charge workflows stay available without taking directory height. */
+.bm-extra-pending-modal .modal-dialog,.bm-extra-payment-modal .modal-dialog{max-width:min(1020px,95vw)}
+.bm-extra-pending-modal .modal-header,.bm-extra-payment-modal .modal-header{background:#f2edff;border-bottom:2px solid #7145bd}
+.bm-extra-pending-modal .modal-title,.bm-extra-payment-modal .modal-title{color:#7145bd;font-size:16px;font-weight:700}
+.bm-extra-pending-modal .modal-body,.bm-extra-payment-modal .modal-body{max-height:72vh;overflow-y:auto;padding:16px}
+.bm-extra-payment-modal .bm-extra-payment-fields{display:block!important}
+.bm-extra-payment-modal .bm-extra-payment-fields form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:end;padding:12px;border:1px solid #dfd4f2;border-radius:8px;margin-bottom:10px}
+.bm-extra-payment-modal .bm-extra-payment-fields form .form-control{min-width:0;width:100%;font-size:13px}
+.bm-extra-payment-modal .bm-extra-payment-fields details{padding:8px;border:1px solid #dfd4f2;border-radius:8px}
+.bm-extra-payment-modal .bm-extra-payment-fields details>form{margin-top:8px}
+.bm-extra-payment-modal .bm-extra-payment-fields button{width:auto;justify-self:start}
+.bm-modern-extra .bm-extra-payment-open{white-space:nowrap}
+.bm-modern-extra .dataTables_wrapper{width:100%;font-size:12px}
+.bm-modern-extra .dataTables_wrapper .dt-buttons{display:inline-flex;gap:4px;flex-wrap:wrap}
+.bm-modern-extra .dataTables_wrapper .dt-button{font-size:12px;border-radius:5px;border:1px solid #d9c8f2;background:#f8f4ff;color:#563497}
+.bm-modern-extra #example1 tbody td{vertical-align:middle;font-size:12px}
+.bm-modern-extra .bm-voucher-table-card>.table-responsive{min-height:0;max-height:100%;overflow:auto}
+.bm-modern-draft .dataTables_wrapper{display:flex;flex-direction:column;min-height:100%}
+.bm-modern-draft .dataTables_wrapper>.d-flex{flex:0 0 auto;gap:8px;background:white}
+.bm-modern-draft .dataTables_wrapper .dataTables_filter input{height:30px;border:1px solid #cbd9ec;border-radius:5px;padding:4px 7px}
+.bm-modern-draft .dataTables_wrapper .dataTables_length select{height:30px;border:1px solid #cbd9ec;border-radius:5px}
+.bm-modern-draft .custom_card>.card-body>.col-12{display:flex;flex-direction:column;flex:1;min-height:0;margin-bottom:0!important;padding:0}
+.bm-modern-draft .custom_card>.card-body>.col-12>.custom_card{flex:1;min-height:0}
+@media(max-width:680px){
+ .bm-extra-payment-modal .bm-extra-payment-fields form{grid-template-columns:1fr}
+ .bm-modern-extra .bm-extra-actions{flex-wrap:wrap;justify-content:flex-end}
+}
