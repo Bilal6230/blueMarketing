@@ -30,7 +30,19 @@ return new class extends Migration {
         ];
         $present = array_filter($tables, static fn (string $table): bool => Schema::hasTable($table));
         if (count($present) === count($tables)) {
-            // A fully installed pilot should not be rebuilt or replaced.
+            // MySQL DDL is non-transactional. A previous failed foreign key
+            // may have left all three tables present but incomplete.
+            if (Schema::getConnection()->getDriverName() === 'mysql') {
+                $constraint = \Illuminate\Support\Facades\DB::table('information_schema.KEY_COLUMN_USAGE')
+                    ->whereRaw('TABLE_SCHEMA = DATABASE()')
+                    ->where('TABLE_NAME', 'finance_plot_receipt_postings')
+                    ->where('CONSTRAINT_NAME', 'v2_plot_rcpt_post_claim_fk')
+                    ->where('REFERENCED_TABLE_NAME', 'finance_posting_source_claims')
+                    ->count();
+                if ($constraint !== 2) {
+                    throw new RuntimeException('V2_PLOT_RECEIPT_INCOMPLETE_FK: run reviewed Phase 07 FK repair migration first');
+                }
+            }
             return;
         }
         if ($present !== []) {
@@ -64,7 +76,7 @@ return new class extends Migration {
             $t->foreign('posting_batch_id')->references('id')->on('finance_posting_batches')->restrictOnDelete();
             $t->foreignId('source_id')->unique()->constrained('finance_plot_receipts')->restrictOnDelete();
             $t->string('source_kind', 24)->default('plot_receipt');
-            $t->foreign(['posting_batch_id', 'source_kind'])
+            $t->foreign(['posting_batch_id', 'source_kind'], 'v2_plot_rcpt_post_claim_fk')
                 ->references(['posting_batch_id', 'source_kind'])
                 ->on('finance_posting_source_claims')->restrictOnDelete();
         });
