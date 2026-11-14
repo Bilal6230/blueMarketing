@@ -12,6 +12,8 @@
             var $headings=$table.find('thead tr:first th'),$cells=$filterRow.children('th');
             var $sortColumn=$('<input>',{type:'hidden',name:'sort_column'}).appendTo($form);
             var $sortDirection=$('<input>',{type:'hidden',name:'sort_direction'}).appendTo($form);
+            var $dateFrom=$('<input>',{type:'hidden',name:'column_date_from'}).appendTo($form);
+            var $dateTo=$('<input>',{type:'hidden',name:'column_date_to'}).appendTo($form);
             var $popover=$('<div>',{'class':'bm-heading-column-popover','role':'dialog','aria-label':'Column sort and filter'})
                 .append($('<div>',{'class':'bm-heading-column-title'}))
                 .append($('<div>',{'class':'bm-heading-column-control'}))
@@ -32,6 +34,8 @@
                     var $origin=$cells.eq(Number(index)).find('[data-column]').first();
                     var selected=$origin.length && String($origin.val()||'')!=='';
                     var sorted=$sortColumn.val()===field;
+                    if(field==='received_date'||field==='transaction_date')
+                        selected=!!($dateFrom.val()||$dateTo.val());
                     $button.toggleClass('bm-column-active',!!selected||sorted)
                         .attr('aria-sort',sorted?($sortDirection.val()==='asc'?'ascending':'descending'):'none');
                 });
@@ -51,7 +55,22 @@
                     $popover.find('.bm-heading-column-title').text($.trim($th.text()));
                     var $container=$popover.find('.bm-heading-column-control').empty();
                     var $origin=$cells.eq(active).find('[data-column]').first();
-                    if($origin.length){
+                    if($origin.length && $origin.is('[type=date]')){
+                        var $dates=$('<div>',{'class':'fvd-date-range'});
+                        $.each([['From Date',$dateFrom],['To Date',$dateTo]],function(_,spec){
+                            var $group=$('<label>',{'class':'fvd-date-range-label'}).text(spec[0]);
+                            var $date=$('<input>',{type:'date','class':'form-control form-control-sm fvd-date-control'})
+                                .val(spec[1].val());
+                            $date.on('change',function(){
+                                spec[1].val($(this).val());
+                                $origin.val('').trigger('change');
+                                updateButtons();
+                                $form.trigger('submit');
+                            });
+                            $group.append($date);$dates.append($group);
+                        });
+                        $container.append($dates).removeClass('d-none');
+                    }else if($origin.length){
                         var $copy=$origin.clone(false).removeAttr('id').removeAttr('name')
                             .removeClass('tomselected').addClass('bm-heading-column-input');
                         $copy.val($origin.val());
@@ -78,7 +97,10 @@
             $popover.find('.bm-col-clear').on('click',function(){
                 if(active===null)return;
                 var $origin=$cells.eq(active).find('[data-column]').first();
-                if($origin.length)$origin.val('').trigger('input');
+                if($origin.is('[type=date]')){
+                    $dateFrom.val('');$dateTo.val('');$origin.val('');
+                    $form.trigger('submit');
+                }else if($origin.length)$origin.val('').trigger('input');
                 if($sortColumn.val()===config.fields[active]){$sortColumn.val('');$sortDirection.val('');$form.trigger('submit');}
                 updateButtons();close();
             });
@@ -88,6 +110,7 @@
             $(document).on('keydown.bmColumn'+config.key,function(event){if(event.key==='Escape')close();});
             $form.on('reset.bmColumn'+config.key,function(){
                 $sortColumn.val('');$sortDirection.val('');
+                $dateFrom.val('');$dateTo.val('');
                 close();
                 // The caller clears column-filter fields and reloads itself.
                 updateButtons();
