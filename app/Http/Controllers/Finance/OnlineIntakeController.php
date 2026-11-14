@@ -61,6 +61,8 @@ final class OnlineIntakeController extends Controller
             'account_mapping_id'=>['nullable','integer',Rule::exists('project_head_subheads','id')->where('project_id',$project)],
             'search'=>['nullable','string','max:150'],
             'column_transaction_date'=>['nullable','date_format:Y-m-d'],
+            'column_date_from'=>['nullable','date_format:Y-m-d'],
+            'column_date_to'=>['nullable','date_format:Y-m-d'],
             'column_reference'=>['nullable','string','max:120'],
             'column_type'=>['nullable',Rule::in(['receipt','payment'])],
             'column_sending_bank'=>['nullable','string','max:150'],
@@ -90,6 +92,8 @@ final class OnlineIntakeController extends Controller
             });
         }
         // Column filters must apply in SQL before pagination (not only to visible rows).
+        if(!empty($input['column_date_from']))$query->whereDate('transaction_date','>=',$input['column_date_from']);
+        if(!empty($input['column_date_to']))$query->whereDate('transaction_date','<=',$input['column_date_to']);
         if(!empty($input['column_transaction_date'])) {
             $query->whereDate('transaction_date',$input['column_transaction_date']);
         }
