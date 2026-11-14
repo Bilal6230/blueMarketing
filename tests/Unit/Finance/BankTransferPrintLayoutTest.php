@@ -19,14 +19,15 @@ final class BankTransferPrintLayoutTest extends TestCase
         $this->assertStringContainsString('Authorized by',$template);
     }
 
-    public function test_print_page_margins_are_only_set_by_page_rule_not_sheet_padding(): void
+    public function test_print_sheet_is_removed_from_page_flow_with_single_a4_inset(): void
     {
         $template=file_get_contents(resource_path('views/admin/finance/voucher/bank_transfer_print.blade.php'));
-        $this->assertStringContainsString('@page{size:A4 portrait;margin:12mm}', $template);
-        $this->assertStringContainsString('.sheet{display:block;width:100%!important;', $template);
+        $this->assertStringContainsString('@page{size:A4 portrait;margin:0}', $template);
+        $this->assertStringContainsString('.sheet{position:absolute!important;top:12mm!important;left:12mm!important;right:12mm!important;', $template);
         $this->assertStringContainsString('margin:0!important;padding:0!important;box-shadow:none!important', $template);
         $this->assertStringContainsString('.toolbar{display:none!important}', $template);
         $this->assertStringContainsString('break-inside:avoid', $template);
+        $this->assertStringContainsString('height:0!important;min-height:0!important', $template);
         $this->assertStringNotContainsString('padding:12mm;box-shadow:none}@page', $template);
     }
 
