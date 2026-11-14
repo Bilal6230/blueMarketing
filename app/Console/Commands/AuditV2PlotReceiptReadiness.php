@@ -31,6 +31,7 @@ final class AuditV2PlotReceiptReadiness extends Command
         $project = (int) $id;
         $required = [
             'projects', 'leads', 'plots', 'bookings', 'project_head_subheads',
+            'head_accountings', 'subhead_accountings',
             'finance_posting_batches', 'finance_posting_source_claims',
             'finance_posting_lines', 'finance_plot_receipts',
             'finance_plot_receipt_allocations', 'finance_plot_receipt_postings',
@@ -64,22 +65,31 @@ final class AuditV2PlotReceiptReadiness extends Command
                     ->on('a.plot_id', '=', 'b.plot_id')
                     ->where('a.project_id', $project);
             })
+            ->join('head_accountings as h', function ($join): void {
+                $join->on('h.id', '=', 'a.head_accounting_id')->where('h.is_active', 1);
+            })
+            ->join('subhead_accountings as sh', function ($join): void {
+                $join->on('sh.id', '=', 'a.subhead_accounting_id')->where('sh.is_active', 1);
+            })
             ->where('b.project_id', $project)
             ->where('b.status', 'active')->where('b.cancel_status', '0')
             ->select('b.customer_id', 'b.plot_id')->distinct()->get();
 
         $byCustomer = $active->groupBy('customer_id');
         $multi = $byCustomer->filter(static fn ($rows): bool => $rows->count() >= 2)->count();
+        $receivingAccounts = \App\Models\ProjectHeadSubhead::availableForPosting()
+            ->where('project_id', $project)->count();
         $receipts = DB::table('finance_plot_receipts')->where('project_id', $project)->count();
 
         $this->table(['Check', 'Result'], [
             ['Required storage', 'PASS'],
             ['Active mapped plot bookings', $active->count()],
             ['Customers with >=2 mapped active plots', $multi],
+            ['Available project posting accounts', $receivingAccounts],
             ['Existing isolated plot receipts', $receipts],
         ]);
-        if ($multi === 0) {
-            $this->warn('Storage PASS, but browser multi-plot posting has no eligible customer with 2 mapped active plots.');
+        if ($multi === 0 || $receivingAccounts === 0) {
+            $this->warn('Storage PASS, but posting needs one eligible customer with 2 mapped active plots and an available project account.');
             return self::FAILURE;
         }
         $this->info('Phase 07 local readiness PASS. No records were changed.');
