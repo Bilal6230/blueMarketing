@@ -27,7 +27,7 @@ class CompactVoucherDirectoryLayoutTest extends TestCase
         }
         $this->assertStringContainsString('detach()', $script);
         $this->assertStringContainsString('link_status', $script);
-        $this->assertStringContainsString('Vouchers', $script);
+        $this->assertStringContainsString('Voucher Links', $script);
         $this->assertStringNotContainsString('document.createElement(', $script);
         $this->assertStringNotContainsString('document.createTextNode(', $script);
     }
