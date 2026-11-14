@@ -87,4 +87,20 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('padding-bottom:var(--fvd-footer-height,40px)', $css);
     }
 
+
+    public function test_table_remains_top_aligned_while_single_pager_is_pinned_to_card_bottom(): void
+    {
+        $css=file_get_contents(public_path('css/finance-voucher-components.css'));
+        $layout=file_get_contents(resource_path('views/admin/layouts/master.blade.php'));
+
+        $this->assertStringContainsString('.fvc-pagination-host .fvd-datatable-wrapper>.fvd-datatable-scroll', $css);
+        $this->assertStringContainsString('flex:0 1 auto!important', $css);
+        $this->assertStringContainsString('justify-content:flex-start!important', $css);
+        $this->assertStringContainsString('.fvd-datatable-wrapper::after', $css);
+        $this->assertStringContainsString('flex:1 1 auto', $css);
+        $this->assertStringContainsString('.fvc-pagination-host>.fvc-pagination-footer', $css);
+        $this->assertStringContainsString('bottom:0!important', $css);
+        $this->assertStringContainsString("finance-voucher-components.css') }}?v=3", $layout);
+    }
+
 }
