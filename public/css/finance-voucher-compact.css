@@ -142,3 +142,19 @@ body.modal-open .bm-quick-filter-modal{overflow-y:auto}
 .bm-quick-filter-modal .bm-quick-filter-form>.row{grid-column:1/-1}
 .bm-quick-filter-modal .bm-quick-filter-form>.cheque-filter-row{display:contents!important}
 .bm-quick-filter-modal .bm-quick-filter-form>.online-filter-row{display:contents!important}
+
+/* Excel-style column controls replace the extra second filter row in Cheque/Online. */
+.cheque-register-page #cheque-register-table thead .cheque-column-filters,
+.online-register-page .online-table thead .online-column-filters{display:none!important}
+.cheque-register-page #cheque-register-table thead tr:first-child th,
+.online-register-page .online-table thead tr:first-child th{position:sticky;top:0;z-index:3}
+.bm-column-heading-trigger{font-size:12px;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;margin-left:5px;padding:2px 4px;min-width:20px;min-height:22px;background:transparent;border:1px solid transparent;border-radius:5px;color:inherit;cursor:pointer}
+.bm-column-heading-trigger:hover,.bm-column-heading-trigger:focus-visible{border-color:currentColor;background:rgba(255,255,255,.6)}
+.bm-column-heading-trigger.bm-column-active{background:#fff;border-color:#168348;color:#087b40}
+.bm-heading-column-popover{position:fixed;z-index:1400;width:280px;max-width:calc(100vw - 16px);display:none;background:white;border:1px solid #c3d7ea;border-top:3px solid #168348;border-radius:9px;box-shadow:0 12px 35px rgba(13,33,61,.2);padding:12px}
+.bm-heading-column-title{color:#1d3b58;font-size:13px;font-weight:700;margin-bottom:9px}
+.bm-heading-column-control{margin-bottom:9px}
+.bm-heading-column-control.d-none{display:none!important}
+.bm-heading-column-input{display:block!important;visibility:visible!important;position:static!important;opacity:1!important;width:100%!important;min-width:0!important;min-height:34px!important;padding:5px 8px!important;font-size:13px!important;border:1px solid #bbcad9!important;border-radius:5px!important;background:white!important}
+.bm-heading-column-actions{display:flex;flex-wrap:wrap;gap:6px}
+.bm-heading-column-actions .btn{font-size:11px;padding:4px 7px}
