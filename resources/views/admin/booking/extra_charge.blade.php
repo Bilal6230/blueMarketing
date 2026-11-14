@@ -1,7 +1,14 @@
 @extends('admin.layouts.master')
 @section('content')
 
-    <div class="content-wrapper bm-ui bm-voucher-directory bm-booking-vouchers" style="--voucher-accent:#7145bd;--voucher-tint:#f2edff">
+    <div class="content-wrapper bm-ui bm-voucher-directory bm-booking-vouchers bm-modern-extra" style="--voucher-accent:#7145bd;--voucher-tint:#f2edff">
+        <div class="bm-extra-heading">
+            <div><h4>Extra Charges</h4><small>Selected project records · Charges and collection history</small></div>
+            <div class="bm-extra-actions">
+                <button type="button" class="btn btn-outline-primary btn-sm" data-toggle="modal" data-target="#modal-charge-type">Add Charge Type</button>
+                <a class="btn btn-outline-secondary btn-sm" href="{{ route('dashboard') }}">Dashboard</a>
+            </div>
+        </div>
         <!-- Content Header (Page header) -->
         <div class="content-header">
             <div class="container-fluid">
@@ -10,8 +17,7 @@
                         <span class="{{ $class }}">
                             {{ $title }}
                         </span>
-                        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#modal-charge-type">Add
-                            Charge Type</button>
+
                     </div><!-- /.col -->
                     <div class="col-sm-6">
                         <ol class="breadcrumb float-sm-right">
