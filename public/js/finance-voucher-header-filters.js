@@ -76,6 +76,16 @@
                     $('#bmCommissionFrame').attr('src',url+(url.indexOf('?')===-1?'?':'&')+'embed=1');
                     $commissionModal.modal('show');
                 });
+                $cv.on('click.bmCommission','#journalTable a[href*="/edit"]',function(e){
+                    e.preventDefault();
+                    var url=$(this).attr('href');
+                    $commissionModal.find('.modal-title').text('Edit Commission Voucher');
+                    $('#bmCommissionFrame').attr('src',url+(url.indexOf('?')===-1?'?':'&')+'embed=1');
+                    $commissionModal.modal('show');
+                });
+                $commissionCreate.on('click.bmCommissionTitle',function(){
+                    $commissionModal.find('.modal-title').text('New Commission Voucher');
+                });
                 $commissionModal.on('hidden.bs.modal',function(){
                     $('#bmCommissionFrame').attr('src','about:blank');
                     if($.fn.DataTable && $.fn.DataTable.isDataTable('#journalTable')){
