@@ -1,0 +1,142 @@
+/* Canonical finance voucher components (visual reference: approved CR directory).
+   Shared popup + shared pagination are one DOM implementation, not per-page CSS copies.
+   Voucher-specific differences are accent tokens and available fields/actions only. */
+:root{
+ --fvc-font:12px;
+ --fvc-popover-width:288px;
+ --fvc-popover-padding:10px;
+ --fvc-popover-radius:8px;
+ --fvc-control-height:31px;
+ --fvc-page-height:30px;
+ --fvc-page-gap:4px;
+ --fvc-row-height:42px;
+}
+.fvc-filter-popover,.jv-excel-pop.fvc-filter-popover{
+ box-sizing:border-box!important;position:fixed!important;
+ z-index:1450!important;width:var(--fvc-popover-width)!important;
+ max-width:calc(100vw - 16px)!important;
+ padding:var(--fvc-popover-padding)!important;
+ border:1px solid #c9d3de!important;border-top:3px solid var(--fvd-pop-accent,#168348)!important;
+ border-radius:var(--fvc-popover-radius)!important;
+ background:#fff!important;color:#273549!important;font-size:var(--fvc-font)!important;
+ box-shadow:0 14px 38px rgba(13,34,56,.18)!important;
+}
+.fvc-filter-popover.fvc-open{display:block!important}
+.fvc-filter-popover .fvc-filter-title{
+ display:block!important;font-weight:700!important;
+ font-size:var(--fvc-font)!important;margin:0 0 8px!important;line-height:18px!important;
+}
+.fvc-filter-popover .fvc-sort-options{
+ display:flex!important;flex-direction:column!important;
+ border-bottom:1px solid #e1e7ed!important;
+ padding:0 0 8px!important;margin:0 0 9px!important;gap:0!important;
+}
+.fvc-filter-popover .fvc-sort-button{
+ display:flex!important;align-items:center!important;
+ width:100%!important;min-height:30px!important;
+ border:0!important;border-radius:4px!important;
+ padding:7px 6px!important;margin:0!important;
+ background:#fff!important;color:#273549!important;
+ font-size:var(--fvc-font)!important;line-height:18px!important;
+ font-weight:400!important;text-align:left!important;box-shadow:none!important;
+}
+.fvc-filter-popover .fvc-sort-button:hover{background:#eef5fc!important}
+.fvc-filter-popover .fvc-sort-button i{font-size:12px!important;width:14px!important}
+.fvc-filter-popover .fvc-filter-control{
+ display:flex!important;flex-direction:column!important;
+ gap:7px!important;padding:0!important;
+}
+.fvc-filter-popover .fvc-filter-control>div{width:100%}
+.fvc-filter-popover :is(.fvc-date-label,.fvc-date-range-label){
+ display:flex!important;flex-direction:column!important;
+ font-size:var(--fvc-font)!important;font-weight:600!important;
+ gap:5px!important;margin:0!important;padding:0!important;
+}
+.fvc-filter-popover :is(.fvc-date-input,.fvc-search-input,.fvc-choices-search){
+ box-sizing:border-box!important;width:100%!important;
+ height:var(--fvc-control-height)!important;
+ min-height:var(--fvc-control-height)!important;
+ border:1px solid #ced9e4!important;border-radius:5px!important;
+ background:#fff!important;color:#273549!important;
+ font-size:var(--fvc-font)!important;padding:4px 7px!important;
+}
+.fvc-filter-popover .fvc-choices-list,
+.fvc-filter-popover #jv-excel-items{
+ height:190px!important;overflow:auto!important;
+ border:1px solid #dde4ec!important;border-radius:5px!important;
+ padding:5px!important;margin:2px 0!important;
+}
+.fvc-filter-popover .fvc-choice{
+ display:flex;align-items:center;gap:7px;
+ padding:5px 3px;margin:0;font-size:var(--fvc-font);cursor:pointer;
+}
+.fvc-filter-popover .fvc-choice input{margin:0;flex:0 0 auto}
+.fvc-filter-popover .fvc-filter-actions{
+ display:flex!important;justify-content:flex-end!important;align-items:center!important;
+ gap:6px!important;padding:9px 0 0!important;margin:8px 0 0!important;
+ border-top:1px solid #e1e7ed!important;
+}
+.fvc-filter-popover .fvc-filter-actions .btn,
+.fvc-filter-popover .fvc-choices-actions .btn{
+ height:26px!important;min-height:26px!important;
+ border-radius:5px!important;padding:3px 8px!important;font-size:11px!important;
+ line-height:18px!important;
+}
+.fvc-filter-popover .fvc-choices-actions{
+ display:flex;justify-content:flex-end;gap:5px;margin-top:8px;
+}
+.fvc-filter-popover .fvc-filter-actions .fvc-clear{margin-left:auto!important}
+.fvc-filter-popover.jv-date-mode #jv-excel-search-wrap,
+.fvc-filter-popover.jv-date-mode #jv-excel-items,
+.fvc-filter-popover.jv-search-mode #jv-excel-items{display:none!important}
+.fvc-filter-popover.jv-date-mode #jv-excel-dates{display:block!important}
+.fvc-filter-popover.jv-search-mode #jv-excel-dates,
+.fvc-filter-popover.jv-checkbox-mode #jv-excel-dates{display:none!important}
+/* DataTables and non-DataTables directories use identical CR page markup. */
+.bm-voucher-directory .fvc-pagination-footer{
+ display:flex!important;align-items:center!important;
+ justify-content:space-between!important;position:relative!important;
+ flex:0 0 auto!important;min-height:40px!important;
+ padding:5px 7px!important;margin-top:auto!important;
+ border-top:1px solid #e1e8f0!important;background:#fff!important;
+}
+.bm-voucher-directory .fvc-pagination-info{
+ font-size:var(--fvc-font)!important;white-space:nowrap!important;
+ color:#6b7a8d!important;
+}
+.bm-voucher-directory .fvc-pagination{
+ display:flex!important;align-items:center!important;
+ gap:var(--fvc-page-gap)!important;
+ position:absolute!important;left:50%!important;transform:translateX(-50%)!important;
+ margin:0!important;padding:0!important;
+}
+.bm-voucher-directory .fvc-page-btn,
+.bm-voucher-directory .dv-page-btn{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ min-width:31px!important;height:var(--fvc-page-height)!important;
+ border:1px solid var(--fvd-accent,#168348)!important;
+ border-radius:5px!important;background:#fff!important;
+ padding:3px 8px!important;margin:0!important;
+ box-shadow:none!important;color:var(--fvd-accent,#168348)!important;
+ font-size:var(--fvc-font)!important;line-height:20px!important;white-space:nowrap!important;
+}
+.bm-voucher-directory :is(.fvc-page-btn,.dv-page-btn).active{
+ background:var(--fvd-accent,#168348)!important;color:#fff!important;
+}
+.bm-voucher-directory :is(.fvc-page-btn,.dv-page-btn):disabled{opacity:.45!important}
+.bm-voucher-directory .fvc-pagination .dv-page-ellipsis{padding:0 2px}
+.bm-voucher-directory .fvc-pagination-footer .dataTables_paginate{display:none!important}
+.bm-voucher-directory .fvc-pagination-footer .dataTables_info{display:none!important}
+/* Rows + toolbar are sized by the same tokens; item data remains module-specific. */
+.bm-voucher-directory table tbody td{height:var(--fvc-row-height)!important}
+.bm-voucher-directory :is(.dataTables_length select,#dv-page-length){
+ width:66px!important;min-width:66px!important;height:30px!important;
+ appearance:menulist!important;border-radius:5px!important;
+}
+@media(max-width:850px){
+ .bm-voucher-directory .fvc-pagination{
+  position:static!important;transform:none!important;
+  flex-wrap:wrap!important;justify-content:flex-end!important;
+ }
+ .bm-voucher-directory .fvc-pagination-footer{gap:8px!important;flex-wrap:wrap!important}
+}
