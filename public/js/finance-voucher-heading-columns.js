@@ -7,7 +7,7 @@
         function setup(config) {
             var $root=$(config.root),$table=$root.find(config.table);
             if (!$table.length) return;
-            var $form=$root.find(config.form),$filterRow=$table.find(config.row).first();
+            var $form=$(config.form),$filterRow=$table.find(config.row).first();
             if (!$form.length || !$filterRow.length) return;
             var $headings=$table.find('thead tr:first th'),$cells=$filterRow.children('th');
             var $sortColumn=$('<input>',{type:'hidden',name:'sort_column'}).appendTo($form);
@@ -60,11 +60,11 @@
                             updateButtons();
                         });
                         $container.append($copy).removeClass('d-none');
-                        $copy.trigger('focus');
                     }else{$container.addClass('d-none');}
                     var offset=$button.offset(),left=Math.max(8,Math.min(offset.left-$(window).scrollLeft(),$(window).width()-290));
                     var top=Math.max(8,Math.min(offset.top-$(window).scrollTop()+$button.outerHeight()+4,$(window).height()-225));
                     $popover.css({left:left+'px',top:top+'px'}).addClass('bm-col-open').show();
+                    $popover.find('.bm-heading-column-input').trigger('focus');
                 });
             });
             function sort(direction){
