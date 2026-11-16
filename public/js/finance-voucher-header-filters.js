@@ -350,6 +350,7 @@
                     $('#bmExtraConfirmSave').prop('disabled',false);
                 });
             }
+            $(document).on('finance:extra-changed.fvc',function(){refreshExtraDirectory();});
             var $chargeTypeForm=$('#modal-charge-type form').first();
             $chargeTypeForm.on('submit.fvcAjax',function(event){
                 event.preventDefault();
@@ -451,6 +452,18 @@
             $paymentModal.addClass('fvc-modern-modal fvc-modal-purple');
             $('body').append($paymentModal);
             var $activePayment=null;
+            // Collection forms are relocated into a modal; submit through
+            // the same guarded AJAX writer as Extra creation, not navigation.
+            $paymentModal.on('submit.fvcExtraCollection','form',function(event){
+                event.preventDefault();
+                var $paymentForm=$(this);
+                submitExtraAjax($paymentForm,function(response){
+                    $paymentModal.modal('hide');
+                    if($.financeVoucherFeedback)
+                        $.financeVoucherFeedback.toast('success',response.message||'Collection recorded.');
+                    refreshExtraDirectory();
+                });
+            });
             function mountExtraPaymentActions(){
              $extra.find('#example1 tbody tr').each(function(){
                 var $cell=$(this).children('td').eq(10);
