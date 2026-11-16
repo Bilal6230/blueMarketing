@@ -198,4 +198,25 @@ class CommissionVoucherListingResponseTest extends TestCase
         $this->assertSame('ROLELESS',$payload['data'][0]['reference']);
     }
 
+    public function test_cv_same_from_and_to_date_excludes_all_other_dates(): void
+    {
+        DB::table('commision_vouchers')->insert([
+            ['id'=>71,'project_id'=>7,'voucher_number'=>'71','date'=>'2026-11-03',
+                'created_at'=>now(),'updated_at'=>now()],
+            ['id'=>72,'project_id'=>7,'voucher_number'=>'72','date'=>'2026-11-16',
+                'created_at'=>now(),'updated_at'=>now()],
+        ]);
+        $request=Request::create('/commision-voucher','GET',[
+            'draw'=>5,'start'=>0,'length'=>25,
+            'fvd_date_from'=>'2026-11-03','fvd_date_to'=>'2026-11-03',
+        ]);
+        $request->headers->set('X-Requested-With','XMLHttpRequest');
+        $request->cookies->set('selected_action','7');
+        $this->app->instance('request',$request);
+        $payload=app(CommissionVoucherController::class)->index($request)->getData(true);
+        $this->assertSame(2,$payload['recordsTotal']);
+        $this->assertSame(1,$payload['recordsFiltered']);
+        $this->assertSame('2026-11-03',$payload['data'][0]['date']);
+    }
+
 }
