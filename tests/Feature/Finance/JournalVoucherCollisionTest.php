@@ -31,6 +31,7 @@ class JournalVoucherCollisionTest extends TestCase
         Schema::create('journal_vouchers', function (Blueprint $table) {
             $table->id();
             $table->string('voucher_number');
+            $table->unsignedBigInteger('project_id');
             $table->string('type')->nullable();
             $table->string('reference')->nullable();
             $table->date('date');
@@ -52,9 +53,17 @@ class JournalVoucherCollisionTest extends TestCase
             $table->softDeletes();
             $table->timestamps();
         });
+        Schema::create('head_accountings', function (Blueprint $table) {
+            $table->id(); $table->string('name'); $table->boolean('is_active')->default(true);
+        });
+        Schema::create('subhead_accountings', function (Blueprint $table) {
+            $table->id(); $table->string('name'); $table->boolean('is_active')->default(true);
+        });
         Schema::create('project_head_subheads', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('project_id')->nullable();
+            $table->id(); $table->unsignedBigInteger('project_id');
+            $table->unsignedBigInteger('head_accounting_id');
+            $table->unsignedBigInteger('subhead_accounting_id');
+            $table->softDeletes();
         });
         Schema::create('ledgers', function (Blueprint $table) {
             $table->id();
@@ -77,18 +86,31 @@ class JournalVoucherCollisionTest extends TestCase
 
     public function test_updating_one_jv_preserves_unrelated_jv_ledger_when_detail_id_collides(): void
     {
-        // Header 88 belongs to ANOTHER JV. Detail 88 belongs to header 41.
-        // The current updater deletes JV ledger type_id in [41, 88].
+        // Build a VALID balanced revision: rejecting it must not erase the
+        // unrelated voucher 88 ledger whose type_id collides with detail 88.
+        DB::table('head_accountings')->insert([
+            ['id'=>1,'name'=>'Head 1','is_active'=>1],
+            ['id'=>2,'name'=>'Head 2','is_active'=>1],
+        ]);
+        DB::table('subhead_accountings')->insert([
+            ['id'=>1,'name'=>'Child 1','is_active'=>1],
+            ['id'=>2,'name'=>'Child 2','is_active'=>1],
+        ]);
+        DB::table('project_head_subheads')->insert([
+            ['id'=>1,'project_id'=>7,'head_accounting_id'=>1,'subhead_accounting_id'=>1],
+            ['id'=>2,'project_id'=>7,'head_accounting_id'=>2,'subhead_accounting_id'=>2],
+        ]);
         DB::table('journal_vouchers')->insert([
-            ['id' => 41, 'voucher_number' => 'JV-41', 'date' => '2026-10-26',
+            ['id' => 41, 'project_id' => 7, 'voucher_number' => 'JV-41', 'date' => '2026-10-26',
              'created_at' => now(), 'updated_at' => now()],
-            ['id' => 88, 'voucher_number' => 'JV-88', 'date' => '2026-10-26',
+            ['id' => 88, 'project_id' => 7, 'voucher_number' => 'JV-88', 'date' => '2026-10-26',
              'created_at' => now(), 'updated_at' => now()],
         ]);
         DB::table('journal_voucher_details')->insert([
-            'id' => 88, 'journal_voucher_id' => 41,
-            'account_id' => 1, 'debit' => 10, 'credit' => 0,
-            'created_at' => now(), 'updated_at' => now(),
+            ['id'=>88,'journal_voucher_id'=>41,'account_id'=>1,
+             'debit'=>10,'credit'=>0,'created_at'=>now(),'updated_at'=>now()],
+            ['id'=>89,'journal_voucher_id'=>41,'account_id'=>2,
+             'debit'=>0,'credit'=>10,'created_at'=>now(),'updated_at'=>now()],
         ]);
         $unrelatedLedgerId = DB::table('ledgers')->insertGetId([
             'type' => 'JV', 'type_id' => 88,
@@ -98,9 +120,10 @@ class JournalVoucherCollisionTest extends TestCase
         $request = Request::create('/journal-voucher/41', 'PUT', [
             'voucher_number' => 'JV-41', 'date' => '2026-10-26',
             'description' => 'Header 41 update',
-            'accounts' => [1], 'sub_accounts' => [1],
-            'debit' => [0], 'credit' => [0],
+            'accounts' => [1,2], 'sub_accounts' => [1,2],
+            'debit' => ['10.00','0'], 'credit' => ['0','10.00'],
         ]);
+        $request->cookies->set('selected_action', '7');
         $this->app->instance('request', $request);
 
         try {
