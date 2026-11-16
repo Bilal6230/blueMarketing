@@ -107,7 +107,13 @@
                 close();
                 // Execute original in-cell action so existing jQuery delegation,
                 // HTTP methods, confirmation modals and security rules remain.
-                $original.trigger('click');
+                // jQuery trigger does not reliably execute anchor navigation,
+                // particularly target="_blank" print links. Dispatch a native
+                // click for anchors (preserving delegated handlers and targets).
+                if($original.is('a') && $original[0].click)
+                    $original[0].click();
+                else
+                    $original.trigger('click');
             });
             $rail.append($item);
         });
