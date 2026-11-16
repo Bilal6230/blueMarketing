@@ -35,7 +35,12 @@ $(function(){
     // Scope Date From/To checks to this exact DataTable, never other modules.
     $.fn.dataTable.ext.search.push(function(settings,row){
       if(settings.nTable!==$table[0])return true;
-      var date=String(row[1]||'').trim().slice(0,10);
+      // Legacy Extra Date cell contains line breaks / markup (2026-11-\n16).
+      // Normalize the complete text before ISO date comparison.
+      var source=String(row[1]||'').replace(/<[^>]*>/g,'').replace(/\\s+/g,'').trim();
+      var matched=source.match(/\\d{4}-\\d{2}-\\d{2}/);
+      var date=matched?matched[0]:'';
+      if(!date)return !(state.dates.from||state.dates.to);
       if(state.dates.from&&date<state.dates.from)return false;
       if(state.dates.to&&date>state.dates.to)return false;
       return true;
