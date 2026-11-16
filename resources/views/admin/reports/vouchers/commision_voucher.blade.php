@@ -260,12 +260,12 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                     data:$form.serialize(),dataType:'json',
                     headers:{Accept:'application/json'}
                 }).done(function(response){
-                    notify('success',response.message||'Commission draft saved.');
                     $('#confirmationModal').modal('hide');
                     if(window.parent!==window && window.parent.jQuery){
                         window.parent.jQuery(window.parent.document)
                             .trigger('finance:commission-saved',[response]);
                     } else {
+                        notify('success',response.message||'Commission draft saved.');
                         window.location.href=response.redirect||'{{ route('commision.voucher.index') }}';
                     }
                 }).fail(function(xhr){
