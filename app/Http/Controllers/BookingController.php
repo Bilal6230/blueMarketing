@@ -1942,6 +1942,10 @@ class BookingController extends Controller
                 'posting_lines.*.debit' => ['required', 'regex:/^\d{1,9}(?:\.[0-9]{1,2})?$/D'],
                 'posting_lines.*.credit' => ['required', 'regex:/^\d{1,9}(?:\.[0-9]{1,2})?$/D'],
             ]);
+            // Existing posted EC/PPR/CR sources are immutable: make the
+            // reason explicit before invoking the authoritative V2 writer.
+            abort_if(Ledger::query()->where('customer_ledger_id',(int)$data['id'])->exists(),
+                409,'This voucher already has ledger entries. Approval cannot be repeated; use the authorized reversal workflow.');
             try {
                 (new \App\Services\Finance\V2CustomerApprovalWorkflow())->approveAndPost(
                     $projectId, (int) $data['id'], $posting['request_key'], $posting['posting_lines'], (int) Auth::id()
