@@ -327,4 +327,13 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringNotContainsString('window.location.reload()', $header);
     }
 
+    public function test_client_side_extra_date_filter_has_real_digit_and_whitespace_regex(): void
+    {
+        $adapter=file_get_contents(public_path('js/finance-voucher-datatable-columns.js'));
+        $this->assertStringContainsString('replace(/\s+/g,', $adapter);
+        $this->assertStringContainsString('match(/\d{4}-\d{2}-\d{2}/)', $adapter);
+        $this->assertStringNotContainsString('replace(/\\\\s+/g,', $adapter);
+        $this->assertStringNotContainsString('match(/\\\\d{4}-\\\\d{2}-\\\\d{2}/)', $adapter);
+    }
+
 }
