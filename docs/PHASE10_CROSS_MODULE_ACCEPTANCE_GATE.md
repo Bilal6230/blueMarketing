@@ -51,8 +51,12 @@ Do not infer production readiness from green isolated tests; the tests exercise 
 On the previously approved isolated local Project 3 database **only**, after selecting its correct environment/connection:
 
 ```powershell
+php artisan finance:audit-v2-bank-transfers 3
+php artisan finance:audit-v2-plot-receipt 3
 php artisan finance:audit-v2-plot-purchases 3
 ```
+
+**Command verification:** `finance:audit-v2-bank-transfers` uses the existing read-only `V2BankTransferReconciliation`; `finance:audit-v2-plot-receipt` is the guarded, isolated local storage/readiness audit (not a ledger repair); `finance:audit-v2-plot-purchases` uses the existing read-only purchase reconciliation. Run all three only with the previously approved isolated test connection and Project 3, never as a substitute for confirming the database target.
 
 Expected previously witnessed: PP-1, batch 4, 1 plot, Rs1,000; debit Rs1,000 and credit Rs1,000, PASS, 0 exceptions. Compare fresh result with this baseline; discrepancies require investigation before any data repair. For bank movement and plot receipts, use only existing documented read-only audit commands and compare to earlier owner's PASS evidence. Do **not** run schema migrations as a verification shortcut.
 
