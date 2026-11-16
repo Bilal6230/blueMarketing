@@ -212,6 +212,49 @@
         var $extra=$('.bm-modern-extra');
         if ($extra.length) {
             $('#modal-charge-type').addClass('fvc-modern-modal fvc-modal-purple');
+            var extraSaveCompleted=false;
+            function refreshExtraDirectory(){
+                var $table=$extra.find('#example1');
+                if($.financeVoucherFeedback && $table.length &&
+                    $.fn.DataTable && $.fn.DataTable.isDataTable($table)){
+                    $.financeVoucherFeedback.tableSkeleton($table,true);
+                }
+                $.ajax({url:window.location.href,type:'GET',dataType:'html',
+                    cache:false,headers:{'X-Requested-With':'XMLHttpRequest'}})
+                .done(function(html){
+                    // The page still owns its Laravel-rendered, project-scoped
+                    // rows. Refresh the DataTable without navigating away.
+                    var $response=$('<div>').append($.parseHTML(html,document,false));
+                    var $source=$response.find('#example1');
+                    if($table.length&&$source.length&&$.fn.DataTable&&
+                        $.fn.DataTable.isDataTable($table)){
+                        var api=$table.DataTable();
+                        var rows=$source.find('tbody>tr').filter(function(){
+                            return $(this).children('td').length===
+                                $table.find('thead tr:first th').length;
+                        }).toArray();
+                        api.clear();
+                        if(rows.length)api.rows.add(rows);
+                        api.draw(false);
+                        mountExtraPaymentActions();
+                        if($.blueVoucherRegisterActions && $.blueVoucherRegisterActions.enhance)
+                            $.blueVoucherRegisterActions.enhance($table);
+                    }
+                    var $old=$extra.find('#charge_type'),$fresh=$response.find('#charge_type');
+                    if($old.length&&$fresh.length){
+                        if($old[0].tomselect)$old[0].tomselect.destroy();
+                        $old.empty().append($fresh.children('option').clone());
+                        if($.financeVoucherFeedback &&
+                           $('#bmExtraEntryModal').hasClass('show'))
+                            $.financeVoucherFeedback.enhanceSelects($old);
+                    }
+                }).fail(function(){
+                    if($.financeVoucherFeedback)$.financeVoucherFeedback.toast('error',
+                      'Saved, but the register could not refresh. Please refresh the listing.');
+                }).always(function(){
+                    if($.financeVoucherFeedback)$.financeVoucherFeedback.tableSkeleton($table,false);
+                });
+            }
             // Shared, project-safe AJAX form submission. Existing endpoints
             // still own validation, authorization, posting and idempotency.
             function submitExtraAjax($entry,onSaved){
@@ -253,12 +296,21 @@
             var $chargeTypeForm=$('#modal-charge-type form').first();
             $chargeTypeForm.on('submit.fvcAjax',function(event){
                 event.preventDefault();
-                submitExtraAjax($(this),function(){window.location.reload();});
+                submitExtraAjax($(this),function(){
+                    $('#modal-charge-type').modal('hide');
+                    $chargeTypeForm[0].reset();
+                    refreshExtraDirectory();
+                });
             });
             var $form=$extra.find('#voucherForm');
             $form.on('submit.fvcAjax',function(event){
                 event.preventDefault();
-                submitExtraAjax($form,function(){window.location.reload();});
+                submitExtraAjax($form,function(){
+                    extraSaveCompleted=true;
+                    $('#bmExtraConfirmModal').modal('hide');
+                    $('#bmExtraEntryModal').modal('hide');
+                    refreshExtraDirectory();
+                });
             });
             var $head=$extra.find('.bm-extra-heading').first();
             if ($form.length && $head.length) {
@@ -298,6 +350,7 @@
                 });
                 $confirm.on('hidden.bs.modal',function(){
                     $('#bmExtraConfirmSave').prop('disabled',false);
+                    if(extraSaveCompleted){extraSaveCompleted=false;return;}
                     if (!$('body').hasClass('modal-open')) $modal.modal('show');
                 });
                 if($extra.attr('data-extra-errors')==='1'){
@@ -339,7 +392,8 @@
                 .append($('<div>',{'class':'modal-body'}))));
             $('body').append($paymentModal);
             var $activePayment=null;
-            $extra.find('#example1 tbody tr').each(function(){
+            function mountExtraPaymentActions(){
+             $extra.find('#example1 tbody tr').each(function(){
                 var $cell=$(this).children('td').eq(10);
                 if(!$cell.find('form').length)return;
                 var $holder=$('<div>',{'class':'bm-extra-payment-fields'});
@@ -351,7 +405,9 @@
                         $paymentModal.find('.modal-body').append($activePayment);
                         $paymentModal.modal('show');
                     }).prependTo($cell);
-            });
+             });
+            }
+            mountExtraPaymentActions();
             $paymentModal.on('hidden.bs.modal',function(){
                 if($activePayment){
                     var $owner=$activePayment.data('bm-owner');
