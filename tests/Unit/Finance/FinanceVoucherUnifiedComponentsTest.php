@@ -457,6 +457,8 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $actions=file_get_contents(resource_path('views/admin/reports/vouchers/actions.blade.php'));
 
         $this->assertStringContainsString('fvc-tom-select account-select', $view);
+        $this->assertStringContainsString('<form id="journalForm" novalidate', $view);
+        $this->assertStringContainsString('Select Account and Sub-Account on every voucher line.', $view);
         $this->assertStringContainsString('fvc-tom-select sub-account-select', $view);
         $this->assertStringContainsString('table table-bordered fvc-entry-table', $view);
         $this->assertStringContainsString("enhanceSelects(\$('#journalTable select.fvc-tom-select'))", $view);
