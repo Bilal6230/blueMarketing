@@ -483,6 +483,7 @@
                                                                 @endcan
                                                                 @can('can approve')
                                                                     <button class="btn btn-sm btn-secondary btn-view"
+                                                                        data-blue-action-label="View / Approve"
                                                                         data-id="{{ $i->id }}"
                                                                         data-name="{{ $i->name }}"><i
                                                                             class="fas fa-eye"></i></button>
