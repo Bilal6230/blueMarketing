@@ -706,11 +706,11 @@
 .bm-modern-extra #example1 th:nth-child(7),
 .bm-modern-extra #example1 th:nth-child(8),
 .bm-modern-extra #example1 th:nth-child(9),
-.bm-modern-extra #example1 th:nth-child(10){width:5.8%!important}
+.bm-modern-extra #example1 th:nth-child(10){width:6.8%!important}
 .bm-modern-extra #example1 th:nth-child(11){width:11%!important}
 .bm-modern-extra #example1 th:nth-child(12){width:8%!important}
 .bm-modern-extra #example1 th:nth-child(13){width:6%!important}
-.bm-modern-extra #example1 th:nth-child(14){width:5.8%!important}
+.bm-modern-extra #example1 th:nth-child(14){width:6.8%!important}
 .bm-modern-extra #example1 td:nth-child(n+7):nth-child(-n+10){
  font-variant-numeric:tabular-nums!important;white-space:nowrap!important;
  font-size:11px!important;
