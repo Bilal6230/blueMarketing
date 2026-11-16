@@ -474,4 +474,21 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringNotContainsString('class="form-control select2 account-select"', $view);
     }
 
+    public function test_explicit_local_normal_erp_mode_preserves_jv_history_and_avoids_pilot_approval(): void
+    {
+        $access=file_get_contents(app_path('Services/Finance/V2OriginalWorkflowAccess.php'));
+        $approval=file_get_contents(app_path('Services/Finance/DailyVoucherApprovalWorkflow.php'));
+        $mutation=file_get_contents(app_path('Services/Finance/VoucherApprovalMutationGuard.php'));
+        $actions=file_get_contents(resource_path('views/admin/reports/vouchers/actions.blade.php'));
+        $config=file_get_contents(config_path('finance.php'));
+
+        $this->assertStringContainsString("'normal_erp_mode' => env('FINANCE_NORMAL_ERP_MODE', false)", $config);
+        $this->assertStringContainsString("!str_starts_with(\$database, 'bluemarketing_v2_')", $access);
+        $this->assertStringContainsString('if (self::normalErpMode()) return false;', $access);
+        $this->assertStringContainsString('V2OriginalWorkflowAccess::normalErpMode()', $approval);
+        $this->assertStringContainsString('V2OriginalWorkflowAccess::normalErpMode()', $mutation);
+        $this->assertStringContainsString('V2OriginalWorkflowAccess::normalErpMode()', $actions);
+        $this->assertStringContainsString("Correction reversal:", file_get_contents(app_path('Http/Controllers/JournalVoucherController.php')));
+    }
+
 }
