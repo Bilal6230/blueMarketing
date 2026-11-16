@@ -36,7 +36,7 @@
             <div class="container-fluid">
                 <div class="row">
                     <div class="col-12">
-                        <div class="card">
+                        <div class="card bm-card-frame-reset">
                             @can('add slip')
                                 <div class="card-header">
                                     <div>
