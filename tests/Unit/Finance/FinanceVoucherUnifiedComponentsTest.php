@@ -424,4 +424,45 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString("@method('DELETE')", $cv);
     }
 
+    public function test_extra_approval_and_pending_collections_use_ajax_and_real_bank_validation(): void
+    {
+        $extra=file_get_contents(resource_path('views/admin/booking/extra_charge.blade.php'));
+        $shared=file_get_contents(public_path('js/finance-voucher-header-filters.js'));
+        $booking=file_get_contents(app_path('Http/Controllers/BookingController.php'));
+        $input=file_get_contents(app_path('Services/Finance/V2OriginalVoucherInput.php'));
+
+        $this->assertStringContainsString('id="fvc-extra-approval-form"', $extra);
+        $this->assertStringContainsString('fvc-approval-feedback', $extra);
+        $this->assertStringContainsString('submit.fvcExtraApproval', $extra);
+        $this->assertStringContainsString('Select valid Debit and Credit posting accounts before approval.', $extra);
+        $this->assertStringContainsString('finance:extra-changed', $extra);
+        $this->assertStringContainsString('finance:extra-changed.fvc', $shared);
+        $this->assertStringContainsString('submit.fvcExtraCollection', $shared);
+        $this->assertStringContainsString('syncChequeFields', $shared);
+        $this->assertStringContainsString('fvc-cheque-purpose', $extra);
+        $this->assertStringContainsString('receiptBanks', $extra);
+        $this->assertStringNotContainsString('placeholder="Bank ID"', $extra);
+        $this->assertStringContainsString("Rule::exists('banks','id')", $input);
+        $this->assertStringContainsString("Schema::hasTable('banks')", $booking);
+        $this->assertStringContainsString("'status' => 'success', 'message' => 'Voucher approved and posted.'", $booking);
+        $this->assertStringContainsString('Approval cannot be repeated', $booking);
+    }
+
+    public function test_jv_editor_uses_shared_tomselect_and_declares_pilot_policy_before_save(): void
+    {
+        $view=file_get_contents(resource_path('views/admin/reports/vouchers/journal_voucher.blade.php'));
+        $controller=file_get_contents(app_path('Http/Controllers/JournalVoucherController.php'));
+        $actions=file_get_contents(resource_path('views/admin/reports/vouchers/actions.blade.php'));
+
+        $this->assertStringContainsString('fvc-tom-select account-select', $view);
+        $this->assertStringContainsString('fvc-tom-select sub-account-select', $view);
+        $this->assertStringContainsString("enhanceSelects(\$('#journalTable select.fvc-tom-select'))", $view);
+        $this->assertStringContainsString("tomselect.sync()", $view);
+        $this->assertStringContainsString('journalPilotApprovalBlocked', $view);
+        $this->assertStringContainsString('journalPilotApprovalBlocked', $controller);
+        $this->assertStringContainsString('Rejected JV revision is unavailable in V2 mode.', $controller);
+        $this->assertStringContainsString('V2OriginalWorkflowAccess::selected()', $actions);
+        $this->assertStringNotContainsString('class="form-control select2 account-select"', $view);
+    }
+
 }
