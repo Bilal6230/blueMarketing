@@ -377,6 +377,14 @@ $(function(){
    $('#jv-loading').addClass('d-none');
   }catch(ex){$('#jv-loading').removeClass('d-none').html('<span class="text-danger">Form unavailable. Open in a new tab.</span>');}
  });
+ // Close the iframe modal and refresh exactly once after an AJAX save.
+ // Dismissal without saving never triggers a list query or a skeleton.
+ $(document).on('finance:journal-saved.fvc',function(_,response){
+  if($.financeVoucherFeedback)
+    $.financeVoucherFeedback.toast('success',(response&&response.message)||'Journal Voucher saved.');
+  $('#jv-entry').modal('hide');
+  table.ajax.reload(null,false);
+ });
  $('#jv-entry').on('hidden.bs.modal',function(){
   entryUrl='';
   if($.financeVoucherFeedback)$.financeVoucherFeedback.skeleton($('#jv-entry .modal-body'),false);
