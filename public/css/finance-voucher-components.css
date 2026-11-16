@@ -562,3 +562,9 @@
 .fvc-entry-table tbody td>.ts-wrapper.single .ts-control>input{
  height:auto!important;min-height:0!important;line-height:20px!important;
 }
+
+/* Don't let the stock DataTables processing overlay cover the headings
+   when our canonical CR row skeleton is already showing. */
+.bm-voucher-directory .fvc-table-loading .dataTables_processing{
+ display:none!important;
+}
