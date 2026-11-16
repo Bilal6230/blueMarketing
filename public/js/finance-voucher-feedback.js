@@ -49,7 +49,9 @@
       new window.TomSelect(element,{create:false,allowEmptyOption:true,
         maxOptions:200,maxItems:element.multiple?null:1,
         sortField:{field:'text',direction:'asc'},
-        dropdownParent:element.closest('.modal-content')||'body',
+        // Keep dropdown anchored to its input; appending to modal-content
+        // placed its options at the very bottom of the screen.
+        dropdownParent:null,
         dropdownClass:'ts-dropdown fvc-global-ts-dropdown',
         onInitialize:function(){this.wrapper.classList.add('fvc-ts-ready');}});
     });
