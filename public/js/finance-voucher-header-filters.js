@@ -232,6 +232,10 @@
                     if($.financeVoucherFeedback)$.financeVoucherFeedback.tableSkeleton($draftTable,false);
                 });
             });
+            // The first paint is server-rendered. Enhance those actions now,
+            // not only after the first filter / DataTable redraw.
+            if($.blueVoucherRegisterActions && $.blueVoucherRegisterActions.enhance)
+                $.blueVoucherRegisterActions.enhance($draftTable);
             if($draftTable.length && $.fn.DataTable && !$.fn.DataTable.isDataTable($draftTable)){
                 // Blade's "No vouchers found" colspan row is replaced by the DataTables empty message.
                 $draftTable.find('tbody tr').filter(function(){
