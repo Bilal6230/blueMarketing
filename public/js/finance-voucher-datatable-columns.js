@@ -65,7 +65,7 @@ $(function(){
       api.draw();
       clientSkeletonTimer=setTimeout(function(){
         if($.financeVoucherFeedback)$.financeVoucherFeedback.tableSkeleton($table,false);
-      },220);
+      },360);
     }
     $table.find('.fvd-column-trigger').each(function(){
       var key=$(this).data('fvd-column');
