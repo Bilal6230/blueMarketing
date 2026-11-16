@@ -173,7 +173,7 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('new FormData($entry[0])', $script);
         $this->assertStringContainsString('fvc-modern-modal fvc-modal-purple', $script);
         $this->assertStringContainsString('fvc-modern-modal fvc-modal-blue', $script);
-        $this->assertStringContainsString("if ($request->expectsJson())", $controller);
+        $this->assertStringContainsString('if ($request->expectsJson())', $controller);
         $this->assertStringContainsString('Charge type saved.', $controller);
         $extra=file_get_contents(resource_path('views/admin/booking/extra_charge.blade.php'));
         $this->assertStringContainsString('data-blue-action-label="View / Approve"', $extra);
