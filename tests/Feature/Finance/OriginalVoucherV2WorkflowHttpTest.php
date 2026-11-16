@@ -166,20 +166,22 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
         $input['custom_payment_method_id'] = 7;
         $url = route('ledger.store', [], false);
         $response = $this->withCookie('selected_action', '1')->postJson($url, $input)
-            ->assertOk()->assertJsonPath('data.display_number', 'CR-2026-0001');
+            ->assertOk()->assertJsonPath('data.display_number', 'CR-1');
         $id = $response->json('data.source_id');
         $this->withCookie('selected_action', '1')->postJson($url, $input)
-            ->assertOk()->assertJsonPath('data.source_id', $id)->assertJsonPath('data.display_number', 'CR-2026-0001');
+            ->assertOk()->assertJsonPath('data.source_id', $id)->assertJsonPath('data.display_number', 'CR-1');
         $this->assertDatabaseHas('customer_ledger', [
             'id' => $id, 'project_id' => 1, 'payment_type' => 2, 'custom_payment_method_id' => 7,
             'passing_status' => 0,
         ]);
         $this->assertDatabaseHas('project_voucher_display_numbers', [
             'project_id' => 1, 'source_kind' => 'customer_ledger', 'source_id' => $id,
-            'series' => 'CR', 'financial_year' => 2026, 'display_number' => 'CR-2026-0001',
+            'series' => 'CR', 'financial_year' => 2026, 'display_number' => 'CR-1',
         ]);
-        $this->assertDatabaseHas('project_voucher_fiscal_sequences', [
-            'project_id' => 1, 'series' => 'CR', 'financial_year' => 2026, 'last_number' => 1,
+        // CR/DR/CCR/CDR retain the customer_ledger.type_id visible identity.
+        // They must not consume an unrelated configurable fiscal sequence.
+        $this->assertDatabaseMissing('project_voucher_fiscal_sequences', [
+            'project_id' => 1, 'series' => 'CR', 'financial_year' => 2026,
         ]);
     }
 
@@ -560,12 +562,12 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
         $url = route('voucher.cash_in.data', [], false);
         $response = $this->withCookie('selected_action', '1')->getJson($url.'?length=-1')->assertOk()
             ->assertJsonPath('recordsTotal', 1)->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', 'SRC-'.$id)
-            ->assertJsonPath('data.0.voucher_number', 'CR-2026-0001')
+            ->assertJsonPath('data.0.voucher_number', 'CR-1')
             ->assertJsonPath('data.0.amount', '30.00')->assertJsonPath('data.0.detail', '&lt;script&gt;alert(1)&lt;/script&gt;');
         $print = route('finance.voucher.source.print', ['customerLedger' => $id], false);
         $this->assertStringEndsWith($print, $response->json('data.0.print_url'));
         $this->withCookie('selected_action', '1')->get($print)->assertOk()
-            ->assertSee('CR-2026-0001')->assertSee('<script>alert(1)</script>');
+            ->assertSee('CR-1')->assertSee('<script>alert(1)</script>');
         $this->withCookie('selected_action', '2')->getJson($print)->assertForbidden();
         $batch = (int) DB::table('finance_posting_batches')->value('id');
         (new \App\Services\Finance\V2PostingGateway())->reversePostedBatch(1, $batch, 'CASH-REPORT-REVERSAL-001', '2026-11-02', 'Verified correction', 1);
