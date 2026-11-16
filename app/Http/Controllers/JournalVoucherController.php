@@ -1106,23 +1106,24 @@ class JournalVoucherController extends Controller
                 }
             });
         }
-        return $this->voucherWriteResponse($request, 'Journal voucher corrected successfully; previous posting history was preserved.');
+        return $this->voucherWriteResponse($request, 'Journal voucher corrected successfully; previous posting history was preserved.', route('journal.voucher.edit', ['id' => $id]));
     }
 
     /**
      * One response contract for modal AJAX saves, preserving the original
      * redirect behavior for ordinary browser form submissions.
      */
-    private function voucherWriteResponse(Request $request, string $message)
+    private function voucherWriteResponse(Request $request, string $message, ?string $redirect = null)
     {
+        $redirect ??= route('journal.voucher.index');
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
                 'status' => 'success',
                 'message' => $message,
-                'redirect' => route('journal.voucher.index'),
+                'redirect' => $redirect,
             ]);
         }
-        return redirect()->route('journal.voucher.index')->with('success', $message);
+        return redirect()->to($redirect)->with('success', $message);
     }
 
     private function moneyToCents(string $value): int
