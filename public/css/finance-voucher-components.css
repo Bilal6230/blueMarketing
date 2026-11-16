@@ -357,3 +357,47 @@
 .fvc-entry-table input,.fvc-entry-table select{
  height:34px!important;font-size:12px!important;border-radius:5px!important;
 }
+
+/* Canonical dropdowns, skeleton states and feedback for finance modals.
+   Tokens are controlled globally; individual vouchers override only accent. */
+.fvc-modern-modal .ts-wrapper,.fvc-entry-table .ts-wrapper{
+ font-size:var(--fvc-font,12px)!important;min-width:0;width:100%;
+}
+.fvc-modern-modal .ts-control,.fvc-entry-table .ts-control{
+ border:1px solid #ced8e3!important;border-radius:5px!important;
+ min-height:34px!important;padding:7px 9px!important;
+ font-size:12px!important;background:#fff!important;
+}
+.fvc-modern-modal .ts-dropdown,.fvc-entry-table .ts-dropdown{
+ border:1px solid #dbe5ef!important;border-radius:6px!important;
+ font-size:12px!important;box-shadow:0 10px 24px rgba(25,40,60,.15)!important;
+ z-index:1200!important;
+}
+.fvc-modern-modal .ts-dropdown .option,.fvc-entry-table .ts-dropdown .option{
+ padding:8px 10px!important;
+}
+.fvc-modern-modal .ts-wrapper.focus .ts-control,.fvc-entry-table .ts-wrapper.focus .ts-control{
+ border-color:var(--fvc-modal-accent,#087cfa)!important;
+ box-shadow:0 0 0 2px rgba(8,124,250,.12)!important;
+}
+.fvc-modern-modal .modal-body:has(.fvc-modal-skeleton){position:relative}
+.fvc-is-loading{position:relative!important}
+.fvc-modal-skeleton{
+ position:absolute;inset:0;z-index:15;background:#fff;
+ padding:16px;display:flex;flex-direction:column;gap:14px;
+}
+.fvc-skeleton-row{display:flex;gap:12px;width:100%;height:40px}
+.fvc-skeleton-row .fvc-skeleton-shimmer{
+ display:block;flex:1;border-radius:6px;
+ background:linear-gradient(100deg,#e9eef4 15%,#f9fbfd 45%,#e9eef4 75%);
+ background-size:200% 100%;animation:bm-skeleton-pulse 1.3s ease-in-out infinite;
+}
+.fvc-skeleton-row:nth-child(3){height:95px}
+.fvc-feedback-fallback{
+ position:fixed!important;z-index:11000!important;top:18px!important;
+ right:18px!important;max-width:min(440px,calc(100vw - 36px));
+ box-shadow:0 10px 30px rgba(0,0,0,.20);
+}
+@media(prefers-reduced-motion:reduce){
+ .fvc-skeleton-shimmer{animation:none!important}
+}
