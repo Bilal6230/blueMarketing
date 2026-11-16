@@ -402,4 +402,26 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString("voucher->type === 'SV') ? 'SV' : 'JV'", $controller);
     }
 
+    public function test_jv_v2_edit_preflight_rejects_posted_sources_and_cv_reversal_has_proper_form_layout(): void
+    {
+        $controller=file_get_contents(app_path('Http/Controllers/JournalVoucherController.php'));
+        $cv=file_get_contents(resource_path('views/admin/reports/vouchers/commision_index.blade.php'));
+
+        // GET and POST enforce the same V2 immutability boundary; never
+        // present an editable modal that is guaranteed to fail on Save.
+        $this->assertStringContainsString('A V2 edit form must not open if updateUnposted() will reject it.', $controller);
+        $this->assertStringContainsString("finance_posting_journal_sources", $controller);
+        $this->assertStringContainsString("where('journal_voucher_id',$sourceId)", $controller);
+        $this->assertStringContainsString("orWhereIn('journal_voucher_detail_id'", $controller);
+        $this->assertStringContainsString('abort_if($posted || $attributed', $controller);
+        $this->assertStringContainsString('V2JournalDraftWorkflow', $controller);
+
+        // The CV reversal form must OWN the body and footer rather than
+        // render its fields inline beside the Cancel button.
+        $this->assertMatchesRegularExpression('/<form id="deleteForm"[^>]*>.*?<div class="modal-body">.*?id="reversalDate".*?id="reversalReason".*?<div class="modal-footer/s', $cv);
+        $this->assertStringContainsString('fvc-modern-modal fvc-modal-blue', $cv);
+        $this->assertStringContainsString("route('commision.voucher.delete', ':id')", $cv);
+        $this->assertStringContainsString("@method('DELETE')", $cv);
+    }
+
 }
