@@ -243,4 +243,25 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString("bindTableSkeleton('#journalTable')", $cv);
     }
 
+    public function test_cv_visual_contract_keeps_headings_accent_and_single_modal_reload(): void
+    {
+        $feedback=file_get_contents(public_path('js/finance-voucher-feedback.js'));
+        $css=file_get_contents(public_path('css/finance-voucher-components.css'));
+        $header=file_get_contents(public_path('js/finance-voucher-header-filters.js'));
+        $cv=file_get_contents(resource_path('views/admin/reports/vouchers/commision_index.blade.php'));
+        $controller=file_get_contents(app_path('Http/Controllers/CommissionVoucherController.php'));
+
+        $this->assertStringContainsString('$heading.outerHeight()-$wrap.offset().top', $feedback);
+        $this->assertStringContainsString('fvc-table-skeleton', $feedback);
+        $this->assertStringContainsString('color-mix(in srgb,var(--fvd-accent', $css);
+        $this->assertStringContainsString('border-top:3px solid var(--fvd-accent', $css);
+        $this->assertStringContainsString('.fvc-entry-table tbody td:has(> .ts-wrapper)', $css);
+        $this->assertStringContainsString('var commissionNeedsRefresh=false;', $header);
+        $this->assertStringContainsString('if(commissionNeedsRefresh)', $header);
+        $this->assertStringContainsString('d.fvd_date_from = columnState.dates.from;', $cv);
+        $this->assertStringContainsString('d.fvd_date_to = columnState.dates.to;', $cv);
+        $this->assertStringContainsString("whereDate('date','>=',", $controller);
+        $this->assertStringContainsString("whereDate('date','<=',", $controller);
+    }
+
 }
