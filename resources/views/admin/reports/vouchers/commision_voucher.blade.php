@@ -29,6 +29,7 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                         <h4 class="mb-0">{{ $title }}</h4>
                     </div>
                     <div class="card-body">
+                        <div id="cv-entry-feedback" class="alert alert-danger d-none" role="alert" aria-live="polite"></div>
                         <form id="journalForm" action="{{ route('commision.voucher.store', request()->boolean('embed') ? ['embed'=>1] : []) }}" method="POST">
                             @csrf
                             <!-- Voucher Details -->
@@ -111,9 +112,9 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                                                 </select>
                                             </td>
                                             <td><input type="text" name="line_description[]" class="form-control"></td>
-                                            <td><input type="number" name="credit[]" class="form-control" step="0.01">
-                                            </td>
                                             <td><input type="number" name="debit[]" class="form-control" step="0.01">
+                                            </td>
+                                            <td><input type="number" name="credit[]" class="form-control" step="0.01">
                                             </td>
                                             <td>
                                                 <button type="button" class="btn btn-success btn-sm add-row">
@@ -128,8 +129,8 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                                     <tfoot>
                                         <tr>
                                             <td colspan="3" class="text-end"><strong>Total:</strong></td>
-                                            <td><input type="text" id="totalCredit" class="form-control" readonly></td>
                                             <td><input type="text" id="totalDebit" class="form-control" readonly></td>
+                                            <td><input type="text" id="totalCredit" class="form-control" readonly></td>
                                             <td></td>
                                         </tr>
                                     </tfoot>
@@ -171,8 +172,8 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                         </select>
                     </td>
                     <td><input type="text" name="line_description[]" class="form-control"></td>
-                    <td><input type="number" name="credit[]" class="form-control" step="0.01"></td>
                     <td><input type="number" name="debit[]" class="form-control" step="0.01"></td>
+                    <td><input type="number" name="credit[]" class="form-control" step="0.01"></td>
                     <td>
                         <button type="button" class="btn btn-danger btn-sm remove-row">
                             <i class="fas fa-trash"></i>
@@ -181,6 +182,10 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                 </tr>`;
                 $('#journalTable tbody').append(newRow);
             });
+            // Populate the minimum two lines after the delegated handler exists.
+            if ($('#journalTable tbody tr').length === 1) {
+                $('#journalTable .add-row').first().trigger('click');
+            }
 
             // Remove a row from the table
             $(document).on('click', '.remove-row', function() {
@@ -226,7 +231,38 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
 
             // Confirm and Submit the Form
             $('#confirmSubmit').on('click', function() {
-                $('#journalForm')[0].submit();
+                var $button=$(this), $form=$('#journalForm');
+                if($button.prop('disabled'))return;
+                var $feedback=$('#cv-entry-feedback').addClass('d-none').text('');
+                // Backend requires 0 (not empty) for an unused side of a line.
+                $form.find('input[name="debit[]"],input[name="credit[]"]').each(function(){
+                    if(!$.trim($(this).val()))$(this).val('0.00');
+                });
+                $button.prop('disabled',true);
+                $.ajax({
+                    url:$form.attr('action'),type:'POST',
+                    data:$form.serialize(),dataType:'json',
+                    headers:{Accept:'application/json'}
+                }).done(function(response){
+                    $('#confirmationModal').modal('hide');
+                    if(window.parent!==window && window.parent.jQuery){
+                        window.parent.jQuery(window.parent.document)
+                            .trigger('finance:commission-saved',[response]);
+                    } else {
+                        window.location.href=response.redirect||'{{ route('commision.voucher.index') }}';
+                    }
+                }).fail(function(xhr){
+                    var message=(xhr.responseJSON&&xhr.responseJSON.message)||
+                        (xhr.status===409?'Commission creation is blocked by the isolated-pilot safety gate.':
+                         'Could not save Commission Voucher.');
+                    var errors=xhr.responseJSON&&xhr.responseJSON.errors;
+                    if(errors){
+                        message+=' '+Object.values(errors).flat().join(' ');
+                    }
+                    $feedback.text(message).removeClass('d-none');
+                    $('#confirmationModal').modal('hide');
+                    $form.find('input,select,textarea').first().trigger('focus');
+                }).always(function(){$button.prop('disabled',false);});
             });
 
             // Fetch Sub-Accounts dynamically via AJAX when account is selected
