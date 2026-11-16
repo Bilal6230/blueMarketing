@@ -636,3 +636,21 @@
  background:var(--fvd-pale)!important;
  border-bottom:2px solid var(--fvd-accent)!important;
 }
+
+/* TomSelect's dropdown is appended to .modal-content; keep it visible outside
+   the original input-group box without losing the scrolling modal body. */
+.fvc-modern-modal.bm-extra-entry-modal .modal-content{
+ overflow:visible!important;
+}
+.fvc-modern-modal.bm-extra-entry-modal .modal-body{
+ overflow-y:auto!important;overflow-x:visible!important;
+}
+.fvc-modern-modal.bm-extra-entry-modal .ts-dropdown{
+ z-index:12000!important;min-width:100%!important;
+ border:1px solid #ced8e3!important;background:#fff!important;
+}
+/* Keep native legacy Select2 wrappers out of finance modal layouts after
+   migration to the canonical TomSelect renderer. */
+.fvc-modern-modal .modal-body .select2-container{
+ display:none!important;
+}
