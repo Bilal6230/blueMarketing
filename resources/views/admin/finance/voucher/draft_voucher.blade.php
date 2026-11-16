@@ -259,28 +259,13 @@
 
     <script>
         $(function () {
-            $('.js-tomselect').each(function(_,el) {
-                if (el.tomselect) return; // prevent double init
-
-                new TomSelect(el, {
-                    allowEmptyOption: false,
-                    create: false, // no free typing unless you want it
-                    maxItems: el.multiple ? null : 1,
-                    closeAfterSelect: !el.multiple,
-                    placeholder: el.getAttribute('placeholder') || '',
-                    render: {
-                        option_create: null // disable "Create" in dropdown
-                    }
-                });
-
-                // Ensure no option is selected by default
-                el.tomselect.clear(true);
-
-                // Focus input on click so user can type immediately
-                el.tomselect.on('dropdown_open', () => {
-                    el.tomselect.focus();
-                });
-            });
+            // Draft edit handlers access .tomselect immediately after fetching
+            // a record, so initialize once up front with the shared finance
+            // lifecycle. Do not clear server-selected values automatically.
+            if($.financeVoucherFeedback)
+                $.financeVoucherFeedback.enhanceSelects($('.js-tomselect'));
+            $('#modal-edit,#modal-delete,#viewChangesModal')
+                .addClass('fvc-modern-modal fvc-modal-blue');
         });
         $(document).ready(function() {
             $(document).on('click', '.btn-view-changes', function() {
