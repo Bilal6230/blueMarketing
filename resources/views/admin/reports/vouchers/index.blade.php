@@ -170,6 +170,9 @@ $(function(){
  function apply(){
   table.ajax.reload(null,true);
  }
+ // Sales (SV) and Journal (JV) share the exact CR skeleton for AJAX
+ // listing/filter reloads; no duplicate page-specific loading overlay.
+ if($.financeVoucherFeedback)$.financeVoucherFeedback.bindTableSkeleton($table);
  table=$table.DataTable({
   processing:true,serverSide:true,autoWidth:false,pageLength:25,
   order:[[0,'desc']],orderCellsTop:true,
