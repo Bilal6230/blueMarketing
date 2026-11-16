@@ -224,7 +224,7 @@ html body .main-content.page-content > .content-wrapper .card-body{
                             <!-- Submit Button -->
                             <div class="text-center">
                                 <button type="submit" class="btn btn-warning">
-                                    <i class="fas fa-save"></i> {{ ($isRevision ?? false) ? 'Revise & Resubmit for Approval' : 'Update Journal Voucher' }}
+                                    <i class="fas fa-save"></i> {{ ($isRevision ?? false) ? 'Revise & Resubmit for Approval' : $voucher->type === 'SV' ? 'View Sales Voucher' : 'Update Journal Voucher' }}
                                 </button>
                             </div>
                         </form>
@@ -348,9 +348,39 @@ html body .main-content.page-content > .content-wrapper .card-body{
                 }
             });
 
-            // Confirm and Submit the Form
-            $('#confirmSubmit').on('click', function () {
-                $('#journalForm')[0].submit();
+            // One confirmation -> one AJAX write; server 409/422 errors must
+            // appear in toast instead of navigating iframe to a Laravel stack.
+            var editBusy=false;
+            $('#confirmSubmit').on('click.fvcJournalEdit',function(){
+                if(editBusy)return;
+                var $form=$('#journalForm'),$button=$(this),$body=$form.closest('.card-body');
+                editBusy=true;$button.prop('disabled',true);
+                $('#confirmationModal').modal('hide');
+                if($.financeVoucherFeedback)$.financeVoucherFeedback.skeleton($body,true);
+                $.ajax({
+                    url:$form.attr('action'),
+                    type:'POST',data:$form.serialize(),dataType:'json',
+                    headers:{Accept:'application/json'}
+                }).done(function(response){
+                    if(response && response.status==='success'){
+                        if(window.parent!==window&&window.parent.jQuery)
+                            window.parent.jQuery(window.parent.document)
+                                .trigger('finance:journal-saved',[response]);
+                        else{
+                            if($.financeVoucherFeedback)
+                                $.financeVoucherFeedback.toast('success',response.message||'Voucher updated.');
+                            window.location.assign(response.redirect||@json(route('journal.voucher.index')));
+                        }
+                    }else if($.financeVoucherFeedback)
+                        $.financeVoucherFeedback.toast('error','Voucher update was not confirmed.');
+                }).fail(function(xhr){
+                    if($.financeVoucherFeedback)
+                        $.financeVoucherFeedback.toast('error',
+                            $.financeVoucherFeedback.error(xhr,'Voucher cannot be updated in its current status.'));
+                }).always(function(){
+                    editBusy=false;$button.prop('disabled',false);
+                    if($.financeVoucherFeedback)$.financeVoucherFeedback.skeleton($body,false);
+                });
             });
 
             // Fetch Sub-Accounts dynamically via AJAX when account is selected
@@ -381,11 +411,11 @@ html body .main-content.page-content > .content-wrapper .card-body{
                                     }
                                 });
                             } else {
-                                alert('No sub-accounts found for the selected account.');
+                                if($.financeVoucherFeedback)$.financeVoucherFeedback.toast('error','No sub-accounts found for the selected account.');
                             }
                         },
                         error: function (xhr, status, error) {
-                            alert('Error: ' + error);
+                            if($.financeVoucherFeedback)$.financeVoucherFeedback.toast('error','Unable to load sub-accounts.');
                         }
                     });
                 } else {
