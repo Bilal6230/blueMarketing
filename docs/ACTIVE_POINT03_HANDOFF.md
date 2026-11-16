@@ -1,5 +1,10 @@
 # BlueMarketing — ACTIVE HANDOFF (new chat continuity)
 
+## 2026-11-16 — TERMINAL JV SUITE THIRD OWNER RUN: OPTIONAL APPROVAL TABLE
+- Owner results at c7bb9343: JournalVoucherCollisionTest **1 PASS**; FinanceVoucherUnifiedComponentsTest **19 PASS (182 assertions)**. JournalVoucherPostingIntegrationTest **32 FAIL/24 PASS**, and aggregate JournalVoucher **32 FAIL/33 PASS**. All 32 failing integration cases share `no such table: daily_voucher_approvals` from the final post-save success lookup after the underlying posting transaction. Earlier pilot-branch and account fixture problems are resolved.
+- Corrected `JournalVoucherController::store` to query pending approval status only if `Schema::hasTable('daily_voucher_approvals')`; this matches the optional policy check used by `DailyVoucherApprovalWorkflow::submitIfRequired`. Approval-enabled installs still query the same status; no approval/posting guard relaxed. This also prevents an otherwise successful legacy write from showing a false save error.
+- Added a source regression in `FinanceVoucherUnifiedComponentsTest`. **Owner rerun pending**: `php artisan test --filter=JournalVoucherPostingIntegrationTest`, `php artisan test --filter=JournalVoucherCollisionTest`, `php artisan test --filter=JournalVoucher`, `php artisan test --filter=FinanceVoucherUnifiedComponentsTest`. Browser testing remains HOLD.
+
 ## 2026-11-16 — TERMINAL JV SUITE RERUN (SECOND OWNER FAILURE)
 - Owner after fixture repair: JV integration 40 FAIL/16 PASS and collision 1 FAIL; global unified components 19 PASS/182 assertions. Missing-head/subhead SQLite errors were resolved.
 - New common failure was HTTP abort (including 403 collision), consistent with original JV tests accidentally taking V2 pilot path: `V2OriginalWorkflowAccess::selected()` switches when local/testing `finance.v2_pilot_api_enabled` is true. Both isolated tests now explicitly force `finance.v2_pilot_api_enabled=false`, `finance.v2_pilot_write_enabled=false` in setUp, before calling real original controller. Production flags and access policies NOT modified.
