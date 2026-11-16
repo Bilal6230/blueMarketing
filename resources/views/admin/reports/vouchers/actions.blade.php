@@ -22,7 +22,7 @@
             @endunless
         @endcan
 
-        @if(($canResubmit ?? false) && $voucherRoutePrefix === 'journal.voucher')
+        @if(($canResubmit ?? false) && $voucherRoutePrefix === 'journal.voucher' && !\App\Services\Finance\V2OriginalWorkflowAccess::selected())
             @can('edit jv')
                 <a href="{{ route('journal.voucher.edit', $voucher->id) }}?resubmit=1" class="btn btn-sm btn-outline-warning jv-resubmit" title="Revise rejected voucher and resubmit for approval">
                     <i class="fas fa-redo"></i> Revise
