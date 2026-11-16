@@ -391,6 +391,9 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringNotContainsString("$('#journalForm')[0].submit()", $journalEdit);
         $this->assertStringContainsString("headers:{Accept:'application/json'}", $journal);
         $this->assertStringContainsString('jv-reversal-reason', $journal);
+        $this->assertStringContainsString("submit.fvcJournalReverse", $journal);
+        $this->assertStringContainsString("voucherWriteResponse(\n            request(),", $controller);
+        $this->assertStringContainsString("data('fvc-post-as-voucher',true)", $draft);
         $this->assertStringContainsString("voucher->type === 'SV'", $actions);
         $this->assertStringContainsString("'SV' ? 'SV' : 'JV'", $controller);
         $this->assertStringContainsString("data('fvc-post-as-voucher',true)", $draft);
