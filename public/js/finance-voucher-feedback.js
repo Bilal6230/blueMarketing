@@ -51,7 +51,10 @@
         sortField:{field:'text',direction:'asc'},
         // Keep dropdown anchored to its input; appending to modal-content
         // placed its options at the very bottom of the screen.
-        dropdownParent:null,
+        // Accounting tables are scroll containers. Their dropdowns must be
+        // portaled to this document body to avoid clipping behind the table.
+        // Other modal controls stay anchored to their own field.
+        dropdownParent:$element.closest('.fvc-entry-table').length?'body':null,
         dropdownClass:'ts-dropdown fvc-global-ts-dropdown',
         onInitialize:function(){this.wrapper.classList.add('fvc-ts-ready');}});
     });
