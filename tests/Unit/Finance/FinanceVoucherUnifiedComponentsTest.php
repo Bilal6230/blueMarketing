@@ -264,4 +264,18 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString("whereDate('date','<=',", $controller);
     }
 
+    public function test_commission_save_is_single_ajax_request_with_visible_validation_errors(): void
+    {
+        $view=file_get_contents(resource_path('views/admin/reports/vouchers/commision_voucher.blade.php'));
+        $controller=file_get_contents(app_path('Http/Controllers/CommissionVoucherController.php'));
+        $this->assertStringContainsString('<form id="journalForm" novalidate', $view);
+        $this->assertStringContainsString("$('#journalForm').on('submit.fvcCv'", $view);
+        $this->assertStringContainsString('Select Account and Sub-Account for every line.', $view);
+        $this->assertStringContainsString('Debit and Credit must be greater than zero and equal.', $view);
+        $this->assertStringContainsString("name:'date',value:date", $view);
+        $this->assertStringContainsString('finance:commission-saved', $view);
+        $this->assertStringNotContainsString("$('#confirmationModal').modal('show')", $view);
+        $this->assertStringContainsString('V2IsolatedConnectionGuard::assertAllowed()', $controller);
+    }
+
 }
