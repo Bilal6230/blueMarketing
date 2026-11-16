@@ -711,7 +711,7 @@ class JournalVoucherController extends Controller
             } catch (\DomainException $e) {
                 abort(409, 'Journal posting rejected to protect accounting history.');
             }
-            return redirect()->route('journal.voucher.index')->with('success', 'Journal voucher posted successfully.');
+            return $this->voucherWriteResponse($request, 'Journal voucher posted successfully.');
         }
 
         // Guard the REAL posting path, not only an audit CLI: table presence
@@ -837,7 +837,7 @@ class JournalVoucherController extends Controller
             ->where('project_id',(int)$selectedProjectId)->where('source_table','journal_vouchers')
             ->where('source_id',$savedVoucherId)
             ->where('status','pending')->exists();
-        return redirect()->route('journal.voucher.index')->with('success',
+        return $this->voucherWriteResponse($request,
             $hasPendingApproval?'Journal Voucher saved — Pending Approval. Ledger posting is inactive until approval.':'Journal Voucher created successfully.');
     }
 
@@ -1036,8 +1036,7 @@ class JournalVoucherController extends Controller
             }catch(\DomainException $exception){
                 abort(409,$exception->getMessage());
             }
-            return redirect()->route('journal.voucher.index')
-                ->with('success','Rejected JV revised and resubmitted for approval. Ledger remains inactive.');
+            return $this->voucherWriteResponse($request, 'Rejected JV revised and resubmitted for approval. Ledger remains inactive.');
         }
 
         if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
@@ -1107,8 +1106,23 @@ class JournalVoucherController extends Controller
                 }
             });
         }
-        return redirect()->route('journal.voucher.edit', ['id' => $id])
-            ->with('success', 'Journal voucher corrected successfully; previous posting history was preserved.');
+        return $this->voucherWriteResponse($request, 'Journal voucher corrected successfully; previous posting history was preserved.');
+    }
+
+    /**
+     * One response contract for modal AJAX saves, preserving the original
+     * redirect behavior for ordinary browser form submissions.
+     */
+    private function voucherWriteResponse(Request $request, string $message)
+    {
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'status' => 'success',
+                'message' => $message,
+                'redirect' => route('journal.voucher.index'),
+            ]);
+        }
+        return redirect()->route('journal.voucher.index')->with('success', $message);
     }
 
     private function moneyToCents(string $value): int
