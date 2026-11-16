@@ -11,7 +11,7 @@ final class V2OriginalWorkflowAccess
      * when testing ordinary voucher screens. Isolated V2 databases remain
      * in the experimental workflow and can never be switched to legacy writes.
      */
-    private static function normalErpMode(): bool
+    public static function normalErpMode(): bool
     {
         $connection = config('database.default');
         $database = (string) config('database.connections.'.$connection.'.database');
