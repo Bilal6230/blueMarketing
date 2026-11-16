@@ -154,6 +154,8 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString("dataType:'json'", $view);
         $this->assertStringContainsString('finance:commission-saved', $view);
         $this->assertStringContainsString('V2IsolatedConnectionGuard::assertAllowed()', $controller);
+        $this->assertStringContainsString('commissionPilotCreateAllowed', $view);
+        $this->assertStringContainsString('V2OriginalWorkflowAccess::enabled()', $controller);
         $this->assertStringContainsString("'voucher_id' => " . '$id', $controller);
     }
 
