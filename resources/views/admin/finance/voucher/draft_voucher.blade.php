@@ -670,14 +670,11 @@
                     });
                 }
             });
-            $(document).ready(function () {
-                $('#filter_head, #filter_subhead').select2({
-                    theme: 'bootstrap4',
-                    placeholder: 'Select options',
-                    allowClear: true,
-                    width: '100%',
-                    closeOnSelect: false
-                });
+            // One shared finance dropdown implementation; never initialize
+            // Select2 alongside the global TomSelect controls.
+            $(function(){
+                if($.financeVoucherFeedback)
+                    $.financeVoucherFeedback.enhanceSelects($('#filter_head,#filter_subhead'));
             });
 
 
