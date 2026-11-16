@@ -122,7 +122,13 @@
  // Modal contents can be detached and appended after page-ready (Extra/CV).
  // Initialize only when visible and resync choices populated by legacy AJAX.
  $(document).on('shown.bs.modal.fvcSelects','.fvc-modern-modal',function(){
-   tom($(this).find('select.fvc-tom-select,select[data-posting-allocation],select[data-bank-settlement-account]'));
+   var $modal=$(this);
+   // Extra uses TomSelect on every field, including dynamically relocated
+   // collection/settlement controls. Other modules opt in explicitly.
+   var $selects=$modal.hasClass('fvc-modal-purple')?
+     $modal.find('select').not('[multiple]'):
+     $modal.find('select.fvc-tom-select,select[data-posting-allocation],select[data-bank-settlement-account]');
+   tom($selects);
  });
  $(document).ajaxSuccess(function(){
    $('.fvc-modern-modal.show select.tomselected, .bm-modern-draft select.tomselected').each(function(){
