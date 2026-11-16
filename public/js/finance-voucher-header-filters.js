@@ -452,6 +452,14 @@
             $paymentModal.addClass('fvc-modern-modal fvc-modal-purple');
             $('body').append($paymentModal);
             var $activePayment=null;
+            function syncChequeFields($form){
+                var cheque=String($form.find('[name="payment_type"]').val())==='3';
+                $form.find('.fvc-cheque-purpose').toggleClass('d-none',!cheque);
+                $form.find('[name="cheque_purpose"]').prop('required',cheque);
+            }
+            $paymentModal.on('change.fvcCheque','select[name="payment_type"]',function(){
+                syncChequeFields($(this).closest('form'));
+            });
             // Collection forms are relocated into a modal; submit through
             // the same guarded AJAX writer as Extra creation, not navigation.
             $paymentModal.on('submit.fvcExtraCollection','form',function(event){
@@ -476,6 +484,7 @@
                     .on('click',function(){
                         $activePayment=$holder.detach().show();
                         $paymentModal.find('.modal-body').append($activePayment);
+                        $activePayment.find('form').each(function(){syncChequeFields($(this));});
                         $paymentModal.modal('show');
                     }).prependTo($cell);
              });
