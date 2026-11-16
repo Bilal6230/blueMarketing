@@ -851,6 +851,7 @@
                         @include('admin.finance.voucher.typed_posting_fields')
                         <p class="modal-text mb-0" id="msg">Are you sure you want to Approve?</p>
                         <input type="hidden" name="id" class="status_id">
+                        <input type="hidden" name="amount" class="fvc-approval-amount" value="0.00">
                         <input type="hidden" name="is_approve" class="is_approve" value="1">
                         <div class="alert alert-danger d-none mt-2 fvc-approval-feedback" role="alert"></div>
                     </div>
@@ -1072,7 +1073,15 @@
                         $('<dd>',{'class':'col-sm-8 mb-2'}).text(item[1]==null?'—':String(item[1]))
                             .appendTo($details);
                     });
-                    $modal.find('.btn-approve,.btn-rejected').attr('data-id',data.id);
+                    $modal.find('.btn-approve,.btn-rejected')
+                        .attr('data-id',data.id)
+                        .attr('data-amount',data.transaction_type==='EC'?data.amount_in:data.amount_out);
+                    var settled=String(data.clearance_status_label||'').toLowerCase()==='posted';
+                    var approved=String(data.approval_status_label||'').toLowerCase()==='approved';
+                    $modal.find('.btn-approve').prop('disabled',settled||approved)
+                      .attr('title',settled?'Posted vouchers must use reversal':approved?'Already approved':'Approve this voucher');
+                    $modal.find('.btn-rejected').prop('disabled',settled)
+                      .attr('title',settled?'Posted vouchers must use reversal':'Reject unposted voucher');
                     $modal.modal('show');
                 }).fail(function(xhr){
                     if($.financeVoucherFeedback)
@@ -1129,6 +1138,14 @@
                 let id = $(this).attr("data-id");
                 $('#modal-view').modal('hide');
                 $(".status_id").val(id);
+                var amount=$(this).attr('data-amount')||'0.00';
+                $('#fvc-extra-approval-form .fvc-approval-amount').val(amount);
+                if(window.syncOriginalPostingForm)
+                    window.syncOriginalPostingForm($('#fvc-extra-approval-form')[0]);
+                var amount=$(this).attr('data-amount')||'0.00';
+                $('#fvc-extra-approval-form .fvc-approval-amount').val(amount);
+                if(window.syncOriginalPostingForm)
+                    window.syncOriginalPostingForm($('#fvc-extra-approval-form')[0]);
                 $(".is_approve").val(1);
                 $('#msg').text("Are you sure you want to Approve?");
                 $('#modal-approve').modal({
