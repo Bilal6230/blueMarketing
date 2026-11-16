@@ -37,8 +37,8 @@ $(function(){
       if(settings.nTable!==$table[0])return true;
       // Legacy Extra Date cell contains line breaks / markup (2026-11-\n16).
       // Normalize the complete text before ISO date comparison.
-      var source=String(row[1]||'').replace(/<[^>]*>/g,'').replace(/\\s+/g,'').trim();
-      var matched=source.match(/\\d{4}-\\d{2}-\\d{2}/);
+      var source=String(row[1]||'').replace(/<[^>]*>/g,'').replace(/\s+/g,'').trim();
+      var matched=source.match(/\d{4}-\d{2}-\d{2}/);
       var date=matched?matched[0]:'';
       if(!date)return !(state.dates.from||state.dates.to);
       if(state.dates.from&&date<state.dates.from)return false;
