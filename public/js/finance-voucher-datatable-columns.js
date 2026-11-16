@@ -101,7 +101,7 @@ $(function(){
         });
       }else{
         $input=$('<input>',{'class':'form-control form-control-sm fvd-search-input',
-          type:key==='total_debit'?'number':'search',
+          type:($.inArray(key,['total_debit','amount','received','pending','outstanding','id'])!==-1)?'number':'search',
           placeholder:'Search '+$.trim($th.text()),value:state.filters[key]||''});
         $body.append($input);
         $input.on('input change',function(){
