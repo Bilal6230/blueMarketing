@@ -2607,7 +2607,10 @@ class BookingController extends Controller
         // The V2 customer_ledger.bank_id FK references banks.id, not a
         // project_bank_accounts identifier or a free-form numeric value.
         $x['receiptBanks'] = Schema::hasTable('banks')
-            ? DB::table('banks')->orderBy('id')->get()
+            ? DB::table('banks')
+                ->when(Schema::hasColumn('banks','project_id'), function ($query) use ($projectId) {
+                    $query->where('project_id',$projectId);
+                })->orderBy('id')->get()
             : collect();
         $x['bankSettlementAccounts'] = \Illuminate\Support\Facades\Schema::hasTable('project_bank_accounts')
             ? \App\Models\ProjectBankAccount::query()->where('project_id', $projectId)->where('is_active', 1)->orderBy('bank_name')->orderBy('account_title')->get()
