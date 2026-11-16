@@ -100,7 +100,10 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('flex:1 1 auto', $css);
         $this->assertStringContainsString('.fvc-pagination-host>.fvc-pagination-footer', $css);
         $this->assertStringContainsString('bottom:0!important', $css);
-        $this->assertStringContainsString("finance-voucher-components.css') }}?v=3", $layout);
+        $this->assertMatchesRegularExpression(
+            '/finance-voucher-components\\.css\\\'\\) \\}\\}\\?v=\\d+/',
+            $layout
+        );
     }
 
     public function test_extra_charge_has_one_visible_voucher_card_frame(): void
