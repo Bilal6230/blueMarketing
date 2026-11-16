@@ -1154,16 +1154,12 @@
                 event.preventDefault();
                 let id = $(this).attr("data-id");
                 $('#modal-view').modal('hide');
-                $(".status_id").val(id);
+                $('#fvc-extra-approval-form .status_id').val(id);
                 var amount=$(this).attr('data-amount')||'0.00';
                 $('#fvc-extra-approval-form .fvc-approval-amount').val(amount);
                 if(window.syncOriginalPostingForm)
                     window.syncOriginalPostingForm($('#fvc-extra-approval-form')[0]);
-                var amount=$(this).attr('data-amount')||'0.00';
-                $('#fvc-extra-approval-form .fvc-approval-amount').val(amount);
-                if(window.syncOriginalPostingForm)
-                    window.syncOriginalPostingForm($('#fvc-extra-approval-form')[0]);
-                $(".is_approve").val(1);
+                $('#fvc-extra-approval-form .is_approve').val(1);
                 $('#msg').text("Are you sure you want to Approve?");
                 $('#modal-approve').modal({
                     backdrop: 'static',
@@ -1176,7 +1172,7 @@
                 let id = $(this).attr("data-id");
                 $('#modal-view').modal('hide');
                 $(".status_id").val(id);
-                $(".is_approve").val(0);
+                $('#fvc-extra-approval-form .is_approve').val(0);
                 $('#msg').text("Are you sure you want to rejected?");
                 $('#modal-approve').modal({
                     backdrop: 'static',
