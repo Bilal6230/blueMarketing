@@ -386,6 +386,10 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('id="fvc-extra-view-facts"', $extra);
         $this->assertStringNotContainsString('<span>Ali </span>', $extra);
         $this->assertStringContainsString("click.fvcExtraView", $extra);
+        $this->assertStringContainsString("data.transaction_type==='EC'?data.amount_in:data.amount_out", $extra);
+        $booking=file_get_contents(app_path('Http/Controllers/BookingController.php'));
+        $this->assertStringContainsString("'amount_in' => \$dataList->amount_in", $booking);
+        $this->assertStringContainsString("? 'Outstanding Charge'", $booking);
         $this->assertStringContainsString('Extra Charge ', $extra);
         $this->assertStringContainsString('fvcJournalEdit', $journalEdit);
         $this->assertStringNotContainsString("$('#journalForm')[0].submit()", $journalEdit);
