@@ -99,7 +99,7 @@
     if(!$table.length||$table.data('fvc-table-skeleton-bound'))return;
     $table.data('fvc-table-skeleton-bound',true);
     $table.on('preXhr.dt.fvcSkeleton',function(){tableSkeleton($table,true);})
-      .on('draw.dt.fvcSkeleton error.dt.fvcSkeleton xhr.dt.fvcSkeleton',function(){
+      .on('draw.dt.fvcSkeleton error.dt.fvcSkeleton',function(){
         tableSkeleton($table,false);
       });
 
