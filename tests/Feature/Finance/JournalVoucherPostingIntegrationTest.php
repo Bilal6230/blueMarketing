@@ -22,8 +22,18 @@ class JournalVoucherPostingIntegrationTest extends TestCase
 
         Schema::dropAllTables();
         Schema::create('projects', function (Blueprint $t) { $t->id(); $t->string('project')->nullable(); });
+        // availableForPosting() now checks active head AND subhead definitions.
+        // Keep the isolated fixture aligned with the real posting invariant.
+        Schema::create('head_accountings', function (Blueprint $t) {
+            $t->id(); $t->string('name'); $t->boolean('is_active')->default(true);
+        });
+        Schema::create('subhead_accountings', function (Blueprint $t) {
+            $t->id(); $t->string('name'); $t->boolean('is_active')->default(true);
+        });
         Schema::create('project_head_subheads', function (Blueprint $t) {
-            $t->id(); $t->unsignedBigInteger('project_id'); $t->unsignedBigInteger('head_accounting_id');
+            $t->id(); $t->unsignedBigInteger('project_id');
+            $t->unsignedBigInteger('head_accounting_id');
+            $t->unsignedBigInteger('subhead_accounting_id');
         });
         Schema::create('commision_vouchers', function (Blueprint $t) {
             $t->id(); $t->unsignedBigInteger('project_id'); $t->string('voucher_number');
@@ -64,10 +74,19 @@ class JournalVoucherPostingIntegrationTest extends TestCase
         });
 
         DB::table('projects')->insert([['id'=>7,'project'=>'Test project'],['id'=>8,'project'=>'Other project']]);
+        DB::table('head_accountings')->insert([
+            ['id'=>1,'name'=>'Debit account','is_active'=>1],
+            ['id'=>2,'name'=>'Credit account','is_active'=>1],
+        ]);
+        DB::table('subhead_accountings')->insert([
+            ['id'=>1,'name'=>'Debit child','is_active'=>1],
+            ['id'=>2,'name'=>'Credit child','is_active'=>1],
+            ['id'=>3,'name'=>'Other project child','is_active'=>1],
+        ]);
         DB::table('project_head_subheads')->insert([
-            ['id'=>11,'project_id'=>7,'head_accounting_id'=>1],
-            ['id'=>22,'project_id'=>7,'head_accounting_id'=>2],
-            ['id'=>33,'project_id'=>8,'head_accounting_id'=>2],
+            ['id'=>11,'project_id'=>7,'head_accounting_id'=>1,'subhead_accounting_id'=>1],
+            ['id'=>22,'project_id'=>7,'head_accounting_id'=>2,'subhead_accounting_id'=>2],
+            ['id'=>33,'project_id'=>8,'head_accounting_id'=>2,'subhead_accounting_id'=>3],
         ]);
     }
 
