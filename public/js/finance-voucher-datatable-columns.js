@@ -4,7 +4,7 @@
 'use strict';
 var registry={};
 $.financeVoucherDataColumns={
- values:function(selector){return registry[selector]||{filters:{},sort:'',direction:''};}
+ values:function(selector){return registry[selector]||{filters:{},dates:{from:'',to:''},sort:'',direction:''};}
 };
 $(function(){
  // JV and SV already implement sort inside their Excel-style column popover.
