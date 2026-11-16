@@ -54,9 +54,19 @@ $(function(){
     accent:$table.closest('.bm-voucher-directory').css('--fvd-accent')||
       (opts.id==='Extra'?'#7145bd':'#087cfa')});
   var $popover=widget.$popup;
+  var clientSkeletonTimer=null;
   function refresh(){
     if(opts.server)api.ajax.reload(null,true);
-    else api.draw();
+    else {
+      // Server-rendered Extra/Draft tables filter synchronously. Show the same
+      // CR record skeleton during a client-side redraw, keeping headers fixed.
+      clearTimeout(clientSkeletonTimer);
+      if($.financeVoucherFeedback)$.financeVoucherFeedback.tableSkeleton($table,true);
+      api.draw();
+      clientSkeletonTimer=setTimeout(function(){
+        if($.financeVoucherFeedback)$.financeVoucherFeedback.tableSkeleton($table,false);
+      },220);
+    }
     $table.find('.fvd-column-trigger').each(function(){
       var key=$(this).data('fvd-column');
       $(this).toggleClass('bm-column-active',!!state.filters[key]||state.sort===key||(key==='date'&&(state.dates.from||state.dates.to)));
