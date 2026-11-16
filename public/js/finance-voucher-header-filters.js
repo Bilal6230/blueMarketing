@@ -194,7 +194,14 @@
             // The list card, table chrome and footer share the CR contract;
             // preserve original server-rendered rows and approval buttons.
             var $draftCard=$draftTable.closest('.custom_card');
-            $draftCard.addClass('bm-voucher-table-card fvc-draft-list-card');
+            if($draftCard.length){
+                // The server Blade nests three visually redundant cards. Move
+                // the actual permitted register intact into the shared
+                // viewport-height card, preserving all existing handlers/forms.
+                $draftCard.detach().addClass('bm-voucher-table-card fvc-draft-list-card')
+                    .appendTo($draft);
+                $draft.children('.content-header,section.content').hide();
+            }
             if($draftTable.length && $.fn.DataTable && !$.fn.DataTable.isDataTable($draftTable)){
                 // Blade's "No vouchers found" colspan row is replaced by the DataTables empty message.
                 $draftTable.find('tbody tr').filter(function(){
