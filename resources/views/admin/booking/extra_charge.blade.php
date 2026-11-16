@@ -106,7 +106,7 @@
                                                             <div class="input-group">
                                                                 <label class="fbox">Charge Type</label>
                                                                 <div class="input-group">
-                                                                    <select class="form-control select2" name="charge_type_id"
+                                                                    <select class="form-control fvc-tom-select" name="charge_type_id"
                                                                         id="charge_type">
                                                                         <option value="">Select an option</option>
                                                                         @foreach ($chargeTypes as $v)
@@ -125,7 +125,7 @@
                                                             <div class="input-group">
                                                                 <label class="fbox">Customer</label>
                                                                 <div class="input-group">
-                                                                    <select class="form-control select2" name="customer_id"
+                                                                    <select class="form-control fvc-tom-select" name="customer_id"
                                                                         id="customer_id">
                                                                         <option value="">Select Customer</option>
                                                                         @foreach ($customers as $v)
@@ -150,7 +150,7 @@
                                                             <div class="input-group">
                                                                 <label class="fbox">Plot No.</label>
                                                                 <div class="input-group">
-                                                                    <select class="form-control select2" name="plot_id"
+                                                                    <select class="form-control fvc-tom-select" name="plot_id"
                                                                         id="plot_id">
                                                                         <option value="">Select Plot</option>
                                                                     </select>
@@ -221,7 +221,7 @@
                                                         <div class="input-group bank_group" style="display: none">
                                                             <label class="fbox">Bank</label>
                                                             <div class="input-group">
-                                                                <select class="form-control select2" name="bank_id"
+                                                                <select class="form-control fvc-tom-select" name="bank_id"
                                                                     id="bank_id">
                                                                     <option value="">Bank</option>
 
