@@ -217,4 +217,22 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringNotContainsString("alert('Error:", $view);
     }
 
+    public function test_cv_and_extra_use_cr_live_filters_and_real_shared_table_skeleton(): void
+    {
+        $adapter=file_get_contents(public_path('js/finance-voucher-datatable-columns.js'));
+        $feedback=file_get_contents(public_path('js/finance-voucher-feedback.js'));
+        $styles=file_get_contents(public_path('css/finance-voucher-components.css'));
+        $cv=file_get_contents(resource_path('views/admin/reports/vouchers/commision_index.blade.php'));
+
+        $this->assertStringContainsString('function scheduleRefresh()', $adapter);
+        $this->assertStringContainsString("widget.dates(state.dates", $adapter);
+        $this->assertStringNotContainsString("text:'Apply'", $adapter);
+        $this->assertStringNotContainsString('draftFilters=', $adapter);
+        $this->assertStringContainsString('$.blueTableSkeleton.show(', $feedback);
+        $this->assertStringNotContainsString("class':'fvc-skeleton-shimmer'", $feedback);
+        $this->assertStringContainsString('fvc-skeleton-table', $styles);
+        $this->assertStringContainsString('.cv-directory .cv-shell>.card-body', $styles);
+        $this->assertStringContainsString("bindTableSkeleton('#journalTable')", $cv);
+    }
+
 }
