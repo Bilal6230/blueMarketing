@@ -46,6 +46,13 @@ final class VoucherApprovalMutationGuard
         if (!in_array($sourceTable, ['journal_vouchers', 'customer_ledger'], true)) {
             throw new \InvalidArgumentException('Unsupported voucher source for lifecycle guard.');
         }
+        // In explicitly selected local NORMAL ERP test mode the JV writer
+        // already appends reversal + replacement lines in one transaction.
+        // Permit exercising that audited edit/reverse path on approval-tracked
+        // test JVs; never relax this rule on production or customer ledgers.
+        if ($sourceTable === 'journal_vouchers'
+            && V2OriginalWorkflowAccess::normalErpMode()) return;
+
         if ($sourceTable === 'customer_ledger') {
             $this->assertNoPendingCorrection($projectId, $sourceId);
             // All bank-funded vouchers, even those posted with approval OFF,
