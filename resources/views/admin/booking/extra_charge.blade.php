@@ -708,7 +708,7 @@
                                         <div class="input-group">
                                             <label class="fbox">Projects</label>
                                             <div class="input-group">
-                                                <select class="form-control select2" name="projects_id"
+                                                <select class="form-control fvc-tom-select" name="projects_id"
                                                     id="e_projects_id">
                                                     <option value="">Select an option</option>
 
@@ -726,7 +726,7 @@
                                         <div class="input-group">
                                             <label class="fbox">Accounts</label>
                                             <div class="input-group">
-                                                <select class="form-control select2" name="accounts_id"
+                                                <select class="form-control fvc-tom-select" name="accounts_id"
                                                     id="e_accounts_id">
                                                     <option value="">Select an option</option>
 
@@ -749,7 +749,7 @@
                                         <div class="input-group">
                                             <label class="fbox">Party Account</label>
                                             <div class="input-group">
-                                                <select class="form-control select2" name="subaccounts_id"
+                                                <select class="form-control fvc-tom-select" name="subaccounts_id"
                                                     id="e_subaccounts_id">
                                                     <option value="">Select an option</option>
                                                 </select>
