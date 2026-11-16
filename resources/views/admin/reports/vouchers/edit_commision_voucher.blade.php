@@ -83,7 +83,7 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
 
                             <!-- Dynamic Table for Journal Entries -->
                             <div class="table-responsive mb-4">
-                                <table class="table table-bordered" id="journalTable">
+                                <table class="table table-bordered fvc-entry-table" id="journalTable">
                                     <thead class="bg-warning text-white">
                                         <tr>
                                             <th>Account</th>
