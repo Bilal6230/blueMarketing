@@ -1,4 +1,37 @@
 # BlueMarketing — ACTIVE HANDOFF (new chat continuity)
+
+## CURRENT AUTHORITATIVE CHECKPOINT — 2026-11-16 (supersedes stale status summaries below)
+**Branch:** `upgrade/laravel-framework` · **Verified code HEAD before docs:** `b2e73e02f6f60dacce5539fdffab51113e6ad242` · **Owner local:** `C:\laragon\www\blueMarketing`.
+
+### Completed / evidenced
+- Phase 01 Cheque Management and Phase 02 Online Transaction Management: owner browser PASS for original milestones.
+- Phase 03.1 shared voucher UI/print and 03.2 approval settings: owner browser PASS; many individual 03.3/05 lifecycle guards and six-voucher attachments subsequently implemented and tested, but **do not infer every end-to-end approval scenario is closed**.
+- Phase 04.7 shared six-voucher attachments: owner reported 7/7 browser checks PASS; attachment revision flow and bank direction/evidence follow-ups had individually recorded PASS. CCR/CDR pending approve/reject owner browser PASS.
+- Phase 06 bank movement reconciliation: BD-1 and BW-2 local database reconciliation/browser PASS; Cheque/Online Linked Voucher History UI owner browser PASS. BD/BW two-page A5 printing remains **OWNER-HOLD**; Phase 06 overall print acceptance not closed.
+- Phase 07 Plot Receipt: Details and single-plot posting owner browser PASS; A5 two-page print remains **OWNER-HOLD**, therefore full print acceptance open.
+- Phase 08 Plot Purchase: owner ran `V2PlotEntryWriterTest` **21 passed/108 assertions** and read-only `finance:audit-v2-plot-purchases 3`: PP-1, batch 4, 1 plot, Rs 1,000, debit=credit, **PASS; 0 exceptions**.
+- Phase 09.1/09.2: Cheque and Online dashboard 8/8 browser checks each owner PASS. Phase 09.3 source-to-voucher filters/drilldowns functional browser checks owner PASS.
+- Voucher UI global refactor code delivered: `public/js/finance-voucher-components.js` shared jQuery filter/paginator, `public/css/finance-voucher-components.css`, original CR renderer `blue-voucher-pagination.js`, source adapters, shared header buttons and date ranges. Latest owner screenshots show Extra Charges table header now top-aligned, pager at card bottom and one visible table card. **These screenshots show visual improvement, not a declared full multi-page QA PASS**.
+
+### Latest completed code fix / precise test gate
+- After the Extra Charges outer-card `bm-card-frame-reset` fix at `06260a6c`, owner successfully fast-forward pulled and ran cache clear. `FinanceVoucherUnifiedComponentsTest`: **5 passed, 1 failed, 58 assertions**. Failure was only hard-coded asset `v=3` in the source contract; live Blade loaded CSS `v=4`. No runtime/design failure was demonstrated by this assertion.
+- Updated the test to assert the stylesheet asset reference independently of the cache-bust version; code committed at **`b2e73e02f6f60dacce5539fdffab51113e6ad242`**. GitHub source cross-check PASS; **owner has not supplied the subsequent local PHPUnit rerun**, so do not label 6/6 PASS.
+- Latest Extra Charges screenshot shows one visible table card, toolbar at top, empty-table message immediately beneath headings and shared pagination at bottom. Mark **visual spot-check observed**, not cross-browser/full-voucher acceptance.
+
+### Partial / pending / HOLD
+1. **Immediate closeout:** pull HEAD, run `php artisan test --filter=FinanceVoucherUnifiedComponentsTest`; confirm six tests pass; browser smoke-check JV/SV/CV/Draft/Extra pager only once, top-aligned headings, page length + Next, and Cheque/Online filter state. CV previously showed a `Processing...` screenshot; verify it resolves and no AJAX errors persist (not confirmed yet).
+2. **Phase 03.3 / Phase 05 final acceptance:** audit and run still-open real-database approve/reject/revise/resubmit, same-source CR/DR edits, release/void/history and exceptional bank instrument scenarios. Historic code implementation or isolated test PASS is not equivalent to full E2E closure.
+3. **Phase 06/07 A5 print** BD/BW and Plot Receipt duplicate/two-page output explicitly **OWNER-HOLD**; don't touch without owner's direction.
+4. **Phase 10 cross-module acceptance** not started/closed: project scope, permissions, correct debit-credit/inactive pending, idempotency, bank source uniqueness, cash/online/cheque and plot workflows, print and approval audit, local DB fixtures + browser.
+5. App-wide non-finance design system remains deferred; this shared system covers the audited finance voucher pages only, not every application screen.
+
+### Do not regress / next-chat operating rules
+- CR is accepted visual baseline; common controls must be maintained once in the shared JS/CSS and Blade components, not added per-page overrides. Voucher business data/actions stay separate. Only jQuery for first-party scripts.
+- Preserve original finance/ledger posting, approval security, idempotency, local-pilot V2 production guards and project scoping. No production write/migration without authorization.
+- Do **not** start Phase 10 or treat all finance design as accepted until owner closes the current test/browser gate.
+- Local check: `cd C:\laragon\www\blueMarketing; git pull --ff-only origin upgrade/laravel-framework; php artisan optimize:clear; php artisan test --filter=FinanceVoucherUnifiedComponentsTest`. Optionally rerun `FinanceVoucherCrVisualParityTest`, `FinanceVoucherCanonicalDesignTest`, `VoucherGlobalVisualParityTest`.
+- Prior historical entries below show the progression, sometimes with now-superseded OPEN/NOT STARTED labels. Use this current checkpoint over old top-of-file descriptions.
+
 **Updated:** 2026-11-11
 **Repo:** `Bilal6230/blueMarketing`
 **Branch:** `upgrade/laravel-framework`
