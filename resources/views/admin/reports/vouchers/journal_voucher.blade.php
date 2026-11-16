@@ -358,54 +358,50 @@ html body .main-content.page-content > .content-wrapper .card-body{
                 });
             });
 
-            // Fetch Sub-Accounts dynamically via AJAX when account is selected
-            $(document).on('change', '.account-select', function() {
-                const accountID = $(this).val();
-                const subAccountSelect = $(this).closest('tr').find('.sub-account-select');
-
-                if (accountID) {
-                    $.ajax({
-                        url: '{{ route('get_account') }}',
-                        type: 'POST',
-                        dataType: 'json',
-                        data: {
-                            projectID: {{ getSelectedTown() }}, // Replace with the dynamic project ID if applicable
-                            accountID: accountID,
-                            action: 'get_child',
-                            active_only: true,
-                            _token: '{{ csrf_token() }}' // CSRF token for Laravel
-                        },
-                        success: function(response) {
-                            // Clear and populate the sub-account dropdown
-                            subAccountSelect.empty().append(
-                                '<option value="">Select Sub-Account</option>');
-
-                            if (response.length > 0) {
-                                $.each(response, function(index, item) {
-                                    if (item.subhead_accounting) {
-                                        subAccountSelect.append('<option value="' + item
-                                            .id + '">' + item.subhead_accounting
-                                            .name + '</option>');
-                                    }
-                                });
-                            } else {
-                                if($.financeVoucherFeedback)$.financeVoucherFeedback.toast('error','No sub-accounts found for the selected account.');
-                            }
-                            if(subAccountSelect[0]&&subAccountSelect[0].tomselect)
-                                subAccountSelect[0].tomselect.sync();
-                        },
-                        error: function(xhr) {
-                            if($.financeVoucherFeedback)
-                                $.financeVoucherFeedback.toast('error',
-                                    $.financeVoucherFeedback.error(xhr,'Unable to load sub-accounts.'));
-                        }
-                    });
-                } else {
-                    // Reset the sub-account dropdown if no account is selected
-                    subAccountSelect.empty().append('<option value="">Select Sub-Account</option>');
-                    if(subAccountSelect[0]&&subAccountSelect[0].tomselect)
-                        subAccountSelect[0].tomselect.sync();
+            // Dependent TomSelect values must be updated through its API, not
+            // by replacing <option> nodes underneath an initialized control.
+            // Replacing native options and calling sync() left a broken,
+            // unstyled, full-height sub-account list in the JV iframe.
+            $(document).on('change.fvcJournalChildren','.account-select',function(){
+                var accountID=$(this).val();
+                var $child=$(this).closest('tr').find('.sub-account-select');
+                var element=$child[0],ts=element&&element.tomselect;
+                function resetChildren(items){
+                    if(ts){
+                        ts.clear(true);
+                        ts.clearOptions();
+                        ts.addOption({value:'',text:'Select Sub-Account'});
+                        $.each(items,function(_,item){ts.addOption(item);});
+                        ts.refreshOptions(false);
+                    }else{
+                        $child.empty().append($('<option>',{value:'',text:'Select Sub-Account'}));
+                        $.each(items,function(_,item){
+                            $child.append($('<option>',{value:item.value,text:item.text}));
+                        });
+                    }
                 }
+                resetChildren([]);
+                if(!accountID)return;
+                $.ajax({
+                    url:@json(route('get_account')),type:'POST',dataType:'json',
+                    data:{projectID:@json(getSelectedTown()),accountID:accountID,
+                        action:'get_child',active_only:true,_token:@json(csrf_token())}
+                }).done(function(response){
+                    var options=[];
+                    $.each($.isArray(response)?response:[],function(_,item){
+                        if(item&&item.subhead_accounting&&item.id)
+                            options.push({value:String(item.id),
+                                text:String(item.subhead_accounting.name||'')});
+                    });
+                    resetChildren(options);
+                    if(!options.length && $.financeVoucherFeedback)
+                        $.financeVoucherFeedback.toast('error',
+                            'No active Sub-Accounts found for the selected Account.');
+                }).fail(function(xhr){
+                    if($.financeVoucherFeedback)
+                        $.financeVoucherFeedback.toast('error',
+                            $.financeVoucherFeedback.error(xhr,'Unable to load Sub-Accounts.'));
+                });
             });
 
         });
