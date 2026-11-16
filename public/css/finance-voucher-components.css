@@ -541,29 +541,40 @@
 :is(.cv-directory,.bm-modern-extra) .fvd-datatable-wrapper>.fvd-datatable-scroll{
  overflow:auto!important;min-height:0!important;
 }
-/* Finance entry selects are one unified field. The td itself is the field
-   outline; an additional inner box must not be drawn around TomSelect. */
+/* Commission entry: exactly one visible, searchable TomSelect field per cell.
+   The previous transparent control border made these look like plain text. */
 .fvc-entry-table tbody td:has(> .ts-wrapper){
- padding:0!important;vertical-align:middle!important;
+ padding:5px 6px!important;vertical-align:middle!important;
 }
 .fvc-entry-table tbody td>.ts-wrapper.single{
- width:100%!important;min-height:40px!important;
- margin:0!important;border:0!important;padding:0!important;
+ display:block!important;width:100%!important;min-width:0!important;
+ min-height:34px!important;height:auto!important;
+ margin:0!important;padding:0!important;border:0!important;
  background:transparent!important;
 }
 .fvc-entry-table tbody td>.ts-wrapper.single .ts-control{
- min-height:40px!important;height:40px!important;
- border:1px solid transparent!important;border-radius:0!important;
- padding:7px 9px!important;box-shadow:none!important;
+ display:flex!important;align-items:center!important;
+ width:100%!important;height:34px!important;min-height:34px!important;
+ padding:6px 9px!important;box-sizing:border-box!important;
+ background:#fff!important;
+ border:1px solid #ced8e3!important;border-radius:5px!important;
+ box-shadow:none!important;cursor:text!important;
+ font-size:12px!important;line-height:20px!important;
 }
-.fvc-entry-table tbody td>.ts-wrapper.single.focus .ts-control{
+.fvc-entry-table tbody td>.ts-wrapper.single.focus .ts-control,
+.fvc-entry-table tbody td>.ts-wrapper.single.dropdown-active .ts-control{
  border-color:var(--fvd-accent,#087cfa)!important;
- box-shadow:inset 0 0 0 1px var(--fvd-accent,#087cfa)!important;
+ box-shadow:0 0 0 2px color-mix(in srgb,var(--fvd-accent,#087cfa) 15%,transparent)!important;
 }
 .fvc-entry-table tbody td>.ts-wrapper.single .ts-control>input{
- height:auto!important;min-height:0!important;line-height:20px!important;
+ min-width:2px!important;width:auto!important;
+ height:20px!important;min-height:0!important;line-height:20px!important;
+ padding:0!important;border:0!important;box-shadow:none!important;
 }
-
+.fvc-entry-table tbody td>.ts-wrapper.single .ts-dropdown{
+ min-width:100%!important;background:#fff!important;
+ border:1px solid #ced8e3!important;
+}
 /* Don't let the stock DataTables processing overlay cover the headings
    when our canonical CR row skeleton is already showing. */
 .bm-voucher-directory .fvc-table-loading .dataTables_processing{
