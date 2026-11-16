@@ -4,7 +4,10 @@
 @canany(['edit jv', 'delete jv', 'print jv'])
     <div class="btn-group">
         @can('edit jv')
-            @unless($approvalTracked ?? false)
+            {{-- SV is created by the booking workflow. This JV-only editor
+                 cannot safely mutate a posted SV; offer its voucher detail
+                 document through the authorized print route instead. --}}
+            @unless(($approvalTracked ?? false) || $voucher->type === 'SV')
             <a href="{{ route($voucherRoutePrefix.'.edit', $voucher->id) }}" class="btn btn-sm btn-warning">
                 <i class="fas fa-edit"></i> Edit
             </a>
@@ -12,7 +15,7 @@
         @endcan
 
         @can('delete jv')
-            @unless($approvalTracked ?? false)
+            @unless(($approvalTracked ?? false) || $voucher->type === 'SV')
             <button class="btn btn-sm btn-danger delete-btn" data-id="{{ $voucher->id }}">
                 <i class="fas fa-undo"></i> Reverse
             </button>
@@ -28,7 +31,7 @@
         @endif
 
         @can('print jv')
-            <a href="{{ route($voucherRoutePrefix.'.print', $voucher->id) }}" target="_blank" class="btn btn-sm btn-info">
+            <a href="{{ route($voucherRoutePrefix.'.print', $voucher->id) }}" target="_blank" rel="noopener" data-blue-action-label="{{ $voucher->type === 'SV' ? 'View / Print Sales Voucher' : 'Print Journal Voucher' }}" class="btn btn-sm btn-info">
                 <i class="fas fa-print"></i> Print
             </a>
         @endcan
