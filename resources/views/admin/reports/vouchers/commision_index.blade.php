@@ -132,7 +132,11 @@
         let isDateChanged = false;
 
         $(document).ready(function() {
-            // Initialize DataTable with default data
+            // Bind before the very first AJAX request so initial loading and
+            // subsequent column-filter reloads share the same table skeleton.
+            if ($.financeVoucherFeedback) {
+                $.financeVoucherFeedback.bindTableSkeleton('#journalTable');
+            }
             renderDataTable();
 
             // Toggle filter section visibility
