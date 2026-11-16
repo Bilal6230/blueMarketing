@@ -84,6 +84,7 @@
                                 .append($('<iframe>',{id:'bmCommissionFrame',title:'Commission Voucher Form',src:'about:blank'})))
                             .append($('<div>',{'class':'modal-footer'})
                                 .append($('<button>',{type:'button','class':'btn btn-outline-secondary btn-sm','data-dismiss':'modal'}).text('Close')))));
+                $commissionModal.addClass('fvc-modern-modal fvc-modal-blue');
                 $('body').append($commissionModal);
                 $commissionCreate.on('click.bmCommission',function(e){
                     e.preventDefault();
@@ -100,6 +101,12 @@
                 });
                 $commissionCreate.on('click.bmCommissionTitle',function(){
                     $commissionModal.find('.modal-title').text('New Commission Voucher');
+                });
+                $(document).on('finance:commission-saved.fvc',function(){
+                    $commissionModal.modal('hide');
+                    if($.fn.DataTable && $.fn.DataTable.isDataTable('#journalTable')){
+                        $('#journalTable').DataTable().ajax.reload(null,false);
+                    }
                 });
                 $commissionModal.on('hidden.bs.modal',function(){
                     $('#bmCommissionFrame').attr('src','about:blank');
@@ -185,6 +192,7 @@
         // Extra Charge: keep existing voucherForm/confirmation lifecycle, only relocate the entry UI.
         var $extra=$('.bm-modern-extra');
         if ($extra.length) {
+            $('#modal-charge-type').addClass('fvc-modern-modal fvc-modal-purple');
             // Shared, project-safe AJAX form submission. Existing endpoints
             // still own validation, authorization, posting and idempotency.
             function submitExtraAjax($entry,onSaved){
@@ -240,6 +248,7 @@
                     .append($('<button>',{'class':'close',type:'button','data-dismiss':'modal'}).html('&times;')))
                     .append($('<div>',{'class':'modal-body'}))));
                 $form.detach().appendTo($modal.find('.modal-body'));
+                $modal.addClass('fvc-modern-modal fvc-modal-purple');
                 $('body').append($modal);
                 // Original Save referenced #confirmModal, which is not present on this page.
                 // Preserve the original Laravel posting form and add an explicit confirmation
@@ -253,6 +262,7 @@
                     .append($('<div>',{'class':'modal-footer'})
                         .append($('<button>',{type:'button','class':'btn btn-outline-secondary btn-sm','data-dismiss':'modal'}).text('Cancel'))
                         .append($('<button>',{type:'button','class':'btn btn-primary btn-sm',id:'bmExtraConfirmSave'}).text('Confirm Save')))));
+                $confirm.addClass('fvc-modern-modal fvc-modal-purple');
                 $('body').append($confirm);
                 $form.on('click.bmExtraSave','.bm-extra-save',function(event){
                     event.preventDefault();
