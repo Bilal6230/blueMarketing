@@ -1,6 +1,10 @@
 <?php
 
 return [
+    // Local-only opt-in for the standard ERP controller/ledger workflows.
+    // This overrides legacy V2 pilot flags without deleting experimental
+    // schema or exposing an unsafe production-mode accounting bypass.
+    'normal_erp_mode' => env('FINANCE_NORMAL_ERP_MODE', false),
     // V2 pilot routes are NOT registered by default, ever in production.
     // Enabling is limited to an isolated local/testing DB and an explicit
     // authenticated, project-authorized API session.
