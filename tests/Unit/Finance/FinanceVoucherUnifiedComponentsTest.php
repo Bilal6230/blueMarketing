@@ -183,4 +183,38 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         }
     }
 
+
+    public function test_commission_status_schema_repair_remains_explicit_and_guarded(): void
+    {
+        $legacy=file_get_contents(database_path('migrations/2025_09_25_142048_create_commision_vouchers_table.php'));
+        $workflow=file_get_contents(app_path('Services/Finance/V2CommissionDraftWorkflow.php'));
+        $repair=file_get_contents(app_path('Console/Commands/RepairV2CommissionDraftStatus.php'));
+        $controller=file_get_contents(app_path('Http/Controllers/CommissionVoucherController.php'));
+
+        $this->assertStringContainsString("'pending', 'approved', 'rejected'", $legacy);
+        $this->assertStringContainsString("'status' => 'draft'", $workflow);
+        $this->assertStringContainsString('V2IsolatedConnectionGuard::isAllowed()', $repair);
+        $this->assertStringContainsString('finance:repair-v2-commission-status', $repair);
+        $this->assertStringContainsString("option('apply')", $repair);
+        $this->assertStringContainsString("ALTER TABLE", $repair);
+        $this->assertStringContainsString("report(" . '$e' . ")", $controller);
+        $this->assertStringContainsString("Commission status storage needs", $controller);
+    }
+
+    public function test_shared_voucher_form_feedback_is_loaded_from_master(): void
+    {
+        $master=file_get_contents(resource_path('views/admin/layouts/master.blade.php'));
+        $feedback=file_get_contents(public_path('js/finance-voucher-feedback.js'));
+        $view=file_get_contents(resource_path('views/admin/reports/vouchers/commision_voucher.blade.php'));
+        $css=file_get_contents(public_path('css/finance-voucher-components.css'));
+
+        $this->assertStringContainsString('finance-voucher-feedback.js', $master);
+        $this->assertStringContainsString('financeVoucherFeedback', $feedback);
+        $this->assertStringContainsString('enhanceSelects', $feedback);
+        $this->assertStringContainsString('fvc-modal-skeleton', $css);
+        $this->assertStringContainsString('fvc-tom-select', $view);
+        $this->assertStringContainsString("feedback.error(xhr", $view);
+        $this->assertStringNotContainsString("alert('Error:", $view);
+    }
+
 }
