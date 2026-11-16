@@ -77,7 +77,7 @@ html body .main-content.page-content > .content-wrapper .card-body{
                                 until the approval-aware V2 workflow is configured.
                             </div>
                         @endif
-                        <form id="journalForm" action="{{ route('journal.voucher.store') }}" method="POST">
+                        <form id="journalForm" novalidate action="{{ route('journal.voucher.store') }}" method="POST">
                             @csrf
                             {{-- A stable key for this rendered form; browser retries reuse it.
                                  Legacy installs without metadata keep the old no-key path. --}}
@@ -292,11 +292,25 @@ html body .main-content.page-content > .content-wrapper .card-body{
                 const totalDebit = parseFloat($('#totalDebit').val()) || 0;
                 const totalCredit = parseFloat($('#totalCredit').val()) || 0;
 
-                if (totalDebit !== totalCredit) {
-                    // Show Error Modal
-                    $('#errorModal').modal('show');
+                var $form=$(this);
+                var $description=$form.find('[name="description"]');
+                if(!$.trim(String($description.val()||''))){
+                    if($.financeVoucherFeedback)$.financeVoucherFeedback.toast('error','Enter voucher description.');
+                    $description.trigger('focus');return;
+                }
+                var $missing=$form.find('#journalTable tbody select.account-select, #journalTable tbody select.sub-account-select')
+                    .filter(function(){return !$(this).val();}).first();
+                if($missing.length){
+                    if($.financeVoucherFeedback)$.financeVoucherFeedback.toast('error','Select Account and Sub-Account on every voucher line.');
+                    if($missing[0].tomselect)$missing[0].tomselect.focus();
+                    else $missing.trigger('focus');
+                    return;
+                }
+                if (totalDebit<=0 || totalDebit !== totalCredit) {
+                    if($.financeVoucherFeedback)
+                        $.financeVoucherFeedback.toast('error','Debit and Credit totals must match and be greater than zero.');
+                    else $('#errorModal').modal('show');
                 } else {
-                    // Show Confirmation Modal
                     $('#confirmationModal').modal('show');
                 }
             });
