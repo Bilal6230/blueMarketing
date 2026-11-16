@@ -1,5 +1,10 @@
 # BlueMarketing — ACTIVE HANDOFF (new chat continuity)
 
+## 2026-11-16 — TERMINAL JV SUITE RERUN (SECOND OWNER FAILURE)
+- Owner after fixture repair: JV integration 40 FAIL/16 PASS and collision 1 FAIL; global unified components 19 PASS/182 assertions. Missing-head/subhead SQLite errors were resolved.
+- New common failure was HTTP abort (including 403 collision), consistent with original JV tests accidentally taking V2 pilot path: `V2OriginalWorkflowAccess::selected()` switches when local/testing `finance.v2_pilot_api_enabled` is true. Both isolated tests now explicitly force `finance.v2_pilot_api_enabled=false`, `finance.v2_pilot_write_enabled=false` in setUp, before calling real original controller. Production flags and access policies NOT modified.
+- Rerun with owner commands for integration + collision + aggregate JV; no browser tests until these pass. New changes committed, owner rerun still needed. If HttpException persists, capture exception status and message plus project selection context; do not loosen posting authorization.
+
 ## 2026-11-16 — JV REGRESSION FIX AFTER OWNER RUN (VERIFY LOCALLY)
 - Owner Gate A PASS: FinanceVoucherUnifiedComponentsTest 19/19 (182 assertions); CommissionVoucherListingResponseTest 7/7; VoucherGlobalVisualParityTest 6/6.
 - Owner JournalVoucher group: 48 FAIL, 17 PASS. Most failures share missing `head_accountings`/`subhead_accountings` SQLite fixtures caused by production-safe `ProjectHeadSubhead::availableForPosting()` active definitions. Isolated JV posting integration fixtures now create+seed active definitions and project mapping child IDs. **No production posting policy was weakened**.
