@@ -247,7 +247,7 @@
     <!-- jQuery -->
     <script src="{{ asset('template/admin/plugins/jquery/jquery.min.js') }}"></script>
     <script src="{{ asset('js/blue-table-skeleton.js') }}?v=1"></script>
-    <script src="{{ asset('js/finance-voucher-feedback.js') }}?v=2"></script>
+    <script src="{{ asset('js/finance-voucher-feedback.js') }}?v=3"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
     @yield('js')
@@ -700,11 +700,11 @@
     @stack('script')
 {{-- Canonical design system loads after every page-specific style and script. --}}
 <link rel="stylesheet" href="{{ asset('css/finance-voucher-system.css') }}?v=2">
-<link rel="stylesheet" href="{{ asset('css/finance-voucher-components.css') }}?v=6">
+<link rel="stylesheet" href="{{ asset('css/finance-voucher-components.css') }}?v=7">
 <script src="{{ asset('js/finance-voucher-components.js') }}?v=2"></script>
 <script src="{{ asset('js/finance-voucher-header-filters.js') }}?v=5"></script>
 <script src="{{ asset('js/finance-voucher-heading-columns.js') }}?v=2"></script>
-<script src="{{ asset('js/finance-voucher-datatable-columns.js') }}?v=3"></script>
+<script src="{{ asset('js/finance-voucher-datatable-columns.js') }}?v=4"></script>
 </body>
 
 </html>
