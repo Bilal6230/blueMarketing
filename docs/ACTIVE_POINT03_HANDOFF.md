@@ -1,5 +1,13 @@
 # BlueMarketing — ACTIVE HANDOFF (new chat continuity)
 
+## 2026-11-16 — JV REGRESSION FIX AFTER OWNER RUN (VERIFY LOCALLY)
+- Owner Gate A PASS: FinanceVoucherUnifiedComponentsTest 19/19 (182 assertions); CommissionVoucherListingResponseTest 7/7; VoucherGlobalVisualParityTest 6/6.
+- Owner JournalVoucher group: 48 FAIL, 17 PASS. Most failures share missing `head_accountings`/`subhead_accountings` SQLite fixtures caused by production-safe `ProjectHeadSubhead::availableForPosting()` active definitions. Isolated JV posting integration fixtures now create+seed active definitions and project mapping child IDs. **No production posting policy was weakened**.
+- Collision safety test previously submitted only one zero-value line, invalid under current minimum two-line guard; updated isolated setup to submit a balanced two-line revision with the detail ID 88 colliding with unrelated header 88; asserts unrelated ledger stays untouched and absent source posting blocks unsafe update.
+- Existing JV retry-dedup source regression asserts whitespace conventions for guard; restored equivalent guard statement formatting in new AJAX handler.
+- New regressions **not yet owner-rerun**. First run `php artisan test --filter=JournalVoucherPostingIntegrationTest`, `php artisan test --filter=JournalVoucherCollisionTest`, then `php artisan test --filter=JournalVoucher`. Do not mark Phase 10 complete until passing.
+- After these PASS, browser acceptance tests: CR exact dates; Extra date 16-Nov, TomSelect & create/charge type; Draft Edit Save AJAX (Save as Voucher remains normal guarded posting); JV New balanced and unbalanced, one XHR and no iframe navigation; JV editing/permissions; SV register/filter/flow; CV pilot-only save. Use disposable isolated local DB and DO NOT run migrations on client data.
+
 ## 2026-11-16 — FINANCE CLOSE-OUT AJAX BATCH (CODE COMMITTED, OWNER BROWSER GATE OPEN)
 - Owner reports unified voucher layout significantly improved after fixing Extra Charge Date From/To regex. Latest reviewed screens include CR, CV, Extra, Draft, JV and SV. Do not call entire program complete on visual feedback alone.
 - JV: original `JournalVoucherController` create, edit and rejected resubmit preserve authorization/accounting validation and normal redirect for non-JSON requests. AJAX requests now get a single structured JSON success contract via `voucherWriteResponse`. Embedded `journal_voucher.blade.php` preserves user confirmation and idempotency key, submits via one jQuery AJAX call rather than native iframe navigation; errors use shared safe Toastr; parent JV/SV register consumes `finance:journal-saved` and performs one DataTable reload only after successful Save.
