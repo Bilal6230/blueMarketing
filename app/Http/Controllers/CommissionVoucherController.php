@@ -238,6 +238,11 @@ class CommissionVoucherController extends Controller
                     ? 'Commission status storage needs the approved local schema repair. Ask the administrator to run finance:repair-v2-commission-status.'
                     : 'Commission voucher could not be saved. Please contact the administrator.',
             ], 422);
+        } catch (\Throwable $e) {
+            report($e);
+            return response()->json([
+                'message' => 'Commission voucher could not be saved. Contact the administrator.',
+            ], 500);
         }
         if ($request->expectsJson()) {
             return response()->json([
