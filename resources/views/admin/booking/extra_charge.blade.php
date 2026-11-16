@@ -819,7 +819,7 @@
                 <div class="modal-body">
                     <form action="{{ route('booking.customer.destroy') }}" method="POST" enctype="multipart/form-data">
                         @csrf
- @include('admin.finance.voucher.typed_posting_fields')
+
                         @method('DELETE')
                         <p class="modal-text">Are you sure you want to delete? <b id="delete-data"></b></p>
                         <input type="hidden" name="id" id="did">
