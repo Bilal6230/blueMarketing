@@ -441,6 +441,8 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString("attr('novalidate','novalidate')", $shared);
         $this->assertStringContainsString('Complete all required collection fields before saving.', $shared);
         $this->assertStringContainsString('syncChequeFields', $shared);
+        $this->assertStringContainsString('Pending bank collection: Debit/Credit posting accounts are selected at clearance', $shared);
+        $this->assertStringContainsString("toggleClass('d-none',pending)", $shared);
         $this->assertStringContainsString('fvc-cheque-purpose', $extra);
         $this->assertStringContainsString('receiptBanks', $extra);
         $this->assertStringNotContainsString('placeholder="Bank ID"', $extra);
@@ -462,7 +464,9 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('fvc-tom-select sub-account-select', $view);
         $this->assertStringContainsString('table table-bordered fvc-entry-table', $view);
         $this->assertStringContainsString("enhanceSelects(\$('#journalTable select.fvc-tom-select'))", $view);
-        $this->assertStringContainsString("tomselect.sync()", $view);
+        $this->assertStringContainsString("ts.clearOptions()", $view);
+        $this->assertStringContainsString("ts.addOption(item)", $view);
+        $this->assertStringNotContainsString("subAccountSelect.empty().append", $view);
         $this->assertStringContainsString('journalPilotApprovalBlocked', $view);
         $this->assertStringContainsString('journalPilotApprovalBlocked', $controller);
         $this->assertStringContainsString('Rejected JV revision is unavailable in V2 mode.', $controller);
