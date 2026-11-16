@@ -309,4 +309,22 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('.fvc-modern-modal .modal-body .input-group>.ts-wrapper.single', $css);
     }
 
+    public function test_extra_dropdowns_filter_dates_and_columns_follow_shared_cr_contract(): void
+    {
+        $feedback=file_get_contents(public_path('js/finance-voucher-feedback.js'));
+        $adapter=file_get_contents(public_path('js/finance-voucher-datatable-columns.js'));
+        $styles=file_get_contents(public_path('css/finance-voucher-components.css'));
+        $header=file_get_contents(public_path('js/finance-voucher-header-filters.js'));
+
+        $this->assertStringContainsString('dropdownParent:null', $feedback);
+        $this->assertStringContainsString('var matched=source.match(', $adapter);
+        $this->assertStringContainsString('clientSkeletonTimer=setTimeout', $adapter);
+        $this->assertStringContainsString('.ts-wrapper.form-control', $styles);
+        $this->assertStringContainsString('th:nth-child(5){width:9%', $styles);
+        $this->assertStringContainsString('th:nth-child(7)', $styles);
+        $this->assertStringContainsString('show.bs.modal.fvcExtraLoad', $header);
+        $this->assertStringContainsString('shown.bs.modal.fvcExtraLoad', $header);
+        $this->assertStringNotContainsString('window.location.reload()', $header);
+    }
+
 }
