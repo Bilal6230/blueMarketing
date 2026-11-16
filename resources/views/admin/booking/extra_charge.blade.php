@@ -1063,7 +1063,7 @@
                         ['Plot',data.plot&&data.plot.name],
                         ['Project',data.project&&data.project.name],
                         ['Description',data.description],
-                        ['Amount',data.amount_out],
+                        ['Amount',data.transaction_type==='EC'?data.amount_in:data.amount_out],
                         ['Payment Type',data.payment_type_label],
                         ['Approval',data.approval_status_label],
                         ['Clearance',data.clearance_status_label],
