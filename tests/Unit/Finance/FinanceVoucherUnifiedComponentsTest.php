@@ -296,9 +296,14 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('refreshExtraDirectory()', $header);
         $this->assertStringNotContainsString('window.location.reload()', $header);
         $this->assertStringContainsString('mountExtraPaymentActions()', $header);
+        $this->assertStringContainsString("draw.dt.fvcExtraPayments", $header);
+        $this->assertStringContainsString('skeleton($loadingBody,true)', $header);
+        $this->assertStringContainsString('skeleton($loadingBody,false)', $header);
         $this->assertStringContainsString("enhanceSelects($('#filter_head,#filter_subhead'))", $draft);
         $this->assertStringNotContainsString("$('#filter_head, #filter_subhead').select2", $draft);
         $this->assertStringContainsString('fvc-draft-list-card', $header);
+        $this->assertStringContainsString("enhanceSelects($('.js-tomselect'))", $draft);
+        $this->assertStringNotContainsString('new TomSelect(el,', $draft);
         $this->assertStringContainsString('bindTableSkeleton($table)', $sales);
         $this->assertStringContainsString("route('sales.voucher.index')", $sales);
         $this->assertStringContainsString('.fvc-modern-modal .modal-body .input-group>.ts-wrapper.single', $css);
