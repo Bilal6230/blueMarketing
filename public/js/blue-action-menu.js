@@ -19,13 +19,32 @@
         returned:['danger','fas fa-undo'],bounced:['danger','fas fa-undo']
     };
     const readLabel=$source=>{
-        let result=$source.attr('data-blue-action-label')||$.trim($source.text())||
-            $source.attr('title')||$source.attr('aria-label')||'Action';
-        if(!$.trim($source.text()) && !$source.attr('data-blue-action-label')){
-            result=String(result).replace(/^(Edit|Print|Delete|View)\s+voucher\s+.*/i,'$1')
-                .replace(/^Audited allocation release.*/i,'Release / Void');
-        }
-        return $.trim(String(result).replace(/\s+/g,' '))||'Action';
+        // Preserve explicit labels; icon-only legacy buttons need semantic names.
+        const explicit=$.trim($source.attr('data-blue-action-label')||
+            $source.attr('aria-label')||$source.attr('title')||'');
+        if(explicit && !/^action(s)?$/i.test(explicit))return explicit;
+        const visible=$.trim($source.text()).replace(/\s+/g,' ');
+        if(visible && !/^action(s)?$/i.test(visible))return visible;
+        const classes=[
+            ['btn-view-changes','Approval Required'],
+            ['btn-edit','Edit'],
+            ['btn-view','View / Approve'],
+            ['btn-delete','Delete'],
+            ['btn-approve','Approve'],
+            ['btn-rejected','Reject'],
+            ['btn-approved','Approve'],
+            ['btn-print','Print']
+        ];
+        const match=classes.find(pair=>$source.hasClass(pair[0]));
+        if(match)return match[1];
+        const $icon=$source.find('i').first();
+        const inferred=[
+            ['fa-pencil','Edit'],['fa-edit','Edit'],['fa-eye','View'],
+            ['fa-trash','Delete'],['fa-print','Print'],['fa-check','Approve'],
+            ['fa-times','Reject'],['fa-history','History'],['fa-undo','Reverse']
+        ].find(pair=>$icon.hasClass(pair[0])||
+            String($icon.attr('class')||'').includes(pair[0]));
+        return inferred?inferred[1]:'Action';
     };
     const kindFor=($source,label)=>{
         const term=String($source.attr('data-blue-action-type')||label).toLowerCase();
