@@ -400,7 +400,6 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString("data('fvc-post-as-voucher',true)", $draft);
         $this->assertStringContainsString("voucher->type === 'SV'", $actions);
         $this->assertStringContainsString("voucher->type === 'SV') ? 'SV' : 'JV'", $controller);
-        $this->assertStringContainsString("data('fvc-post-as-voucher',true)", $draft);
     }
 
 }
