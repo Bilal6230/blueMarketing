@@ -1081,8 +1081,53 @@
                 }).always(function(){$button.prop('disabled',false);});
             });
 
-            $(document).on("click", '.btn-approve', function() {
+            // V2 approvals require a complete two-leg allocation. Validate
+            // before AJAX; never allow an empty TomSelect to fail silently.
+            $('#fvc-extra-approval-form').on('submit.fvcExtraApproval',function(event){
+                event.preventDefault();
+                var $form=$(this),$body=$form.find('.modal-body'),
+                    $message=$form.find('.fvc-approval-feedback'),
+                    $button=$form.find('[type="submit"]');
+                if($form.data('fvc-busy'))return;
+                $message.addClass('d-none').text('');
+                var $fields=$form.find('[name="posting_lines[0][account_id]"],[name="posting_lines[1][account_id]"]');
+                var missing=$fields.filter(function(){return !$(this).val();}).first();
+                if(missing.length){
+                    var msg='Select valid Debit and Credit posting accounts before approval.';
+                    $message.text(msg).removeClass('d-none');
+                    if($.financeVoucherFeedback)$.financeVoucherFeedback.toast('error',msg);
+                    if(missing[0].tomselect)missing[0].tomselect.focus();else missing.trigger('focus');
+                    return;
+                }
+                $form.data('fvc-busy',true);$button.prop('disabled',true);
+                if($.financeVoucherFeedback)$.financeVoucherFeedback.skeleton($body,true);
+                $.ajax({
+                    url:$form.attr('action'),type:'POST',data:$form.serialize(),
+                    headers:{Accept:'application/json'},dataType:'json'
+                }).done(function(data){
+                    if(data && data.status==='success'){
+                        if($.financeVoucherFeedback)$.financeVoucherFeedback.toast('success',data.message||'Approval saved.');
+                        $('#modal-approve,#modal-view').modal('hide');
+                        $(document).trigger('finance:extra-changed');
+                    }else{
+                        $message.text('Approval was not confirmed by the server.').removeClass('d-none');
+                    }
+                }).fail(function(xhr){
+                    var msg=$.financeVoucherFeedback?
+                        $.financeVoucherFeedback.error(xhr,'Approval could not be completed.'):
+                        'Approval could not be completed.';
+                    $message.text(msg).removeClass('d-none');
+                    if($.financeVoucherFeedback)$.financeVoucherFeedback.toast('error',msg);
+                }).always(function(){
+                    $form.data('fvc-busy',false);$button.prop('disabled',false);
+                    if($.financeVoucherFeedback)$.financeVoucherFeedback.skeleton($body,false);
+                });
+            });
+
+            $(document).on("click", '.btn-approve', function(event) {
+                event.preventDefault();
                 let id = $(this).attr("data-id");
+                $('#modal-view').modal('hide');
                 $(".status_id").val(id);
                 $(".is_approve").val(1);
                 $('#msg').text("Are you sure you want to Approve?");
@@ -1092,8 +1137,10 @@
                     show: true
                 });
             });
-            $(document).on("click", '.btn-rejected', function() {
+            $(document).on("click", '.btn-rejected', function(event) {
+                event.preventDefault();
                 let id = $(this).attr("data-id");
+                $('#modal-view').modal('hide');
                 $(".status_id").val(id);
                 $(".is_approve").val(0);
                 $('#msg').text("Are you sure you want to rejected?");
