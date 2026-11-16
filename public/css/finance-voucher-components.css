@@ -580,3 +580,59 @@
 .bm-voucher-directory .fvc-table-loading .dataTables_processing{
  display:none!important;
 }
+
+/* All finance modal selects are one visual field (the TomSelect control is
+   the field, not a second box nested inside a legacy Select2/form-control).
+   CV, Extra, Draft and linked ledger forms inherit the same anatomy. */
+.fvc-modern-modal .modal-body .input-group:has(> .ts-wrapper){
+ display:flex!important;align-items:stretch!important;min-width:0!important;
+ width:100%!important;border:0!important;box-shadow:none!important;
+ padding:0!important;margin:0!important;background:transparent!important;
+}
+.fvc-modern-modal .modal-body .input-group>.ts-wrapper.single{
+ flex:1 1 100%!important;width:100%!important;min-width:0!important;
+ max-width:100%!important;margin:0!important;padding:0!important;
+ border:0!important;box-shadow:none!important;background:transparent!important;
+}
+.fvc-modern-modal .modal-body .input-group>.ts-wrapper.single>.ts-control{
+ box-sizing:border-box!important;width:100%!important;min-height:34px!important;
+ height:34px!important;border:1px solid #ced8e3!important;
+ border-radius:5px!important;padding:6px 9px!important;
+ box-shadow:none!important;background:#fff!important;
+}
+.fvc-modern-modal .modal-body .input-group>.ts-wrapper.single.focus>.ts-control{
+ border-color:var(--fvc-modal-accent,#087cfa)!important;
+ box-shadow:0 0 0 2px color-mix(in srgb,var(--fvc-modal-accent,#087cfa) 15%,transparent)!important;
+}
+.fvc-modern-modal .modal-body .ts-control>input{
+ height:19px!important;min-height:0!important;
+ line-height:19px!important;border:0!important;
+ padding:0!important;box-shadow:none!important;
+}
+.fvc-modern-modal .modal-body select.tomselected,
+.fvc-modern-modal .modal-body select.ts-hidden-accessible{
+ display:none!important;height:0!important;width:0!important;
+ padding:0!important;border:0!important;position:absolute!important;
+ pointer-events:none!important;
+}
+/* Shared title/card/heading density applies to Draft and SV as well; only
+   background and border accents vary by voucher. */
+.bm-modern-draft .custom_card.fvc-draft-list-card{
+ display:flex!important;flex-direction:column!important;min-height:0!important;
+ flex:1 1 0!important;margin:0!important;padding:0!important;
+ background:#fff!important;border:1px solid var(--fvd-border,#d8e5ed)!important;
+ border-top:3px solid var(--fvd-accent,#168348)!important;
+ border-radius:var(--fvd-radius,9px)!important;overflow:hidden!important;
+}
+.bm-modern-draft .custom_card.fvc-draft-list-card>.card-body{
+ display:flex!important;flex-direction:column!important;
+ flex:1 1 0!important;min-height:0!important;padding:0!important;
+}
+.bm-modern-draft .fvc-draft-list-card .bm-draft-scroll{
+ flex:1 1 0!important;min-height:0!important;overflow:auto!important;
+}
+.bm-modern-draft .fvc-draft-list-card table thead th{
+ height:34px!important;padding:4px 7px!important;
+ background:var(--fvd-pale)!important;
+ border-bottom:2px solid var(--fvd-accent)!important;
+}
