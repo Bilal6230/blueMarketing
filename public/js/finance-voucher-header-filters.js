@@ -465,10 +465,8 @@
             $paymentModal.on('submit.fvcExtraCollection','form',function(event){
                 event.preventDefault();
                 var $paymentForm=$(this);
-                submitExtraAjax($paymentForm,function(response){
+                submitExtraAjax($paymentForm,function(){
                     $paymentModal.modal('hide');
-                    if($.financeVoucherFeedback)
-                        $.financeVoucherFeedback.toast('success',response.message||'Collection recorded.');
                     refreshExtraDirectory();
                 });
             });
