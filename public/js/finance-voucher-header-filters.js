@@ -110,19 +110,23 @@
                 $commissionCreate.on('click.bmCommissionTitle',function(){
                     $commissionModal.find('.modal-title').text('New Commission Voucher');
                 });
+                // Closing an unchanged form must not re-fetch the directory.
+                // A successful save refreshes exactly once after the modal closes.
+                var commissionNeedsRefresh=false;
                 $(document).on('finance:commission-saved.fvc',function(_,response){
+                    commissionNeedsRefresh=true;
                     if($.financeVoucherFeedback)$.financeVoucherFeedback.toast('success',
                         (response&&response.message)||'Commission voucher saved.');
                     $commissionModal.modal('hide');
-                    if($.fn.DataTable && $.fn.DataTable.isDataTable('#journalTable')){
-                        $('#journalTable').DataTable().ajax.reload(null,false);
-                    }
                 });
                 $commissionModal.on('hidden.bs.modal',function(){
                     $('#bmCommissionFrame').off('load.fvc').attr('src','about:blank');
                     if($.financeVoucherFeedback)$.financeVoucherFeedback.skeleton($commissionModal.find('.modal-body'),false);
-                    if($.fn.DataTable && $.fn.DataTable.isDataTable('#journalTable')){
-                        $('#journalTable').DataTable().ajax.reload(null,false);
+                    if(commissionNeedsRefresh){
+                        commissionNeedsRefresh=false;
+                        if($.fn.DataTable && $.fn.DataTable.isDataTable('#journalTable')){
+                            $('#journalTable').DataTable().ajax.reload(null,false);
+                        }
                     }
                 });
             }
