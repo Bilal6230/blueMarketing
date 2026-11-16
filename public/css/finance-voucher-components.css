@@ -471,3 +471,48 @@
 }
 .fvc-global-ts-dropdown .option{padding:8px 10px!important}
 .fvc-global-ts-dropdown .active{background:#e9f2ff!important}
+
+/* CR geometry contract for CV/Extra: eliminate legacy nested card padding,
+   while retaining each voucher's exact own accent color. */
+:is(.cv-directory,.bm-modern-extra) .bm-voucher-table-card{
+ background:#fff!important;border:1px solid #dbe6ee!important;
+ border-radius:8px!important;box-shadow:none!important;
+ margin:0!important;padding:0!important;
+}
+.cv-directory>.content,
+.cv-directory>.content>.container-fluid,
+.cv-directory .cv-shell,
+.cv-directory .cv-shell>.card-body{
+ flex:1 1 0!important;min-height:0!important;min-width:0!important;
+ display:flex!important;flex-direction:column!important;
+}
+.cv-directory>.content>.container-fluid{
+ padding:0!important;margin:0!important;
+}
+.cv-directory .cv-shell{
+ border:0!important;background:transparent!important;
+ margin:0!important;padding:0!important;box-shadow:none!important;
+}
+.cv-directory .cv-shell>.card-header{
+ flex:0 0 auto!important;margin:0 0 8px!important;
+}
+.cv-directory .cv-shell>.card-body{
+ padding:0!important;overflow:hidden!important;
+}
+.cv-directory .cv-shell .bm-voucher-table-card{
+ flex:1 1 0!important;min-height:0!important;overflow:hidden!important;
+}
+.cv-directory .fvd-datatable-wrapper,
+.bm-modern-extra .fvd-datatable-wrapper{
+ padding:0!important;margin:0!important;
+ flex:1 1 0!important;min-height:0!important;
+}
+/* Toolbar always stays above the records; the approved single pager
+   remains pinned at the bottom of the same card. */
+:is(.cv-directory,.bm-modern-extra) .fvd-datatable-wrapper>.row:first-child{
+ flex:0 0 auto!important;margin:0!important;
+ padding:7px!important;background:#fff!important;
+}
+:is(.cv-directory,.bm-modern-extra) .fvd-datatable-wrapper>.fvd-datatable-scroll{
+ flex:1 1 0!important;min-height:0!important;overflow:auto!important;
+}
