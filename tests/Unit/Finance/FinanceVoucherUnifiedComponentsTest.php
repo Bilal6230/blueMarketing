@@ -368,4 +368,32 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         );
     }
 
+    public function test_browser_closeout_actions_keep_finance_lifecycle_and_readable_modal_errors(): void
+    {
+        $draft=file_get_contents(resource_path('views/admin/finance/voucher/draft_voucher.blade.php'));
+        $shared=file_get_contents(public_path('js/finance-voucher-header-filters.js'));
+        $feedback=file_get_contents(public_path('js/finance-voucher-feedback.js'));
+        $menu=file_get_contents(public_path('js/blue-action-menu.js'));
+        $extra=file_get_contents(resource_path('views/admin/booking/extra_charge.blade.php'));
+        $journal=file_get_contents(resource_path('views/admin/reports/vouchers/index.blade.php'));
+        $journalEdit=file_get_contents(resource_path('views/admin/reports/vouchers/edit_journal_voucher.blade.php'));
+        $actions=file_get_contents(resource_path('views/admin/reports/vouchers/actions.blade.php'));
+        $controller=file_get_contents(app_path('Http/Controllers/JournalVoucherController.php'));
+
+        $this->assertStringContainsString('$.blueVoucherRegisterActions.enhance($draftTable)', $shared);
+        $this->assertStringContainsString("dropdownParent:\$element.closest('.fvc-entry-table').length?'body':null", $feedback);
+        $this->assertStringContainsString('$original[0].click()', $menu);
+        $this->assertStringContainsString('id="fvc-extra-view-facts"', $extra);
+        $this->assertStringNotContainsString('<span>Ali </span>', $extra);
+        $this->assertStringContainsString("click.fvcExtraView", $extra);
+        $this->assertStringContainsString('Extra Charge ', $extra);
+        $this->assertStringContainsString('fvcJournalEdit', $journalEdit);
+        $this->assertStringNotContainsString("$('#journalForm')[0].submit()", $journalEdit);
+        $this->assertStringContainsString("headers:{Accept:'application/json'}", $journal);
+        $this->assertStringContainsString('jv-reversal-reason', $journal);
+        $this->assertStringContainsString("voucher->type === 'SV'", $actions);
+        $this->assertStringContainsString("'SV' ? 'SV' : 'JV'", $controller);
+        $this->assertStringContainsString('Save as Voucher', $draft);
+    }
+
 }
