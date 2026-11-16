@@ -148,4 +148,54 @@ class CommissionVoucherListingResponseTest extends TestCase
         $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
         app(CommissionVoucherController::class)->print(41);
     }
+
+    public function test_ajax_date_range_remains_project_scoped_and_returns_correct_page_counts(): void
+    {
+        DB::table('commision_vouchers')->insert([
+            ['id'=>11,'project_id'=>7,'voucher_number'=>'11','date'=>'2026-11-09',
+                'reference'=>'OUTSIDE','created_at'=>now(),'updated_at'=>now()],
+            ['id'=>12,'project_id'=>7,'voucher_number'=>'12','date'=>'2026-11-12',
+                'reference'=>'INSIDE-A','created_at'=>now(),'updated_at'=>now()],
+            ['id'=>13,'project_id'=>7,'voucher_number'=>'13','date'=>'2026-11-15',
+                'reference'=>'INSIDE-B','created_at'=>now(),'updated_at'=>now()],
+            ['id'=>14,'project_id'=>8,'voucher_number'=>'14','date'=>'2026-11-13',
+                'reference'=>'FOREIGN','created_at'=>now(),'updated_at'=>now()],
+        ]);
+        $request=Request::create('/commision-voucher','GET',[
+            'draw'=>3,'start'=>0,'length'=>1,
+            'fvd_date_from'=>'2026-11-10','fvd_date_to'=>'2026-11-15',
+            'fvd_sort_column'=>'date','fvd_sort_direction'=>'asc',
+        ]);
+        $request->headers->set('X-Requested-With','XMLHttpRequest');
+        $request->cookies->set('selected_action','7');
+        $this->app->instance('request',$request);
+
+        $payload=app(CommissionVoucherController::class)->index($request)->getData(true);
+        $this->assertSame(3,$payload['recordsTotal']);
+        $this->assertSame(2,$payload['recordsFiltered']);
+        $this->assertCount(1,$payload['data']);
+        $this->assertSame(12,$payload['data'][0]['id']);
+        $this->assertSame('INSIDE-A',$payload['data'][0]['reference']);
+    }
+
+    public function test_ajax_listing_supports_authenticated_user_without_an_assigned_role(): void
+    {
+        $user=Auth::user();
+        $user->setRelation('roles',collect());
+        DB::table('commision_vouchers')->insert([
+            'id'=>21,'project_id'=>7,'voucher_number'=>'21',
+            'reference'=>'ROLELESS','created_at'=>now(),'updated_at'=>now(),
+        ]);
+        $request=Request::create('/commision-voucher','GET',[
+            'draw'=>4,'start'=>0,'length'=>10,
+        ]);
+        $request->headers->set('X-Requested-With','XMLHttpRequest');
+        $request->cookies->set('selected_action','7');
+        $this->app->instance('request',$request);
+
+        $payload=app(CommissionVoucherController::class)->index($request)->getData(true);
+        $this->assertSame(1,$payload['recordsTotal']);
+        $this->assertSame('ROLELESS',$payload['data'][0]['reference']);
+    }
+
 }
