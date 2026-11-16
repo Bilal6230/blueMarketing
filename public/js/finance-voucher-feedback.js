@@ -49,6 +49,7 @@
       new window.TomSelect(element,{create:false,allowEmptyOption:true,
         maxOptions:200,sortField:{field:'text',direction:'asc'},
         dropdownParent:element.closest('.modal-content')||'body',
+        dropdownClass:'ts-dropdown fvc-global-ts-dropdown',
         onInitialize:function(){this.wrapper.classList.add('fvc-ts-ready');}});
     });
  }
