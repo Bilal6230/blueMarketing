@@ -438,6 +438,8 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('finance:extra-changed', $extra);
         $this->assertStringContainsString('finance:extra-changed.fvc', $shared);
         $this->assertStringContainsString('submit.fvcExtraCollection', $shared);
+        $this->assertStringContainsString("attr('novalidate','novalidate')", $shared);
+        $this->assertStringContainsString('Complete all required collection fields before saving.', $shared);
         $this->assertStringContainsString('syncChequeFields', $shared);
         $this->assertStringContainsString('fvc-cheque-purpose', $extra);
         $this->assertStringContainsString('receiptBanks', $extra);
@@ -456,6 +458,7 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
 
         $this->assertStringContainsString('fvc-tom-select account-select', $view);
         $this->assertStringContainsString('fvc-tom-select sub-account-select', $view);
+        $this->assertStringContainsString('table table-bordered fvc-entry-table', $view);
         $this->assertStringContainsString("enhanceSelects(\$('#journalTable select.fvc-tom-select'))", $view);
         $this->assertStringContainsString("tomselect.sync()", $view);
         $this->assertStringContainsString('journalPilotApprovalBlocked', $view);
