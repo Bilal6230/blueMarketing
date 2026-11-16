@@ -339,7 +339,8 @@ $(function(){
   entryUrl=url;var separator=url.indexOf('?')>=0?'&':'?';
   $('#jv-entry-title').text(title);
   $('#jv-open-tab').attr('href',url);
-  $('#jv-loading').removeClass('d-none');
+  $('#jv-loading').addClass('d-none');
+  if($.financeVoucherFeedback)$.financeVoucherFeedback.skeleton($('#jv-entry .modal-body'),true);
   $('#jv-entry-frame').attr('src',url+separator+'embed=1');
   $('#jv-entry').modal('show');
  }
@@ -355,6 +356,7 @@ $(function(){
  });
  $('#jv-entry-frame').on('load',function(){
   if(!entryUrl)return;
+  if($.financeVoucherFeedback)$.financeVoucherFeedback.skeleton($('#jv-entry .modal-body'),false);
   try{
    var $doc=$(this).contents(),$form=$doc.find('#journalForm');
    // Nested master layout has its own global preloader. Remove it in embed mode.
@@ -375,7 +377,12 @@ $(function(){
    $('#jv-loading').addClass('d-none');
   }catch(ex){$('#jv-loading').html('<span class="text-danger">Form unavailable. Open in a new tab.</span>');}
  });
- $('#jv-entry').on('hidden.bs.modal',function(){entryUrl='';$('#jv-entry-frame').attr('src','about:blank');$('#jv-loading').removeClass('d-none').text('Loading voucher form...');});
+ $('#jv-entry').on('hidden.bs.modal',function(){
+  entryUrl='';
+  if($.financeVoucherFeedback)$.financeVoucherFeedback.skeleton($('#jv-entry .modal-body'),false);
+  $('#jv-entry-frame').attr('src','about:blank');
+  $('#jv-loading').addClass('d-none').text('Loading voucher form...');
+ });
  $table.on('click','.delete-btn',function(){var id=$(this).data('id');$('#deleteForm').attr('action',@json(route('journal.voucher.delete',':id')).replace(':id',id));$('#deleteModal').modal('show');});
 });
 </script>
