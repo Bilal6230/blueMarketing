@@ -867,105 +867,27 @@
     </div>
 
     {{-- Modal view --}}
-    <div class="modal fade" id="modal-view">
-        <div class="modal-dialog modal-lg">
+    {{-- Read-only, project-scoped voucher details. No ledger.update form in view mode. --}}
+    <div class="modal fade" id="modal-view" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-header {{ $class }}">
-                    <h4 class="modal-title">View Slip</h4>
+                <div class="modal-header">
+                    <h4 class="modal-title">Extra Charge Details</h4>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div class="modal-body">
-                    <form action="{{ route('ledger.update') }}" method="POST" enctype="multipart/form-data">
-                        @csrf
- @include('admin.finance.voucher.typed_posting_fields')
-                        @method('PUT')
-                        <div class="row">
-
-                            <div class="col-sm-6">
-                                <div class="row">
-                                    <div class="col-sm-6">
-                                        <span>Slip</span>
-                                    </div>
-                                    <div class="col-sm-6">
-                                        <span>Slip Number </span>
-                                    </div>
-
-                                </div>
-                                <div class="row">
-                                    <div class="col-sm-6">
-                                        <span>Customer</span>
-                                    </div>
-                                    <div class="col-sm-6">
-                                        <span>Ali </span>
-                                    </div>
-
-                                </div>
-                                <div class="row">
-                                    <div class="col-sm-6">
-                                        <span>Plot</span>
-                                    </div>
-                                    <div class="col-sm-6">
-                                        <span>Ali </span>
-                                    </div>
-
-                                </div>
-                                <div class="row">
-                                    <div class="col-sm-6">
-                                        <span>Plot</span>
-                                    </div>
-                                    <div class="col-sm-6">
-                                        <span>Ali </span>
-                                    </div>
-
-                                </div>
-                            </div>
-                            <div class="col-sm-6">
-                                <div class="row">
-                                    <div class="col-sm-6">
-                                        <span>Date</span>
-                                    </div>
-                                    <div class="col-sm-6">
-                                        <span>Date Here</span>
-                                    </div>
-
-                                </div>
-                                <div class="row">
-                                    <div class="col-sm-6">
-                                        <span>Phone</span>
-                                    </div>
-                                    <div class="col-sm-6">
-                                        <span>Date Here</span>
-                                    </div>
-
-                                </div>
-                                <div class="row">
-                                    <div class="col-sm-6">
-                                        <span>Size</span>
-                                    </div>
-                                    <div class="col-sm-6">
-                                        <span>Date Here</span>
-                                    </div>
-
-                                </div>
-                            </div>
-
-                        </div>
-
-
-                        <div class="modal-footer justify-content-between">
-                            <button type="button" class="btn btn-default btn-rejected" data-dismiss="modal"
-                                data-id='' data-name=''>Rejected</button>
-                            <button type="button" class="btn btn-primary btn-approve" data-dismiss="modal"
-                                data-id='' data-name=''>Approve</button>
-
-                        </div>
-                    </form>
+                    <dl id="fvc-extra-view-facts" class="row mb-0" aria-live="polite"></dl>
                 </div>
-                <!-- /.modal-content -->
+                <div class="modal-footer d-flex justify-content-end">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-outline-danger btn-sm btn-rejected"
+                        data-id="" data-dismiss="modal">Reject</button>
+                    <button type="button" class="btn btn-primary btn-sm btn-approve"
+                        data-id="" data-dismiss="modal">Approve</button>
+                </div>
             </div>
-            <!-- /.modal-dialog -->
         </div>
     </div>
 
