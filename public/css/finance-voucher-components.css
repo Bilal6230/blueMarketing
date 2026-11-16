@@ -339,3 +339,21 @@
  min-width:160px!important;width:auto!important;margin:0!important;
  font-size:12px!important;height:35px!important;
 }
+
+/* Modern CV accounting entry grid uses the same CR light-blue table language,
+   including when loaded inside the embedded Commission modal iframe. */
+.fvc-entry-table{
+ width:100%!important;border-collapse:collapse!important;font-size:12px!important;
+}
+.fvc-entry-table thead th{
+ background:#e7efff!important;color:#203652!important;
+ border:1px solid #cad7e6!important;border-bottom:2px solid #087cfa!important;
+ font-weight:700!important;padding:9px 8px!important;
+}
+.fvc-entry-table :is(tbody td,tfoot td){
+ border:1px solid #d9e3ed!important;background:#fff!important;
+ padding:7px!important;vertical-align:middle!important;
+}
+.fvc-entry-table input,.fvc-entry-table select{
+ height:34px!important;font-size:12px!important;border-radius:5px!important;
+}
