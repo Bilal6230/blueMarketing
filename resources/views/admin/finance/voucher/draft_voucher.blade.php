@@ -461,7 +461,44 @@
         function saveAsLedger() {
             const form = $('#editForm')[0];
             form.action = "{{ route('ledger.store') }}";
+            // A posting flow needs its own audited response contract and stays
+            // native until that endpoint is approved for AJAX.
+            $(form).data('fvc-post-as-voucher',true);
         }
+        $(function(){
+            $('#editForm').on('submit.fvcDraft',function(event){
+                var $form=$(this);
+                if($form.data('fvc-post-as-voucher'))return;
+                event.preventDefault();
+                if($form.data('fvc-busy'))return;
+                var $body=$('#modal-edit .modal-body'),$buttons=$form.find('button[type="submit"]');
+                $form.data('fvc-busy',true);$buttons.prop('disabled',true);
+                if($.financeVoucherFeedback)$.financeVoucherFeedback.skeleton($body,true);
+                $.ajax({
+                    url:$form.attr('action'),type:'POST',data:new FormData(this),
+                    processData:false,contentType:false,dataType:'json',
+                    headers:{Accept:'application/json'}
+                }).done(function(response){
+                    if(response&&response.status==='success'){
+                        if($.financeVoucherFeedback)$.financeVoucherFeedback.toast('success',response.message||'Draft saved.');
+                        $('#modal-edit').modal('hide');
+                        $(document).trigger('finance:draft-saved',[response]);
+                    }else if($.financeVoucherFeedback){
+                        $.financeVoucherFeedback.toast('error','Draft was not confirmed as saved.');
+                    }
+                }).fail(function(xhr){
+                    if($.financeVoucherFeedback)$.financeVoucherFeedback.toast('error',
+                        $.financeVoucherFeedback.error(xhr,'Could not save draft.'));
+                }).always(function(){
+                    $form.data('fvc-busy',false);$buttons.prop('disabled',false);
+                    if($.financeVoucherFeedback)$.financeVoucherFeedback.skeleton($body,false);
+                });
+            });
+            $('#modal-edit').on('hidden.bs.modal',function(){
+                $('#editForm').data('fvc-post-as-voucher',false)
+                    .attr('action',@json(route('ledger.save_as_draft')));
+            });
+        });
 
         $(document).ready(function() {
             $('#acct_type').change(function() {
