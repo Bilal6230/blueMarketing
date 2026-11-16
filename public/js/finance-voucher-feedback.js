@@ -53,30 +53,47 @@
         onInitialize:function(){this.wrapper.classList.add('fvc-ts-ready');}});
     });
  }
+ // The actual approved CR skeleton is $.blueTableSkeleton (real table rows).
+ // Render that same row markup in a temporary overlay table: DataTables keeps
+ // ownership of its tbody and active paging/filter state during AJAX redraws.
  function tableSkeleton($table,show){
     var $node=$($table),$wrap=$node.closest('.dataTables_wrapper');
     if(!$wrap.length)return;
-    if(show){
-      if($wrap.children('.fvc-table-skeleton').length)return;
-      var $layer=$('<div>',{'class':'fvc-table-skeleton',role:'status','aria-label':'Loading vouchers'});
-      for(var i=0;i<5;i++){
-        var $row=$('<div>',{'class':'fvc-table-skeleton-row'});
-        for(var j=0;j<5;j++)$row.append($('<span>',{'class':'fvc-skeleton-shimmer'}));
-        $layer.append($row);
-      }
-      $wrap.addClass('fvc-table-loading').append($layer);
-    }else $wrap.removeClass('fvc-table-loading').children('.fvc-table-skeleton').remove();
+    if(!show){
+      $wrap.removeClass('fvc-table-loading').children('.fvc-table-skeleton').remove();
+      return;
+    }
+    if($wrap.children('.fvc-table-skeleton').length)return;
+    var $thead=$node.find('thead').first(),$headers=$thead.find('tr:first th');
+    var cols=$headers.length||7;
+    var $layer=$('<div>',{'class':'fvc-table-skeleton',role:'status',
+      'aria-label':'Loading records'});
+    var $ghost=$('<table>',{'class':'table table-bordered fvc-skeleton-table'})
+      .append($('<tbody>'));
+    if($.blueTableSkeleton){
+      $.blueTableSkeleton.show($ghost.find('tbody'),{
+        rows:10,columns:cols,tone:'neutral'
+      });
+    }
+    // Match the actual live column widths without replacing DataTable nodes.
+    var widths=[];
+    $headers.each(function(){widths.push($(this).outerWidth());});
+    if(widths.length){
+      var $group=$('<colgroup>');
+      $.each(widths,function(_,width){$group.append($('<col>').css('width',width+'px'));});
+      $ghost.prepend($group);
+    }
+    $layer.append($ghost);
+    $wrap.addClass('fvc-table-loading').append($layer);
  }
  function bindTableSkeleton(selector){
     var $table=$(selector);
     if(!$table.length||$table.data('fvc-table-skeleton-bound'))return;
     $table.data('fvc-table-skeleton-bound',true);
-    $table.on('preXhr.dt.fvcSkeleton processing.dt.fvcSkeleton',function(event,settings,state){
-      if(event.type==='processing')tableSkeleton($table,!!state);
-      else tableSkeleton($table,true);
-    }).on('draw.dt.fvcSkeleton error.dt.fvcSkeleton xhr.dt.fvcSkeleton',function(){
-      tableSkeleton($table,false);
-    });
+    $table.on('preXhr.dt.fvcSkeleton',function(){tableSkeleton($table,true);})
+      .on('draw.dt.fvcSkeleton error.dt.fvcSkeleton xhr.dt.fvcSkeleton',function(){
+        tableSkeleton($table,false);
+      });
 
  }
  function skeleton($target,show){
