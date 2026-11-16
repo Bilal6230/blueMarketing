@@ -202,6 +202,36 @@
                     .appendTo($draft);
                 $draft.children('.content-header,section.content').hide();
             }
+            // Refresh a server-rendered Draft register without reloading the
+            // whole page. Leave approval forms and project permissions in Blade.
+            $(document).on('finance:draft-saved.fvc',function(){
+                if(!$draftTable.length || !$.fn.DataTable ||
+                   !$.fn.DataTable.isDataTable($draftTable))return;
+                var api=$draftTable.DataTable();
+                if($.financeVoucherFeedback)$.financeVoucherFeedback.tableSkeleton($draftTable,true);
+                $.ajax({url:window.location.href,type:'GET',dataType:'html',cache:false})
+                .done(function(html){
+                    var $source=$('<div>').append($.parseHTML(html,document,false))
+                        .find('#bmDraftTable');
+                    if(!$source.length){
+                        if($.financeVoucherFeedback)$.financeVoucherFeedback.toast('error',
+                            'Draft saved, but register refresh failed.');return;
+                    }
+                    var count=$draftTable.find('thead tr:first th').length;
+                    var rows=$source.find('tbody>tr').filter(function(){
+                        return $(this).children('td').length===count;
+                    }).toArray();
+                    api.clear();if(rows.length)api.rows.add(rows);
+                    api.draw(false);
+                    if($.blueVoucherRegisterActions && $.blueVoucherRegisterActions.enhance)
+                        $.blueVoucherRegisterActions.enhance($draftTable);
+                }).fail(function(){
+                    if($.financeVoucherFeedback)$.financeVoucherFeedback.toast('error',
+                        'Draft saved; please refresh the register to see it.');
+                }).always(function(){
+                    if($.financeVoucherFeedback)$.financeVoucherFeedback.tableSkeleton($draftTable,false);
+                });
+            });
             if($draftTable.length && $.fn.DataTable && !$.fn.DataTable.isDataTable($draftTable)){
                 // Blade's "No vouchers found" colspan row is replaced by the DataTables empty message.
                 $draftTable.find('tbody tr').filter(function(){
