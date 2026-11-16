@@ -95,5 +95,15 @@
       $root.addClass('fvc-is-loading').append($placeholder);
     }else{$root.removeClass('fvc-is-loading').children('.fvc-modal-skeleton').remove();}
  }
+ // Modal contents can be detached and appended after page-ready (Extra/CV).
+ // Initialize only when visible and resync choices populated by legacy AJAX.
+ $(document).on('shown.bs.modal.fvcSelects','.fvc-modern-modal',function(){
+   tom($(this).find('select').not('[multiple]'));
+ });
+ $(document).ajaxSuccess(function(){
+   $('.fvc-modern-modal.show select.tomselected').each(function(){
+     if(this.tomselect)this.tomselect.sync();
+   });
+ });
  $.financeVoucherFeedback={toast:toast,error:safeError,enhanceSelects:tom,skeleton:skeleton,tableSkeleton:tableSkeleton,bindTableSkeleton:bindTableSkeleton};
 })(jQuery);
