@@ -26,6 +26,11 @@ class JournalVoucherCollisionTest extends TestCase
             $this->fail('Refusing test setup outside isolated SQLite :memory:.');
         }
 
+        // This isolated suite verifies ORIGINAL JV posting, never the V2 pilot.
+        config([
+            'finance.v2_pilot_api_enabled' => false,
+            'finance.v2_pilot_write_enabled' => false,
+        ]);
         Schema::dropAllTables();
 
         Schema::create('journal_vouchers', function (Blueprint $table) {
