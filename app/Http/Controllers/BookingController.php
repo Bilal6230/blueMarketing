@@ -1949,7 +1949,9 @@ class BookingController extends Controller
             } catch (\DomainException $e) {
                 abort(409, 'Voucher approval rejected to protect accounting history.');
             }
-            return back()->with('success', 'Voucher approved and posted.');
+            return $request->expectsJson()
+                ? response()->json(['status' => 'success', 'message' => 'Voucher approved and posted.'])
+                : back()->with('success', 'Voucher approved and posted.');
         }
         try {
             DB::transaction(function () use ($data, $projectId): void {
@@ -1969,7 +1971,9 @@ class BookingController extends Controller
             report($th);
             return back()->withErrors(['voucher' => 'Voucher approval could not be saved.']);
         }
-        return back()->with('success', 'Voucher approval saved.');
+        return $request->expectsJson()
+            ? response()->json(['status' => 'success', 'message' => 'Voucher approval saved.'])
+            : back()->with('success', 'Voucher approval saved.');
     }
 
     public function getCustomers(Request $request)
