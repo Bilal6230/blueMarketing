@@ -986,4 +986,29 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
         $this->assertDatabaseCount('ledgers', 1);
         $this->assertDatabaseCount('finance_posting_batches', 0);
     }
+    public function test_explicit_local_normal_erp_mode_overrides_pilot_without_exposing_isolated_database(): void
+    {
+        // The testing database is SQLite in-memory; no finance tables are
+        // migrated or written by these configuration-boundary assertions.
+        config([
+            'app.env' => 'local',
+            'finance.normal_erp_mode' => true,
+            'finance.v2_pilot_api_enabled' => true,
+            'finance.v2_pilot_write_enabled' => true,
+            'database.connections.'.config('database.default').'.database' => 'bluenew',
+        ]);
+        $this->assertTrue(\App\Services\Finance\V2OriginalWorkflowAccess::normalErpMode());
+        $this->assertFalse(\App\Services\Finance\V2OriginalWorkflowAccess::selected());
+        $this->assertFalse(\App\Services\Finance\V2OriginalWorkflowAccess::enabled());
+        $this->assertNull(app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)->policy(1,'JV'));
+        $this->assertFalse(app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
+            ->submitIfRequired(1,'JV','journal_vouchers',1,1));
+
+        // Even with the local override, an actual V2-named database can
+        // never be routed into the legacy writer by mistake.
+        config(['database.connections.'.config('database.default').'.database' => 'bluemarketing_v2_isolated']);
+        $this->assertFalse(\App\Services\Finance\V2OriginalWorkflowAccess::normalErpMode());
+        $this->assertTrue(\App\Services\Finance\V2OriginalWorkflowAccess::selected());
+    }
+
 }
