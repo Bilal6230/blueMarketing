@@ -223,9 +223,13 @@ html body .main-content.page-content > .content-wrapper .card-body{
                             @endif
                             <!-- Submit Button -->
                             <div class="text-center">
-                                <button type="submit" class="btn btn-warning">
-                                    <i class="fas fa-save"></i> {{ ($isRevision ?? false) ? 'Revise & Resubmit for Approval' : $voucher->type === 'SV' ? 'View Sales Voucher' : 'Update Journal Voucher' }}
-                                </button>
+                                @if($voucher->type === 'SV')
+                                    <p class="text-muted">Sales Vouchers created by bookings are read-only here. Use View / Print on the Sales Voucher register.</p>
+                                @else
+                                    <button type="submit" class="btn btn-warning">
+                                        <i class="fas fa-save"></i> {{ ($isRevision ?? false) ? 'Revise & Resubmit for Approval' : 'Update Journal Voucher' }}
+                                    </button>
+                                @endif
                             </div>
                         </form>
                     </div>
