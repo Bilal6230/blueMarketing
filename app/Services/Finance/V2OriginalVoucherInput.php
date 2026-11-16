@@ -33,7 +33,10 @@ final class V2OriginalVoucherInput
             'custom_payment_method_id' => ['nullable', 'integer', 'min:1'],
             't_number' => ['required_if:payment_type,2,3', 'nullable', 'string', 'max:255'],
             'bank_id' => ['required_if:payment_type,2,3', 'nullable', 'integer', 'min:1',
-                \Illuminate\Validation\Rule::exists('banks','id')],
+                // Validate the actual FK where the legacy banks directory
+                // exists. Disposable compatibility fixtures may omit it.
+                ...(\Illuminate\Support\Facades\Schema::hasTable('banks')
+                    ? [\Illuminate\Validation\Rule::exists('banks','id')] : [])],
             'passing_date' => ['required_if:payment_type,2,3', 'nullable', 'date_format:Y-m-d'],
             'cheque_purpose' => [
                 'nullable', 'string', 'max:500',
