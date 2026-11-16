@@ -257,7 +257,9 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                          'Could not save Commission Voucher.');
                     var errors=xhr.responseJSON&&xhr.responseJSON.errors;
                     if(errors){
-                        message+=' '+Object.values(errors).flat().join(' ');
+                        $.each(errors,function(_,messages){
+                            message+=' '+($.isArray(messages)?messages.join(' '):messages);
+                        });
                     }
                     $feedback.text(message).removeClass('d-none');
                     $('#confirmationModal').modal('hide');
