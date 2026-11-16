@@ -17,7 +17,7 @@ $(function(){
   $table.data('fvc-filter-bound',true);
   var state={filters:{},dates:{from:'',to:''},sort:'',direction:''};
   registry[opts.table]=state;
-  var api=$table.DataTable(),fields=opts.fields,active=null,draftFilters={},draftDates={from:'',to:''};
+  var api=$table.DataTable(),fields=opts.fields,active=null,filterTimer=null;
   if($.financeVoucherFeedback)$.financeVoucherFeedback.bindTableSkeleton($table);
   // One shared scroll-body pattern. Toolbar and pagination remain outside
   // the scroll viewport at their CR-equivalent top/bottom positions.
@@ -57,26 +57,12 @@ $(function(){
       $(this).toggleClass('bm-column-active',!!state.filters[key]||state.sort===key||(key==='date'&&(state.dates.from||state.dates.to)));
     });
   }
-  function apply(){
-    if(active===null)return;
-    var field=fields[active];
-    if(field==='date'){
-      state.dates.from=draftDates.from||'';
-      state.dates.to=draftDates.to||'';
-    }else{
-      var val=draftFilters[field]||'';
-      if(val)state.filters[field]=val;
-      else delete state.filters[field];
-      if(!opts.server)api.column(active).search(val);
-    }
-    refresh();close();
+  // CR-approved behavior: date changes update directly, text search is
+  // debounced. No independent Apply button or second popup workflow.
+  function scheduleRefresh(){
+    clearTimeout(filterTimer);
+    filterTimer=setTimeout(function(){refresh();},300);
   }
-  var $apply=$('<button>',{type:'button','class':'btn btn-sm btn-primary fvc-apply',text:'Apply'});
-  $popover.find('.fvd-pop-actions').prepend($apply);
-  $apply.on('click',apply);
-  $popover.on('keydown.fvcApply','.fvd-pop-filter input',function(event){
-    if(event.key==='Enter'){event.preventDefault();apply();}
-  });
   function close(){
     widget.close();$table.find('.fvd-column-trigger').attr('aria-expanded','false');active=null;
   }
@@ -92,20 +78,27 @@ $(function(){
       if(active===Number(index)){close();return;}
       close();active=Number(index);
       widget.setTitle($.trim($th.clone().children('button').remove().end().text()));
-      draftFilters=$.extend({},state.filters);
-      draftDates=$.extend({},state.dates);
       var $body=$popover.find('.fvd-pop-filter').empty(),$input;
       if(key==='date'){
-        widget.dates(draftDates,function(field,value){
-          draftDates[field]=value;
+        widget.dates(state.dates,function(field,value){
+          state.dates[field]=value;
+          if(state.dates.from&&state.dates.to&&state.dates.from>state.dates.to){
+            $body.find('input[type="date"]').addClass('is-invalid');return;
+          }
+          $body.find('input[type="date"]').removeClass('is-invalid');
+          scheduleRefresh();
         });
       }else{
         $input=$('<input>',{'class':'form-control form-control-sm fvd-search-input',
           type:($.inArray(key,['total_debit','amount','received','pending','outstanding','id'])!==-1)?'number':'search',
           placeholder:'Search '+$.trim($th.text()),value:state.filters[key]||''});
         $body.append($input);
-        $input.on('input change',function(){
-          draftFilters[key]=$(this).val()||'';
+        $input.on('input',function(){
+          var val=$(this).val()||'';
+          if(val)state.filters[key]=val;
+          else delete state.filters[key];
+          if(!opts.server)api.column(Number(index)).search(val);
+          scheduleRefresh();
         });
       }
       widget.position($trigger);
@@ -116,7 +109,7 @@ $(function(){
     if(active===null)return;
     state.sort=fields[active];state.direction=dir;
     if(!opts.server)api.order([[active,dir]]);
-    refresh();close();
+    clearTimeout(filterTimer);refresh();close();
   }
   $popover.find('.fvd-sort-asc').on('click',function(){sort('asc');});
   $popover.find('.fvd-sort-desc').on('click',function(){sort('desc');});
@@ -126,7 +119,7 @@ $(function(){
     if(field==='date'){state.dates.from='';state.dates.to='';}
     if(!opts.server)api.column(active).search('');
     if(state.sort===field){state.sort='';state.direction='';if(!opts.server)api.order([[0,'asc']]);}
-    refresh();close();
+    clearTimeout(filterTimer);refresh();close();
   });
   $(document).on('pointerdown.fvd'+opts.id,function(e){
     if(!$(e.target).closest($popover).length&&!$(e.target).closest($table.find('.fvd-column-trigger')).length)close();
