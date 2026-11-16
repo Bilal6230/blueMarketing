@@ -98,7 +98,7 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                                         @foreach ($voucher->details as $index => $detail)
                                             <tr>
                                                 <td>
-                                                    <select name="accounts[]" class="form-control select2 account-select"
+                                                    <select name="accounts[]" class="form-control account-select fvc-tom-select"
                                                         required>
                                                         <option value="">Select Account</option>
                                                         @foreach ($accounts as $account)
@@ -125,7 +125,7 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                                                             ->get();
                                                     @endphp
                                                     <select name="sub_accounts[]"
-                                                        class="form-control select2 sub-account-select" required>
+                                                        class="form-control sub-account-select fvc-tom-select" required>
                                                         <option value="">Select Sub-Account</option>
                                                         @if ($detail->account)
                                                             @foreach ($headSubHeadAccounts as $subheadaccount)
@@ -242,12 +242,17 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
 @section('js')
     <script>
         $(document).ready(function() {
+            var fvcFeedback=$.financeVoucherFeedback;
+            function updateSelects($scope){
+                if(fvcFeedback)fvcFeedback.enhanceSelects($scope.find('select.fvc-tom-select'));
+            }
+            updateSelects($('#journalForm'));
             // Add a new row to the table
             $(document).on('click', '.add-row', function() {
                 const newRow = `
                 <tr>
                     <td>
-                        <select name="accounts[]" class="form-control select2 account-select" required>
+                        <select name="accounts[]" class="form-control account-select fvc-tom-select" required>
                             <option value="">Select Account</option>
                             @foreach ($accounts as $account)
                                 <option value="{{ $account->head_accounting_id }}">{{ $account->headAccounting->name }}</option>
@@ -255,7 +260,7 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                         </select>
                     </td>
                     <td>
-                        <select name="sub_accounts[]" class="form-control select2 sub-account-select" required>
+                        <select name="sub_accounts[]" class="form-control sub-account-select fvc-tom-select" required>
                             <option value="">Select Sub-Account</option>
                         </select>
                     </td>
@@ -269,10 +274,12 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                     </td>
                 </tr>`;
                 $('#journalTable tbody').append(newRow);
+                updateSelects($('#journalTable tbody tr:last'));
             });
 
             // Remove a row from the table
             $(document).on('click', '.remove-row', function() {
+                $(this).closest('tr').find('select.fvc-tom-select').each(function(){if(this.tomselect)this.tomselect.destroy();});
                 $(this).closest('tr').remove();
                 calculateTotals();
             });
@@ -322,6 +329,7 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
             $(document).on('change', '.account-select', function() {
                 const accountID = $(this).val();
                 const subAccountSelect = $(this).closest('tr').find('.sub-account-select');
+                if(subAccountSelect[0]&&subAccountSelect[0].tomselect)subAccountSelect[0].tomselect.destroy();
 
                 if (accountID) {
                     $.ajax({
@@ -353,12 +361,14 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                             }
                         },
                         error: function(xhr, status, error) {
-                            alert('Error: ' + error);
-                        }
+                            if(fvcFeedback)fvcFeedback.toast('error','Unable to load sub-accounts.');
+                        },
+                        complete: function(){updateSelects(subAccountSelect.closest('tr'));}
                     });
                 } else {
                     // Reset the sub-account dropdown if no account is selected
                     subAccountSelect.empty().append('<option value="">Select Sub-Account</option>');
+                    updateSelects(subAccountSelect.closest('tr'));
                 }
             });
         });
