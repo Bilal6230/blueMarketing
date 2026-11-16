@@ -2681,7 +2681,28 @@ class BookingController extends Controller
                 $result = (new \App\Services\Finance\V2OriginalBookingDepositWorkflow())->create(
                     $project, $series, (int) $context['customer_id'], (int) $context['plot_id'], $data + $context, (int) Auth::id()
                 );
-            } catch (\DomainException $e) { abort(409, 'Booking voucher could not be posted.'); }
+            } catch (\DomainException $e) {
+                // Only known safe business errors may be shown to users.
+                // Keep SQL, schema and internal exceptions out of the response.
+                $message = match ($e->getMessage()) {
+                    'V2_PAYMENT_CHARGE_NOT_VERIFIED' =>
+                        'This Extra Charge was created through an older workflow and is not linked to the active collection writer. Use the approved compatibility/reconciliation workflow.',
+                    'V2_PAYMENT_EXCEEDS_CHARGE' =>
+                        'The payment exceeds the outstanding Extra Charge balance.',
+                    'V2_BOOKING_DEPOSIT_CONTEXT_INVALID' =>
+                        'The selected customer/plot does not have one eligible active booking.',
+                    'V2_SOURCE_REFERENCE_ALREADY_USED' =>
+                        'This payment reference is already used. Enter a unique reference.',
+                    'V2_SOURCE_REQUEST_CONFLICT', 'V2_SOURCE_KEY_ALREADY_USED' =>
+                        'This payment was changed after submission. Close and reopen the form before retrying.',
+                    'V2_SOURCE_BANK_DETAILS_REQUIRED' =>
+                        'Bank, transaction number and passing date are required.',
+                    'V2_SOURCE_DATE_OR_AMOUNT_INVALID', 'V2_SOURCE_INVALID_MONEY' =>
+                        'Enter a valid payment date and amount.',
+                    default => 'The payment could not be recorded under the current accounting safeguards.',
+                };
+                abort(409, $message);
+            }
             return $request->expectsJson() ? response()->json(['status' => 'success', 'data' => $result]) : back()->with('success', 'Booking voucher saved.');
         }
         // dd($request->input());
