@@ -28,7 +28,7 @@
         const classes=[
             ['btn-view-changes','Approval Required'],
             ['btn-edit','Edit'],
-            ['btn-view','View / Approve'],
+            ['btn-view','View'],
             ['btn-delete','Delete'],
             ['btn-approve','Approve'],
             ['btn-rejected','Reject'],
