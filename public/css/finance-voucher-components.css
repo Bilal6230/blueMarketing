@@ -534,7 +534,8 @@
 }
 .cv-directory .cv-shell>.card-body{min-height:0!important}
 :is(.cv-directory,.bm-modern-extra) table.dataTable thead tr:first-child th{
- height:34px!important;padding:8px 7px!important;
+ height:34px!important;min-height:34px!important;
+ box-sizing:border-box!important;padding:4px 7px!important;line-height:19px!important;
  border-bottom:2px solid var(--fvd-accent,#168348)!important;
 }
 :is(.cv-directory,.bm-modern-extra) .fvd-datatable-wrapper>.fvd-datatable-scroll{
