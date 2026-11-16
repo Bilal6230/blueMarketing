@@ -1034,53 +1034,54 @@
                 convertToWords();
             });
 
-            $(document).on("click", '.btn-delete', function() {
-                let id = $(this).attr("data-id");
-                let name = $(this).attr("data-name");
-                $("#did").val(id);
-                $('#modal-delete').modal({
-                    backdrop: 'static',
-                    keyboard: false,
-                    show: true
-                });
+            // Extra Charge is an EC source. The historic Delete handler used
+            // booking.customer.destroy (PPR-only), and Edit used ledger.update.
+            // Neither is an audited EC update/delete endpoint. Do not submit
+            // unrelated voucher types through those financial writers.
+            $(document).on('click.fvcExtraLegacy','.btn-edit,.btn-delete',function(event){
+                event.preventDefault();
+                var action=$(this).hasClass('btn-edit')?'editing':'deleting';
+                if($.financeVoucherFeedback)
+                    $.financeVoucherFeedback.toast('error',
+                        'Extra Charge '+action+' requires the dedicated audited EC workflow; this legacy action cannot modify an EC voucher.');
             });
 
-            $(document).on("click", '.btn-view', function() {
-                debugger;
-                let id = $(this).attr("data-id");
-                $('#modal-loading').modal({
-                    backdrop: 'static',
-                    keyboard: false,
-                    show: true
-                });
+            $(document).on('click.fvcExtraView','.btn-view',function(event){
+                event.preventDefault();
+                var id=$(this).data('id'),$modal=$('#modal-view');
+                var $details=$modal.find('#fvc-extra-view-facts').empty();
+                var $button=$(this).prop('disabled',true);
                 $.ajax({
-                    url: "{{ route('booking.voucher.show') }}",
-                    type: "POST",
-                    dataType: "JSON",
-                    data: {
-                        id: id,
-                        _token: "{{ csrf_token() }}"
-                    },
-                    success: function(data) {
-                        debugger;
-                        var data = data.data;
-                        $("#id").val(data.id);
-                        $("#reference").val(data.reference);
-                        $('.btn-approve').attr('data-id', data.id);
-                        $('.btn-rejected').attr('data-id', data.id);
-
-
-
-                        $("#description").val(data.description);
-
-                        $('#modal-loading').modal('hide');
-                        $('#modal-view').modal({
-                            backdrop: 'static',
-                            keyboard: false,
-                            show: true
-                        });
-                    },
-                });
+                    url:"{{ route('booking.voucher.show') }}",type:'POST',dataType:'json',
+                    headers:{Accept:'application/json'},
+                    data:{id:id,_token:"{{ csrf_token() }}"}
+                }).done(function(response){
+                    var data=response&&response.data?response.data:{};
+                    var pairs=[
+                        ['Voucher #',data.reference||data.id],
+                        ['Date',data.date],['Customer',data.customer&&data.customer.name],
+                        ['Plot',data.plot&&data.plot.name],
+                        ['Project',data.project&&data.project.name],
+                        ['Description',data.description],
+                        ['Amount',data.amount_out],
+                        ['Payment Type',data.payment_type_label],
+                        ['Approval',data.approval_status_label],
+                        ['Clearance',data.clearance_status_label],
+                        ['Phone',data.customer&&data.customer.phone_number],
+                        ['Size',data.plot&&data.plot.size]
+                    ];
+                    $.each(pairs,function(_,item){
+                        $('<dt>',{'class':'col-sm-4 mb-2'}).text(item[0]).appendTo($details);
+                        $('<dd>',{'class':'col-sm-8 mb-2'}).text(item[1]==null?'—':String(item[1]))
+                            .appendTo($details);
+                    });
+                    $modal.find('.btn-approve,.btn-rejected').attr('data-id',data.id);
+                    $modal.modal('show');
+                }).fail(function(xhr){
+                    if($.financeVoucherFeedback)
+                        $.financeVoucherFeedback.toast('error',
+                            $.financeVoucherFeedback.error(xhr,'Extra Charge details could not load.'));
+                }).always(function(){$button.prop('disabled',false);});
             });
 
             $(document).on("click", '.btn-approve', function() {
@@ -1097,7 +1098,7 @@
             $(document).on("click", '.btn-rejected', function() {
                 let id = $(this).attr("data-id");
                 $(".status_id").val(id);
-                $(".is_approve").val(2);
+                $(".is_approve").val(0);
                 $('#msg').text("Are you sure you want to rejected?");
                 $('#modal-approve').modal({
                     backdrop: 'static',
