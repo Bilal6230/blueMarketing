@@ -435,21 +435,32 @@
 /* The overlay is owned by the DataTables wrapper, not the scrolling rows.
    It leaves the header toolbar and canonical card-bottom pager in place. */
 .bm-voucher-directory .dataTables_wrapper{position:relative!important}
+/* DataTables uses the *same* CR skeleton table rows/bar classes. Its
+   live thead, toolbar and canonical bottom pagination stay in place. */
+.bm-voucher-directory .dataTables_wrapper{position:relative!important}
 .bm-voucher-directory .fvc-table-skeleton{
- position:absolute;z-index:12;left:0;right:0;top:42px;bottom:42px;
- min-height:150px;background:var(--fvc-table-skeleton-bg,#fff);
- display:flex;flex-direction:column;gap:10px;padding:14px 12px;
- pointer-events:none;overflow:hidden;
+ position:absolute!important;left:0!important;right:0!important;
+ top:42px!important;bottom:0!important;z-index:12!important;
+ background:#fff!important;overflow:hidden!important;pointer-events:none!important;
+ padding:0!important;margin:0!important;border:0!important;
 }
-.bm-voucher-directory .fvc-table-skeleton-row{
- display:flex;gap:12px;width:100%;height:30px;flex:none;
+.bm-voucher-directory .fvc-skeleton-table{
+ width:100%!important;table-layout:fixed!important;border-collapse:collapse!important;
+ margin:0!important;background:#fff!important;
 }
-.bm-voucher-directory .fvc-table-skeleton-row .fvc-skeleton-shimmer{
- display:block;flex:1;border-radius:5px;
- background:linear-gradient(100deg,#e9eef4 15%,#f9fbfd 45%,#e9eef4 75%);
- background-size:200% 100%;animation:bm-skeleton-pulse 1.3s ease-in-out infinite;
+.bm-voucher-directory .fvc-skeleton-table tbody td{
+ height:var(--fvc-row-height,42px)!important;
+ padding:7px!important;vertical-align:middle!important;
+ border:1px solid #dce5ee!important;
 }
-
+.bm-voucher-directory .fvc-table-skeleton .bm-skeleton-bar{
+ display:block!important;height:12px!important;border-radius:7px!important;
+ background:linear-gradient(90deg,#e8f5ee,#d5ebdf,#e8f5ee)!important;
+ background-size:200% 100%!important;
+ animation:bm-skeleton-pulse 1.3s linear infinite!important;
+}
+/* No second footer action for search/date filters: CR uses live input
+   changes and only checkbox selections require an Apply button. */
 /* Detached TS menus (CV iframe/table and Extra modal) use the same palette,
    without being clipped by a scrollable accounting table. */
 .fvc-global-ts-dropdown{
