@@ -152,7 +152,7 @@ html body .main-content.page-content > .content-wrapper .card-body{
                                         @foreach (old('accounts', ['', '']) as $rowIndex => $selectedAccount)
                                         <tr>
                                             <td>
-                                                <select name="accounts[]" class="form-control select2 account-select"
+                                                <select name="accounts[]" class="form-control fvc-tom-select account-select"
                                                     required>
                                                     <option value="">Select Account</option>
                                                     @foreach ($accounts as $account)
@@ -163,7 +163,7 @@ html body .main-content.page-content > .content-wrapper .card-body{
                                             </td>
                                             <td>
                                                 <select name="sub_accounts[]"
-                                                    class="form-control select2 sub-account-select" required>
+                                                    class="form-control fvc-tom-select sub-account-select" required>
                                                     <option value="">Select Sub-Account</option>
                                                     @php($restoredSub = $restoredSubAccounts->get(old("sub_accounts.$rowIndex")))
                                                     @if ($restoredSub && (string) $restoredSub->head_accounting_id === (string) $selectedAccount)
@@ -215,12 +215,16 @@ html body .main-content.page-content > .content-wrapper .card-body{
 @section('js')
     <script>
         $(document).ready(function() {
+            // The JV iframe is its own document. Initialize the shared single
+            // TomSelect control here as well as on every dynamically added row.
+            if($.financeVoucherFeedback)
+                $.financeVoucherFeedback.enhanceSelects($('#journalTable select.fvc-tom-select'));
             // Add a new row to the table
             $(document).on('click', '.add-row', function() {
                 const newRow = `
                 <tr>
                     <td>
-                        <select name="accounts[]" class="form-control select2 account-select" required>
+                        <select name="accounts[]" class="form-control fvc-tom-select account-select" required>
                             <option value="">Select Account</option>
                             @foreach ($accounts as $account)
                                 <option value="{{ $account->head_accounting_id }}">{{ $account->headAccounting->name }}</option>
@@ -228,7 +232,7 @@ html body .main-content.page-content > .content-wrapper .card-body{
                         </select>
                     </td>
                     <td>
-                        <select name="sub_accounts[]" class="form-control select2 sub-account-select" required>
+                        <select name="sub_accounts[]" class="form-control fvc-tom-select sub-account-select" required>
                             <option value="">Select Sub-Account</option>
                         </select>
                     </td>
@@ -241,7 +245,9 @@ html body .main-content.page-content > .content-wrapper .card-body{
                         </button>
                     </td>
                 </tr>`;
-                $('#journalTable tbody').append(newRow);
+                var $row=$(newRow).appendTo('#journalTable tbody');
+                if($.financeVoucherFeedback)
+                    $.financeVoucherFeedback.enhanceSelects($row.find('select.fvc-tom-select'));
             });
 
             // Remove a row from the table
@@ -364,14 +370,20 @@ html body .main-content.page-content > .content-wrapper .card-body{
                             } else {
                                 if($.financeVoucherFeedback)$.financeVoucherFeedback.toast('error','No sub-accounts found for the selected account.');
                             }
+                            if(subAccountSelect[0]&&subAccountSelect[0].tomselect)
+                                subAccountSelect[0].tomselect.sync();
                         },
-                        error: function(xhr, status, error) {
-                            alert('Error: ' + error);
+                        error: function(xhr) {
+                            if($.financeVoucherFeedback)
+                                $.financeVoucherFeedback.toast('error',
+                                    $.financeVoucherFeedback.error(xhr,'Unable to load sub-accounts.'));
                         }
                     });
                 } else {
                     // Reset the sub-account dropdown if no account is selected
                     subAccountSelect.empty().append('<option value="">Select Sub-Account</option>');
+                    if(subAccountSelect[0]&&subAccountSelect[0].tomselect)
+                        subAccountSelect[0].tomselect.sync();
                 }
             });
 
