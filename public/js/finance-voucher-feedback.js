@@ -76,10 +76,7 @@
     }).on('draw.dt.fvcSkeleton error.dt.fvcSkeleton xhr.dt.fvcSkeleton',function(){
       tableSkeleton($table,false);
     });
-    if($.fn.DataTable&&$.fn.DataTable.isDataTable($table)){
-      var settings=$table.DataTable().settings()[0];
-      if(settings&&settings.bProcessing)tableSkeleton($table,true);
-    }
+
  }
  function skeleton($target,show){
     var $root=$($target);
