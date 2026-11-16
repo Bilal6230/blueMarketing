@@ -985,7 +985,9 @@ class LedgerController extends Controller
                 if (Auth::user()->hasRole('super-admin') || Auth::user()->can('direct-update')) {
                     $draftLedger->update($newValues);
                     DB::commit();
-                    return back()->with('success', 'Record updated successfully (direct update).');
+                    return $request->expectsJson()
+                        ? response()->json(['status' => 'success', 'message' => 'Draft updated successfully.'])
+                        : back()->with('success', 'Record updated successfully (direct update).');
                 }
                 $pendingUpdate = PendingUpdate::where('table_name', 'draft_ledgers')
                     ->where('record_id', $draftLedger->id)
@@ -1018,11 +1020,15 @@ class LedgerController extends Controller
             throw $th;
         } catch (\Throwable $th) {
             DB::rollBack();
+            if ($request->expectsJson()) {
+                return response()->json(['status' => 'error', 'message' => 'Unable to save draft right now.'], 422);
+            }
             Alert::error('Notification', 'Unable to save draft right now.')->toToast()->toHtml();
             return back();
         }
-        return back();
-        return response()->json(['message' => 'Draft saved successfully.']);
+        return $request->expectsJson()
+            ? response()->json(['status' => 'success', 'message' => 'Draft saved successfully.'])
+            : back();
     }
 
     public function getSubaccountDetails(Request $request)
