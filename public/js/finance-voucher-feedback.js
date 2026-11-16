@@ -83,6 +83,14 @@
       $.each(widths,function(_,width){$group.append($('<col>').css('width',width+'px'));});
       $ghost.prepend($group);
     }
+    // Overlay starts exactly BELOW the live heading row, like CR. The
+    // toolbar and column headings remain visible throughout the request.
+    var $heading=$node.find('thead').first();
+    if($heading.length&&$heading.offset()&&$wrap.offset()){
+      var top=Math.max(0,Math.ceil($heading.offset().top+
+        $heading.outerHeight()-$wrap.offset().top));
+      $layer.css('top',top+'px');
+    }
     $layer.append($ghost);
     $wrap.addClass('fvc-table-loading').append($layer);
  }
