@@ -448,7 +448,14 @@
                                                                         </select>
                                                                         <input type="date" name="date" required class="form-control form-control-sm">
                                                                         <input type="date" name="passing_date" required class="form-control form-control-sm">
-                                                                        <input type="number" name="bank_id" min="1" required placeholder="Bank ID" class="form-control form-control-sm">
+                                                                        <select name="bank_id" required class="form-control form-control-sm fvc-tom-select">
+                                                                            <option value="">Select bank</option>
+                                                                            @foreach(($receiptBanks ?? collect()) as $receiptBank)
+                                                                                <option value="{{ $receiptBank->id }}">
+                                                                                    {{ $receiptBank->bank_name ?? $receiptBank->name ?? $receiptBank->title ?? ('Bank #' . $receiptBank->id) }}
+                                                                                </option>
+                                                                            @endforeach
+                                                                        </select>
                                                                         <input type="text" name="t_number" required maxlength="100" placeholder="Transaction / cheque number" class="form-control form-control-sm">
                                                                         <input type="text" name="reference" required maxlength="100" placeholder="Unique slip reference" class="form-control form-control-sm">
                                                                         <input type="number" name="amount" min="0.01" step="0.01" max="{{ $i->available_amount }}" required class="form-control form-control-sm">
