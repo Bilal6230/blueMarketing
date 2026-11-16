@@ -3114,7 +3114,13 @@ class BookingController extends Controller
                 return back()->withErrors(['msg' => get_class($e) . ': ' . $e->getMessage()])->withInput();
             }
 
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Unable to save the voucher right now. Please try again.'], 422);
+            }
             return back()->withErrors(['msg' => 'Unable to save the voucher right now. Please try again.'])->withInput();
+        }
+        if ($request->expectsJson()) {
+            return response()->json(['status' => 'success', 'message' => 'Voucher saved.']);
         }
         return back();
     }
@@ -4224,9 +4230,19 @@ class BookingController extends Controller
 
     public function chargeTypeStore(Request $request)
     {
-        $charge = ChargeType::create([
-            'name' => $request->name
+        $input = $request->validate([
+            'name' => ['required', 'string', 'max:150'],
         ]);
+        $charge = ChargeType::create([
+            'name' => trim($input['name']),
+        ]);
+        if ($request->expectsJson()) {
+            return response()->json([
+                'status' => 'success',
+                'id' => $charge->id,
+                'message' => 'Charge type saved.',
+            ]);
+        }
         return back();
     }
 }
