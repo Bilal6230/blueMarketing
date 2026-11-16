@@ -150,6 +150,8 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('name="credit[]"', $view);
         $this->assertStringContainsString('id="totalDebit"', $view);
         $this->assertStringContainsString('id="totalCredit"', $view);
+        $this->assertStringContainsString('fvc-entry-table', $view);
+        $this->assertStringNotContainsString('background-color: black !important', $view);
         $this->assertStringContainsString("$('#journalTable .add-row').first().trigger('click')", $view);
         $this->assertStringContainsString("dataType:'json'", $view);
         $this->assertStringContainsString('finance:commission-saved', $view);
@@ -173,6 +175,8 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('fvc-modern-modal fvc-modal-blue', $script);
         $this->assertStringContainsString("if ($request->expectsJson())", $controller);
         $this->assertStringContainsString('Charge type saved.', $controller);
+        $extra=file_get_contents(resource_path('views/admin/booking/extra_charge.blade.php'));
+        $this->assertStringContainsString('data-blue-action-label="View / Approve"', $extra);
         $this->assertStringContainsString('.fvc-modern-modal .modal-header', $css);
         foreach (['btn-edit','btn-view','btn-delete','btn-view-changes'] as $class) {
             $this->assertStringContainsString($class, $actions);
