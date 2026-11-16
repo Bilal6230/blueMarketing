@@ -111,7 +111,7 @@
                 <form id="deleteForm" method="POST">
                     @csrf
                     @method('DELETE')
-                    <input type="hidden" name="request_key" value="{{ old('request_key', (string) \\Illuminate\\Support\\Str::uuid()) }}">
+                    <input type="hidden" name="request_key" value="{{ old('request_key', (string) \Illuminate\Support\Str::uuid()) }}">
                     <div class="modal-body">
                         <p class="text-muted mb-3">
                             Reverse this posted Commission Voucher? Its original accounting
