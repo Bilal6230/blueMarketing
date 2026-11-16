@@ -90,15 +90,15 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
 
                             <!-- Dynamic Table for Journal Entries -->
                             <div class="table-responsive mb-4">
-                                <table class="table table-bordered " id="journalTable">
+                                <table class="table table-bordered fvc-entry-table" id="journalTable">
                                     <thead class="text-white">
                                         <tr>
-                                            <th style="background-color: black !important">Account</th>
-                                            <th style="background-color: black !important">Sub-Account</th>
-                                            <th style="background-color: black !important">Description</th>
-                                            <th style="background-color: black !important">Debit (Out)</th>
-                                            <th style="background-color: black !important">Credit (IN)</th>
-                                            <th style="background-color: black !important">Action</th>
+                                            <th>Account</th>
+                                            <th>Sub-Account</th>
+                                            <th>Description</th>
+                                            <th>Debit (Out)</th>
+                                            <th>Credit (IN)</th>
+                                            <th>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
