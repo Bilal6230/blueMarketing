@@ -234,3 +234,21 @@
  height:auto!important;max-height:100%!important;
  margin:0!important;overflow:auto!important;
 }
+
+/* Reusable layout-only wrapper: prevents a legacy Bootstrap .card from drawing
+   a second frame around the canonical shared voucher table card.
+   Keep the outer wrapper in the DOM for form permissions and modal behavior. */
+.bm-voucher-directory .bm-card-frame-reset{
+ background:transparent!important;border:0!important;border-radius:0!important;
+ box-shadow:none!important;outline:0!important;padding:0!important;margin:0!important;
+}
+.bm-voucher-directory .bm-card-frame-reset>.card-body{
+ background:transparent!important;border:0!important;border-radius:0!important;
+ box-shadow:none!important;padding:0!important;margin:0!important;
+}
+.bm-voucher-directory .bm-card-frame-reset>.bm-voucher-table-card,
+.bm-voucher-directory .bm-card-frame-reset>.card-body>.bm-voucher-table-card{
+ margin:0!important;
+}
+/* The one visible card retains its accent top border, radius, toolbar,
+   scrollable records and bottom pagination. */
