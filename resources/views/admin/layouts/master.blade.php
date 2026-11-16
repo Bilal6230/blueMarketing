@@ -704,7 +704,7 @@
 <script src="{{ asset('js/finance-voucher-components.js') }}?v=3"></script>
 <script src="{{ asset('js/finance-voucher-header-filters.js') }}?v=6"></script>
 <script src="{{ asset('js/finance-voucher-heading-columns.js') }}?v=2"></script>
-<script src="{{ asset('js/finance-voucher-datatable-columns.js') }}?v=5"></script>
+<script src="{{ asset('js/finance-voucher-datatable-columns.js') }}?v=6"></script>
 </body>
 
 </html>
