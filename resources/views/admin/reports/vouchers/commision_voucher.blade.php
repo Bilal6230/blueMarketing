@@ -38,7 +38,7 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                         </div>
                         @endunless
                         <div id="cv-entry-feedback" class="alert alert-danger d-none" role="alert" aria-live="polite"></div>
-                        <form id="journalForm" action="{{ route('commision.voucher.store', request()->boolean('embed') ? ['embed'=>1] : []) }}" method="POST">
+                        <form id="journalForm" novalidate action="{{ route('commision.voucher.store', request()->boolean('embed') ? ['embed'=>1] : []) }}" method="POST">
                             @csrf
                             <!-- Voucher Details -->
                             <div class="row mb-4">
@@ -228,54 +228,94 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                 $('#totalCredit').val(totalCredit.toFixed(2));
             }
 
-            // Trigger Submission Confirmation Modal
-            $('#journalForm').on('submit', function(e) {
-                e.preventDefault();
-                const totalDebit = parseFloat($('#totalDebit').val()) || 0;
-                const totalCredit = parseFloat($('#totalCredit').val()) || 0;
-
-                if (totalDebit !== totalCredit) {
-                    // Show Error Modal
-                    notify('error','Debit and credit must be equal before saving.');
-                    return;
-                } else {
-                    // Show Confirmation Modal
-                    $('#confirmationModal').modal('show');
+            // Keep validation visible: native HTML validation cannot focus the
+            // original required select after TomSelect has hidden it.
+            // Embedded CV uses one AJAX submit, never a second nested modal.
+            function cvDateValue(){
+                var field=$('#journalForm [name="date"]')[0];
+                if(!field)return '';
+                if(field._flatpickr && field._flatpickr.selectedDates.length){
+                    return field._flatpickr.formatDate(field._flatpickr.selectedDates[0],'Y-m-d');
                 }
-            });
-
-            // Confirm and Submit the Form
-            $('#confirmSubmit').on('click', function() {
-                var $button=$(this), $form=$('#journalForm');
-                if($button.prop('disabled'))return;
-                var $feedback=$('#cv-entry-feedback').addClass('d-none').text('');
-                // Backend requires 0 (not empty) for an unused side of a line.
-                $form.find('input[name="debit[]"],input[name="credit[]"]').each(function(){
-                    if(!$.trim($(this).val()))$(this).val('0.00');
+                var value=$.trim($(field).val());
+                if(/^\\d{4}-\\d{2}-\\d{2}$/.test(value))return value;
+                var parsed=new Date(value);
+                if(isNaN(parsed.getTime()))return '';
+                var pad=function(n){return String(n).padStart(2,'0');};
+                return parsed.getFullYear()+'-'+pad(parsed.getMonth()+1)+'-'+pad(parsed.getDate());
+            }
+            function entryError(message,$field){
+                var safe=String(message||'Please check the voucher fields.');
+                $('#cv-entry-feedback').text(safe).removeClass('d-none');
+                notify('error',safe);
+                if($field && $field.length){
+                    var $focus=$field;
+                    if($field[0].tomselect)$focus=$($field[0].tomselect.control);
+                    $focus.trigger('focus');
+                }
+            }
+            $('#journalForm').on('submit.fvcCv',function(e){
+                e.preventDefault();
+                var $form=$(this),$button=$form.find('button[type="submit"]').first();
+                if($form.data('fvc-busy')||$button.prop('disabled'))return;
+                $('#cv-entry-feedback').addClass('d-none').text('');
+                var description=$.trim($form.find('[name="description"]').val());
+                if(!description){
+                    entryError('Enter a description before saving.',$form.find('[name="description"]'));
+                    return;
+                }
+                var date=cvDateValue();
+                if(!date){
+                    entryError('Select a valid voucher date.',$form.find('[name="date"]'));
+                    return;
+                }
+                var $rows=$form.find('#journalTable tbody tr');
+                if($rows.length<2){
+                    entryError('Add at least two accounting lines.');return;
+                }
+                var invalid=null, debit=0,credit=0;
+                $rows.each(function(){
+                    var $row=$(this),$head=$row.find('.account-select'),
+                        $child=$row.find('.sub-account-select');
+                    if(!$head.val()||!$child.val()){
+                        invalid=invalid||(!$head.val()?$head:$child);
+                        return;
+                    }
+                    $row.find('input[name="debit[]"],input[name="credit[]"]').each(function(){
+                        if(!$.trim($(this).val()))$(this).val('0.00');
+                    });
+                    debit+=parseFloat($row.find('input[name="debit[]"]').val())||0;
+                    credit+=parseFloat($row.find('input[name="credit[]"]').val())||0;
                 });
+                if(invalid){entryError('Select Account and Sub-Account for every line.',invalid);return;}
+                if(debit<=0||credit<=0||Math.abs(debit-credit)>0.005){
+                    entryError('Debit and Credit must be greater than zero and equal.');return;
+                }
+                $form.data('fvc-busy',true);
                 $button.prop('disabled',true);
-                if(feedback)feedback.skeleton($('#journalForm').closest('.card-body'),true);
+                var $loading=$form.closest('.card-body');
+                if(feedback)feedback.skeleton($loading,true);
+                var data=$form.serializeArray().filter(function(item){return item.name!=='date';});
+                data.push({name:'date',value:date});
                 $.ajax({
-                    url:$form.attr('action'),type:'POST',
-                    data:$form.serialize(),dataType:'json',
-                    headers:{Accept:'application/json'}
+                    url:$form.attr('action'),type:'POST',data:$.param(data),
+                    dataType:'json',headers:{Accept:'application/json'}
                 }).done(function(response){
-                    $('#confirmationModal').modal('hide');
                     if(window.parent!==window && window.parent.jQuery){
                         window.parent.jQuery(window.parent.document)
                             .trigger('finance:commission-saved',[response]);
-                    } else {
+                    }else{
                         notify('success',response.message||'Commission draft saved.');
                         window.location.href=response.redirect||'{{ route('commision.voucher.index') }}';
                     }
                 }).fail(function(xhr){
                     var message=feedback?feedback.error(xhr,'Could not save Commission Voucher.'):
                         'Could not save Commission Voucher.';
-                    notify('error',message);
-                    $('#confirmationModal').modal('hide');
+                    entryError(message);
                 }).always(function(){
+                    $form.data('fvc-busy',false);
                     $button.prop('disabled',false);
-                    if(feedback)feedback.skeleton($('#journalForm').closest('.card-body'),false);
+                    if(feedback)feedback.skeleton($loading,false);
                 });
             });
 
