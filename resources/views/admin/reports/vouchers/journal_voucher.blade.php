@@ -288,16 +288,47 @@ html body .main-content.page-content > .content-wrapper .card-body{
                 }
             });
 
-            // One browser confirmation may result in one network submission.
-            // A retry after a network problem retains the server-issued key.
-            let journalSubmissionStarted = false;
-            $('#confirmSubmit').on('click', function() {
-                if (journalSubmissionStarted) {
-                    return;
-                }
-                journalSubmissionStarted = true;
-                $(this).prop('disabled', true);
-                $('#journalForm')[0].submit();
+            // One confirmed click -> one AJAX request; keep the original
+            // idempotency key intact across retries and never navigate iframe.
+            let journalSubmissionStarted=false;
+            $('#confirmSubmit').on('click',function(){
+                if(journalSubmissionStarted)return;
+                const $form=$('#journalForm'),$button=$(this);
+                journalSubmissionStarted=true;
+                $button.prop('disabled',true);
+                $('#confirmationModal').modal('hide');
+                var $body=$form.closest('.card-body');
+                if($.financeVoucherFeedback)$.financeVoucherFeedback.skeleton($body,true);
+                $form.find('input[name="debit[]"],input[name="credit[]"]').each(function(){
+                    if($.trim($(this).val())==='')$(this).val('0');
+                });
+                $.ajax({
+                    url:$form.attr('action'),type:'POST',data:$form.serialize(),
+                    dataType:'json',headers:{Accept:'application/json'}
+                }).done(function(response){
+                    if(response&&response.status==='success'){
+                        if(window.parent!==window&&window.parent.jQuery){
+                            window.parent.jQuery(window.parent.document)
+                              .trigger('finance:journal-saved',[response]);
+                        }else{
+                            if($.financeVoucherFeedback)
+                                $.financeVoucherFeedback.toast('success',response.message||'Voucher saved.');
+                            window.location.assign(response.redirect||@json(route('journal.voucher.index')));
+                        }
+                    }else if($.financeVoucherFeedback){
+                        $.financeVoucherFeedback.toast('error','Server did not confirm the voucher save.');
+                    }
+                }).fail(function(xhr){
+                    var message=$.financeVoucherFeedback?
+                        $.financeVoucherFeedback.error(xhr,'Could not save Journal Voucher.'):
+                        'Could not save Journal Voucher.';
+                    if($.financeVoucherFeedback)$.financeVoucherFeedback.toast('error',message);
+                    else $('#errorModal').modal('show');
+                }).always(function(){
+                    journalSubmissionStarted=false;
+                    $button.prop('disabled',false);
+                    if($.financeVoucherFeedback)$.financeVoucherFeedback.skeleton($body,false);
+                });
             });
 
             // Fetch Sub-Accounts dynamically via AJAX when account is selected
