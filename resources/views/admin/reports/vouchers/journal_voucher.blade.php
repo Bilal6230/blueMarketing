@@ -70,6 +70,13 @@ html body .main-content.page-content > .content-wrapper .card-body{
                                 </ul>
                             </div>
                         @endif
+                        @if($journalPilotApprovalBlocked ?? false)
+                            <div class="alert alert-warning" role="alert">
+                                This project requires Journal Voucher approval. Direct posting through
+                                the isolated V2 pilot is not enabled. Create / posting is unavailable
+                                until the approval-aware V2 workflow is configured.
+                            </div>
+                        @endif
                         <form id="journalForm" action="{{ route('journal.voucher.store') }}" method="POST">
                             @csrf
                             {{-- A stable key for this rendered form; browser retries reuse it.
@@ -200,7 +207,7 @@ html body .main-content.page-content > .content-wrapper .card-body{
 
                             <!-- Submit Button -->
                             <div class="text-center">
-                                <button type="submit" class="btn btn-primary">
+                                <button type="submit" class="btn btn-primary" @disabled($journalPilotApprovalBlocked ?? false)>
                                     <i class="fas fa-save"></i> Save Journal Voucher
                                 </button>
                             </div>
