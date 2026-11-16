@@ -453,9 +453,22 @@
             $('body').append($paymentModal);
             var $activePayment=null;
             function syncChequeFields($form){
-                var cheque=String($form.find('[name="payment_type"]').val())==='3';
+                var method=String($form.find('[name="payment_type"]').val()||'');
+                var cheque=method==='3',pending=method==='2'||method==='3';
                 $form.find('.fvc-cheque-purpose').toggleClass('d-none',!cheque);
                 $form.find('[name="cheque_purpose"]').prop('required',cheque);
+                // The payment is only RECORDED here. Posting allocations are
+                // deliberately disabled until cheque/online clearance.
+                // Do not show disabled Debit/Credit selects as broken fields.
+                $form.find('[data-original-posting-fields]').toggleClass('d-none',pending);
+                var $hint=$form.find('.fvc-pending-posting-hint');
+                if(pending&&!$hint.length){
+                    $hint=$('<p>',{'class':'alert alert-info small fvc-pending-posting-hint',
+                        text:'Pending bank collection: Debit/Credit posting accounts are selected at clearance, not when recording the pending payment.'});
+                    $form.find('[data-original-posting-fields]').after($hint);
+                }
+                $hint.toggleClass('d-none',!pending);
+                if(window.syncOriginalPostingForm)window.syncOriginalPostingForm($form[0]);
             }
             $paymentModal.on('change.fvcCheque','select[name="payment_type"]',function(){
                 syncChequeFields($(this).closest('form'));
