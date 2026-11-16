@@ -833,10 +833,14 @@ class JournalVoucherController extends Controller
             $savedVoucherId = (int) DB::transaction($post);
         }
 
-        $hasPendingApproval=\App\Models\DailyVoucherApproval::query()
-            ->where('project_id',(int)$selectedProjectId)->where('source_table','journal_vouchers')
-            ->where('source_id',$savedVoucherId)
-            ->where('status','pending')->exists();
+        // Older finance installs may not have the optional approvals schema.
+        // submitIfRequired() already returns false when no approval policy
+        // table exists; the success response must not query a missing table.
+        $hasPendingApproval=\Illuminate\Support\Facades\Schema::hasTable('daily_voucher_approvals')
+            && \App\Models\DailyVoucherApproval::query()
+                ->where('project_id',(int)$selectedProjectId)->where('source_table','journal_vouchers')
+                ->where('source_id',$savedVoucherId)
+                ->where('status','pending')->exists();
         return $this->voucherWriteResponse($request,
             $hasPendingApproval?'Journal Voucher saved — Pending Approval. Ledger posting is inactive until approval.':'Journal Voucher created successfully.');
     }
