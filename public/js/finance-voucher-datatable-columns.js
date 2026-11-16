@@ -81,10 +81,13 @@ $(function(){
       var $body=$popover.find('.fvd-pop-filter').empty(),$input;
       if(key==='date'){
         widget.dates(state.dates,function(field,value){
-          state.dates[field]=value;
-          if(state.dates.from&&state.dates.to&&state.dates.from>state.dates.to){
+          // Match CR: reject an inverted range before altering query state.
+          var next=$.extend({},state.dates);
+          next[field]=value;
+          if(next.from&&next.to&&next.from>next.to){
             $body.find('input[type="date"]').addClass('is-invalid');return;
           }
+          state.dates=next;
           $body.find('input[type="date"]').removeClass('is-invalid');
           scheduleRefresh();
         });
