@@ -1038,7 +1038,7 @@
             // booking.customer.destroy (PPR-only), and Edit used ledger.update.
             // Neither is an audited EC update/delete endpoint. Do not submit
             // unrelated voucher types through those financial writers.
-            $(document).on('click.fvcExtraLegacy','.btn-edit,.btn-delete',function(event){
+            $(document).on('click.fvcExtraLegacy','#example1 .btn-edit,#example1 .btn-delete',function(event){
                 event.preventDefault();
                 var action=$(this).hasClass('btn-edit')?'editing':'deleting';
                 if($.financeVoucherFeedback)
@@ -1046,7 +1046,7 @@
                         'Extra Charge '+action+' requires the dedicated audited EC workflow; this legacy action cannot modify an EC voucher.');
             });
 
-            $(document).on('click.fvcExtraView','.btn-view',function(event){
+            $(document).on('click.fvcExtraView','#example1 .btn-view',function(event){
                 event.preventDefault();
                 var id=$(this).data('id'),$modal=$('#modal-view');
                 var $details=$modal.find('#fvc-extra-view-facts').empty();
