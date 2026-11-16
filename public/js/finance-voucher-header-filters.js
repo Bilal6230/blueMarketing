@@ -191,6 +191,10 @@
             // Draft has no New Voucher and no standalone top filter button.
             $draft.find('#toggleFilters').remove();
             var $draftTable=$draft.find('#bmDraftTable');
+            // The list card, table chrome and footer share the CR contract;
+            // preserve original server-rendered rows and approval buttons.
+            var $draftCard=$draftTable.closest('.custom_card');
+            $draftCard.addClass('bm-voucher-table-card fvc-draft-list-card');
             if($draftTable.length && $.fn.DataTable && !$.fn.DataTable.isDataTable($draftTable)){
                 // Blade's "No vouchers found" colspan row is replaced by the DataTables empty message.
                 $draftTable.find('tbody tr').filter(function(){
