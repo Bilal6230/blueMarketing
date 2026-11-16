@@ -96,32 +96,44 @@
 @endsection
 
 @section('modal')
-    <!-- Delete Confirmation Modal -->
-    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    {{-- Reversal is a lifecycle write: keep the request key and the original
+         DELETE route, but put the form fields inside the modal body. --}}
+    <div class="modal fade fvc-modern-modal fvc-modal-blue" id="deleteModal"
+         tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel">Reverse Commission Voucher</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
-                <div class="modal-body">
-                    Reverse this posted Commission Voucher? Its original entries will remain in history.
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                    <form id="deleteForm" method="POST">
-                        @csrf
-                        @method('DELETE')
-                        <input type="hidden" name="request_key" value="{{ old('request_key', (string) \Illuminate\Support\Str::uuid()) }}">
-                        <label for="reversalDate">Reversal date</label>
-                        <input id="reversalDate" type="date" name="effective_date" class="form-control mb-2" value="{{ old('effective_date', now()->toDateString()) }}" required>
-                        <label for="reversalReason">Reason</label>
-                        <input id="reversalReason" type="text" name="reason" class="form-control mb-2" maxlength="200" value="{{ old('reason') }}" required>
-                        <button type="submit" class="btn btn-danger">Reverse voucher</button>
-                    </form>
-                </div>
+                <form id="deleteForm" method="POST">
+                    @csrf
+                    @method('DELETE')
+                    <input type="hidden" name="request_key" value="{{ old('request_key', (string) \\Illuminate\\Support\\Str::uuid()) }}">
+                    <div class="modal-body">
+                        <p class="text-muted mb-3">
+                            Reverse this posted Commission Voucher? Its original accounting
+                            entries will remain in history.
+                        </p>
+                        <div class="form-group">
+                            <label for="reversalDate" class="font-weight-bold">Reversal date *</label>
+                            <input id="reversalDate" type="date" name="effective_date"
+                                   class="form-control" value="{{ old('effective_date', now()->toDateString()) }}" required>
+                        </div>
+                        <div class="form-group mb-0">
+                            <label for="reversalReason" class="font-weight-bold">Reason *</label>
+                            <textarea id="reversalReason" name="reason" rows="3"
+                                      class="form-control" maxlength="200" required
+                                      placeholder="Explain why this voucher is being reversed">{{ old('reason') }}</textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer d-flex justify-content-end">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger btn-sm">Reverse voucher</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
