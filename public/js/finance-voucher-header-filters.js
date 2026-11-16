@@ -465,6 +465,19 @@
             $paymentModal.on('submit.fvcExtraCollection','form',function(event){
                 event.preventDefault();
                 var $paymentForm=$(this);
+                if(window.syncOriginalPostingForm)window.syncOriginalPostingForm(this);
+                var $invalid=$paymentForm.find(':input[required]').filter(function(){
+                    if(this.disabled)return false;
+                    var value=$.trim(String($(this).val()||''));
+                    return !value||(this.validity&&!this.validity.valid);
+                }).first();
+                if($invalid.length){
+                    var msg='Complete all required collection fields before saving.';
+                    if($.financeVoucherFeedback)$.financeVoucherFeedback.toast('error',msg);
+                    var select=$invalid[0];
+                    if(select.tomselect)select.tomselect.focus();else $invalid.trigger('focus');
+                    return;
+                }
                 submitExtraAjax($paymentForm,function(){
                     $paymentModal.modal('hide');
                     refreshExtraDirectory();
@@ -482,7 +495,12 @@
                     .on('click',function(){
                         $activePayment=$holder.detach().show();
                         $paymentModal.find('.modal-body').append($activePayment);
-                        $activePayment.find('form').each(function(){syncChequeFields($(this));});
+                        $activePayment.find('form').each(function(){
+                            // Native validation cannot focus a TomSelect-hidden select.
+                            // Validate visibly in the delegated AJAX submit handler.
+                            $(this).attr('novalidate','novalidate');
+                            syncChequeFields($(this));
+                        });
                         $paymentModal.modal('show');
                     }).prependTo($cell);
              });
