@@ -278,4 +278,30 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('V2IsolatedConnectionGuard::assertAllowed()', $controller);
     }
 
+    public function test_extra_draft_and_sales_share_finance_controls_without_legacy_select2_conflicts(): void
+    {
+        $extra=file_get_contents(resource_path('views/admin/booking/extra_charge.blade.php'));
+        $draft=file_get_contents(resource_path('views/admin/finance/voucher/draft_voucher.blade.php'));
+        $sales=file_get_contents(resource_path('views/admin/reports/vouchers/index.blade.php'));
+        $feedback=file_get_contents(public_path('js/finance-voucher-feedback.js'));
+        $header=file_get_contents(public_path('js/finance-voucher-header-filters.js'));
+        $css=file_get_contents(public_path('css/finance-voucher-components.css'));
+
+        $this->assertStringContainsString('name="charge_type_id"', $extra);
+        $this->assertStringContainsString('fvc-tom-select" name="customer_id"', $extra);
+        $this->assertStringContainsString('fvc-tom-select" name="plot_id"', $extra);
+        $this->assertStringNotContainsString('class="form-control select2"', $extra);
+        $this->assertStringContainsString("maxItems:element.multiple?null:1", $feedback);
+        $this->assertStringContainsString("hasClass('fvc-modal-purple')", $feedback);
+        $this->assertStringContainsString('refreshExtraDirectory()', $header);
+        $this->assertStringNotContainsString('window.location.reload()', $header);
+        $this->assertStringContainsString('mountExtraPaymentActions()', $header);
+        $this->assertStringContainsString("enhanceSelects($('#filter_head,#filter_subhead'))", $draft);
+        $this->assertStringNotContainsString("$('#filter_head, #filter_subhead').select2", $draft);
+        $this->assertStringContainsString('fvc-draft-list-card', $header);
+        $this->assertStringContainsString('bindTableSkeleton($table)', $sales);
+        $this->assertStringContainsString("route('sales.voucher.index')", $sales);
+        $this->assertStringContainsString('.fvc-modern-modal .modal-body .input-group>.ts-wrapper.single', $css);
+    }
+
 }
