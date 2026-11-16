@@ -404,7 +404,8 @@
             function mountExtraPaymentActions(){
              $extra.find('#example1 tbody tr').each(function(){
                 var $cell=$(this).children('td').eq(10);
-                if(!$cell.find('form').length)return;
+                if(!$cell.find('form').length ||
+                   $cell.find('.bm-extra-payment-fields,.bm-extra-payment-open').length)return;
                 var $holder=$('<div>',{'class':'bm-extra-payment-fields'});
                 $holder.append($cell.contents().detach()).hide().appendTo($cell).data('bm-owner',$cell);
                 $('<button>',{type:'button','class':'btn btn-outline-primary btn-sm bm-extra-payment-open'})
@@ -417,6 +418,9 @@
              });
             }
             mountExtraPaymentActions();
+            // DataTables redraws rows on pagination, searching and AJAX
+            // refresh. Reattach only newly-rendered payment controls.
+            $extra.find('#example1').on('draw.dt.fvcExtraPayments',mountExtraPaymentActions);
             $paymentModal.on('hidden.bs.modal',function(){
                 if($activePayment){
                     var $owner=$activePayment.data('bm-owner');
