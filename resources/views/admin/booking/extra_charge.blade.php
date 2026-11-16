@@ -889,6 +889,7 @@
                 </div>
                 <div class="modal-body">
                     <dl id="fvc-extra-view-facts" class="row mb-0" aria-live="polite"></dl>
+                    <div id="fvc-extra-view-note" class="alert alert-info d-none mt-2 mb-0" role="status"></div>
                 </div>
                 <div class="modal-footer d-flex justify-content-end">
                     <button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Close</button>
@@ -1090,6 +1091,10 @@
                         .attr('data-amount',data.transaction_type==='EC'?data.amount_in:data.amount_out);
                     var settled=String(data.clearance_status_label||'').toLowerCase()==='posted';
                     var approved=String(data.approval_status_label||'').toLowerCase()==='approved';
+                    $modal.find('#fvc-extra-view-note')
+                        .toggleClass('d-none',!(settled||approved))
+                        .text(settled?'This charge is posted. Approval/rejection is locked; a separate reversal is required.':
+                            approved?'This charge is already approved. Reapproval is not available.':'');
                     $modal.find('.btn-approve').prop('disabled',settled||approved)
                       .attr('title',settled?'Posted vouchers must use reversal':approved?'Already approved':'Approve this voucher');
                     $modal.find('.btn-rejected').prop('disabled',settled)
