@@ -20,6 +20,11 @@ class JournalVoucherPostingIntegrationTest extends TestCase
             $this->fail('SQLite :memory: only.');
         }
 
+        // This isolated suite verifies ORIGINAL JV posting, never the V2 pilot.
+        config([
+            'finance.v2_pilot_api_enabled' => false,
+            'finance.v2_pilot_write_enabled' => false,
+        ]);
         Schema::dropAllTables();
         Schema::create('projects', function (Blueprint $t) { $t->id(); $t->string('project')->nullable(); });
         // availableForPosting() now checks active head AND subhead definitions.
