@@ -411,7 +411,7 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         // present an editable modal that is guaranteed to fail on Save.
         $this->assertStringContainsString('A V2 edit form must not open if updateUnposted() will reject it.', $controller);
         $this->assertStringContainsString("finance_posting_journal_sources", $controller);
-        $this->assertStringContainsString("where('journal_voucher_id',$sourceId)", $controller);
+        $this->assertStringContainsString('where(\'journal_voucher_id\',$sourceId)', $controller);
         $this->assertStringContainsString("orWhereIn('journal_voucher_detail_id'", $controller);
         $this->assertStringContainsString('abort_if($posted || $attributed', $controller);
         $this->assertStringContainsString('V2JournalDraftWorkflow', $controller);
