@@ -229,6 +229,15 @@ class CommissionVoucherController extends Controller
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'voucher_number' => 'Commission draft rejected: ' . $e->getMessage(),
             ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            report($e);
+            // Do not send raw SQL/table/connection details to browser toasts.
+            $statusMismatch = in_array((int) ($e->errorInfo[1] ?? 0), [1265, 1264], true);
+            return response()->json([
+                'message' => $statusMismatch
+                    ? 'Commission status storage needs the approved local schema repair. Ask the administrator to run finance:repair-v2-commission-status.'
+                    : 'Commission voucher could not be saved. Please contact the administrator.',
+            ], 422);
         }
         if ($request->expectsJson()) {
             return response()->json([
