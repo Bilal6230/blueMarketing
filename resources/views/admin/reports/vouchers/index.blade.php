@@ -412,7 +412,39 @@ $(function(){
   $('#jv-entry-frame').attr('src','about:blank');
   $('#jv-loading').addClass('d-none').text('Loading voucher form...');
  });
- $table.on('click','.delete-btn',function(){var id=$(this).data('id');$('#deleteForm').attr('action',@json(route('journal.voucher.delete',':id')).replace(':id',id));$('#deleteModal').modal('show');});
+ $table.on('click','.delete-btn',function(){
+  var id=$(this).data('id');
+  $('#deleteForm').attr('action',@json(route('journal.voucher.delete',':id')).replace(':id',id));
+  $('#deleteModal').modal('show');
+ });
+ $('#deleteForm').on('submit.fvcJournalReverse',function(event){
+  event.preventDefault();
+  var $form=$(this),$button=$form.find('button[type="submit"]');
+  if($form.data('fvc-busy'))return;
+  $form.data('fvc-busy',true);$button.prop('disabled',true);
+  if($.financeVoucherFeedback)
+    $.financeVoucherFeedback.skeleton($('#deleteModal .modal-body'),true);
+  $.ajax({
+   url:$form.attr('action'),type:'POST',data:$form.serialize(),
+   dataType:'json',headers:{Accept:'application/json'}
+  }).done(function(response){
+   if(response&&response.status==='success'){
+    $('#deleteModal').modal('hide');
+    if($.financeVoucherFeedback)
+      $.financeVoucherFeedback.toast('success',response.message||'Voucher reversed.');
+    table.ajax.reload(null,false);
+   }else if($.financeVoucherFeedback)
+    $.financeVoucherFeedback.toast('error','Reversal was not confirmed.');
+  }).fail(function(xhr){
+   if($.financeVoucherFeedback)
+    $.financeVoucherFeedback.toast('error',
+      $.financeVoucherFeedback.error(xhr,'Voucher cannot be reversed in its current status.'));
+  }).always(function(){
+   $form.data('fvc-busy',false);$button.prop('disabled',false);
+   if($.financeVoucherFeedback)
+     $.financeVoucherFeedback.skeleton($('#deleteModal .modal-body'),false);
+  });
+ });
 });
 </script>
 @endsection
