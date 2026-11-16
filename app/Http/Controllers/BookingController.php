@@ -3460,10 +3460,14 @@ class BookingController extends Controller
                 'id' => $dataList->id,
                 'date' => $dataList->date,
                 'reference' => $dataList->reference,
+                'amount_in' => $dataList->amount_in,
                 'amount_out' => $dataList->amount_out,
+                'transaction_type' => $dataList->transaction_type,
                 'description' => $dataList->description,
                 'payment_type' => $dataList->payment_type,
-                'payment_type_label' => getPaymentTypeDetails($dataList->payment_type)['name'],
+                'payment_type_label' => $dataList->transaction_type === 'EC'
+                    ? 'Outstanding Charge'
+                    : getPaymentTypeDetails($dataList->payment_type)['name'],
                 't_number' => $dataList->t_number,
                 'bank_id' => $dataList->bank_id,
                 'bank_name' => $dataList->bank_id ? getBankNameById($dataList->bank_id) : null,
