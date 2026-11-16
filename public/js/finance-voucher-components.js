@@ -32,7 +32,10 @@ function createFilter(options){
  function close(){$popup.hide().removeClass('fvc-open');}
  function position($anchor){
   var offset=$anchor.offset(),h=$popup.outerHeight()||250,w=$popup.outerWidth()||288;
-  var left=Math.max(8,Math.min(offset.left-$(window).scrollLeft(),$(window).width()-w-8));
+  // CR anchors its Excel menu at the column's LEFT edge, not at the
+  // far-right caret (which makes CV menus overlap the next column).
+  var $column=$anchor.closest('th'),columnOffset=$column.length?$column.offset():offset;
+  var left=Math.max(8,Math.min(columnOffset.left-$(window).scrollLeft(),$(window).width()-w-8));
   var below=offset.top-$(window).scrollTop()+$anchor.outerHeight()+3;
   var top=below+h<=$(window).height()-8?below:Math.max(8,offset.top-$(window).scrollTop()-h-3);
   $popup.css({top:top+'px',left:left+'px'}).show().addClass('fvc-open');
