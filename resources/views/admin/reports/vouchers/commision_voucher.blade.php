@@ -104,7 +104,7 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                                     <tbody>
                                         <tr>
                                             <td>
-                                                <select name="accounts[]" class="form-control select2 account-select"
+                                                <select name="accounts[]" class="form-control account-select fvc-tom-select"
                                                     required>
                                                     <option value="">Select Account</option>
                                                     @foreach ($accounts as $account)
@@ -115,7 +115,7 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                                             </td>
                                             <td>
                                                 <select name="sub_accounts[]"
-                                                    class="form-control select2 sub-account-select" required>
+                                                    class="form-control sub-account-select fvc-tom-select" required>
                                                     <option value="">Select Sub-Account</option>
                                                 </select>
                                             </td>
@@ -162,12 +162,16 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
 @section('js')
     <script>
         $(document).ready(function() {
+            var feedback=$.financeVoucherFeedback;
+            function notify(type,message){if(feedback)feedback.toast(type,message);}
+            function updateSelects($scope){if(feedback)feedback.enhanceSelects($scope.find('select.fvc-tom-select'));}
+            updateSelects($('#journalForm'));
             // Add a new row to the table
             $(document).on('click', '.add-row', function() {
                 const newRow = `
                 <tr>
                     <td>
-                        <select name="accounts[]" class="form-control select2 account-select" required>
+                        <select name="accounts[]" class="form-control account-select fvc-tom-select" required>
                             <option value="">Select Account</option>
                             @foreach ($accounts as $account)
                                 <option value="{{ $account->head_accounting_id }}">{{ $account->headAccounting->name }}</option>
@@ -175,7 +179,7 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                         </select>
                     </td>
                     <td>
-                        <select name="sub_accounts[]" class="form-control select2 sub-account-select" required>
+                        <select name="sub_accounts[]" class="form-control sub-account-select fvc-tom-select" required>
                             <option value="">Select Sub-Account</option>
                         </select>
                     </td>
@@ -189,6 +193,7 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                     </td>
                 </tr>`;
                 $('#journalTable tbody').append(newRow);
+                updateSelects($('#journalTable tbody tr:last'));
             });
             // Populate the minimum two lines after the delegated handler exists.
             if ($('#journalTable tbody tr').length === 1) {
@@ -197,6 +202,7 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
 
             // Remove a row from the table
             $(document).on('click', '.remove-row', function() {
+                $(this).closest('tr').find('select.fvc-tom-select').each(function(){if(this.tomselect)this.tomselect.destroy();});
                 $(this).closest('tr').remove();
                 calculateTotals();
             });
@@ -230,7 +236,8 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
 
                 if (totalDebit !== totalCredit) {
                     // Show Error Modal
-                    $('#errorModal').modal('show');
+                    notify('error','Debit and credit must be equal before saving.');
+                    return;
                 } else {
                     // Show Confirmation Modal
                     $('#confirmationModal').modal('show');
@@ -247,11 +254,13 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                     if(!$.trim($(this).val()))$(this).val('0.00');
                 });
                 $button.prop('disabled',true);
+                if(feedback)feedback.skeleton($('#journalForm').closest('.card-body'),true);
                 $.ajax({
                     url:$form.attr('action'),type:'POST',
                     data:$form.serialize(),dataType:'json',
                     headers:{Accept:'application/json'}
                 }).done(function(response){
+                    notify('success',response.message||'Commission draft saved.');
                     $('#confirmationModal').modal('hide');
                     if(window.parent!==window && window.parent.jQuery){
                         window.parent.jQuery(window.parent.document)
@@ -260,25 +269,22 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                         window.location.href=response.redirect||'{{ route('commision.voucher.index') }}';
                     }
                 }).fail(function(xhr){
-                    var message=(xhr.responseJSON&&xhr.responseJSON.message)||
-                        (xhr.status===409?'Commission creation is blocked by the isolated-pilot safety gate.':
-                         'Could not save Commission Voucher.');
-                    var errors=xhr.responseJSON&&xhr.responseJSON.errors;
-                    if(errors){
-                        $.each(errors,function(_,messages){
-                            message+=' '+($.isArray(messages)?messages.join(' '):messages);
-                        });
-                    }
-                    $feedback.text(message).removeClass('d-none');
+                    var message=feedback?feedback.error(xhr,'Could not save Commission Voucher.'):
+                        'Could not save Commission Voucher.';
+                    notify('error',message);
                     $('#confirmationModal').modal('hide');
-                    $form.find('input,select,textarea').first().trigger('focus');
-                }).always(function(){$button.prop('disabled',false);});
+                }).always(function(){
+                    $button.prop('disabled',false);
+                    if(feedback)feedback.skeleton($('#journalForm').closest('.card-body'),false);
+                });
             });
 
             // Fetch Sub-Accounts dynamically via AJAX when account is selected
             $(document).on('change', '.account-select', function() {
                 const accountID = $(this).val();
                 const subAccountSelect = $(this).closest('tr').find('.sub-account-select');
+                // Rebuild TomSelect from server-authoritative child options.
+                if(subAccountSelect[0]&&subAccountSelect[0].tomselect)subAccountSelect[0].tomselect.destroy();
 
                 if (accountID) {
                     $.ajax({
@@ -306,16 +312,18 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                                     }
                                 });
                             } else {
-                                alert('No sub-accounts found for the selected account.');
+                                notify('warning','No sub-accounts found for the selected account.');
                             }
                         },
                         error: function(xhr, status, error) {
-                            alert('Error: ' + error);
-                        }
+                            notify('error','Unable to load sub-accounts. Please retry.');
+                        },
+                        complete: function(){updateSelects(subAccountSelect.closest('tr'));}
                     });
                 } else {
                     // Reset the sub-account dropdown if no account is selected
                     subAccountSelect.empty().append('<option value="">Select Sub-Account</option>');
+                    updateSelects(subAccountSelect.closest('tr'));
                 }
             });
 
