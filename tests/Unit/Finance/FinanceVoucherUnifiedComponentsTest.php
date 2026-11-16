@@ -393,7 +393,7 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('jv-reversal-reason', $journal);
         $this->assertStringContainsString("voucher->type === 'SV'", $actions);
         $this->assertStringContainsString("'SV' ? 'SV' : 'JV'", $controller);
-        $this->assertStringContainsString('Save as Voucher', $draft);
+        $this->assertStringContainsString("data('fvc-post-as-voucher',true)", $draft);
     }
 
 }
