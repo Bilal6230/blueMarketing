@@ -290,12 +290,12 @@ html body .main-content.page-content > .content-wrapper .card-body{
 
             // One confirmed click -> one AJAX request; keep the original
             // idempotency key intact across retries and never navigate iframe.
-            let journalSubmissionStarted=false;
+            let journalSubmissionStarted = false;
             $('#confirmSubmit').on('click',function(){
-                if(journalSubmissionStarted)return;
+                if (journalSubmissionStarted) return;
                 const $form=$('#journalForm'),$button=$(this);
-                journalSubmissionStarted=true;
-                $button.prop('disabled',true);
+                journalSubmissionStarted = true;
+                $(this).prop('disabled', true);
                 $('#confirmationModal').modal('hide');
                 var $body=$form.closest('.card-body');
                 if($.financeVoucherFeedback)$.financeVoucherFeedback.skeleton($body,true);
@@ -325,7 +325,7 @@ html body .main-content.page-content > .content-wrapper .card-body{
                     if($.financeVoucherFeedback)$.financeVoucherFeedback.toast('error',message);
                     else $('#errorModal').modal('show');
                 }).always(function(){
-                    journalSubmissionStarted=false;
+                    journalSubmissionStarted = false;
                     $button.prop('disabled',false);
                     if($.financeVoucherFeedback)$.financeVoucherFeedback.skeleton($body,false);
                 });
