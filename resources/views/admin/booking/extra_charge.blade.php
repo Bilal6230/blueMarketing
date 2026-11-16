@@ -1154,7 +1154,7 @@
                     show: true
                 });
             });
-            $(document).on("click", '.btn-rejected', function(event) {
+            $(document).on("click", '#modal-view .btn-rejected', function(event) {
                 event.preventDefault();
                 let id = $(this).attr("data-id");
                 $('#modal-view').modal('hide');
@@ -1288,7 +1288,7 @@
                 });
             });
             // Reject voucher
-            $(document).on('click', '.btn-rejected', function(e) {
+            $(document).on('click', '.admin_approval .btn-rejected, #viewChangesModal .btn-rejected', function(e) {
                 e.preventDefault();
                 const id = $(this).data('id');
                 const table = $(this).data('table');
