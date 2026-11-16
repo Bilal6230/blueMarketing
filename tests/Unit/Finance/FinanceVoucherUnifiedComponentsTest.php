@@ -103,4 +103,16 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString("finance-voucher-components.css') }}?v=3", $layout);
     }
 
+    public function test_extra_charge_has_one_visible_voucher_card_frame(): void
+    {
+        $extra=file_get_contents(resource_path('views/admin/booking/extra_charge.blade.php'));
+        $css=file_get_contents(public_path('css/finance-voucher-components.css'));
+
+        $this->assertStringContainsString('class="card bm-card-frame-reset"', $extra);
+        $this->assertStringContainsString('<x-finance.voucher-table-card', $extra);
+        $this->assertStringContainsString('.bm-card-frame-reset>.card-body', $css);
+        $this->assertStringContainsString('background:transparent!important;border:0!important;', $css);
+        $this->assertStringContainsString('.fvc-pagination-host>.fvc-pagination-footer', $css);
+    }
+
 }
