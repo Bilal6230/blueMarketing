@@ -355,4 +355,17 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('return $request->expectsJson()', $draftController);
     }
 
+    public function test_journal_posting_handles_optional_approval_schema_without_unconditional_lookup(): void
+    {
+        $controller=file_get_contents(app_path('Http/Controllers/JournalVoucherController.php'));
+        $this->assertStringContainsString(
+            "Schema::hasTable('daily_voucher_approvals')",
+            $controller
+        );
+        $this->assertStringContainsString(
+            "->where('source_id',\$savedVoucherId)",
+            $controller
+        );
+    }
+
 }
