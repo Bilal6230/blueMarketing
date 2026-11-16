@@ -332,8 +332,6 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $adapter=file_get_contents(public_path('js/finance-voucher-datatable-columns.js'));
         $this->assertStringContainsString('replace(/\s+/g,', $adapter);
         $this->assertStringContainsString('match(/\d{4}-\d{2}-\d{2}/)', $adapter);
-        $this->assertStringNotContainsString('replace(/\\s+/g,', $adapter);
-        $this->assertStringNotContainsString('match(/\\d{4}-\\d{2}-\\d{2}/)', $adapter);
     }
 
 }
