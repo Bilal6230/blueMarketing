@@ -316,7 +316,7 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $styles=file_get_contents(public_path('css/finance-voucher-components.css'));
         $header=file_get_contents(public_path('js/finance-voucher-header-filters.js'));
 
-        $this->assertStringContainsString('dropdownParent:null', $feedback);
+        $this->assertStringContainsString("dropdownParent:\$element.closest('.fvc-entry-table').length?'body':null", $feedback);
         $this->assertStringContainsString('var matched=source.match(', $adapter);
         $this->assertStringContainsString('clientSkeletonTimer=setTimeout', $adapter);
         $this->assertStringContainsString('.ts-wrapper.form-control', $styles);
@@ -396,7 +396,7 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString("headers:{Accept:'application/json'}", $journal);
         $this->assertStringContainsString('jv-reversal-reason', $journal);
         $this->assertStringContainsString("submit.fvcJournalReverse", $journal);
-        $this->assertStringContainsString("voucherWriteResponse(\n            request(),", $controller);
+        $this->assertMatchesRegularExpression('/voucherWriteResponse\\(\\s*request\\(\\),/', $controller);
         $this->assertStringContainsString("data('fvc-post-as-voucher',true)", $draft);
         $this->assertStringContainsString("voucher->type === 'SV'", $actions);
         $this->assertStringContainsString("voucher->type === 'SV') ? 'SV' : 'JV'", $controller);
