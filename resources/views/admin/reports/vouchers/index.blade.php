@@ -127,15 +127,25 @@ body.jv-directory-active{overflow:hidden!important}
 <div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
  <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
   <div class="modal-header bg-danger text-white"><h5 class="modal-title">Reverse Journal Voucher</h5><button class="close text-white" type="button" data-dismiss="modal"><span>&times;</span></button></div>
-  <div class="modal-body">This reverses existing posted accounting entries without removing their history.</div>
-  <div class="modal-footer">
-   <form id="deleteForm" method="POST">@csrf @method('DELETE')
-    <input type="hidden" name="request_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
-    <label for="jv-reversal-date">Reversal Date *</label><input type="date" id="jv-reversal-date" name="effective_date" value="{{ now()->toDateString() }}" class="form-control mb-2" required>
-    <label for="jv-reversal-reason">Reason *</label><input type="text" id="jv-reversal-reason" name="reason" maxlength="200" class="form-control mb-2" required>
+  <form id="deleteForm" method="POST">
+   @csrf @method('DELETE')
+   <input type="hidden" name="request_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
+   <div class="modal-body">
+    <p class="text-muted mb-3">This reverses posted accounting entries while preserving their history.</p>
+    <div class="form-group mb-3">
+     <label for="jv-reversal-date" class="font-weight-bold">Reversal Date *</label>
+     <input type="date" id="jv-reversal-date" name="effective_date" value="{{ now()->toDateString() }}" class="form-control" required>
+    </div>
+    <div class="form-group mb-0">
+     <label for="jv-reversal-reason" class="font-weight-bold">Reason *</label>
+     <textarea id="jv-reversal-reason" name="reason" maxlength="200" rows="3" class="form-control" placeholder="Explain the reversal" required></textarea>
+    </div>
+   </div>
+   <div class="modal-footer d-flex justify-content-end">
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button>
     <button class="btn btn-danger btn-sm" type="submit">Confirm Reversal</button>
-   </form><button class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button>
-  </div>
+   </div>
+  </form>
  </div></div>
 </div>
 @endsection
@@ -352,7 +362,18 @@ $(function(){
   var url=$(this).attr('href');
   if(!url || url.indexOf('/edit')===-1)return;
   e.preventDefault();
-  openEntry(url,url.indexOf('resubmit=1')!==-1?'Revise & Resubmit Rejected Journal Voucher':'Edit Journal Voucher');
+  // Inspect edit authorization before embedding. Laravel's exception screen
+  // must NEVER be rendered as a nested voucher form on HTTP 403/409/404.
+  var label=url.indexOf('resubmit=1')!==-1?
+    'Revise & Resubmit Rejected Journal Voucher':'Edit Journal Voucher';
+  $.ajax({url:url,type:'GET',headers:{Accept:'application/json'}})
+   .done(function(){openEntry(url,label);})
+   .fail(function(xhr){
+    var message=$.financeVoucherFeedback?
+      $.financeVoucherFeedback.error(xhr,'This voucher cannot be edited in its current state.'):
+      'This voucher cannot be edited in its current state.';
+    if($.financeVoucherFeedback)$.financeVoucherFeedback.toast('error',message);
+   });
  });
  $('#jv-entry-frame').on('load',function(){
   if(!entryUrl)return;
