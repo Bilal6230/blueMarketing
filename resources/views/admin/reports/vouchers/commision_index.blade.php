@@ -68,6 +68,7 @@
 
                         <!-- Table -->
                         <x-finance.voucher-table-card class="mb-3">
+                        <div id="cv-list-error" class="alert alert-warning d-none" role="alert" aria-live="polite"></div>
                         <table id="journalTable" class="table table-bordered">
                             <thead class="bg-primary text-white">
                                 <tr>
@@ -77,9 +78,9 @@
                                     <th>Date</th>
                                     <th>Description</th>
                                     <th>Amount</th>
-                                    @canany(['edit jv', 'delete jv'])
-                                        <th>Actions</th>
-                                    @endcanany
+                                    {{-- Keep the table schema stable for read-only and print-only users.
+                                         Action buttons remain gated in actions.blade.php. --}}
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -173,6 +174,7 @@
         });
 
         function renderDataTable() {
+            $('#cv-list-error').addClass('d-none').text('');
             const filter_voucher_number = $('#filter_voucher_number').val();
             const filter_amount = $('#filter_amount').val();
             const filter_reference = $('#filter_reference').val();
@@ -194,7 +196,9 @@
                 pageLength:25,
                 lengthMenu:[[10,25,50,100],[10,25,50,100]],
                 drawCallback:function(){
-                    $.blueVoucherRegisterActions.enhance($('#journalTable'));
+                    if ($.blueVoucherRegisterActions && $.blueVoucherRegisterActions.enhance) {
+                        $.blueVoucherRegisterActions.enhance($('#journalTable'));
+                    }
                 },
                 ajax: {
                     url: '{{ route('commision.voucher.index') }}', // Route to get data
@@ -215,7 +219,17 @@
                             d.filter_date = $('#filter_date').val(); // Use current date filter
                         }
                     },
-                    dataSrc: 'data'
+                    dataSrc: 'data',
+                    error: function(xhr) {
+                        // DataTables owns the processing indicator; on failed
+                        // requests explain the failure without leaking response
+                        // payloads or leaving a spinner blocking the directory.
+                        $('#journalTable_processing, #journalTable_wrapper .dataTables_processing').hide();
+                        var message = xhr.status === 403 ? 'You do not have access to this voucher register.'
+                            : xhr.status === 419 ? 'Session expired. Refresh the page and sign in again.'
+                            : 'Commission vouchers could not be loaded. Please retry.';
+                        $('#cv-list-error').text(message).removeClass('d-none');
+                    }
                 },
                 columns: [{
                         data: 'id'
