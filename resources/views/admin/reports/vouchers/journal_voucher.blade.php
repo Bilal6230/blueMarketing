@@ -134,7 +134,7 @@ html body .main-content.page-content > .content-wrapper .card-body{
 
                             <!-- Dynamic Table for Journal Entries -->
                             <div class="table-responsive mb-4">
-                           <table class="table table-bordered" id="journalTable" style="table-layout: fixed;">
+                           <table class="table table-bordered fvc-entry-table" id="journalTable" style="table-layout: fixed;">
 
     <colgroup>
         <col style="width: 15%">  <!-- Account (DECREASED) -->
