@@ -47,7 +47,8 @@
       // over the canonical TomSelect control inside a finance modal.
       $element.removeClass('select2 select2-hidden-accessible').removeAttr('data-select2-id');
       new window.TomSelect(element,{create:false,allowEmptyOption:true,
-        maxOptions:200,sortField:{field:'text',direction:'asc'},
+        maxOptions:200,maxItems:element.multiple?null:1,
+        sortField:{field:'text',direction:'asc'},
         dropdownParent:element.closest('.modal-content')||'body',
         dropdownClass:'ts-dropdown fvc-global-ts-dropdown',
         onInitialize:function(){this.wrapper.classList.add('fvc-ts-ready');}});
@@ -121,10 +122,10 @@
  // Modal contents can be detached and appended after page-ready (Extra/CV).
  // Initialize only when visible and resync choices populated by legacy AJAX.
  $(document).on('shown.bs.modal.fvcSelects','.fvc-modern-modal',function(){
-   tom($(this).find('select').not('[multiple]'));
+   tom($(this).find('select.fvc-tom-select,select[data-posting-allocation],select[data-bank-settlement-account]'));
  });
  $(document).ajaxSuccess(function(){
-   $('.fvc-modern-modal.show select.tomselected').each(function(){
+   $('.fvc-modern-modal.show select.tomselected, .bm-modern-draft select.tomselected').each(function(){
      if(this.tomselect)this.tomselect.sync();
    });
  });
