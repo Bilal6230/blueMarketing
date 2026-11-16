@@ -227,6 +227,15 @@ class CommissionVoucherController extends Controller
                 'voucher_number' => 'Commission draft rejected: ' . $e->getMessage(),
             ]);
         }
+        if ($request->expectsJson()) {
+            return response()->json([
+                'status' => 'success',
+                'voucher_id' => $id,
+                'redirect' => route('commision.voucher.edit', ['id'=>$id] +
+                    ($request->boolean('embed') ? ['embed'=>1] : [])),
+                'message' => 'Commission draft saved. Approval/posting is still required.',
+            ], 201);
+        }
         return redirect()->route('commision.voucher.edit', ['id' => $id] + ($request->boolean('embed') ? ['embed'=>1] : []))
             ->with('success', 'Commission draft saved. Approval/posting is still required.');
     }
