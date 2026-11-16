@@ -115,4 +115,19 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('.fvc-pagination-host>.fvc-pagination-footer', $css);
     }
 
+    public function test_commission_directory_has_stable_columns_and_friendly_ajax_failure_state(): void
+    {
+        $view=file_get_contents(resource_path('views/admin/reports/vouchers/commision_index.blade.php'));
+        $controller=file_get_contents(app_path('Http/Controllers/CommissionVoucherController.php'));
+
+        $this->assertStringContainsString('<th>Actions</th>', $view);
+        $this->assertStringNotContainsString("@canany(['edit jv', 'delete jv'])", $view);
+        $this->assertStringContainsString("data: 'actions'", $view);
+        $this->assertStringContainsString('id="cv-list-error"', $view);
+        $this->assertStringContainsString('Session expired. Refresh the page', $view);
+        $this->assertStringContainsString('Commission vouchers could not be loaded.', $view);
+        $this->assertStringContainsString("roles->first()?->name ?? ''", $controller);
+        $this->assertStringContainsString("\$x['vouchers'] = collect();", $controller);
+    }
+
 }
