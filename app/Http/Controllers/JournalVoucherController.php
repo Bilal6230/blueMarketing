@@ -952,6 +952,30 @@ class JournalVoucherController extends Controller
         }else{
             app(\App\Services\Finance\VoucherApprovalMutationGuard::class)
                 ->assertLegacyMutationAllowed((int) getSelectedTown(), 'journal_vouchers', (int) $voucher->id);
+            // A V2 edit form must not open if updateUnposted() will reject it.
+            // The V2 draft writer deliberately forbids changes after posting
+            // or legacy ledger attribution. Evaluate the same immutable-source
+            // conditions *before* rendering an editable modal.
+            if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+                \App\Services\Finance\V2OriginalWorkflowAccess::authorize((int) getSelectedTown());
+                $sourceId=(int) $voucher->id;
+                $posted=\Illuminate\Support\Facades\Schema::hasTable('finance_posting_journal_sources')
+                    && DB::table('finance_posting_journal_sources')
+                        ->where('journal_voucher_id',$sourceId)->exists();
+                $attributed=\Illuminate\Support\Facades\Schema::hasTable('ledgers')
+                    && DB::table('ledgers')->where(function($query) use($sourceId) {
+                        $query->where(function($legacy)use($sourceId) {
+                            $legacy->where('type','JV')->where('type_id',$sourceId);
+                        });
+                        if(\Illuminate\Support\Facades\Schema::hasColumn('ledgers','journal_voucher_detail_id')){
+                            $query->orWhereIn('journal_voucher_detail_id',
+                                DB::table('journal_voucher_details')->select('id')
+                                    ->where('journal_voucher_id',$sourceId));
+                        }
+                    })->exists();
+                abort_if($posted || $attributed || $voucher->deleted_at !== null,409,
+                    'This Journal Voucher is already posted or linked to ledger entries. Direct editing is not permitted; use the authorized reversal/correction workflow.');
+            }
         }
 
         // Get selected town's project_id
