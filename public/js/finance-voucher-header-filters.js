@@ -274,6 +274,9 @@
                 $feedback.addClass('d-none').text('');
                 $entry.data('fvc-busy',true);
                 var $buttons=$entry.find('[type="submit"],.bm-extra-save').prop('disabled',true);
+                var $loadingBody=$entry.is('#voucherForm')?
+                    $('#bmExtraConfirmModal .modal-body'):$entry.closest('.modal-body');
+                if($.financeVoucherFeedback)$.financeVoucherFeedback.skeleton($loadingBody,true);
                 $.ajax({
                     url:$entry.attr('action'),type:($entry.attr('method')||'POST').toUpperCase(),
                     data:new FormData($entry[0]),processData:false,contentType:false,dataType:'json',
@@ -297,6 +300,7 @@
                     }
                 }).always(function(){
                     $entry.data('fvc-busy',false);$buttons.prop('disabled',false);
+                    if($.financeVoucherFeedback)$.financeVoucherFeedback.skeleton($loadingBody,false);
                     $('#bmExtraConfirmSave').prop('disabled',false);
                 });
             }
