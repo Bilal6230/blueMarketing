@@ -29,6 +29,14 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                         <h4 class="mb-0">{{ $title }}</h4>
                     </div>
                     <div class="card-body">
+                        @unless($commissionPilotCreateAllowed)
+                        <div class="alert alert-warning" role="alert">
+                            Commission Voucher creation is protected: the current connection is not an
+                            approved isolated V2 finance pilot with writes enabled. No accounting data
+                            has been changed. Ask the administrator to use the approved isolated
+                            test database for this workflow.
+                        </div>
+                        @endunless
                         <div id="cv-entry-feedback" class="alert alert-danger d-none" role="alert" aria-live="polite"></div>
                         <form id="journalForm" action="{{ route('commision.voucher.store', request()->boolean('embed') ? ['embed'=>1] : []) }}" method="POST">
                             @csrf
@@ -139,7 +147,7 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
 
                             <!-- Submit Button -->
                             <div class="text-center">
-                                <button type="submit" class="btn btn-primary">
+                                <button type="submit" class="btn btn-primary" @unless($commissionPilotCreateAllowed) disabled title="Requires approved isolated V2 pilot" @endunless>
                                     <i class="fas fa-save"></i> Save Commision Voucher
                                 </button>
                             </div>
