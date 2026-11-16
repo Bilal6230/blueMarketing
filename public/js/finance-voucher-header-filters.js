@@ -218,7 +218,19 @@
         // Extra Charge: keep existing voucherForm/confirmation lifecycle, only relocate the entry UI.
         var $extra=$('.bm-modern-extra');
         if ($extra.length) {
-            $('#modal-charge-type,#modal-edit,#modal-view,#modal-approve,#modal-delete').addClass('fvc-modern-modal fvc-modal-purple');
+            var $extraModals=$('#modal-charge-type,#modal-edit,#modal-view,#modal-approve,#modal-delete')
+                .addClass('fvc-modern-modal fvc-modal-purple');
+            // A modal's initial paint uses the CR form skeleton; never leave
+            // the mask on top of usable inputs after Bootstrap has opened it.
+            $(document).on('show.bs.modal.fvcExtraLoad',
+                '.fvc-modal-purple:not(#bmExtraConfirmModal)',function(){
+                    if($.financeVoucherFeedback)
+                        $.financeVoucherFeedback.skeleton($(this).find('.modal-body').first(),true);
+                }).on('shown.bs.modal.fvcExtraLoad',
+                '.fvc-modal-purple:not(#bmExtraConfirmModal)',function(){
+                    if($.financeVoucherFeedback)
+                        $.financeVoucherFeedback.skeleton($(this).find('.modal-body').first(),false);
+                });
             var extraSaveCompleted=false;
             function refreshExtraDirectory(){
                 var $table=$extra.find('#example1');
