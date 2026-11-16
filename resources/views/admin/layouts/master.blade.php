@@ -702,7 +702,7 @@
 <link rel="stylesheet" href="{{ asset('css/finance-voucher-system.css') }}?v=2">
 <link rel="stylesheet" href="{{ asset('css/finance-voucher-components.css') }}?v=12">
 <script src="{{ asset('js/finance-voucher-components.js') }}?v=3"></script>
-<script src="{{ asset('js/finance-voucher-header-filters.js') }}?v=11"></script>
+<script src="{{ asset('js/finance-voucher-header-filters.js') }}?v=12"></script>
 <script src="{{ asset('js/finance-voucher-heading-columns.js') }}?v=2"></script>
 <script src="{{ asset('js/finance-voucher-datatable-columns.js') }}?v=9"></script>
 </body>
