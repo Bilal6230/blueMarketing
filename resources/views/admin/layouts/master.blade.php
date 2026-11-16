@@ -692,18 +692,18 @@
     });
     </script>
     <style>[data-ajax-panel],.tab-pane{transition:opacity .15s ease}.ajax-panel-loading{opacity:.58;pointer-events:none;position:relative}.ajax-panel-loading:after{content:'Saving…';position:absolute;z-index:20;top:12px;right:14px;padding:6px 12px;border-radius:999px;background:#14243a;color:#fff;font-size:12px;box-shadow:0 5px 18px #10243a33}</style>
-    <script src="{{ asset('js/blue-action-menu.js') }}?v=3"></script>
+    <script src="{{ asset('js/blue-action-menu.js') }}?v=4"></script>
     <script src="{{ asset('js/blue-voucher-register-actions.js') }}?v=1"></script>
     <script src="{{ asset('js/blue-voucher-pagination.js') }}?v=1"></script>
     <script src="{{ asset('js/blue-voucher-column-filter.js') }}?v=1"></script>
     @stack('script')
 {{-- Canonical design system loads after every page-specific style and script. --}}
 <link rel="stylesheet" href="{{ asset('css/finance-voucher-system.css') }}?v=2">
-<link rel="stylesheet" href="{{ asset('css/finance-voucher-components.css') }}?v=4">
+<link rel="stylesheet" href="{{ asset('css/finance-voucher-components.css') }}?v=5">
 <script src="{{ asset('js/finance-voucher-components.js') }}?v=2"></script>
-<script src="{{ asset('js/finance-voucher-header-filters.js') }}?v=3"></script>
+<script src="{{ asset('js/finance-voucher-header-filters.js') }}?v=4"></script>
 <script src="{{ asset('js/finance-voucher-heading-columns.js') }}?v=2"></script>
-<script src="{{ asset('js/finance-voucher-datatable-columns.js') }}?v=2"></script>
+<script src="{{ asset('js/finance-voucher-datatable-columns.js') }}?v=3"></script>
 </body>
 
 </html>
