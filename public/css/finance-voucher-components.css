@@ -449,3 +449,14 @@
  background:linear-gradient(100deg,#e9eef4 15%,#f9fbfd 45%,#e9eef4 75%);
  background-size:200% 100%;animation:bm-skeleton-pulse 1.3s ease-in-out infinite;
 }
+
+/* Detached TS menus (CV iframe/table and Extra modal) use the same palette,
+   without being clipped by a scrollable accounting table. */
+.fvc-global-ts-dropdown{
+ background:#fff!important;border:1px solid #dbe5ef!important;
+ border-radius:6px!important;font-size:12px!important;
+ box-shadow:0 10px 24px rgba(25,40,60,.15)!important;
+ z-index:11000!important;max-height:260px!important;overflow-y:auto!important;
+}
+.fvc-global-ts-dropdown .option{padding:8px 10px!important}
+.fvc-global-ts-dropdown .active{background:#e9f2ff!important}
