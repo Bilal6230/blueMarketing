@@ -39,13 +39,47 @@
  }
  function tom($select){
     if(typeof window.TomSelect!=='function')return;
-    $($select).each(function(){
-      if(this.tomselect)return;
-      if($.fn.select2 && $(this).data('select2'))$(this).select2('destroy');
-      new window.TomSelect(this,{create:false,allowEmptyOption:true,
+    $($select).filter('select').each(function(){
+      var element=this,$element=$(element);
+      if(element.tomselect){element.tomselect.sync();return;}
+      if($.fn.select2 && $element.data('select2'))$element.select2('destroy');
+      // Old select2 classes and form styles must not paint a second select
+      // over the canonical TomSelect control inside a finance modal.
+      $element.removeClass('select2 select2-hidden-accessible').removeAttr('data-select2-id');
+      new window.TomSelect(element,{create:false,allowEmptyOption:true,
         maxOptions:200,sortField:{field:'text',direction:'asc'},
-        plugins:['dropdown_input']});
+        dropdownParent:element.closest('.modal-content')||'body',
+        onInitialize:function(){this.wrapper.classList.add('fvc-ts-ready');}});
     });
+ }
+ function tableSkeleton($table,show){
+    var $node=$($table),$wrap=$node.closest('.dataTables_wrapper');
+    if(!$wrap.length)return;
+    if(show){
+      if($wrap.children('.fvc-table-skeleton').length)return;
+      var $layer=$('<div>',{'class':'fvc-table-skeleton',role:'status','aria-label':'Loading vouchers'});
+      for(var i=0;i<5;i++){
+        var $row=$('<div>',{'class':'fvc-table-skeleton-row'});
+        for(var j=0;j<5;j++)$row.append($('<span>',{'class':'fvc-skeleton-shimmer'}));
+        $layer.append($row);
+      }
+      $wrap.addClass('fvc-table-loading').append($layer);
+    }else $wrap.removeClass('fvc-table-loading').children('.fvc-table-skeleton').remove();
+ }
+ function bindTableSkeleton(selector){
+    var $table=$(selector);
+    if(!$table.length||$table.data('fvc-table-skeleton-bound'))return;
+    $table.data('fvc-table-skeleton-bound',true);
+    $table.on('preXhr.dt.fvcSkeleton processing.dt.fvcSkeleton',function(event,settings,state){
+      if(event.type==='processing')tableSkeleton($table,!!state);
+      else tableSkeleton($table,true);
+    }).on('draw.dt.fvcSkeleton error.dt.fvcSkeleton xhr.dt.fvcSkeleton',function(){
+      tableSkeleton($table,false);
+    });
+    if($.fn.DataTable&&$.fn.DataTable.isDataTable($table)){
+      var settings=$table.DataTable().settings()[0];
+      if(settings&&settings.bProcessing)tableSkeleton($table,true);
+    }
  }
  function skeleton($target,show){
     var $root=$($target);
@@ -61,5 +95,5 @@
       $root.addClass('fvc-is-loading').append($placeholder);
     }else{$root.removeClass('fvc-is-loading').children('.fvc-modal-skeleton').remove();}
  }
- $.financeVoucherFeedback={toast:toast,error:safeError,enhanceSelects:tom,skeleton:skeleton};
+ $.financeVoucherFeedback={toast:toast,error:safeError,enhanceSelects:tom,skeleton:skeleton,tableSkeleton:tableSkeleton,bindTableSkeleton:bindTableSkeleton};
 })(jQuery);
