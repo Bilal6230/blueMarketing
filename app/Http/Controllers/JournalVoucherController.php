@@ -597,6 +597,13 @@ class JournalVoucherController extends Controller
             ? old('idempotency_key', (string) \Illuminate\Support\Str::uuid())
             : null;
 
+        // Fail fast on the same finance policy used by the posting writer:
+        // a pilot with mandatory approval cannot post directly.
+        $x['journalPilotApprovalBlocked'] =
+            \App\Services\Finance\V2OriginalWorkflowAccess::selected()
+            && (bool) app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
+                ->policy((int) $selectedProjectId, 'JV');
+
         $x['restoredSubAccounts'] = ProjectHeadSubhead::with('subheadAccounting')
             ->where('project_id', $selectedProjectId)
             ->whereIn('id', (array) old('sub_accounts', []))->get()->keyBy('id');
