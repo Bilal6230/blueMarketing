@@ -334,4 +334,25 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('match(/\d{4}-\d{2}-\d{2}/)', $adapter);
     }
 
+    public function test_journal_and_draft_modal_ajax_success_contract_and_refresh(): void
+    {
+        $journalView=file_get_contents(resource_path('views/admin/reports/vouchers/journal_voucher.blade.php'));
+        $journalList=file_get_contents(resource_path('views/admin/reports/vouchers/index.blade.php'));
+        $journalController=file_get_contents(app_path('Http/Controllers/JournalVoucherController.php'));
+        $draftView=file_get_contents(resource_path('views/admin/finance/voucher/draft_voucher.blade.php'));
+        $draftController=file_get_contents(app_path('Http/Controllers/LedgerController.php'));
+        $shared=file_get_contents(public_path('js/finance-voucher-header-filters.js'));
+
+        $this->assertStringContainsString("dataType:'json',headers:{Accept:'application/json'}", $journalView);
+        $this->assertStringContainsString('finance:journal-saved', $journalView);
+        $this->assertStringContainsString('finance:journal-saved.fvc', $journalList);
+        $this->assertStringNotContainsString("$('#journalForm')[0].submit()", $journalView);
+        $this->assertStringContainsString('private function voucherWriteResponse', $journalController);
+        $this->assertStringContainsString("'status' => 'success'", $journalController);
+        $this->assertStringContainsString('finance:draft-saved', $draftView);
+        $this->assertStringContainsString('finance:draft-saved.fvc', $shared);
+        $this->assertStringContainsString("data('fvc-post-as-voucher',true)", $draftView);
+        $this->assertStringContainsString("return $request->expectsJson()", $draftController);
+    }
+
 }
