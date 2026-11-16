@@ -700,7 +700,7 @@
     @stack('script')
 {{-- Canonical design system loads after every page-specific style and script. --}}
 <link rel="stylesheet" href="{{ asset('css/finance-voucher-system.css') }}?v=2">
-<link rel="stylesheet" href="{{ asset('css/finance-voucher-components.css') }}?v=9">
+<link rel="stylesheet" href="{{ asset('css/finance-voucher-components.css') }}?v=10">
 <script src="{{ asset('js/finance-voucher-components.js') }}?v=3"></script>
 <script src="{{ asset('js/finance-voucher-header-filters.js') }}?v=6"></script>
 <script src="{{ asset('js/finance-voucher-heading-columns.js') }}?v=2"></script>
