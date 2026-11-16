@@ -372,10 +372,10 @@ $(function(){
    if(!$form.length){
     var $success=$doc.find('.alert-success');
     if($success.length){$('#jv-entry').modal('hide');table.ajax.reload(null,false);return;}
-    $('#jv-loading').html('<span class="text-danger">Voucher form failed to render. Use Open in new tab.</span>');return;
+    $('#jv-loading').removeClass('d-none').html('<span class="text-danger">Voucher form failed to render. Use Open in new tab.</span>');return;
    }
    $('#jv-loading').addClass('d-none');
-  }catch(ex){$('#jv-loading').html('<span class="text-danger">Form unavailable. Open in a new tab.</span>');}
+  }catch(ex){$('#jv-loading').removeClass('d-none').html('<span class="text-danger">Form unavailable. Open in a new tab.</span>');}
  });
  $('#jv-entry').on('hidden.bs.modal',function(){
   entryUrl='';
