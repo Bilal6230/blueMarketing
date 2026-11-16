@@ -6,8 +6,23 @@ use Illuminate\Support\Facades\{Auth, DB, Gate};
 
 final class V2OriginalWorkflowAccess
 {
+    /**
+     * A local-only standard ERP mode is explicitly requested by the operator
+     * when testing ordinary voucher screens. Isolated V2 databases remain
+     * in the experimental workflow and can never be switched to legacy writes.
+     */
+    private static function normalErpMode(): bool
+    {
+        $connection = config('database.default');
+        $database = (string) config('database.connections.'.$connection.'.database');
+        return config('app.env') === 'local'
+            && !str_starts_with($database, 'bluemarketing_v2_')
+            && (bool) config('finance.normal_erp_mode', false);
+    }
+
     public static function selected(): bool
     {
+        if (self::normalErpMode()) return false;
         $connection = config('database.default');
         return str_starts_with((string) config('database.connections.'.$connection.'.database'), 'bluemarketing_v2_')
             || (in_array(config('app.env'), ['local', 'testing'], true) && config('finance.v2_pilot_api_enabled'));
@@ -15,6 +30,7 @@ final class V2OriginalWorkflowAccess
 
     public static function enabled(): bool
     {
+        if (self::normalErpMode()) return false;
         return in_array(config('app.env'), ['local', 'testing'], true)
             && config('finance.v2_pilot_api_enabled') && config('finance.v2_pilot_write_enabled');
     }
