@@ -1,5 +1,14 @@
 # BlueMarketing — ACTIVE HANDOFF (new chat continuity)
 
+## 2026-11-16 — OWNER VERIFIED TERMINAL FINANCE CLOSE-OUT GATE: ALL PASS
+- On branch `upgrade/laravel-framework` after pulling `c8d14a82`, owner ran the required terminal commands on local Windows/Laragon.
+- `JournalVoucherPostingIntegrationTest`: **56 passed (205 assertions)**.
+- `JournalVoucherCollisionTest`: **1 passed (2 assertions)**.
+- Aggregate `JournalVoucher`: **65 passed (235 assertions)**; contains the integration/collision suites above, so do not double-count tests.
+- `FinanceVoucherUnifiedComponentsTest`: **20 passed (184 assertions)**.
+- Previously reported separate `CommissionVoucherListingResponseTest` and `VoucherGlobalVisualParityTest` gates passed (7 and 6) in the earlier owner run, but were not rerun in this latest block.
+- Terminal JV/unified regression gate **PASS**. Browser acceptance **OPEN**, not PASS: CR/CV, Extra, Draft, JV and SV dynamic behavior, permissions, approvals and any required ledger reconciliation must be observed in an isolated/disposable local database before marking finance scope closed. Draft Save as Voucher remains the guarded native posting path. Production/client database must not be used for write test records.
+
 ## 2026-11-16 — TERMINAL JV SUITE THIRD OWNER RUN: OPTIONAL APPROVAL TABLE
 - Owner results at c7bb9343: JournalVoucherCollisionTest **1 PASS**; FinanceVoucherUnifiedComponentsTest **19 PASS (182 assertions)**. JournalVoucherPostingIntegrationTest **32 FAIL/24 PASS**, and aggregate JournalVoucher **32 FAIL/33 PASS**. All 32 failing integration cases share `no such table: daily_voucher_approvals` from the final post-save success lookup after the underlying posting transaction. Earlier pilot-branch and account fixture problems are resolved.
 - Corrected `JournalVoucherController::store` to query pending approval status only if `Schema::hasTable('daily_voucher_approvals')`; this matches the optional policy check used by `DailyVoucherApprovalWorkflow::submitIfRequired`. Approval-enabled installs still query the same status; no approval/posting guard relaxed. This also prevents an otherwise successful legacy write from showing a false save error.
