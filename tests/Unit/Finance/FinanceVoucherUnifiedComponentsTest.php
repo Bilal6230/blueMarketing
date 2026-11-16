@@ -130,4 +130,51 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString("\$x['vouchers'] = collect();", $controller);
     }
 
+
+    public function test_commission_first_ajax_request_has_initialized_date_state(): void
+    {
+        $adapter=file_get_contents(public_path('js/finance-voucher-datatable-columns.js'));
+        $view=file_get_contents(resource_path('views/admin/reports/vouchers/commision_index.blade.php'));
+
+        $this->assertStringContainsString("dates:{from:'',to:''}", $adapter);
+        $this->assertStringContainsString('columnState.dates.from', $view);
+        $this->assertStringContainsString('columnState.dates.to', $view);
+    }
+
+    public function test_commission_uses_correct_accounting_columns_and_ajax_draft_submission(): void
+    {
+        $view=file_get_contents(resource_path('views/admin/reports/vouchers/commision_voucher.blade.php'));
+        $controller=file_get_contents(app_path('Http/Controllers/CommissionVoucherController.php'));
+
+        $this->assertStringContainsString('name="debit[]"', $view);
+        $this->assertStringContainsString('name="credit[]"', $view);
+        $this->assertStringContainsString('id="totalDebit"', $view);
+        $this->assertStringContainsString('id="totalCredit"', $view);
+        $this->assertStringContainsString("$('#journalTable .add-row').first().trigger('click')", $view);
+        $this->assertStringContainsString("dataType:'json'", $view);
+        $this->assertStringContainsString('finance:commission-saved', $view);
+        $this->assertStringContainsString('V2IsolatedConnectionGuard::assertAllowed()', $controller);
+        $this->assertStringContainsString("'voucher_id' => $id", $controller);
+    }
+
+    public function test_extra_charge_ajax_and_shared_modals_keep_original_posting_authority(): void
+    {
+        $script=file_get_contents(public_path('js/finance-voucher-header-filters.js'));
+        $controller=file_get_contents(app_path('Http/Controllers/BookingController.php'));
+        $css=file_get_contents(public_path('css/finance-voucher-components.css'));
+        $actions=file_get_contents(public_path('js/blue-action-menu.js'));
+
+        $this->assertStringContainsString('submitExtraAjax($form', $script);
+        $this->assertStringContainsString('submitExtraAjax($(this)', $script);
+        $this->assertStringContainsString('new FormData($entry[0])', $script);
+        $this->assertStringContainsString('fvc-modern-modal fvc-modal-purple', $script);
+        $this->assertStringContainsString('fvc-modern-modal fvc-modal-blue', $script);
+        $this->assertStringContainsString("if ($request->expectsJson())", $controller);
+        $this->assertStringContainsString('Charge type saved.', $controller);
+        $this->assertStringContainsString('.fvc-modern-modal .modal-header', $css);
+        foreach (['btn-edit','btn-view','btn-delete','btn-view-changes'] as $class) {
+            $this->assertStringContainsString($class, $actions);
+        }
+    }
+
 }
