@@ -211,7 +211,7 @@
         // Extra Charge: keep existing voucherForm/confirmation lifecycle, only relocate the entry UI.
         var $extra=$('.bm-modern-extra');
         if ($extra.length) {
-            $('#modal-charge-type').addClass('fvc-modern-modal fvc-modal-purple');
+            $('#modal-charge-type,#modal-edit,#modal-view,#modal-approve,#modal-delete').addClass('fvc-modern-modal fvc-modal-purple');
             var extraSaveCompleted=false;
             function refreshExtraDirectory(){
                 var $table=$extra.find('#example1');
@@ -375,6 +375,7 @@
                     .append($('<h5>',{'class':'modal-title'}).text('Extra Charge Pending Clearance'))
                     .append($('<button>',{type:'button','class':'close','data-dismiss':'modal'}).html('&times;')))
                     .append($('<div>',{'class':'modal-body'}).append($pendingPanel))));
+                $pendingModal.addClass('fvc-modern-modal fvc-modal-purple');
                 $('body').append($pendingModal);
                 $('<button>',{type:'button','class':'btn btn-outline-warning btn-sm'})
                     .text('Pending Clearance')
@@ -390,6 +391,7 @@
                 .append($('<h5>',{'class':'modal-title'}).text('Extra Charge Collection'))
                 .append($('<button>',{type:'button','class':'close','data-dismiss':'modal'}).html('&times;')))
                 .append($('<div>',{'class':'modal-body'}))));
+            $paymentModal.addClass('fvc-modern-modal fvc-modal-purple');
             $('body').append($paymentModal);
             var $activePayment=null;
             function mountExtraPaymentActions(){
