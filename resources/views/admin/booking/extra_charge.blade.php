@@ -457,6 +457,11 @@
                                                                             @endforeach
                                                                         </select>
                                                                         <input type="text" name="t_number" required maxlength="100" placeholder="Transaction / cheque number" class="form-control form-control-sm">
+                                                                        <div class="fvc-cheque-purpose d-none">
+                                                                            <label class="small mb-1">Cheque purpose</label>
+                                                                            <input type="text" name="cheque_purpose" maxlength="500"
+                                                                                class="form-control form-control-sm" placeholder="Cheque purpose">
+                                                                        </div>
                                                                         <input type="text" name="reference" required maxlength="100" placeholder="Unique slip reference" class="form-control form-control-sm">
                                                                         <input type="number" name="amount" min="0.01" step="0.01" max="{{ $i->available_amount }}" required class="form-control form-control-sm">
                                                                         <input type="hidden" name="detail" value="Extra Charge bank pending receipt">
