@@ -11,6 +11,9 @@ final class DailyVoucherApprovalWorkflow
 {
     public function policy(int $projectId, string $type): ?DailyVoucherApprovalPolicy
     {
+        // Explicit local standard ERP testing uses the original direct-posting
+        // workflow. Do not require a separately configured pilot approver.
+        if (V2OriginalWorkflowAccess::normalErpMode()) return null;
         if (!Schema::hasTable('daily_voucher_approval_policies')) return null;
         return DailyVoucherApprovalPolicy::query()->where('project_id', $projectId)
             ->where('voucher_type', $type)->where('approval_required', true)->first();
@@ -18,6 +21,7 @@ final class DailyVoucherApprovalWorkflow
 
     public function submitIfRequired(int $projectId, string $type, string $sourceTable, int $sourceId, int $userId): bool
     {
+        if (V2OriginalWorkflowAccess::normalErpMode()) return false;
         if (!Schema::hasTable('daily_voucher_approval_policies')) {
             return false;
         }
