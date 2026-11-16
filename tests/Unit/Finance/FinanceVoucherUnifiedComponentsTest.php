@@ -229,7 +229,15 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringNotContainsString("text:'Apply'", $adapter);
         $this->assertStringNotContainsString('draftFilters=', $adapter);
         $this->assertStringContainsString('$.blueTableSkeleton.show(', $feedback);
-        $this->assertStringNotContainsString("class':'fvc-skeleton-shimmer'", $feedback);
+        // The table loader must reuse CR rows, while the separate form-modal
+        // loader is still allowed to use its own fvc-skeleton-shimmer markup.
+        $tableStart=strpos($feedback, 'function tableSkeleton(');
+        $tableEnd=strpos($feedback, 'function bindTableSkeleton(', $tableStart === false ? 0 : $tableStart);
+        $this->assertNotFalse($tableStart);
+        $this->assertNotFalse($tableEnd);
+        $tableLoader=substr($feedback, $tableStart, $tableEnd-$tableStart);
+        $this->assertStringContainsString('$.blueTableSkeleton.show(', $tableLoader);
+        $this->assertStringNotContainsString("class':'fvc-skeleton-shimmer'", $tableLoader);
         $this->assertStringContainsString('fvc-skeleton-table', $styles);
         $this->assertStringContainsString('.cv-directory .cv-shell>.card-body', $styles);
         $this->assertStringContainsString("bindTableSkeleton('#journalTable')", $cv);
