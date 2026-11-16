@@ -145,6 +145,9 @@ class CommissionVoucherController extends Controller
 
         $x['accounts'] = $data_list;
         $x['nextCommissionNumber'] = \App\Services\Finance\CommissionVoucherNumber::next((int) $selectedProjectId);
+        $x['commissionPilotCreateAllowed'] =
+            \App\Services\Finance\V2OriginalWorkflowAccess::enabled()
+            && \App\Services\Finance\V2IsolatedConnectionGuard::isAllowed();
 
 
         return view('admin.reports.vouchers.commision_voucher', $x);
