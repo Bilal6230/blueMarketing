@@ -924,8 +924,10 @@ class JournalVoucherController extends Controller
                 $voucher->delete();
             });
         }
-        return redirect()->route('journal.voucher.index')
-            ->with('success', 'Journal voucher reversed; original accounting history preserved.');
+        return $this->voucherWriteResponse(
+            request(),
+            'Journal voucher reversed; original accounting history preserved.'
+        );
     }
 
     public function edit($id)
