@@ -86,10 +86,18 @@
                                 .append($('<button>',{type:'button','class':'btn btn-outline-secondary btn-sm','data-dismiss':'modal'}).text('Close')))));
                 $commissionModal.addClass('fvc-modern-modal fvc-modal-blue');
                 $('body').append($commissionModal);
+                function loadCommissionForm(url){
+                    var $body=$commissionModal.find('.modal-body');
+                    if($.financeVoucherFeedback)$.financeVoucherFeedback.skeleton($body,true);
+                    var $frame=$('#bmCommissionFrame');
+                    $frame.off('load.fvc').one('load.fvc',function(){
+                        if($.financeVoucherFeedback)$.financeVoucherFeedback.skeleton($body,false);
+                    }).attr('src',url+(url.indexOf('?')===-1?'?':'&')+'embed=1');
+                }
                 $commissionCreate.on('click.bmCommission',function(e){
                     e.preventDefault();
                     var url=$(this).attr('href');
-                    $('#bmCommissionFrame').attr('src',url+(url.indexOf('?')===-1?'?':'&')+'embed=1');
+                    loadCommissionForm(url);
                     $commissionModal.modal('show');
                 });
                 $cv.on('click.bmCommission','#journalTable a[href*="/edit"]',function(e){
@@ -102,14 +110,17 @@
                 $commissionCreate.on('click.bmCommissionTitle',function(){
                     $commissionModal.find('.modal-title').text('New Commission Voucher');
                 });
-                $(document).on('finance:commission-saved.fvc',function(){
+                $(document).on('finance:commission-saved.fvc',function(_,response){
+                    if($.financeVoucherFeedback)$.financeVoucherFeedback.toast('success',
+                        (response&&response.message)||'Commission voucher saved.');
                     $commissionModal.modal('hide');
                     if($.fn.DataTable && $.fn.DataTable.isDataTable('#journalTable')){
                         $('#journalTable').DataTable().ajax.reload(null,false);
                     }
                 });
                 $commissionModal.on('hidden.bs.modal',function(){
-                    $('#bmCommissionFrame').attr('src','about:blank');
+                    $('#bmCommissionFrame').off('load.fvc').attr('src','about:blank');
+                    if($.financeVoucherFeedback)$.financeVoucherFeedback.skeleton($commissionModal.find('.modal-body'),false);
                     if($.fn.DataTable && $.fn.DataTable.isDataTable('#journalTable')){
                         $('#journalTable').DataTable().ajax.reload(null,false);
                     }
@@ -210,14 +221,17 @@
                     data:new FormData($entry[0]),processData:false,contentType:false,dataType:'json',
                     headers:{Accept:'application/json'}
                 }).done(function(response){
-                    if(response&&response.status==='success')onSaved(response);
+                    if(response&&response.status==='success'){
+                        if($.financeVoucherFeedback)$.financeVoucherFeedback.toast('success',response.message||'Saved.');
+                        onSaved(response);
+                    }
                     else $feedback.removeClass('d-none').text('The server did not confirm the save.');
                 }).fail(function(xhr){
                     var data=xhr.responseJSON||{};
-                    var message=data.message||'Unable to save. Check the entered data.';
-                    if(data.errors)$.each(data.errors,function(_,messages){
-                        message+=' '+($.isArray(messages)?messages.join(' '):messages);
-                    });
+                    var message=$.financeVoucherFeedback?
+                        $.financeVoucherFeedback.error(xhr,'Unable to save. Check the entered data.'):
+                        'Unable to save. Check the entered data.';
+                    if($.financeVoucherFeedback)$.financeVoucherFeedback.toast('error',message);
                     $feedback.text(message).removeClass('d-none');
                     if($entry.is('#voucherForm')){
                         $('#bmExtraConfirmModal').modal('hide');
