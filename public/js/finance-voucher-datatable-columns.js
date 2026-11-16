@@ -17,7 +17,8 @@ $(function(){
   $table.data('fvc-filter-bound',true);
   var state={filters:{},dates:{from:'',to:''},sort:'',direction:''};
   registry[opts.table]=state;
-  var api=$table.DataTable(),fields=opts.fields,active=null;
+  var api=$table.DataTable(),fields=opts.fields,active=null,draftFilters={},draftDates={from:'',to:''};
+  if($.financeVoucherFeedback)$.financeVoucherFeedback.bindTableSkeleton($table);
   // One shared scroll-body pattern. Toolbar and pagination remain outside
   // the scroll viewport at their CR-equivalent top/bottom positions.
   var $wrap=$table.closest('.dataTables_wrapper');
@@ -56,6 +57,26 @@ $(function(){
       $(this).toggleClass('bm-column-active',!!state.filters[key]||state.sort===key||(key==='date'&&(state.dates.from||state.dates.to)));
     });
   }
+  function apply(){
+    if(active===null)return;
+    var field=fields[active];
+    if(field==='date'){
+      state.dates.from=draftDates.from||'';
+      state.dates.to=draftDates.to||'';
+    }else{
+      var val=draftFilters[field]||'';
+      if(val)state.filters[field]=val;
+      else delete state.filters[field];
+      if(!opts.server)api.column(active).search(val);
+    }
+    refresh();close();
+  }
+  var $apply=$('<button>',{type:'button','class':'btn btn-sm btn-primary fvc-apply',text:'Apply'});
+  $popover.find('.fvd-pop-actions').prepend($apply);
+  $apply.on('click',apply);
+  $popover.on('keydown.fvcApply','.fvd-pop-filter input',function(event){
+    if(event.key==='Enter'){event.preventDefault();apply();}
+  });
   function close(){
     widget.close();$table.find('.fvd-column-trigger').attr('aria-expanded','false');active=null;
   }
@@ -70,11 +91,13 @@ $(function(){
       event.preventDefault();event.stopPropagation();
       if(active===Number(index)){close();return;}
       close();active=Number(index);
-      widget.setTitle($.trim($th.text()));
+      widget.setTitle($.trim($th.clone().children('button').remove().end().text()));
+      draftFilters=$.extend({},state.filters);
+      draftDates=$.extend({},state.dates);
       var $body=$popover.find('.fvd-pop-filter').empty(),$input;
       if(key==='date'){
-        widget.dates(state.dates,function(field,value){
-          state.dates[field]=value;refresh();
+        widget.dates(draftDates,function(field,value){
+          draftDates[field]=value;
         });
       }else{
         $input=$('<input>',{'class':'form-control form-control-sm fvd-search-input',
@@ -82,9 +105,7 @@ $(function(){
           placeholder:'Search '+$.trim($th.text()),value:state.filters[key]||''});
         $body.append($input);
         $input.on('input change',function(){
-          var val=$(this).val()||'';if(val)state.filters[key]=val;else delete state.filters[key];
-          if(!opts.server)api.column(active).search(val);
-          refresh();
+          draftFilters[key]=$(this).val()||'';
         });
       }
       widget.position($trigger);
