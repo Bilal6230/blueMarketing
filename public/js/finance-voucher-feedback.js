@@ -102,8 +102,12 @@
     if(!$table.length||$table.data('fvc-table-skeleton-bound'))return;
     $table.data('fvc-table-skeleton-bound',true);
     $table.on('preXhr.dt.fvcSkeleton',function(){tableSkeleton($table,true);})
-      .on('draw.dt.fvcSkeleton error.dt.fvcSkeleton',function(){
-        tableSkeleton($table,false);
+      .on('draw.dt.fvcSkeleton error.dt.fvcSkeleton',function(event,settings){
+        // Server AJAX redraw closes at completion. Client tables display the
+        // exact same CR skeleton for the short filter-redraw transition and
+        // close it with the adapter's completion timer.
+        if(event.type==='error' || (settings&&settings.oFeatures&&settings.oFeatures.bServerSide))
+            tableSkeleton($table,false);
       });
 
  }
