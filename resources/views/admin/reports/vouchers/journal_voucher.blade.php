@@ -362,7 +362,7 @@ html body .main-content.page-content > .content-wrapper .card-body{
                                     }
                                 });
                             } else {
-                                alert('No sub-accounts found for the selected account.');
+                                if($.financeVoucherFeedback)$.financeVoucherFeedback.toast('error','No sub-accounts found for the selected account.');
                             }
                         },
                         error: function(xhr, status, error) {
