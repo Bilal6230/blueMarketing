@@ -18,7 +18,7 @@ class CommissionVoucherController extends Controller
 {
     public function index(Request $request)
     {
-        $power = Auth::user()->roles[0]->name;
+        $power = Auth::user()->roles->first()?->name ?? '';
         $x['title'] = 'General Commission Voucher';
         $x['role'] = Role::get();
         $x['users'] = User::get();
@@ -109,7 +109,9 @@ class CommissionVoucherController extends Controller
         }
 
         // For non-AJAX requests, return the view
-        $x['vouchers'] = $query->get(); // Fetch all vouchers initially
+        // The Blade directory is fully AJAX/DataTables-backed. Do not load
+        // every voucher into the HTML response before server-side paging.
+        $x['vouchers'] = collect();
 
         return view('admin.reports.vouchers.commision_index', $x);
     }
@@ -117,7 +119,7 @@ class CommissionVoucherController extends Controller
 
     public function create()
     {
-        $power = Auth::user()->roles[0]->name;
+        $power = Auth::user()->roles->first()?->name ?? '';
         $x['title'] = 'Create Commision Journal Voucher';
         $x['role'] = Role::get();
         $x['users'] = User::get();
@@ -466,7 +468,7 @@ class CommissionVoucherController extends Controller
 
     private function getCommonData($title, $type = 'CV')
     {
-        $power = Auth::user()->roles[0]->name;
+        $power = Auth::user()->roles->first()?->name ?? '';
         return [
             'title' => $title,
             'role' => Role::get(),
