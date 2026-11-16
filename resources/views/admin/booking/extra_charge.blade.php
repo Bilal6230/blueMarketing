@@ -835,9 +835,9 @@
         <!-- /.modal-dialog -->
     </div>
 
-    {{-- Modal approve --}}
-    <div class="modal fade" id="modal-approve">
-        <div class="modal-dialog">
+    {{-- Approval is a project-scoped V2 or legacy finance write. --}}
+    <div class="modal fade" id="modal-approve" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
                     <h4 class="modal-title">Approve Voucher</h4>
@@ -845,25 +845,22 @@
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
-                <div class="modal-body">
-                    <form action="{{ route('booking.customer.approve') }}" method="POST" enctype="multipart/form-data">
-                        @csrf
- @include('admin.finance.voucher.typed_posting_fields')
-                        @method('POST')
-                        <p class="modal-text" id="msg">Are you sure you want to Approve? <b id="delete-data"></b>
-                        </p>
+                <form id="fvc-extra-approval-form" action="{{ route('booking.customer.approve') }}" method="POST" novalidate>
+                    @csrf
+                    <div class="modal-body">
+                        @include('admin.finance.voucher.typed_posting_fields')
+                        <p class="modal-text mb-0" id="msg">Are you sure you want to Approve?</p>
                         <input type="hidden" name="id" class="status_id">
-                        <input type="hidden" name="is_approve" class="is_approve" value="0">
-                </div>
-                <div class="modal-footer justify-content-between">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">No</button>
-                    <button type="submit" class="btn btn-danger">Yes</button>
-                </div>
+                        <input type="hidden" name="is_approve" class="is_approve" value="1">
+                        <div class="alert alert-danger d-none mt-2 fvc-approval-feedback" role="alert"></div>
+                    </div>
+                    <div class="modal-footer d-flex justify-content-end">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary btn-sm">Confirm</button>
+                    </div>
                 </form>
             </div>
-            <!-- /.modal-content -->
         </div>
-        <!-- /.modal-dialog -->
     </div>
 
     {{-- Modal view --}}
