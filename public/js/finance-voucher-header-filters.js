@@ -185,7 +185,51 @@
         // Extra Charge: keep existing voucherForm/confirmation lifecycle, only relocate the entry UI.
         var $extra=$('.bm-modern-extra');
         if ($extra.length) {
+            // Shared, project-safe AJAX form submission. Existing endpoints
+            // still own validation, authorization, posting and idempotency.
+            function submitExtraAjax($entry,onSaved){
+                if($entry.data('fvc-busy'))return;
+                var $feedback=$entry.find('.fvc-modal-feedback').first();
+                if(!$feedback.length){
+                    $feedback=$('<div>',{'class':'alert alert-danger fvc-modal-feedback d-none',
+                        role:'alert','aria-live':'polite'}).prependTo($entry);
+                }
+                $feedback.addClass('d-none').text('');
+                $entry.data('fvc-busy',true);
+                var $buttons=$entry.find('[type="submit"],.bm-extra-save').prop('disabled',true);
+                $.ajax({
+                    url:$entry.attr('action'),type:($entry.attr('method')||'POST').toUpperCase(),
+                    data:new FormData($entry[0]),processData:false,contentType:false,dataType:'json',
+                    headers:{Accept:'application/json'}
+                }).done(function(response){
+                    if(response&&response.status==='success')onSaved(response);
+                    else $feedback.removeClass('d-none').text('The server did not confirm the save.');
+                }).fail(function(xhr){
+                    var data=xhr.responseJSON||{};
+                    var message=data.message||'Unable to save. Check the entered data.';
+                    if(data.errors)$.each(data.errors,function(_,messages){
+                        message+=' '+($.isArray(messages)?messages.join(' '):messages);
+                    });
+                    $feedback.text(message).removeClass('d-none');
+                    if($entry.is('#voucherForm')){
+                        $('#bmExtraConfirmModal').modal('hide');
+                        $('#bmExtraEntryModal').modal('show');
+                    }
+                }).always(function(){
+                    $entry.data('fvc-busy',false);$buttons.prop('disabled',false);
+                    $('#bmExtraConfirmSave').prop('disabled',false);
+                });
+            }
+            var $chargeTypeForm=$('#modal-charge-type form').first();
+            $chargeTypeForm.on('submit.fvcAjax',function(event){
+                event.preventDefault();
+                submitExtraAjax($(this),function(){window.location.reload();});
+            });
             var $form=$extra.find('#voucherForm');
+            $form.on('submit.fvcAjax',function(event){
+                event.preventDefault();
+                submitExtraAjax($form,function(){window.location.reload();});
+            });
             var $head=$extra.find('.bm-extra-heading').first();
             if ($form.length && $head.length) {
                 var $modal=$('<div>',{'class':'modal fade bm-extra-entry-modal',id:'bmExtraEntryModal',tabindex:'-1',role:'dialog','aria-hidden':'true'})
