@@ -352,7 +352,7 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('finance:draft-saved', $draftView);
         $this->assertStringContainsString('finance:draft-saved.fvc', $shared);
         $this->assertStringContainsString("data('fvc-post-as-voucher',true)", $draftView);
-        $this->assertStringContainsString("return $request->expectsJson()", $draftController);
+        $this->assertStringContainsString('return $request->expectsJson()', $draftController);
     }
 
 }
