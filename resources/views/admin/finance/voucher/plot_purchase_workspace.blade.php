@@ -20,7 +20,8 @@
  data-options-url="{{ route('finance.voucher.plot-purchase.options') }}"
  data-history-url="{{ route('finance.voucher.plot-purchase.history') }}"
  data-post-url="{{ route('finance.voucher.plot-purchase.post') }}"
- data-details-base="{{ url('admin/finance/voucher/plot-purchase') }}">
+ data-details-base="{{ url('admin/finance/voucher/plot-purchase') }}"
+ data-void-base="{{ url('admin/finance/voucher/plot-purchase') }}">
  <div class="bm-voucher-heading d-flex justify-content-between align-items-center">
   <div><h2>Plot Purchase Voucher</h2><div class="bm-voucher-subtitle">Selected project records · Read-only history</div></div>
   <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm">Dashboard</a>
@@ -85,6 +86,20 @@
   <div class="modal-body" id="ppDetails"></div>
  </div></div>
 </div>
+@can('delete voucher')
+<div class="modal fade" id="ppVoidModal" tabindex="-1" role="dialog" aria-labelledby="ppVoidTitle" aria-hidden="true">
+ <div class="modal-dialog modal-dialog-centered"><div class="modal-content fvc-modern-modal">
+  <div class="modal-header"><h5 id="ppVoidTitle" class="modal-title">Reverse Plot Purchase</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
+  <form id="ppVoidForm"><div class="modal-body">
+   <p class="small text-muted">The original financial posting stays in history. Purchase inventory can only reverse when it has not been sold or booked.</p>
+   <label for="ppVoidReason">Reason</label><textarea id="ppVoidReason" class="form-control" required minlength="3" maxlength="200" rows="3"></textarea>
+   <label for="ppVoidDate" class="mt-2">Effective date</label><input id="ppVoidDate" type="date" class="form-control" required value="{{ now()->toDateString() }}">
+   <div id="ppVoidError" class="alert alert-danger d-none mt-2" role="alert"></div>
+  </div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button>
+   <button id="ppVoidSubmit" type="submit" class="btn btn-danger">Reverse purchase</button></div></form>
+ </div></div>
+</div>
+@endcan
 <template id="ppItemTemplate"><div class="pp-item"><div class="d-flex justify-content-between mb-2"><strong class="pp-item-title">Plot</strong><button type="button" class="btn btn-sm btn-outline-danger pp-remove" aria-label="Remove plot">Remove</button></div><div class="pp-item-grid">
  <div><label>Plot code</label><input data-field="plot_code" class="form-control" maxlength="64" placeholder="e.g. A-101"></div><div class="wide"><label>Description</label><input data-field="description" class="form-control" maxlength="255" placeholder="Plot description"></div><div><label>Area</label><input data-field="area" class="form-control" type="number" min="0.0001" step="0.0001" placeholder="0"></div><div><label>Unit</label><input data-field="unit" class="form-control" maxlength="24" placeholder="Marla / Sq Ft"></div>
  <div><label>Plot class</label><select data-field="type" class="form-control"><option value="1">Residential</option><option value="2">Commercial</option></select></div><div><label>Road</label><select data-field="road_id" class="form-control"><option value="">Select road</option></select></div><div><label>Facing</label><select data-field="facing_id" class="form-control"><option value="">Select facing</option></select></div><div><label>Inventory account</label><select data-field="inventory_account_id" class="form-control"><option value="">Select project account</option>@foreach($accounts as $account)<option value="{{ $account->id }}">{{ $account->headAccounting?->name }}{{ $account->subheadAccounting?->name ? ' / '.$account->subheadAccounting->name : '' }}</option>@endforeach</select></div>
@@ -154,8 +169,12 @@
      $tr.append($('<td>').append($('<strong>').text(x.number)));
      $tr.append($('<td>').text(x.seller),$('<td>').text(x.narration));
      $tr.append($('<td>').text(x.items),$('<td>',{'class':'text-right'}).text(money(x.amount)));
-     $tr.append($('<td>',{'class':'blue-actions-cell'}).append(
-       $('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pp-detail','data-id':x.id,text:'Details / print'})));
+     const $actions=$('<td>',{'class':'blue-actions-cell'}).append(
+       $('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pp-detail','data-id':x.id,text:'Details / print'}));
+     @can('delete voucher')
+     if(!x.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pp-void ml-1','data-id':x.id,text:'Reverse'}));
+     @endcan
+     $tr.append($actions);
      $body.append($tr);
    });
    if($.blueActionMenu&&typeof $.blueActionMenu.enhance==='function')$.blueActionMenu.enhance($body.find('td.blue-actions-cell'));
@@ -201,6 +220,30 @@
  });
  $('#ppLength,#ppQuickSearch').on('input change',function(){historyPage=1;drawHistory();});
  $('#ppHistory').on('click','.pp-detail',function(){details($(this).attr('data-id'));});
+ @can('delete voucher')
+ $('#ppHistory').on('click','.pp-void',function(){
+  $('#ppVoidForm').data('source-id',$(this).attr('data-id'));
+  $('#ppVoidReason').val('');$('#ppVoidError').addClass('d-none').text('');
+  $('#ppVoidModal').modal('show');
+ });
+ $('#ppVoidForm').on('submit',function(event){
+  event.preventDefault();
+  var id=$(this).data('source-id'),$submit=$('#ppVoidSubmit');
+  if(!id||$submit.prop('disabled'))return;
+  $submit.prop('disabled',true);
+  $.ajax({
+   url:$('#plotPurchaseApp').attr('data-void-base')+'/'+encodeURIComponent(id)+'/reverse',
+   type:'POST',contentType:'application/json',dataType:'json',
+   headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')},
+   data:JSON.stringify({reason:$.trim($('#ppVoidReason').val()),effective_date:$('#ppVoidDate').val(),
+    request_key:'plotpurchasevoid'+Date.now().toString(36)+Math.random().toString(36).slice(2,14)})
+  }).done(function(response){
+   $('#ppVoidModal').modal('hide');alert('success',response.message||'Purchase reversed');loadHistory();
+  }).fail(function(xhr){
+   $('#ppVoidError').removeClass('d-none').text(xhr.responseJSON&&xhr.responseJSON.message||'Unable to reverse purchase');
+  }).always(function(){$submit.prop('disabled',false);});
+ });
+ @endcan
  $('#ppAdd').on('click',row);['ppNumber','ppDate','ppSeller','ppNarration'].forEach(id=>$('#'+$.escapeSelector(id)).on('input',recalc));$('#ppPost').on('click',async()=>{recalc();if(byId('ppPost').disabled)return;busy=true;recalc();const payload={request_key:(pendingRequestKey||(pendingRequestKey=('plotpurchase'+Date.now().toString(36)+Math.random().toString(36).slice(2,15)))),purchase_number:byId('ppNumber').value.trim(),date:byId('ppDate').value,seller_account_id:Number(byId('ppSeller').value),narration:byId('ppNarration').value.trim(),items:$('.pp-item').toArray().map(el=>{const o={};$(el).find('[data-field]').toArray().forEach(x=>o[x.dataset.field]=x.value);for(const k of ['type','road_id','facing_id','is_corner','plot_category_definition_id','plot_type_definition_id','plot_size_definition_id','plot_unit_definition_id','inventory_account_id'])if(o[k]==='')delete o[k];return o})};try{const r=await requestJson(root.dataset.postUrl,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')},body:JSON.stringify(payload)}),j=await r.json();if(!r.ok)throw Error(j.message||Object.values(j.errors||{}).flat().join(' ')||'Purchase was rejected');pendingRequestKey=null;alert('success',`Purchase ${payload.purchase_number} posted. Posting batch #${j.data.posting_batch_id}.`);byId('ppNumber').value='';byId('ppNarration').value='';await loadHistory();$('#plotPurchaseCreateModal').modal('hide')}catch(e){alert('danger',e.message)}finally{busy=false;recalc()}});init()});
 })();
 </script>
