@@ -22,13 +22,18 @@ final class FinanceLedgerReportModernUiTest extends TestCase
         $this->assertStringContainsString('finance-report-modern.css', $head);
         $this->assertStringContainsString('financeReportTable', $shared);
         $this->assertStringContainsString('financeReportExports', $shared);
-        $this->assertStringContainsString('financeReportClear', $shared);
+        $this->assertStringNotContainsString('financeReportClear', $shared);
+        $this->assertStringContainsString('class="fvr-length"', $shared);
+        $this->assertStringContainsString('class="fvr-search"', $shared);
+        $this->assertStringContainsString('content-wrapper fvr-report', $shared);
         $this->assertStringContainsString("createFilter({kind:'datatable'", $js);
         $this->assertStringContainsString("attachDataTablePager('#financeReportTable')", $js);
         $this->assertStringContainsString("bindTableSkeleton('#financeReportTable')", $js);
-        $this->assertStringContainsString("url:$root.attr('data-endpoint')", $js);
-        $this->assertStringContainsString("d.account_type=$root.attr('data-account-type')", $js);
-        $this->assertStringContainsString('min-height:calc(100vh - 260px)', $css);
+        $this->assertStringContainsString('url:$root.attr(\'data-endpoint\')', $js);
+        $this->assertStringContainsString('d.account_type=$root.attr(\'data-account-type\')', $js);
+        $this->assertStringContainsString('max-height:calc(100vh - 344px)', $css);
+        $this->assertStringContainsString('sorting_asc::after', $css);
+        $this->assertStringContainsString('xhr.dt.fvrReport draw.dt.fvrReport', $js);
         $this->assertStringNotContainsString("id=\"your-datatable-id\"", $party);
         $this->assertStringNotContainsString("id=\"your-datatable-id\"", $head);
     }
