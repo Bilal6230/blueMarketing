@@ -7,17 +7,18 @@ use Illuminate\Support\Facades\{Auth, DB, Gate};
 final class V2OriginalWorkflowAccess
 {
     /**
-     * A local-only standard ERP mode is explicitly requested by the operator
-     * when testing ordinary voucher screens. Isolated V2 databases remain
-     * in the experimental workflow and can never be switched to legacy writes.
+     * The ordinary ERP is the default on a LOCAL, non-isolated database.
+     * This choice no longer depends on FINANCE_NORMAL_ERP_MODE or pilot flags.
+     * V2-prefixed isolated databases continue to use their own pilot routing.
+     * Production remains on the original ERP routes pending source-by-source rollout.
      */
     public static function normalErpMode(): bool
     {
         $connection = config('database.default');
         $database = (string) config('database.connections.'.$connection.'.database');
         return config('app.env') === 'local'
-            && !str_starts_with($database, 'bluemarketing_v2_')
-            && (bool) config('finance.normal_erp_mode', false);
+            && $database !== ''
+            && !str_starts_with($database, 'bluemarketing_v2_');
     }
 
     /**
