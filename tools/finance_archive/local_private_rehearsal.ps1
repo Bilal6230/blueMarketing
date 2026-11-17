@@ -80,14 +80,14 @@ try {
         }
         Write-Host 'STAGE 1 — VERIFY/EXTRACT ONLY. No local database will be connected.' -ForegroundColor Cyan
         Run-Checked $python ($pythonPrefix + @(
-            'tools/database_v2/v2_import_plan.py',
+            'tools/finance_archive/finance_import_plan.py',
             '--source', $source,
             '--expected-sha256', $expectedSha,
             '--expected-rows', $expectedRows,
             '--out-dir', $staging
         ))
         Run-Checked $python ($pythonPrefix + @(
-            'tools/database_v2/financial_source_fingerprints.py',
+            'tools/finance_archive/financial_source_fingerprints.py',
             '--source', $source,
             '--expected-sha256', $expectedSha,
             '--expected-rows', $expectedRows,
@@ -97,7 +97,7 @@ try {
         # Immutable source-column evidence for independent UTC comparison.
         # This writes only SHA digests in the PRIVATE staging directory.
         Run-Checked $python ($pythonPrefix + @(
-            'tools/database_v2/full_row_digests.py',
+            'tools/finance_archive/full_row_digests.py',
             '--source', $source,
             '--out', (Join-Path $staging 'source_full_row_digests.json')
         ))
@@ -155,7 +155,7 @@ try {
         # Stage already migrated and bank-seeded; NEVER run migrations,
         # db:seed or any schema reset again on this recovery path.
         Run-Checked 'php' @(
-            'tools/database_v2/import_staged_mysql.php',
+            'tools/finance_archive/import_staged_mysql.php',
             ('--dir=' + $staging),
             ('--expected-sha256=' + $expectedSha),
             ('--expected-rows=' + $expectedRows),
@@ -163,14 +163,14 @@ try {
             '--preserve-legacy-zero-date'
         )
         Run-Checked 'php' @(
-            'tools/database_v2/check_local_v2_target.php',
+            'tools/finance_archive/check_local_finance_target.php',
             ('--expected-name=' + $Database),
             ('--require-prepared'),
             ('--manifest=' + (Join-Path $staging 'manifest.json'))
         )
     } else {
         Run-Checked 'php' @(
-            'tools/database_v2/check_local_v2_target.php',
+            'tools/finance_archive/check_local_finance_target.php',
             ('--expected-name=' + $Database), '--require-empty'
         )
         Run-Checked 'php' @(
@@ -178,12 +178,12 @@ try {
             '--force', '--no-interaction'
         )
         Run-Checked 'php' @(
-            'artisan', 'db:seed', '--class=V2LegacyBanksSeeder',
+            'artisan', 'db:seed', '--class=LegacyBanksSeeder',
             '--force', '--no-interaction'
         )
     }
     Run-Checked 'php' @(
-        'tools/database_v2/import_staged_mysql.php',
+        'tools/finance_archive/import_staged_mysql.php',
         ('--dir=' + $staging),
         ('--expected-sha256=' + $expectedSha),
         ('--expected-rows=' + $expectedRows),
@@ -192,7 +192,7 @@ try {
         '--apply'
     )
     Run-Checked 'php' @(
-        'tools/database_v2/verify_imported_mysql_financial.php',
+        'tools/finance_archive/verify_imported_mysql_financial.php',
         ('--manifest=' + (Join-Path $staging 'manifest.json')),
         ('--source-evidence=' + (Join-Path $staging 'source_fingerprints.json')),
         ('--expected-sha256=' + $expectedSha),
@@ -202,7 +202,7 @@ try {
     # A UTC import is NOT accepted just because timestamps appear correct
     # in the local MySQL timezone. Verify every original source column at UTC.
     Run-Checked 'php' @(
-        'tools/database_v2/verify_mysql_full_row_digests.php',
+        'tools/finance_archive/verify_mysql_full_row_digests.php',
         ('--source-evidence=' + $privateDigests), '--verify-source-utc'
     )
     Write-Host 'V2_NEW_LOCAL_IMPORT_UTC_ROW_PARITY_PASS — 57 source tables verified at +00:00.' -ForegroundColor Green
