@@ -21,11 +21,13 @@ final class V2LocalTestDatabaseGuardTest extends TestCase
         ]);
     }
 
-    public function test_existing_local_test_database_requires_exact_explicit_opt_in(): void
+    public function test_existing_local_test_database_is_available_without_mode_flag(): void
     {
         $this->configure();
-        $this->assertFalse(V2IsolatedConnectionGuard::isAllowed());
-        $this->configure(optIn: 'bluenew');
+        config(['finance.normal_erp_mode' => false]);
+        $this->assertTrue(V2IsolatedConnectionGuard::isAllowed());
+        // Stale local toggles must not change the recognized DB identity.
+        config(['finance.normal_erp_mode' => true]);
         $this->assertTrue(V2IsolatedConnectionGuard::isAllowed());
     }
 
