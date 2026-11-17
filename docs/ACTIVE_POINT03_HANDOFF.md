@@ -1,5 +1,15 @@
 # BlueMarketing — ACTIVE HANDOFF (new chat continuity)
 
+## 2026-11-17 — BANK BD/BW REVERSAL + MIXED ACCOUNTING AUDIT (DELIVERED; OWNER ACCEPTANCE OPEN)
+- Owner asked to close remaining finance workflows after all 3 modern report UI gates were accepted and committed.
+- **Implemented** `V2BankTransferLifecycleService`: project-scoped, exact original posting-batch FK; verifies `bank_transfer` claim, original BD/BW series, transfer kind and project; reuses immutable `V2PostingGateway::reversePostedBatch()`; refuses linked cleared-cheque withdrawal until explicit custody release is implemented. No physical deletion or schema migrations. Reversed originals retain source and linked records, and reruns are protected by reversal writer.
+- **Normal ERP route and UI:** `VoucherController::reverseTransferVoucher()`, `finance.voucher.transfer.reverse` POST with `permission:delete voucher` and throttle; BD/BW history emits `reversed` and `can_reverse`; `bank_transfer_workspace.blade.php` shows Reverse on manual BD/BW only, uses a jQuery AJAX confirmation modal, and removes action after reversal.
+- **Automated regression:** new `NormalBankTransferReversalGateTest` checks strict database guard and route/source/permission UI contract; no assistant-run PHP/MySQL acceptance.
+- **Mixed ledger audit strengthened:** `finance:audit-normal-merge 3` now also reconciles detail debit/credit against per-account grouped totals with integer cents, while the typed reader additionally verifies individual batches and reversal inverse legs. This does NOT independently verify all historical legacy accounting amounts or customer/bank balance reports.
+- **Remaining open:** cleared-cheque BD/BW lifecycle/custody release, original CR/CP/PPR and EC/SV complete edit/void corrections, production deployment switch (typed writers remain LOCAL-guarded), A5 print, exhaustive cross-module acceptance. Do NOT claim full finance closeout from this limited batch.
+- **Owner local acceptance (Project 3, disposable manual BD & BW):** after pull / optimize clear / view cache run `php artisan test --filter=NormalBankTransferReversalGateTest` and `php artisan finance:audit-normal-merge 3`; browser `Daily Entries > Bank Deposit` and `Daily Entries > Bank Withdrawal`: create disposable MANUAL vouchers (not linked cleared cheque), Reverse with reason and effective date on/after original date, confirm status Reversed and no repeat Reverse, verify cash/bank balances net to prior values. Linked cheque withdrawal remains explicitly blocked; do not test its release yet.
+
+
 ## 2026-11-17 — OWNER APPROVED: MODERN REPORT UI BROWSER GATES CLOSED
 - Owner explicitly marked **PASS** for the repaired modern UI on exact sidebar routes: `Reports > Party Wise`, `Reports > Head Wise`, and `Reports > Account Type Balance`.
 - Close all three report **UI browser acceptance** gates (loading skeleton, column popovers/sorting, sidebar/navbar-safe viewport layout, show entries left, search right, bottom pagination and absence of reset/native sorter). No repeat browser test requested unless these exact screens change.
