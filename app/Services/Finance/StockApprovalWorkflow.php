@@ -4,12 +4,12 @@ namespace App\Services\Finance;
 
 use Illuminate\Support\Facades\{DB, Schema};
 
-final class V2StockApprovalWorkflow
+final class StockApprovalWorkflow
 {
     public function approveAndPost(int $projectId, string $kind, int $sourceId, string $key,
         string $evidence, array $lines, ?int $actorId): int
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         if (!in_array($kind, ['stock_entry', 'stock_bill'], true)) {
             throw new \DomainException('V2_STOCK_KIND_INVALID');
         }
@@ -21,8 +21,8 @@ final class V2StockApprovalWorkflow
                     throw new \DomainException('V2_STOCK_LEGACY_POSTING_EXISTS');
                 }
             }
-            (new V2StockProjectApprovalWriter())->approve($kind, $sourceId, $projectId, $evidence);
-            $gateway = new V2PostingGateway();
+            (new StockProjectApprovalWriter())->approve($kind, $sourceId, $projectId, $evidence);
+            $gateway = new PostingGateway();
             return $kind === 'stock_entry'
                 ? $gateway->postStockEntry($projectId, $sourceId, $key, $lines, $actorId)
                 : $gateway->postStockBill($projectId, $sourceId, $key, $lines, $actorId);

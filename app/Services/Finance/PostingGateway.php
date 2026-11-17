@@ -10,7 +10,7 @@ namespace App\Services\Finance;
  * Writers themselves enforce isolated connection, FK, locks, balance,
  * exact source identity and idempotency; this service cannot bypass them.
  */
-final class V2PostingGateway
+final class PostingGateway
 {
     public function postJournal(
         int $projectId,
@@ -18,7 +18,7 @@ final class V2PostingGateway
         string $idempotencyKey,
         ?int $actorId = null
     ): int {
-        return (new V2JournalPostingWriter())->post(
+        return (new JournalPostingWriter())->post(
             $projectId, $journalVoucherId, $idempotencyKey, $actorId
         );
     }
@@ -32,7 +32,7 @@ final class V2PostingGateway
         int $projectId, int $salesJournalVoucherId,
         string $idempotencyKey, ?int $actorId = null
     ): int {
-        return (new V2JournalPostingWriter())->post(
+        return (new JournalPostingWriter())->post(
             $projectId, $salesJournalVoucherId, $idempotencyKey,
             $actorId, 'SV'
         );
@@ -45,7 +45,7 @@ final class V2PostingGateway
         array $approvedAccountLegs,
         ?int $actorId = null
     ): int {
-        return (new V2CashPostingWriter())->post(
+        return (new CashPostingWriter())->post(
             $projectId, $customerLedgerId, $idempotencyKey,
             $approvedAccountLegs, $actorId
         );
@@ -56,7 +56,7 @@ final class V2PostingGateway
         string $date, string $amount, string $narration, array $allocations,
         ?int $actorId = null
     ): array {
-        return (new V2BankTransferWriter())->post(
+        return (new BankTransferWriter())->post(
             $projectId, $bankAccountId, $kind, $idempotencyKey,
             $date, $amount, $narration, $allocations, $actorId
         );
@@ -68,7 +68,7 @@ final class V2PostingGateway
         string $idempotencyKey,
         ?int $actorId = null
     ): int {
-        return (new V2CommissionPostingWriter())->post(
+        return (new CommissionPostingWriter())->post(
             $projectId, $commissionVoucherId, $idempotencyKey, $actorId
         );
     }
@@ -88,7 +88,7 @@ final class V2PostingGateway
         if (!in_array($series, ['PPR', 'EC', 'ECP'], true)) {
             throw new \DomainException('V2_CUSTOMER_VOUCHER_SERIES_NOT_SUPPORTED');
         }
-        return (new V2CashPostingWriter())->post(
+        return (new CashPostingWriter())->post(
             $projectId, $customerLedgerId, $idempotencyKey,
             $approvedAccountLegs, $actorId, $series
         );
@@ -101,7 +101,7 @@ final class V2PostingGateway
         array $approvedAccountLegs,
         ?int $actorId = null
     ): int {
-        return (new V2ApprovedSourcePostingWriter())->post(
+        return (new ApprovedSourcePostingWriter())->post(
             $projectId, 'booking', $bookingVoucherId,
             $idempotencyKey, $approvedAccountLegs, $actorId
         );
@@ -114,7 +114,7 @@ final class V2PostingGateway
         array $approvedAccountLegs,
         ?int $actorId = null
     ): int {
-        return (new V2ApprovedSourcePostingWriter())->post(
+        return (new ApprovedSourcePostingWriter())->post(
             $projectId, 'labour', $labourLedgerId,
             $idempotencyKey, $approvedAccountLegs, $actorId
         );
@@ -127,7 +127,7 @@ final class V2PostingGateway
         array $approvedAccountLegs,
         ?int $actorId = null
     ): int {
-        return (new V2ApprovedSourcePostingWriter())->post(
+        return (new ApprovedSourcePostingWriter())->post(
             $projectId, 'stock_entry', $stockEntryId,
             $idempotencyKey, $approvedAccountLegs, $actorId
         );
@@ -140,7 +140,7 @@ final class V2PostingGateway
         array $approvedAccountLegs,
         ?int $actorId = null
     ): int {
-        return (new V2ApprovedSourcePostingWriter())->post(
+        return (new ApprovedSourcePostingWriter())->post(
             $projectId, 'stock_bill', $stockBillId,
             $idempotencyKey, $approvedAccountLegs, $actorId
         );
@@ -154,7 +154,7 @@ final class V2PostingGateway
         string $approvedReason,
         ?int $actorId = null
     ): int {
-        return (new V2PostingReversalWriter())->reverse(
+        return (new PostingReversalWriter())->reverse(
             $projectId, $originalBatchId, $idempotencyKey,
             $effectiveDate, $approvedReason, $actorId
         );
@@ -165,7 +165,7 @@ final class V2PostingGateway
         ?string $from = null,
         ?string $through = null
     ): array {
-        return (new V2PostingReportReader())->lines($projectId, $from, $through);
+        return (new PostingReportReader())->lines($projectId, $from, $through);
     }
 
     public function voucherRegister(
@@ -173,7 +173,7 @@ final class V2PostingGateway
         ?string $from = null,
         ?string $through = null
     ): array {
-        return (new V2VoucherRegisterReader())->documents(
+        return (new VoucherRegisterReader())->documents(
             $projectId, $from, $through
         );
     }
@@ -183,7 +183,7 @@ final class V2PostingGateway
         ?string $from = null,
         ?string $through = null
     ): array {
-        return (new V2PostingSummaryReader())->summarize(
+        return (new PostingSummaryReader())->summarize(
             $projectId, $from, $through
         );
     }
@@ -193,7 +193,7 @@ final class V2PostingGateway
         ?string $from = null,
         ?string $through = null
     ): array {
-        return (new V2ProjectTrialBalanceReader())->summarize(
+        return (new ProjectTrialBalanceReader())->summarize(
             $projectId, $from, $through
         );
     }
@@ -204,7 +204,7 @@ final class V2PostingGateway
         ?string $from = null,
         ?string $through = null
     ): array {
-        return (new V2AccountStatementReader())->lines(
+        return (new AccountStatementReader())->lines(
             $projectId, $accountId, $from, $through
         );
     }

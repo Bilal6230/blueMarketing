@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
  * Writer transaction MUST independently re-check source/ownership to prevent
  * TOCTOU and concurrent approval/revocation races.
  */
-final class V2SourceApprovalReadiness
+final class SourceApprovalReadiness
 {
     private const TABLES = [
         'journal' => 'journal_vouchers',
@@ -27,7 +27,7 @@ final class V2SourceApprovalReadiness
     public function inspect(
         int $projectId, string $kind, int $sourceId, ?string $series = null
     ): array {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         if ($projectId < 1 || $sourceId < 1 || !isset(self::TABLES[$kind])) {
             throw new \InvalidArgumentException('V2_APPROVAL_READINESS_INPUT_INVALID');
         }
@@ -110,7 +110,7 @@ final class V2SourceApprovalReadiness
             $fk = $kind === 'stock_entry' ? 'stock_entry_id' : 'stock_bill_id';
             try {
                 $snapshot = DB::transaction(
-                    fn (): array => (new V2StockSourceSnapshot())->read($kind, $sourceId, $projectId)
+                    fn (): array => (new StockSourceSnapshot())->read($kind, $sourceId, $projectId)
                 );
                 $approval = DB::table($approvalTable)
                     ->where($fk, $sourceId)->where('project_id', $projectId)

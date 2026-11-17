@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Schema;
  * Opt-in future V2-only administrative operation: ability is intentionally
  * NOT granted by default; must be defined by authorized policy before use.
  */
-final class V2StockProjectApprovalWriter
+final class StockProjectApprovalWriter
 {
     public function approve(
         string $kind,
@@ -20,7 +20,7 @@ final class V2StockProjectApprovalWriter
         int $projectId,
         string $evidenceReference
     ): void {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         // Legacy AuthServiceProvider globally grants every Gate ability to
         // superadmin. A missing/false pilot WRITE flag MUST still refuse an
         // approval, even when a read-only pilot has registered the ability.
@@ -59,7 +59,7 @@ final class V2StockProjectApprovalWriter
                 || !DB::table('users')->where('id', $actor)->exists()) {
                 throw new \DomainException('V2_STOCK_APPROVAL_PROJECT_OR_USER_INVALID');
             }
-            $snapshot = (new V2StockSourceSnapshot())->read($kind, $sourceId, $projectId);
+            $snapshot = (new StockSourceSnapshot())->read($kind, $sourceId, $projectId);
             $existing = DB::table($table)->where($fk, $sourceId)
                 ->lockForUpdate()->first();
             if ($existing) {

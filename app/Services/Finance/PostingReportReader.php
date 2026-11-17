@@ -9,11 +9,11 @@ use Illuminate\Support\Facades\Schema;
  * Isolated V2 read adapter. Not wired to legacy report controllers.
  * Never links a financial document through overloaded ledgers.type_id.
  */
-final class V2PostingReportReader
+final class PostingReportReader
 {
     private function guard(): void
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         foreach (['finance_posting_batches', 'finance_posting_lines',
                   'finance_posting_source_claims', 'project_head_subheads'] as $table) {
             if (!Schema::hasTable($table)) {

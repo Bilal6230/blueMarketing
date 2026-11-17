@@ -4,7 +4,7 @@ namespace App\Services\Finance;
 
 use Illuminate\Support\Facades\{Auth, DB, Gate};
 
-final class V2OriginalWorkflowAccess
+final class FinanceWorkflowAccess
 {
     /** All environments use the normal unified ERP finance workflow. */
     public static function normalErpMode(): bool
@@ -15,7 +15,7 @@ final class V2OriginalWorkflowAccess
     /** Compatibility API for existing finance services; no pilot or DB selector. */
     public static function mergedWriterAllowed(): bool
     {
-        return V2IsolatedConnectionGuard::isAllowed();
+        return FinanceConnectionGuard::isAllowed();
     }
 
     /** No isolated finance mode may be selected by configuration. */
@@ -32,7 +32,7 @@ final class V2OriginalWorkflowAccess
     public static function authorize(int $projectId): void
     {
         abort_unless(self::mergedWriterAllowed(), 409, 'Finance connection is not configured.');
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         $user = Auth::user();
         abort_unless($user && $projectId > 0 && Gate::has('v2-finance-post'), 403);
         Gate::authorize('v2-finance-post');
@@ -43,7 +43,7 @@ final class V2OriginalWorkflowAccess
     public static function authorizeRead(int $projectId): void
     {
         abort_unless(self::mergedWriterAllowed(), 409, 'Finance connection is not configured.');
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         $user = Auth::user();
         abort_unless($user && $projectId > 0 && Gate::has('v2-finance-read'), 403);
         Gate::authorize('v2-finance-read');

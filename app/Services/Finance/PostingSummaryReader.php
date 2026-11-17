@@ -6,7 +6,7 @@ namespace App\Services\Finance;
  * Date-filtered source-family summary for isolated V2 postings, including
  * immutable reversals separately. Never reads ambiguous legacy type_id.
  */
-final class V2PostingSummaryReader
+final class PostingSummaryReader
 {
     private function cents(mixed $raw): int
     {
@@ -34,7 +34,7 @@ final class V2PostingSummaryReader
     public function summarize(
         int $projectId, ?string $from = null, ?string $through = null
     ): array {
-        $lines = (new V2PostingReportReader())->lines($projectId, $from, $through);
+        $lines = (new PostingReportReader())->lines($projectId, $from, $through);
         $groups = [];
         $totalDebit = 0;
         $totalCredit = 0;

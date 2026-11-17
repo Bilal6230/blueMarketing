@@ -9,7 +9,7 @@ namespace App\Services\Finance;
  * All arithmetic is integer cents. No FLOAT, implicit currency conversion,
  * database mutation, V1 controller, or inferred historical source ownership.
  */
-final class V2ProjectTrialBalanceReader
+final class ProjectTrialBalanceReader
 {
     private function cents(mixed $value): int
     {
@@ -75,9 +75,9 @@ final class V2ProjectTrialBalanceReader
             throw new \InvalidArgumentException('V2_TRIAL_BALANCE_DATE_ORDER_INVALID');
         }
 
-        // V2PostingReportReader verifies account/project ownership, typed
+        // PostingReportReader verifies account/project ownership, typed
         // sources, balance, reversal lineage and exact original inverse legs.
-        $lines = (new V2PostingReportReader())->lines($projectId, null, $through);
+        $lines = (new PostingReportReader())->lines($projectId, null, $through);
         $accounts = [];
         $totals = [
             'opening_debit' => 0, 'opening_credit' => 0,

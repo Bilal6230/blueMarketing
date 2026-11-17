@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
  * Reversal batches link to the original batch by a real FK, and inherit the
  * source identity through that original batch (never a reused type_id).
  */
-final class V2PostingReversalWriter
+final class PostingReversalWriter
 {
     private function cents(mixed $amount): int
     {
@@ -34,7 +34,7 @@ final class V2PostingReversalWriter
         string $reason,
         ?int $actorId = null
     ): int {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         foreach (['finance_posting_batches', 'finance_posting_lines',
                   'finance_posting_source_claims', 'project_head_subheads'] as $table) {
             if (!Schema::hasTable($table)) {

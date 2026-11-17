@@ -5,12 +5,12 @@ namespace App\Services\Finance;
 use Illuminate\Support\Facades\DB;
 
 /** Reverses immutable M6 sources without changing their original rows. */
-final class V2PlotEntryLifecycleService
+final class PlotEntryLifecycleService
 {
     public function reverse(int $projectId, string $kind, int $sourceId, string $requestKey,
         string $effectiveDate, string $reason, ?int $actorId): int
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         $links = [
             'plot_receipt' => 'finance_plot_receipt_postings',
             'plot_purchase' => 'finance_plot_purchase_postings',
@@ -43,7 +43,7 @@ final class V2PlotEntryLifecycleService
                 }
             }
 
-            $batchId = (new V2PostingReversalWriter())->reverse(
+            $batchId = (new PostingReversalWriter())->reverse(
                 $projectId, (int) $link->posting_batch_id, $requestKey,
                 $effectiveDate, $reason, $actorId
             );

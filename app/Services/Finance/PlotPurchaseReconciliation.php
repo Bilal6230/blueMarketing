@@ -5,7 +5,7 @@ namespace App\Services\Finance;
 use Illuminate\Support\Facades\DB;
 
 /** Read-only isolated-project PP posting integrity audit; never fixes entries. */
-final class V2PlotPurchaseReconciliation
+final class PlotPurchaseReconciliation
 {
     /** @return list<array<string,mixed>> */
     public function audit(int $projectId): array
@@ -13,7 +13,7 @@ final class V2PlotPurchaseReconciliation
         if ($projectId < 1) {
             throw new \InvalidArgumentException('Positive project id required.');
         }
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
 
         $purchases = DB::table('finance_plot_purchases as p')
             ->leftJoin('finance_plot_purchase_postings as link', 'link.source_id', '=', 'p.id')

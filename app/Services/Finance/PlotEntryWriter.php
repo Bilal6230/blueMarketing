@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /** Isolated, append-only plot receipts and plot purchase posting. */
-final class V2PlotEntryWriter
+final class PlotEntryWriter
 {
     private function cents(mixed $value, int $scale = 2): int
     {
@@ -128,7 +128,7 @@ final class V2PlotEntryWriter
 
     public function receive(int $project, int $customer, string $key, array $data, ?int $actor): array
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         $this->date($data['date']); $total=$this->cents($data['amount']);
         if ($project<1 || $customer<1 || $total<1 || !preg_match('/^[A-Za-z0-9_-]{16,128}$/D',$key)) throw new \DomainException('V2_PLOT_RECEIPT_INPUT_INVALID');
         return DB::transaction(function() use($project,$customer,$key,$data,$actor,$total):array {
@@ -168,7 +168,7 @@ final class V2PlotEntryWriter
 
     public function purchase(int $project, string $key, array $data, ?int $actor): array
     {
-        V2IsolatedConnectionGuard::assertAllowed(); $this->date($data['date']);
+        FinanceConnectionGuard::assertAllowed(); $this->date($data['date']);
         if($project<1 || !preg_match('/^[A-Za-z0-9_-]{16,128}$/D',$key) || count($data['items'])<1) throw new \DomainException('V2_PLOT_PURCHASE_INPUT_INVALID');
         return DB::transaction(function()use($project,$key,$data,$actor):array {
             DB::table('projects')->where('id',$project)->lockForUpdate()->firstOrFail();
@@ -210,7 +210,7 @@ final class V2PlotEntryWriter
 
     public function receipt(int $project,int $id): array
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         $source=DB::table('finance_plot_receipts')->where('project_id',$project)->where('id',$id)->first();
         if(!$source) throw new \DomainException('V2_PLOT_RECEIPT_NOT_FOUND');
         $allocations=DB::table('finance_plot_receipt_allocations as a')->join('plots as p','p.id','=','a.plot_id')
@@ -224,7 +224,7 @@ final class V2PlotEntryWriter
 
     public function purchaseDetails(int $project,int $id): array
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         $source=DB::table('finance_plot_purchases')->where('project_id',$project)->where('id',$id)->first();
         if(!$source) throw new \DomainException('V2_PLOT_PURCHASE_NOT_FOUND');
         return ['purchase'=>$source,'items'=>DB::table('finance_plot_purchase_items')->where('purchase_id',$id)->orderBy('id')->get()];
