@@ -588,3 +588,4 @@ ALTER TABLE `works`
 BMFKEY109);
     }
     public function down(): void { throw new LogicException('Review dependent tables before rollback of schema foreign keys.'); }
+};
