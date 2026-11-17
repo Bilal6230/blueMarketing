@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 /** One-table baseline generated from verified MySQL 8.4.3 bluenew export. */
 return new class extends Migration {
     public function up(): void {
-        DB::unprepared(<<<'BMDDL0' 
+        DB::unprepared(<<<'BMDDL0'
 CREATE TABLE `booking_vouchers` (
   `id` bigint UNSIGNED NOT NULL,
   `booking_id` bigint UNSIGNED DEFAULT NULL,
@@ -34,8 +34,8 @@ CREATE TABLE `booking_vouchers` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-BMDDL0 );
-        DB::unprepared(<<<'BMDDL1' 
+BMDDL0);
+        DB::unprepared(<<<'BMDDL1'
 ALTER TABLE `booking_vouchers`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `booking_vouchers_customer_ledger_id_unique` (`customer_ledger_id`),
@@ -51,11 +51,11 @@ ALTER TABLE `booking_vouchers`
   ADD KEY `booking_vouchers_bank_id_index` (`bank_id`),
   ADD KEY `booking_vouchers_is_active_index` (`is_active`),
   ADD KEY `booking_vouchers_is_approve_index` (`is_approve`);
-BMDDL1 );
-        DB::unprepared(<<<'BMDDL2' 
+BMDDL1);
+        DB::unprepared(<<<'BMDDL2'
 ALTER TABLE `booking_vouchers`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=87;
-BMDDL2 );
+BMDDL2);
     }
     public function down(): void { Schema::dropIfExists('booking_vouchers'); }
 };

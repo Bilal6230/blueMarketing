@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 /** One-table baseline generated from verified MySQL 8.4.3 bluenew export. */
 return new class extends Migration {
     public function up(): void {
-        DB::unprepared(<<<'BMDDL0' 
+        DB::unprepared(<<<'BMDDL0'
 CREATE TABLE `booking_edit_audits` (
   `id` bigint UNSIGNED NOT NULL,
   `booking_id` bigint UNSIGNED NOT NULL,
@@ -27,8 +27,8 @@ CREATE TABLE `booking_edit_audits` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-BMDDL0 );
-        DB::unprepared(<<<'BMDDL1' 
+BMDDL0);
+        DB::unprepared(<<<'BMDDL1'
 ALTER TABLE `booking_edit_audits`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `booking_edit_audits_request_key_unique` (`request_key`),
@@ -36,11 +36,11 @@ ALTER TABLE `booking_edit_audits`
   ADD KEY `booking_edit_audits_project_id_operation_index` (`project_id`,`operation`),
   ADD KEY `v2_booking_edit_audits_user_id_fk` (`user_id`),
   ADD KEY `v2_booking_edit_audits_journal_voucher_id_fk` (`journal_voucher_id`);
-BMDDL1 );
-        DB::unprepared(<<<'BMDDL2' 
+BMDDL1);
+        DB::unprepared(<<<'BMDDL2'
 ALTER TABLE `booking_edit_audits`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
-BMDDL2 );
+BMDDL2);
     }
     public function down(): void { Schema::dropIfExists('booking_edit_audits'); }
 };
