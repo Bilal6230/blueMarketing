@@ -1,25 +1,34 @@
 /* Ledger summary pages reuse canonical finance voucher popovers/pager/skeleton. */
-.fvr-report{--fvd-accent:#1769e0;padding:14px 14px 16px;min-height:calc(100vh - 190px);display:flex;flex-direction:column;gap:12px;font-size:12px}
+.main-content.page-content > .fvr-report.content-wrapper{--fvd-accent:#1769e0;padding:14px 16px 16px!important;min-height:calc(100vh - 112px);display:flex;flex-direction:column;gap:12px;font-size:12px;max-width:none!important;box-sizing:border-box}
+.fvr-report .fvr-heading{flex:0 0 auto}
+.fvr-report .fvr-card{width:100%;max-width:100%;box-sizing:border-box}
 .fvr-heading{gap:15px;flex-wrap:wrap}
 .fvr-title{font-size:20px;font-weight:700;color:#20314c;line-height:1.35;margin:0 0 3px}
 .fvr-subtitle,.fvr-heading nav{font-size:12px;color:#64748b}
-.fvr-card{display:flex;flex-direction:column;flex:1 1 auto;min-height:calc(100vh - 260px);border-radius:9px;background:#fff;border:1px solid #dce4ee;box-shadow:0 2px 12px rgba(20,43,75,.07);overflow:hidden;padding:12px}
-.fvr-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-bottom:12px}
+.fvr-report .fvr-card{display:flex;flex-direction:column;flex:1 1 auto;min-height:calc(100vh - 228px);border-radius:9px;background:#fff;border:1px solid #dce4ee;box-shadow:0 2px 12px rgba(20,43,75,.07);padding:12px;overflow:visible}
+.fvr-toolbar{display:flex;flex-direction:column;align-items:stretch;gap:9px;padding-bottom:12px}
 .fvr-buttons,.fvr-controls{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.fvr-controls{justify-content:space-between;width:100%}
+.fvr-length,.fvr-search{display:flex;align-items:center;gap:7px}
+.fvr-length label,.fvr-search label{font-size:12px;font-weight:600;margin:0;white-space:nowrap}
 .fvr-buttons .dt-buttons{display:flex;flex-wrap:wrap;gap:6px}
 .fvr-buttons .dt-buttons .btn{font-size:12px!important;border-radius:5px!important;padding:5px 10px!important;font-weight:600}
 .fvr-controls .form-control{height:32px;border:1px solid #ccd8e8;border-radius:5px;font-size:12px}
-#financeReportLength{width:105px}
+#financeReportLength{width:72px}
 #financeReportSearch{width:min(245px,55vw)}
-.fvr-table-viewport{flex:1 1 auto;min-height:160px;overflow:auto;position:relative;border:1px solid #e0e8f1;border-radius:6px}
-.fvr-card .dataTables_wrapper{display:flex;flex-direction:column;min-height:0;flex:1 1 auto}
+.fvr-report .fvr-table-viewport{flex:1 1 auto;min-height:160px;max-height:calc(100vh - 344px);overflow:auto;position:relative;border:1px solid #e0e8f1;border-radius:6px}
+.fvr-card .dataTables_wrapper{display:block;min-height:0;width:100%!important}
 .fvr-card table.dataTable{width:100%!important;margin:0!important;border-collapse:collapse!important;font-size:12px}
 .fvr-card table.dataTable thead th{white-space:nowrap;position:sticky;top:0;z-index:2;background:#eef5fd!important;color:#263e5b;font-size:12px;padding:10px 29px 10px 10px!important;font-weight:700;border-bottom:1px solid #cedbe9!important}
 .fvr-card table.dataTable tbody td{padding:8px 10px!important;line-height:18px!important;border-color:#e4ebf2!important;color:#334155}
 .fvr-card table.dataTable tbody tr:nth-child(even){background:#f9fbfe}
 .fvr-card table.dataTable tbody tr:hover{background:#edf5ff!important}
 .fvr-card table.dataTable tfoot th{background:#f1f6fb;color:#223c5a;border-top:2px solid #d3e0ed!important;font-size:12px;padding:9px!important;text-align:right}
-.fvr-card .fvr-heading-filter{position:absolute;right:5px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:#1769e0;min-width:22px;height:27px;cursor:pointer}
+.fvr-card .fvr-heading-filter{position:absolute;right:5px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:#1769e0;min-width:22px;height:27px;cursor:pointer;z-index:3}
+.fvr-card table.dataTable thead th.sorting::before,.fvr-card table.dataTable thead th.sorting::after,
+.fvr-card table.dataTable thead th.sorting_asc::before,.fvr-card table.dataTable thead th.sorting_asc::after,
+.fvr-card table.dataTable thead th.sorting_desc::before,.fvr-card table.dataTable thead th.sorting_desc::after{display:none!important;content:none!important}
+.fvr-card table.dataTable thead th.sorting,.fvr-card table.dataTable thead th.sorting_asc,.fvr-card table.dataTable thead th.sorting_desc{cursor:default!important}
 .fvr-card table.dataTable th{position:relative}
 .fvr-card .fvr-number{text-align:right;font-variant-numeric:tabular-nums}
 .fvr-card .fvr-positive{color:#15803d!important}
@@ -30,4 +39,9 @@
 .fvr-card .fvc-pagination{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
 .fvr-card .fvr-error{font-size:12px;margin:0 0 9px}
 .fvr-card .dataTables_processing{z-index:5}
-@media(max-width:750px){.fvr-report{padding:9px}.fvr-toolbar{align-items:stretch}.fvr-controls{width:100%}.fvr-controls #financeReportSearch{flex:1;width:140px}.fvr-card{min-height:calc(100vh - 230px)}.fvr-card .fvc-pagination-footer{flex-direction:column;align-items:stretch}}
+@media(max-width:750px){.main-content.page-content>.fvr-report.content-wrapper{padding:9px!important}.fvr-controls{gap:12px}.fvr-search{flex:1;justify-content:flex-end}.fvr-search #financeReportSearch{width:min(185px,40vw)}.fvr-card{min-height:calc(100vh - 230px)}.fvr-card .fvc-pagination-footer{flex-direction:column;align-items:stretch}}
+
+/* This report is nested under the AdminLTE page-content shell, not the sidebar. */
+.fvr-report .fvr-table-viewport .fvc-table-skeleton{pointer-events:none!important}
+.fvr-report .fvr-table-viewport .dataTables_info,.fvr-report .fvr-table-viewport .dataTables_paginate{display:none!important}
+body .fvc-filter-popover.fvc-open{z-index:2100!important}
