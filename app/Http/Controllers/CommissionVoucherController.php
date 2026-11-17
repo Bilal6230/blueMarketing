@@ -146,7 +146,8 @@ class CommissionVoucherController extends Controller
         $x['accounts'] = $data_list;
         $x['nextCommissionNumber'] = \App\Services\Finance\CommissionVoucherNumber::next((int) $selectedProjectId);
         $x['commissionPilotCreateAllowed'] =
-            \App\Services\Finance\V2OriginalWorkflowAccess::enabled()
+            (\App\Services\Finance\V2OriginalWorkflowAccess::enabled()
+                || \App\Services\Finance\V2OriginalWorkflowAccess::mergedWriterAllowed())
             && \App\Services\Finance\V2IsolatedConnectionGuard::isAllowed();
 
 
@@ -160,9 +161,8 @@ class CommissionVoucherController extends Controller
         // Original browser form may write ONLY in the explicitly isolated
         // local V2 pilot. Never enable this against an existing V1 database.
         abort_unless(
-            in_array(config('app.env'), ['local', 'testing'], true)
-                && config('finance.v2_pilot_api_enabled')
-                && config('finance.v2_pilot_write_enabled'),
+            \App\Services\Finance\V2OriginalWorkflowAccess::enabled()
+                || \App\Services\Finance\V2OriginalWorkflowAccess::mergedWriterAllowed(),
             409, 'Commission voucher creation is temporarily disabled to protect accounting history.'
         );
         \App\Services\Finance\V2IsolatedConnectionGuard::assertAllowed();
