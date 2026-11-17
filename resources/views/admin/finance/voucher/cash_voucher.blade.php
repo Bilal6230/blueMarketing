@@ -494,7 +494,7 @@
                                                                     </div>
                                                                     <input type="hidden" id="selected_pending_payment_id"
                                                                         name="selected_pending_payment_id" value="">
-                                                                    @if(\App\Services\Finance\V2OriginalWorkflowAccess::enabled())
+                                                                    @if(\App\Services\Finance\FinanceWorkflowAccess::enabled())
                                                                         <div class="row g-2 mb-2">
                                                                             <div class="col-md-5">
                                                                                 <label for="bank_account_id" class="form-label mb-1">Project bank account for posting</label>
