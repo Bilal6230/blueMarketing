@@ -6,52 +6,32 @@ use Illuminate\Support\Facades\{Auth, DB, Gate};
 
 final class V2OriginalWorkflowAccess
 {
-    /**
-     * The ordinary ERP is the default on a LOCAL, non-isolated database.
-     * This choice no longer depends on FINANCE_NORMAL_ERP_MODE or pilot flags.
-     * V2-prefixed isolated databases continue to use their own pilot routing.
-     * Production remains on the original ERP routes pending source-by-source rollout.
-     */
+    /** All environments use the normal unified ERP finance workflow. */
     public static function normalErpMode(): bool
     {
-        $connection = config('database.default');
-        $database = (string) config('database.connections.'.$connection.'.database');
-        return config('app.env') === 'local'
-            && $database !== ''
-            && $database !== ':memory:'
-            && !str_starts_with($database, 'bluemarketing_v2_');
+        return true;
     }
 
-    /**
-     * Merge the existing typed writer into the normal LOCAL ERP workspaces.
-     * This is a narrowly scoped bridge, NOT a global switch back to pilot mode.
-     * A mixed project keeps legacy writers for legacy sources and typed writers
-     * for typed sources; the DB connection guard still rejects live databases.
-     */
+    /** Compatibility API for existing finance services; no pilot or DB selector. */
     public static function mergedWriterAllowed(): bool
     {
-        return self::normalErpMode()
-            && V2IsolatedConnectionGuard::isAllowed();
+        return V2IsolatedConnectionGuard::isAllowed();
     }
 
+    /** No isolated finance mode may be selected by configuration. */
     public static function selected(): bool
     {
-        if (self::normalErpMode()) return false;
-        $connection = config('database.default');
-        return str_starts_with((string) config('database.connections.'.$connection.'.database'), 'bluemarketing_v2_')
-            || (in_array(config('app.env'), ['local', 'testing'], true) && config('finance.v2_pilot_api_enabled'));
+        return false;
     }
 
     public static function enabled(): bool
     {
-        if (self::normalErpMode()) return false;
-        return in_array(config('app.env'), ['local', 'testing'], true)
-            && config('finance.v2_pilot_api_enabled') && config('finance.v2_pilot_write_enabled');
+        return self::mergedWriterAllowed();
     }
 
     public static function authorize(int $projectId): void
     {
-        abort_unless(self::enabled() || self::mergedWriterAllowed(), 409, 'Typed financial workflow is unavailable for this database.');
+        abort_unless(self::mergedWriterAllowed(), 409, 'Finance connection is not configured.');
         V2IsolatedConnectionGuard::assertAllowed();
         $user = Auth::user();
         abort_unless($user && $projectId > 0 && Gate::has('v2-finance-post'), 403);
@@ -62,12 +42,7 @@ final class V2OriginalWorkflowAccess
 
     public static function authorizeRead(int $projectId): void
     {
-        abort_unless(
-            in_array(config('app.env'), ['local', 'testing'], true)
-                && (config('finance.v2_pilot_api_enabled') || self::mergedWriterAllowed()),
-            409,
-            'The finance voucher workspace is unavailable for the selected database.'
-        );
+        abort_unless(self::mergedWriterAllowed(), 409, 'Finance connection is not configured.');
         V2IsolatedConnectionGuard::assertAllowed();
         $user = Auth::user();
         abort_unless($user && $projectId > 0 && Gate::has('v2-finance-read'), 403);
