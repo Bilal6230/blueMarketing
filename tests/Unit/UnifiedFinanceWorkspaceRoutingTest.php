@@ -18,16 +18,16 @@ final class UnifiedFinanceWorkspaceRoutingTest extends TestCase
         ] as $method) {
             self::assertStringContainsString($method, $source);
         }
+        self::assertStringNotContainsString('unavailableWorkspace', $source);
         self::assertStringNotContainsString('unavailableV2Workspace', $source);
-        self::assertStringNotContainsString('V2IsolatedConnectionGuard::isAllowed()', $source);
-        self::assertStringContainsString('V2OriginalWorkflowAccess::authorizeRead($projectId)', $source);
+        self::assertStringContainsString('FinanceWorkflowAccess::authorizeRead($projectId)', $source);
     }
 
     public function test_db_name_and_environment_are_not_finance_feature_flags(): void
     {
         $root = dirname(__DIR__, 2).'/app/Services/Finance/';
-        $guard = file_get_contents($root.'V2IsolatedConnectionGuard.php');
-        $workflow = file_get_contents($root.'V2OriginalWorkflowAccess.php');
+        $guard = file_get_contents($root.'FinanceConnectionGuard.php');
+        $workflow = file_get_contents($root.'FinanceWorkflowAccess.php');
         self::assertIsString($guard);
         self::assertIsString($workflow);
         self::assertStringNotContainsString('bluenew_clean_final', $guard);

@@ -2,8 +2,8 @@
 
 namespace Tests\Unit;
 
-use App\Services\Finance\V2IsolatedConnectionGuard;
-use App\Services\Finance\V2OriginalWorkflowAccess;
+use App\Services\Finance\FinanceConnectionGuard;
+use App\Services\Finance\FinanceWorkflowAccess;
 use Tests\TestCase;
 
 final class UnifiedLocalFinanceConnectionTest extends TestCase
@@ -28,11 +28,11 @@ final class UnifiedLocalFinanceConnectionTest extends TestCase
             ['new_database', 'testing', 'remote.example.org'],
         ] as [$database, $environment, $host]) {
             $this->configuredConnection($database, $environment, $host);
-            self::assertTrue(V2IsolatedConnectionGuard::isAllowed());
-            self::assertTrue(V2OriginalWorkflowAccess::normalErpMode());
-            self::assertTrue(V2OriginalWorkflowAccess::mergedWriterAllowed());
-            self::assertTrue(V2OriginalWorkflowAccess::enabled());
-            self::assertFalse(V2OriginalWorkflowAccess::selected());
+            self::assertTrue(FinanceConnectionGuard::isAllowed());
+            self::assertTrue(FinanceWorkflowAccess::normalErpMode());
+            self::assertTrue(FinanceWorkflowAccess::mergedWriterAllowed());
+            self::assertTrue(FinanceWorkflowAccess::enabled());
+            self::assertFalse(FinanceWorkflowAccess::selected());
         }
     }
 
@@ -42,14 +42,14 @@ final class UnifiedLocalFinanceConnectionTest extends TestCase
         config()->set('database.connections.mysql.url', 'mysql://example.invalid/client_database');
         config()->set('database.connections.mysql.read', ['host' => 'mysql-read.internal']);
         config()->set('database.connections.mysql.write', ['host' => 'mysql-write.internal']);
-        self::assertTrue(V2IsolatedConnectionGuard::isAllowed());
+        self::assertTrue(FinanceConnectionGuard::isAllowed());
     }
 
     public function test_only_missing_connection_configuration_is_rejected(): void
     {
         config()->set('database.default', 'missing');
         config()->set('database.connections.missing', null);
-        self::assertFalse(V2IsolatedConnectionGuard::isAllowed());
-        self::assertFalse(V2OriginalWorkflowAccess::mergedWriterAllowed());
+        self::assertFalse(FinanceConnectionGuard::isAllowed());
+        self::assertFalse(FinanceWorkflowAccess::mergedWriterAllowed());
     }
 }
