@@ -49,7 +49,8 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
     data-post-url="{{ route('finance.voucher.transfer.post',['kind'=>$kind]) }}"
     data-history-url="{{ route('finance.voucher.transfer.history',['kind'=>$kind]) }}"
     data-source-url="{{ route('finance.voucher.transfer.sources',['kind'=>$kind]) }}"
-    data-print-base="{{ url('admin/finance/voucher/bank-transfer/'.$kind) }}">
+    data-print-base="{{ url('admin/finance/voucher/bank-transfer/'.$kind) }}"
+    data-reverse-base="{{ url('admin/finance/voucher/bank-transfer/'.$kind) }}">
     <div class="bt-heading d-flex justify-content-between align-items-center">
         <div><h2 class="mb-0">{{ $kind === 'deposit' ? 'BD Vouchers' : 'BW Vouchers' }}</h2>
             <div class="bt-subtitle">Selected project records · Read-only history</div></div>
@@ -156,6 +157,21 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
             <a id="transferViewPrint" target="_blank" rel="noopener" class="btn btn-primary">Print voucher</a></div>
     </div></div>
 </div>
+@can('delete voucher')
+<div class="modal fade" id="bankTransferReverseModal" tabindex="-1" aria-labelledby="bankTransferReverseTitle" aria-hidden="true">
+ <div class="modal-dialog modal-dialog-centered"><div class="modal-content fvc-modern-modal">
+  <div class="modal-header"><h5 id="bankTransferReverseTitle" class="modal-title">Reverse Bank Voucher</h5>
+   <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
+  <form id="bankTransferReverseForm"><div class="modal-body">
+   <p class="small text-muted">The original transaction remains in history. A reversing posting is added.</p>
+   <label for="btReverseReason">Reason</label><textarea id="btReverseReason" class="form-control" required minlength="3" maxlength="200" rows="3"></textarea>
+   <label for="btReverseDate" class="mt-2">Effective date</label><input type="date" id="btReverseDate" class="form-control" required value="{{ now()->toDateString() }}">
+   <div id="btReverseError" class="alert alert-danger d-none mt-2" role="alert"></div>
+  </div><div class="modal-footer"><button class="btn btn-outline-secondary" type="button" data-dismiss="modal">Cancel</button>
+   <button class="btn btn-danger" id="btReverseSubmit" type="submit">Reverse voucher</button></div></form>
+ </div></div>
+</div>
+@endcan
 @endsection
 
 @section('js')
@@ -172,7 +188,7 @@ $(function () {
     var columnValue=function(r,field){
         var cash=String(r.cash_account||'').split(' / ');
         var fields={date:r.date,number:r.voucher,head:cash[0]||'',subhead:cash.slice(1).join(' / '),
-            detail:r.narration,amount:r.amount,status:'Posted'};
+            detail:r.narration,amount:r.amount,status:r.reversed?'Reversed':'Posted'};
         return String(fields[field] == null ? '' : fields[field]);
     };
     var printUrl = function (id) { return $root.attr('data-print-base') + '/' + encodeURIComponent(id) + '/print'; };
@@ -232,10 +248,13 @@ $(function () {
             $('<td>').text(subhead).appendTo($tr);
             $('<td>').text(r.narration || '—').appendTo($tr);
             $('<td>').addClass('text-right').text(formatMoney(r.amount)).appendTo($tr);
-            $('<td>').append($('<span class="badge badge-secondary">').text('Posted')).appendTo($tr);
+            $('<td>').append($('<span class="badge badge-secondary">').text(r.reversed?'Reversed':'Posted')).appendTo($tr);
             var $actions=$('<td class="blue-actions-cell">');
             $('<button type="button" class="btn btn-sm btn-outline-secondary bt-view" data-blue-action-type="view">View</button>').attr('data-id',batch).appendTo($actions);
             $('<a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" data-blue-action-type="print">Print</a>').attr('href',printUrl(batch)).appendTo($actions);
+            @can('delete voucher')
+            if(r.can_reverse)$('<button type="button" class="btn btn-sm btn-outline-danger bt-reverse" data-blue-action-type="delete">Reverse</button>').attr('data-id',batch).appendTo($actions);
+            @endcan
             $actions.appendTo($tr);
             $tbody.append($tr);
         });
@@ -300,7 +319,7 @@ $(function () {
             ['Voucher',row.voucher],['Date',row.date],
             ['Cash account',row.cash_account],['Bank account',row.bank],
             ['Cheque reference',row.cheque || '—'],['Amount',formatMoney(row.amount)],
-            ['Status','Posted'],['Details',row.narration]
+            ['Status',row.reversed?'Reversed':'Posted'],['Details',row.narration]
         ],function(_,field){
             var $line=$('<div class="d-flex justify-content-between py-2 border-bottom">');
             $('<strong class="mr-3">').text(field[0]).appendTo($line);
@@ -310,6 +329,38 @@ $(function () {
         $('#transferViewPrint').attr('href',printUrl(id));
         $('#bankTransferViewModal').modal('show');
     });
+    @can('delete voucher')
+    $('#transferRows').on('click','.bt-reverse',function(){
+        var batch=Number($(this).attr('data-id'));
+        var row=$.grep(allRows,function(r){return Number(r.posting_batch_id)===batch;})[0];
+        if(!row||!row.can_reverse)return;
+        $('#bankTransferReverseForm').data('batch',batch);
+        $('#btReverseReason').val('');
+        $('#btReverseError').addClass('d-none').text('');
+        $('#bankTransferReverseModal').modal('show');
+    });
+    $('#bankTransferReverseForm').on('submit',function(e){
+        e.preventDefault();
+        var batch=Number($(this).data('batch')),$button=$('#btReverseSubmit');
+        if(!batch||$button.prop('disabled'))return;
+        $button.prop('disabled',true);
+        $.ajax({
+            url:$root.attr('data-reverse-base')+'/'+encodeURIComponent(batch)+'/reverse',
+            type:'POST',dataType:'json',contentType:'application/json',
+            headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest',
+                'X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')},
+            data:JSON.stringify({effective_date:$('#btReverseDate').val(),
+                reason:$.trim($('#btReverseReason').val()),
+                request_key:'banktransferreverse'+Date.now().toString(36)+Math.random().toString(36).slice(2,14)})
+        }).done(function(response){
+            $('#bankTransferReverseModal').modal('hide');
+            notify('success','Voucher reversed',response.message||'Reversal posted');
+            loadHistory();
+        }).fail(function(xhr){
+            showError($('#btReverseError'),(xhr.responseJSON||{}).message||'Unable to reverse voucher');
+        }).always(function(){$button.prop('disabled',false);});
+    });
+    @endcan
     var loadCheques = function () {
         var $cheque=$('#chequeSource');
         if (!$cheque.length) return;
