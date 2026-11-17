@@ -699,6 +699,28 @@ final class DailyVoucherDirectoryController extends Controller
             ->where('linked.customer_ledger_id', $customerLedger)->where('a.project_id', $projectId)
             ->orderBy('linked.id')->get(['h.name as head_name', 's.name as subhead_name', 'linked.amount_in', 'linked.amount_out', 'linked.detail']);
 
+        // Typed V2 cash documents never had to mirror their posting lines
+        // into legacy ledgers. Render the exact source-verified lines if the
+        // original print otherwise has no ledger legs; never guess type_id.
+        if ($lines->isEmpty()
+            && \App\Services\Finance\V2OriginalWorkflowAccess::mergedWriterAllowed()
+            && Schema::hasTable('finance_posting_cash_sources')) {
+            try {
+                $typed = collect((new \App\Services\Finance\V2OriginalLedgerReport())->rows($projectId, null, null))
+                    ->where('source_kind', 'cash')
+                    ->where('source_id', $customerLedger);
+                $lines = $typed->map(fn (array $row) => (object) [
+                    'head_name' => $row['head_account_name'],
+                    'subhead_name' => $row['subhead_account_name'],
+                    'amount_in' => $row['amount_in'],
+                    'amount_out' => $row['amount_out'],
+                    'detail' => $row['detail'],
+                ])->values();
+            } catch (\DomainException $exception) {
+                abort(409, 'Voucher print integrity checks failed.');
+            }
+        }
+
         $displayNumber = app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)
             ->lookup($projectId, 'customer_ledger', $customerLedger)
             ?: trim((string) $source->transaction_type.'-'.(string) ($source->type_id ?? $source->id), '-');
