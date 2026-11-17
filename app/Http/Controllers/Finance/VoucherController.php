@@ -1232,6 +1232,47 @@ class VoucherController extends Controller
         ])]);
     }
 
+    /**
+     * Original plot sources stay immutable. Local normal ERP uses the same
+     * source-aware reversal engine as V2; no legacy ledger delete is issued.
+     */
+    public function reversePlotReceipt(Request $request, int $receiptId)
+    {
+        return $this->reversePlotSource($request, 'plot_receipt', $receiptId);
+    }
+
+    public function reversePlotPurchase(Request $request, int $purchaseId)
+    {
+        return $this->reversePlotSource($request, 'plot_purchase', $purchaseId);
+    }
+
+    private function reversePlotSource(Request $request, string $kind, int $sourceId)
+    {
+        $projectId = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+        abort_unless(auth()->user()?->can('delete voucher'), 403);
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'min:3', 'max:200'],
+            'effective_date' => ['nullable', 'date_format:Y-m-d'],
+            'request_key' => ['nullable', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
+        ]);
+        try {
+            $batchId = (new \App\Services\Finance\V2PlotEntryLifecycleService())->reverse(
+                $projectId, $kind, $sourceId,
+                $data['request_key'] ?? (string) \Illuminate\Support\Str::uuid(),
+                $data['effective_date'] ?? now()->toDateString(),
+                trim($data['reason']), (int) auth()->id()
+            );
+        } catch (\DomainException $exception) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Reversal not permitted for this source or its linked inventory.',
+            ], 409);
+        }
+        return response()->json(['status' => 'success', 'data' => ['posting_batch_id' => $batchId],
+            'message' => 'Voucher reversed. Original posting history remains available.']);
+    }
+
     public function plotReceiptDetails(int $receiptId)
     {
         $projectId = (int) getSelectedTown();
