@@ -227,6 +227,18 @@ final class DailyVoucherDirectoryController extends Controller
                     ->whereIn('voucher_id',$sources->pluck('id'))->get()
                     ->keyBy('voucher_id');
             }
+            $typedCash=collect();
+            if ($sources->isNotEmpty()
+                && \App\Services\Finance\V2OriginalWorkflowAccess::mergedWriterAllowed()
+                && Schema::hasTable('finance_posting_cash_sources')) {
+                $typedCash=DB::table('finance_posting_cash_sources as posting')
+                    ->join('finance_posting_batches as batch', 'batch.id', '=', 'posting.posting_batch_id')
+                    ->leftJoin('finance_posting_batches as rev', 'rev.reversal_of_batch_id', '=', 'batch.id')
+                    ->where('batch.project_id', $projectId)
+                    ->whereIn('posting.customer_ledger_id', $sources->pluck('id'))
+                    ->get(['posting.customer_ledger_id', 'rev.id as reversal_id'])
+                    ->keyBy('customer_ledger_id');
+            }
             $pendingEdits=collect();
             if (Schema::hasTable('daily_voucher_edit_snapshots') && $sources->isNotEmpty()) {
                 $pendingEdits=DB::table('daily_voucher_edit_snapshots')
@@ -236,6 +248,7 @@ final class DailyVoucherDirectoryController extends Controller
             }
             foreach ($sources as $source) {
                 $bankRelease=$bankReleases->get($source->id);
+                $typedPosting=$typedCash->get($source->id);
                 $series = $identities->series($projectId, 'customer_ledger', (int) $source->id);
                 $display = $identities->lookup($projectId, 'customer_ledger', (int) $source->id)
                     ?: trim((string) $source->transaction_type.'-'.(string) ($source->type_id ?? $source->id));
@@ -275,9 +288,11 @@ final class DailyVoucherDirectoryController extends Controller
                     'amount' => is_array($proposed)
                         ? max((float)($proposed['amount_in']??0),(float)($proposed['amount_out']??0))
                         : (float) max((float) ($source->amount_in ?? 0), (float) ($source->amount_out ?? 0)),
-                    'status' => $bankRelease
-                        ? ($bankRelease->action==='posted_void_release'?'Voided':'Released')
-                        : ucfirst((string)($sourceApprovals[$source->id]['status']??(!empty($source->is_active)?'posted':'inactive'))),
+                    'status' => $typedPosting && $typedPosting->reversal_id
+                        ? 'Reversed'
+                        : ($bankRelease
+                            ? ($bankRelease->action==='posted_void_release'?'Voided':'Released')
+                            : ucfirst((string)($sourceApprovals[$source->id]['status']??(!empty($source->is_active)?'posted':'inactive')))),
                     'approval_approver' => $sourceApprovals[$source->id]['approver']??null,
                     'approved_by' => \App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())
                         ? ($sourceApprovals[$source->id]['approved_by'] ?? null) : null,
@@ -328,6 +343,11 @@ final class DailyVoucherDirectoryController extends Controller
                             || ((int)($sourceApprovals[$source->id]['submitted_by'] ?? 0)===(int)auth()->id()
                                 && (int)auth()->user()->project_id===$projectId))
                         ? route('finance.daily-vouchers.revise.edit',['customerLedger'=>$source->id]) : null,
+                    'reverse_url' => $typedPosting && !$typedPosting->reversal_id
+                        && in_array((int) ($source->payment_type ?? 1), [0,1], true)
+                        && !$pendingEdits->has($source->id)
+                        && auth()->user()?->can('delete voucher')
+                        ? route('finance.daily-vouchers.sources.reverse', ['customerLedger' => $source->id]) : null,
                     'delete_url' => !$bankAllocations->has($source->id)
                         && $ledgerId && auth()->user()?->can('delete voucher')
                         && in_array((string) $source->transaction_type, ['CR', 'CP','CCR','CDR'], true)
@@ -681,6 +701,35 @@ final class DailyVoucherDirectoryController extends Controller
                 'subhead' => (string) ($line->subhead_name ?? '—'),
                 'description' => (string) ($line->description ?? ''), 'debit' => (float) $line->debit, 'credit' => (float) $line->credit,
             ])->all();
+    }
+
+    /** Reverse an exact V2 typed cash source, preserving its original posting history. */
+    public function reverseTypedCashSource(Request $request, int $customerLedger)
+    {
+        $projectId = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+        abort_unless(auth()->user()?->can('delete voucher'), 403);
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'min:3', 'max:200'],
+            'effective_date' => ['required', 'date_format:Y-m-d'],
+            'request_key' => ['nullable', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
+        ]);
+        try {
+            $reversalId = (new \App\Services\Finance\V2CashVoucherLifecycleService())->reverse(
+                $projectId, $customerLedger,
+                $data['request_key'] ?? (string) \Illuminate\Support\Str::uuid(),
+                $data['effective_date'], trim($data['reason']), (int) auth()->id()
+            );
+        } catch (\DomainException $e) {
+            return response()->json(['status' => 'error',
+                'message' => $e->getMessage() === 'V2_CASH_REVERSE_BANK_CUSTODY_REQUIRED'
+                    ? 'Bank and cheque vouchers require their own custody reversal workflow.'
+                    : 'Cash voucher reversal was not permitted. Check the source, corrections and reversal history.',
+            ], 409);
+        }
+        return response()->json(['status' => 'success',
+            'message' => 'Voucher reversed; original financial history preserved.',
+            'data' => ['posting_batch_id' => $reversalId]]);
     }
 
     public function printSource(int $customerLedger)
