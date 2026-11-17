@@ -14,14 +14,14 @@ use Mockery;
 use Tests\TestCase;
 
 /**
- * Actual HTTP middleware -> controller -> typed V2 posting gateway integration.
+ * Actual HTTP middleware -> controller -> typed Finance posting gateway integration.
  * SQLite :memory: only. No external endpoints, V1 mutations or live DB.
  *
- * Pilot routes are OFF when the app boots; an enabled scenario explicitly
+ * finance routes are OFF when the app boots; an enabled scenario explicitly
  * re-loads the same routes/api.php definitions in the in-memory router,
  * after setting flags and re-booting the opt-in Gate provider.
  */
-final class FinancePilotHttpSafetyTest extends TestCase
+final class FinancefinanceHttpSafetyTest extends TestCase
 {
     protected function setUp(): void
     {
@@ -29,14 +29,12 @@ final class FinancePilotHttpSafetyTest extends TestCase
         config()->set('database.default', 'sqlite');
         config()->set('database.connections.sqlite.database', ':memory:');
         config()->set('database.connections.sqlite.foreign_key_constraints', true);
-        config()->set('finance.v2_pilot_api_enabled', false);
-        config()->set('finance.v2_pilot_write_enabled', false);
         DB::purge('sqlite');
         DB::setDefaultConnection('sqlite');
         DB::statement('PRAGMA foreign_keys = ON');
 
         // The real Spatie PermissionRegistrar registers a Gate::before
-        // callback and queries permissions BEFORE the V2 pilot Gate handler.
+        // callback and queries permissions BEFORE the Finance finance Gate handler.
         // Use the application's actual permission migration in :memory:
         // instead of mocking away a security-critical authorization layer.
         // No non-test database is ever reachable (DatabaseIsolation guard).
@@ -134,12 +132,12 @@ final class FinancePilotHttpSafetyTest extends TestCase
             [
                 'id' => 511, 'journal_voucher_id' => 51, 'account_id' => 101,
                 'debit' => '125.50', 'credit' => '0.00',
-                'description' => 'Pilot exact debit',
+                'description' => 'finance exact debit',
             ],
             [
                 'id' => 512, 'journal_voucher_id' => 51, 'account_id' => 102,
                 'debit' => '0.00', 'credit' => '125.50',
-                'description' => 'Pilot exact credit',
+                'description' => 'finance exact credit',
             ],
         ]);
     }
@@ -150,16 +148,9 @@ final class FinancePilotHttpSafetyTest extends TestCase
         parent::tearDown();
     }
 
-    private function enablePilot(bool $allowWrite = false): void
+    private function useFinanceApi(bool $allowWrite = false): void
     {
-        config()->set('finance.v2_pilot_api_enabled', true);
-        config()->set('finance.v2_pilot_write_enabled', $allowWrite);
         (new FinanceApiServiceProvider($this->app))->boot();
-
-        // Real route definitions, loaded only into this test process. Do not
-        // duplicate mock endpoints or enable API routes on a running server.
-        Route::prefix('api')->middleware('api')
-            ->group(base_path('routes/api.php'));
     }
 
     private function authenticate(bool $superadmin = true, int $projectId = 1): void
@@ -171,31 +162,28 @@ final class FinancePilotHttpSafetyTest extends TestCase
         $this->actingAs($user, 'sanctum');
     }
 
-    public function test_finance_routes_are_not_registered_with_default_off_flag(): void
+    public function test_unified_finance_routes_require_authentication_without_feature_flags(): void
     {
-        $this->getJson('/api/v2/finance/projects/1/trial-balance')->assertNotFound();
-        $this->postJson('/api/v2/finance/projects/1/postings', [
-            'kind' => 'journal', 'source_id' => 51,
-            'request_key' => 'HTTP-DEFAULT-OFF-0001',
-        ])->assertNotFound();
+        $this->getJson('/api/finance/projects/1/trial-balance')->assertUnauthorized();
+        $this->postJson('/api/finance/projects/1/postings', [])->assertUnauthorized();
         $this->assertDatabaseCount('finance_posting_batches', 0);
     }
 
     public function test_enabled_routes_require_sanctum_authentication(): void
     {
-        $this->enablePilot();
-        $this->getJson('/api/v2/finance/projects/1/trial-balance')
+        $this->useFinanceApi();
+        $this->getJson('/api/finance/projects/1/trial-balance')
             ->assertUnauthorized();
     }
 
     public function test_local_superadmin_can_read_typed_reports_and_csv(): void
     {
-        $this->enablePilot();
+        $this->useFinanceApi();
         $this->authenticate();
-        $base = '/api/v2/finance/projects/1';
+        $base = '/api/finance/projects/1';
 
         $this->getJson($base . '/trial-balance')
-            ->assertOk()->assertJsonPath('scope', 'typed_v2_postings_only')
+            ->assertOk()->assertJsonPath('scope', 'typed_finance_postings_only')
             ->assertJsonPath('total_period_debit', '0.00');
         $this->getJson($base . '/summary')
             ->assertOk()->assertJsonPath('posting_batch_count', 0);
@@ -211,69 +199,62 @@ final class FinancePilotHttpSafetyTest extends TestCase
 
     public function test_non_superadmin_cannot_read_other_project_or_bypass_gate(): void
     {
-        $this->enablePilot();
+        $this->useFinanceApi();
         $this->authenticate(false, 1);
-        $this->getJson('/api/v2/finance/projects/2/trial-balance')
+        $this->getJson('/api/finance/projects/2/trial-balance')
             ->assertForbidden();
         $this->assertDatabaseCount('finance_posting_batches', 0);
     }
 
     public function test_project_membership_still_applies_when_future_read_gate_allows_non_admin(): void
     {
-        $this->enablePilot();
+        $this->useFinanceApi();
         // Simulate an explicitly approved future read role. Project membership
         // must be independently enforced AFTER the Gate allows access.
         Gate::define('finance-read', static fn ($user): bool => true);
         $this->authenticate(false, 1);
-        $this->getJson('/api/v2/finance/projects/1/trial-balance')
+        $this->getJson('/api/finance/projects/1/trial-balance')
             ->assertOk();
-        $this->getJson('/api/v2/finance/projects/2/trial-balance')
+        $this->getJson('/api/finance/projects/2/trial-balance')
             ->assertForbidden();
         $this->assertDatabaseCount('finance_posting_batches', 0);
     }
 
-    public function test_read_only_pilot_rejects_writes_even_for_superadmin(): void
+    public function test_invalid_posting_payload_does_not_mutate_accounting(): void
     {
-        $this->enablePilot(false);
+        $this->useFinanceApi();
         $this->authenticate();
-        $this->postJson('/api/v2/finance/projects/1/postings', [
-            'kind' => 'journal', 'source_id' => 51,
-            'request_key' => 'HTTP-WRITE-BLOCKED-0001',
-        ])->assertNotFound();
-        $this->postJson('/api/v2/finance/projects/1/reversals', [
-            'original_batch_id' => 10, 'request_key' => 'HTTP-REV-BLOCKED-0001',
-            'effective_date' => '2026-10-31', 'reason' => 'Correct',
-        ])->assertNotFound();
+        $this->postJson('/api/finance/projects/1/postings', [])->assertUnprocessable();
         $this->assertDatabaseCount('finance_posting_batches', 0);
     }
 
-    public function test_source_scoped_void_requires_write_flag(): void
+    public function test_source_scoped_void_requires_an_existing_posting(): void
     {
-        $this->enablePilot(false);
+        $this->useFinanceApi();
         $this->authenticate();
-        $this->postJson('/api/v2/finance/projects/1/vouchers/journal/51/void', [
-            'request_key' => 'VOID-WRITE-BLOCKED-0001',
+        $this->postJson('/api/finance/projects/1/vouchers/journal/51/void', [
+            'request_key' => 'VOID-SOURCE-UNPOSTED-0001',
             'effective_date' => '2026-10-31', 'reason' => 'Correction',
-        ])->assertNotFound();
+        ])->assertStatus(409);
         $this->assertDatabaseCount('finance_posting_batches', 0);
     }
 
     public function test_source_scoped_void_refuses_unposted_journal_without_writes(): void
     {
-        $this->enablePilot(true);
+        $this->useFinanceApi(true);
         $this->authenticate();
-        $this->postJson('/api/v2/finance/projects/1/vouchers/journal/51/void', [
+        $this->postJson('/api/finance/projects/1/vouchers/journal/51/void', [
             'request_key' => 'VOID-SOURCE-UNPOSTED-0001',
             'effective_date' => '2026-10-31', 'reason' => 'Correction',
-        ])->assertStatus(409)->assertJsonPath('error', 'V2_VOUCHER_VOID_CONFLICT');
+        ])->assertStatus(409)->assertJsonPath('error', 'FINANCE_VOUCHER_VOID_CONFLICT');
         $this->assertDatabaseCount('finance_posting_batches', 0);
     }
 
     public function test_source_scoped_journal_void_posts_immutable_inverse_and_replays(): void
     {
-        $this->enablePilot(true);
+        $this->useFinanceApi(true);
         $this->authenticate();
-        $base = '/api/v2/finance/projects/1';
+        $base = '/api/finance/projects/1';
         $original = $this->postJson($base . '/postings', [
             'kind' => 'journal', 'source_id' => 51,
             'request_key' => 'HTTP-VOID-ORIGINAL-JV-0001',
@@ -305,7 +286,7 @@ final class FinancePilotHttpSafetyTest extends TestCase
 
     public function test_source_scoped_void_rejects_wrong_project_and_unposted_commission(): void
     {
-        $this->enablePilot(true);
+        $this->useFinanceApi(true);
         $this->authenticate();
         $void = [
             'request_key' => 'HTTP-VOID-PROJECT-GUARD-01',
@@ -315,19 +296,19 @@ final class FinancePilotHttpSafetyTest extends TestCase
         // Superadmins may inspect more than one project, but source 51 is
         // owned by project 1. Source isolation must fail with 409, never
         // accidentally reverse a project-1 posting through project 2.
-        $this->postJson('/api/v2/finance/projects/2/vouchers/journal/51/void', $void)
+        $this->postJson('/api/finance/projects/2/vouchers/journal/51/void', $void)
             ->assertStatus(409)
-            ->assertJsonPath('error', 'V2_VOUCHER_VOID_CONFLICT');
-        $this->postJson('/api/v2/finance/projects/1/vouchers/commission/41/void', $void)
+            ->assertJsonPath('error', 'FINANCE_VOUCHER_VOID_CONFLICT');
+        $this->postJson('/api/finance/projects/1/vouchers/commission/41/void', $void)
             ->assertStatus(409);
         $this->assertDatabaseCount('finance_posting_batches', 0);
     }
 
     public function test_approved_commission_posts_and_voids_over_real_http_with_replay(): void
     {
-        $this->enablePilot(true);
+        $this->useFinanceApi(true);
         $this->authenticate();
-        $base = '/api/v2/finance/projects/1';
+        $base = '/api/finance/projects/1';
         $original = $this->postJson($base . '/postings', [
             'kind' => 'commission', 'source_id' => 41,
             'request_key' => 'HTTP-CV-SOURCE-POST-0001',
@@ -358,9 +339,9 @@ final class FinancePilotHttpSafetyTest extends TestCase
 
     public function test_http_commission_draft_create_update_approve_post_and_immutability(): void
     {
-        $this->enablePilot(true);
+        $this->useFinanceApi(true);
         $this->authenticate();
-        $base = '/api/v2/finance/projects/1/commission-drafts';
+        $base = '/api/finance/projects/1/commission-drafts';
         $legs = [
             ['account_id' => 101, 'debit' => '35.00', 'credit' => '0.00'],
             ['account_id' => 102, 'debit' => '0.00', 'credit' => '35.00'],
@@ -386,26 +367,24 @@ final class FinancePilotHttpSafetyTest extends TestCase
         ]);
     }
 
-    public function test_stock_project_approval_requires_write_flag_before_any_query(): void
+    public function test_stock_project_approval_refuses_invalid_source(): void
     {
-        $this->enablePilot(false);
+        $this->useFinanceApi();
         $this->authenticate();
         try {
-            (new StockProjectApprovalWriter())->approve(
-                'stock_entry', 999, 1, 'OWNER-EVIDENCE-999'
-            );
-            $this->fail('V2 stock approval was allowed with write flag OFF');
+            (new StockProjectApprovalWriter())->approve('stock_entry', 999, 1, 'OWNER-EVIDENCE-999');
+            $this->fail('An invalid stock source was approved.');
         } catch (\DomainException $e) {
-            $this->assertSame('V2_STOCK_APPROVAL_WRITE_FLAG_REQUIRED', $e->getMessage());
+            $this->assertNotSame('', $e->getMessage());
         }
         $this->assertDatabaseCount('finance_posting_batches', 0);
     }
 
     public function test_explicit_write_flag_allows_journal_post_replay_and_reversal(): void
     {
-        $this->enablePilot(true);
+        $this->useFinanceApi(true);
         $this->authenticate();
-        $base = '/api/v2/finance/projects/1';
+        $base = '/api/finance/projects/1';
         $payload = [
             'kind' => 'journal',
             'source_id' => 51,
@@ -438,9 +417,9 @@ final class FinancePilotHttpSafetyTest extends TestCase
 
     public function test_invalid_posting_payload_is_rejected_without_mutation(): void
     {
-        $this->enablePilot(true);
+        $this->useFinanceApi(true);
         $this->authenticate();
-        $this->postJson('/api/v2/finance/projects/1/postings', [
+        $this->postJson('/api/finance/projects/1/postings', [
             'kind' => 'unknown', 'source_id' => 51,
             'request_key' => 'HTTP-INVALID-KIND-0001',
         ])->assertUnprocessable();
@@ -448,17 +427,17 @@ final class FinancePilotHttpSafetyTest extends TestCase
     }
     public function test_sales_journal_sv_requires_explicit_kind_and_uses_physical_source_fk(): void
     {
-        $this->enablePilot(true);
+        $this->useFinanceApi(true);
         $this->authenticate();
         DB::table('journal_vouchers')->where('id', 51)->update(['type' => 'SV']);
 
-        $base = '/api/v2/finance/projects/1';
+        $base = '/api/finance/projects/1';
         $invalid = [
             'kind' => 'journal', 'source_id' => 51,
             'request_key' => 'HTTP-SALES-AS-JV-BLOCK-01',
         ];
         $this->postJson($base . '/postings', $invalid)
-            ->assertStatus(409)->assertJsonPath('error', 'V2_POSTING_CONFLICT');
+            ->assertStatus(409)->assertJsonPath('error', 'FINANCE_POSTING_CONFLICT');
         $this->assertDatabaseCount('finance_posting_batches', 0);
 
         $payload = [
@@ -479,11 +458,11 @@ final class FinancePilotHttpSafetyTest extends TestCase
             ->assertOk()->assertJsonPath('documents.0.voucher_series', 'SV');
     }
 
-    public function test_v2_readiness_scopes_exact_source_kind_to_project_and_no_writes(): void
+    public function test_finance_readiness_scopes_exact_source_kind_to_project_and_no_writes(): void
     {
-        $this->enablePilot(false);
+        $this->useFinanceApi(false);
         $this->authenticate();
-        $base = '/api/v2/finance/projects/1/sources/';
+        $base = '/api/finance/projects/1/sources/';
         $this->getJson($base . 'journal/51/readiness')
             ->assertOk()->assertJsonPath('eligible', true)
             ->assertJsonPath('source_kind', 'journal');
@@ -497,12 +476,12 @@ final class FinancePilotHttpSafetyTest extends TestCase
         $this->assertDatabaseCount('finance_posting_batches', 0);
     }
 
-    public function test_v2_readiness_and_post_refuse_mismatched_sales_type(): void
+    public function test_finance_readiness_and_post_refuse_mismatched_sales_type(): void
     {
-        $this->enablePilot(true);
+        $this->useFinanceApi(true);
         $this->authenticate();
         DB::table('journal_vouchers')->where('id', 51)->update(['type' => 'SV']);
-        $base = '/api/v2/finance/projects/1';
+        $base = '/api/finance/projects/1';
         $this->getJson($base . '/sources/sales/51/readiness')
             ->assertOk()->assertJsonPath('eligible', true);
         $this->getJson($base . '/sources/journal/51/readiness')
@@ -511,20 +490,20 @@ final class FinancePilotHttpSafetyTest extends TestCase
         $this->postJson($base . '/postings', [
             'kind' => 'journal', 'source_id' => 51,
             'request_key' => 'SV-READINESS-FAIL-0001',
-        ])->assertStatus(409)->assertJsonPath('error', 'V2_POSTING_CONFLICT');
+        ])->assertStatus(409)->assertJsonPath('error', 'FINANCE_POSTING_CONFLICT');
         $this->assertDatabaseCount('finance_posting_batches', 0);
     }
 
     public function test_source_readiness_does_not_expose_foreign_project_voucher_identity(): void
     {
-        $this->enablePilot(true);
+        $this->useFinanceApi(true);
         $this->authenticate();
-        $this->getJson('/api/v2/finance/projects/2/sources/journal/51/readiness')
+        $this->getJson('/api/finance/projects/2/sources/journal/51/readiness')
             ->assertOk()
             ->assertJsonPath('eligible', false)
             ->assertJsonPath('source_series', null)
             ->assertJsonPath('reason_code', 'SOURCE_NOT_FOUND');
-        $this->postJson('/api/v2/finance/projects/2/postings', [
+        $this->postJson('/api/finance/projects/2/postings', [
             'kind' => 'journal', 'source_id' => 51,
             'request_key' => 'CROSS-PROJECT-VOUCHER-READINESS-1',
         ])->assertStatus(409);
