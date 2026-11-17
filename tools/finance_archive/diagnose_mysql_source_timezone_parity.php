@@ -153,7 +153,7 @@ if (!Schema::hasTable('finance_posting_source_claims')
 $tables = [];
 for ($part = 1; $part <= 4; $part++) {
     $schema = json_decode((string) file_get_contents(base_path(
-        'database/v2_schema/legacy_columns_'
+        'database/finance_schema_archive/legacy_columns_'
         . str_pad((string) $part, 2, '0', STR_PAD_LEFT) . '.json'
     )), true, 512, JSON_THROW_ON_ERROR);
     if (($schema['source_sha256'] ?? null) !== $sourceSha) {

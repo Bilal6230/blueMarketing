@@ -4,7 +4,7 @@
  * READ-ONLY local target identity preflight. Prevent accidentally running
  * isolated historical import against a live/old database or non-local host.
  *
- * php tools/database_v2/check_local_v2_target.php
+ * php tools/finance_archive/check_local_finance_target.php
  *     --expected-name=bluemarketing_v2_local_rehearsal --require-empty
  */
 declare(strict_types=1);

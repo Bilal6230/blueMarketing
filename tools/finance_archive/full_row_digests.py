@@ -3,7 +3,7 @@
 
 All values are included; no customer/source row is emitted. Each original row
 gets a SHA256 digest; sorted row digests preserve duplicate identical rows.
-Reproducible with tools/database_v2/verify_mysql_full_row_digests.php.
+Reproducible with tools/finance_archive/verify_mysql_full_row_digests.php.
 This is a *semantic stored-value* comparison: integer and DECIMAL columns are
 normalized to the V2 SQL type, but descriptions, dates, NULL and strings are
 preserved exactly. No FLOAT, JSON or BLOB columns are in this source snapshot.

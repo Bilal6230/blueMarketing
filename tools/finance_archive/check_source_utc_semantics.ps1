@@ -27,12 +27,12 @@ try {
     $env:DB_URL = ""
     $env:DATABASE_URL = ""
 
-    py -3 ./tools/database_v2/prove_source_export_timezone.py --source "$realSql"
+    py -3 ./tools/finance_archive/prove_source_export_timezone.py --source "$realSql"
     if ($LASTEXITCODE -ne 0) {
         throw "V2_SOURCE_UTC_PROOF_FAILED; no history changed"
     }
 
-    php ./tools/database_v2/verify_mysql_full_row_digests.php "--source-evidence=$realEvidence" --verify-source-utc
+    php ./tools/finance_archive/verify_mysql_full_row_digests.php "--source-evidence=$realEvidence" --verify-source-utc
     if ($LASTEXITCODE -ne 0) {
         throw "V2_SOURCE_UTC_IMPORT_SEMANTIC_MISMATCH_OR_BLOCK; do not rewrite history"
     }

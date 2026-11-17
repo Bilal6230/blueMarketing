@@ -35,7 +35,7 @@ if ((int) $db->table('finance_posting_source_claims')->count() !== 0) {
 $expectedSha = 'bbc45fe7f0b6cdab1a188d2437e973e2bb56d442a29585ab328bd062e89335ed';
 $meta = [];
 for ($part = 1; $part <= 4; $part++) {
-    $path = base_path('database/v2_schema/legacy_columns_'
+    $path = base_path('database/finance_schema_archive/legacy_columns_'
         . str_pad((string) $part, 2, '0', STR_PAD_LEFT) . '.json');
     $data = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
     if (($data['source_sha256'] ?? '') !== $expectedSha) {

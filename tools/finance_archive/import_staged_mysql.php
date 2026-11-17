@@ -8,7 +8,7 @@
  * local/testing, no source DB connection, all 57 tables empty, FK checks ON.
  *
  * EXAMPLE (only after independent review and isolated backup):
- * php tools/database_v2/import_staged_mysql.php --dir=/secure/stage \\
+ * php tools/finance_archive/import_staged_mysql.php --dir=/secure/stage \\
  *   --expected-sha256=<SOURCE_SHA256> --expected-rows=120165 --apply
  */
 declare(strict_types=1);
