@@ -2645,6 +2645,122 @@ class BookingController extends Controller
 
     public function deposit(Request $request)
     {
+        // Normal ERP mode is a shared UI, NOT a licence to overwrite V2
+        // posting history. A previously V2-created EC/ECP retains its
+        // claim-backed financial writer, while fresh ECs use the standard
+        // legacy controller below. Never re-post the same source in ledgers.
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::normalErpMode()
+            && \Illuminate\Support\Facades\Schema::hasTable('finance_extra_charge_sources')
+            && \Illuminate\Support\Facades\Schema::hasTable('finance_extra_charge_payment_sources')) {
+            $project = (int) getSelectedTown();
+            $action = (string) $request->input('action');
+            $typedCharge = (int) $request->input('extra_charge_id');
+            $typedPayment = (int) $request->input('extra_charge_payment_id');
+            $hasTypedCharge = $action === 'extra_charge_payment' && $typedCharge > 0
+                && DB::table('finance_extra_charge_sources as ec')
+                    ->join('customer_ledger as source', 'source.id', '=', 'ec.customer_ledger_id')
+                    ->where('ec.customer_ledger_id', $typedCharge)
+                    ->where('source.project_id', $project)->exists();
+            $hasTypedPayment = $action === 'extra_charge_clearance' && $typedPayment > 0
+                && DB::table('finance_extra_charge_payment_sources as ecp')
+                    ->join('customer_ledger as source', 'source.id', '=', 'ecp.customer_ledger_id')
+                    ->where('ecp.customer_ledger_id', $typedPayment)
+                    ->where('source.project_id', $project)->exists();
+            if ($hasTypedCharge || $hasTypedPayment) {
+                abort_unless($project > 0, 403);
+                try {
+                    if ($hasTypedCharge) {
+                        $context = $request->validate([
+                            'extra_charge_id' => ['required', 'integer', 'min:1'],
+                            'customer_id' => ['required', 'integer', 'min:1'],
+                            'plot_id' => ['required', 'integer', 'min:1'],
+                            'reference' => ['required', 'string', 'max:100'],
+                            'date' => ['required', 'date_format:Y-m-d'],
+                            'amount' => ['required', 'regex:/^[0-9,]{1,14}(?:\\.[0-9]{1,2})?$/D'],
+                            'payment_type' => ['required', 'integer', 'in:1,2,3'],
+                        ]);
+                        // Stable retry identity, even though the ordinary
+                        // voucher form does not render pilot-only fields.
+                        $key = 'NORMAL-EC-'.substr(hash('sha256',
+                            $project.'|'.$typedCharge.'|'.$context['reference']), 0, 40);
+                        $request->merge(['request_key' => $key]);
+                        if ((int) $context['payment_type'] === 1) {
+                            DB::transaction(function () use ($request, $project, $context): void {
+                                $accounts = app(\App\Services\Finance\ExtraChargeAccounts::class)
+                                    ->forProject($project, (int) $context['customer_id'], (int) $context['plot_id']);
+                                $cash = app(\App\Services\Finance\ExtraChargeAccounts::class)
+                                    ->settlementAccount($project, 'Cash');
+                                $amount = \App\Services\Finance\V2OriginalCustomerWorkflow::money(
+                                    str_replace(',', '', (string) $context['amount'])
+                                );
+                                $request->merge(['posting_lines' => [
+                                    ['account_id' => $cash, 'debit' => $amount, 'credit' => '0.00'],
+                                    ['account_id' => $accounts['debit_account_id'], 'debit' => '0.00', 'credit' => $amount],
+                                ]]);
+                            });
+                        }
+                        $data = \App\Services\Finance\V2OriginalVoucherInput::read($request);
+                        $data['charge_id'] = $typedCharge;
+                        $result = (new \App\Services\Finance\V2OriginalBookingDepositWorkflow())->create(
+                            $project, 'ECP', (int) $context['customer_id'], (int) $context['plot_id'],
+                            $data, (int) Auth::id()
+                        );
+                    } else {
+                        abort_unless(Auth::user()->can('can approve'), 403);
+                        $decision = $request->validate([
+                            'passing_status' => ['required', 'integer', 'in:1,2'],
+                            'bank_post_at' => ['required_if:passing_status,1', 'nullable', 'date_format:Y-m-d'],
+                            'bank_account_id' => ['required_if:passing_status,1', 'nullable', 'integer', 'min:1'],
+                            'note' => ['nullable', 'string', 'max:255'],
+                        ]);
+                        $payment = CustomerLedger::query()->whereKey($typedPayment)
+                            ->where('project_id', $project)->where('transaction_type', 'ECP')
+                            ->firstOrFail();
+                        $chargeId = (int) DB::table('finance_extra_charge_payment_sources')
+                            ->where('customer_ledger_id', $typedPayment)->value('charge_customer_ledger_id');
+                        $charge = CustomerLedger::query()->whereKey($chargeId)
+                            ->where('project_id', $project)->where('transaction_type', 'EC')->firstOrFail();
+                        $legs = [];
+                        $bank = isset($decision['bank_account_id'])
+                            ? DB::table('project_bank_accounts')->where('project_id', $project)
+                                ->where('id', (int) $decision['bank_account_id'])->where('is_active', 1)->first()
+                            : null;
+                        if ((int) $decision['passing_status'] === 1) {
+                            abort_unless($bank, 422, 'Select an active project bank account.');
+                            $mapping = DB::transaction(fn () =>
+                                app(\App\Services\Finance\ExtraChargeAccounts::class)
+                                    ->forProject($project, (int) $charge->customer_id, (int) $charge->plot_id));
+                            $amount = \App\Services\Finance\V2OriginalCustomerWorkflow::money($payment->amount_in);
+                            $legs = [
+                                ['account_id' => (int) $bank->account_mapping_id, 'debit' => $amount, 'credit' => '0.00'],
+                                ['account_id' => $mapping['debit_account_id'], 'debit' => '0.00', 'credit' => $amount],
+                            ];
+                        }
+                        $note = trim((string) ($decision['note'] ?? '')) ?: 'Extra Charge bank decision';
+                        $key = 'NORMAL-EC-BANK-'.substr(hash('sha256',
+                            $project.'|'.$typedPayment.'|'.$decision['passing_status']), 0, 40);
+                        $result = (new \App\Services\Finance\V2OriginalBankWorkflow())->settle(
+                            $project, $typedPayment, (int) $decision['passing_status'], $key,
+                            $decision['bank_post_at'] ?? '', $note, $legs, (int) Auth::id(),
+                            $bank ? (int) $bank->id : null
+                        );
+                    }
+                } catch (\DomainException $exception) {
+                    $messages = [
+                        'V2_PAYMENT_EXCEEDS_CHARGE' => 'The amount exceeds this Extra Charge outstanding balance.',
+                        'V2_SOURCE_REFERENCE_ALREADY_USED' => 'This payment reference is already used.',
+                        'V2_SOURCE_REQUEST_CONFLICT' => 'This reference was already submitted with different payment details.',
+                        'V2_BANK_SETTLEMENT_IMMUTABLE' => 'This bank payment was already processed.',
+                        'V2_BANK_ACCOUNT_PROJECT_MISMATCH' => 'Choose a valid project bank account.',
+                    ];
+                    abort(409, $messages[$exception->getMessage()]
+                        ?? 'This voucher has existing typed accounting history and could not be updated safely.');
+                }
+                return $request->expectsJson()
+                    ? response()->json(['status' => 'success', 'message' => 'Extra Charge payment saved.', 'data' => $result])
+                    : back()->with('success', 'Extra Charge payment saved.');
+            }
+        }
         if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
             $project = (int) getSelectedTown();
             \App\Services\Finance\V2OriginalWorkflowAccess::authorize($project);
