@@ -152,3 +152,30 @@ Added `tools/schema/install_one_table_migrations.ps1`, guarded `--target=bluenew
 Owner next sequence: unzip bundle, run installer from bundle or tracked `tools/schema/install_one_table_migrations.ps1 -BundleFolder <unzipped path>`; create `bluenew_clean_final`; set local DB_DATABASE via process environment, run `php artisan optimize:clear`, plain `php artisan migrate`, then schema-only comparison. Only after schema comparison PASS run copied data preflight/import and reconciliation. If any step fails, repair native Blueprint definitions without touching old restored sources.
 
 **Repo limitation:** The 148 generated Laravel migration files are currently in the downloadable ZIP and require a local install; they have **not** yet been individually committed to GitHub. The tracked installer and importer/audit support are committed; after MySQL acceptance, commit the generated native migration files and legacy archive as a reviewed batch.
+
+
+## 2026-11-17 — GitHub per-table migrations fully committed (no ZIP required)
+
+Commit `25d11d4f3cd9c98033f9cc5ed506edc69e999d20` atomically:
+- Moved **all 110 original migration PHP files** from `database/migrations` to `database/old_migration` in GitHub.
+- Added **146 individual one-table migrations** to standard `database/migrations` (based on verified 2026-11-17 `bluenew` MySQL 8.4 source CREATE/INDEX/AUTO_INCREMENT statements; one PHP file for each source application table).
+- Added first-run protected empty-database migration and final FK migration (110 ALTER TABLE statements, 250 constraints).
+- Removed 146 staging files. Post-commit GitHub tree confirmed `database/migrations` = 148 PHP, `database/old_migration` = 110 PHP, staging = 0.
+- The files use source-exact MySQL DDL through Laravel migration classes (`DB::unprepared`), **not yet native `Schema::create` Blueprint definitions**. This avoids silent loss of original collation/keys, but the maintainability/native conversion request remains a separate improvement.
+- Original table creation filename timestamps preserved where a same-named historical migration was identifiable. The other newly catalogued tables use the 2026-11-17 baseline timestamp. Business row timestamps are unchanged by schema migration; the separate data-only copy preserves old IDs and timestamps.
+
+Owner now needs no ZIP/download/install. GitHub pull, **new empty `bluenew_clean_final` database** and `php artisan migrate` using local process env. Do not run plain migrate against historical `bluenew` or validated `bluenew_clean`, which the guard rejects. The migration execution itself and destination schema signature comparison remain **unverified** until owner runs them locally.
+
+Commands:
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+$env:APP_ENV = 'local'
+$env:DB_DATABASE = 'bluenew_clean_final'
+php artisan optimize:clear
+php artisan migrate
+php tools/schema/audit_clean_reconciliation.php --target=bluenew_clean_final --schema-only
+Remove-Item Env:\DB_DATABASE
+Remove-Item Env:\APP_ENV
+```
+Only after native/new migration schema signature PASS run `php tools/schema/copy_clean_data.php --target=bluenew_clean_final --apply`, followed by read-only reconciliation (target option without schema-only). Expected migration history count 148. Do not copy old `migrations` data.
