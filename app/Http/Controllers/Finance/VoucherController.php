@@ -1221,14 +1221,18 @@ class VoucherController extends Controller
         $projectId = (int) getSelectedTown();
         \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
         abort_unless(Schema::hasTable('finance_plot_receipts'), 409, 'Plot receipt storage is not installed.');
-        $rows = DB::table('finance_plot_receipts as receipt')->leftJoin('leads as customer', 'customer.id', '=', 'receipt.customer_id')
+        $rows = DB::table('finance_plot_receipts as receipt')
+            ->leftJoin('finance_plot_receipt_postings as typed', 'typed.source_id', '=', 'receipt.id')
+            ->leftJoin('finance_posting_batches as void_batch', 'void_batch.reversal_of_batch_id', '=', 'typed.posting_batch_id')
+            ->leftJoin('leads as customer', 'customer.id', '=', 'receipt.customer_id')
             ->where('receipt.project_id', $projectId)->orderByDesc('receipt.receipt_date')->orderByDesc('receipt.id')
             ->limit(250)->get(['receipt.id', 'receipt.receipt_number', 'receipt.receipt_date', 'receipt.amount', 'receipt.narration',
-                'customer.first_name', 'customer.last_name', 'customer.business']);
+                'customer.first_name', 'customer.last_name', 'customer.business', 'void_batch.id as reversal_batch_id']);
         return response()->json(['data' => $rows->map(fn ($row) => [
             'id' => (int) $row->id, 'number' => (string) $row->receipt_number, 'date' => substr((string) $row->receipt_date, 0, 10),
             'customer' => trim((string) $row->first_name.' '.(string) $row->last_name) ?: (string) ($row->business ?? 'Customer'),
             'amount' => (string) $row->amount, 'narration' => (string) $row->narration,
+            'reversed' => $row->reversal_batch_id !== null,
         ])]);
     }
 
@@ -1359,15 +1363,19 @@ class VoucherController extends Controller
         $projectId = (int) getSelectedTown();
         \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
         abort_unless(Schema::hasTable('finance_plot_purchases'), 409, 'Plot purchase storage is not installed.');
-        $rows = DB::table('finance_plot_purchases as purchase')->join('project_head_subheads as seller', function ($join) use ($projectId) {
+        $rows = DB::table('finance_plot_purchases as purchase')
+            ->leftJoin('finance_plot_purchase_postings as typed', 'typed.source_id', '=', 'purchase.id')
+            ->leftJoin('finance_posting_batches as void_batch', 'void_batch.reversal_of_batch_id', '=', 'typed.posting_batch_id')
+            ->join('project_head_subheads as seller', function ($join) use ($projectId) {
             $join->on('seller.id', '=', 'purchase.seller_account_id')->where('seller.project_id', '=', $projectId);
         })->leftJoin('subhead_accountings as sub', 'sub.id', '=', 'seller.subhead_accounting_id')
             ->where('purchase.project_id', $projectId)->orderByDesc('purchase.purchase_date')->orderByDesc('purchase.id')->limit(250)
-            ->get(['purchase.id', 'purchase.purchase_number', 'purchase.purchase_date', 'purchase.amount', 'purchase.narration', 'sub.name as seller']);
+            ->get(['purchase.id', 'purchase.purchase_number', 'purchase.purchase_date', 'purchase.amount', 'purchase.narration', 'sub.name as seller', 'void_batch.id as reversal_batch_id']);
         return response()->json(['data' => $rows->map(fn ($row) => [
             'id' => (int) $row->id, 'number' => (string) $row->purchase_number, 'date' => substr((string) $row->purchase_date, 0, 10),
             'seller' => (string) ($row->seller ?? 'Seller account'), 'amount' => (string) $row->amount, 'narration' => (string) $row->narration,
             'items' => (int) DB::table('finance_plot_purchase_items')->where('purchase_id', $row->id)->count(),
+            'reversed' => $row->reversal_batch_id !== null,
         ])]);
     }
 
