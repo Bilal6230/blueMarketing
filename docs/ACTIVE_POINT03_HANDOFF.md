@@ -1,5 +1,12 @@
 # BlueMarketing — ACTIVE HANDOFF (new chat continuity)
 
+## 2026-11-17 — OWNER APPROVED BD/BW MODERN UI — CLOSED
+- Owner explicitly marked **PASS** for both **Daily Entries > Bank Deposit** and **Daily Entries > Bank Withdrawal** after modern UI and feedback batch (`783e4296`).
+- Close BD/BW modal/TomSelect/toast UI acceptance gates. Together with earlier owner browser success for manual deposit and withdrawal posting/reversal, these **specific BD/BW functional + modern UI acceptance** gates are CLOSED.
+- No failures reported in this UI retest. Do not repeatedly request these tests unless related BD/BW code changes.
+- Still open: cleared-cheque custody release/reversal, typed cash-source browser acceptance, EC/SV correction lifecycles, full accounting parity, remaining print and cross-module acceptance. Do not label all Finance complete.
+
+
 ## 2026-11-17 — BD/BW OWNER FUNCTIONAL PASS; MODERN UI/FEEDBACK PARITY FIX COMMITTED
 - Owner browser screenshots confirm manual BD posting, manual BW posting, BW reversal and original posting preservation succeed. Treat **functional BD/BW create + manual reversal ACCEPTED**. Owner specifically flagged **UI NOT ACCEPTED**: native Cash/Bank/Cheque dropdowns; old modal appearance; `localhost:8000 says` native alert on posting/reversal. Do not re-test business flows without code changes.
 - `resources/views/admin/finance/voucher/bank_transfer_workspace.blade.php`: all three create/view/reversal modal wrappers now use canonical `fvc-modern-modal` CSS on the OUTER modal, with BD green and BW red accents. Account and cleared-cheque selects plus account filter carry `fvc-tom-select`; finance feedback helper enhances/syncs them when the modal opens and after async cheque loading or form reset.
