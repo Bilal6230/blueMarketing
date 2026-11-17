@@ -1,37 +1,33 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+/** One-table baseline generated from verified MySQL 8.4.3 bluenew export. */
 return new class extends Migration {
-    /**
-     * Run the migrations.
-     *
-     * @return void
-     */
-    public function up()
-    {
-        Schema::create('dasticash', function (Blueprint $table) {
-            $table->id();
-            $table->string('name')->nullable();
-            $table->string('amount')->nullable();
-            $table->text('description')->nullable();
-            $table->unsignedBigInteger('project_id');
-            $table->foreign('project_id')
-                ->references('id')->on('projects')
-                ->onDelete('cascade');
-            $table->timestamps();
-        });
+    public function up(): void {
+        DB::unprepared(<<<'BMDDL0' 
+CREATE TABLE `dasticash` (
+  `id` bigint UNSIGNED NOT NULL,
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `amount` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `project_id` bigint UNSIGNED DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+BMDDL0 );
+        DB::unprepared(<<<'BMDDL1' 
+ALTER TABLE `dasticash`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `dasticash_project_id_foreign` (`project_id`);
+BMDDL1 );
+        DB::unprepared(<<<'BMDDL2' 
+ALTER TABLE `dasticash`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=506;
+BMDDL2 );
     }
-
-    /**
-     * Reverse the migrations.
-     *
-     * @return void
-     */
-    public function down()
-    {
-        Schema::dropIfExists('dasticash');
-    }
+    public function down(): void { Schema::dropIfExists('dasticash'); }
 };

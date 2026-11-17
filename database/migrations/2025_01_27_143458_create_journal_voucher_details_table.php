@@ -1,41 +1,35 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-class CreateJournalVoucherDetailsTable extends Migration
-{
-    /**
-     * Run the migrations.
-     *
-     * @return void
-     */
-    public function up()
-    {
-        Schema::create('journal_voucher_details', function (Blueprint $table) {
-            $table->id(); // Primary key
-            $table->unsignedBigInteger('journal_voucher_id'); // Foreign key to JournalVoucher
-            $table->unsignedBigInteger('account_id'); // Related account ID
-            $table->decimal('debit', 15, 2)->default(0); // Debit amount
-            $table->decimal('credit', 15, 2)->default(0); // Credit amount
-            $table->text('description')->nullable(); // Line item description
-            $table->timestamps(); // Created and updated timestamps
-            $table->softDeletes(); // This creates a DATETIME `deleted_at` column
-
-            // Foreign key constraints
-            $table->foreign('journal_voucher_id')->references('id')->on('journal_vouchers')->onDelete('cascade');
-            // $table->foreign('account_id')->references('id')->on('project_head_subheads')->onDelete('cascade');
-        });
+/** One table per migration; verified MySQL source DDL. */
+return new class extends Migration {
+    public function up(): void {
+        DB::unprepared(<<<'BMDDL0'
+CREATE TABLE `journal_voucher_details` (
+  `id` bigint UNSIGNED NOT NULL,
+  `journal_voucher_id` bigint UNSIGNED NOT NULL,
+  `account_id` bigint UNSIGNED NOT NULL,
+  `debit` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `credit` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+BMDDL0);
+        DB::unprepared(<<<'BMDDL1'
+ALTER TABLE `journal_voucher_details`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `journal_voucher_details_journal_voucher_id_foreign` (`journal_voucher_id`),
+  ADD KEY `v2_journal_voucher_details_account_id_fk` (`account_id`);
+BMDDL1);
+        DB::unprepared(<<<'BMDDL2'
+ALTER TABLE `journal_voucher_details`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5176;
+BMDDL2);
     }
-
-    /**
-     * Reverse the migrations.
-     *
-     * @return void
-     */
-    public function down()
-    {
-        Schema::dropIfExists('journal_voucher_details');
-    }
-}
+    public function down(): void { Schema::dropIfExists('journal_voucher_details'); }
+};

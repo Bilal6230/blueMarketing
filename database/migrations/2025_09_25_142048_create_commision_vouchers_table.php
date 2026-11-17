@@ -1,44 +1,40 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-class CreateCommisionVouchersTable extends Migration
-{
-    /**
-     * Run the migrations.
-     *
-     * @return void
-     */
-    public function up()
-    {
-        Schema::create('commision_vouchers', function (Blueprint $table) {
-            $table->id(); // Primary key
-            $table->string('voucher_number')->unique(); // Voucher number
-            $table->unsignedBigInteger('project_id'); // Foreign key to JournalVoucher
-            $table->string('reference')->nullable(); // Reference
-            $table->text('description')->nullable(); // Description
-            $table->date('date'); // Voucher date
-            $table->decimal('total_debit', 15, 2); // Total debit amount
-            $table->decimal('total_credit', 15, 2); // Total credit amount
-            $table->unsignedBigInteger('created_by'); // User who created
-            $table->unsignedBigInteger('updated_by')->nullable(); // User who updated
-            $table->foreign('project_id')->references('id')->on('projects')->onDelete('cascade');
-            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending'); // Status
-            $table->timestamps(); // Created and updated timestamps
-            $table->softDeletes(); // This creates a DATETIME `deleted_at` column
-
-        });
+/** One-table baseline generated from verified MySQL 8.4.3 bluenew export. */
+return new class extends Migration {
+    public function up(): void {
+        DB::unprepared(<<<'BMDDL0' 
+CREATE TABLE `commision_vouchers` (
+  `id` bigint UNSIGNED NOT NULL,
+  `voucher_number` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `project_id` bigint UNSIGNED NOT NULL,
+  `reference` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `date` date NOT NULL,
+  `total_debit` decimal(15,2) NOT NULL,
+  `total_credit` decimal(15,2) NOT NULL,
+  `created_by` bigint UNSIGNED NOT NULL,
+  `updated_by` bigint UNSIGNED DEFAULT NULL,
+  `status` enum('pending','approved','rejected','draft') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+BMDDL0 );
+        DB::unprepared(<<<'BMDDL1' 
+ALTER TABLE `commision_vouchers`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `commision_vouchers_voucher_number_unique` (`voucher_number`),
+  ADD KEY `commision_vouchers_project_id_foreign` (`project_id`);
+BMDDL1 );
+        DB::unprepared(<<<'BMDDL2' 
+ALTER TABLE `commision_vouchers`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+BMDDL2 );
     }
-
-    /**
-     * Reverse the migrations.
-     *
-     * @return void
-     */
-    public function down()
-    {
-        Schema::dropIfExists('commision_vouchers');
-    }
-}
+    public function down(): void { Schema::dropIfExists('commision_vouchers'); }
+};

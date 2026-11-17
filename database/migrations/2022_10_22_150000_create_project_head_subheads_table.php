@@ -1,43 +1,39 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-class CreateProjectHeadSubheadsTable extends Migration
-{
-    /**
-     * Run the migrations.
-     *
-     * @return void
-     */
-    public function up()
-    {
-        Schema::create('project_head_subheads', function (Blueprint $table) {
-            $table->id(); // Primary key
-            $table->unsignedBigInteger('project_id')->nullable(); // Foreign key to Project
-            $table->unsignedBigInteger('head_accounting_id')->nullable(); // Foreign key to HeadAccounting
-            $table->unsignedBigInteger('subhead_accounting_id')->nullable(); // Foreign key to SubheadAccounting
-            $table->unsignedBigInteger('plot_id')->nullable(); // Foreign key to Plot
-            $table->unsignedBigInteger('customer_id')->nullable(); // Foreign key to Customer
-            $table->timestamps(); // Created and updated timestamps
-
-            // Foreign key constraints
-            // $table->foreign('project_id')->references('id')->on('projects')->onDelete('cascade');
-            // $table->foreign('plot_id')->references('id')->on('plots')->onDelete('cascade');
-            // $table->foreign('head_accounting_id')->references('id')->on('head_accountings')->onDelete('cascade');
-            // $table->foreign('subhead_accounting_id')->references('id')->on('subhead_accountings')->onDelete('cascade');
-            // $table->foreign('customer_id')->references('id')->on('customers')->onDelete('cascade');
-        });
+/** One table per migration; verified MySQL source DDL. */
+return new class extends Migration {
+    public function up(): void {
+        DB::unprepared(<<<'BMDDL0'
+CREATE TABLE `project_head_subheads` (
+  `id` bigint UNSIGNED NOT NULL,
+  `project_id` bigint UNSIGNED NOT NULL,
+  `head_accounting_id` bigint UNSIGNED NOT NULL,
+  `subhead_accounting_id` bigint UNSIGNED NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `plot_id` bigint UNSIGNED DEFAULT NULL,
+  `customer_id` bigint UNSIGNED DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+BMDDL0);
+        DB::unprepared(<<<'BMDDL1'
+ALTER TABLE `project_head_subheads`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `project_head_subheads_id_project_unique` (`id`,`project_id`),
+  ADD KEY `head_subhead_head_id_foreign` (`head_accounting_id`),
+  ADD KEY `head_subhead_subhead_id_foreign` (`subhead_accounting_id`),
+  ADD KEY `project_head_subheads_project_id_foreign` (`project_id`),
+  ADD KEY `v2_project_head_subheads_plot_id_fk` (`plot_id`),
+  ADD KEY `v2_project_head_subheads_customer_id_fk` (`customer_id`);
+BMDDL1);
+        DB::unprepared(<<<'BMDDL2'
+ALTER TABLE `project_head_subheads`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=582;
+BMDDL2);
     }
-
-    /**
-     * Reverse the migrations.
-     *
-     * @return void
-     */
-    public function down()
-    {
-        Schema::dropIfExists('project_head_subheads');
-    }
-}
+    public function down(): void { Schema::dropIfExists('project_head_subheads'); }
+};

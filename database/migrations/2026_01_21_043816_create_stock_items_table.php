@@ -1,41 +1,35 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+/** One table per migration; verified MySQL source DDL. */
 return new class extends Migration {
-    /**
-     * Run the migrations.
-     *
-     * @return void
-     */
-    public function up()
-    {
-        // database/migrations/2026_01_21_000001_create_stock_items_table.php
-        Schema::create('stock_items', function (Blueprint $table) {
-            $table->id();
-            $table->string('name')->index();
-            $table->string('unit', 40);
-            $table->unsignedBigInteger('default_rate_minor')->default(0); // money minor units
-            $table->boolean('is_active')->default(true);
-
-            $table->unsignedBigInteger('created_by')->nullable();
-            $table->unsignedBigInteger('updated_by')->nullable();
-
-            $table->timestamps();
-            $table->softDeletes();
-        });
-
+    public function up(): void {
+        DB::unprepared(<<<'BMDDL0'
+CREATE TABLE `stock_items` (
+  `id` bigint UNSIGNED NOT NULL,
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `unit` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `default_rate_minor` bigint UNSIGNED NOT NULL DEFAULT '0',
+  `is_active` tinyint NOT NULL DEFAULT '1',
+  `created_by` bigint UNSIGNED DEFAULT NULL,
+  `updated_by` bigint UNSIGNED DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+BMDDL0);
+        DB::unprepared(<<<'BMDDL1'
+ALTER TABLE `stock_items`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `stock_items_name_index` (`name`);
+BMDDL1);
+        DB::unprepared(<<<'BMDDL2'
+ALTER TABLE `stock_items`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+BMDDL2);
     }
-
-    /**
-     * Reverse the migrations.
-     *
-     * @return void
-     */
-    public function down()
-    {
-        Schema::dropIfExists('stock_items');
-    }
+    public function down(): void { Schema::dropIfExists('stock_items'); }
 };
