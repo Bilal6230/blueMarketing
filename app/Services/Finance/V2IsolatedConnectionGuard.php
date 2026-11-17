@@ -3,7 +3,7 @@
 namespace App\Services\Finance;
 
 /**
- * V2 pilot only. Preflight config WITHOUT creating a DB connection or doing I/O.
+ * Preflight typed finance source connections WITHOUT creating a DB connection or doing I/O.
  * An incomplete test config must fail closed with a controlled exception.
  */
 final class V2IsolatedConnectionGuard
@@ -27,13 +27,11 @@ final class V2IsolatedConnectionGuard
             return true;
         }
 
-        // An explicit exception for the owner's existing LOCAL-only test DB.
-        // The database name and acknowledgement must match exactly; there is
-        // deliberately no arbitrary-database override or production fallback.
+        // The owner's known disposable LOCAL 'bluenew' database is the only
+        // normal ERP DB permitted to use typed-source writers automatically.
+        // No mode flag, wildcard opt-in or production fallback is needed.
         $localTestDatabase = $environment === 'local'
-            && $database === 'bluenew'
-            && (config('finance.v2_local_test_database') === 'bluenew'
-                || config('finance.normal_erp_mode') === true);
+            && $database === 'bluenew';
 
         // Read/write replicas can override the top-level host: reject them.
         return !($driver !== 'mysql'
