@@ -359,6 +359,9 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::get('finance/voucher/bank-transfer/{kind}/sources', 'transferVoucherSources')->where('kind', 'deposit|withdrawal')->middleware(['permission:read voucher'])->name('finance.voucher.transfer.sources');
         Route::get('finance/voucher/bank-transfer/{kind}/history', 'transferVoucherHistory')->where('kind', 'deposit|withdrawal')->middleware(['permission:read voucher'])->name('finance.voucher.transfer.history');
         Route::post('finance/voucher/bank-transfer/{kind}', 'postTransferVoucher')->where('kind', 'deposit|withdrawal')->middleware(['permission:read voucher'])->name('finance.voucher.transfer.post');
+        Route::post('finance/voucher/bank-transfer/{kind}/{postingBatch}/reverse', 'reverseTransferVoucher')
+            ->where(['kind' => 'deposit|withdrawal', 'postingBatch' => '[0-9]+'])
+            ->middleware(['permission:delete voucher','throttle:10,1'])->name('finance.voucher.transfer.reverse');
         Route::get('finance/voucher/bank-transfer/{kind}/{postingBatch}/print', 'printTransferVoucher')->where(['kind' => 'deposit|withdrawal', 'postingBatch' => '[0-9]+'])->middleware(['permission:read voucher'])->name('finance.voucher.transfer.print');
         Route::get('finance/voucher/plot-receipt', 'plotReceiptWorkspace')->middleware(['permission:read voucher'])->name('finance.voucher.plot-receipt.workspace');
         Route::get('finance/voucher/plot-receipt/options', 'plotReceiptOptions')->middleware(['permission:read voucher'])->name('finance.voucher.plot-receipt.options');
