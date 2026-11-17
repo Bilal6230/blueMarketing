@@ -14,7 +14,8 @@ final class V2FinancePilotServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if (!in_array(config('app.env'), ['local', 'testing'], true)
-            || !config('finance.v2_pilot_api_enabled', false)) {
+            || (!config('finance.v2_pilot_api_enabled', false)
+                && !\App\Services\Finance\V2OriginalWorkflowAccess::mergedWriterAllowed())) {
             return;
         }
 
@@ -22,7 +23,8 @@ final class V2FinancePilotServiceProvider extends ServiceProvider
             return $user->hasRole('superadmin');
         });
         Gate::define('v2-finance-post', static function ($user): bool {
-            return (bool) config('finance.v2_pilot_write_enabled', false)
+            return ((bool) config('finance.v2_pilot_write_enabled', false)
+                || \App\Services\Finance\V2OriginalWorkflowAccess::mergedWriterAllowed())
                 && $user->hasRole('superadmin');
         });
         Gate::define('approve-v2-stock-finance', static function ($user): bool {
