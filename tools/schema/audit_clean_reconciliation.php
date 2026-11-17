@@ -8,12 +8,12 @@ declare(strict_types=1);
  */
 if (PHP_SAPI !== 'cli') exit(2);
 $options=array_slice($argv,1);
-if (array_diff($options,['--target=bluenew_clean_native','--schema-only'])) {
-    fwrite(STDERR,"Usage: php tools/schema/audit_clean_reconciliation.php [--target=bluenew_clean_native] [--schema-only]\n");
+if (array_diff($options,['--target=bluenew_clean_native','--target=bluenew_clean_final','--schema-only'])) {
+    fwrite(STDERR,"Usage: php tools/schema/audit_clean_reconciliation.php [--target=bluenew_clean_native|--target=bluenew_clean_final] [--schema-only]\n");
     exit(2);
 }
 $schemaOnly=in_array('--schema-only',$options,true);
-$targetName=in_array('--target=bluenew_clean_native',$options,true)?'bluenew_clean_native':'bluenew_clean';
+$targetName=in_array('--target=bluenew_clean_final',$options,true)?'bluenew_clean_final':(in_array('--target=bluenew_clean_native',$options,true)?'bluenew_clean_native':'bluenew_clean');
 require dirname(__DIR__,2).'/vendor/autoload.php';
 $app=require dirname(__DIR__,2).'/bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
@@ -24,7 +24,7 @@ $conn=DB::connection();
 $cfg=config('database.connections.'.config('database.default'));
 if (!app()->environment('local') || $conn->getDriverName()!=='mysql'
     || !in_array(strtolower((string)($cfg['host']??'')),['localhost','127.0.0.1','::1'],true)
-    || !in_array($conn->getDatabaseName(),['bluenew','bluenew_clean','bluenew_clean_native'],true)) {
+    || !in_array($conn->getDatabaseName(),['bluenew','bluenew_clean','bluenew_clean_native','bluenew_clean_final'],true)) {
     throw new RuntimeException('This audit is restricted to local bluenew/bluenew_clean.');
 }
 $quote=static function(string $id): string {
