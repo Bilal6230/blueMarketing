@@ -18,7 +18,7 @@ final class CleanDatabaseCopyGateTest extends TestCase
         $this->assertStringContainsString('SET SESSION FOREIGN_KEY_CHECKS=1', $script);
         $this->assertStringContainsString('Source-vs-destination row data mismatch', $script);
         $this->assertStringContainsString("'--resume'", $script);
-        $this->assertStringContainsString("if ($table==='migrations') continue;", $script);
+        $this->assertStringContainsString('if ($table===\'migrations\') continue;', $script);
         $this->assertStringNotContainsString('DROP DATABASE', strtoupper($script));
         $this->assertStringNotContainsString('TRUNCATE TABLE', strtoupper($script));
     }
