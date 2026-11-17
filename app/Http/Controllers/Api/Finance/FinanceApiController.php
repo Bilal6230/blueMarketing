@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 /**
- * Strictly local, default-OFF V2 trial integration. This cannot replace
+ * Strictly local, default-OFF Finance trial integration. This cannot replace
  * existing /api/v1/mobile or legacy production voucher endpoints.
  * Explicit project membership and Gate authorization apply per request.
  */
@@ -25,26 +25,21 @@ final class FinanceApiController extends Controller
     private function project(Request $request, int $projectId, bool $write): void
     {
         FinanceConnectionGuard::assertAllowed();
-        if (!in_array(config('app.env'), ['local', 'testing'], true)
-            || !config('finance.v2_pilot_api_enabled')
-            || ($write && !config('finance.v2_pilot_write_enabled'))) {
-            abort(404);
-        }
         if (!$request->user() || $projectId < 1) {
-            throw new AuthorizationException('V2 project finance access denied.');
+            throw new AuthorizationException('Finance project finance access denied.');
         }
-        $ability = $write ? 'v2-finance-post' : 'v2-finance-read';
+        $ability = $write ? 'finance-post' : 'finance-read';
         if (!Gate::has($ability)) {
-            throw new AuthorizationException('V2 finance ability is not configured.');
+            throw new AuthorizationException('Finance finance ability is not configured.');
         }
         Gate::authorize($ability);
         $user = $request->user();
         if (!$user->hasRole('superadmin')
             && (int) $user->project_id !== $projectId) {
-            throw new AuthorizationException('V2 project finance access denied.');
+            throw new AuthorizationException('Finance project finance access denied.');
         }
         if (!Project::query()->where('id', $projectId)->where('is_active', 1)->exists()) {
-            throw new AuthorizationException('V2 project is not available.');
+            throw new AuthorizationException('Finance project is not available.');
         }
     }
 
@@ -56,7 +51,7 @@ final class FinanceApiController extends Controller
             'through' => ['nullable', 'date_format:Y-m-d'],
         ]);
         return response()->json([
-            'scope' => 'typed_v2_postings_only',
+            'scope' => 'finance_postings',
             'lines' => $gateway->postingLines($projectId, $data['from'] ?? null, $data['through'] ?? null),
         ]);
     }
@@ -83,7 +78,7 @@ final class FinanceApiController extends Controller
             'through' => ['nullable', 'date_format:Y-m-d'],
         ]);
         return response()->json([
-            'scope' => 'typed_v2_postings_only',
+            'scope' => 'finance_postings',
             'documents' => $gateway->voucherRegister(
                 $projectId, $data['from'] ?? null, $data['through'] ?? null
             ),
@@ -105,7 +100,7 @@ final class FinanceApiController extends Controller
         $csv = $exporter->voucherRegister($documents);
         return response()->streamDownload(
             static function () use ($csv): void { echo $csv; },
-            'v2-voucher-register-project-' . $projectId . '.csv',
+            'finance-voucher-register-project-' . $projectId . '.csv',
             ['Content-Type' => 'text/csv; charset=UTF-8']
         );
     }
@@ -162,7 +157,7 @@ final class FinanceApiController extends Controller
         $csv = $exporter->trialBalance($report);
         return response()->streamDownload(
             static function () use ($csv): void { echo $csv; },
-            'v2-trial-balance-project-' . $projectId . '.csv',
+            'finance-trial-balance-project-' . $projectId . '.csv',
             ['Content-Type' => 'text/csv; charset=UTF-8']
         );
     }
@@ -182,7 +177,7 @@ final class FinanceApiController extends Controller
         $csv = $exporter->accountStatement($report);
         return response()->streamDownload(
             static function () use ($csv): void { echo $csv; },
-            'v2-account-statement-project-' . $projectId . '-account-' . $accountId . '.csv',
+            'finance-account-statement-project-' . $projectId . '-account-' . $accountId . '.csv',
             ['Content-Type' => 'text/csv; charset=UTF-8']
         );
     }
@@ -215,7 +210,7 @@ final class FinanceApiController extends Controller
                 $projectId, $data['kind'], $id, $data['series'] ?? null
             );
             if (!$ready['eligible']) {
-                throw new \DomainException('V2_SOURCE_APPROVAL_REQUIRED');
+                throw new \DomainException('FINANCE_SOURCE_APPROVAL_REQUIRED');
             }
             $batchId = match ($data['kind']) {
             'journal' => $gateway->postJournal($projectId, $id, $key, $actor),
@@ -233,10 +228,10 @@ final class FinanceApiController extends Controller
         } catch (\DomainException $error) {
             // Business/source conflicts are intentional denials, not 500s.
             // Do not leak source details or SQL into a pilot HTTP response.
-            return response()->json(['error' => 'V2_POSTING_CONFLICT'], 409);
+            return response()->json(['error' => 'FINANCE_POSTING_CONFLICT'], 409);
         }
         return response()->json([
-            'scope' => 'isolated_v2_pilot_only', 'posting_batch_id' => $batchId,
+            'scope' => 'unified_finance', 'posting_batch_id' => $batchId,
         ], 201);
     }
 
@@ -262,10 +257,10 @@ final class FinanceApiController extends Controller
                 (int) $request->user()->getAuthIdentifier()
             );
         } catch (\DomainException $error) {
-            return response()->json(['error' => 'V2_BANK_TRANSFER_CONFLICT'], 409);
+            return response()->json(['error' => 'FINANCE_BANK_TRANSFER_CONFLICT'], 409);
         }
         return response()->json([
-            'scope' => 'isolated_v2_pilot_only', ...$result,
+            'scope' => 'unified_finance', ...$result,
         ], $result['replayed'] ? 200 : 201);
     }
 
@@ -275,7 +270,7 @@ final class FinanceApiController extends Controller
         $writer = new \App\Services\Finance\PlotEntryWriter();
         if ($receiptId !== null) {
             try { return response()->json($writer->receipt($projectId, $receiptId)); }
-            catch (\DomainException $error) { return response()->json(['error' => 'V2_PLOT_RECEIPT_NOT_FOUND'], 404); }
+            catch (\DomainException $error) { return response()->json(['error' => 'FINANCE_PLOT_RECEIPT_NOT_FOUND'], 404); }
         }
         $data = $request->validate([
             'customer_id' => ['required', 'integer', 'min:1'],
@@ -295,9 +290,9 @@ final class FinanceApiController extends Controller
             $result = $writer->receive($projectId, (int) $data['customer_id'], $data['request_key'], $data,
                 (int) $request->user()->getAuthIdentifier());
         } catch (\DomainException $error) {
-            return response()->json(['error' => 'V2_PLOT_RECEIPT_CONFLICT'], 409);
+            return response()->json(['error' => 'FINANCE_PLOT_RECEIPT_CONFLICT'], 409);
         }
-        return response()->json(['scope' => 'isolated_v2_pilot_only', ...$result], $result['replayed'] ? 200 : 201);
+        return response()->json(['scope' => 'unified_finance', ...$result], $result['replayed'] ? 200 : 201);
     }
 
     public function plotReceiptPrint(Request $request, int $projectId, int $receiptId, int $plotId)
@@ -322,7 +317,7 @@ final class FinanceApiController extends Controller
         $writer = new \App\Services\Finance\PlotEntryWriter();
         if ($purchaseId !== null) {
             try { return response()->json($writer->purchaseDetails($projectId, $purchaseId)); }
-            catch (\DomainException $error) { return response()->json(['error' => 'V2_PLOT_PURCHASE_NOT_FOUND'], 404); }
+            catch (\DomainException $error) { return response()->json(['error' => 'FINANCE_PLOT_PURCHASE_NOT_FOUND'], 404); }
         }
         $data = $request->validate([
             'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/'],
@@ -350,9 +345,9 @@ final class FinanceApiController extends Controller
             $result = $writer->purchase($projectId, $data['request_key'], $data,
                 (int) $request->user()->getAuthIdentifier());
         } catch (\DomainException $error) {
-            return response()->json(['error' => 'V2_PLOT_PURCHASE_CONFLICT'], 409);
+            return response()->json(['error' => 'FINANCE_PLOT_PURCHASE_CONFLICT'], 409);
         }
-        return response()->json(['scope' => 'isolated_v2_pilot_only', ...$result], $result['replayed'] ? 200 : 201);
+        return response()->json(['scope' => 'unified_finance', ...$result], $result['replayed'] ? 200 : 201);
     }
 
     public function voidPlotVoucher(Request $request, int $projectId, string $kind, int $sourceId): JsonResponse
@@ -369,9 +364,9 @@ final class FinanceApiController extends Controller
                 $data['reason'], (int) $request->user()->getAuthIdentifier()
             );
         } catch (\DomainException $error) {
-            return response()->json(['error' => 'V2_PLOT_VOUCHER_VOID_CONFLICT'], 409);
+            return response()->json(['error' => 'FINANCE_PLOT_VOUCHER_VOID_CONFLICT'], 409);
         }
-        return response()->json(['scope' => 'isolated_v2_pilot_only', 'reversal_batch_id' => $batchId], 201);
+        return response()->json(['scope' => 'unified_finance', 'reversal_batch_id' => $batchId], 201);
     }
 
     /**
@@ -430,7 +425,7 @@ final class FinanceApiController extends Controller
             }
             abort(404);
         } catch (\DomainException $exception) {
-            return response()->json(['error' => 'V2_CV_DRAFT_CONFLICT'], 409);
+            return response()->json(['error' => 'FINANCE_CV_DRAFT_CONFLICT'], 409);
         }
     }
 
@@ -450,10 +445,10 @@ final class FinanceApiController extends Controller
                 $data['reason'], (int) $request->user()->getAuthIdentifier()
             );
         } catch (\DomainException $error) {
-            return response()->json(['error' => 'V2_VOUCHER_VOID_CONFLICT'], 409);
+            return response()->json(['error' => 'FINANCE_VOUCHER_VOID_CONFLICT'], 409);
         }
         return response()->json([
-            'scope' => 'isolated_v2_pilot_only',
+            'scope' => 'unified_finance',
             'reversal_batch_id' => $batchId,
         ], 201);
     }
@@ -474,10 +469,10 @@ final class FinanceApiController extends Controller
             $data['reason'], (int) $request->user()->getAuthIdentifier()
         );
         } catch (\DomainException $error) {
-            return response()->json(['error' => 'V2_REVERSAL_CONFLICT'], 409);
+            return response()->json(['error' => 'FINANCE_REVERSAL_CONFLICT'], 409);
         }
         return response()->json([
-            'scope' => 'isolated_v2_pilot_only', 'reversal_batch_id' => $id,
+            'scope' => 'unified_finance', 'reversal_batch_id' => $id,
         ], 201);
     }
 }

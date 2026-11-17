@@ -1,16 +1,7 @@
 <?php
 
 return [
-    // Normal ERP is the default on the owner's local non-isolated database.
-    // No FINANCE_NORMAL_ERP_MODE override is required.
-    // V2 pilot routes are NOT registered by default, ever in production.
-    // Enabling is limited to an isolated local/testing DB and an explicit
-    // authenticated, project-authorized API session.
-    'v2_pilot_api_enabled' => env('V2_FINANCE_PILOT_API_ENABLED', false),
-    'v2_pilot_write_enabled' => env('V2_FINANCE_PILOT_WRITE_ENABLED', false),
-    // Legacy compatibility key; local bluenew is now recognized automatically.
-    // Other database names cannot be enabled by setting this value.
-    'v2_local_test_database' => env('V2_FINANCE_LOCAL_TEST_DATABASE', ''),
+    // Finance is part of the normal ERP on every configured database.
 
     /*
      * Extra Charge project accounts are resolved automatically inside the

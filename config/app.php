@@ -176,8 +176,8 @@ return [
          */
         App\Providers\AppServiceProvider::class,
         App\Providers\AuthServiceProvider::class,
-        // Does nothing unless isolated local V2 pilot flags are explicitly enabled.
-        App\Providers\V2FinancePilotServiceProvider::class,
+        // Unified finance permissions for the main ERP.
+        App\Providers\FinanceApiServiceProvider::class,
         // App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,

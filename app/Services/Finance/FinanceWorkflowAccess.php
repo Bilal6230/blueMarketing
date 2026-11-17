@@ -12,13 +12,13 @@ final class FinanceWorkflowAccess
         return true;
     }
 
-    /** Compatibility API for existing finance services; no pilot or DB selector. */
+    /** Unified finance service access. */
     public static function mergedWriterAllowed(): bool
     {
         return FinanceConnectionGuard::isAllowed();
     }
 
-    /** No isolated finance mode may be selected by configuration. */
+    /** No separate finance mode is selectable. */
     public static function selected(): bool
     {
         return false;
@@ -34,8 +34,8 @@ final class FinanceWorkflowAccess
         abort_unless(self::mergedWriterAllowed(), 409, 'Finance connection is not configured.');
         FinanceConnectionGuard::assertAllowed();
         $user = Auth::user();
-        abort_unless($user && $projectId > 0 && Gate::has('v2-finance-post'), 403);
-        Gate::authorize('v2-finance-post');
+        abort_unless($user && $projectId > 0 && Gate::has('finance-post'), 403);
+        Gate::authorize('finance-post');
         abort_unless($user->hasRole('superadmin') || (int) $user->project_id === $projectId, 403);
         abort_unless(DB::table('projects')->where('id', $projectId)->where('is_active', 1)->exists(), 403);
     }
@@ -45,8 +45,8 @@ final class FinanceWorkflowAccess
         abort_unless(self::mergedWriterAllowed(), 409, 'Finance connection is not configured.');
         FinanceConnectionGuard::assertAllowed();
         $user = Auth::user();
-        abort_unless($user && $projectId > 0 && Gate::has('v2-finance-read'), 403);
-        Gate::authorize('v2-finance-read');
+        abort_unless($user && $projectId > 0 && Gate::has('finance-read'), 403);
+        Gate::authorize('finance-read');
         abort_unless($user->hasRole('superadmin') || (int) $user->project_id === $projectId, 403);
         abort_unless(DB::table('projects')->where('id', $projectId)->where('is_active', 1)->exists(), 403);
     }

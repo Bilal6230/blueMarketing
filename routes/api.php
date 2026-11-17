@@ -128,20 +128,14 @@ Route::get('/test', function () {
 });
 
 /*
-|--------------------------------------------------------------------------
-| V2 finance pilot endpoints — DISABLED BY DEFAULT
-|--------------------------------------------------------------------------
-| No V1 route is replaced. Routes only register on local/testing when the
-| operator explicitly opts in. Each request independently requires Sanctum,
-| a finance Gate, project membership and the V2 isolated DB connection guard.
-| Posting additionally requires a separate OFF-by-default write flag.
+| Unified finance API endpoints. Authentication, project scope and finance
+| permissions are enforced on every request.
 */
-if (in_array(config('app.env'), ['local', 'testing'], true)
-    && config('finance.v2_pilot_api_enabled', false)) {
+{
     Route::middleware(['auth:sanctum', 'throttle:30,1'])
-        ->prefix('v2/finance/projects/{projectId}')
+        ->prefix('finance/projects/{projectId}')
         ->group(function (): void {
-            $controller = \App\Http\Controllers\Api\V2\V2FinancePilotController::class;
+            $controller = \App\Http\Controllers\Api\Finance\FinanceApiController::class;
             Route::get('postings', [$controller, 'lines'])->whereNumber('projectId');
             Route::get('sources/{kind}/{sourceId}/readiness', [$controller, 'sourceReadiness'])
                 ->whereNumber('projectId')->whereNumber('sourceId')
