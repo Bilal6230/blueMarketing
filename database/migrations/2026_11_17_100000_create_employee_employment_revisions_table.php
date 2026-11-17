@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 /** One-table baseline generated from verified MySQL 8.4.3 bluenew export. */
 return new class extends Migration {
     public function up(): void {
-        DB::unprepared(<<<'BMDDL0' 
+        DB::unprepared(<<<'BMDDL0'
 CREATE TABLE `employee_employment_revisions` (
   `id` bigint UNSIGNED NOT NULL,
   `project_id` bigint UNSIGNED NOT NULL,
@@ -43,18 +43,18 @@ CREATE TABLE `employee_employment_revisions` (
   `short_leave_method` varchar(24) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `short_leave_deduction` decimal(12,2) NOT NULL DEFAULT '0.00'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-BMDDL0 );
-        DB::unprepared(<<<'BMDDL1' 
+BMDDL0);
+        DB::unprepared(<<<'BMDDL1'
 ALTER TABLE `employee_employment_revisions`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `employment_revision_effective_uq` (`employee_profile_id`,`effective_from`),
   ADD KEY `employment_revisions_profile_project_fk` (`employee_profile_id`,`project_id`),
   ADD KEY `employment_revision_project_date_idx` (`project_id`,`effective_from`);
-BMDDL1 );
-        DB::unprepared(<<<'BMDDL2' 
+BMDDL1);
+        DB::unprepared(<<<'BMDDL2'
 ALTER TABLE `employee_employment_revisions`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
-BMDDL2 );
+BMDDL2);
     }
     public function down(): void { Schema::dropIfExists('employee_employment_revisions'); }
 };
