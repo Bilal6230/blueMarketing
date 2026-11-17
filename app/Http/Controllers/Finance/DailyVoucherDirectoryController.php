@@ -108,8 +108,21 @@ final class DailyVoucherDirectoryController extends Controller
         if (Schema::hasTable('customer_ledger')) {
             $query = DB::table('customer_ledger as source')->where('source.project_id', $projectId);
             if(Schema::hasColumn('customer_ledger','deleted_at')) $query->whereNull('source.deleted_at');
+            // A reversed typed posting deactivates its customer_ledger
+            // source for balance reporting, but its voucher stays in history.
+            $reversedTypedVisible = \App\Services\Finance\V2OriginalWorkflowAccess::mergedWriterAllowed()
+                && Schema::hasTable('finance_posting_cash_sources')
+                && Schema::hasTable('finance_posting_batches');
+            $reversedTypedExists = static function ($typed) use ($projectId) {
+                $typed->selectRaw('1')->from('finance_posting_cash_sources as posted_cash')
+                    ->join('finance_posting_batches as original_batch', 'original_batch.id', '=', 'posted_cash.posting_batch_id')
+                    ->join('finance_posting_batches as reversal_batch', 'reversal_batch.reversal_of_batch_id', '=', 'original_batch.id')
+                    ->whereColumn('posted_cash.customer_ledger_id', 'source.id')
+                    ->where('original_batch.project_id', $projectId)
+                    ->where('reversal_batch.project_id', $projectId);
+            };
             if(Schema::hasTable('daily_voucher_approvals')){
-                $query->where(function($visible)use($projectId){
+                $query->where(function($visible)use($projectId, $reversedTypedVisible, $reversedTypedExists){
                     $visible->where('source.is_active',1)
                         ->orWhereExists(function($a)use($projectId){
                             $a->selectRaw('1')->from('daily_voucher_approvals as approval')
@@ -118,6 +131,9 @@ final class DailyVoucherDirectoryController extends Controller
                               ->whereColumn('approval.source_id','source.id')
                               ->whereIn('approval.status',['pending','rejected']);
                         });
+                    if ($reversedTypedVisible) {
+                        $visible->orWhereExists($reversedTypedExists);
+                    }
                     if(Schema::hasTable('finance_bank_voucher_allocation_releases')){
                         $visible->orWhereExists(function($released)use($projectId){
                             $released->selectRaw('1')
@@ -127,7 +143,10 @@ final class DailyVoucherDirectoryController extends Controller
                         });
                     }
                 });
-            }else $query->where('source.is_active',1);
+            }else $query->where(function ($visible) use ($reversedTypedVisible, $reversedTypedExists) {
+                $visible->where('source.is_active', 1);
+                if ($reversedTypedVisible) $visible->orWhereExists($reversedTypedExists);
+            });
             if (!empty($filters['from'])) $query->whereDate('source.date', '>=', $filters['from']);
             if (!empty($filters['to'])) $query->whereDate('source.date', '<=', $filters['to']);
             if (!empty($filters['type'])) {
