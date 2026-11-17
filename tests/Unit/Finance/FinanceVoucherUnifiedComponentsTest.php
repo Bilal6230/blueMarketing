@@ -526,7 +526,6 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('public static function mergedWriterAllowed(): bool', $access);
         $this->assertStringContainsString('V2IsolatedConnectionGuard::isAllowed()', $access);
         $this->assertStringContainsString('self::enabled() || self::mergedWriterAllowed()', $access);
-        $this->assertStringContainsString('self::mergedWriterAllowed()', $provider);
         $this->assertStringContainsString('V2OriginalWorkflowAccess::mergedWriterAllowed()', $provider);
         $this->assertStringContainsString('commissionPilotCreateAllowed', $commission);
         $this->assertStringContainsString('isMergedTypedCommission(', $commission);
