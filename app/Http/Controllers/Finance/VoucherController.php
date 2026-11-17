@@ -1103,23 +1103,11 @@ class VoucherController extends Controller
         ]);
     }
 
-    private function unavailableV2Workspace(int $projectId, string $title)
-    {
-        abort_unless($projectId > 0 && DB::table('projects')->where('id', $projectId)->where('is_active', 1)->exists(), 404);
-        $user = Auth::user();
-        abort_unless($user && ($user->hasRole('superadmin') || (int) $user->project_id === $projectId), 403);
-
-        return response()->view('admin.finance.voucher.v2_unavailable', compact('title', 'projectId'));
-    }
-
-    /** Dedicated linked bank receipt/payment workspace for the isolated V2 pilot. */
+    /** Unified linked bank receipt/payment workspace. */
     public function bankVoucherWorkspace(string $direction)
     {
         abort_unless(in_array($direction, ['receipt', 'payment'], true), 404);
         $projectId = (int) getSelectedTown();
-        if (!\App\Services\Finance\V2IsolatedConnectionGuard::isAllowed()) {
-            return $this->unavailableV2Workspace($projectId, $direction === 'receipt' ? 'Bank Receipt Voucher (BOR)' : 'Bank Payment Voucher (BOP)');
-        }
         \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
 
         $bankAccounts = DB::table('project_bank_accounts')
@@ -1135,9 +1123,6 @@ class VoucherController extends Controller
     {
         abort_unless(in_array($kind, ['deposit', 'withdrawal'], true), 404);
         $projectId = (int) getSelectedTown();
-        if (!\App\Services\Finance\V2IsolatedConnectionGuard::isAllowed()) {
-            return $this->unavailableV2Workspace($projectId, $kind === 'deposit' ? 'Bank Deposit' : 'Bank Withdrawal');
-        }
         \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
         $bankAccounts = DB::table('project_bank_accounts')->where('project_id', $projectId)->where('is_active', 1)->orderBy('bank_name')->get();
         $cashAccounts = ProjectHeadSubhead::availableForPosting()->with(['headAccounting:id,name', 'subheadAccounting:id,name'])
@@ -1154,9 +1139,6 @@ class VoucherController extends Controller
     public function plotReceiptWorkspace()
     {
         $projectId = (int) getSelectedTown();
-        if (!\App\Services\Finance\V2IsolatedConnectionGuard::isAllowed()) {
-            return $this->unavailableV2Workspace($projectId, 'Plot Receive Payment');
-        }
         \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
         $accounts = ProjectHeadSubhead::availableForPosting()->with(['headAccounting:id,name', 'subheadAccounting:id,name'])
             ->where('project_id', $projectId)
@@ -1304,9 +1286,6 @@ class VoucherController extends Controller
     public function plotPurchaseWorkspace()
     {
         $projectId = (int) getSelectedTown();
-        if (!\App\Services\Finance\V2IsolatedConnectionGuard::isAllowed()) {
-            return $this->unavailableV2Workspace($projectId, 'Plot Purchase Voucher');
-        }
         \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($projectId);
         $accounts = ProjectHeadSubhead::availableForPosting()->with(['headAccounting:id,name', 'subheadAccounting:id,name'])
             ->where('project_id', $projectId)->orderBy('id')->get();
