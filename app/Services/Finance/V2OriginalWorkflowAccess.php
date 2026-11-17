@@ -66,7 +66,7 @@ final class V2OriginalWorkflowAccess
             in_array(config('app.env'), ['local', 'testing'], true)
                 && (config('finance.v2_pilot_api_enabled') || self::mergedWriterAllowed()),
             409,
-            'New voucher workspaces are disabled until an isolated local V2 finance database is configured.'
+            'The finance voucher workspace is unavailable for the selected database.'
         );
         V2IsolatedConnectionGuard::assertAllowed();
         $user = Auth::user();
