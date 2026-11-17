@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Schema;
  * Stock sources require a separate, authenticated project approval because
  * physical stock tables have no project_id.
  */
-final class V2ApprovedSourcePostingWriter
+final class ApprovedSourcePostingWriter
 {
     private const SOURCES = [
         'booking' => ['booking_vouchers', 'finance_posting_booking_sources', 'booking_voucher_id'],
@@ -51,7 +51,7 @@ final class V2ApprovedSourcePostingWriter
         array $approvedAllocation,
         ?int $actorId = null
     ): int {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         if (!isset(self::SOURCES[$kind]) || $projectId < 1 || $sourceId < 1
             || !preg_match('/^[A-Za-z0-9_-]{16,128}$/D', $requestKey)
             || count($approvedAllocation) < 2) {
@@ -140,7 +140,7 @@ final class V2ApprovedSourcePostingWriter
                     'details' => (string) $source->details,
                 ];
             } else {
-                $snapshot = (new V2StockSourceSnapshot())->read($kind, $sourceId, $projectId);
+                $snapshot = (new StockSourceSnapshot())->read($kind, $sourceId, $projectId);
                 $approvalTable = $kind === 'stock_entry'
                     ? 'finance_stock_entry_project_approvals'
                     : 'finance_stock_bill_project_approvals';

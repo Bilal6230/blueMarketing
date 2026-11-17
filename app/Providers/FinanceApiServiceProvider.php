@@ -9,23 +9,23 @@ use Illuminate\Support\ServiceProvider;
  * Opt-in finance V2 pilot authorization ONLY in isolated local/testing.
  * No V1 role or permission is altered; no production Gate ability exists.
  */
-final class V2FinancePilotServiceProvider extends ServiceProvider
+final class FinanceApiServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
         if (!in_array(config('app.env'), ['local', 'testing'], true)
             || (!config('finance.v2_pilot_api_enabled', false)
-                && !\App\Services\Finance\V2OriginalWorkflowAccess::mergedWriterAllowed())) {
+                && !\App\Services\Finance\FinanceWorkflowAccess::mergedWriterAllowed())) {
             return;
         }
 
         Gate::define('v2-finance-read', static function ($user): bool {
-            return \App\Services\Finance\V2OriginalWorkflowAccess::mergedWriterAllowed()
+            return \App\Services\Finance\FinanceWorkflowAccess::mergedWriterAllowed()
                 ? ($user->hasRole('superadmin') || $user->can('read voucher'))
                 : $user->hasRole('superadmin');
         });
         Gate::define('v2-finance-post', static function ($user): bool {
-            if (\App\Services\Finance\V2OriginalWorkflowAccess::mergedWriterAllowed()) {
+            if (\App\Services\Finance\FinanceWorkflowAccess::mergedWriterAllowed()) {
                 return $user->hasRole('superadmin') || $user->can('create voucher');
             }
             return (bool) config('finance.v2_pilot_write_enabled', false)

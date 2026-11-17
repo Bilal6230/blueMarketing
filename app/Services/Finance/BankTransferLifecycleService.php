@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
  * A linked cleared cheque remains in custody until an explicit release path
  * exists; silently reversing its bank posting would misstate cheque status.
  */
-final class V2BankTransferLifecycleService
+final class BankTransferLifecycleService
 {
     public function reverse(
         int $projectId,
@@ -20,7 +20,7 @@ final class V2BankTransferLifecycleService
         string $reason,
         ?int $actorId
     ): int {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         if ($projectId < 1 || $batchId < 1 || !in_array($kind, ['deposit', 'withdrawal'], true)) {
             throw new \DomainException('BANK_TRANSFER_REVERSAL_IDENTITY_INVALID');
         }
@@ -43,7 +43,7 @@ final class V2BankTransferLifecycleService
             if ($source->linked_customer_ledger_id !== null) {
                 throw new \DomainException('BANK_TRANSFER_LINKED_CHEQUE_REQUIRES_CUSTODY_RELEASE');
             }
-            return (new V2PostingGateway())->reversePostedBatch(
+            return (new PostingGateway())->reversePostedBatch(
                 $projectId, $batchId, $requestKey, $effectiveDate, $reason, $actorId
             );
         }, 3);

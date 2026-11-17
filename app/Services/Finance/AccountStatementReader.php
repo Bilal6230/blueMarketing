@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
  * lineage, with opening/closing and running account balance in integer cents.
  * Never reads legacy ledgers.type/type_id/reference as a relation.
  */
-final class V2AccountStatementReader
+final class AccountStatementReader
 {
     private function cents(mixed $value): int
     {
@@ -57,7 +57,7 @@ final class V2AccountStatementReader
         ?string $from = null,
         ?string $through = null
     ): array {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         if ($projectId < 1 || $accountId < 1) {
             throw new \InvalidArgumentException('V2_ACCOUNT_STATEMENT_ID_INVALID');
         }
@@ -73,7 +73,7 @@ final class V2AccountStatementReader
 
         // The shared V2 reader verifies every typed claim, project identity,
         // balanced batch and reversal exact inverse before returning lines.
-        $all = (new V2PostingReportReader())->lines($projectId, null, $through);
+        $all = (new PostingReportReader())->lines($projectId, null, $through);
         $balance = 0;
         $periodDebit = 0;
         $periodCredit = 0;
