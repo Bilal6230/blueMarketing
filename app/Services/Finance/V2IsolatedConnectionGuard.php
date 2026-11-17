@@ -32,7 +32,8 @@ final class V2IsolatedConnectionGuard
         // deliberately no arbitrary-database override or production fallback.
         $localTestDatabase = $environment === 'local'
             && $database === 'bluenew'
-            && config('finance.v2_local_test_database') === 'bluenew';
+            && (config('finance.v2_local_test_database') === 'bluenew'
+                || config('finance.normal_erp_mode') === true);
 
         // Read/write replicas can override the top-level host: reject them.
         return !($driver !== 'mysql'
