@@ -1,5 +1,12 @@
 # BlueMarketing — ACTIVE HANDOFF (new chat continuity)
 
+## 2026-11-17 — OWNER APPROVED: MODERN REPORT UI BROWSER GATES CLOSED
+- Owner explicitly marked **PASS** for the repaired modern UI on exact sidebar routes: `Reports > Party Wise`, `Reports > Head Wise`, and `Reports > Account Type Balance`.
+- Close all three report **UI browser acceptance** gates (loading skeleton, column popovers/sorting, sidebar/navbar-safe viewport layout, show entries left, search right, bottom pagination and absence of reset/native sorter). No repeat browser test requested unless these exact screens change.
+- Earlier functional browser gates for Reports > Party Ledger / Party Wise / Head Wise / Account Type Balance / Trial Balance and voucher print, JV/CV/plot reversal remain accepted.
+- Scope: this acceptance closes **these specific report UI issues**, not outstanding finance source mutations, full accounting parity, production rollout or unrelated UAT.
+
+
 ## 2026-11-17 — REPORT UI REPAIR AFTER OWNER SCREENSHOTS (LOCAL RECHECK REQUIRED)
 - Owner pulled previous modern report UI and confirmed the 3 pages visually FAILED despite earlier accounting functional passes: client DataTables skeleton remained visible after data load; report shell encroached below sidebar/navbar; fixed column popup landed off-target; redundant native sorting symbols and reset filter button remained. Owner specifically requires **Show entries left**, **Search right**, column popover as the sole sorter, viewport-fit table/card and footer pagination.
 - Fixed common `modern_ledger_table.blade.php`: use existing AdminLTE `content-wrapper` class and retain single report root; toolbar has export buttons followed by a dedicated Show [length] entries row LEFT and Search RIGHT; Reset removed.
