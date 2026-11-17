@@ -8,11 +8,15 @@ declare(strict_types=1);
  */
 if (PHP_SAPI !== 'cli') exit(2);
 $options=array_slice($argv,1);
-if (array_diff($options,['--target=bluenew_clean_native','--target=bluenew_clean_final','--schema-only'])) {
+if (array_diff($options,['--target=bluenew_clean_native','--target=bluenew_clean_final','--schema-only','--allow-performance-indexes'])) {
     fwrite(STDERR,"Usage: php tools/schema/audit_clean_reconciliation.php [--target=bluenew_clean_native|--target=bluenew_clean_final] [--schema-only]\n");
     exit(2);
 }
 $schemaOnly=in_array('--schema-only',$options,true);
+$allowPerformanceIndexes=in_array('--allow-performance-indexes',$options,true);
+if ($allowPerformanceIndexes && !in_array('--target=bluenew_clean_final',$options,true)) {
+    throw new RuntimeException('--allow-performance-indexes requires --target=bluenew_clean_final');
+}
 $targetName=in_array('--target=bluenew_clean_final',$options,true)?'bluenew_clean_final':(in_array('--target=bluenew_clean_native',$options,true)?'bluenew_clean_native':'bluenew_clean');
 require dirname(__DIR__,2).'/vendor/autoload.php';
 $app=require dirname(__DIR__,2).'/bootstrap/app.php';
@@ -61,6 +65,34 @@ $queries=[
 ];
 foreach($queries as $title=>$sql) {
     $a=$signature($old,$sql);$b=$signature($new,$sql);
+    if ($title==='indexes' && $allowPerformanceIndexes) {
+        $approved=[
+            'journal_vouchers|idx_jv_project_type_recent'=>['project_id','type','id'],
+            'ledgers|idx_ledgers_source_active_recent'=>['type','type_id','is_active','id'],
+            'customer_ledger|idx_customer_project_type_recent'=>['project_id','transaction_type','id'],
+        ];
+        $present=[];
+        $remaining=[];
+        foreach ($b as $part) {
+            $key=$part[0].'|'.$part[1];
+            if (!isset($approved[$key])) {
+                $remaining[]=$part;
+                continue;
+            }
+            if ((int)$part[2]!==1 || (string)$part[6]!=='BTREE') {
+                $errors[]='Approved index has unexpected uniqueness or type: '.$key;
+            }
+            $present[$key][(int)$part[3]]=$part[4];
+        }
+        foreach ($approved as $key=>$expected) {
+            $actual=$present[$key]??[];
+            ksort($actual);
+            if (array_values($actual)!==$expected) {
+                $errors[]='Missing or malformed performance index: '.$key;
+            }
+        }
+        $b=$remaining;
+    }
     $ok=$a===$b;
     echo ($ok?'PASS':'FAIL')." SCHEMA $title (".count($a)." vs ".count($b).")\n";
     if(!$ok) {
