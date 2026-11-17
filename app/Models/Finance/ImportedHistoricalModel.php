@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Models\V2;
+namespace App\Models\Finance;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Services\Finance\V2IsolatedConnectionGuard;
+use App\Services\Finance\FinanceConnectionGuard;
 
 /**
  * The imported legacy tables are immutable V2 source evidence.
@@ -19,7 +19,7 @@ abstract class ImportedHistoricalModel extends Model
     // or a remote/client/staging/live database by accident.
     public function newModelQuery()
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         return parent::newModelQuery();
     }
 
