@@ -112,7 +112,7 @@ if ($db->getDriverName() !== 'mysql' ||
 
 $definitions = [];
 for ($part = 1; $part <= 4; $part++) {
-    $file = base_path('database/v2_schema/legacy_columns_'
+    $file = base_path('database/finance_schema_archive/legacy_columns_'
         . str_pad((string) $part, 2, '0', STR_PAD_LEFT) . '.json');
     $meta = json_decode((string) file_get_contents($file), true, 512, JSON_THROW_ON_ERROR);
     if (($meta['source_sha256'] ?? '') !== $expectedSourceSha) {

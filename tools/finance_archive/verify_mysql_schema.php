@@ -4,7 +4,7 @@
  * V2 CI ONLY. Read-only metadata checks + an intentionally rejected FK insert
  * inside a rollback-protected transaction. Never runs against live/staging.
  *
- * Usage: php tools/database_v2/verify_mysql_schema.php
+ * Usage: php tools/finance_archive/verify_mysql_schema.php
  */
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 

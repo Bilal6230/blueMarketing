@@ -39,7 +39,7 @@ $financePath = (Resolve-Path -LiteralPath $FinancialEvidence).Path
 Push-Location $repo
 try {
     # Before even selecting a database, prove the exact original export is UTC.
-    py -3 ./tools/database_v2/prove_source_export_timezone.py --source "$sourcePath"
+    py -3 ./tools/finance_archive/prove_source_export_timezone.py --source "$sourcePath"
     if ($LASTEXITCODE -ne 0) { throw 'SOURCE_SHA_OR_UTC_HEADER_PROOF_FAILED' }
 
     $env:APP_ENV = 'local'
@@ -51,19 +51,19 @@ try {
     $env:DATABASE_URL = ''
 
     # Read-only target identity proof. Never migrate or overwrite.
-    php ./tools/database_v2/check_local_v2_target.php `
+    php ./tools/finance_archive/check_local_finance_target.php `
         "--expected-name=$Database"
     if ($LASTEXITCODE -ne 0) {
         throw 'V2_NEW_UTC_REHEARSAL_TARGET_IDENTITY_FAILED'
     }
 
-    php ./tools/database_v2/verify_mysql_full_row_digests.php `
+    php ./tools/finance_archive/verify_mysql_full_row_digests.php `
         "--source-evidence=$rowEvidencePath" --verify-source-utc
     if ($LASTEXITCODE -ne 0) {
         throw 'V2_NEW_UTC_REHEARSAL_FULL_ROW_PARITY_FAILED'
     }
 
-    php ./tools/database_v2/verify_imported_mysql_financial.php `
+    php ./tools/finance_archive/verify_imported_mysql_financial.php `
         "--manifest=$manifestPath" `
         "--source-evidence=$financePath" `
         "--expected-sha256=$sha" --expected-rows=120165 --verify-source-utc

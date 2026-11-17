@@ -3,7 +3,7 @@
 /**
  * READ-ONLY private V2 imported-data reconciliation. No INSERT/UPDATE/DELETE.
  *
- * php tools/database_v2/verify_imported_mysql_financial.php
+ * php tools/finance_archive/verify_imported_mysql_financial.php
  *   --manifest=/secure/staging/manifest.json
  *   --source-evidence=/secure/source_fingerprints.json
  *   --expected-sha256=<original hash>

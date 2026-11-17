@@ -3,7 +3,7 @@
 /**
  * Read-only full-value MySQL V2 source parity. No data writes, no row output.
  *
- * php tools/database_v2/verify_mysql_full_row_digests.php
+ * php tools/finance_archive/verify_mysql_full_row_digests.php
  *   --source-evidence=C:/PRIVATE/staging/source_full_row_digests.json
  *
  * Can also run --selftest without a database to check cross-language SHA.
@@ -140,7 +140,7 @@ if ($verifyUtc) {
 
 $tables = [];
 for ($part = 1; $part <= 4; $part++) {
-    $file = base_path('database/v2_schema/legacy_columns_'
+    $file = base_path('database/finance_schema_archive/legacy_columns_'
         . str_pad((string) $part, 2, '0', STR_PAD_LEFT) . '.json');
     $meta = json_decode((string) file_get_contents($file), true, 512, JSON_THROW_ON_ERROR);
     if (($meta['source_sha256'] ?? null) !== $expectedSha) {
