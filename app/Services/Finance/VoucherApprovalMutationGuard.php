@@ -51,7 +51,7 @@ final class VoucherApprovalMutationGuard
         // Permit exercising that audited edit/reverse path on approval-tracked
         // test JVs; never relax this rule on production or customer ledgers.
         if ($sourceTable === 'journal_vouchers'
-            && V2OriginalWorkflowAccess::normalErpMode()) return;
+            && FinanceWorkflowAccess::normalErpMode()) return;
 
         if ($sourceTable === 'customer_ledger') {
             $this->assertNoPendingCorrection($projectId, $sourceId);
