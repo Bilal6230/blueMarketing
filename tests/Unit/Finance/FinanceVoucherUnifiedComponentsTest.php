@@ -155,9 +155,9 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString("$('#journalTable .add-row').first().trigger('click')", $view);
         $this->assertStringContainsString("dataType:'json'", $view);
         $this->assertStringContainsString('finance:commission-saved', $view);
-        $this->assertStringContainsString('V2IsolatedConnectionGuard::assertAllowed()', $controller);
+        $this->assertStringContainsString('FinanceConnectionGuard::assertAllowed()', $controller);
         $this->assertStringContainsString('commissionPilotCreateAllowed', $view);
-        $this->assertStringContainsString('V2OriginalWorkflowAccess::enabled()', $controller);
+        $this->assertStringContainsString('FinanceWorkflowAccess::enabled()', $controller);
         $this->assertStringContainsString("'voucher_id' => " . '$id', $controller);
     }
 
@@ -187,13 +187,13 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
     public function test_commission_status_schema_repair_remains_explicit_and_guarded(): void
     {
         $legacy=file_get_contents(database_path('migrations/2025_09_25_142048_create_commision_vouchers_table.php'));
-        $workflow=file_get_contents(app_path('Services/Finance/V2CommissionDraftWorkflow.php'));
-        $repair=file_get_contents(app_path('Console/Commands/RepairV2CommissionDraftStatus.php'));
+        $workflow=file_get_contents(app_path('Services/Finance/CommissionDraftWorkflow.php'));
+        $repair=file_get_contents(app_path('Console/Commands/RepairCommissionDraftStatus.php'));
         $controller=file_get_contents(app_path('Http/Controllers/CommissionVoucherController.php'));
 
         $this->assertStringContainsString("'pending', 'approved', 'rejected'", $legacy);
         $this->assertStringContainsString("'status' => 'draft'", $workflow);
-        $this->assertStringContainsString('V2IsolatedConnectionGuard::isAllowed()', $repair);
+        $this->assertStringContainsString('FinanceConnectionGuard::isAllowed()', $repair);
         $this->assertStringContainsString('finance:repair-v2-commission-status', $repair);
         $this->assertStringContainsString("option('apply')", $repair);
         $this->assertStringContainsString("ALTER TABLE", $repair);
@@ -275,7 +275,7 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString("name:'date',value:date", $view);
         $this->assertStringContainsString('finance:commission-saved', $view);
         $this->assertStringNotContainsString("$('#confirmationModal').modal('show')", $view);
-        $this->assertStringContainsString('V2IsolatedConnectionGuard::assertAllowed()', $controller);
+        $this->assertStringContainsString('FinanceConnectionGuard::assertAllowed()', $controller);
     }
 
     public function test_extra_draft_and_sales_share_finance_controls_without_legacy_select2_conflicts(): void
@@ -414,7 +414,7 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('where(\'journal_voucher_id\',$sourceId)', $controller);
         $this->assertStringContainsString("orWhereIn('journal_voucher_detail_id'", $controller);
         $this->assertStringContainsString('abort_if($posted || $attributed', $controller);
-        $this->assertStringContainsString('V2JournalDraftWorkflow', $controller);
+        $this->assertStringContainsString('JournalDraftWorkflow', $controller);
 
         // The CV reversal form must OWN the body and footer rather than
         // render its fields inline beside the Cancel button.
@@ -429,7 +429,7 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $extra=file_get_contents(resource_path('views/admin/booking/extra_charge.blade.php'));
         $shared=file_get_contents(public_path('js/finance-voucher-header-filters.js'));
         $booking=file_get_contents(app_path('Http/Controllers/BookingController.php'));
-        $input=file_get_contents(app_path('Services/Finance/V2OriginalVoucherInput.php'));
+        $input=file_get_contents(app_path('Services/Finance/OriginalVoucherInput.php'));
 
         $this->assertStringContainsString('id="fvc-extra-approval-form"', $extra);
         $this->assertStringContainsString('fvc-approval-feedback', $extra);
@@ -470,13 +470,13 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('journalPilotApprovalBlocked', $view);
         $this->assertStringContainsString('journalPilotApprovalBlocked', $controller);
         $this->assertStringContainsString('Rejected JV revision is unavailable in V2 mode.', $controller);
-        $this->assertStringContainsString('V2OriginalWorkflowAccess::selected()', $actions);
+        $this->assertStringContainsString('FinanceWorkflowAccess::selected()', $actions);
         $this->assertStringNotContainsString('class="form-control select2 account-select"', $view);
     }
 
     public function test_explicit_local_normal_erp_mode_preserves_jv_history_and_avoids_pilot_approval(): void
     {
-        $access=file_get_contents(app_path('Services/Finance/V2OriginalWorkflowAccess.php'));
+        $access=file_get_contents(app_path('Services/Finance/FinanceWorkflowAccess.php'));
         $approval=file_get_contents(app_path('Services/Finance/DailyVoucherApprovalWorkflow.php'));
         $mutation=file_get_contents(app_path('Services/Finance/VoucherApprovalMutationGuard.php'));
         $actions=file_get_contents(resource_path('views/admin/reports/vouchers/actions.blade.php'));
@@ -485,9 +485,9 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringNotContainsString("'normal_erp_mode' => env(", $config);
         $this->assertStringContainsString("!str_starts_with(\$database, 'bluemarketing_v2_')", $access);
         $this->assertStringContainsString('if (self::normalErpMode()) return false;', $access);
-        $this->assertStringContainsString('V2OriginalWorkflowAccess::normalErpMode()', $approval);
-        $this->assertStringContainsString('V2OriginalWorkflowAccess::normalErpMode()', $mutation);
-        $this->assertStringContainsString('V2OriginalWorkflowAccess::normalErpMode()', $actions);
+        $this->assertStringContainsString('FinanceWorkflowAccess::normalErpMode()', $approval);
+        $this->assertStringContainsString('FinanceWorkflowAccess::normalErpMode()', $mutation);
+        $this->assertStringContainsString('FinanceWorkflowAccess::normalErpMode()', $actions);
         $this->assertStringContainsString("Correction reversal:", file_get_contents(app_path('Http/Controllers/JournalVoucherController.php')));
     }
 
@@ -495,7 +495,7 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
     {
         $booking=file_get_contents(app_path('Http/Controllers/BookingController.php'));
         $balance=file_get_contents(app_path('Services/Finance/ExtraChargeBankSettlement.php'));
-        $guard=file_get_contents(app_path('Services/Finance/V2IsolatedConnectionGuard.php'));
+        $guard=file_get_contents(app_path('Services/Finance/FinanceConnectionGuard.php'));
 
         // A normal ERP switch must NOT make existing V2 EC/ECP amounts look
         // unpaid or write replacement legacy ledger legs for their sources.
@@ -506,11 +506,11 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('typedExtraChargeReceivableAccount(', $booking);
         $this->assertStringContainsString('EC_ORIGINAL_RECEIVABLE_ACCOUNT_AMBIGUOUS', $booking);
         $this->assertStringContainsString("'line.project_head_subhead_id'", $booking);
-        $this->assertStringContainsString('V2OriginalBookingDepositWorkflow', $booking);
-        $this->assertStringContainsString('V2OriginalBankWorkflow', $booking);
+        $this->assertStringContainsString('OriginalBookingDepositWorkflow', $booking);
+        $this->assertStringContainsString('OriginalBankWorkflow', $booking);
         $this->assertStringContainsString('NORMAL-EC-BANK-', $booking);
         $this->assertStringContainsString('NORMAL-EC-', $booking);
-        $this->assertStringContainsString('V2ExtraChargeBalance', $balance);
+        $this->assertStringContainsString('ExtraChargeBalance', $balance);
         $this->assertStringContainsString('finance_extra_charge_sources', $balance);
         $this->assertStringNotContainsString("config('finance.normal_erp_mode') === true", $guard);
         $this->assertStringContainsString("&& \$database === 'bluenew'", $guard);
@@ -519,18 +519,18 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
 
     public function test_normal_erp_merge_exposes_typed_finance_workspaces_and_preserves_cv_source_lifecycle(): void
     {
-        $access = file_get_contents(app_path('Services/Finance/V2OriginalWorkflowAccess.php'));
-        $provider = file_get_contents(app_path('Providers/V2FinancePilotServiceProvider.php'));
+        $access = file_get_contents(app_path('Services/Finance/FinanceWorkflowAccess.php'));
+        $provider = file_get_contents(app_path('Providers/FinanceApiServiceProvider.php'));
         $commission = file_get_contents(app_path('Http/Controllers/CommissionVoucherController.php'));
 
         $this->assertStringContainsString('public static function mergedWriterAllowed(): bool', $access);
-        $this->assertStringContainsString('V2IsolatedConnectionGuard::isAllowed()', $access);
+        $this->assertStringContainsString('FinanceConnectionGuard::isAllowed()', $access);
         $this->assertStringContainsString('self::enabled() || self::mergedWriterAllowed()', $access);
-        $this->assertStringContainsString('V2OriginalWorkflowAccess::mergedWriterAllowed()', $provider);
+        $this->assertStringContainsString('FinanceWorkflowAccess::mergedWriterAllowed()', $provider);
         $this->assertStringContainsString('commissionPilotCreateAllowed', $commission);
         $this->assertStringContainsString('isMergedTypedCommission(', $commission);
         $this->assertStringContainsString('finance_posting_commission_sources', $commission);
         $this->assertStringContainsString('cancelDraft($projectId, (int) $id)', $commission);
-        $this->assertStringContainsString('V2VoucherLifecycleService', $commission);
+        $this->assertStringContainsString('VoucherLifecycleService', $commission);
     }
 }

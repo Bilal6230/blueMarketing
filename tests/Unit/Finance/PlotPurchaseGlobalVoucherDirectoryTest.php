@@ -93,7 +93,7 @@ final class PlotPurchaseGlobalVoucherDirectoryTest extends TestCase
     public function test_mysql_purchase_identifiers_are_short_and_receipt_tables_are_not_modified(): void
     {
         $migration=file_get_contents(base_path('database/local_pilot_migrations/2026_11_14_000200_create_v2_plot_purchase_storage.php'));
-        $this->assertStringContainsString('V2IsolatedConnectionGuard::assertAllowed()', $migration);
+        $this->assertStringContainsString('FinanceConnectionGuard::assertAllowed()', $migration);
         $this->assertStringContainsString("'v2_plot_purch_post_claim_fk'", $migration);
         $this->assertLessThanOrEqual(64, strlen('v2_plot_purch_post_claim_fk'));
         $this->assertStringNotContainsString("Schema::dropIfExists(", $migration);
