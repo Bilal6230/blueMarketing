@@ -6,10 +6,12 @@ declare(strict_types=1);
  * DRY RUN: php tools/schema/copy_clean_data.php
  * APPLY:   php tools/schema/copy_clean_data.php --apply
  * RESUME:  php tools/schema/copy_clean_data.php --resume (after interrupted prior copy)
+ * FINAL: php tools/schema/copy_clean_data.php --target=bluenew_clean_final [--apply|--resume]
  * Never writes to original database or changes schema.
  */
-if (PHP_SAPI !== 'cli' || $argc > 2 || ($argc === 2 && !in_array($argv[1], ['--apply','--resume'],true))) {
-    fwrite(STDERR, "Usage: php tools/schema/copy_clean_data.php [--apply|--resume]\n");
+if (PHP_SAPI !== 'cli' || count(array_diff(array_slice($argv,1), ['--apply','--resume','--target=bluenew_clean_final'])) > 0
+    || (in_array('--apply', $argv, true) && in_array('--resume', $argv, true))) {
+    fwrite(STDERR, "Usage: php tools/schema/copy_clean_data.php [--target=bluenew_clean_final] [--apply|--resume]\\n");
     exit(2);
 }
 require dirname(__DIR__, 2).'/vendor/autoload.php';
@@ -18,10 +20,9 @@ $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
 use Illuminate\Support\Facades\DB;
 $source='bluenew';
-$target='bluenew_clean';
-$mode=$argv[1]??'';
-$apply=in_array($mode,['--apply','--resume'],true);
-$resume=$mode==='--resume';
+$target=in_array('--target=bluenew_clean_final', $argv, true)?'bluenew_clean_final':'bluenew_clean';
+$apply=in_array('--apply',$argv,true)||in_array('--resume',$argv,true);
+$resume=in_array('--resume',$argv,true);
 $db=DB::connection();
 $cfg=config('database.connections.'.config('database.default'));
 if (!app()->environment('local') || $db->getDriverName()!=='mysql'
@@ -48,8 +49,9 @@ $a=$tables($source);
 $b=$tables($target);
 if (count($a)!==147 || $a!==$b || !in_array('migrations',$a,true))
     throw new RuntimeException('Source/destination schema table names mismatch');
-if ($count($target,'migrations')!==1)
-    throw new RuntimeException('Expected one baseline migration in clean target');
+$expectedMigrationCount=$target==='bluenew_clean_final'?148:1;
+if ($count($target,'migrations')!==$expectedMigrationCount)
+    throw new RuntimeException('Expected '.$expectedMigrationCount.' migration records in '.$target);
 $planned=[];$total=0;
 foreach($a as $table) {
     if ($table==='migrations') continue;
@@ -63,7 +65,7 @@ foreach($a as $table) {
     $planned[]=[$table,$cols,$sourceCount,$destCount];
     $total+=$sourceCount;
 }
-echo "PREFLIGHT PASS: 146 schema-matched tables; $total source rows; migration history excluded; mode=".($resume?'RESUME':($apply?'APPLY':'DRY RUN')).".\n";
+echo "PREFLIGHT PASS: 146 schema-matched tables in $target; $total source rows; migration history excluded; mode=".($resume?'RESUME':($apply?'APPLY':'DRY RUN')).".\n";
 if (!$apply) { echo "DRY RUN only. Use --apply on an empty destination, or --resume after a prior interrupted copy.\n";exit(0); }
 $db->statement('SET SESSION FOREIGN_KEY_CHECKS=0');
 // The source contains historical '0000-00-00 00:00:00' DATETIME values.
