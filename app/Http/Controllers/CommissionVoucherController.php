@@ -303,6 +303,17 @@ class CommissionVoucherController extends Controller
         if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()
             || $this->isMergedTypedCommission($projectId, (int) $id)) {
             \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+            $typedDraft = CommisionVoucher::query()->where('project_id', $projectId)
+                ->whereKey((int) $id)->where('status', 'draft')->exists();
+            if ($typedDraft) {
+                try {
+                    (new \App\Services\Finance\V2CommissionDraftWorkflow())->cancelDraft($projectId, (int) $id);
+                } catch (\DomainException $exception) {
+                    abort(409, 'Commission draft cancellation rejected to protect accounting history.');
+                }
+                return redirect()->route('commision.voucher.index')
+                    ->with('success', 'Commission draft cancelled.');
+            }
             $data = request()->validate([
                 'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
                 'effective_date' => ['required', 'date_format:Y-m-d'],
