@@ -26,6 +26,10 @@ final class V2LocalTestDatabaseGuardTest extends TestCase
         $this->configure();
         config(['finance.normal_erp_mode' => false]);
         $this->assertTrue(V2IsolatedConnectionGuard::isAllowed());
+        $this->assertTrue(\App\Services\Finance\V2OriginalWorkflowAccess::normalErpMode());
+        $this->assertFalse(\App\Services\Finance\V2OriginalWorkflowAccess::selected());
+        config(['finance.v2_pilot_api_enabled' => true, 'finance.v2_pilot_write_enabled' => true]);
+        $this->assertFalse(\App\Services\Finance\V2OriginalWorkflowAccess::selected());
         // Stale local toggles must not change the recognized DB identity.
         config(['finance.normal_erp_mode' => true]);
         $this->assertTrue(V2IsolatedConnectionGuard::isAllowed());
@@ -66,5 +70,7 @@ final class V2LocalTestDatabaseGuardTest extends TestCase
     {
         $this->configure(database: 'bluemarketing_v2_local');
         $this->assertTrue(V2IsolatedConnectionGuard::isAllowed());
+        $this->assertFalse(\App\Services\Finance\V2OriginalWorkflowAccess::normalErpMode());
+        $this->assertTrue(\App\Services\Finance\V2OriginalWorkflowAccess::selected());
     }
 }
