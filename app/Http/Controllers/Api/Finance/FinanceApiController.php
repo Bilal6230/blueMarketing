@@ -16,9 +16,9 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 /**
- * Strictly local, default-OFF Finance trial integration. This cannot replace
- * existing /api/v1/mobile or legacy production voucher endpoints.
- * Explicit project membership and Gate authorization apply per request.
+ * Unified finance API for the standard application database.
+ * Authentication, project membership and finance Gate authorization apply
+ * to every request, on local and deployed environments.
  */
 final class FinanceApiController extends Controller
 {
@@ -26,17 +26,17 @@ final class FinanceApiController extends Controller
     {
         FinanceConnectionGuard::assertAllowed();
         if (!$request->user() || $projectId < 1) {
-            throw new AuthorizationException('Finance project finance access denied.');
+            throw new AuthorizationException('Finance project access denied.');
         }
         $ability = $write ? 'finance-post' : 'finance-read';
         if (!Gate::has($ability)) {
-            throw new AuthorizationException('Finance finance ability is not configured.');
+            throw new AuthorizationException('Finance permission is not configured.');
         }
         Gate::authorize($ability);
         $user = $request->user();
         if (!$user->hasRole('superadmin')
             && (int) $user->project_id !== $projectId) {
-            throw new AuthorizationException('Finance project finance access denied.');
+            throw new AuthorizationException('Finance project access denied.');
         }
         if (!Project::query()->where('id', $projectId)->where('is_active', 1)->exists()) {
             throw new AuthorizationException('Finance project is not available.');
@@ -227,7 +227,7 @@ final class FinanceApiController extends Controller
         };
         } catch (\DomainException $error) {
             // Business/source conflicts are intentional denials, not 500s.
-            // Do not leak source details or SQL into a pilot HTTP response.
+            // Do not leak source details or SQL in an HTTP response.
             return response()->json(['error' => 'FINANCE_POSTING_CONFLICT'], 409);
         }
         return response()->json([
@@ -370,7 +370,7 @@ final class FinanceApiController extends Controller
     }
 
     /**
-     * Isolated CV draft endpoints: never operate on V1's default database.
+     * Project-scoped commission draft endpoints on the normal ERP database.
      */
     public function commissionDraft(
         Request $request, int $projectId, string $action,
