@@ -10,11 +10,11 @@ use Illuminate\Support\Facades\Schema;
  * project-ownership approval. Stock tables have no project_id.
  * Never guess project from party, item, site, or polymorphic source_type.
  */
-final class V2StockSourceSnapshot
+final class StockSourceSnapshot
 {
     public function read(string $kind, int $sourceId, int $projectId): array
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         if (!in_array($kind, ['stock_entry', 'stock_bill'], true) || $sourceId < 1 || $projectId < 1) {
             throw new \DomainException('V2_STOCK_SOURCE_ID_INVALID');
         }

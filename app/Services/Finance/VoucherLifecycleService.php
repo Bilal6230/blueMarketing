@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
  * Original records remain immutable. A changed posted source must be handled
  * through a separately approved new document after reversing the original.
  */
-final class V2VoucherLifecycleService
+final class VoucherLifecycleService
 {
     public function reverse(
         int $projectId,
@@ -20,7 +20,7 @@ final class V2VoucherLifecycleService
         string $reason,
         ?int $actorId = null
     ): int {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         if (!in_array($kind, ['journal', 'commission'], true)
             || $projectId < 1 || $sourceId < 1) {
             throw new \DomainException('V2_VOUCHER_LIFECYCLE_INVALID_IDENTITY');
@@ -49,7 +49,7 @@ final class V2VoucherLifecycleService
             if (!$batch) {
                 throw new \DomainException('V2_VOUCHER_LIFECYCLE_SOURCE_NOT_POSTED');
             }
-            return (new V2PostingGateway())->reversePostedBatch(
+            return (new PostingGateway())->reversePostedBatch(
                 $projectId, (int) $batch->id, $requestKey,
                 $effectiveDate, $reason, $actorId
             );

@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
  * Original display numbers come from actual typed source PKs, never from
  * overloaded ledger.type_id or guessed voucher names.
  */
-final class V2VoucherRegisterReader
+final class VoucherRegisterReader
 {
     private const DISPLAY = [
         'journal' => ['journal_vouchers', 'voucher_number'],
@@ -49,7 +49,7 @@ final class V2VoucherRegisterReader
 
     public function documents(int $projectId, ?string $from = null, ?string $through = null): array
     {
-        $lines = (new V2PostingReportReader())->lines($projectId, $from, $through);
+        $lines = (new PostingReportReader())->lines($projectId, $from, $through);
         $references = [];
         $batches = [];
         foreach ($lines as $line) {
