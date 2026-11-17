@@ -14,8 +14,8 @@ final class CleanDatabasePerformanceAuditTest extends TestCase
         self::assertStringContainsString("app()->environment('local')", $source);
         self::assertStringContainsString("information_schema.STATISTICS", $source);
         self::assertStringContainsString("information_schema.COLUMNS", $source);
-        self::assertStringContainsString("'EXPLAIN '.$sql", $source);
-        self::assertStringNotContainsString("EXPLAIN ANALYZE '.$sql", $source);
+        self::assertStringContainsString("'EXPLAIN '.\$sql", $source);
+        self::assertStringNotContainsString("EXPLAIN ANALYZE '.\$sql", $source);
         self::assertStringContainsString("DO NOT DROP automatically", $source);
         self::assertStringNotContainsString("DB::statement('ALTER", $source);
         self::assertStringNotContainsString("Schema::table(", $source);
