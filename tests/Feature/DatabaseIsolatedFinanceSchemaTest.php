@@ -44,7 +44,7 @@ class DatabaseIsolatedFinanceSchemaTest extends TestCase
 
     private function runMigration(string $name): object
     {
-        return require base_path('database/v2_migrations/' . $name);
+        return require base_path('database/finance_legacy_migrations/' . $name);
     }
 
     public function test_v2_core_requires_baseline_before_creating_any_tables(): void

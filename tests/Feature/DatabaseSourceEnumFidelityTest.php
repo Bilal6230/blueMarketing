@@ -26,7 +26,7 @@ class DatabaseSourceEnumFidelityTest extends TestCase
     #[DataProvider('originalEnumCases')]
     public function test_enum_members_preserve_source_case_and_order(string $sqlType, array $expected): void
     {
-        $migration = require base_path('database/v2_migrations/2026_10_30_000020_create_v2_legacy_domain_baseline.php');
+        $migration = require base_path('database/finance_legacy_migrations/2026_10_30_000020_create_finance_legacy_domain_baseline.php');
 
         // Exercise the exact parser the baseline migration uses for enum values.
         $method = new \ReflectionMethod($migration, 'enumValues');
@@ -44,7 +44,7 @@ class DatabaseSourceEnumFidelityTest extends TestCase
         ];
         $found = [];
         for ($i = 1; $i <= 4; $i++) {
-            $path = base_path(sprintf('database/v2_schema/legacy_columns_%02d.json', $i));
+            $path = base_path(sprintf('database/finance_schema_archive/legacy_columns_%02d.json', $i));
             $part = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
             $this->assertSame(
                 'bbc45fe7f0b6cdab1a188d2437e973e2bb56d442a29585ab328bd062e89335ed',

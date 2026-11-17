@@ -28,9 +28,9 @@ class DatabaseFullLegacyBaselineTest extends TestCase
 
     public function test_complete_source_schema_is_recreated_with_typed_fks_and_v2_columns(): void
     {
-        $banks = require base_path('database/v2_migrations/2026_10_30_000010_create_v2_bank_lookup.php');
-        $baseline = require base_path('database/v2_migrations/2026_10_30_000020_create_v2_legacy_domain_baseline.php');
-        $finance = require base_path('database/v2_migrations/2026_10_30_000100_create_v2_finance_posting_core.php');
+        $banks = require base_path('database/finance_legacy_migrations/2026_10_30_000010_create_finance_bank_lookup.php');
+        $baseline = require base_path('database/finance_legacy_migrations/2026_10_30_000020_create_finance_legacy_domain_baseline.php');
+        $finance = require base_path('database/finance_legacy_migrations/2026_10_30_000100_create_finance_finance_posting_core.php');
 
         $banks->up();
         $baseline->up();
@@ -68,7 +68,7 @@ class DatabaseFullLegacyBaselineTest extends TestCase
 
     public function test_missing_bank_parent_fails_closed_without_creating_any_business_tables(): void
     {
-        $baseline = require base_path('database/v2_migrations/2026_10_30_000020_create_v2_legacy_domain_baseline.php');
+        $baseline = require base_path('database/finance_legacy_migrations/2026_10_30_000020_create_finance_legacy_domain_baseline.php');
         try {
             $baseline->up();
             $this->fail('Expected first V2 lookup prerequisite');

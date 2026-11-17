@@ -25,9 +25,9 @@ final class DatabasePostingModelTest extends TestCase
         DB::purge('sqlite');
         DB::setDefaultConnection('sqlite');
         DB::statement('PRAGMA foreign_keys = ON');
-        (require base_path('database/v2_migrations/2026_10_30_000010_create_v2_bank_lookup.php'))->up();
-        (require base_path('database/v2_migrations/2026_10_30_000020_create_v2_legacy_domain_baseline.php'))->up();
-        (require base_path('database/v2_migrations/2026_10_30_000100_create_v2_finance_posting_core.php'))->up();
+        (require base_path('database/finance_legacy_migrations/2026_10_30_000010_create_finance_bank_lookup.php'))->up();
+        (require base_path('database/finance_legacy_migrations/2026_10_30_000020_create_finance_legacy_domain_baseline.php'))->up();
+        (require base_path('database/finance_legacy_migrations/2026_10_30_000100_create_finance_finance_posting_core.php'))->up();
     }
 
     protected function tearDown(): void

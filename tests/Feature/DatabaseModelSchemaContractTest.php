@@ -28,8 +28,8 @@ class DatabaseModelSchemaContractTest extends TestCase
 
     public function test_isolated_v2_model_contract_identifies_real_unmapped_legacy_attributes(): void
     {
-        (require base_path('database/v2_migrations/2026_10_30_000010_create_v2_bank_lookup.php'))->up();
-        (require base_path('database/v2_migrations/2026_10_30_000020_create_v2_legacy_domain_baseline.php'))->up();
+        (require base_path('database/finance_legacy_migrations/2026_10_30_000010_create_finance_bank_lookup.php'))->up();
+        (require base_path('database/finance_legacy_migrations/2026_10_30_000020_create_finance_legacy_domain_baseline.php'))->up();
 
         $findings = (new ModelSchemaContract())->inspect();
         $this->assertContains('site_id', $findings['journal_vouchers'] ?? []);
@@ -40,8 +40,8 @@ class DatabaseModelSchemaContractTest extends TestCase
 
     public function test_financial_model_relationship_fks_exist_in_isolated_v2_baseline(): void
     {
-        (require base_path('database/v2_migrations/2026_10_30_000010_create_v2_bank_lookup.php'))->up();
-        (require base_path('database/v2_migrations/2026_10_30_000020_create_v2_legacy_domain_baseline.php'))->up();
+        (require base_path('database/finance_legacy_migrations/2026_10_30_000010_create_finance_bank_lookup.php'))->up();
+        (require base_path('database/finance_legacy_migrations/2026_10_30_000020_create_finance_legacy_domain_baseline.php'))->up();
 
         $this->assertSame([], (new ModelSchemaContract())->inspectRelationships());
     }
