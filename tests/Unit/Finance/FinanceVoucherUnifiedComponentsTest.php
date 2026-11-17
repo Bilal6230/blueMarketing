@@ -516,4 +516,22 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('&& $database === \'bluenew\'', $guard);
     }
 
+
+    public function test_normal_erp_merge_exposes_typed_finance_workspaces_and_preserves_cv_source_lifecycle(): void
+    {
+        $access = file_get_contents(app_path('Services/Finance/V2OriginalWorkflowAccess.php'));
+        $provider = file_get_contents(app_path('Providers/V2FinancePilotServiceProvider.php'));
+        $commission = file_get_contents(app_path('Http/Controllers/CommissionVoucherController.php'));
+
+        $this->assertStringContainsString('public static function mergedWriterAllowed(): bool', $access);
+        $this->assertStringContainsString('V2IsolatedConnectionGuard::isAllowed()', $access);
+        $this->assertStringContainsString('self::enabled() || self::mergedWriterAllowed()', $access);
+        $this->assertStringContainsString('self::mergedWriterAllowed()', $provider);
+        $this->assertStringContainsString('V2OriginalWorkflowAccess::mergedWriterAllowed()', $provider);
+        $this->assertStringContainsString('commissionPilotCreateAllowed', $commission);
+        $this->assertStringContainsString('isMergedTypedCommission(', $commission);
+        $this->assertStringContainsString('finance_posting_commission_sources', $commission);
+        $this->assertStringContainsString('cancelDraft($projectId, (int) $id)', $commission);
+        $this->assertStringContainsString('V2VoucherLifecycleService', $commission);
+    }
 }
