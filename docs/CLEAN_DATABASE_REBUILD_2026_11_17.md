@@ -103,3 +103,32 @@ php -l tools/schema/audit_clean_reconciliation.php
 php tools/schema/audit_clean_reconciliation.php
 ```
 Report schema/equality errors for next repair. Results do not establish independent accounting correctness or final consolidated Laravel-native migration design.
+
+
+## 2026-11-17 — Owner confirms independent restoration audit PASS
+
+Owner executed read-only audit and returned:
+- `PASS SCHEMA column definitions (1428 vs 1428)`
+- `PASS SCHEMA indexes (761 vs 761)`
+- `PASS SCHEMA foreign keys (301 vs 301)`
+- `PASS SCHEMA foreign key rules (250 vs 250)`
+- `PASS SCHEMA table engines (147 vs 147)`
+- All 19 finance-table numeric aggregates PASS; non-PK `punches` full-row multiset PASS.
+- Final: `PASS: schema signatures, 19 finance-table numeric aggregates and punches row data match.`
+
+**CLOSE** both local source-to-target data-copy and SQL-equivalent schema-reconciliation gates. Source `bluenew` and validated `bluenew_clean` remain untouched and protected. No need to rerun copy.
+
+NEXT: 6-file domain-grouped Laravel-native Blueprint draft generated from source SQL, stored separately in conversation artifact `bluemarketing_native_migrations_draft.zip` (not committed; still an experimental draft). PHP lint passes all six. Exact snapshot has 146 app tables, 250 FK definitions and existing indexes. It is NOT approved for production: MySQL fresh migration and schema audit may uncover differences (data defaults, named indexes, etc.), and the index workload review is not complete. The draft must be placed only in `database/migrations/clean_native_draft` and tested exclusively in new disposable local `bluenew_clean_native`—never in `bluenew` or validated `bluenew_clean`.
+
+Updated read-only audit CLI to support a safe `--target=bluenew_clean_native --schema-only` command so native test results can be compared with source signatures. This does not imply the draft has passed MySQL.
+
+Expected native test commands once draft ZIP has been extracted:
+```powershell
+$env:APP_ENV = 'local'
+$env:DB_DATABASE = 'bluenew_clean_native'
+php artisan optimize:clear
+php artisan migrate --path=database/migrations/clean_native_draft --force
+php tools/schema/audit_clean_reconciliation.php --target=bluenew_clean_native --schema-only
+Remove-Item Env:\DB_DATABASE
+Remove-Item Env:\APP_ENV
+```
