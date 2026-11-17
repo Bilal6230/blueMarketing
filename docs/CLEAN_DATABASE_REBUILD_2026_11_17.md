@@ -226,3 +226,21 @@ Remove-Item Env:\APP_ENV
 ```
 
 For failures in the above sequence, remember temporary environment variables stay set until manually cleared; never run further migrate commands targeting original `bluenew`/`bluenew_clean` inadvertently.
+
+
+## 2026-11-17 — FINAL LOCAL REBUILD AND HISTORICAL COPY PASSED
+
+Owner executed on local MySQL 8.4:
+- All 148 files in standard `database/migrations` finished successfully using **plain `php artisan migrate`** in new empty `bluenew_clean_final`.
+- 110 older migrations are preserved in `database/old_migration`.
+- Read-only source-to-target schema audit: **PASS** 1,428/1,428 column definitions, 761/761 index records, 301/301 FK column records, 250/250 FK rules, 147/147 table-engine definitions.
+- Safe data-only import: **PASS**, exactly **120,835 source rows** into 146 application tables, historical migration tracking table excluded. All declared 250 FK relationships validated.
+- Second full read-only comparison: **PASS** schema signatures, numeric aggregates in all 19 selected finance/accounting tables, and complete `punches` multiset (table has no PK).
+- Import uses explicit original source columns/values, preserving IDs and source `created_at`/`updated_at`/legacy datetimes rather than generating new timestamps.
+- Original `bluenew` and earlier validated `bluenew_clean` remain unchanged.
+
+**CLOSE**: fresh clean DB creation through normal Artisan migrations, exact-schema match, historical data migration, source-vs-restored-data reconciliation.
+
+**Do not confuse the acceptance gate with**: application/browser testing, independent source bookkeeping correctness, optimized index query-plan verification, or conversion of migration internals to Laravel `Schema::create`. The 146 files are one-per-table but deliberately contain exact source MySQL DDL through Laravel `DB::unprepared`. These remaining quality improvements are separate.
+
+**No more data-copy or migrations reruns needed** on `bluenew_clean_final`. Do not run `migrate:fresh` on any historical or validated databases.
