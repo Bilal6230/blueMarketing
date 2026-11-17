@@ -2658,6 +2658,31 @@ class BookingController extends Controller
     }
 
 
+    /**
+     * Reuse the exact receivable debit account from the original typed EC.
+     * Never guess from today's chart defaults: the original EC may have been
+     * posted to a manually selected project account.
+     */
+    private function typedExtraChargeReceivableAccount(int $projectId, int $chargeId): int
+    {
+        $source = CustomerLedger::query()->whereKey($chargeId)->where('project_id', $projectId)
+            ->where('transaction_type', 'EC')->firstOrFail(['id', 'amount_in']);
+        $lines = DB::table('finance_posting_cash_sources as claim')
+            ->join('finance_posting_batches as batch', 'batch.id', '=', 'claim.posting_batch_id')
+            ->join('finance_posting_lines as line', 'line.posting_batch_id', '=', 'batch.id')
+            ->join('project_head_subheads as account', 'account.id', '=', 'line.project_head_subhead_id')
+            ->where('claim.customer_ledger_id', $chargeId)
+            ->where('batch.project_id', $projectId)->where('account.project_id', $projectId)
+            ->where('line.debit', '>', 0)->where('line.credit', 0)
+            ->get(['line.project_head_subhead_id', 'line.debit']);
+        if ($lines->count() !== 1 ||
+            \App\Services\Finance\V2OriginalCustomerWorkflow::money($lines->first()->debit)
+                !== \App\Services\Finance\V2OriginalCustomerWorkflow::money($source->amount_in)) {
+            throw new \DomainException('EC_ORIGINAL_RECEIVABLE_ACCOUNT_AMBIGUOUS');
+        }
+        return (int) $lines->first()->project_head_subhead_id;
+    }
+
     public function deposit(Request $request)
     {
         // Normal ERP mode is a shared UI, NOT a licence to overwrite V2
@@ -2701,8 +2726,8 @@ class BookingController extends Controller
                         $request->merge(['request_key' => $key]);
                         if ((int) $context['payment_type'] === 1) {
                             DB::transaction(function () use ($request, $project, $context): void {
-                                $accounts = app(\App\Services\Finance\ExtraChargeAccounts::class)
-                                    ->forProject($project, (int) $context['customer_id'], (int) $context['plot_id']);
+                                $receivable = $this->typedExtraChargeReceivableAccount(
+                                    $project, (int) $context['extra_charge_id']);
                                 $cash = app(\App\Services\Finance\ExtraChargeAccounts::class)
                                     ->settlementAccount($project, 'Cash');
                                 $amount = \App\Services\Finance\V2OriginalCustomerWorkflow::money(
@@ -2710,7 +2735,7 @@ class BookingController extends Controller
                                 );
                                 $request->merge(['posting_lines' => [
                                     ['account_id' => $cash, 'debit' => $amount, 'credit' => '0.00'],
-                                    ['account_id' => $accounts['debit_account_id'], 'debit' => '0.00', 'credit' => $amount],
+                                    ['account_id' => $receivable, 'debit' => '0.00', 'credit' => $amount],
                                 ]]);
                             });
                         }
@@ -2742,13 +2767,12 @@ class BookingController extends Controller
                             : null;
                         if ((int) $decision['passing_status'] === 1) {
                             abort_unless($bank, 422, 'Select an active project bank account.');
-                            $mapping = DB::transaction(fn () =>
-                                app(\App\Services\Finance\ExtraChargeAccounts::class)
-                                    ->forProject($project, (int) $charge->customer_id, (int) $charge->plot_id));
+                            $receivable = $this->typedExtraChargeReceivableAccount(
+                                $project, (int) $charge->id);
                             $amount = \App\Services\Finance\V2OriginalCustomerWorkflow::money($payment->amount_in);
                             $legs = [
                                 ['account_id' => (int) $bank->account_mapping_id, 'debit' => $amount, 'credit' => '0.00'],
-                                ['account_id' => $mapping['debit_account_id'], 'debit' => '0.00', 'credit' => $amount],
+                                ['account_id' => $receivable, 'debit' => '0.00', 'credit' => $amount],
                             ];
                         }
                         $note = trim((string) ($decision['note'] ?? '')) ?: 'Extra Charge bank decision';
