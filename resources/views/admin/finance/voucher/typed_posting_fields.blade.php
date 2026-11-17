@@ -1,4 +1,4 @@
-@if(\App\Services\Finance\V2OriginalWorkflowAccess::enabled())
+@if(\App\Services\Finance\FinanceWorkflowAccess::enabled())
     @php($postingAccounts = $postingAccounts ?? app('finance.original.accounts'))
     <fieldset class="border rounded p-2 my-2 w-100" data-original-posting-fields>
         <legend class="h6">Posting accounts</legend>
