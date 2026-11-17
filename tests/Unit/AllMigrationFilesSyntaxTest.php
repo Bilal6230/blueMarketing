@@ -12,7 +12,7 @@ final class AllMigrationFilesSyntaxTest extends TestCase
         $root = dirname(__DIR__, 2);
         $paths = glob($root.'/database/migrations/*.php');
 
-        self::assertCount(148, $paths, 'Expected 146 table migrations + guard + FK migration');
+        self::assertCount(149, $paths, 'Expected 146 table migrations + guard + FK + performance migration');
 
         foreach ($paths as $path) {
             $process = new Process([PHP_BINARY, '-l', $path]);
