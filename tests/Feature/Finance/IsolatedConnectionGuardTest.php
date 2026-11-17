@@ -2,11 +2,11 @@
 
 namespace Tests\Feature\Finance;
 
-use App\Services\Finance\V2IsolatedConnectionGuard;
+use App\Services\Finance\FinanceConnectionGuard;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
-class V2IsolatedConnectionGuardTest extends TestCase
+class FinanceConnectionGuardTest extends TestCase
 {
     /** A complete configuration; constructing a real connection is unnecessary. */
     private function fakeMysql(string $host, string $database): void
@@ -31,11 +31,11 @@ class V2IsolatedConnectionGuardTest extends TestCase
         config()->set('database.connections.sqlite.database', ':memory:');
         DB::purge('sqlite');
         config()->set('app.env', 'testing');
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         $this->assertTrue(true);
         config()->set('app.env', 'production');
         $this->expectException(\RuntimeException::class);
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
     }
 
     public function test_v2_named_remote_mysql_connection_is_refused_before_network_access(): void
@@ -43,7 +43,7 @@ class V2IsolatedConnectionGuardTest extends TestCase
         $this->fakeMysql('192.0.2.30', 'bluemarketing_v2_local_rehearsal');
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('V2_ISOLATED_CONNECTION_REQUIRED');
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
     }
 
     public function test_v2_named_staging_database_is_refused_before_network_access(): void
@@ -51,7 +51,7 @@ class V2IsolatedConnectionGuardTest extends TestCase
         $this->fakeMysql('127.0.0.1', 'bluemarketing_v2_staging');
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('V2_ISOLATED_CONNECTION_REQUIRED');
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
     }
 
     public function test_incomplete_mysql_config_fails_with_controlled_exception(): void
@@ -64,13 +64,13 @@ class V2IsolatedConnectionGuardTest extends TestCase
         DB::purge('mysql');
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('V2_ISOLATED_CONNECTION_REQUIRED');
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
     }
 
     public function test_local_mysql_configuration_passes_without_connecting(): void
     {
         $this->fakeMysql('127.0.0.1', 'bluemarketing_v2_local_rehearsal');
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         $this->assertTrue(true);
     }
 
@@ -80,6 +80,6 @@ class V2IsolatedConnectionGuardTest extends TestCase
         config()->set('database.connections.mysql.read', ['host' => '192.0.2.30']);
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('V2_ISOLATED_CONNECTION_REQUIRED');
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
     }
 }

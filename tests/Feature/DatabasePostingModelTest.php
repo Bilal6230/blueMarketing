@@ -2,19 +2,19 @@
 
 namespace Tests\Feature;
 
-use App\Models\V2\FinancePostingBatch;
-use App\Models\V2\FinancePostingLine;
-use App\Models\V2\FinancePostingSourceClaim;
-use App\Models\V2\ImportedHistoricalModel;
-use App\Models\V2\ImportedJournalVoucher;
-use App\Models\V2\ImportedJournalVoucherDetail;
-use App\Models\V2\ImportedLedger;
-use App\Models\V2\ImportedProjectAccount;
+use App\Models\Finance\FinancePostingBatch;
+use App\Models\Finance\FinancePostingLine;
+use App\Models\Finance\FinancePostingSourceClaim;
+use App\Models\Finance\ImportedHistoricalModel;
+use App\Models\Finance\ImportedJournalVoucher;
+use App\Models\Finance\ImportedJournalVoucherDetail;
+use App\Models\Finance\ImportedLedger;
+use App\Models\Finance\ImportedProjectAccount;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
-final class DatabaseV2PostingModelTest extends TestCase
+final class DatabasePostingModelTest extends TestCase
 {
     protected function setUp(): void
     {

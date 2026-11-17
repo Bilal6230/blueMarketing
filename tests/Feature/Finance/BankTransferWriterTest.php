@@ -2,15 +2,15 @@
 
 namespace Tests\Feature\Finance;
 
-use App\Services\Finance\V2BankTransferWriter;
-use App\Services\Finance\V2PostingReversalWriter;
-use App\Services\Finance\V2PostingReportReader;
+use App\Services\Finance\BankTransferWriter;
+use App\Services\Finance\PostingReversalWriter;
+use App\Services\Finance\PostingReportReader;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
-class V2BankTransferWriterTest extends TestCase
+class BankTransferWriterTest extends TestCase
 {
     protected function setUp(): void
     {
@@ -77,7 +77,7 @@ class V2BankTransferWriterTest extends TestCase
 
     public function test_deposit_and_withdrawal_post_balanced_direction_and_are_idempotent(): void
     {
-        $writer = new V2BankTransferWriter();
+        $writer = new BankTransferWriter();
         $deposit = $writer->post(1, 1, 'deposit', 'BANK-TRANSFER-REQUEST-0001', '2026-11-05', '100.00',
             'Cash deposited to bank', [['account_id' => 102, 'amount' => '60'], ['account_id' => 102, 'amount' => '40']]);
         $again = $writer->post(1, 1, 'deposit', 'BANK-TRANSFER-REQUEST-0001', '2026-11-05', '100.00',
@@ -89,20 +89,20 @@ class V2BankTransferWriterTest extends TestCase
         $this->assertSame(100.0, (float) DB::table('finance_posting_lines')->where('posting_batch_id', $deposit['posting_batch_id'])->where('project_head_subhead_id', 101)->value('debit'));
         $this->assertSame(25.5, (float) DB::table('finance_posting_lines')->where('posting_batch_id', $withdrawal['posting_batch_id'])->where('project_head_subhead_id', 101)->value('credit'));
         $this->assertSame('bank_transfer', DB::table('finance_posting_source_claims')->where('posting_batch_id', $deposit['posting_batch_id'])->value('source_kind'));
-        $this->assertCount(5, (new V2PostingReportReader())->lines(1));
-        $register = (new \App\Services\Finance\V2PostingGateway())->voucherRegister(1);
+        $this->assertCount(5, (new PostingReportReader())->lines(1));
+        $register = (new \App\Services\Finance\PostingGateway())->voucherRegister(1);
         $bankDocuments = array_values(array_filter($register, fn ($document) => $document['source_kind'] === 'bank_transfer'));
         $this->assertCount(2, $bankDocuments);
         $this->assertContains('BD-1', array_column($bankDocuments, 'source_reference'));
         $this->assertContains('BW-2', array_column($bankDocuments, 'source_reference'));
-        $ledgerRows = (new \App\Services\Finance\V2OriginalLedgerReport())->rows(1, null, null);
+        $ledgerRows = (new \App\Services\Finance\OriginalLedgerReport())->rows(1, null, null);
         $this->assertSame(5, count($ledgerRows));
         $this->assertContains('bank_transfer', array_column($ledgerRows, 'source_kind'));
     }
 
     public function test_wrong_project_mapping_and_unbalanced_allocations_fail_without_posting(): void
     {
-        $writer = new V2BankTransferWriter();
+        $writer = new BankTransferWriter();
         try {
             $writer->post(1, 2, 'deposit', 'BANK-TRANSFER-REQUEST-0003', '2026-11-05', '10', 'Wrong bank', [['account_id' => 102, 'amount' => '10']]);
             $this->fail('Foreign project bank must be rejected');
@@ -116,12 +116,12 @@ class V2BankTransferWriterTest extends TestCase
 
     public function test_bank_transfer_reversal_preserves_original_source_and_lines(): void
     {
-        $batch = (new V2BankTransferWriter())->post(1, 1, 'deposit', 'BANK-TRANSFER-REQUEST-0005', '2026-11-05', '10',
+        $batch = (new BankTransferWriter())->post(1, 1, 'deposit', 'BANK-TRANSFER-REQUEST-0005', '2026-11-05', '10',
             'Deposit', [['account_id' => 102, 'amount' => '10']])['posting_batch_id'];
-        $reversal = (new V2PostingReversalWriter())->reverse(1, $batch, 'BANK-TRANSFER-REVERSAL-01', '2026-11-06', 'Approved correction');
+        $reversal = (new PostingReversalWriter())->reverse(1, $batch, 'BANK-TRANSFER-REVERSAL-01', '2026-11-06', 'Approved correction');
         $this->assertDatabaseCount('finance_bank_transfer_sources', 1);
         $this->assertDatabaseCount('finance_posting_lines', 4);
-        $rows = (new V2PostingReportReader())->lines(1, '2026-11-06', '2026-11-06');
+        $rows = (new PostingReportReader())->lines(1, '2026-11-06', '2026-11-06');
         $this->assertCount(2, $rows); $this->assertSame('bank_transfer', $rows[0]['source_kind']);
         $this->assertSame($batch, (int) $rows[0]['reversal_of_batch_id']);
         $this->assertSame('REV', DB::table('finance_posting_batches')->where('id', $reversal)->value('voucher_series'));
@@ -135,8 +135,8 @@ class V2BankTransferWriterTest extends TestCase
             'is_active'=>1, 'passing_status'=>1];
         DB::table('customer_ledger')->insert((array) $source);
         DB::table('finance_original_customer_requests')->insert(['project_id'=>1, 'customer_ledger_id'=>501,
-            'source_sha256'=>\App\Services\Finance\V2OriginalCustomerWorkflow::fingerprint($source)]);
-        $writer = new V2BankTransferWriter();
+            'source_sha256'=>\App\Services\Finance\OriginalCustomerWorkflow::fingerprint($source)]);
+        $writer = new BankTransferWriter();
         try {
             $writer->post(1, 1, 'withdrawal', 'BANK-CHEQUE-REQUEST-0003', '2026-11-05', '25.49', 'Wrong amount',
                 [['account_id'=>102, 'amount'=>'25.49']], null, 501);
@@ -154,12 +154,12 @@ class V2BankTransferWriterTest extends TestCase
     }
     public function test_read_only_reconciliation_checks_deposit_withdrawal_and_project_isolation(): void
     {
-        $writer = new V2BankTransferWriter();
+        $writer = new BankTransferWriter();
         $writer->post(1, 1, 'deposit', 'BANK-AUDIT-REQUEST-0001', '2026-11-05', '100.00',
             'Bank deposit', [['account_id' => 102, 'amount' => '100.00']]);
         $writer->post(1, 1, 'withdrawal', 'BANK-AUDIT-REQUEST-0002', '2026-11-05', '25.50',
             'Bank withdrawal', [['account_id' => 102, 'amount' => '25.50']]);
-        $audit = new \App\Services\Finance\V2BankTransferReconciliation();
+        $audit = new \App\Services\Finance\BankTransferReconciliation();
         $rows = $audit->audit(1);
         $this->assertCount(2, $rows);
         $this->assertSame(['deposit', 'withdrawal'], array_column($rows, 'kind'));
@@ -174,11 +174,11 @@ class V2BankTransferWriterTest extends TestCase
 
     public function test_read_only_reconciliation_flags_amount_and_direction_corruption_without_repairing(): void
     {
-        $batch = (new V2BankTransferWriter())->post(1, 1, 'deposit', 'BANK-AUDIT-REQUEST-0003',
+        $batch = (new BankTransferWriter())->post(1, 1, 'deposit', 'BANK-AUDIT-REQUEST-0003',
             '2026-11-05', '75.00', 'Deposit', [['account_id' => 102, 'amount' => '75.00']])['posting_batch_id'];
         DB::table('finance_posting_lines')->where('posting_batch_id', $batch)
             ->where('project_head_subhead_id', 101)->update(['debit' => '0.00', 'credit' => '75.00']);
-        $rows = (new \App\Services\Finance\V2BankTransferReconciliation())->audit(1);
+        $rows = (new \App\Services\Finance\BankTransferReconciliation())->audit(1);
         $this->assertCount(1, $rows);
         $this->assertFalse($rows[0]['ok']);
         $this->assertContains('BANK_DIRECTION_MISMATCH', $rows[0]['issues']);
@@ -190,10 +190,10 @@ class V2BankTransferWriterTest extends TestCase
 
     public function test_read_only_reconciliation_flags_missing_source_claim(): void
     {
-        $batch = (new V2BankTransferWriter())->post(1, 1, 'withdrawal', 'BANK-AUDIT-REQUEST-0004',
+        $batch = (new BankTransferWriter())->post(1, 1, 'withdrawal', 'BANK-AUDIT-REQUEST-0004',
             '2026-11-05', '10.00', 'Withdrawal', [['account_id' => 102, 'amount' => '10.00']])['posting_batch_id'];
         DB::table('finance_posting_source_claims')->where('posting_batch_id', $batch)->delete();
-        $rows = (new \App\Services\Finance\V2BankTransferReconciliation())->audit(1);
+        $rows = (new \App\Services\Finance\BankTransferReconciliation())->audit(1);
         $this->assertContains('SOURCE_CLAIM_MISMATCH', $rows[0]['issues']);
         $this->assertFalse($rows[0]['ok']);
     }

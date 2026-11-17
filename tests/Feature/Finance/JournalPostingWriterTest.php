@@ -2,17 +2,17 @@
 
 namespace Tests\Feature\Finance;
 
-use App\Services\Finance\V2JournalPostingWriter;
-use App\Services\Finance\V2PostingReversalWriter;
-use App\Services\Finance\V2PostingReportReader;
-use App\Services\Finance\V2PostingGateway;
+use App\Services\Finance\JournalPostingWriter;
+use App\Services\Finance\PostingReversalWriter;
+use App\Services\Finance\PostingReportReader;
+use App\Services\Finance\PostingGateway;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
-class V2JournalPostingWriterTest extends TestCase
+class JournalPostingWriterTest extends TestCase
 {
     protected function setUp(): void
     {
@@ -90,7 +90,7 @@ class V2JournalPostingWriterTest extends TestCase
 
     public function test_isolated_jv_draft_updates_before_posting_and_locks_after(): void
     {
-        $draft = new \App\Services\Finance\V2JournalDraftWorkflow();
+        $draft = new \App\Services\Finance\JournalDraftWorkflow();
         $lines = [
             ['account_id' => 101, 'debit' => '80.00', 'credit' => '0.00'],
             ['account_id' => 102, 'debit' => '0.00', 'credit' => '80.00'],
@@ -103,7 +103,7 @@ class V2JournalPostingWriterTest extends TestCase
             ->where('journal_voucher_id', 51)->whereNull('deleted_at')->count());
         $this->assertSame(2, DB::table('journal_voucher_details')
             ->where('journal_voucher_id', 51)->whereNotNull('deleted_at')->count());
-        (new V2PostingGateway())->postJournal(1, 51, 'JV-DRAFT-POST-LOCK-0001');
+        (new PostingGateway())->postJournal(1, 51, 'JV-DRAFT-POST-LOCK-0001');
         try {
             $draft->updateUnposted(1, 51, '2026-10-31', $lines);
             $this->fail('Posted JV must never accept direct line edits');
@@ -114,7 +114,7 @@ class V2JournalPostingWriterTest extends TestCase
 
     public function test_isolated_jv_draft_refuses_foreign_project_without_changes(): void
     {
-        $draft = new \App\Services\Finance\V2JournalDraftWorkflow();
+        $draft = new \App\Services\Finance\JournalDraftWorkflow();
         try {
             $draft->updateUnposted(2, 51, '2026-10-31', [
                 ['account_id' => 201, 'debit' => '30.00', 'credit' => '0.00'],
@@ -141,7 +141,7 @@ class V2JournalPostingWriterTest extends TestCase
         ]);
         $before = DB::table('journal_voucher_details')->orderBy('id')->get()->toJson();
         try {
-            (new \App\Services\Finance\V2JournalDraftWorkflow())->updateUnposted(
+            (new \App\Services\Finance\JournalDraftWorkflow())->updateUnposted(
                 1, 51, '2026-10-31', [
                     ['account_id' => 101, 'debit' => '80.00', 'credit' => '0.00'],
                     ['account_id' => 102, 'debit' => '0.00', 'credit' => '80.00'],
@@ -168,7 +168,7 @@ class V2JournalPostingWriterTest extends TestCase
         DB::table('ledgers')->insert([
             'type' => 'JV', 'type_id' => 52, 'journal_voucher_detail_id' => 521,
         ]);
-        (new \App\Services\Finance\V2JournalDraftWorkflow())->updateUnposted(
+        (new \App\Services\Finance\JournalDraftWorkflow())->updateUnposted(
             1, 51, '2026-10-31', [
                 ['account_id' => 101, 'debit' => '80.00', 'credit' => '0.00'],
                 ['account_id' => 102, 'debit' => '0.00', 'credit' => '80.00'],
@@ -181,7 +181,7 @@ class V2JournalPostingWriterTest extends TestCase
 
     public function test_jv_posts_exact_detail_links_once_and_replays_safely(): void
     {
-        $writer = new V2JournalPostingWriter();
+        $writer = new JournalPostingWriter();
         $id = $writer->post(1, 51, 'JV-TEST-REQUEST-0001');
         $this->assertSame($id, $writer->post(1, 51, 'JV-TEST-REQUEST-0001'));
         $this->assertDatabaseCount('finance_posting_batches', 1);
@@ -195,7 +195,7 @@ class V2JournalPostingWriterTest extends TestCase
     {
         DB::table('journal_voucher_details')->where('id', 512)->update(['account_id' => 201]);
         try {
-            (new V2JournalPostingWriter())->post(1, 51, 'JV-TEST-REQUEST-0002');
+            (new JournalPostingWriter())->post(1, 51, 'JV-TEST-REQUEST-0002');
             $this->fail('Expected project mismatch');
         } catch (\DomainException $e) {
             $this->assertSame('V2_JV_ACCOUNT_PROJECT_MISMATCH', $e->getMessage());
@@ -209,7 +209,7 @@ class V2JournalPostingWriterTest extends TestCase
         DB::table('journal_voucher_details')->where('id', 512)->update(['credit' => 120]);
         $this->expectException(\DomainException::class);
         try {
-            (new V2JournalPostingWriter())->post(1, 51, 'JV-TEST-REQUEST-0003');
+            (new JournalPostingWriter())->post(1, 51, 'JV-TEST-REQUEST-0003');
         } finally {
             $this->assertDatabaseCount('finance_posting_batches', 0);
         }
@@ -218,7 +218,7 @@ class V2JournalPostingWriterTest extends TestCase
     public function test_reused_request_key_for_other_header_is_rejected(): void
     {
         $this->makeJournal(52, 101, 102);
-        $writer = new V2JournalPostingWriter();
+        $writer = new JournalPostingWriter();
         $writer->post(1, 51, 'JV-TEST-REQUEST-0004');
         try {
             $writer->post(1, 52, 'JV-TEST-REQUEST-0004');
@@ -231,7 +231,7 @@ class V2JournalPostingWriterTest extends TestCase
 
     public function test_same_header_with_different_request_key_is_rejected_by_unique_source_fk(): void
     {
-        $writer = new V2JournalPostingWriter();
+        $writer = new JournalPostingWriter();
         $writer->post(1, 51, 'JV-TEST-REQUEST-0005');
         try {
             $writer->post(1, 51, 'JV-TEST-REQUEST-0006');
@@ -244,7 +244,7 @@ class V2JournalPostingWriterTest extends TestCase
     }
     public function test_replay_rejects_tampered_posted_amounts(): void
     {
-        $writer = new V2JournalPostingWriter();
+        $writer = new JournalPostingWriter();
         $id = $writer->post(1, 51, 'JV-TEST-REQUEST-0007');
         DB::table('finance_posting_lines')
             ->where('posting_batch_id', $id)
@@ -261,8 +261,8 @@ class V2JournalPostingWriterTest extends TestCase
 
     public function test_v2_report_is_typed_date_filtered_and_project_scoped(): void
     {
-        (new V2JournalPostingWriter())->post(1, 51, 'JV-REPORT-REQUEST-0001');
-        $reader = new V2PostingReportReader();
+        (new JournalPostingWriter())->post(1, 51, 'JV-REPORT-REQUEST-0001');
+        $reader = new PostingReportReader();
         $mine = $reader->lines(1, '2026-10-01', '2026-10-31');
         $this->assertCount(2, $mine);
         $this->assertSame('journal', $mine[0]['source_kind']);
@@ -275,32 +275,32 @@ class V2JournalPostingWriterTest extends TestCase
 
     public function test_v2_report_refuses_cross_project_account_ledger_tamper(): void
     {
-        (new V2JournalPostingWriter())->post(1, 51, 'JV-REPORT-REQUEST-0002');
+        (new JournalPostingWriter())->post(1, 51, 'JV-REPORT-REQUEST-0002');
         DB::table('finance_posting_lines')->where('project_head_subhead_id', 101)
             ->update(['project_head_subhead_id' => 201]);
         $this->expectException(\DomainException::class);
         $this->expectExceptionMessage('V2_REPORT_SOURCE_OR_PROJECT_INTEGRITY_FAILURE');
-        (new V2PostingReportReader())->lines(1);
+        (new PostingReportReader())->lines(1);
     }
 
     public function test_v2_report_refuses_invalid_date_interval(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        (new V2PostingReportReader())->lines(1, '2026-11-01', '2026-10-01');
+        (new PostingReportReader())->lines(1, '2026-11-01', '2026-10-01');
     }
 
     public function test_v2_report_rejects_claim_without_its_typed_source_record(): void
     {
-        (new V2JournalPostingWriter())->post(1, 51, 'JV-REPORT-REQUEST-0003');
+        (new JournalPostingWriter())->post(1, 51, 'JV-REPORT-REQUEST-0003');
         DB::table('finance_posting_journal_sources')->delete();
         $this->expectException(\DomainException::class);
         $this->expectExceptionMessage('V2_REPORT_MISSING_TYPED_SOURCE_LINK');
-        (new V2PostingReportReader())->lines(1);
+        (new PostingReportReader())->lines(1);
     }
 
     public function test_jv_replay_rejects_unlinked_extra_posting_line(): void
     {
-        $writer = new V2JournalPostingWriter();
+        $writer = new JournalPostingWriter();
         $id = $writer->post(1, 51, 'JV-HARDEN-UNLINKED-001');
         DB::table('finance_posting_lines')->insert([
             'posting_batch_id' => $id, 'project_head_subhead_id' => 101,
@@ -313,7 +313,7 @@ class V2JournalPostingWriterTest extends TestCase
 
     public function test_jv_replay_refuses_changed_batch_series(): void
     {
-        $writer = new V2JournalPostingWriter();
+        $writer = new JournalPostingWriter();
         $id = $writer->post(1, 51, 'JV-HARDEN-SERIES-0001');
         DB::table('finance_posting_batches')->where('id', $id)->update(['voucher_series' => 'SV']);
         $this->expectException(\DomainException::class);
@@ -323,7 +323,7 @@ class V2JournalPostingWriterTest extends TestCase
 
     public function test_jv_replay_rejects_posted_narrative_tampering(): void
     {
-        $writer = new V2JournalPostingWriter();
+        $writer = new JournalPostingWriter();
         $id = $writer->post(1, 51, 'JV-HARDEN-NARRATIVE01');
         DB::table('finance_posting_lines')->where('posting_batch_id', $id)
             ->where('project_head_subhead_id', 101)->update(['description' => 'altered']);
@@ -334,12 +334,12 @@ class V2JournalPostingWriterTest extends TestCase
 
     public function test_v2_report_rejects_unbalanced_persisted_batch(): void
     {
-        (new V2JournalPostingWriter())->post(1, 51, 'JV-HARDEN-REPORT-0001');
+        (new JournalPostingWriter())->post(1, 51, 'JV-HARDEN-REPORT-0001');
         DB::table('finance_posting_lines')->where('project_head_subhead_id', 101)
             ->update(['debit' => '126.50']);
         $this->expectException(\DomainException::class);
         $this->expectExceptionMessage('V2_REPORT_UNBALANCED_POSTING_BATCH');
-        (new V2PostingReportReader())->lines(1);
+        (new PostingReportReader())->lines(1);
     }
 
     public function test_v2_report_rejects_posting_batch_without_lines(): void
@@ -349,13 +349,13 @@ class V2JournalPostingWriterTest extends TestCase
         ]);
         $this->expectException(\DomainException::class);
         $this->expectExceptionMessage('V2_REPORT_EMPTY_POSTING_BATCH');
-        (new V2PostingReportReader())->lines(1);
+        (new PostingReportReader())->lines(1);
     }
 
     public function test_v2_reversal_is_immutable_balanced_and_reported_with_original_typed_source(): void
     {
-        $original = (new V2JournalPostingWriter())->post(1, 51, 'JV-REVERSAL-ORIGINAL-01');
-        $reversal = (new V2PostingReversalWriter())->reverse(
+        $original = (new JournalPostingWriter())->post(1, 51, 'JV-REVERSAL-ORIGINAL-01');
+        $reversal = (new PostingReversalWriter())->reverse(
             1, $original, 'JV-REVERSAL-REQUEST-01', '2026-10-31', 'Approved correction'
         );
         $this->assertNotSame($original, $reversal);
@@ -366,14 +366,14 @@ class V2JournalPostingWriterTest extends TestCase
         $this->assertDatabaseCount('finance_posting_journal_sources', 1);
         $this->assertDatabaseCount('finance_journal_line_sources', 2);
 
-        $rows = (new V2PostingReportReader())->lines(1);
+        $rows = (new PostingReportReader())->lines(1);
         $this->assertCount(4, $rows);
         $opposites = array_values(array_filter($rows, fn ($row) => $row['is_reversal']));
         $this->assertCount(2, $opposites);
         $this->assertSame(51, $opposites[0]['source_id']);
         $this->assertSame('journal', $opposites[0]['source_kind']);
         $this->assertSame($original, (int) $opposites[0]['reversal_of_batch_id']);
-        $this->assertCount(2, (new V2PostingReportReader())->lines(1, '2026-10-31', '2026-10-31'));
+        $this->assertCount(2, (new PostingReportReader())->lines(1, '2026-10-31', '2026-10-31'));
         $this->assertEqualsWithDelta(0, (float) DB::table('finance_posting_lines')->sum('debit')
             - (float) DB::table('finance_posting_lines')->sum('credit'), 0.001);
         $this->assertSame('125.5', (string) DB::table('finance_posting_lines')
@@ -382,8 +382,8 @@ class V2JournalPostingWriterTest extends TestCase
 
     public function test_v2_reversal_idempotent_replay_and_different_key_are_protected(): void
     {
-        $original = (new V2JournalPostingWriter())->post(1, 51, 'JV-REVERSAL-ORIGINAL-02');
-        $writer = new V2PostingReversalWriter();
+        $original = (new JournalPostingWriter())->post(1, 51, 'JV-REVERSAL-ORIGINAL-02');
+        $writer = new PostingReversalWriter();
         $id = $writer->reverse(1, $original, 'JV-REVERSAL-REQUEST-02', '2026-10-31', 'Correction');
         $this->assertSame($id, $writer->reverse(
             1, $original, 'JV-REVERSAL-REQUEST-02', '2026-10-31', 'Correction'
@@ -399,8 +399,8 @@ class V2JournalPostingWriterTest extends TestCase
 
     public function test_v2_reversal_refuses_tampering_with_existing_reversal_lines(): void
     {
-        $original = (new V2JournalPostingWriter())->post(1, 51, 'JV-REVERSAL-ORIGINAL-04');
-        $writer = new V2PostingReversalWriter();
+        $original = (new JournalPostingWriter())->post(1, 51, 'JV-REVERSAL-ORIGINAL-04');
+        $writer = new PostingReversalWriter();
         $reversal = $writer->reverse(1, $original, 'JV-REVERSAL-REQUEST-04', '2026-10-31', 'Correction');
         DB::table('finance_posting_lines')->where('posting_batch_id', $reversal)
             ->where('project_head_subhead_id', 101)->update(['credit' => '126.50']);
@@ -411,24 +411,24 @@ class V2JournalPostingWriterTest extends TestCase
 
     public function test_v2_reversal_refuses_reversal_of_reversal_and_invalid_origin(): void
     {
-        $original = (new V2JournalPostingWriter())->post(1, 51, 'JV-REVERSAL-ORIGINAL-05');
-        $reversal = (new V2PostingReversalWriter())->reverse(
+        $original = (new JournalPostingWriter())->post(1, 51, 'JV-REVERSAL-ORIGINAL-05');
+        $reversal = (new PostingReversalWriter())->reverse(
             1, $original, 'JV-REVERSAL-REQUEST-05', '2026-10-31', 'Correction'
         );
         $this->expectException(\DomainException::class);
         $this->expectExceptionMessage('V2_REVERSAL_ORIGINAL_NOT_POSTED');
-        (new V2PostingReversalWriter())->reverse(
+        (new PostingReversalWriter())->reverse(
             1, $reversal, 'JV-REVERSAL-REQUEST-06', '2026-10-31', 'Correction'
         );
     }
 
     public function test_v2_reversal_rejects_unbalanced_origin_without_mutation(): void
     {
-        $original = (new V2JournalPostingWriter())->post(1, 51, 'JV-REVERSAL-ORIGINAL-07');
+        $original = (new JournalPostingWriter())->post(1, 51, 'JV-REVERSAL-ORIGINAL-07');
         DB::table('finance_posting_lines')->where('posting_batch_id', $original)
             ->where('project_head_subhead_id', 101)->update(['debit' => '126.50']);
         try {
-            (new V2PostingReversalWriter())->reverse(
+            (new PostingReversalWriter())->reverse(
                 1, $original, 'JV-REVERSAL-REQUEST-07', '2026-10-31', 'Correction'
             );
             $this->fail('Unbalanced origin was reversed');
@@ -440,20 +440,20 @@ class V2JournalPostingWriterTest extends TestCase
 
     public function test_v2_report_rejects_reversal_with_missing_original_source(): void
     {
-        $original = (new V2JournalPostingWriter())->post(1, 51, 'JV-REVERSAL-ORIGINAL-08');
-        (new V2PostingReversalWriter())->reverse(
+        $original = (new JournalPostingWriter())->post(1, 51, 'JV-REVERSAL-ORIGINAL-08');
+        (new PostingReversalWriter())->reverse(
             1, $original, 'JV-REVERSAL-REQUEST-08', '2026-10-31', 'Correction'
         );
         DB::table('finance_posting_journal_sources')->where('posting_batch_id', $original)->delete();
         $this->expectException(\DomainException::class);
         $this->expectExceptionMessage('V2_REPORT_MISSING_TYPED_SOURCE_LINK');
-        (new V2PostingReportReader())->lines(1);
+        (new PostingReportReader())->lines(1);
     }
 
     public function test_v2_report_refuses_balanced_but_not_inverse_reversal(): void
     {
-        $original = (new V2JournalPostingWriter())->post(1, 51, 'JV-REVERSAL-ORIGINAL-09');
-        $reversal = (new V2PostingReversalWriter())->reverse(
+        $original = (new JournalPostingWriter())->post(1, 51, 'JV-REVERSAL-ORIGINAL-09');
+        $reversal = (new PostingReversalWriter())->reverse(
             1, $original, 'JV-REVERSAL-REQUEST-09', '2026-10-31', 'Correction'
         );
         DB::table('finance_posting_lines')->where('posting_batch_id', $reversal)
@@ -462,16 +462,16 @@ class V2JournalPostingWriterTest extends TestCase
             ->where('project_head_subhead_id', 102)->update(['debit' => '500.00']);
         $this->expectException(\DomainException::class);
         $this->expectExceptionMessage('V2_REPORT_REVERSAL_NOT_EXACT_INVERSE');
-        (new V2PostingReportReader())->lines(1, '2026-10-31', '2026-10-31');
+        (new PostingReportReader())->lines(1, '2026-10-31', '2026-10-31');
     }
 
     public function test_v2_reversal_cannot_predate_original_posting(): void
     {
-        $original = (new V2JournalPostingWriter())->post(
+        $original = (new JournalPostingWriter())->post(
             1, 51, 'JV-REVERSAL-CHRONOLOGY-01'
         );
         try {
-            (new V2PostingReversalWriter())->reverse(
+            (new PostingReversalWriter())->reverse(
                 1, $original, 'JV-REVERSAL-CHRONOLOGY-02', '2026-10-29', 'Correction'
             );
             $this->fail('Backdated reversal was accepted');
@@ -484,7 +484,7 @@ class V2JournalPostingWriterTest extends TestCase
 
     public function test_v2_gateway_exposes_one_typed_posting_reversal_and_reporting_boundary(): void
     {
-        $gateway = new V2PostingGateway();
+        $gateway = new PostingGateway();
         $original = $gateway->postJournal(1, 51, 'JV-GATEWAY-ORIGINAL-0001');
         $this->assertSame($original, $gateway->postJournal(1, 51, 'JV-GATEWAY-ORIGINAL-0001'));
         $reversed = $gateway->reversePostedBatch(
@@ -499,7 +499,7 @@ class V2JournalPostingWriterTest extends TestCase
 
     public function test_v2_trial_balance_includes_opening_period_and_immutable_reversal(): void
     {
-        $gateway = new V2PostingGateway();
+        $gateway = new PostingGateway();
         $original = $gateway->postJournal(1, 51, 'JV-TRIAL-BALANCE-ORIGINAL-01');
         $before = $gateway->trialBalance(1, '2026-10-30', '2026-10-30');
         $this->assertSame('typed_v2_postings_only', $before['scope']);
@@ -525,12 +525,12 @@ class V2JournalPostingWriterTest extends TestCase
     public function test_v2_trial_balance_rejects_invalid_interval_without_posting(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        (new V2PostingGateway())->trialBalance(1, '2026-11-01', '2026-10-30');
+        (new PostingGateway())->trialBalance(1, '2026-11-01', '2026-10-30');
     }
 
     public function test_v2_account_statement_reconciles_opening_period_and_reversal_running_balance(): void
     {
-        $gateway = new V2PostingGateway();
+        $gateway = new PostingGateway();
         $original = $gateway->postJournal(1, 51, 'JV-ACCOUNT-STATEMENT-ORIGINAL-1');
 
         $prior = $gateway->accountStatement(1, 101, '2026-10-31', '2026-10-31');
@@ -557,13 +557,13 @@ class V2JournalPostingWriterTest extends TestCase
     {
         $this->expectException(\DomainException::class);
         $this->expectExceptionMessage('V2_ACCOUNT_STATEMENT_PROJECT_OWNERSHIP_MISMATCH');
-        (new V2PostingGateway())->accountStatement(1, 201);
+        (new PostingGateway())->accountStatement(1, 201);
     }
 
     public function test_sales_voucher_uses_real_journal_header_and_details_with_same_typed_fk(): void
     {
         DB::table('journal_vouchers')->where('id', 51)->update(['type' => 'SV']);
-        $gateway = new V2PostingGateway();
+        $gateway = new PostingGateway();
         $id = $gateway->postSalesVoucher(1, 51, 'SV-REAL-JOURNAL-POST-0001');
         $this->assertSame($id, $gateway->postSalesVoucher(1, 51, 'SV-REAL-JOURNAL-POST-0001'));
         $this->assertDatabaseHas('finance_posting_batches', [
@@ -585,7 +585,7 @@ class V2JournalPostingWriterTest extends TestCase
         DB::table('journal_vouchers')->where('id', 51)->update(['type' => 'SV']);
         $this->expectException(\DomainException::class);
         $this->expectExceptionMessage('V2_JV_HEADER_NOT_ACTIVE');
-        (new V2PostingGateway())->postJournal(1, 51, 'SV-INVALID-JV-POST-0001');
+        (new PostingGateway())->postJournal(1, 51, 'SV-INVALID-JV-POST-0001');
     }
 
 }

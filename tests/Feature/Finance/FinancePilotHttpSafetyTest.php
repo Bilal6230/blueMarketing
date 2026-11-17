@@ -3,8 +3,8 @@
 namespace Tests\Feature\Finance;
 
 use App\Models\User;
-use App\Providers\V2FinancePilotServiceProvider;
-use App\Services\Finance\V2StockProjectApprovalWriter;
+use App\Providers\FinanceApiServiceProvider;
+use App\Services\Finance\StockProjectApprovalWriter;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -21,7 +21,7 @@ use Tests\TestCase;
  * re-loads the same routes/api.php definitions in the in-memory router,
  * after setting flags and re-booting the opt-in Gate provider.
  */
-final class V2FinancePilotHttpSafetyTest extends TestCase
+final class FinancePilotHttpSafetyTest extends TestCase
 {
     protected function setUp(): void
     {
@@ -154,7 +154,7 @@ final class V2FinancePilotHttpSafetyTest extends TestCase
     {
         config()->set('finance.v2_pilot_api_enabled', true);
         config()->set('finance.v2_pilot_write_enabled', $allowWrite);
-        (new V2FinancePilotServiceProvider($this->app))->boot();
+        (new FinanceApiServiceProvider($this->app))->boot();
 
         // Real route definitions, loaded only into this test process. Do not
         // duplicate mock endpoints or enable API routes on a running server.
@@ -223,7 +223,7 @@ final class V2FinancePilotHttpSafetyTest extends TestCase
         $this->enablePilot();
         // Simulate an explicitly approved future read role. Project membership
         // must be independently enforced AFTER the Gate allows access.
-        Gate::define('v2-finance-read', static fn ($user): bool => true);
+        Gate::define('finance-read', static fn ($user): bool => true);
         $this->authenticate(false, 1);
         $this->getJson('/api/v2/finance/projects/1/trial-balance')
             ->assertOk();
@@ -391,7 +391,7 @@ final class V2FinancePilotHttpSafetyTest extends TestCase
         $this->enablePilot(false);
         $this->authenticate();
         try {
-            (new V2StockProjectApprovalWriter())->approve(
+            (new StockProjectApprovalWriter())->approve(
                 'stock_entry', 999, 1, 'OWNER-EVIDENCE-999'
             );
             $this->fail('V2 stock approval was allowed with write flag OFF');

@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /** Isolated SQLite verification only, never touches an existing database. */
-class DatabaseV2FullLegacyBaselineTest extends TestCase
+class DatabaseFullLegacyBaselineTest extends TestCase
 {
     protected function setUp(): void
     {

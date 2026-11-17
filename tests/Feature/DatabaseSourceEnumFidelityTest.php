@@ -9,7 +9,7 @@ use Tests\TestCase;
  * Regression for V2 baseline SQL type parsing. Uses only migration metadata:
  * no database bootstrap operations, no source data, no production writes.
  */
-class DatabaseV2SourceEnumFidelityTest extends TestCase
+class DatabaseSourceEnumFidelityTest extends TestCase
 {
     public static function originalEnumCases(): array
     {

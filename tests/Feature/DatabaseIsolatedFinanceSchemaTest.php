@@ -2,14 +2,14 @@
 
 namespace Tests\Feature;
 
-use Database\Seeders\V2LegacyBanksSeeder;
+use Database\Seeders\LegacyBanksSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
-class DatabaseV2IsolatedFinanceSchemaTest extends TestCase
+class DatabaseIsolatedFinanceSchemaTest extends TestCase
 {
     protected function setUp(): void
     {
@@ -131,7 +131,7 @@ class DatabaseV2IsolatedFinanceSchemaTest extends TestCase
     {
         $migration = $this->runMigration('2026_10_30_000010_create_v2_bank_lookup.php');
         $migration->up();
-        $seeder = new V2LegacyBanksSeeder();
+        $seeder = new LegacyBanksSeeder();
         $seeder->run();
         $seeder->run();
         $this->assertSame(27, DB::table('banks')->count());

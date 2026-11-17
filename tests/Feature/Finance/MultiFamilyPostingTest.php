@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Finance;
 
-use App\Services\Finance\V2PostingGateway;
-use App\Services\Finance\V2StockSourceSnapshot;
+use App\Services\Finance\PostingGateway;
+use App\Services\Finance\StockSourceSnapshot;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -13,7 +13,7 @@ use Tests\TestCase;
  * DEFERRED regression definitions. Do not treat these as executed/passing.
  * All objects are isolated in SQLite :memory: and cannot touch real DB.
  */
-final class V2MultiFamilyPostingTest extends TestCase
+final class MultiFamilyPostingTest extends TestCase
 {
     protected function setUp(): void
     {
@@ -202,7 +202,7 @@ final class V2MultiFamilyPostingTest extends TestCase
 
     public function test_isolated_cv_draft_approval_posts_atomically_and_replays(): void
     {
-        $workflow = new \App\Services\Finance\V2CommissionDraftWorkflow();
+        $workflow = new \App\Services\Finance\CommissionDraftWorkflow();
         $id = $workflow->createDraft(1, 'CV-NEW-ISOLATED-42', '2026-10-30', $this->legs('40.00'), 1);
         $this->assertDatabaseHas('commision_vouchers', ['id' => $id, 'status' => 'draft']);
         $this->assertDatabaseCount('finance_posting_batches', 0);
@@ -220,7 +220,7 @@ final class V2MultiFamilyPostingTest extends TestCase
 
     public function test_isolated_cv_draft_rejects_cross_project_accounts_without_writes(): void
     {
-        $workflow = new \App\Services\Finance\V2CommissionDraftWorkflow();
+        $workflow = new \App\Services\Finance\CommissionDraftWorkflow();
         try {
             $workflow->createDraft(1, 'CV-FOREIGN-DENIED', '2026-10-30', [
                 ['account_id' => 101, 'debit' => '40.00', 'credit' => '0.00'],
@@ -236,7 +236,7 @@ final class V2MultiFamilyPostingTest extends TestCase
 
     public function test_cv_unposted_draft_can_be_replaced_then_posted_but_not_edited_again(): void
     {
-        $workflow = new \App\Services\Finance\V2CommissionDraftWorkflow();
+        $workflow = new \App\Services\Finance\CommissionDraftWorkflow();
         $id = $workflow->createDraft(1, 'CV-EDIT-ISOLATED-43', '2026-10-30', $this->legs('40.00'));
         $workflow->updateDraft(1, $id, '2026-10-31', $this->legs('55.00'));
         $this->assertDatabaseHas('commision_vouchers', [
@@ -260,7 +260,7 @@ final class V2MultiFamilyPostingTest extends TestCase
 
     public function test_cv_draft_cancellation_soft_deletes_source_without_posting(): void
     {
-        $workflow = new \App\Services\Finance\V2CommissionDraftWorkflow();
+        $workflow = new \App\Services\Finance\CommissionDraftWorkflow();
         $id = $workflow->createDraft(1, 'CV-CANCEL-DRAFT-44', '2026-10-30', $this->legs('25.00'));
         $workflow->cancelDraft(1, $id);
         $this->assertNotNull(DB::table('commision_vouchers')->where('id', $id)->value('deleted_at'));
@@ -271,7 +271,7 @@ final class V2MultiFamilyPostingTest extends TestCase
 
     public function test_cv_draft_update_rejects_foreign_project_without_changes(): void
     {
-        $workflow = new \App\Services\Finance\V2CommissionDraftWorkflow();
+        $workflow = new \App\Services\Finance\CommissionDraftWorkflow();
         $id = $workflow->createDraft(1, 'CV-FOREIGN-UPDATE-45', '2026-10-30', $this->legs('25.00'));
         try {
             $workflow->updateDraft(2, $id, '2026-10-31', $this->legs('25.00'));
@@ -285,7 +285,7 @@ final class V2MultiFamilyPostingTest extends TestCase
 
     public function test_commission_posts_exact_document_and_detail_fks_idempotently(): void
     {
-        $gateway = new V2PostingGateway();
+        $gateway = new PostingGateway();
         $id = $gateway->postCommission(1, 10, 'CV-REQUEST-EXACT-0001');
         $this->assertSame($id, $gateway->postCommission(1, 10, 'CV-REQUEST-EXACT-0001'));
         $this->assertDatabaseCount('finance_commission_line_sources', 2);
@@ -300,9 +300,9 @@ final class V2MultiFamilyPostingTest extends TestCase
 
     public function test_posted_commission_void_by_exact_source_is_immutable_and_idempotent(): void
     {
-        $gateway = new V2PostingGateway();
+        $gateway = new PostingGateway();
         $original = $gateway->postCommission(1, 10, 'CV-VOID-ORIGINAL-0001');
-        $lifecycle = new \App\Services\Finance\V2VoucherLifecycleService();
+        $lifecycle = new \App\Services\Finance\VoucherLifecycleService();
 
         $reversal = $lifecycle->reverse(
             1, 'commission', 10, 'CV-VOID-REVERSAL-0001',
@@ -335,9 +335,9 @@ final class V2MultiFamilyPostingTest extends TestCase
 
     public function test_commission_void_wrong_project_cannot_reverse_original_batch(): void
     {
-        $gateway = new V2PostingGateway();
+        $gateway = new PostingGateway();
         $original = $gateway->postCommission(1, 10, 'CV-PROJECT-SOURCE-0001');
-        $lifecycle = new \App\Services\Finance\V2VoucherLifecycleService();
+        $lifecycle = new \App\Services\Finance\VoucherLifecycleService();
         try {
             $lifecycle->reverse(
                 2, 'commission', 10, 'CV-PROJECT-VOID-BLOCK-0001',
@@ -354,7 +354,7 @@ final class V2MultiFamilyPostingTest extends TestCase
 
     public function test_commission_rejects_changed_detail_replay(): void
     {
-        $gateway = new V2PostingGateway();
+        $gateway = new PostingGateway();
         $gateway->postCommission(1, 10, 'CV-REQUEST-TAMPER-0001');
         DB::table('finance_posting_lines')->where('project_head_subhead_id', 101)
             ->update(['debit' => '99.00']);
@@ -364,7 +364,7 @@ final class V2MultiFamilyPostingTest extends TestCase
 
     public function test_explicit_customer_ppr_ec_ecp_types_have_distinct_exact_sources(): void
     {
-        $gateway = new V2PostingGateway();
+        $gateway = new PostingGateway();
         foreach (['PPR', 'EC', 'ECP'] as $offset => $type) {
             $id = $gateway->postCustomerVoucher(
                 1, 20 + $offset, $type, 'CUSTOMER-EXPLICIT-' . $type . '-0001',
@@ -381,14 +381,14 @@ final class V2MultiFamilyPostingTest extends TestCase
     public function test_wrong_expected_customer_type_cannot_post(): void
     {
         $this->expectException(\DomainException::class);
-        (new V2PostingGateway())->postCustomerVoucher(
+        (new PostingGateway())->postCustomerVoucher(
             1, 20, 'EC', 'CUSTOMER-WRONG-TYPE-0001', $this->legs('25.00')
         );
     }
 
     public function test_booking_and_labour_post_from_physical_project_fks(): void
     {
-        $gateway = new V2PostingGateway();
+        $gateway = new PostingGateway();
         $gateway->postBooking(1, 30, 'BOOKING-POSTING-0001', $this->legs('40.00'));
         $gateway->postLabour(1, 40, 'LABOUR-POSTING-0001', $this->legs('55.00'));
         $this->assertDatabaseCount('finance_posting_booking_sources', 1);
@@ -400,21 +400,21 @@ final class V2MultiFamilyPostingTest extends TestCase
     public function test_booking_cross_project_posting_is_denied(): void
     {
         $this->expectException(\DomainException::class);
-        (new V2PostingGateway())->postBooking(
+        (new PostingGateway())->postBooking(
             2, 30, 'BOOKING-FOREIGN-PROJECT-0001', $this->legs('40.00')
         );
     }
 
     public function test_stock_requires_exact_project_approval_snapshot(): void
     {
-        $gateway = new V2PostingGateway();
+        $gateway = new PostingGateway();
         try {
             $gateway->postStockEntry(1, 50, 'STOCK-UNAPPROVED-0001', $this->legs('70.00'));
             $this->fail('Stock posted without a project ownership approval');
         } catch (\DomainException $e) {
             $this->assertSame('V2_STOCK_PROJECT_APPROVAL_MISSING_OR_STALE', $e->getMessage());
         }
-        $snapshot = (new V2StockSourceSnapshot())->read('stock_entry', 50);
+        $snapshot = (new StockSourceSnapshot())->read('stock_entry', 50);
         DB::table('finance_stock_entry_project_approvals')->insert([
             'stock_entry_id' => 50, 'project_id' => 1,
             'approved_by' => 1, 'evidence_reference' => 'OWNER-APPROVED-50',
@@ -432,14 +432,14 @@ final class V2MultiFamilyPostingTest extends TestCase
 
     public function test_stock_bill_posts_only_with_independent_evidence_mapping(): void
     {
-        $snapshot = (new V2StockSourceSnapshot())->read('stock_bill', 60);
+        $snapshot = (new StockSourceSnapshot())->read('stock_bill', 60);
         DB::table('finance_stock_bill_project_approvals')->insert([
             'stock_bill_id' => 60, 'project_id' => 1,
             'approved_by' => 1, 'evidence_reference' => 'OWNER-APPROVED-60',
             'source_sha256' => $snapshot['fingerprint'],
             'approved_at' => now(), 'created_at' => now(), 'updated_at' => now(),
         ]);
-        $gateway = new V2PostingGateway();
+        $gateway = new PostingGateway();
         $id = $gateway->postStockBill(1, 60, 'STOCK-BILL-POST-0001', $this->legs('80.00'));
         $this->assertDatabaseHas('finance_posting_stock_bill_sources', [
             'posting_batch_id' => $id, 'stock_bill_id' => 60,
@@ -449,7 +449,7 @@ final class V2MultiFamilyPostingTest extends TestCase
 
     public function test_summary_keeps_original_source_and_reversal_separate(): void
     {
-        $gateway = new V2PostingGateway();
+        $gateway = new PostingGateway();
         $source = $gateway->postCommission(1, 10, 'CV-SUMMARY-ORIGINAL-01');
         $gateway->reversePostedBatch(1, $source, 'CV-SUMMARY-REVERSE-01',
             '2026-10-31', 'Correction');
@@ -461,7 +461,7 @@ final class V2MultiFamilyPostingTest extends TestCase
     }
     public function test_voucher_register_shows_real_cv_text_reference_not_legacy_type_id(): void
     {
-        $gateway = new V2PostingGateway();
+        $gateway = new PostingGateway();
         $batch = $gateway->postCommission(1, 10, 'CV-TEXT-REGISTER-0001');
         $documents = $gateway->voucherRegister(1);
         $this->assertCount(1, $documents);

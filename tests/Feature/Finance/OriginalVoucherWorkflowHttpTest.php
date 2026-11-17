@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\{DB, Schema, Gate};
 use Tests\TestCase;
 
-class OriginalVoucherV2WorkflowHttpTest extends TestCase
+class OriginalVoucherWorkflowHttpTest extends TestCase
 {
     protected function setUp(): void
     {
@@ -80,7 +80,7 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
         }
         $this->actingAs($user);
         config(['finance.v2_pilot_api_enabled' => true, 'finance.v2_pilot_write_enabled' => true]);
-        Gate::define('v2-finance-post', fn ($user) => true);
+        Gate::define('finance-post', fn ($user) => true);
     }
 
     private function journal(): array
@@ -194,9 +194,9 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
         $payload = ['request_key' => 'ORIGINAL-BANK-CLEARANCE-001', 'passing_status' => 1, 'bank_post_at' => '2026-11-02',
             'note' => 'Bank statement verified', 'bank_account_id' => 1, 'posting_lines' => $this->approval()['posting_lines']];
         $url = route('finance.voucher.pending_bank_payments.status', ['customerLedger' => $id], false);
-        $this->assertSame('BANK_CLEARANCE_REQUIRED', (new \App\Services\Finance\V2SourceApprovalReadiness())->inspect(1, 'cash', $id)['reason_code']);
+        $this->assertSame('BANK_CLEARANCE_REQUIRED', (new \App\Services\Finance\SourceApprovalReadiness())->inspect(1, 'cash', $id)['reason_code']);
         foreach ([1, 2] as $_) { $this->withCookie('selected_action', '1')->postJson($url, $payload)->assertOk(); }
-        $this->assertTrue((new \App\Services\Finance\V2SourceApprovalReadiness())->inspect(1, 'cash', $id)['eligible']);
+        $this->assertTrue((new \App\Services\Finance\SourceApprovalReadiness())->inspect(1, 'cash', $id)['eligible']);
         $this->assertDatabaseHas('finance_posting_batches', ['effective_date' => '2026-11-02']);
         $bankLine = DB::table('finance_posting_lines')
             ->where('posting_batch_id', DB::table('finance_posting_batches')->value('id'))
@@ -357,7 +357,7 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
         $user = User::findOrFail(1);
         $user->givePermissionTo(Permission::create(['name' => 'master report', 'guard_name' => 'web']));
         $this->actingAs($user);
-        Gate::define('v2-finance-read', fn ($user) => true);
+        Gate::define('finance-read', fn ($user) => true);
     }
 
     private function attendanceSchema(): void
@@ -486,7 +486,7 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
         $paymentId = $this->withCookie('selected_action', '1')->postJson($url, $payment)->assertOk()->json('data.source_id');
         $this->withCookie('selected_action', '1')->postJson($url, $payment)->assertOk()->assertJsonPath('data.source_id', $paymentId);
         $this->assertDatabaseHas('finance_extra_charge_payment_sources', ['customer_ledger_id' => $paymentId, 'charge_customer_ledger_id' => $id]);
-        $balance = (new \App\Services\Finance\V2ExtraChargeBalance())->read(\App\Models\CustomerLedger::findOrFail($id));
+        $balance = (new \App\Services\Finance\ExtraChargeBalance())->read(\App\Models\CustomerLedger::findOrFail($id));
         $this->assertSame(1000, $balance['available_cents']); $this->assertSame(2000, $balance['paid_cents']);
         $over = $this->depositInput('extra_charge_payment', '15.00'); $over['request_key'] = 'EXTRA-CHARGE-OVERPAYMENT-01';
         $over['reference'] = 'OVERPAYMENT'; $over['charge_id'] = $id;
@@ -570,7 +570,7 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
             ->assertSee('CR-1')->assertSee('<script>alert(1)</script>');
         $this->withCookie('selected_action', '2')->getJson($print)->assertForbidden();
         $batch = (int) DB::table('finance_posting_batches')->value('id');
-        (new \App\Services\Finance\V2PostingGateway())->reversePostedBatch(1, $batch, 'CASH-REPORT-REVERSAL-001', '2026-11-02', 'Verified correction', 1);
+        (new \App\Services\Finance\PostingGateway())->reversePostedBatch(1, $batch, 'CASH-REPORT-REVERSAL-001', '2026-11-02', 'Verified correction', 1);
         $this->withCookie('selected_action', '1')->getJson($url)->assertOk()->assertJsonPath('data.0.amount', '0.00')
             ->assertJsonPath('data.0.status', 'Reversed')->assertJsonCount(1, 'data');
         $this->withCookie('selected_action', '1')->getJson($url.'?date_from=2026-11-01&date_to=2026-11-03')
@@ -607,9 +607,9 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
 
     public function test_jv_gate_and_missing_key_cannot_write_or_fall_back_to_legacy_ledger(): void
     {
-        Gate::define('v2-finance-post', fn ($user) => false);
+        Gate::define('finance-post', fn ($user) => false);
         $this->withCookie('selected_action', '1')->postJson(route('journal.voucher.store', [], false), $this->journal())->assertForbidden();
-        Gate::define('v2-finance-post', fn ($user) => true);
+        Gate::define('finance-post', fn ($user) => true);
         $input = $this->journal(); unset($input['idempotency_key']);
         $this->withCookie('selected_action', '1')->postJson(route('journal.voucher.store', [], false), $input)->assertStatus(409);
         $this->assertDatabaseCount('journal_vouchers', 0);
@@ -904,7 +904,7 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
         $this->assertDatabaseCount('finance_posting_batches', 0);
         $this->assertDatabaseCount('ledgers', 0);
         $payload = ['request_key' => 'ORIGINAL-STOCK-CREATED-001', 'evidence_reference' => 'OWNER-DOC-CREATED-2026', 'posting_lines' => $this->approval()['posting_lines']];
-        $this->assertSame('2026-10-31', (new \App\Services\Finance\V2StockSourceSnapshot())->read('stock_entry', $id, 1)['date']);
+        $this->assertSame('2026-10-31', (new \App\Services\Finance\StockSourceSnapshot())->read('stock_entry', $id, 1)['date']);
         $this->withCookie('selected_action', '1')->postJson(route('stocks.finance.approve', ['kind' => 'stock_entry', 'id' => $id], false), $payload)->assertOk();
         $this->assertDatabaseHas('finance_posting_stock_entry_sources', ['stock_entry_id' => $id]);
         $this->assertDatabaseCount('finance_posting_batches', 1);
@@ -997,9 +997,9 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
             'finance.v2_pilot_write_enabled' => true,
             'database.connections.'.config('database.default').'.database' => 'bluenew',
         ]);
-        $this->assertTrue(\App\Services\Finance\V2OriginalWorkflowAccess::normalErpMode());
-        $this->assertFalse(\App\Services\Finance\V2OriginalWorkflowAccess::selected());
-        $this->assertFalse(\App\Services\Finance\V2OriginalWorkflowAccess::enabled());
+        $this->assertTrue(\App\Services\Finance\FinanceWorkflowAccess::normalErpMode());
+        $this->assertFalse(\App\Services\Finance\FinanceWorkflowAccess::selected());
+        $this->assertFalse(\App\Services\Finance\FinanceWorkflowAccess::enabled());
         $this->assertNull(app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)->policy(1,'JV'));
         $this->assertFalse(app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
             ->submitIfRequired(1,'JV','journal_vouchers',1,1));
@@ -1007,8 +1007,8 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
         // Even with the local override, an actual V2-named database can
         // never be routed into the legacy writer by mistake.
         config(['database.connections.'.config('database.default').'.database' => 'bluemarketing_v2_isolated']);
-        $this->assertFalse(\App\Services\Finance\V2OriginalWorkflowAccess::normalErpMode());
-        $this->assertTrue(\App\Services\Finance\V2OriginalWorkflowAccess::selected());
+        $this->assertFalse(\App\Services\Finance\FinanceWorkflowAccess::normalErpMode());
+        $this->assertTrue(\App\Services\Finance\FinanceWorkflowAccess::selected());
     }
 
 }

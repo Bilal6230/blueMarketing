@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
-use App\Services\Finance\V2ModelSchemaContract;
+use App\Services\Finance\ModelSchemaContract;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /** Only isolated SQLite :memory: fixture, never the user's MySQL rehearsal. */
-class DatabaseV2ModelSchemaContractTest extends TestCase
+class DatabaseModelSchemaContractTest extends TestCase
 {
     protected function setUp(): void
     {
@@ -31,7 +31,7 @@ class DatabaseV2ModelSchemaContractTest extends TestCase
         (require base_path('database/v2_migrations/2026_10_30_000010_create_v2_bank_lookup.php'))->up();
         (require base_path('database/v2_migrations/2026_10_30_000020_create_v2_legacy_domain_baseline.php'))->up();
 
-        $findings = (new V2ModelSchemaContract())->inspect();
+        $findings = (new ModelSchemaContract())->inspect();
         $this->assertContains('site_id', $findings['journal_vouchers'] ?? []);
         $this->assertContains('journal_voucher_detail_id', $findings['ledgers'] ?? []);
         $this->assertArrayNotHasKey('journal_voucher_details', $findings);
@@ -43,7 +43,7 @@ class DatabaseV2ModelSchemaContractTest extends TestCase
         (require base_path('database/v2_migrations/2026_10_30_000010_create_v2_bank_lookup.php'))->up();
         (require base_path('database/v2_migrations/2026_10_30_000020_create_v2_legacy_domain_baseline.php'))->up();
 
-        $this->assertSame([], (new V2ModelSchemaContract())->inspectRelationships());
+        $this->assertSame([], (new ModelSchemaContract())->inspectRelationships());
     }
 
     public function test_contract_refuses_non_v2_sqlite_file_database_without_reading_data(): void
@@ -52,6 +52,6 @@ class DatabaseV2ModelSchemaContractTest extends TestCase
         DB::purge('sqlite');
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('isolated V2');
-        (new V2ModelSchemaContract())->inspect();
+        (new ModelSchemaContract())->inspect();
     }
 }
