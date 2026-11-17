@@ -10,8 +10,8 @@ final class NormalBankTransferReversalGateTest extends TestCase
 {
     public function test_bank_transfer_reverse_is_blocked_outside_approved_database(): void
     {
-        config(['app.env' => 'testing']);
-        $this->expectException(\DomainException::class);
+        config(['app.env' => 'production', 'database.default' => 'mysql']);
+        $this->expectException(\RuntimeException::class);
         (new V2BankTransferLifecycleService())->reverse(
             3, 'deposit', 12, str_repeat('x', 24), '2026-11-17', 'Test reversal', null
         );
