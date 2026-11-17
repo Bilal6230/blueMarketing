@@ -882,17 +882,39 @@ class JournalVoucherController extends Controller
 
     // }
 
+    /** Only an exact typed JV posting link can select the typed reversal path. */
+    private function isMergedPostedJournal(int $projectId, int $sourceId): bool
+    {
+        if (!\App\Services\Finance\V2OriginalWorkflowAccess::mergedWriterAllowed()
+            || !\Illuminate\Support\Facades\Schema::hasTable('finance_posting_journal_sources')) {
+            return false;
+        }
+        return DB::table('finance_posting_journal_sources as typed')
+            ->join('journal_vouchers as voucher', 'voucher.id', '=', 'typed.journal_voucher_id')
+            ->join('finance_posting_batches as batch', 'batch.id', '=', 'typed.posting_batch_id')
+            ->where('typed.journal_voucher_id', $sourceId)
+            ->where('voucher.project_id', $projectId)
+            ->where('batch.project_id', $projectId)
+            ->where('voucher.type', 'JV')
+            ->exists();
+    }
+
     public function destroy($id)
     {
         $projectId = (int) getSelectedTown();
         abort_if($projectId < 1, 403, 'Select a project.');
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()
+            || $this->isMergedPostedJournal($projectId, (int) $id)) {
             \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
             $data = request()->validate([
-                'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
-                'effective_date' => ['required', 'date_format:Y-m-d'],
-                'reason' => ['required', 'string', 'min:1', 'max:200'],
+                'request_key' => ['nullable', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
+                'effective_date' => ['nullable', 'date_format:Y-m-d'],
+                'reason' => ['nullable', 'string', 'max:200'],
             ]);
+            $data['request_key'] = $data['request_key'] ?? (string) \Illuminate\Support\Str::uuid();
+            $data['effective_date'] = $data['effective_date'] ?? now()->toDateString();
+            $data['reason'] = trim((string) ($data['reason'] ?? 'Operator void'));
+            abort_if($data['reason'] === '', 422, 'A reversal reason is required.');
             try {
                 (new \App\Services\Finance\V2VoucherLifecycleService())->reverse(
                     $projectId, 'journal', (int) $id, $data['request_key'],
@@ -940,6 +962,8 @@ class JournalVoucherController extends Controller
     public function edit($id)
     {
         $voucher = JournalVoucher::with('details')->where('project_id', getSelectedTown())->findOrFail($id);
+        abort_if($this->isMergedPostedJournal((int) getSelectedTown(), (int) $voucher->id), 409,
+            'This posted Journal Voucher requires reversal before correction.');
         $voucherType = ($voucher->type === 'SV') ? 'SV' : 'JV';
         $x = $this->getCommonData(
             $voucherType === 'SV' ? 'Sales Voucher Details' : 'Edit Journal Voucher',
@@ -1058,6 +1082,9 @@ class JournalVoucherController extends Controller
                 'debit' => 'Total debit and credit must be equal and greater than zero.',
             ]);
         }
+
+        abort_if($this->isMergedPostedJournal($projectId, (int) $id), 409,
+            'This posted Journal Voucher requires reversal before correction.');
 
         if ($request->routeIs('journal.voucher.resubmit')) {
             abort_if(\App\Services\Finance\V2OriginalWorkflowAccess::selected(),409,'Rejected JV revision is unavailable in V2 mode.');
