@@ -114,7 +114,7 @@ $cases=[
      'SELECT id FROM ledgers WHERE type=? AND type_id=? AND is_active=? ORDER BY id DESC LIMIT 50',
      ['JV',1,1]],
     ['account-scoped active ledgers','ledgers',
-     ['project_head_subheads_id','is_active'],
+     ['project_head_subheads_id','is_active','amount_in','amount_out'],
      'SELECT id,amount_in,amount_out FROM ledgers WHERE project_head_subheads_id=? AND is_active=? ORDER BY id DESC LIMIT 50',
      [1,1]],
     ['customer ledger project/type','customer_ledger',
