@@ -166,10 +166,10 @@
    visible.forEach((x,i)=>{
      const $tr=$('<tr>');
      $tr.append($('<td>').text(start+i+1),$('<td>').text(x.date));
-     $tr.append($('<td>').append($('<strong>').text(x.number)));
+     $tr.append($('<td>').append($('<strong>').text(x.number), x.reversed?$('<span>',{'class':'badge badge-secondary ml-1',text:'Reversed'}):''));
      $tr.append($('<td>').text(x.seller),$('<td>').text(x.narration));
      $tr.append($('<td>').text(x.items),$('<td>',{'class':'text-right'}).text(money(x.amount)));
-     const $actions=$('<td>',{'class':'blue-actions-cell'}).append(
+     var $actions=$('<td>',{'class':'blue-actions-cell'}).append(
        $('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pp-detail','data-id':x.id,text:'Details / print'}));
      @can('delete voucher')
      if(!x.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pp-void ml-1','data-id':x.id,text:'Reverse'}));
