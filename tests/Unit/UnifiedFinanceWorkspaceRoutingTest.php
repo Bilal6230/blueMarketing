@@ -19,7 +19,7 @@ final class UnifiedFinanceWorkspaceRoutingTest extends TestCase
             self::assertStringContainsString($method, $source);
         }
         self::assertStringNotContainsString('unavailableWorkspace', $source);
-        self::assertStringNotContainsString('unavailableV2Workspace', $source);
+        self::assertStringNotContainsString('FinanceConnectionGuard::isAllowed()', $source);
         self::assertStringContainsString('FinanceWorkflowAccess::authorizeRead($projectId)', $source);
     }
 

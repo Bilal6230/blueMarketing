@@ -46,8 +46,8 @@ final class UnifiedNormalLedgerReportTest extends TestCase
         $service = file_get_contents(app_path('Services/Finance/UnifiedNormalLedgerReport.php'));
         $controller = file_get_contents(app_path('Http/Controllers/LedgerController.php'));
 
-        $this->assertStringContainsString('V2OriginalWorkflowAccess::mergedWriterAllowed()', $service);
-        $this->assertStringContainsString('V2PostingGateway())->postingLines(', $service);
+        $this->assertStringContainsString('FinanceWorkflowAccess::mergedWriterAllowed()', $service);
+        $this->assertStringContainsString('PostingGateway())->postingLines(', $service);
         $this->assertStringContainsString("['legacy_ledger_id'] === null", $service);
         $this->assertStringContainsString("['posting_line_id']", $service);
         $this->assertStringNotContainsString("['type_id']", $service);
