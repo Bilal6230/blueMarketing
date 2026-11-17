@@ -37,7 +37,7 @@ final class FinanceApiHttpSafetyTest extends TestCase
         // Use the application's actual permission migration in :memory:
         // instead of mocking away a security-critical authorization layer.
         // No non-test database is ever reachable (DatabaseIsolation guard).
-        require_once base_path('database/migrations/2022_03_19_102456_create_permission_tables.php');
+        require_once base_path('database/old_migration/2022_03_19_102456_create_permission_tables.php');
         (new \CreatePermissionTables())->up();
 
         Schema::create('projects', function (Blueprint $t): void {
