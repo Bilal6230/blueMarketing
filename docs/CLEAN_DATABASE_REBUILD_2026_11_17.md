@@ -66,3 +66,21 @@ php tools/schema/copy_clean_data.php
 php tools/schema/copy_clean_data.php --apply
 ```
 Do not run `migrate:fresh` or replace application .env. Review any FK orphan failures; counts/FK pass is NOT full accounting integrity.
+
+
+## 2026-11-17 — Imported partial data fails on legacy zero datetime; guarded resume fix
+
+Owner executed importer: source 120,835 rows; first 59 nonempty tables copied into `bluenew_clean`, then MySQL 8.4 rejected `leads.follow_up = '0000-00-00 00:00:00'` (SQLSTATE 22007 / 1292). This is not a migration-structure failure, not a missing column and not a reason to modify the original rows.
+
+Resolved in `tools/schema/copy_clean_data.php`: `--resume` allows only already-populated destination tables with exact source row counts, skips these, and copies remaining tables. Copy session sets `sql_mode='NO_AUTO_VALUE_ON_ZERO'` to preserve legacy zero datetime and ID zero (restored in finally), plus restores foreign key checks in finally. After copy, every nonempty primary-key table is compared source vs target using all columns, and declared FK orphan checks run. Remaining tables without PK receive row-count-only comparison and are listed as such. Added static `CleanDatabaseCopyGateTest`. CI/local runtime validation still required.
+
+Commands:
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php -l tools/schema/copy_clean_data.php
+php artisan test --filter=CleanDatabaseCopyGateTest
+php tools/schema/copy_clean_data.php --resume
+```
+
+**Never** run `--apply` (requires fully empty target) or wipe the partial `bluenew_clean` for this error. If resumed import fails on a different legacy type or FK orphan, inspect and address precise error without changing `bluenew`. Database copy is not accepted until final reconciliation output. Strict SQL mode is relaxed for the importer session ONLY; it does not change server/app SQL mode. Full accounting comparison and final maintainable Laravel migrations remain pending.
