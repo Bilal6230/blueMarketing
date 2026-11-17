@@ -247,7 +247,7 @@
     <!-- jQuery -->
     <script src="{{ asset('template/admin/plugins/jquery/jquery.min.js') }}"></script>
     <script src="{{ asset('js/blue-table-skeleton.js') }}?v=1"></script>
-    <script src="{{ asset('js/finance-voucher-feedback.js') }}?v=9"></script>
+    <script src="{{ asset('js/finance-voucher-feedback.js') }}?v=10"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
     @yield('js')
