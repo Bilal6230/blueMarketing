@@ -513,7 +513,7 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('V2ExtraChargeBalance', $balance);
         $this->assertStringContainsString('finance_extra_charge_sources', $balance);
         $this->assertStringNotContainsString("config('finance.normal_erp_mode') === true", $guard);
-        $this->assertStringContainsString("&& $database === 'bluenew'", $guard);
+        $this->assertStringContainsString("&& \$database === 'bluenew'", $guard);
     }
 
 
