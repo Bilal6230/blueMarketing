@@ -48,3 +48,21 @@ The generated migration itself guards local MySQL + local host + exact `bluenew_
 3. Compare all table counts, FK orphans, and financial source/ledger totals independently, including Project 3.
 4. Replace DDL snapshot with reviewed, grouped Laravel Schema::create migrations and query-plan-driven indexes, then repeat clean installation/data restoration.
 5. Do not switch normal app .env or production hosting until every gate passes.
+
+
+## 2026-11-17 Owner fresh schema gate accepted; DATA COPY ready
+
+Owner screenshot shows `bluenew_clean` has **147 tables, zero application records** in phpMyAdmin, matching the expected table count. Screenshot alone does not establish that all schema signatures/FKs match, but table-count gate is accepted.
+
+Added `tools/schema/copy_clean_data.php` (commit ceade864): guarded same-server, data-only `bluenew` -> `bluenew_clean` copier. It checks local environment, source/target 147-table same names, column order equality, empty 146 destination application tables, one clean destination migrations row, and preserves all source PK IDs including ID zero. No copy of migrations history. Uses SQL INSERT ... SELECT with explicit columns; session FK bypass for parent order then restores FK checks, verifies per-table row counts and declared FK orphan links. Does not modify original `bluenew`. If interrupted, destination may be partially populated; never rerun blindly on a nonempty destination, instead inspect or recreate ONLY `bluenew_clean`. This code is intended for the exact independently verified local snapshot, not general purpose database syncing.
+
+User next actions (PowerShell):
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php tools/schema/copy_clean_data.php
+# only if PRE-FLIGHT PASS:
+php tools/schema/copy_clean_data.php --apply
+```
+Do not run `migrate:fresh` or replace application .env. Review any FK orphan failures; counts/FK pass is NOT full accounting integrity.
