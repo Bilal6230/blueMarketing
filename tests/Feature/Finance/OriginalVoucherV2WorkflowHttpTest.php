@@ -986,13 +986,13 @@ class OriginalVoucherV2WorkflowHttpTest extends TestCase
         $this->assertDatabaseCount('ledgers', 1);
         $this->assertDatabaseCount('finance_posting_batches', 0);
     }
-    public function test_explicit_local_normal_erp_mode_overrides_pilot_without_exposing_isolated_database(): void
+    public function test_local_normal_erp_is_default_without_flag_and_does_not_expose_isolated_database(): void
     {
         // The testing database is SQLite in-memory; no finance tables are
         // migrated or written by these configuration-boundary assertions.
         config([
             'app.env' => 'local',
-            'finance.normal_erp_mode' => true,
+            'finance.normal_erp_mode' => false, // Deprecated toggle must not be required.
             'finance.v2_pilot_api_enabled' => true,
             'finance.v2_pilot_write_enabled' => true,
             'database.connections.'.config('database.default').'.database' => 'bluenew',
