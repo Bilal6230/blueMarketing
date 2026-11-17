@@ -20,6 +20,18 @@ final class V2OriginalWorkflowAccess
             && (bool) config('finance.normal_erp_mode', false);
     }
 
+    /**
+     * Merge the existing typed writer into the normal LOCAL ERP workspaces.
+     * This is a narrowly scoped bridge, NOT a global switch back to pilot mode.
+     * A mixed project keeps legacy writers for legacy sources and typed writers
+     * for typed sources; the DB connection guard still rejects live databases.
+     */
+    public static function mergedWriterAllowed(): bool
+    {
+        return self::normalErpMode()
+            && V2IsolatedConnectionGuard::isAllowed();
+    }
+
     public static function selected(): bool
     {
         if (self::normalErpMode()) return false;
@@ -37,7 +49,7 @@ final class V2OriginalWorkflowAccess
 
     public static function authorize(int $projectId): void
     {
-        abort_unless(self::enabled(), 409, 'Isolated financial workflow is disabled.');
+        abort_unless(self::enabled() || self::mergedWriterAllowed(), 409, 'Typed financial workflow is unavailable for this database.');
         V2IsolatedConnectionGuard::assertAllowed();
         $user = Auth::user();
         abort_unless($user && $projectId > 0 && Gate::has('v2-finance-post'), 403);
@@ -50,7 +62,7 @@ final class V2OriginalWorkflowAccess
     {
         abort_unless(
             in_array(config('app.env'), ['local', 'testing'], true)
-                && config('finance.v2_pilot_api_enabled'),
+                && (config('finance.v2_pilot_api_enabled') || self::mergedWriterAllowed()),
             409,
             'New voucher workspaces are disabled until an isolated local V2 finance database is configured.'
         );
