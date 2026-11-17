@@ -298,3 +298,55 @@ Remove-Item Env:\DB_DATABASE
 Remove-Item Env:\APP_ENV
 ```
 Collect actual EXPLAIN/index candidate output. Next implementation is **measured** composite/covering indexes and removal only for vetted truly redundant candidates in *fresh separate incremental migrations* that preserve previously validated baseline DB and migrations; validate source/destination rows, FK, and query plans. Keep C/E/D logic untouched.
+
+
+## 2026-11-17 — Measured performance audit and first reversible index optimization
+
+Local owner output from `tools/schema/audit_query_performance.php`:
+- 511 indexes / 761 index-column entries; 11 B-tree left-prefix overlap candidates (**not automatically redundant**).
+- 12/12 query EXPLAINs produced plans, zero skips/errors.
+- `journal_vouchers` project/type/recent: uses `unique_project_type_voucher`, `Using filesort`.
+- `ledgers` type/type_id/is_active/recent: chooses PK index scan with post-filter, a candidate hot-path weakness with 18,096 rows.
+- `customer_ledger` project/type/recent: uses only `v2_customer_ledger_project_id_fk`, then filters transaction type.
+- Finance posting batches and lines show filesort on tiny tables (13 and 27 rows) — deliberately **no index additions** for these cases.
+- Bookings, works and details already use existing indexes; no unnecessary new indexes.
+- One warning from PHPUnit static test: PHP variable interpolation `$sql` in assertion; corrected in commit `c77019d8`.
+
+Optimizations committed:
+- New separate **reversible** migration `database/migrations/2026_11_17_999999_optimize_read_paths_indexes.php` adds exactly:
+    - `journal_vouchers(project_id, type, id)` — `idx_jv_project_type_recent`
+    - `ledgers(type, type_id, is_active, id)` — `idx_ledgers_source_active_recent`
+    - `customer_ledger(project_id, transaction_type, id)` — `idx_customer_project_type_recent`
+- No indexes removed. Existing FK/uniqueness definitions unaffected; C/E/D and approval business logic unchanged.
+- Updated migration-count acceptance from 148 to 149 after incremental migration.
+- Strict original-schema audit now accepts **only those three named, exact-column, nonunique BTREE indexes** if explicitly passed `--allow-performance-indexes`; other source fields/indexes/FKs remain strictly compared.
+- Regression test `PerformanceIndexMigrationTest` requires exactly three add/drop reversible index statements.
+
+Owner next run on local `bluenew_clean_final` ONLY:
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+$env:APP_ENV = 'local'
+$env:DB_DATABASE = 'bluenew_clean_final'
+try {
+    php artisan optimize:clear
+    php artisan test --filter=CleanDatabasePerformanceAuditTest
+    if ($LASTEXITCODE -ne 0) { throw 'Performance audit test failed' }
+    php artisan test --filter=PerformanceIndexMigrationTest
+    if ($LASTEXITCODE -ne 0) { throw 'Performance index test failed' }
+    php artisan test --filter=AllMigrationFilesSyntaxTest
+    if ($LASTEXITCODE -ne 0) { throw 'Migration syntax test failed' }
+    php tools/schema/audit_query_performance.php
+    if ($LASTEXITCODE -ne 0) { throw 'Baseline EXPLAIN failed' }
+    php artisan migrate --force
+    if ($LASTEXITCODE -ne 0) { throw 'Index migration failed' }
+    php tools/schema/audit_query_performance.php
+    if ($LASTEXITCODE -ne 0) { throw 'Post-migration EXPLAIN failed' }
+    php tools/schema/audit_clean_reconciliation.php --target=bluenew_clean_final --allow-performance-indexes
+    if ($LASTEXITCODE -ne 0) { throw 'Data/schema reconciliation failed' }
+} finally {
+    Remove-Item Env:\DB_DATABASE -ErrorAction SilentlyContinue
+    Remove-Item Env:\APP_ENV -ErrorAction SilentlyContinue
+}
+```
+Index plan adoption is not guaranteed just from index presence, especially small project partitions. Compare before/after EXPLAIN `key`, `rows`, and `Extra`; note full scans/filesort can be chosen appropriately by optimizer. DDL changes are only on explicitly-selected disposable local target. Source `bluenew` and recovered comparison `bluenew_clean` untouched. Owner-verified phase still pending local tests and query plans; do not claim completion yet.
