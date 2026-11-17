@@ -132,3 +132,23 @@ php tools/schema/audit_clean_reconciliation.php --target=bluenew_clean_native --
 Remove-Item Env:\DB_DATABASE
 Remove-Item Env:\APP_ENV
 ```
+
+
+## 2026-11-17 — Owner rejects 6-group draft: per-table native baseline requested
+
+Owner specifically requires each table's own migration, old `database/migrations` archived as `database/old_migration`, and new empty database install via plain `php artisan migrate`. All legacy business rows/timestamps preserved during separate data-only copy. The previous 6-group draft is superseded.
+
+Prepared downloadable `bluemarketing_one_table_migrations.zip` containing:
+- 146 separate Laravel Blueprint `create_<table>_table.php` application migrations (one per application table);
+- a first, guard-only migration to reject existing populated/protected MySQL DBs;
+- a final relationship-only migration adding the 250 existing source foreign keys AFTER all parent tables exist;
+- an installer that archives original migrations folder into `database/old_migration` and installs new files into normal `database/migrations`.
+- Historical source timestamps retained in filenames where attributable (81 source table mappings); 65 tables without confirmed individual original migration filenames carry the 2026-11-17 baseline timestamp. This does NOT change business record `created_at`, `updated_at` or IDs.
+
+All PHP migration files pass `php -l` but **MySQL native migration execution is not yet tested**. Do not declare production ready or change real database. Use NEW empty local `bluenew_clean_final`; never rerun on `bluenew` or verified `bluenew_clean`.
+
+Added `tools/schema/install_one_table_migrations.ps1`, guarded `--target=bluenew_clean_final` to existing read-only-source data copier, and `--target=bluenew_clean_final --schema-only` to audit. Script supports --resume on validated partial data restore. Do not copy historical migration records into final DB.
+
+Owner next sequence: unzip bundle, run installer from bundle or tracked `tools/schema/install_one_table_migrations.ps1 -BundleFolder <unzipped path>`; create `bluenew_clean_final`; set local DB_DATABASE via process environment, run `php artisan optimize:clear`, plain `php artisan migrate`, then schema-only comparison. Only after schema comparison PASS run copied data preflight/import and reconciliation. If any step fails, repair native Blueprint definitions without touching old restored sources.
+
+**Repo limitation:** The 148 generated Laravel migration files are currently in the downloadable ZIP and require a local install; they have **not** yet been individually committed to GitHub. The tracked installer and importer/audit support are committed; after MySQL acceptance, commit the generated native migration files and legacy archive as a reviewed batch.
