@@ -14,7 +14,7 @@ final class CleanDatabaseApplicationAcceptanceTest extends TestCase
         self::assertStringContainsString("bluenew_clean_final", $source);
         self::assertStringContainsString("app()->environment('local')", $source);
         self::assertStringContainsString("count(\$tables)===147", $source);
-        self::assertStringContainsString("\$history===148", $source);
+        self::assertStringContainsString("\$history===149", $source);
         self::assertStringContainsString("\$sum===120835", $source);
         self::assertStringContainsString("\$fk===250", $source);
         self::assertStringContainsString("NOT EXISTS", $source);
