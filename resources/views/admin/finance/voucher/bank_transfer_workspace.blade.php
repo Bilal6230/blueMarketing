@@ -40,7 +40,18 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
 #bankTransferApp .bt-page-btn:disabled{opacity:.45}
 #bankTransferApp .bt-record-count{font-size:.79rem;color:#657286}
 #bankTransferCreateModal .modal-body label{font-weight:600}
-#bankTransferCreateModal .form-control{min-height:39px}
+#bankTransferApp.bt-page .bt-tools select{font-size:12px}
+#bankTransferApp .bt-filter-row .ts-wrapper{width:100%;min-width:0}
+#bankTransferApp .bt-filter-row .ts-control{min-height:34px;border-radius:5px;font-size:12px}
+.bt-modern-modal .modal-content{overflow:visible!important}
+.bt-modern-modal .modal-body{max-height:calc(100dvh - 205px);overflow-y:auto}
+#bankTransferViewModal .modal-dialog,#bankTransferReverseModal .modal-dialog{max-width:min(540px,calc(100vw - 24px))}
+#bankTransferCreateModal .modal-dialog{max-width:min(820px,calc(100vw - 24px))}
+#bankTransferCreateModal .modal-body .alert-info{font-size:12px;border-radius:6px}
+#bankTransferCreateModal .modal-body textarea{min-height:68px!important}
+#bankTransferCreateModal .modal-body .ts-wrapper{width:100%;min-width:0}
+#bankTransferCreateModal .modal-body .ts-dropdown{z-index:11000!important}
+
 @media(max-width:1150px){#bankTransferApp .bt-filter-row{grid-template-columns:repeat(2,minmax(120px,1fr))}#bankTransferApp .bt-filter-actions{grid-column:1/-1;justify-content:flex-end}}
 @media(max-width:991.98px){body:has(#bankTransferApp) .main-content.page-content,body.sidebar-collapse:has(#bankTransferApp) .main-content.page-content{margin-left:0!important;width:100%!important;max-width:100%;padding:66px 6px 0!important}}
 @media(max-width:520px){#bankTransferApp .bt-filter-row{grid-template-columns:1fr}#bankTransferApp .bt-footer{flex-wrap:wrap}}
@@ -62,7 +73,7 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
             <form id="btFilterForm" class="bt-filter-row">
                 <div><label for="transferFrom">From</label><input type="date" class="form-control" id="transferFrom"></div>
                 <div><label for="transferTo">To</label><input type="date" class="form-control" id="transferTo"></div>
-                <div><label for="transferBankFilter">Account</label><select id="transferBankFilter" class="form-control">
+                <div><label for="transferBankFilter">Account</label><select id="transferBankFilter" class="form-control fvc-tom-select">
                     <option value="">All accounts</option>
                     @foreach($bankAccounts as $bank)<option value="{{ $bank->bank_name }} / {{ $bank->account_title }}">{{ $bank->bank_name }} / {{ $bank->account_title }}</option>@endforeach
                 </select></div>
@@ -102,7 +113,7 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
 @endsection
 
 @section('modal')
-<div class="modal fade" id="bankTransferCreateModal" tabindex="-1" role="dialog" aria-labelledby="bankTransferCreateTitle" aria-hidden="true">
+<div class="modal fade fvc-modern-modal bt-modern-modal" style="--fvc-modal-accent:{{ $kind === 'deposit' ? '#128044' : '#bd3140' }};--fvc-modal-tint:{{ $kind === 'deposit' ? '#e9f8ef' : '#fff0f1' }}" id="bankTransferCreateModal" tabindex="-1" role="dialog" aria-labelledby="bankTransferCreateTitle" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">
         <div class="modal-content">
             <div class="modal-header">
@@ -114,7 +125,7 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
                     <div class="alert alert-info py-2">Voucher number is assigned by the posting workflow. {{ $kind === 'deposit' ? 'Bank debit / Cash credit' : 'Cash debit / Bank credit' }}.</div>
                     @if($kind === 'withdrawal')
                     <div class="form-group"><label for="chequeSource">Verified cleared cheque (optional)</label>
-                        <select id="chequeSource" class="form-control"><option value="">Manual bank withdrawal</option></select>
+                        <select id="chequeSource" class="form-control fvc-tom-select"><option value="">Manual bank withdrawal</option></select>
                         <small class="form-text text-muted">The verified source amount is fixed. A source cannot be posted twice.</small>
                     </div>
                     @endif
@@ -124,12 +135,12 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
                         <div class="form-group col-md-6"><label for="voucherAmount">Amount <span class="text-danger">*</span></label>
                             <input id="voucherAmount" type="number" class="form-control" min="0.01" step="0.01" placeholder="0.00" required></div>
                         <div class="form-group col-md-6"><label for="cashAccount">Cash account <span class="text-muted small">({{ $cashAccounts->count() }} available)</span></label>
-                            <select id="cashAccount" class="form-control" required><option value="">Choose cash account</option>
+                            <select id="cashAccount" class="form-control fvc-tom-select" required><option value="">Choose cash account</option>
                             @foreach($cashAccounts as $account)<option value="{{ $account->id }}">{{ $account->headAccounting?->name }} / {{ $account->subheadAccounting?->name }}</option>@endforeach</select>
                             @if($cashAccounts->isEmpty())<small class="text-danger">Configure an active Cash in Hand project account mapping first.</small>@endif
                         </div>
                         <div class="form-group col-md-6"><label for="bankAccount">Bank account <span class="text-muted small">({{ $bankAccounts->count() }} available)</span></label>
-                            <select id="bankAccount" class="form-control" required><option value="">Choose bank account</option>
+                            <select id="bankAccount" class="form-control fvc-tom-select" required><option value="">Choose bank account</option>
                             @foreach($bankAccounts as $bank)<option value="{{ $bank->id }}">{{ $bank->bank_name }} · {{ $bank->account_title }}{{ $bank->branch ? ' · '.$bank->branch : '' }}</option>@endforeach</select>
                             @if($bankAccounts->isEmpty())<small class="text-danger">Configure an active Project Bank Account mapping first.</small>@endif
                         </div>
@@ -148,7 +159,7 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
     </div>
 </div>
 
-<div class="modal fade" id="bankTransferViewModal" tabindex="-1" role="dialog" aria-labelledby="bankTransferViewTitle" aria-hidden="true">
+<div class="modal fade fvc-modern-modal bt-modern-modal" style="--fvc-modal-accent:{{ $kind === 'deposit' ? '#128044' : '#bd3140' }};--fvc-modal-tint:{{ $kind === 'deposit' ? '#e9f8ef' : '#fff0f1' }}" id="bankTransferViewModal" tabindex="-1" role="dialog" aria-labelledby="bankTransferViewTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document"><div class="modal-content">
         <div class="modal-header"><h5 class="modal-title" id="bankTransferViewTitle">Voucher details</h5>
             <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
@@ -158,8 +169,8 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
     </div></div>
 </div>
 @can('delete voucher')
-<div class="modal fade" id="bankTransferReverseModal" tabindex="-1" aria-labelledby="bankTransferReverseTitle" aria-hidden="true">
- <div class="modal-dialog modal-dialog-centered"><div class="modal-content fvc-modern-modal">
+<div class="modal fade fvc-modern-modal bt-modern-modal" style="--fvc-modal-accent:{{ $kind === 'deposit' ? '#128044' : '#bd3140' }};--fvc-modal-tint:{{ $kind === 'deposit' ? '#e9f8ef' : '#fff0f1' }}" id="bankTransferReverseModal" tabindex="-1" aria-labelledby="bankTransferReverseTitle" aria-hidden="true">
+ <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
   <div class="modal-header"><h5 id="bankTransferReverseTitle" class="modal-title">Reverse Bank Voucher</h5>
    <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
   <form id="bankTransferReverseForm"><div class="modal-body">
@@ -193,10 +204,31 @@ $(function () {
     };
     var printUrl = function (id) { return $root.attr('data-print-base') + '/' + encodeURIComponent(id) + '/print'; };
     var formatMoney = function (value) { return Number(value || 0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); };
-    var showError = function ($box, message) { $box.text(message || 'Request failed').removeClass('d-none'); };
+    // Reuse the CR/DR finance toast/error UX. Never open browser alert dialogs.
+    var feedback = $.financeVoucherFeedback || {};
     var notify = function (type, title, message) {
-        if (window.Swal) Swal.fire({icon:type,title:title,text:message});
-        else window.alert(title + ': ' + message);
+        var text=$.trim([title,message].filter(Boolean).join(' · '));
+        if($.isFunction(feedback.toast))feedback.toast(type,text);
+        else if(window.toastr&&$.isFunction(window.toastr[type]))window.toastr[type](text);
+        else $('<div>',{'class':'alert alert-'+(type==='success'?'success':'danger')+' fvc-feedback-fallback',role:'alert',text:text})
+            .appendTo('body').delay(5000).fadeOut(250,function(){$(this).remove();});
+    };
+    var showError = function ($box, messageOrXhr, defaultMessage) {
+        var message=typeof messageOrXhr==='string'?messageOrXhr:
+            ($.isFunction(feedback.error)?feedback.error(messageOrXhr,defaultMessage):
+              (messageOrXhr.responseJSON||{}).message||defaultMessage||'Request failed');
+        // For server responses pass the sanitized object to the common error handler.
+        if(/sqlstate|stack trace|\\binsert into\\b|\\bexception\\b/i.test(message))
+            message=defaultMessage||'The operation failed. Please retry.';
+        $box.text(message).removeClass('d-none');
+        notify('error','Request failed',message);
+    };
+    var syncSelect = function(selector) {
+        $(selector).each(function(){if(this.tomselect)this.tomselect.sync();});
+    };
+    var initSelects = function() {
+        if($.isFunction(feedback.enhanceSelects))
+            feedback.enhanceSelects($('#bankTransferApp select.fvc-tom-select, #bankTransferCreateModal select.fvc-tom-select'));
     };
     var valid = function () {
         var amount = Number($('#voucherAmount').val());
@@ -274,7 +306,7 @@ $(function () {
             allRows = $.isArray(json.data) ? json.data : [];
             page = 1;drawRows();
         }).fail(function(xhr) {
-            showError($('#transferListError'),(xhr.responseJSON || {}).message || 'Could not load voucher history');
+            showError($('#transferListError'),xhr,'Could not load voucher history');
         });
     };
     columnFilters=$.blueVoucherColumnFilters.init({
@@ -304,6 +336,7 @@ $(function () {
     });
     $('#clearTransferFilters').on('click',function(){
         $('#transferFrom,#transferTo,#transferBankFilter,#transferSearch,#btQuickSearch').val('');
+        syncSelect('#transferBankFilter');
         activeFilters={from:'',to:'',bank:'',search:''};
         columnSort='date';columnDirection='desc';columnFilters.reset();page=1;drawRows();
     });
@@ -357,7 +390,7 @@ $(function () {
             notify('success','Voucher reversed',response.message||'Reversal posted');
             loadHistory();
         }).fail(function(xhr){
-            showError($('#btReverseError'),(xhr.responseJSON||{}).message||'Unable to reverse voucher');
+            showError($('#btReverseError'),xhr,'Unable to reverse voucher');
         }).always(function(){$button.prop('disabled',false);});
     });
     @endcan
@@ -374,8 +407,8 @@ $(function () {
                     .appendTo($cheque);
             });
         }).fail(function(xhr){
-            showError($('#transferFormError'),(xhr.responseJSON || {}).message || 'Could not load cleared cheques');
-        }).always(function(){chequeLoading=false;valid();});
+            showError($('#transferFormError'),xhr,'Could not load cleared cheques');
+        }).always(function(){syncSelect('#chequeSource');chequeLoading=false;valid();});
     };
     $('#chequeSource').on('change',function(){
         var $selected=$(this).find('option:selected'),linked=!!$selected.val();
@@ -390,6 +423,7 @@ $(function () {
     });
     $('#bankTransferCreateModal').on('show.bs.modal',function(){
         $form[0].reset();pendingRequestKey=null;
+        syncSelect('#cashAccount,#bankAccount,#chequeSource');
         $('#voucherAmount').prop('readonly',false);
         $('#transferFormError').addClass('d-none');
         loadCheques();valid();
@@ -419,9 +453,11 @@ $(function () {
             notify('success','Voucher posted','Posting batch #'+json.data.posting_batch_id);
             loadHistory();
         }).fail(function(xhr){
-            showError($('#transferFormError'),(xhr.responseJSON || {}).message || 'Voucher could not be posted');
+            showError($('#transferFormError'),xhr,'Voucher could not be posted');
         }).always(function(){busy=false;valid();});
     });
+    initSelects();
+    $('#bankTransferCreateModal').on('shown.bs.modal',initSelects);
     loadHistory();
 });
 </script>
