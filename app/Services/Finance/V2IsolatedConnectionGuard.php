@@ -27,11 +27,11 @@ final class V2IsolatedConnectionGuard
             return true;
         }
 
-        // The owner's known disposable LOCAL 'bluenew' database is the only
-        // normal ERP DB permitted to use typed-source writers automatically.
-        // No mode flag, wildcard opt-in or production fallback is needed.
+        // Approved local ERP databases share one unified finance workflow.
+        // Keep the allowlist explicit: never enable finance writes on a remote
+        // or unreviewed database just because its name looks similar.
         $localTestDatabase = $environment === 'local'
-            && $database === 'bluenew';
+            && in_array($database, ['bluenew', 'bluenew_clean_final'], true);
 
         // Read/write replicas can override the top-level host: reject them.
         return !($driver !== 'mysql'
