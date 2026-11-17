@@ -127,9 +127,9 @@ final class MultiFamilyPostingTest extends TestCase
             $t->unsignedBigInteger('amount_minor');
         });
 
-        (require base_path('database/v2_migrations/2026_10_30_000100_create_v2_finance_posting_core.php'))->up();
-        (require base_path('database/v2_migrations/2026_10_31_000110_create_v2_commission_detail_links.php'))->up();
-        (require base_path('database/v2_migrations/2026_10_31_000120_create_v2_stock_project_approvals.php'))->up();
+        (require base_path('database/finance_legacy_migrations/2026_10_30_000100_create_finance_finance_posting_core.php'))->up();
+        (require base_path('database/finance_legacy_migrations/2026_10_31_000110_create_finance_commission_detail_links.php'))->up();
+        (require base_path('database/finance_legacy_migrations/2026_10_31_000120_create_finance_stock_project_approvals.php'))->up();
 
         DB::table('projects')->insert([['id' => 1], ['id' => 2]]);
         DB::table('users')->insert(['id' => 1]);

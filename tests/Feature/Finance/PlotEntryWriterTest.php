@@ -46,8 +46,8 @@ class PlotEntryWriterTest extends TestCase
             $t->unsignedBigInteger('subhead_accounting_id'); $t->unsignedBigInteger('customer_id')->nullable();
             $t->unsignedBigInteger('plot_id')->nullable(); $t->unique(['id', 'project_id']);
         });
-        (require base_path('database/v2_migrations/2026_10_30_000100_create_v2_finance_posting_core.php'))->up();
-        (require base_path('database/v2_migrations/2026_11_05_000300_create_v2_plot_receipt_purchase.php'))->up();
+        (require base_path('database/finance_legacy_migrations/2026_10_30_000100_create_finance_finance_posting_core.php'))->up();
+        (require base_path('database/finance_legacy_migrations/2026_11_05_000300_create_finance_plot_receipt_purchase.php'))->up();
         DB::table('projects')->insert([['id' => 1], ['id' => 2]]);
         DB::table('users')->insert(['id' => 7]);
         DB::table('leads')->insert([
@@ -280,7 +280,7 @@ class PlotEntryWriterTest extends TestCase
         Schema::drop('finance_plot_receipt_postings');
         Schema::drop('finance_plot_receipt_allocations');
         Schema::drop('finance_plot_receipts');
-        $pilot = require base_path('database/local_pilot_migrations/2026_11_14_000100_create_v2_plot_receipt_storage.php');
+        $pilot = require base_path('database/local_finance_migrations/2026_11_14_000100_create_finance_plot_receipt_storage.php');
         $pilot->up();
         $pilot->up(); // Running again must not overwrite receipt evidence.
         $this->assertTrue(Schema::hasTable('finance_plot_receipts'));
@@ -305,7 +305,7 @@ class PlotEntryWriterTest extends TestCase
     public function test_phase07_mysql_claim_fk_repair_refuses_sqlite_without_changes(): void
     {
         $before = DB::table('finance_posting_batches')->count();
-        $repair = require base_path('database/local_pilot_migrations/2026_11_14_000101_repair_v2_plot_receipt_claim_fk.php');
+        $repair = require base_path('database/local_finance_migrations/2026_11_14_000101_repair_finance_plot_receipt_claim_fk.php');
         try {
             $repair->up();
             $this->fail('MySQL claim recovery must not execute on the SQLite fixture.');
@@ -318,7 +318,7 @@ class PlotEntryWriterTest extends TestCase
 
     public function test_phase07_mysql_claim_fk_repair_refuses_production_environment(): void
     {
-        $repair = require base_path('database/local_pilot_migrations/2026_11_14_000101_repair_v2_plot_receipt_claim_fk.php');
+        $repair = require base_path('database/local_finance_migrations/2026_11_14_000101_repair_finance_plot_receipt_claim_fk.php');
         config()->set('app.env', 'production');
         try {
             $repair->up();
@@ -332,8 +332,8 @@ class PlotEntryWriterTest extends TestCase
 
     public function test_phase07_original_fk_has_safe_mysql_identifier_and_audit_checks_integrity(): void
     {
-        $migration = file_get_contents(base_path('database/local_pilot_migrations/2026_11_14_000100_create_v2_plot_receipt_storage.php'));
-        $repair = file_get_contents(base_path('database/local_pilot_migrations/2026_11_14_000101_repair_v2_plot_receipt_claim_fk.php'));
+        $migration = file_get_contents(base_path('database/local_finance_migrations/2026_11_14_000100_create_finance_plot_receipt_storage.php'));
+        $repair = file_get_contents(base_path('database/local_finance_migrations/2026_11_14_000101_repair_finance_plot_receipt_claim_fk.php'));
         $audit = file_get_contents(app_path('Console/Commands/AuditPlotReceiptReadiness.php'));
         $this->assertLessThanOrEqual(64, strlen('v2_plot_rcpt_post_claim_fk'));
         $this->assertStringContainsString("'v2_plot_rcpt_post_claim_fk'", $migration);
@@ -400,7 +400,7 @@ class PlotEntryWriterTest extends TestCase
         Schema::drop('finance_plot_purchases');
 
         $receiptCount = DB::table('finance_plot_receipts')->count();
-        $pilot = require base_path('database/local_pilot_migrations/2026_11_14_000200_create_v2_plot_purchase_storage.php');
+        $pilot = require base_path('database/local_finance_migrations/2026_11_14_000200_create_finance_plot_purchase_storage.php');
         $pilot->up();
         $pilot->up(); // A repeat must not wipe already installed storage.
         $this->assertSame($receiptCount, DB::table('finance_plot_receipts')->count());
@@ -430,7 +430,7 @@ class PlotEntryWriterTest extends TestCase
     public function test_phase08_local_migration_rejects_partial_storage_without_dropping_purchase_data(): void
     {
         Schema::drop('finance_plot_purchase_postings');
-        $pilot = require base_path('database/local_pilot_migrations/2026_11_14_000200_create_v2_plot_purchase_storage.php');
+        $pilot = require base_path('database/local_finance_migrations/2026_11_14_000200_create_finance_plot_purchase_storage.php');
         try {
             $pilot->up();
             $this->fail('Partially installed purchase storage must stop rather than rebuilding.');
@@ -443,7 +443,7 @@ class PlotEntryWriterTest extends TestCase
 
     public function test_phase08_local_migration_refuses_non_isolated_production_environment(): void
     {
-        $pilot = require base_path('database/local_pilot_migrations/2026_11_14_000200_create_v2_plot_purchase_storage.php');
+        $pilot = require base_path('database/local_finance_migrations/2026_11_14_000200_create_finance_plot_purchase_storage.php');
         config()->set('app.env', 'production');
         try {
             $pilot->up();
@@ -465,7 +465,7 @@ class PlotEntryWriterTest extends TestCase
 
     public function test_phase07_local_migration_fails_closed_outside_isolated_testing(): void
     {
-        $pilot = require base_path('database/local_pilot_migrations/2026_11_14_000100_create_v2_plot_receipt_storage.php');
+        $pilot = require base_path('database/local_finance_migrations/2026_11_14_000100_create_finance_plot_receipt_storage.php');
         config()->set('app.env', 'production');
         try {
             $pilot->up();
@@ -481,7 +481,7 @@ class PlotEntryWriterTest extends TestCase
     public function test_phase07_local_migration_rejects_partially_existing_receipt_storage(): void
     {
         Schema::drop('finance_plot_receipt_postings');
-        $pilot = require base_path('database/local_pilot_migrations/2026_11_14_000100_create_v2_plot_receipt_storage.php');
+        $pilot = require base_path('database/local_finance_migrations/2026_11_14_000100_create_finance_plot_receipt_storage.php');
         try {
             $pilot->up();
             $this->fail('Partially existing historical finance storage must never be rebuilt.');

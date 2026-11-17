@@ -59,8 +59,8 @@ class OriginalVoucherWorkflowHttpTest extends TestCase
             $t->id(); $t->integer('project_id'); $t->string('transaction_type'); $t->integer('type_id'); $t->date('date');
             $t->decimal('amount_in', 15, 2); $t->decimal('amount_out', 15, 2); $t->integer('is_approve'); $t->integer('is_active'); $t->timestamps();
         });
-        (require base_path('database/v2_migrations/2026_10_30_000100_create_v2_finance_posting_core.php'))->up();
-        (require base_path('database/v2_migrations/2026_10_31_000110_create_v2_commission_detail_links.php'))->up();
+        (require base_path('database/finance_legacy_migrations/2026_10_30_000100_create_finance_finance_posting_core.php'))->up();
+        (require base_path('database/finance_legacy_migrations/2026_10_31_000110_create_finance_commission_detail_links.php'))->up();
         DB::table('projects')->insert([['id' => 1, 'is_active' => 1], ['id' => 2, 'is_active' => 1]]);
         DB::table('head_accountings')->insert([['id' => 10, 'name' => 'Cash', 'acct_type' => 1], ['id' => 20, 'name' => 'Party', 'acct_type' => 2]]);
         DB::table('subhead_accountings')->insert([['id' => 100, 'name' => 'Cash account'], ['id' => 200, 'name' => 'Party account']]);
@@ -123,7 +123,7 @@ class OriginalVoucherWorkflowHttpTest extends TestCase
         });
         (require base_path('database/workflow_migrations/2026_10_31_000010_create_original_workflow_custody.php'))->up();
         (require base_path('database/migrations/2026_11_05_000004_add_bank_account_to_settlement_events.php'))->up();
-        (require base_path('database/v2_migrations/2026_11_05_000200_create_v2_bank_transfer_sources.php'))->up();
+        (require base_path('database/finance_legacy_migrations/2026_11_05_000200_create_finance_bank_transfer_sources.php'))->up();
         DB::table('project_bank_accounts')->insert(['id' => 1, 'project_id' => 1, 'account_mapping_id' => 101,
             'bank_name' => 'Test Bank', 'account_title' => 'Project account', 'is_active' => 1]);
         $user = User::findOrFail(1);
@@ -865,7 +865,7 @@ class OriginalVoucherWorkflowHttpTest extends TestCase
         Schema::table('stock_bills', fn (Blueprint $t) => $t->unsignedBigInteger('project_id')->nullable());
         Schema::table('stock_entry_lines', fn (Blueprint $t) => $t->unsignedBigInteger('project_id')->nullable());
         Schema::table('stock_bill_lines', fn (Blueprint $t) => $t->unsignedBigInteger('project_id')->nullable());
-        (require base_path('database/v2_migrations/2026_10_31_000120_create_v2_stock_project_approvals.php'))->up();
+        (require base_path('database/finance_legacy_migrations/2026_10_31_000120_create_finance_stock_project_approvals.php'))->up();
         DB::table('stock_entries')->insert(['id' => 70, 'project_id' => 1, 'entry_date' => '2026-10-31', 'slip_no' => '70', 'flow' => 'IN', 'party_id' => 1]);
         DB::table('stock_bills')->insert(['id' => 80, 'project_id' => 1, 'bill_date' => '2026-10-31', 'bill_no' => '80', 'type' => 'purchase', 'party_id' => 1, 'total_minor' => 3000]);
         DB::table('stock_entry_lines')->insert(['project_id' => 1, 'entry_id' => 70, 'item_id' => 1, 'qty' => '1.000', 'rate_minor' => 3000, 'amount_minor' => 3000]);
