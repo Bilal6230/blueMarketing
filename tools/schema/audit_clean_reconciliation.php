@@ -4,11 +4,16 @@ declare(strict_types=1);
 /**
  * Read-only local audit of schema fingerprints and finance totals.
  * php tools/schema/audit_clean_reconciliation.php
+ * php tools/schema/audit_clean_reconciliation.php --target=bluenew_clean_native --schema-only
  */
-if (PHP_SAPI !== 'cli' || $argc !== 1) {
-    fwrite(STDERR,"Usage: php tools/schema/audit_clean_reconciliation.php\n");
+if (PHP_SAPI !== 'cli') exit(2);
+$options=array_slice($argv,1);
+if (array_diff($options,['--target=bluenew_clean_native','--schema-only'])) {
+    fwrite(STDERR,"Usage: php tools/schema/audit_clean_reconciliation.php [--target=bluenew_clean_native] [--schema-only]\n");
     exit(2);
 }
+$schemaOnly=in_array('--schema-only',$options,true);
+$targetName=in_array('--target=bluenew_clean_native',$options,true)?'bluenew_clean_native':'bluenew_clean';
 require dirname(__DIR__,2).'/vendor/autoload.php';
 $app=require dirname(__DIR__,2).'/bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
@@ -19,14 +24,14 @@ $conn=DB::connection();
 $cfg=config('database.connections.'.config('database.default'));
 if (!app()->environment('local') || $conn->getDriverName()!=='mysql'
     || !in_array(strtolower((string)($cfg['host']??'')),['localhost','127.0.0.1','::1'],true)
-    || !in_array($conn->getDatabaseName(),['bluenew','bluenew_clean'],true)) {
+    || !in_array($conn->getDatabaseName(),['bluenew','bluenew_clean','bluenew_clean_native'],true)) {
     throw new RuntimeException('This audit is restricted to local bluenew/bluenew_clean.');
 }
 $quote=static function(string $id): string {
     if(!preg_match('/^[a-zA-Z0-9_]+$/D',$id)) throw new RuntimeException('Unsafe identifier');
     return chr(96).$id.chr(96);
 };
-$old='bluenew';$new='bluenew_clean';$errors=[];
+$old='bluenew';$new=$targetName;$errors=[];
 $rows=static fn(string $sql,array $params=[])=>$conn->select($sql,$params);
 $signature=static function(string $db,string $sql) use($rows): array {
     return array_map(static function($r):array{return array_values((array)$r);},$rows($sql,[$db]));
@@ -68,6 +73,15 @@ foreach($queries as $title=>$sql) {
             }
         }
     }
+}
+
+if ($schemaOnly) {
+    if ($errors) {
+        fwrite(STDERR,"SCHEMA AUDIT FAILED:\n - ".implode("\n - ",$errors)."\n");
+        exit(1);
+    }
+    echo "PASS: schema-only signatures match for $new. Data not checked.\n";
+    exit(0);
 }
 
 // Read-only equality checks on money columns, not a claim of ledger correctness.
