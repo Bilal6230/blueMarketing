@@ -17,11 +17,10 @@ use Tests\TestCase;
  * Actual HTTP middleware -> controller -> typed Finance posting gateway integration.
  * SQLite :memory: only. No external endpoints, V1 mutations or live DB.
  *
- * finance routes are OFF when the app boots; an enabled scenario explicitly
- * re-loads the same routes/api.php definitions in the in-memory router,
- * after setting flags and re-booting the opt-in Gate provider.
+ * Unified finance routes are registered with the normal application.
+ * Each request requires authenticated project-scoped finance permissions.
  */
-final class FinancefinanceHttpSafetyTest extends TestCase
+final class FinanceApiHttpSafetyTest extends TestCase
 {
     protected function setUp(): void
     {
@@ -34,7 +33,7 @@ final class FinancefinanceHttpSafetyTest extends TestCase
         DB::statement('PRAGMA foreign_keys = ON');
 
         // The real Spatie PermissionRegistrar registers a Gate::before
-        // callback and queries permissions BEFORE the Finance finance Gate handler.
+        // callback and queries permissions before the finance Gate handler.
         // Use the application's actual permission migration in :memory:
         // instead of mocking away a security-critical authorization layer.
         // No non-test database is ever reachable (DatabaseIsolation guard).
