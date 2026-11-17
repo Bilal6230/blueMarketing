@@ -41,6 +41,5 @@
                 </tr></tfoot>
             </table>
         </div>
-        <div id="financeReportFooter" class="fvr-footer" aria-label="Report pagination"></div>
     </section>
 </div>
