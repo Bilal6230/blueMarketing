@@ -16,7 +16,7 @@ final class UnifiedNormalLedgerReport
 {
     public function available(): bool
     {
-        return V2OriginalWorkflowAccess::mergedWriterAllowed()
+        return FinanceWorkflowAccess::mergedWriterAllowed()
             && Schema::hasTable('finance_posting_batches')
             && Schema::hasTable('finance_posting_lines')
             && Schema::hasTable('finance_posting_source_claims');
@@ -83,7 +83,7 @@ final class UnifiedNormalLedgerReport
         // The original typed report verifies source claims and real FK links
         // before furnishing document numbers. Keep only lines without legacy
         // ledger attribution; these are absent from the old ledger reader.
-        $postingLines = (new V2PostingGateway())->postingLines($projectId, $from, $through);
+        $postingLines = (new PostingGateway())->postingLines($projectId, $from, $through);
         $unlinked = [];
         foreach ($postingLines as $line) {
             if ($line['legacy_ledger_id'] === null) {
@@ -91,7 +91,7 @@ final class UnifiedNormalLedgerReport
             }
         }
         if ($unlinked) {
-            foreach ((new V2OriginalLedgerReport())->rows($projectId, $from, $through) as $line) {
+            foreach ((new OriginalLedgerReport())->rows($projectId, $from, $through) as $line) {
                 if (isset($unlinked[(int) $line['posting_line_id']])) {
                     $line['scope'] = 'typed_without_legacy_link';
                     $rows[] = $line;
