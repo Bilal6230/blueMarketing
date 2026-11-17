@@ -276,3 +276,25 @@ php artisan serve --host=127.0.0.1 --port=8001
 Open `http://127.0.0.1:8001/login`, use existing local credentials, inspect home/dashboard, user roles, project navigation, ledger, JV listing, cheque/online intake listing, and report pages **READ-ONLY**. Do not save vouchers/approval actions during first pass. Since copied token/session records may exist, perform fresh browser login rather than assuming sessions carry over. Avoid putting the `bluenew_clean_final` database in permanent `.env` until deliberate switch-over is approved.
 
 Business acceptance remains PENDING until owner reports actual read-only gate and browser results. Independent bookkeeping correctness and index/query-plan optimization still future milestones.
+
+
+## 2026-11-17 — Performance/index optimization Phase 1: read-only evidence gate
+
+User approved performance + indexing milestone, deferring all Create/Edit/Delete/approval business flow changes until they provide rules. Inspected actual current controllers `JournalVoucherController`, `LedgerController`, `ReportController`, `BookingController`, `Finance/VoucherController`. Common access patterns: journal voucher `project_id,type,id DESC`; ledger `type,type_id,is_active`, account active ledger; customer ledger `project_id,transaction_type`; bookings `project_id,cancel_status`; leads `project_id,id`; works by `lead_id`; JV details by parent; finance posting batches by project and lines by batch.
+
+Added `tools/schema/audit_query_performance.php` read-only audit. Requires APP_ENV=local and DB_DATABASE=bluenew_clean_final and local MySQL host. Inventory information_schema.STATISTICS and columns; identify exact B-tree left-prefix index overlap candidates; run non-executing EXPLAIN on 12 representative queries, show chosen index, estimated row counts, filesort/full-scan warnings. Optional `--json` yields full JSON plans. No index drop/create, no writes, no EXPLAIN ANALYZE; test `tests/Unit/CleanDatabasePerformanceAuditTest.php` checks read-only characteristics. Do not assert index redundancies without considering foreign keys/unique constraints and representative runtime data distribution. This static unit test does not substitute for local MySQL.
+
+Owner commands:
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+$env:APP_ENV = 'local'
+$env:DB_DATABASE = 'bluenew_clean_final'
+php artisan optimize:clear
+php -l tools/schema/audit_query_performance.php
+php artisan test --filter=CleanDatabasePerformanceAuditTest
+php tools/schema/audit_query_performance.php
+Remove-Item Env:\DB_DATABASE
+Remove-Item Env:\APP_ENV
+```
+Collect actual EXPLAIN/index candidate output. Next implementation is **measured** composite/covering indexes and removal only for vetted truly redundant candidates in *fresh separate incremental migrations* that preserve previously validated baseline DB and migrations; validate source/destination rows, FK, and query plans. Keep C/E/D logic untouched.
