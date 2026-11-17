@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\Finance\UnifiedNormalLedgerReport;
-use App\Services\Finance\V2PostingGateway;
+use App\Services\Finance\PostingGateway;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -36,7 +36,7 @@ final class AuditNormalFinanceMerge extends Command
         $to = $this->option('to') ?: null;
         try {
             $mixed = $service->rows($projectId, $from, $to);
-            $typed = (new V2PostingGateway())->postingLines($projectId, $from, $to);
+            $typed = (new PostingGateway())->postingLines($projectId, $from, $to);
         } catch (\Throwable $exception) {
             $this->error('FAIL: ledger/source integrity or date validation failed (read-only).');
             $this->line($exception->getMessage());
