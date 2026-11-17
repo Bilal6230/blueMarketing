@@ -1443,6 +1443,37 @@ class VoucherController extends Controller
         return response()->json(['status' => 'success', 'data' => $result], $result['replayed'] ? 200 : 201);
     }
 
+    /** Cancel a manual BD/BW by an immutable counter-posting. */
+    public function reverseTransferVoucher(Request $request, string $kind, int $postingBatch)
+    {
+        abort_unless(in_array($kind, ['deposit', 'withdrawal'], true), 404);
+        $projectId = (int) getSelectedTown();
+        \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+        abort_unless(auth()->user()?->can('delete voucher'), 403);
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'min:3', 'max:200'],
+            'effective_date' => ['required', 'date_format:Y-m-d'],
+            'request_key' => ['nullable', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
+        ]);
+        try {
+            $id = (new \App\Services\Finance\V2BankTransferLifecycleService())->reverse(
+                $projectId, $kind, $postingBatch,
+                $data['request_key'] ?? (string) \Illuminate\Support\Str::uuid(),
+                $data['effective_date'], trim($data['reason']), (int) auth()->id()
+            );
+        } catch (\DomainException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage() === 'BANK_TRANSFER_LINKED_CHEQUE_REQUIRES_CUSTODY_RELEASE'
+                    ? 'Linked cheque withdrawals cannot be reversed without releasing cheque custody.'
+                    : 'This voucher cannot be reversed. Check original posting, date and reversal history.',
+            ], 409);
+        }
+        return response()->json(['status' => 'success',
+            'message' => 'Bank voucher reversed. Original posting is preserved.',
+            'data' => ['posting_batch_id' => $id]]);
+    }
+
     public function transferVoucherHistory(string $kind)
     {
         abort_unless(in_array($kind, ['deposit', 'withdrawal'], true), 404);
@@ -1462,12 +1493,16 @@ class VoucherController extends Controller
                 $query->where('cash_head.name', 'LIKE', '%cash%')
                     ->orWhere('cash_child.name', 'LIKE', '%cash%');
             })->orderByDesc('batch.effective_date')->orderByDesc('batch.id')
+            ->leftJoin('finance_posting_batches as reversed_batch', 'reversed_batch.reversal_of_batch_id', '=', 'batch.id')
             ->get(['transfer.posting_batch_id', 'transfer.amount', 'transfer.narration', 'bank.bank_name', 'bank.account_title',
-                'batch.voucher_series', 'batch.voucher_number', 'batch.effective_date', 'cash_head.name as cash_name', 'cash_child.name as cash_child_name', 'cheque.type_id as cheque_number', 'cheque.t_number as cheque_reference'])
+                'batch.voucher_series', 'batch.voucher_number', 'batch.effective_date', 'cash_head.name as cash_name', 'cash_child.name as cash_child_name', 'cheque.type_id as cheque_number', 'cheque.t_number as cheque_reference',
+                'reversed_batch.id as reversal_batch_id', 'transfer.linked_customer_ledger_id'])
             ->unique('posting_batch_id')->values()->map(fn ($r) => ['posting_batch_id' => (int) $r->posting_batch_id,
                 'voucher' => (string) $r->voucher_series.'-'.($r->voucher_number ?: $r->posting_batch_id), 'date' => substr((string) $r->effective_date, 0, 10),
                 'cash_account' => trim((string) $r->cash_name.' / '.(string) $r->cash_child_name, ' /'), 'bank' => trim((string) $r->bank_name.' / '.(string) $r->account_title, ' /'),
-                'cheque' => $r->cheque_number ? 'CP-'.$r->cheque_number.' / '.(string) $r->cheque_reference : '', 'amount' => (string) $r->amount, 'narration' => (string) $r->narration]);
+                'cheque' => $r->cheque_number ? 'CP-'.$r->cheque_number.' / '.(string) $r->cheque_reference : '', 'amount' => (string) $r->amount, 'narration' => (string) $r->narration,
+                'reversed' => $r->reversal_batch_id !== null,
+                'can_reverse' => $r->reversal_batch_id === null && $r->linked_customer_ledger_id === null]);
         return response()->json(['data' => $rows]);
     }
 
