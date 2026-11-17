@@ -11,7 +11,7 @@ class AppServiceProvider extends ServiceProvider
     public function register()
     {
         $this->app->scoped('finance.original.accounts', function () {
-            return \App\Services\Finance\V2OriginalWorkflowAccess::enabled()
+            return \App\Services\Finance\FinanceWorkflowAccess::enabled()
                 ? \App\Models\ProjectHeadSubhead::with(['headAccounting', 'subheadAccounting'])
                     ->where('project_id', (int) getSelectedTown())->orderBy('id')->get()
                 : collect();
