@@ -400,6 +400,11 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::get('/data', 'data')->name('data');
         Route::get('/sources/{customerLedger}/print', 'printSource')->whereNumber('customerLedger')->name('source.print');
     });
+    Route::post('finance/daily-vouchers/sources/{customerLedger}/reverse',
+        [\App\Http\Controllers\Finance\DailyVoucherDirectoryController::class,'reverseTypedCashSource'])
+        ->whereNumber('customerLedger')
+        ->middleware(['permission:delete voucher','throttle:10,1'])
+        ->name('finance.daily-vouchers.sources.reverse');
     Route::get('finance/daily-vouchers/revise/{customerLedger}', [\App\Http\Controllers\Finance\RejectedCashVoucherController::class,'edit'])
         ->middleware(['permission:update voucher'])->name('finance.daily-vouchers.revise.edit');
     Route::post('finance/daily-vouchers/revise/{customerLedger}', [\App\Http\Controllers\Finance\RejectedCashVoucherController::class,'store'])
