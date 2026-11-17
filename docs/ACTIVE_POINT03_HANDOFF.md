@@ -1,5 +1,16 @@
 # BlueMarketing — ACTIVE HANDOFF (new chat continuity)
 
+## 2026-11-17 — NORMAL ERP DEFAULT WITHOUT FINANCE_NORMAL_ERP_MODE (COMMITTED; LOCAL ACCEPTANCE OPEN)
+- User explicitly requests shift into normal ERP permanently without setting `FINANCE_NORMAL_ERP_MODE=true`.
+- `V2OriginalWorkflowAccess::normalErpMode()` now selects ordinary ERP automatically for `APP_ENV=local` with a nonempty, non-`bluemarketing_v2_*` DB name, regardless of old mode/pilot flags. `selected()/enabled()` still keep isolated V2 DB routes separate.
+- `V2IsolatedConnectionGuard` recognizes the owner's **exact** local MySQL `bluenew` automatically, without the old switch or explicit legacy test DB acknowledgement; it STILL rejects remote host, URL override, replicas, prod/staging/dev/client names, non-local environments and arbitrary database names.
+- Removed active `FINANCE_NORMAL_ERP_MODE` option from `config/finance.php` and `.env.example`. Existing value in user's unversioned local `.env` is now ignored; user can delete its line after pull, but this is not required. Existing V2 pilot flags remain relevant for isolated pilot DBs, not normal workspaces.
+- Source-aware merge bridge from previous batch remains active on exact local `bluenew`: original typed EC/ECP writers, guarded Commission typed Draft/Edit/Reverse, read/write Bank/Transfer/Plot Receipt/Purchase endpoints, alongside original legacy writers. No new accounting rewrite, migrations or SQL deletes.
+- Updated `V2LocalTestDatabaseGuardTest`, `FinanceVoucherUnifiedComponentsTest` and `OriginalVoucherV2WorkflowHttpTest` to assert default normal mode despite obsolete flag false and to retain isolated V2 boundary.
+- **Important outstanding:** This removes the *local toggle dependency*, NOT the full project V2-vs-legacy integration. Production and other databases still do not automatically gain typed write access. Original CR/CP/PPR and JV/SV typed mutations, EC Edit/Delete, unified legacy+typed ledger reporting and complete browser acceptance remain open. Do not claim entire V2 merge is complete.
+- Pending verification on owner LOCAL: pull; `php artisan optimize:clear`; `php artisan view:cache`; PHP lint on access/guard/provider/CV; PHPUnit `--filter=V2LocalTestDatabaseGuardTest`, `--filter=FinanceVoucherUnifiedComponentsTest`, `--filter=OriginalVoucherV2WorkflowHttpTest`. Browser-check normal vouchers and typed source operations with flags omitted, and compare ledger totals. No destructive database reset needed.
+
+
 ## 2026-11-17 — NORMAL ERP MERGE BATCH: TYPED WORKSPACE ACCESS + CV SOURCE WRITER
 - Owner clarified target: ALL existing V2 voucher operations/designs must be accessible from ordinary ERP UI; V2 must not be disabled as a substitute for integration. No blanket mode flip or ledger duplication.
 - On normal LOCAL `bluenew` only, added `V2OriginalWorkflowAccess::mergedWriterAllowed()` using the already strict `V2IsolatedConnectionGuard`. Kept `selected()` and `enabled()` FALSE in normal mode so existing legacy vouchers still follow original legacy routes; typed endpoints now authorize the guarded normal merge separately.
