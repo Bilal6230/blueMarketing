@@ -482,7 +482,7 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $actions=file_get_contents(resource_path('views/admin/reports/vouchers/actions.blade.php'));
         $config=file_get_contents(config_path('finance.php'));
 
-        $this->assertStringContainsString("'normal_erp_mode' => env('FINANCE_NORMAL_ERP_MODE', false)", $config);
+        $this->assertStringNotContainsString("'normal_erp_mode' => env(", $config);
         $this->assertStringContainsString("!str_starts_with(\$database, 'bluemarketing_v2_')", $access);
         $this->assertStringContainsString('if (self::normalErpMode()) return false;', $access);
         $this->assertStringContainsString('V2OriginalWorkflowAccess::normalErpMode()', $approval);
@@ -512,8 +512,8 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString('NORMAL-EC-', $booking);
         $this->assertStringContainsString('V2ExtraChargeBalance', $balance);
         $this->assertStringContainsString('finance_extra_charge_sources', $balance);
-        $this->assertStringContainsString("config('finance.normal_erp_mode') === true", $guard);
-        $this->assertStringContainsString('&& $database === \'bluenew\'', $guard);
+        $this->assertStringNotContainsString("config('finance.normal_erp_mode') === true", $guard);
+        $this->assertStringContainsString("&& $database === 'bluenew'", $guard);
     }
 
 
