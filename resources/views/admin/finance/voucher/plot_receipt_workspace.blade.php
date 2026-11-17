@@ -18,7 +18,8 @@
  data-history-url="{{ route('finance.voucher.plot-receipt.history') }}"
  data-post-url="{{ route('finance.voucher.plot-receipt.post') }}"
  data-details-base="{{ url('admin/finance/voucher/plot-receipt') }}"
- data-print-base="{{ url('admin/finance/voucher/plot-receipt') }}">
+ data-print-base="{{ url('admin/finance/voucher/plot-receipt') }}"
+ data-void-base="{{ url('admin/finance/voucher/plot-receipt') }}">
  <div class="bm-voucher-heading pr-heading d-flex align-items-center justify-content-between">
   <div><h2>Plot Receive Payment</h2><div class="bm-voucher-subtitle pr-subtitle">Selected project records · Read-only history</div></div>
   <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm">Dashboard</a>
@@ -87,6 +88,20 @@
   <div class="modal-body" id="prDetailsBody"></div>
  </div></div>
 </div>
+@can('delete voucher')
+<div class="modal fade" id="prVoidModal" tabindex="-1" role="dialog" aria-labelledby="prVoidTitle" aria-hidden="true">
+ <div class="modal-dialog modal-dialog-centered"><div class="modal-content fvc-modern-modal">
+  <div class="modal-header"><h5 id="prVoidTitle" class="modal-title">Reverse Plot Receipt</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
+  <form id="prVoidForm"><div class="modal-body">
+   <p class="text-muted small">This preserves the original posting and creates exact reversing entries.</p>
+   <label for="prVoidReason">Reason</label><textarea id="prVoidReason" class="form-control" required minlength="3" maxlength="200" rows="3"></textarea>
+   <label for="prVoidDate" class="mt-2">Effective date</label><input id="prVoidDate" type="date" class="form-control" required value="{{ now()->toDateString() }}">
+   <div id="prVoidError" class="alert alert-danger d-none mt-2" role="alert"></div>
+  </div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button>
+   <button id="prVoidSubmit" type="submit" class="btn btn-danger">Reverse voucher</button></div></form>
+ </div></div>
+</div>
+@endcan
 @endsection
 
 @section('js')
@@ -109,7 +124,7 @@
  };
  var getValue=function(row,field){
   var map={date:row.date,number:row.number,customer:row.customer,detail:row.narration,
-   amount:row.amount,status:'Posted'};
+   amount:row.amount,status:row.reversed?'Reversed':'Posted'};
   return String(map[field]==null?'':map[field]);
  };
  var selected=function(){
@@ -161,8 +176,12 @@
    $row.append($('<td>').text(start+index+1),$('<td>').text(r.date));
    $row.append($('<td>').append($('<strong>').text(r.number)));
    $row.append($('<td>').text(r.customer),$('<td>').text(r.narration));
-   $row.append($('<td>',{'class':'text-right'}).text(money(r.amount)),$('<td>').text('Posted'));
-   $row.append($('<td>',{'class':'blue-actions-cell'}).append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pr-detail','data-id':r.id,text:'Details'})));
+   $row.append($('<td>',{'class':'text-right'}).text(money(r.amount)),$('<td>').text(r.reversed?'Reversed':'Posted'));
+   var $actions=$('<td>',{'class':'blue-actions-cell'}).append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pr-detail','data-id':r.id,text:'Details'}));
+   @can('delete voucher')
+   if(!r.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pr-void ml-1','data-id':r.id,text:'Reverse'}));
+   @endcan
+   $row.append($actions);
    $body.append($row);
   });
   if($.blueActionMenu)$.blueActionMenu.enhance($body.find('td.blue-actions-cell'));
@@ -231,6 +250,27 @@
  $('#prLength').on('change',function(){page=1;drawHistory();});
  $('#prQuickSearch').on('input',function(){page=1;drawHistory();});
  $('#prHistoryRows').on('click','.pr-detail',function(){showDetails($(this).attr('data-id'));});
+ @can('delete voucher')
+ $('#prHistoryRows').on('click','.pr-void',function(){
+  $('#prVoidForm').data('source-id',$(this).attr('data-id'));
+  $('#prVoidReason').val('');$('#prVoidError').addClass('d-none').text('');
+  $('#prVoidModal').modal('show');
+ });
+ $('#prVoidForm').on('submit',function(event){
+  event.preventDefault();
+  var id=$(this).data('source-id'),$button=$('#prVoidSubmit');
+  if(!id||$button.prop('disabled'))return;
+  $button.prop('disabled',true);
+  ajax($root.attr('data-void-base')+'/'+encodeURIComponent(id)+'/reverse','POST',{
+   reason:$.trim($('#prVoidReason').val()),effective_date:$('#prVoidDate').val(),request_key:key()
+  }).done(function(response){
+   $('#prVoidModal').modal('hide');notify('success',response.message||'Receipt reversed');loadHistory();
+  }).fail(function(xhr){
+   var message=xhr.responseJSON&&xhr.responseJSON.message||'Unable to reverse this receipt';
+   $('#prVoidError').removeClass('d-none').text(message);
+  }).always(function(){$button.prop('disabled',false);});
+ });
+ @endcan
  $('#prCustomer').on('change',drawBookings);
  $('#prSearch').on('input',drawBookings);
  $('#prBookingRows').on('change','.pr-check',function(){$(this).closest('tr').toggleClass('pr-picked',$(this).prop('checked'));recalc();})
