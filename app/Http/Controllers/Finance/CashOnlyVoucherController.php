@@ -25,7 +25,7 @@ final class CashOnlyVoucherController extends Controller
         abort_unless(Auth::user()?->can('create voucher'),403);
         $projectId=(int)getSelectedTown();
         abort_unless($projectId>0,403);
-        abort_if(\App\Services\Finance\V2OriginalWorkflowAccess::selected(),409,
+        abort_if(\App\Services\Finance\FinanceWorkflowAccess::selected(),409,
             'CCR/CDR requires the standard audited voucher posting flow.');
         $data=Validator::make($request->all(),[
             'display_series'=>['required','in:CCR,CDR'],

@@ -591,7 +591,7 @@ class JournalVoucherController extends Controller
 
         // Existing production databases may not have the reviewed finance metadata
         // migration. Only issue a durable retry key when both tables are present.
-        $x['financeRetryReady'] = \App\Services\Finance\V2OriginalWorkflowAccess::enabled()
+        $x['financeRetryReady'] = \App\Services\Finance\FinanceWorkflowAccess::enabled()
             || app(\App\Services\Finance\FinancePostingSchemaGate::class)->isReady();
         $x['financeRetryKey'] = $x['financeRetryReady']
             ? old('idempotency_key', (string) \Illuminate\Support\Str::uuid())
@@ -600,7 +600,7 @@ class JournalVoucherController extends Controller
         // Fail fast on the same finance policy used by the posting writer:
         // a pilot with mandatory approval cannot post directly.
         $x['journalPilotApprovalBlocked'] =
-            \App\Services\Finance\V2OriginalWorkflowAccess::selected()
+            \App\Services\Finance\FinanceWorkflowAccess::selected()
             && (bool) app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
                 ->policy((int) $selectedProjectId, 'JV');
 
@@ -705,13 +705,13 @@ class JournalVoucherController extends Controller
             ]);
         }
 
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
-            \App\Services\Finance\V2OriginalWorkflowAccess::authorize((int) $selectedProjectId);
+        if (\App\Services\Finance\FinanceWorkflowAccess::selected()) {
+            \App\Services\Finance\FinanceWorkflowAccess::authorize((int) $selectedProjectId);
             abort_unless(!app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)->policy((int) $selectedProjectId, 'JV'), 409,
                 'This voucher has an approval policy; posting through the isolated pilot is disabled.');
             $request->validate(['date' => ['required', 'date_format:Y-m-d']]);
             try {
-                (new \App\Services\Finance\V2OriginalJournalWorkflow())->createAndPost(
+                (new \App\Services\Finance\OriginalJournalWorkflow())->createAndPost(
                     (int) $selectedProjectId, (string) $request->input('idempotency_key', ''),
                     $validated, (int) Auth::id()
                 );
@@ -885,7 +885,7 @@ class JournalVoucherController extends Controller
     /** Only an exact typed JV posting link can select the typed reversal path. */
     private function isMergedPostedJournal(int $projectId, int $sourceId): bool
     {
-        if (!\App\Services\Finance\V2OriginalWorkflowAccess::mergedWriterAllowed()
+        if (!\App\Services\Finance\FinanceWorkflowAccess::mergedWriterAllowed()
             || !\Illuminate\Support\Facades\Schema::hasTable('finance_posting_journal_sources')) {
             return false;
         }
@@ -903,9 +903,9 @@ class JournalVoucherController extends Controller
     {
         $projectId = (int) getSelectedTown();
         abort_if($projectId < 1, 403, 'Select a project.');
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()
+        if (\App\Services\Finance\FinanceWorkflowAccess::selected()
             || $this->isMergedPostedJournal($projectId, (int) $id)) {
-            \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+            \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
             $data = request()->validate([
                 'request_key' => ['nullable', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
                 'effective_date' => ['nullable', 'date_format:Y-m-d'],
@@ -916,7 +916,7 @@ class JournalVoucherController extends Controller
             $data['reason'] = trim((string) ($data['reason'] ?? 'Operator void'));
             abort_if($data['reason'] === '', 422, 'A reversal reason is required.');
             try {
-                (new \App\Services\Finance\V2VoucherLifecycleService())->reverse(
+                (new \App\Services\Finance\VoucherLifecycleService())->reverse(
                     $projectId, 'journal', (int) $id, $data['request_key'],
                     $data['effective_date'], $data['reason'], (int) Auth::id()
                 );
@@ -972,7 +972,7 @@ class JournalVoucherController extends Controller
         $x['voucher'] = $voucher;
         $x['isRevision']=$isRevision=request()->boolean('resubmit');
         if($isRevision){
-            abort_if(\App\Services\Finance\V2OriginalWorkflowAccess::selected(),409,'Rejected JV revision is unavailable in V2 mode.');
+            abort_if(\App\Services\Finance\FinanceWorkflowAccess::selected(),409,'Rejected JV revision is unavailable in V2 mode.');
             $approval=\App\Models\DailyVoucherApproval::query()
                 ->where('project_id',(int)getSelectedTown())->where('voucher_type','JV')
                 ->where('source_table','journal_vouchers')->where('source_id',(int)$voucher->id)
@@ -987,8 +987,8 @@ class JournalVoucherController extends Controller
             // The V2 draft writer deliberately forbids changes after posting
             // or legacy ledger attribution. Evaluate the same immutable-source
             // conditions *before* rendering an editable modal.
-            if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
-                \App\Services\Finance\V2OriginalWorkflowAccess::authorize((int) getSelectedTown());
+            if (\App\Services\Finance\FinanceWorkflowAccess::selected()) {
+                \App\Services\Finance\FinanceWorkflowAccess::authorize((int) getSelectedTown());
                 $sourceId=(int) $voucher->id;
                 $posted=\Illuminate\Support\Facades\Schema::hasTable('finance_posting_journal_sources')
                     && DB::table('finance_posting_journal_sources')
@@ -1087,7 +1087,7 @@ class JournalVoucherController extends Controller
             'This posted Journal Voucher requires reversal before correction.');
 
         if ($request->routeIs('journal.voucher.resubmit')) {
-            abort_if(\App\Services\Finance\V2OriginalWorkflowAccess::selected(),409,'Rejected JV revision is unavailable in V2 mode.');
+            abort_if(\App\Services\Finance\FinanceWorkflowAccess::selected(),409,'Rejected JV revision is unavailable in V2 mode.');
             $reason=$request->validate(['revision_reason'=>['required','string','min:3','max:500']])['revision_reason'];
             $revisionLines=[];
             foreach($keys as $i){
@@ -1107,10 +1107,10 @@ class JournalVoucherController extends Controller
             return $this->voucherWriteResponse($request, 'Rejected JV revised and resubmitted for approval. Ledger remains inactive.');
         }
 
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
-            \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+        if (\App\Services\Finance\FinanceWorkflowAccess::selected()) {
+            \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
             try {
-                (new \App\Services\Finance\V2JournalDraftWorkflow())
+                (new \App\Services\Finance\JournalDraftWorkflow())
                     ->updateUnposted($projectId, (int) $id, $data['date'], $lines);
             } catch (\DomainException $exception) {
                 abort(409, 'Journal voucher cannot be edited after posting or legacy ledger attribution.');

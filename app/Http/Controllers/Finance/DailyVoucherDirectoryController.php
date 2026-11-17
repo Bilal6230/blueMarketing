@@ -110,7 +110,7 @@ final class DailyVoucherDirectoryController extends Controller
             if(Schema::hasColumn('customer_ledger','deleted_at')) $query->whereNull('source.deleted_at');
             // A reversed typed posting deactivates its customer_ledger
             // source for balance reporting, but its voucher stays in history.
-            $reversedTypedVisible = \App\Services\Finance\V2OriginalWorkflowAccess::mergedWriterAllowed()
+            $reversedTypedVisible = \App\Services\Finance\FinanceWorkflowAccess::mergedWriterAllowed()
                 && Schema::hasTable('finance_posting_cash_sources')
                 && Schema::hasTable('finance_posting_batches');
             $reversedTypedExists = static function ($typed) use ($projectId) {
@@ -248,7 +248,7 @@ final class DailyVoucherDirectoryController extends Controller
             }
             $typedCash=collect();
             if ($sources->isNotEmpty()
-                && \App\Services\Finance\V2OriginalWorkflowAccess::mergedWriterAllowed()
+                && \App\Services\Finance\FinanceWorkflowAccess::mergedWriterAllowed()
                 && Schema::hasTable('finance_posting_cash_sources')) {
                 $typedCash=DB::table('finance_posting_cash_sources as posting')
                     ->join('finance_posting_batches as batch', 'batch.id', '=', 'posting.posting_batch_id')
@@ -726,7 +726,7 @@ final class DailyVoucherDirectoryController extends Controller
     public function reverseTypedCashSource(Request $request, int $customerLedger)
     {
         $projectId = (int) getSelectedTown();
-        \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+        \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
         abort_unless(auth()->user()?->can('delete voucher'), 403);
         $data = $request->validate([
             'reason' => ['required', 'string', 'min:3', 'max:200'],
@@ -734,7 +734,7 @@ final class DailyVoucherDirectoryController extends Controller
             'request_key' => ['nullable', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
         ]);
         try {
-            $reversalId = (new \App\Services\Finance\V2CashVoucherLifecycleService())->reverse(
+            $reversalId = (new \App\Services\Finance\CashVoucherLifecycleService())->reverse(
                 $projectId, $customerLedger,
                 $data['request_key'] ?? (string) \Illuminate\Support\Str::uuid(),
                 $data['effective_date'], trim($data['reason']), (int) auth()->id()
@@ -771,10 +771,10 @@ final class DailyVoucherDirectoryController extends Controller
         // into legacy ledgers. Render the exact source-verified lines if the
         // original print otherwise has no ledger legs; never guess type_id.
         if ($lines->isEmpty()
-            && \App\Services\Finance\V2OriginalWorkflowAccess::mergedWriterAllowed()
+            && \App\Services\Finance\FinanceWorkflowAccess::mergedWriterAllowed()
             && Schema::hasTable('finance_posting_cash_sources')) {
             try {
-                $typed = collect((new \App\Services\Finance\V2OriginalLedgerReport())->rows($projectId, null, null))
+                $typed = collect((new \App\Services\Finance\OriginalLedgerReport())->rows($projectId, null, null))
                     ->where('source_kind', 'cash')
                     ->where('source_id', $customerLedger);
                 $lines = $typed->map(fn (array $row) => (object) [
