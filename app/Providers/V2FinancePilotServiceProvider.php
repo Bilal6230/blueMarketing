@@ -20,11 +20,15 @@ final class V2FinancePilotServiceProvider extends ServiceProvider
         }
 
         Gate::define('v2-finance-read', static function ($user): bool {
-            return $user->hasRole('superadmin');
+            return \App\Services\Finance\V2OriginalWorkflowAccess::mergedWriterAllowed()
+                ? ($user->hasRole('superadmin') || $user->can('read voucher'))
+                : $user->hasRole('superadmin');
         });
         Gate::define('v2-finance-post', static function ($user): bool {
-            return ((bool) config('finance.v2_pilot_write_enabled', false)
-                || \App\Services\Finance\V2OriginalWorkflowAccess::mergedWriterAllowed())
+            if (\App\Services\Finance\V2OriginalWorkflowAccess::mergedWriterAllowed()) {
+                return $user->hasRole('superadmin') || $user->can('create voucher');
+            }
+            return (bool) config('finance.v2_pilot_write_enabled', false)
                 && $user->hasRole('superadmin');
         });
         Gate::define('approve-v2-stock-finance', static function ($user): bool {
