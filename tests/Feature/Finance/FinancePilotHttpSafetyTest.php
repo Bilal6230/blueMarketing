@@ -98,8 +98,8 @@ final class FinancePilotHttpSafetyTest extends TestCase
             $t->timestamp('deleted_at')->nullable();
         });
 
-        (require base_path('database/v2_migrations/2026_10_30_000100_create_v2_finance_posting_core.php'))->up();
-        (require base_path('database/v2_migrations/2026_10_31_000110_create_v2_commission_detail_links.php'))->up();
+        (require base_path('database/finance_legacy_migrations/2026_10_30_000100_create_finance_finance_posting_core.php'))->up();
+        (require base_path('database/finance_legacy_migrations/2026_10_31_000110_create_finance_commission_detail_links.php'))->up();
         DB::table('projects')->insert([
             ['id' => 1, 'is_active' => 1],
             ['id' => 2, 'is_active' => 1],
