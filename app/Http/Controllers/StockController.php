@@ -280,7 +280,7 @@ class StockController extends Controller
     public function approveFinance(Request $request, string $kind, int $id)
     {
         $projectId = (int) getSelectedTown();
-        \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+        \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
         $data = $request->validate([
             'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
             'evidence_reference' => ['required', 'string', 'min:12', 'max:128'],
@@ -290,7 +290,7 @@ class StockController extends Controller
             'posting_lines.*.credit' => ['required', 'regex:/^\d{1,9}(?:\.[0-9]{1,2})?$/D'],
         ]);
         try {
-            $batch = (new \App\Services\Finance\V2StockApprovalWorkflow())->approveAndPost(
+            $batch = (new \App\Services\Finance\StockApprovalWorkflow())->approveAndPost(
                 $projectId, $kind, $id, $data['request_key'], $data['evidence_reference'],
                 $data['posting_lines'], (int) Auth::id()
             );
@@ -1527,8 +1527,8 @@ class StockController extends Controller
 
     public function storeEntry(Request $request)
     {
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
-            \App\Services\Finance\V2OriginalWorkflowAccess::authorize((int) getSelectedTown());
+        if (\App\Services\Finance\FinanceWorkflowAccess::selected()) {
+            \App\Services\Finance\FinanceWorkflowAccess::authorize((int) getSelectedTown());
         }
         $validator = Validator::make($request->all(), [
             'date' => ['required', 'date'],
@@ -1675,15 +1675,15 @@ class StockController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => $result,
-            'message' => \App\Services\Finance\V2OriginalWorkflowAccess::selected()
+            'message' => \App\Services\Finance\FinanceWorkflowAccess::selected()
                 ? 'Entry saved. Finance approval is required.' : 'Entry saved.',
         ]);
     }
 
     public function storeBill(Request $request)
     {
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
-            \App\Services\Finance\V2OriginalWorkflowAccess::authorize((int) getSelectedTown());
+        if (\App\Services\Finance\FinanceWorkflowAccess::selected()) {
+            \App\Services\Finance\FinanceWorkflowAccess::authorize((int) getSelectedTown());
         }
         $validator = Validator::make($request->all(), [
             'type' => ['required', Rule::in(['purchase', 'sale'])],
@@ -1843,15 +1843,15 @@ class StockController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => $result,
-            'message' => \App\Services\Finance\V2OriginalWorkflowAccess::selected()
+            'message' => \App\Services\Finance\FinanceWorkflowAccess::selected()
                 ? 'Bill saved. Finance approval is required.' : 'Bill saved.',
         ]);
     }
 
     private function postEntryLedger(StockEntry $entry, string $flow, int $totalMinor, string $entryDate, array $lines): void
     {
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
-            \App\Services\Finance\V2OriginalWorkflowAccess::authorize((int) getSelectedTown());
+        if (\App\Services\Finance\FinanceWorkflowAccess::selected()) {
+            \App\Services\Finance\FinanceWorkflowAccess::authorize((int) getSelectedTown());
             return; // Inventory source is saved; finance needs separate evidence-backed approval.
         }
         $reference = 'STOCK-ENTRY:' . $entry->id;
@@ -2000,8 +2000,8 @@ class StockController extends Controller
 
     private function postBillLedger(StockBill $bill, string $billType, int $totalMinor, string $billDate, array $lines): void
     {
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
-            \App\Services\Finance\V2OriginalWorkflowAccess::authorize((int) getSelectedTown());
+        if (\App\Services\Finance\FinanceWorkflowAccess::selected()) {
+            \App\Services\Finance\FinanceWorkflowAccess::authorize((int) getSelectedTown());
             return;
         }
         $projectId = (int) getSelectedTown();
