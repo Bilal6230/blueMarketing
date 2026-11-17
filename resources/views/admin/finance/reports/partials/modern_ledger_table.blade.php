@@ -1,4 +1,4 @@
-<div class="fvr-report bm-voucher-directory" id="financeReportRoot"
+<div class="content-wrapper fvr-report bm-voucher-directory" id="financeReportRoot"
      data-mode="{{ $reportMode }}" data-endpoint="{{ $reportMode === 'party' ? route('fetch-data_by_party') : route('fetch_data_by_head') }}"
      data-account-type="{{ $account_type ?? 'Head' }}">
     <div class="fvr-heading d-flex justify-content-between align-items-center">
@@ -9,14 +9,18 @@
         <div class="fvr-toolbar">
             <div class="fvr-buttons" id="financeReportExports"></div>
             <div class="fvr-controls">
-                <label for="financeReportLength" class="sr-only">Rows per page</label>
-                <select id="financeReportLength" class="form-control form-control-sm" aria-label="Rows per page">
-                    <option value="10">10 rows</option><option value="25" selected>25 rows</option>
-                    <option value="50">50 rows</option><option value="100">100 rows</option>
-                </select>
-                <label for="financeReportSearch" class="sr-only">Search ledger report</label>
-                <input type="search" id="financeReportSearch" class="form-control form-control-sm" placeholder="Search report..." autocomplete="off">
-                <button type="button" id="financeReportClear" class="btn btn-outline-secondary btn-sm">Reset filters</button>
+                <div class="fvr-length">
+                    <label for="financeReportLength">Show</label>
+                    <select id="financeReportLength" class="form-control form-control-sm" aria-label="Rows per page">
+                        <option value="10">10</option><option value="25" selected>25</option>
+                        <option value="50">50</option><option value="100">100</option>
+                    </select>
+                    <span>entries</span>
+                </div>
+                <div class="fvr-search">
+                    <label for="financeReportSearch">Search:</label>
+                    <input type="search" id="financeReportSearch" class="form-control form-control-sm" placeholder="Search report..." autocomplete="off">
+                </div>
             </div>
         </div>
         <div class="fvr-error alert alert-danger d-none" id="financeReportError" role="alert"></div>
