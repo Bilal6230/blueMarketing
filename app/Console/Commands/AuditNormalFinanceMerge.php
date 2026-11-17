@@ -85,7 +85,7 @@ final class AuditNormalFinanceMerge extends Command
         $grouped = $service->totals($mixed, 'project_head_subheads_id');
         $moneyCents = static function (mixed $raw): int {
             $value = str_replace(',', '', (string) $raw);
-            if (!preg_match('/^(-?)([0-9]+)(?:\\.([0-9]{1,2}))?$/D', $value, $m)) {
+            if (!preg_match('/^(-?)([0-9]+)(?:\.([0-9]{1,2}))?$/D', $value, $m)) {
                 throw new \DomainException('AUDIT_NORMAL_MERGE_INVALID_AMOUNT');
             }
             $cents = (int) $m[2] * 100 + (int) str_pad($m[3] ?? '', 2, '0');
