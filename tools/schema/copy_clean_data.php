@@ -5,10 +5,11 @@ declare(strict_types=1);
  * One-time, local-only, data-only restore: bluenew -> bluenew_clean.
  * DRY RUN: php tools/schema/copy_clean_data.php
  * APPLY:   php tools/schema/copy_clean_data.php --apply
+ * RESUME:  php tools/schema/copy_clean_data.php --resume (after interrupted prior copy)
  * Never writes to original database or changes schema.
  */
-if (PHP_SAPI !== 'cli' || $argc > 2 || ($argc === 2 && $argv[1] !== '--apply')) {
-    fwrite(STDERR, "Usage: php tools/schema/copy_clean_data.php [--apply]\n");
+if (PHP_SAPI !== 'cli' || $argc > 2 || ($argc === 2 && !in_array($argv[1], ['--apply','--resume'],true))) {
+    fwrite(STDERR, "Usage: php tools/schema/copy_clean_data.php [--apply|--resume]\n");
     exit(2);
 }
 require dirname(__DIR__, 2).'/vendor/autoload.php';
@@ -18,7 +19,9 @@ $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 use Illuminate\Support\Facades\DB;
 $source='bluenew';
 $target='bluenew_clean';
-$apply=($argv[1]??'')==='--apply';
+$mode=$argv[1]??'';
+$apply=in_array($mode,['--apply','--resume'],true);
+$resume=$mode==='--resume';
 $db=DB::connection();
 $cfg=config('database.connections.'.config('database.default'));
 if (!app()->environment('local') || $db->getDriverName()!=='mysql'
@@ -54,17 +57,26 @@ foreach($a as $table) {
     if ($cols!==$columns($target,$table))
         throw new RuntimeException('Column mismatch: '.$table);
     $sourceCount=$count($source,$table);
-    if ($count($target,$table)!==0)
-        throw new RuntimeException('Destination must be empty: '.$table);
-    $planned[]=[$table,$cols,$sourceCount];
+    $destCount=$count($target,$table);
+    if ($destCount!==0 && (!$resume || $destCount!==$sourceCount))
+        throw new RuntimeException('Destination already populated or incomplete: '.$table.' source='.$sourceCount.' dest='.$destCount.'; use --resume only for exactly matched copied tables');
+    $planned[]=[$table,$cols,$sourceCount,$destCount];
     $total+=$sourceCount;
 }
-echo "PREFLIGHT PASS: 146 matched empty tables; $total source rows; migration history excluded.\n";
-if (!$apply) { echo "DRY RUN only. Run again with --apply.\n";exit(0); }
+echo "PREFLIGHT PASS: 146 schema-matched tables; $total source rows; migration history excluded; mode=".($resume?'RESUME':($apply?'APPLY':'DRY RUN')).".\n";
+if (!$apply) { echo "DRY RUN only. Use --apply on an empty destination, or --resume after a prior interrupted copy.\n";exit(0); }
 $db->statement('SET SESSION FOREIGN_KEY_CHECKS=0');
-$db->statement("SET SESSION sql_mode=CONCAT_WS(',',NULLIF(@@SESSION.sql_mode,''),'NO_AUTO_VALUE_ON_ZERO')");
+// The source contains historical '0000-00-00 00:00:00' DATETIME values.
+// MySQL 8.4 strict/no-zero-date modes reject them on INSERT ... SELECT.
+// Restrict relaxed SQL mode to THIS CONNECTION/SESSION only. Preserve id=0.
+$oldMode=(string)$db->selectOne('SELECT @@SESSION.sql_mode AS sql_mode')->sql_mode;
+$db->statement("SET SESSION sql_mode = 'NO_AUTO_VALUE_ON_ZERO'");
 try {
-    foreach($planned as [$table,$cols,$n]) {
+    foreach($planned as [$table,$cols,$n,$alreadyCopied]) {
+        if ($alreadyCopied === $n && $alreadyCopied > 0) {
+            echo "SKIPPED VERIFIED COUNT $table: $n\n";
+            continue;
+        }
         if (!$n) continue;
         $colList=implode(',',array_map($q,$cols));
         $db->statement('INSERT INTO '.$q($target).'.'.$q($table).' ('.$colList.') SELECT '.
@@ -74,9 +86,10 @@ try {
     }
 } finally {
     $db->statement('SET SESSION FOREIGN_KEY_CHECKS=1');
+    $db->statement("SET SESSION sql_mode = ".$db->getPdo()->quote($oldMode));
 }
 $problems=[];
-foreach($planned as [$table,$cols,$n]) {
+foreach($planned as [$table,$cols,$n,$alreadyCopied]) {
     if ($count($target,$table)!==$n) $problems[]="Count mismatch: $table";
 }
 $fkRows=$db->select("SELECT k.CONSTRAINT_NAME fk,k.TABLE_NAME child_table,k.COLUMN_NAME child_col,
@@ -99,6 +112,27 @@ foreach($groups as $refs) {
         ' WHERE '.implode(' AND ',$nonnull).' AND p.'.$q($x->parent_col).' IS NULL';
     $orphans=(int)$db->selectOne($sql)->n;
     if($orphans) $problems[]="FK orphan {$x->child_table}.{$x->fk}: $orphans";
+}
+// Verify every source row against the restored destination for tables with a PK.
+// This catches MySQL's relaxed-mode coercions and incorrect copied resume rows.
+$primaryKeys=$db->select("SELECT TABLE_NAME t, COLUMN_NAME c FROM information_schema.KEY_COLUMN_USAGE
+ WHERE TABLE_SCHEMA=? AND CONSTRAINT_NAME='PRIMARY' ORDER BY TABLE_NAME, ORDINAL_POSITION",[$target]);
+$pkMap=[];
+foreach($primaryKeys as $pk) $pkMap[$pk->t][]=$pk->c;
+$noPrimary=[];
+foreach($planned as [$table,$cols,$n,$alreadyCopied]) {
+    if (!$n) continue;
+    if (empty($pkMap[$table])) { $noPrimary[]=$table;continue; }
+    $keys=$pkMap[$table];
+    $on=implode(' AND ',array_map(static fn($col)=>'s.'.$q($col).' <=> d.'.$q($col),$keys));
+    $same=implode(' AND ',array_map(static fn($col)=>'s.'.$q($col).' <=> d.'.$q($col),$cols));
+    $missing=(int)$db->selectOne('SELECT COUNT(*) n FROM '.$q($source).'.'.$q($table).
+        ' s LEFT JOIN '.$q($target).'.'.$q($table).' d ON '.$on.
+        ' WHERE d.'.$q($keys[0]).' IS NULL OR NOT ('.$same.')')->n;
+    if ($missing) $problems[]="Source-vs-destination row data mismatch: $table ($missing)";
+}
+if ($noPrimary) {
+    echo "NOTE: no primary-key row comparison for ".implode(', ',$noPrimary)."; count checked only.\n";
 }
 echo "CHECKED: ".count($planned)." tables, ".count($groups)." foreign keys.\n";
 if($problems) {
