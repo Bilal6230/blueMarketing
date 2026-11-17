@@ -315,10 +315,14 @@ class CommissionVoucherController extends Controller
                     ->with('success', 'Commission draft cancelled.');
             }
             $data = request()->validate([
-                'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
-                'effective_date' => ['required', 'date_format:Y-m-d'],
-                'reason' => ['required', 'string', 'min:1', 'max:200'],
+                'request_key' => ['nullable', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
+                'effective_date' => ['nullable', 'date_format:Y-m-d'],
+                'reason' => ['nullable', 'string', 'max:200'],
             ]);
+            $data['request_key'] = $data['request_key'] ?? (string) \Illuminate\Support\Str::uuid();
+            $data['effective_date'] = $data['effective_date'] ?? now()->toDateString();
+            $data['reason'] = trim((string) ($data['reason'] ?? 'Operator void'));
+            abort_if($data['reason'] === '', 422, 'A reversal reason is required.');
             try {
                 (new \App\Services\Finance\V2VoucherLifecycleService())->reverse(
                     $projectId, 'commission', (int) $id, $data['request_key'],
@@ -361,6 +365,10 @@ class CommissionVoucherController extends Controller
     public function edit($id)
     {
         $voucher = CommisionVoucher::with('details')->where('project_id', getSelectedTown())->findOrFail($id);
+        if ($this->isMergedTypedCommission((int) getSelectedTown(), (int) $id)
+            && (string) $voucher->status !== 'draft') {
+            abort(409, 'Posted Commission Voucher requires reversal before correction.');
+        }
         $x = $this->getCommonData('Edit Commision Voucher', 'CV');
         $x['voucher'] = $voucher;
 
