@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 /** One-table baseline generated from verified MySQL 8.4.3 bluenew export. */
 return new class extends Migration {
     public function up(): void {
-        DB::unprepared(<<<'BMDDL0' 
+        DB::unprepared(<<<'BMDDL0'
 CREATE TABLE `finance_cheque_intakes` (
   `id` bigint UNSIGNED NOT NULL,
   `project_id` bigint UNSIGNED NOT NULL,
@@ -30,18 +30,18 @@ CREATE TABLE `finance_cheque_intakes` (
   `direction` varchar(3) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'in',
   `account_mapping_id` bigint UNSIGNED DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-BMDDL0 );
-        DB::unprepared(<<<'BMDDL1' 
+BMDDL0);
+        DB::unprepared(<<<'BMDDL1'
 ALTER TABLE `finance_cheque_intakes`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `finance_cheque_intake_unique` (`project_id`,`bank_name`,`cheque_number`),
   ADD KEY `finance_cheque_intakes_customer_id_foreign` (`customer_id`),
   ADD KEY `finance_cheque_intake_scope` (`project_id`,`status`,`received_date`);
-BMDDL1 );
-        DB::unprepared(<<<'BMDDL2' 
+BMDDL1);
+        DB::unprepared(<<<'BMDDL2'
 ALTER TABLE `finance_cheque_intakes`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
-BMDDL2 );
+BMDDL2);
     }
     public function down(): void { Schema::dropIfExists('finance_cheque_intakes'); }
 };
