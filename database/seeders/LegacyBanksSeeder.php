@@ -6,7 +6,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-final class V2LegacyBanksSeeder extends Seeder
+final class LegacyBanksSeeder extends Seeder
 {
     private const LEGACY_BANKS = [
         1 => "Bank Alfalah",
