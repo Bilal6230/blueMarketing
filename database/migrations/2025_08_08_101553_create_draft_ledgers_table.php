@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 /** One-table baseline generated from verified MySQL 8.4.3 bluenew export. */
 return new class extends Migration {
     public function up(): void {
-        DB::unprepared(<<<'BMDDL0' 
+        DB::unprepared(<<<'BMDDL0'
 CREATE TABLE `draft_ledgers` (
   `id` bigint UNSIGNED NOT NULL,
   `date` date NOT NULL,
@@ -40,8 +40,8 @@ CREATE TABLE `draft_ledgers` (
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-BMDDL0 );
-        DB::unprepared(<<<'BMDDL1' 
+BMDDL0);
+        DB::unprepared(<<<'BMDDL1'
 ALTER TABLE `draft_ledgers`
   ADD PRIMARY KEY (`id`),
   ADD KEY `v2_draft_ledgers_customer_id_fk` (`customer_id`),
@@ -49,11 +49,11 @@ ALTER TABLE `draft_ledgers`
   ADD KEY `v2_draft_ledgers_plot_id_fk` (`plot_id`),
   ADD KEY `v2_draft_ledgers_bank_id_fk` (`bank_id`),
   ADD KEY `v2_draft_ledgers_project_head_subheads_id_fk` (`project_head_subheads_id`);
-BMDDL1 );
-        DB::unprepared(<<<'BMDDL2' 
+BMDDL1);
+        DB::unprepared(<<<'BMDDL2'
 ALTER TABLE `draft_ledgers`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
-BMDDL2 );
+BMDDL2);
     }
     public function down(): void { Schema::dropIfExists('draft_ledgers'); }
 };

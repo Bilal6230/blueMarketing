@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 /** One-table baseline generated from verified MySQL 8.4.3 bluenew export. */
 return new class extends Migration {
     public function up(): void {
-        DB::unprepared(<<<'BMDDL0' 
+        DB::unprepared(<<<'BMDDL0'
 CREATE TABLE `bookings` (
   `id` bigint UNSIGNED NOT NULL,
   `project_id` bigint UNSIGNED NOT NULL,
@@ -39,8 +39,8 @@ CREATE TABLE `bookings` (
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-BMDDL0 );
-        DB::unprepared(<<<'BMDDL1' 
+BMDDL0);
+        DB::unprepared(<<<'BMDDL1'
 ALTER TABLE `bookings`
   ADD PRIMARY KEY (`id`),
   ADD KEY `bookings_user_id_foreign` (`user_id`),
@@ -48,11 +48,11 @@ ALTER TABLE `bookings`
   ADD KEY `v2_bookings_customer_id_fk` (`customer_id`),
   ADD KEY `v2_bookings_plot_id_fk` (`plot_id`),
   ADD KEY `v2_bookings_broker_id_fk` (`broker_id`);
-BMDDL1 );
-        DB::unprepared(<<<'BMDDL2' 
+BMDDL1);
+        DB::unprepared(<<<'BMDDL2'
 ALTER TABLE `bookings`
   MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=241;
-BMDDL2 );
+BMDDL2);
     }
     public function down(): void { Schema::dropIfExists('bookings'); }
 };
