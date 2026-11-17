@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Services\Finance\V2IsolatedConnectionGuard;
+use App\Services\Finance\FinanceConnectionGuard;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Read-only readiness gate for local Phase 07. No migrations or test payments.
  */
-final class AuditV2PlotReceiptReadiness extends Command
+final class AuditPlotReceiptReadiness extends Command
 {
     protected $signature = 'finance:audit-v2-plot-receipt {project : Local test project ID}';
     protected $description = 'Read-only Phase 07 plot receipt storage, mapping and single-/multi-booking readiness';
@@ -23,7 +23,7 @@ final class AuditV2PlotReceiptReadiness extends Command
             return self::FAILURE;
         }
         try {
-            V2IsolatedConnectionGuard::assertAllowed();
+            FinanceConnectionGuard::assertAllowed();
         } catch (\RuntimeException $error) {
             $this->error($error->getMessage());
             return self::FAILURE;

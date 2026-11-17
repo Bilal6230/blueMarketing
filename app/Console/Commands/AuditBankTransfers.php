@@ -2,16 +2,16 @@
 
 namespace App\Console\Commands;
 
-use App\Services\Finance\V2BankTransferReconciliation;
+use App\Services\Finance\BankTransferReconciliation;
 use Illuminate\Console\Command;
 
 /** Read-only, explicit isolated project audit; never modifies account balances. */
-final class AuditV2BankTransfers extends Command
+final class AuditBankTransfers extends Command
 {
     protected $signature = 'finance:audit-v2-bank-transfers {project : Isolated test project ID}';
     protected $description = 'Audit isolated BD/BW ledger directions, balance, source amount, and project ownership (read-only)';
 
-    public function handle(V2BankTransferReconciliation $audit): int
+    public function handle(BankTransferReconciliation $audit): int
     {
         $project = filter_var($this->argument('project'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
         if (!$project) {

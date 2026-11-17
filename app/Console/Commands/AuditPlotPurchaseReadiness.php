@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Services\Finance\V2IsolatedConnectionGuard;
+use App\Services\Finance\FinanceConnectionGuard;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Schema;
  * Phase 08 local-only read-only readiness gate.
  * No plot, booking, posting, or purchase source is created by this command.
  */
-final class AuditV2PlotPurchaseReadiness extends Command
+final class AuditPlotPurchaseReadiness extends Command
 {
     protected $signature = 'finance:audit-v2-plot-purchase {project : Isolated test project ID}';
     protected $description = 'Read-only Plot Purchase storage, accounting and definition readiness';
@@ -24,7 +24,7 @@ final class AuditV2PlotPurchaseReadiness extends Command
             return self::FAILURE;
         }
         try {
-            V2IsolatedConnectionGuard::assertAllowed();
+            FinanceConnectionGuard::assertAllowed();
         } catch (\Throwable $error) {
             $this->error('Isolated environment required: '.$error->getMessage());
             return self::FAILURE;

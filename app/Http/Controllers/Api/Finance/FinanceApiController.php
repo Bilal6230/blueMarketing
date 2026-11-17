@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Http\Controllers\Api\V2;
+namespace App\Http\Controllers\Api\Finance;
 
 use App\Http\Controllers\Controller;
 use App\Models\Project;
-use App\Services\Finance\V2IsolatedConnectionGuard;
-use App\Services\Finance\V2SourceApprovalReadiness;
-use App\Services\Finance\V2FinanceCsvExporter;
+use App\Services\Finance\FinanceConnectionGuard;
+use App\Services\Finance\SourceApprovalReadiness;
+use App\Services\Finance\FinanceCsvExporter;
 use Symfony\Component\HttpFoundation\StreamedResponse;
-use App\Services\Finance\V2PostingGateway;
+use App\Services\Finance\PostingGateway;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,11 +20,11 @@ use Illuminate\Validation\Rule;
  * existing /api/v1/mobile or legacy production voucher endpoints.
  * Explicit project membership and Gate authorization apply per request.
  */
-final class V2FinancePilotController extends Controller
+final class FinanceApiController extends Controller
 {
     private function project(Request $request, int $projectId, bool $write): void
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         if (!in_array(config('app.env'), ['local', 'testing'], true)
             || !config('finance.v2_pilot_api_enabled')
             || ($write && !config('finance.v2_pilot_write_enabled'))) {
@@ -48,7 +48,7 @@ final class V2FinancePilotController extends Controller
         }
     }
 
-    public function lines(Request $request, int $projectId, V2PostingGateway $gateway): JsonResponse
+    public function lines(Request $request, int $projectId, PostingGateway $gateway): JsonResponse
     {
         $this->project($request, $projectId, false);
         $data = $request->validate([
@@ -63,7 +63,7 @@ final class V2FinancePilotController extends Controller
 
     public function sourceReadiness(
         Request $request, int $projectId, string $kind, int $sourceId,
-        V2SourceApprovalReadiness $readiness
+        SourceApprovalReadiness $readiness
     ): JsonResponse {
         $this->project($request, $projectId, false);
         $input = $request->validate([
@@ -75,7 +75,7 @@ final class V2FinancePilotController extends Controller
     }
 
     public function voucherRegister(
-        Request $request, int $projectId, V2PostingGateway $gateway
+        Request $request, int $projectId, PostingGateway $gateway
     ): JsonResponse {
         $this->project($request, $projectId, false);
         $data = $request->validate([
@@ -92,7 +92,7 @@ final class V2FinancePilotController extends Controller
 
     public function exportVoucherRegister(
         Request $request, int $projectId,
-        V2PostingGateway $gateway, V2FinanceCsvExporter $exporter
+        PostingGateway $gateway, FinanceCsvExporter $exporter
     ): StreamedResponse {
         $this->project($request, $projectId, false);
         $data = $request->validate([
@@ -110,7 +110,7 @@ final class V2FinancePilotController extends Controller
         );
     }
 
-    public function summary(Request $request, int $projectId, V2PostingGateway $gateway): JsonResponse
+    public function summary(Request $request, int $projectId, PostingGateway $gateway): JsonResponse
     {
         $this->project($request, $projectId, false);
         $data = $request->validate([
@@ -122,7 +122,7 @@ final class V2FinancePilotController extends Controller
         ));
     }
 
-    public function trialBalance(Request $request, int $projectId, V2PostingGateway $gateway): JsonResponse
+    public function trialBalance(Request $request, int $projectId, PostingGateway $gateway): JsonResponse
     {
         $this->project($request, $projectId, false);
         $data = $request->validate([
@@ -135,7 +135,7 @@ final class V2FinancePilotController extends Controller
     }
 
     public function accountStatement(
-        Request $request, int $projectId, int $accountId, V2PostingGateway $gateway
+        Request $request, int $projectId, int $accountId, PostingGateway $gateway
     ): JsonResponse {
         $this->project($request, $projectId, false);
         $data = $request->validate([
@@ -149,7 +149,7 @@ final class V2FinancePilotController extends Controller
 
     public function exportTrialBalance(
         Request $request, int $projectId,
-        V2PostingGateway $gateway, V2FinanceCsvExporter $exporter
+        PostingGateway $gateway, FinanceCsvExporter $exporter
     ): StreamedResponse {
         $this->project($request, $projectId, false);
         $data = $request->validate([
@@ -169,7 +169,7 @@ final class V2FinancePilotController extends Controller
 
     public function exportAccountStatement(
         Request $request, int $projectId, int $accountId,
-        V2PostingGateway $gateway, V2FinanceCsvExporter $exporter
+        PostingGateway $gateway, FinanceCsvExporter $exporter
     ): StreamedResponse {
         $this->project($request, $projectId, false);
         $data = $request->validate([
@@ -187,7 +187,7 @@ final class V2FinancePilotController extends Controller
         );
     }
 
-    public function post(Request $request, int $projectId, V2PostingGateway $gateway): JsonResponse
+    public function post(Request $request, int $projectId, PostingGateway $gateway): JsonResponse
     {
         $this->project($request, $projectId, true);
         $data = $request->validate([
@@ -211,7 +211,7 @@ final class V2FinancePilotController extends Controller
         try {
             // Mirror legacy approval/project state before dispatching; the
             // transactional writer rechecks under row locks to prevent races.
-            $ready = (new V2SourceApprovalReadiness())->inspect(
+            $ready = (new SourceApprovalReadiness())->inspect(
                 $projectId, $data['kind'], $id, $data['series'] ?? null
             );
             if (!$ready['eligible']) {
@@ -240,7 +240,7 @@ final class V2FinancePilotController extends Controller
         ], 201);
     }
 
-    public function bankTransfer(Request $request, int $projectId, V2PostingGateway $gateway): JsonResponse
+    public function bankTransfer(Request $request, int $projectId, PostingGateway $gateway): JsonResponse
     {
         $this->project($request, $projectId, true);
         $data = $request->validate([
@@ -272,7 +272,7 @@ final class V2FinancePilotController extends Controller
     public function plotReceipt(Request $request, int $projectId, ?int $receiptId = null): JsonResponse
     {
         $this->project($request, $projectId, $receiptId === null);
-        $writer = new \App\Services\Finance\V2PlotEntryWriter();
+        $writer = new \App\Services\Finance\PlotEntryWriter();
         if ($receiptId !== null) {
             try { return response()->json($writer->receipt($projectId, $receiptId)); }
             catch (\DomainException $error) { return response()->json(['error' => 'V2_PLOT_RECEIPT_NOT_FOUND'], 404); }
@@ -304,7 +304,7 @@ final class V2FinancePilotController extends Controller
     {
         $this->project($request, $projectId, false);
         try {
-            $details = (new \App\Services\Finance\V2PlotEntryWriter())->receipt($projectId, $receiptId);
+            $details = (new \App\Services\Finance\PlotEntryWriter())->receipt($projectId, $receiptId);
         } catch (\DomainException $error) {
             abort(404);
         }
@@ -319,7 +319,7 @@ final class V2FinancePilotController extends Controller
     public function plotPurchase(Request $request, int $projectId, ?int $purchaseId = null): JsonResponse
     {
         $this->project($request, $projectId, $purchaseId === null);
-        $writer = new \App\Services\Finance\V2PlotEntryWriter();
+        $writer = new \App\Services\Finance\PlotEntryWriter();
         if ($purchaseId !== null) {
             try { return response()->json($writer->purchaseDetails($projectId, $purchaseId)); }
             catch (\DomainException $error) { return response()->json(['error' => 'V2_PLOT_PURCHASE_NOT_FOUND'], 404); }
@@ -364,7 +364,7 @@ final class V2FinancePilotController extends Controller
             'reason' => ['required', 'string', 'min:1', 'max:200'],
         ]);
         try {
-            $batchId = (new \App\Services\Finance\V2PlotEntryLifecycleService())->reverse(
+            $batchId = (new \App\Services\Finance\PlotEntryLifecycleService())->reverse(
                 $projectId, $kind, $sourceId, $data['request_key'], $data['effective_date'],
                 $data['reason'], (int) $request->user()->getAuthIdentifier()
             );
@@ -382,7 +382,7 @@ final class V2FinancePilotController extends Controller
         ?int $sourceId = null
     ): JsonResponse {
         $this->project($request, $projectId, true);
-        $service = new \App\Services\Finance\V2CommissionDraftWorkflow();
+        $service = new \App\Services\Finance\CommissionDraftWorkflow();
         try {
             if ($action === 'create' && $sourceId === null) {
                 $data = $request->validate([
@@ -444,7 +444,7 @@ final class V2FinancePilotController extends Controller
             'reason' => ['required', 'string', 'min:1', 'max:200'],
         ]);
         try {
-            $batchId = (new \App\Services\Finance\V2VoucherLifecycleService())->reverse(
+            $batchId = (new \App\Services\Finance\VoucherLifecycleService())->reverse(
                 $projectId, $kind, $sourceId,
                 $data['request_key'], $data['effective_date'],
                 $data['reason'], (int) $request->user()->getAuthIdentifier()
@@ -458,7 +458,7 @@ final class V2FinancePilotController extends Controller
         ], 201);
     }
 
-    public function reverse(Request $request, int $projectId, V2PostingGateway $gateway): JsonResponse
+    public function reverse(Request $request, int $projectId, PostingGateway $gateway): JsonResponse
     {
         $this->project($request, $projectId, true);
         $data = $request->validate([

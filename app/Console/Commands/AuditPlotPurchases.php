@@ -2,15 +2,15 @@
 
 namespace App\Console\Commands;
 
-use App\Services\Finance\V2PlotPurchaseReconciliation;
+use App\Services\Finance\PlotPurchaseReconciliation;
 use Illuminate\Console\Command;
 
-final class AuditV2PlotPurchases extends Command
+final class AuditPlotPurchases extends Command
 {
     protected $signature = 'finance:audit-v2-plot-purchases {project : Isolated local project ID}';
     protected $description = 'Read-only PP purchase inventory, seller credit and posting integrity audit';
 
-    public function handle(V2PlotPurchaseReconciliation $reconciler): int
+    public function handle(PlotPurchaseReconciliation $reconciler): int
     {
         $project = filter_var($this->argument('project'), FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]);
         if (!$project) {
