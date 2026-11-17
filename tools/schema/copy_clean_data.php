@@ -49,7 +49,7 @@ $a=$tables($source);
 $b=$tables($target);
 if (count($a)!==147 || $a!==$b || !in_array('migrations',$a,true))
     throw new RuntimeException('Source/destination schema table names mismatch');
-$expectedMigrationCount=$target==='bluenew_clean_final'?148:1;
+$expectedMigrationCount=$target==='bluenew_clean_final'?149:1;
 if ($count($target,'migrations')!==$expectedMigrationCount)
     throw new RuntimeException('Expected '.$expectedMigrationCount.' migration records in '.$target);
 $planned=[];$total=0;
