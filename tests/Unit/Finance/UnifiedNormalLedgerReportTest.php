@@ -51,7 +51,8 @@ final class UnifiedNormalLedgerReportTest extends TestCase
         $this->assertStringContainsString("['legacy_ledger_id'] === null", $service);
         $this->assertStringContainsString("['posting_line_id']", $service);
         $this->assertStringNotContainsString("['type_id']", $service);
-        $this->assertSame(3, substr_count($controller, 'return $this->mixedLedgerReport($request,'));
+        $this->assertSame(2, substr_count($controller, 'return $this->mixedLedgerReport($request,'));
+        $this->assertStringContainsString('return $this->mixedLedgerReport($request);', $controller);
     }
 
     public function test_invalid_amount_and_group_are_rejected(): void
