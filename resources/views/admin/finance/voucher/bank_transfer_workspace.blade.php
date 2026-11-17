@@ -218,7 +218,7 @@ $(function () {
             ($.isFunction(feedback.error)?feedback.error(messageOrXhr,defaultMessage):
               (messageOrXhr.responseJSON||{}).message||defaultMessage||'Request failed');
         // For server responses pass the sanitized object to the common error handler.
-        if(/sqlstate|stack trace|\\binsert into\\b|\\bexception\\b/i.test(message))
+        if(/sqlstate|stack trace|\binsert into\b|\bexception\b/i.test(message))
             message=defaultMessage||'The operation failed. Please retry.';
         $box.text(message).removeClass('d-none');
         notify('error','Request failed',message);
