@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Explicit project attribution for stock documents with NO project_id.
- * Opt-in future V2-only administrative operation: ability is intentionally
+ * Opt-in future finance administrative operation: ability is intentionally
  * NOT granted by default; must be defined by authorized policy before use.
  */
 final class StockProjectApprovalWriter
@@ -21,43 +21,34 @@ final class StockProjectApprovalWriter
         string $evidenceReference
     ): void {
         FinanceConnectionGuard::assertAllowed();
-        // Legacy AuthServiceProvider globally grants every Gate ability to
-        // superadmin. A missing/false pilot WRITE flag MUST still refuse an
-        // approval, even when a read-only pilot has registered the ability.
-        if (!in_array((string) config('app.env'), ['local', 'testing'], true)
-            || !config('finance.v2_pilot_api_enabled', false)
-            || !config('finance.v2_pilot_write_enabled', false)) {
-            throw new \DomainException('V2_STOCK_APPROVAL_WRITE_FLAG_REQUIRED');
+        // The authorization policy is the single source of access control.
+        if (!Gate::has('approve-stock-finance')) {
+            throw new \DomainException('FINANCE_STOCK_APPROVAL_POLICY_NOT_REGISTERED');
         }
-        // The global legacy superadmin Gate::before must NOT implicitly
-        // activate an as-yet-undefined V2 finance authorization ability.
-        if (!Gate::has('approve-v2-stock-finance')) {
-            throw new \DomainException('V2_STOCK_APPROVAL_POLICY_NOT_REGISTERED');
-        }
-        Gate::authorize('approve-v2-stock-finance');
+        Gate::authorize('approve-stock-finance');
         $actor = Auth::id();
         if (!is_int($actor) && !(is_string($actor) && ctype_digit($actor))) {
-            throw new \DomainException('V2_STOCK_APPROVAL_ACTOR_REQUIRED');
+            throw new \DomainException('FINANCE_STOCK_APPROVAL_ACTOR_REQUIRED');
         }
         if ($projectId < 1
             || !preg_match('/^[A-Za-z0-9_.:\/-]{12,128}$/D', $evidenceReference)) {
-            throw new \DomainException('V2_STOCK_APPROVAL_EVIDENCE_REQUIRED');
+            throw new \DomainException('FINANCE_STOCK_APPROVAL_EVIDENCE_REQUIRED');
         }
         $table = match ($kind) {
             'stock_entry' => 'finance_stock_entry_project_approvals',
             'stock_bill' => 'finance_stock_bill_project_approvals',
-            default => throw new \DomainException('V2_STOCK_APPROVAL_KIND_INVALID'),
+            default => throw new \DomainException('FINANCE_STOCK_APPROVAL_KIND_INVALID'),
         };
         $fk = $kind === 'stock_entry' ? 'stock_entry_id' : 'stock_bill_id';
         if (!Schema::hasTable($table)) {
-            throw new \RuntimeException('V2_STOCK_APPROVAL_SCHEMA_MISSING');
+            throw new \RuntimeException('FINANCE_STOCK_APPROVAL_SCHEMA_MISSING');
         }
 
         DB::transaction(function () use ($kind, $sourceId, $projectId,
             $evidenceReference, $actor, $table, $fk): void {
             if (!DB::table('projects')->where('id', $projectId)->lockForUpdate()->exists()
                 || !DB::table('users')->where('id', $actor)->exists()) {
-                throw new \DomainException('V2_STOCK_APPROVAL_PROJECT_OR_USER_INVALID');
+                throw new \DomainException('FINANCE_STOCK_APPROVAL_PROJECT_OR_USER_INVALID');
             }
             $snapshot = (new StockSourceSnapshot())->read($kind, $sourceId, $projectId);
             $existing = DB::table($table)->where($fk, $sourceId)
@@ -66,7 +57,7 @@ final class StockProjectApprovalWriter
                 if ((int) $existing->project_id !== $projectId
                     || !hash_equals((string) $existing->source_sha256, $snapshot['fingerprint'])
                     || (string) $existing->evidence_reference !== $evidenceReference) {
-                    throw new \DomainException('V2_STOCK_APPROVAL_CONFLICT');
+                    throw new \DomainException('FINANCE_STOCK_APPROVAL_CONFLICT');
                 }
                 return;
             }
