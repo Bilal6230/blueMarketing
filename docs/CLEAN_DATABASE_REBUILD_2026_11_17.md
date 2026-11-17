@@ -179,3 +179,26 @@ Remove-Item Env:\DB_DATABASE
 Remove-Item Env:\APP_ENV
 ```
 Only after native/new migration schema signature PASS run `php tools/schema/copy_clean_data.php --target=bluenew_clean_final --apply`, followed by read-only reconciliation (target option without schema-only). Expected migration history count 148. Do not copy old `migrations` data.
+
+
+## 2026-11-17 — First standard migrate parse failure and bulk fix
+
+Owner ran plain `php artisan migrate` on new `bluenew_clean_final`, which created only the Laravel `migrations` table, then failed before running table migrations:
+`ParseError syntax error, unexpected token "<<" at database/migrations/2019_08_19_000000_create_failed_jobs_table.php:10`.
+Root cause: the first batch of 50 per-table migrations had a trailing space after the PHP nowdoc opener (`<<<'BMDDL0' `), illegal under PHP 8.4. A second formatting difference in that batch was `BMDDL0 );`. Fixed all 50 offending PHP migration files directly on GitHub in seven atomic batches (commits d960feb9 through ad2c1b59). Original 110 old migrations and 146 new one-table migrations remain archived/active, respectively. The later 96 generated migrations and final FK file were authored without trailing nowdoc whitespace and need no changes.
+
+Next owner command on the *existing still-empty* `bluenew_clean_final` (which has just migrations table; NOT dropping database):
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+$lintErrors = @(Get-ChildItem database/migrations -Filter *.php | ForEach-Object { $out = php -l $_.FullName; if ($LASTEXITCODE -ne 0) { $out } })
+if ($lintErrors.Count -gt 0) { $lintErrors; throw 'Migration PHP syntax check failed' }
+$env:APP_ENV = 'local'
+$env:DB_DATABASE = 'bluenew_clean_final'
+php artisan optimize:clear
+php artisan migrate
+php tools/schema/audit_clean_reconciliation.php --target=bluenew_clean_final --schema-only
+Remove-Item Env:\DB_DATABASE
+Remove-Item Env:\APP_ENV
+```
+Only upon MySQL migration and schema-audit PASS, copy data with original timestamps. Never `migrate:fresh` on `bluenew` or `bluenew_clean`.
