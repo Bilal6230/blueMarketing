@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Finance;
 
-use App\Services\Finance\V2BankTransferLifecycleService;
+use App\Services\Finance\BankTransferLifecycleService;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -12,14 +12,14 @@ final class NormalBankTransferReversalGateTest extends TestCase
     {
         config(['app.env' => 'production', 'database.default' => 'mysql']);
         $this->expectException(\RuntimeException::class);
-        (new V2BankTransferLifecycleService())->reverse(
+        (new BankTransferLifecycleService())->reverse(
             3, 'deposit', 12, str_repeat('x', 24), '2026-11-17', 'Test reversal', null
         );
     }
 
     public function test_bank_transfer_reversal_requires_exact_source_and_never_releases_cleared_cheque_implicitly(): void
     {
-        $service = file_get_contents(app_path('Services/Finance/V2BankTransferLifecycleService.php'));
+        $service = file_get_contents(app_path('Services/Finance/BankTransferLifecycleService.php'));
         $controller = file_get_contents(app_path('Http/Controllers/Finance/VoucherController.php'));
         $routes = file_get_contents(base_path('routes/web.php'));
         $view = file_get_contents(resource_path('views/admin/finance/voucher/bank_transfer_workspace.blade.php'));

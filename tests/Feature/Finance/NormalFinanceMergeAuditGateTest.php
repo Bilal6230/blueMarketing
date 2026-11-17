@@ -20,7 +20,7 @@ final class NormalFinanceMergeAuditGateTest extends TestCase
         $receipt = file_get_contents(resource_path('views/admin/finance/voucher/plot_receipt_workspace.blade.php'));
         $purchase = file_get_contents(resource_path('views/admin/finance/voucher/plot_purchase_workspace.blade.php'));
 
-        $this->assertStringContainsString('V2PlotEntryLifecycleService', $controller);
+        $this->assertStringContainsString('PlotEntryLifecycleService', $controller);
         $this->assertStringContainsString("reversePlotSource(\$request, 'plot_receipt'", $controller);
         $this->assertStringContainsString("reversePlotSource(\$request, 'plot_purchase'", $controller);
         $this->assertStringContainsString("void_batch.reversal_of_batch_id", $controller);
@@ -39,9 +39,9 @@ final class NormalFinanceMergeAuditGateTest extends TestCase
         $commission = file_get_contents(app_path('Http/Controllers/CommissionVoucherController.php'));
 
         $this->assertStringContainsString('private function isMergedPostedJournal(', $journal);
-        $this->assertStringContainsString('V2VoucherLifecycleService())->reverse(', $journal);
+        $this->assertStringContainsString('VoucherLifecycleService())->reverse(', $journal);
         $this->assertStringContainsString('private function isMergedTypedCommission(', $commission);
         $this->assertStringContainsString('cancelDraft($projectId, (int) $id)', $commission);
-        $this->assertStringContainsString('V2VoucherLifecycleService())->reverse(', $commission);
+        $this->assertStringContainsString('VoucherLifecycleService())->reverse(', $commission);
     }
 }

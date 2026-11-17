@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Finance;
 
-use App\Services\Finance\V2CashVoucherLifecycleService;
+use App\Services\Finance\CashVoucherLifecycleService;
 use Tests\TestCase;
 
 final class NormalTypedCashReversalGateTest extends TestCase
@@ -11,14 +11,14 @@ final class NormalTypedCashReversalGateTest extends TestCase
     {
         config(['app.env' => 'production']);
         $this->expectException(\RuntimeException::class);
-        (new V2CashVoucherLifecycleService())->reverse(
+        (new CashVoucherLifecycleService())->reverse(
             3, 12, str_repeat('t', 24), '2026-11-17', 'Local test', null
         );
     }
 
     public function test_source_fk_and_approval_gates_are_preserved(): void
     {
-        $service = file_get_contents(app_path('Services/Finance/V2CashVoucherLifecycleService.php'));
+        $service = file_get_contents(app_path('Services/Finance/CashVoucherLifecycleService.php'));
         $controller = file_get_contents(app_path('Http/Controllers/Finance/DailyVoucherDirectoryController.php'));
         $routes = file_get_contents(base_path('routes/web.php'));
         $view = file_get_contents(resource_path('views/admin/finance/voucher/daily_directory.blade.php'));
