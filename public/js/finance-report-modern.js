@@ -71,8 +71,9 @@
    },
    createdRow:function(row,data){paint($(row),data);},
    footerCallback:function(){
+    var currentTable=this.api();
     var totals=[0,0,0],start=party?3:1;
-    api.rows({page:'current',search:'applied'}).data().each(function(row){
+    currentTable.rows({page:'current',search:'applied'}).data().each(function(row){
      for(var j=0;j<3;j++)totals[j]+=cents(row[keys[start+j]]);
     });
     $('#financeReportTotalIn').text(money(totals[0]));
