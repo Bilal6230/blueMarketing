@@ -202,3 +202,27 @@ Remove-Item Env:\DB_DATABASE
 Remove-Item Env:\APP_ENV
 ```
 Only upon MySQL migration and schema-audit PASS, copy data with original timestamps. Never `migrate:fresh` on `bluenew` or `bluenew_clean`.
+
+
+## 2026-11-17 — Final FK migration PHP class terminator fixed
+
+Owner re-ran all PHP -l checks: **147/148 passed**, only `2026_11_17_999999_add_final_foreign_keys.php` reported `Parse error: Unclosed '{' on line 7`. Root cause directly verified: the final anonymous migration class lacked its closing `};`. Committed exact fix as `23700362`. Added automatic regression test `tests/Unit/AllMigrationFilesSyntaxTest.php` that PHP-lints all 148 active migrations and verifies 110 archived files (commit `53b0330f`). This is not a MySQL-schema validation; local migration still must run.
+
+Owner's `bluenew_clean_final` retains only Laravel migration tracking table; no application table migrations executed. No DB recreation necessary. Do not run schema audit following failed migrations; run only after explicit success.
+
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan test --filter=AllMigrationFilesSyntaxTest
+if ($LASTEXITCODE -ne 0) { throw 'Migration lint failed; stopping' }
+$env:APP_ENV='local'
+$env:DB_DATABASE='bluenew_clean_final'
+php artisan optimize:clear
+php artisan migrate --force
+if ($LASTEXITCODE -ne 0) { throw 'Migration failed; STOP, do not audit' }
+php tools/schema/audit_clean_reconciliation.php --target=bluenew_clean_final --schema-only
+Remove-Item Env:\DB_DATABASE
+Remove-Item Env:\APP_ENV
+```
+
+For failures in the above sequence, remember temporary environment variables stay set until manually cleared; never run further migrate commands targeting original `bluenew`/`bluenew_clean` inadvertently.
