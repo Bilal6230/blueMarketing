@@ -30,7 +30,7 @@ final class NormalTypedCashReversalGateTest extends TestCase
         $this->assertStringContainsString('reversePostedBatch(', $service);
         $this->assertStringContainsString("'is_active' => 0", $service);
         $this->assertStringContainsString('reversal_of_batch_id', $controller);
-        $this->assertStringContainsString('orWhereExists(\$reversedTypedExists)', $controller);
+        $this->assertStringContainsString('orWhereExists($reversedTypedExists)', $controller);
         $this->assertStringContainsString('function reverseTypedCashSource(', $controller);
         $this->assertStringContainsString("'status' => \$typedPosting && \$typedPosting->reversal_id", $controller);
         $this->assertStringContainsString("'reverse_url' => \$typedPosting", $controller);
