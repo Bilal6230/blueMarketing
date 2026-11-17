@@ -244,3 +244,35 @@ Owner executed on local MySQL 8.4:
 **Do not confuse the acceptance gate with**: application/browser testing, independent source bookkeeping correctness, optimized index query-plan verification, or conversion of migration internals to Laravel `Schema::create`. The 146 files are one-per-table but deliberately contain exact source MySQL DDL through Laravel `DB::unprepared`. These remaining quality improvements are separate.
 
 **No more data-copy or migrations reruns needed** on `bluenew_clean_final`. Do not run `migrate:fresh` on any historical or validated databases.
+
+
+## 2026-11-17 — Next milestone: local app readiness, read-only first
+
+Final source-to-target database equality already passed; no import rerun is needed. Added `tools/schema/accept_clean_application.php` read-only local-only app-data smoke gate with:
+- Explicit guard for `APP_ENV=local`, local MySQL host, no DATABASE_URL, and `bluenew_clean_final`.
+- 147 tables, 146 app tables, 148 migration-history rows, all 120,835 total app data rows.
+- Key business/authorization table expected counts (users, roles, permissions, projects, leads, bookings, ledgers, journals, cheque/online intake).
+- 250 FK definitions, plus full read-only FK orphan queries using composite null-safe MATCH SIMPLE handling.
+- No writes, schema changes, seeders, or migrations. Includes static regression tests in `tests/Unit/CleanDatabaseApplicationAcceptanceTest.php`.
+
+Owner commands to run read-only gate:
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+$env:APP_ENV='local'
+$env:DB_DATABASE='bluenew_clean_final'
+php artisan optimize:clear
+php artisan test --filter=CleanDatabaseApplicationAcceptanceTest
+php -l tools/schema/accept_clean_application.php
+php tools/schema/accept_clean_application.php
+```
+After PASS, launch a separate local terminal WITH same environment variables for browser testing:
+```powershell
+cd C:\laragon\www\blueMarketing
+$env:APP_ENV='local'
+$env:DB_DATABASE='bluenew_clean_final'
+php artisan serve --host=127.0.0.1 --port=8001
+```
+Open `http://127.0.0.1:8001/login`, use existing local credentials, inspect home/dashboard, user roles, project navigation, ledger, JV listing, cheque/online intake listing, and report pages **READ-ONLY**. Do not save vouchers/approval actions during first pass. Since copied token/session records may exist, perform fresh browser login rather than assuming sessions carry over. Avoid putting the `bluenew_clean_final` database in permanent `.env` until deliberate switch-over is approved.
+
+Business acceptance remains PENDING until owner reports actual read-only gate and browser results. Independent bookkeeping correctness and index/query-plan optimization still future milestones.
