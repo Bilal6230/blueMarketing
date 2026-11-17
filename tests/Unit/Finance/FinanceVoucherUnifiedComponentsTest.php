@@ -503,6 +503,9 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString("finance_posting_cash_sources as typed", $booking);
         $this->assertStringContainsString('Voucher already approved and posted.', $booking);
         $this->assertStringContainsString("finance_extra_charge_payment_sources as ecp", $booking);
+        $this->assertStringContainsString('typedExtraChargeReceivableAccount(', $booking);
+        $this->assertStringContainsString('EC_ORIGINAL_RECEIVABLE_ACCOUNT_AMBIGUOUS', $booking);
+        $this->assertStringContainsString("'line.project_head_subhead_id'", $booking);
         $this->assertStringContainsString('V2OriginalBookingDepositWorkflow', $booking);
         $this->assertStringContainsString('V2OriginalBankWorkflow', $booking);
         $this->assertStringContainsString('NORMAL-EC-BANK-', $booking);
