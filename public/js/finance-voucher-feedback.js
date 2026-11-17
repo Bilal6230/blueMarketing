@@ -54,7 +54,7 @@
         // Accounting tables are scroll containers. Their dropdowns must be
         // portaled to this document body to avoid clipping behind the table.
         // Other modal controls stay anchored to their own field.
-        dropdownParent:$element.closest('.fvc-entry-table').length?'body':null,
+        dropdownParent:$element.closest('.fvc-entry-table, .bt-modern-modal').length?'body':null,
         dropdownClass:'ts-dropdown fvc-global-ts-dropdown',
         onInitialize:function(){this.wrapper.classList.add('fvc-ts-ready');}});
     });
