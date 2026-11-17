@@ -18,6 +18,7 @@ final class V2OriginalWorkflowAccess
         $database = (string) config('database.connections.'.$connection.'.database');
         return config('app.env') === 'local'
             && $database !== ''
+            && $database !== ':memory:'
             && !str_starts_with($database, 'bluemarketing_v2_');
     }
 
