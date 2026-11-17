@@ -286,6 +286,25 @@
     </div></section>
 </div>
 <x-finance.voucher-column-filters />
+@can('delete voucher')
+<div class="modal fade" id="dvTypedReverseModal" tabindex="-1" aria-labelledby="dvTypedReverseTitle" aria-hidden="true">
+ <div class="modal-dialog modal-dialog-centered"><div class="modal-content fvc-modern-modal">
+  <div class="modal-header"><h5 id="dvTypedReverseTitle" class="modal-title">Reverse Cash Voucher</h5>
+   <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
+  <form id="dvTypedReverseForm"><div class="modal-body">
+   <p class="small text-muted">The original financial record stays in history. A matching reversal posting will be created.</p>
+   <div class="form-group"><label for="dvTypedReverseReason">Reason</label>
+    <textarea id="dvTypedReverseReason" rows="3" minlength="3" maxlength="200" class="form-control" required></textarea></div>
+   <div class="form-group"><label for="dvTypedReverseDate">Effective date</label>
+    <input type="date" class="form-control" id="dvTypedReverseDate" value="{{ now()->toDateString() }}" required></div>
+   <div class="alert alert-danger d-none" id="dvTypedReverseError" role="alert"></div>
+  </div><div class="modal-footer">
+   <button class="btn btn-outline-secondary" type="button" data-dismiss="modal">Cancel</button>
+   <button class="btn btn-danger" id="dvTypedReverseSubmit" type="submit">Reverse voucher</button>
+  </div></form>
+ </div></div>
+</div>
+@endcan
 <div class="modal fade" id="dv-detail-modal" tabindex="-1" role="dialog" aria-labelledby="dv-detail-title" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-scrollable" role="document"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="dv-detail-title">Voucher details</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div><div class="modal-body"><div class="dv-common-print-heading"><h3 class="mb-1">Voucher Details</h3><div id="dv-print-identity" class="small text-muted"></div><div class="small">Read-only voucher record · not a new accounting posting</div></div><dl class="row mb-0" id="dv-detail-fields"></dl><div id="dv-detail-lines-wrap" class="mt-3 d-none"><h6>Voucher lines</h6><div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>Account</th><th>Description</th><th class="text-right">Debit</th><th class="text-right">Credit</th></tr></thead><tbody id="dv-detail-lines"></tbody></table></div></div><div id="dv-detail-prints-wrap" class="mt-3 d-none"><h6>Plot receipt print views</h6><div id="dv-detail-prints" class="d-flex flex-wrap" style="gap:.5rem"></div></div><div id="dv-detail-audit-wrap" class="mt-3 d-none"><h6>Payment and audit information</h6><dl class="row mb-0" id="dv-detail-audit"></dl></div></div><div class="modal-footer"><button type="button" class="btn btn-outline-primary dv-common-print-button" id="dv-common-print"><i class="fas fa-print mr-1"></i> Print Details (A4)</button><a id="dv-detail-print" class="btn btn-primary" target="_blank" rel="noopener"><i class="fas fa-print mr-1"></i> Open print view</a><span id="dv-no-print" class="small text-muted d-none">No posted print record is available.</span><button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button></div></div></div></div>
 <div class="modal fade" id="dv-entry-modal" tabindex="-1" role="dialog" aria-labelledby="dv-entry-title" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
@@ -603,27 +622,38 @@
             else window.alert(message);
         }).always(function(){$button.prop('disabled',false);});
     });
+    @can('delete voucher')
     $('#dv-rows').on('click','.dv-typed-reverse',function(){
-        var $button=$(this),voucher=$button.attr('data-number');
-        var reason=window.prompt('Reason for reversing '+voucher+' (minimum 3 characters):');
-        if(reason===null||$.trim(reason).length<3||$.trim(reason).length>200)return;
-        if(!window.confirm('Reverse '+voucher+' while preserving its original posting history?'))return;
+        var $button=$(this);
+        $('#dvTypedReverseForm').data('url',$button.attr('data-url'));
+        $('#dvTypedReverseTitle').text('Reverse '+$button.attr('data-number'));
+        $('#dvTypedReverseReason').val('');
+        $('#dvTypedReverseError').addClass('d-none').text('');
+        $('#dvTypedReverseModal').modal('show');
+    });
+    $('#dvTypedReverseForm').on('submit',function(event){
+        event.preventDefault();
+        var $button=$('#dvTypedReverseSubmit'),url=$(this).data('url');
+        if(!url||$button.prop('disabled'))return;
         $button.prop('disabled',true);
         $.ajax({
-            url:$button.attr('data-url'),type:'POST',dataType:'json',
-            headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'},
-            data:{_token:@json(csrf_token()),reason:$.trim(reason),
-                effective_date:new Date().toLocaleDateString('en-CA'),
-                request_key:'typedcashreverse'+Date.now().toString(36)+Math.random().toString(36).slice(2,14)}
+            url:url,type:'POST',dataType:'json',contentType:'application/json',
+            headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest',
+                'X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')},
+            data:JSON.stringify({reason:$.trim($('#dvTypedReverseReason').val()),
+                effective_date:$('#dvTypedReverseDate').val(),
+                request_key:'typedcashreverse'+Date.now().toString(36)+Math.random().toString(36).slice(2,14)})
         }).done(function(response){
-            if(window.toastr&&$.isFunction(window.toastr.success))window.toastr.success(response.message||'Voucher reversed');
+            $('#dvTypedReverseModal').modal('hide');
+            if(window.toastr&&$.isFunction(window.toastr.success))
+                window.toastr.success(response.message||'Voucher reversed');
             load();
         }).fail(function(xhr){
-            var message=(xhr.responseJSON||{}).message||'Unable to reverse voucher';
-            if(window.toastr&&$.isFunction(window.toastr.error))window.toastr.error(message);
-            else window.alert(message);
+            $('#dvTypedReverseError').removeClass('d-none')
+                .text((xhr.responseJSON||{}).message||'Unable to reverse voucher');
         }).always(function(){$button.prop('disabled',false);});
     });
+    @endcan
     $('#dv-rows').on('click','.dv-delete',function(){
         const button=this;
         const reason=window.prompt('Reason for deactivating '+$(button).data('number')+' (required):');
