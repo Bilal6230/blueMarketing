@@ -1957,6 +1957,21 @@ class BookingController extends Controller
                 ? response()->json(['status' => 'success', 'message' => 'Voucher approved and posted.'])
                 : back()->with('success', 'Voucher approved and posted.');
         }
+        // A typed/claim-backed source may already be posted without any
+        // legacy ledgers. Never turn it into an unposted voucher merely by
+        // changing is_approve in the standard ERP approval dialog.
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::normalErpMode()
+            && \Illuminate\Support\Facades\Schema::hasTable('finance_posting_cash_sources')
+            && DB::table('finance_posting_cash_sources as typed')
+                ->join('customer_ledger as source', 'source.id', '=', 'typed.customer_ledger_id')
+                ->where('typed.customer_ledger_id', (int) $data['id'])
+                ->where('source.project_id', $projectId)->exists()) {
+            abort_unless((int) $data['is_approve'] === 1, 409,
+                'This voucher has already been posted. Use its reversal workflow instead of unapproving.');
+            return $request->expectsJson()
+                ? response()->json(['status' => 'success', 'message' => 'Voucher already approved and posted.'])
+                : back()->with('success', 'Voucher already approved and posted.');
+        }
         try {
             DB::transaction(function () use ($data, $projectId): void {
                 $source = CustomerLedger::query()->whereKey($data['id'])
