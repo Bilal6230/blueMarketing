@@ -46,6 +46,29 @@ class LedgerController extends Controller
             ->with(['scope' => 'typed_v2_postings_only'])->toJson();
     }
 
+    /**
+     * Normal ERP report endpoints must include V2-only posted legs without
+     * double-counting typed lines that already link to legacy ledger rows.
+     * The ordinary report permissions stay on the existing routes.
+     */
+    private function mixedLedgerReport(Request $request, ?string $group = null)
+    {
+        $project = (int) getSelectedTown();
+        abort_if($project < 1, 403, 'Select a project.');
+        $data = $request->validate([
+            'start_date' => ['nullable', 'date_format:Y-m-d'],
+            'end_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:start_date'],
+        ]);
+        $service = new \App\Services\Finance\UnifiedNormalLedgerReport();
+        try {
+            $rows = $service->rows($project, $data['start_date'] ?? null, $data['end_date'] ?? null);
+            $output = $group === null ? $rows : $service->totals($rows, $group);
+        } catch (\DomainException $e) {
+            abort(409, 'Unified ledger integrity check failed.');
+        }
+        return DataTables::of(collect($output))->with(['scope' => 'normal_erp_unified'])->toJson();
+    }
+
     public function store(Request $request)
     {
         $fixedPaymentType = $request->route('paymentType');
@@ -1571,6 +1594,9 @@ class LedgerController extends Controller
         if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
             return $this->typedReport($request);
         }
+        if ((new \App\Services\Finance\UnifiedNormalLedgerReport())->available()) {
+            return $this->mixedLedgerReport($request);
+        }
         $selectedProjectId = getSelectedTown();
 
         $query = Ledger::with(
@@ -1736,6 +1762,9 @@ class LedgerController extends Controller
         if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
             return $this->typedReport($request, 'project_head_subheads_id');
         }
+        if ((new \App\Services\Finance\UnifiedNormalLedgerReport())->available()) {
+            return $this->mixedLedgerReport($request, 'project_head_subheads_id');
+        }
         $selectedProjectId = getSelectedTown();
         $data = Ledger::with('projectHeadSubhead.project', 'projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting')
             ->where('is_active', 1)
@@ -1777,6 +1806,9 @@ class LedgerController extends Controller
     {
         if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
             return $this->typedReport($request, $request->input('account_type') === 'account' ? 'acct_type' : 'head_accounting_id');
+        }
+        if ((new \App\Services\Finance\UnifiedNormalLedgerReport())->available()) {
+            return $this->mixedLedgerReport($request, $request->input('account_type') === 'account' ? 'acct_type' : 'head_accounting_id');
         }
         $selectedProjectId = getSelectedTown();
         if ($request->account_type == 'account') {
