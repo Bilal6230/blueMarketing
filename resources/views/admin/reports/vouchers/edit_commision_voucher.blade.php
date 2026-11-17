@@ -181,7 +181,7 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                                 </button>
                             </div>
                         </form>
-                        @if(\App\Services\Finance\V2OriginalWorkflowAccess::enabled() && $voucher->status === 'draft')
+                        @if(\App\Services\Finance\FinanceWorkflowAccess::enabled() && $voucher->status === 'draft')
                             @can('can approve')
                                 <form action="{{ route('commision.voucher.approve', request()->boolean('embed') ? ['id'=>$voucher->id,'embed'=>1] : ['id'=>$voucher->id]) }}" method="POST" class="text-center mt-3">
                                     @csrf

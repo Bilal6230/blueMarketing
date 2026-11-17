@@ -7,7 +7,7 @@
             {{-- SV is created by the booking workflow. This JV-only editor
                  cannot safely mutate a posted SV; offer its voucher detail
                  document through the authorized print route instead. --}}
-            @if($voucher->type !== 'SV' && (!($approvalTracked ?? false) || (\App\Services\Finance\V2OriginalWorkflowAccess::normalErpMode() && !($canResubmit ?? false))))
+            @if($voucher->type !== 'SV' && (!($approvalTracked ?? false) || (\App\Services\Finance\FinanceWorkflowAccess::normalErpMode() && !($canResubmit ?? false))))
             <a href="{{ route($voucherRoutePrefix.'.edit', $voucher->id) }}" class="btn btn-sm btn-warning">
                 <i class="fas fa-edit"></i> Edit
             </a>
@@ -15,14 +15,14 @@
         @endcan
 
         @can('delete jv')
-            @if($voucher->type !== 'SV' && (!($approvalTracked ?? false) || (\App\Services\Finance\V2OriginalWorkflowAccess::normalErpMode() && !($canResubmit ?? false))))
+            @if($voucher->type !== 'SV' && (!($approvalTracked ?? false) || (\App\Services\Finance\FinanceWorkflowAccess::normalErpMode() && !($canResubmit ?? false))))
             <button class="btn btn-sm btn-danger delete-btn" data-id="{{ $voucher->id }}">
                 <i class="fas fa-undo"></i> Reverse
             </button>
             @endif
         @endcan
 
-        @if(($canResubmit ?? false) && $voucherRoutePrefix === 'journal.voucher' && !\App\Services\Finance\V2OriginalWorkflowAccess::selected())
+        @if(($canResubmit ?? false) && $voucherRoutePrefix === 'journal.voucher' && !\App\Services\Finance\FinanceWorkflowAccess::selected())
             @can('edit jv')
                 <a href="{{ route('journal.voucher.edit', $voucher->id) }}?resubmit=1" class="btn btn-sm btn-outline-warning jv-resubmit" title="Revise rejected voucher and resubmit for approval">
                     <i class="fas fa-redo"></i> Revise
