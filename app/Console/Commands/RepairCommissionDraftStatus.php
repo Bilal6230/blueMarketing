@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class RepairCommissionDraftStatus extends Command
 {
-    protected $signature = 'finance:repair-v2-commission-status {--apply : Explicitly add draft on an approved local database after backup}';
+    protected $signature = 'finance:repair-commission-status {--apply : Explicitly add draft on an approved local database after backup}';
     protected $description = 'Inspect local typed commission status enum; additive repair only with --apply';
 
     public function handle(): int
@@ -20,8 +20,7 @@ final class RepairCommissionDraftStatus extends Command
         if (!FinanceConnectionGuard::isAllowed()
             || !in_array(config('app.env'), ['local', 'testing'], true)
             || DB::getDriverName() !== 'mysql'
-            || !(\App\Services\Finance\FinanceWorkflowAccess::mergedWriterAllowed()
-                || (config('finance.v2_pilot_api_enabled') && config('finance.v2_pilot_write_enabled')))) {
+            || !\App\Services\Finance\FinanceWorkflowAccess::mergedWriterAllowed()) {
             $this->error('Refusing: approved local MySQL typed finance database is required.');
             return self::FAILURE;
         }
@@ -52,7 +51,7 @@ final class RepairCommissionDraftStatus extends Command
         }
         if (!$this->option('apply')) {
             $this->warn('Needs additive enum repair. No writes performed.');
-            $this->line('Back up bluenew first; then rerun with --apply on this isolated local DB.');
+            $this->line('Back up the selected local database before running --apply.');
             return self::SUCCESS;
         }
         // ENUM append preserves the original numeric indexes and default.
