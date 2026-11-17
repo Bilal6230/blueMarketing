@@ -84,3 +84,22 @@ php tools/schema/copy_clean_data.php --resume
 ```
 
 **Never** run `--apply` (requires fully empty target) or wipe the partial `bluenew_clean` for this error. If resumed import fails on a different legacy type or FK orphan, inspect and address precise error without changing `bluenew`. Database copy is not accepted until final reconciliation output. Strict SQL mode is relaxed for the importer session ONLY; it does not change server/app SQL mode. Full accounting comparison and final maintainable Laravel migrations remain pending.
+
+
+## 2026-11-17 — Owner DATA COPY PASS — 120,835 rows
+
+Owner ran `php tools/schema/copy_clean_data.php --resume` on local MySQL 8.4:
+- `PREFLIGHT PASS`: 146 schema-matched application tables, 120,835 source rows; `migrations` history excluded.
+- `CHECKED: 146 tables, 250 foreign keys.`
+- `PASS: 120835 rows copied; table counts and declared foreign key relationships verified.`
+- One remaining non-PK table `punches` was count-checked only; now independently audited by full-row multiset.
+- This is **accepted Data-Only Recovery Gate**. Keep original `bluenew` safe and do not rerun copy.
+
+Added `tools/schema/audit_clean_reconciliation.php` (read-only) to compare information_schema column/engine/index/FK signatures, all numeric aggregate columns on 19 finance-relevant tables and full `punches` row multiset. No writes, no environment flips. Owner should now run:
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php -l tools/schema/audit_clean_reconciliation.php
+php tools/schema/audit_clean_reconciliation.php
+```
+Report schema/equality errors for next repair. Results do not establish independent accounting correctness or final consolidated Laravel-native migration design.
