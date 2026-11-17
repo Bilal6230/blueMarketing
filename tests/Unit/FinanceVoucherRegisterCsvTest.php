@@ -2,10 +2,10 @@
 
 namespace Tests\Unit;
 
-use App\Services\Finance\V2FinanceCsvExporter;
+use App\Services\Finance\FinanceCsvExporter;
 use PHPUnit\Framework\TestCase;
 
-final class V2FinanceVoucherRegisterCsvTest extends TestCase
+final class FinanceVoucherRegisterCsvTest extends TestCase
 {
     public function test_booking_stock_labour_and_voucher_rows_export_with_fixed_columns(): void
     {
@@ -25,7 +25,7 @@ final class V2FinanceVoucherRegisterCsvTest extends TestCase
                 'total_credit' => '50.00',
             ];
         }
-        $csv = (new V2FinanceCsvExporter())->voucherRegister($documents);
+        $csv = (new FinanceCsvExporter())->voucherRegister($documents);
         $lines = array_filter(explode("\n", trim($csv)));
         self::assertCount(8, $lines);
         self::assertStringContainsString('source_reference', $lines[0]);
@@ -35,7 +35,7 @@ final class V2FinanceVoucherRegisterCsvTest extends TestCase
 
     public function test_formula_injection_in_source_reference_is_escaped(): void
     {
-        $csv = (new V2FinanceCsvExporter())->voucherRegister([[
+        $csv = (new FinanceCsvExporter())->voucherRegister([[
             'posting_batch_id' => 1,
             'source_kind' => 'booking',
             'source_id' => 2,

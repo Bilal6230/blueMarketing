@@ -2,11 +2,11 @@
 
 namespace Tests\Unit\Finance;
 
-use App\Services\Finance\V2HistoricalImportTargetGuard;
+use App\Services\Finance\HistoricalImportTargetGuard;
 use DomainException;
 use PHPUnit\Framework\TestCase;
 
-final class V2HistoricalImportTargetGuardTest extends TestCase
+final class HistoricalImportTargetGuardTest extends TestCase
 {
     private function localConfig(): array
     {
@@ -24,7 +24,7 @@ final class V2HistoricalImportTargetGuardTest extends TestCase
 
     public function test_local_v2_target_is_accepted_only_as_a_non_synthetic_import(): void
     {
-        V2HistoricalImportTargetGuard::assertAllowed($this->localConfig(), 'local', false);
+        HistoricalImportTargetGuard::assertAllowed($this->localConfig(), 'local', false);
         $this->addToAssertionCount(1);
     }
 
@@ -32,7 +32,7 @@ final class V2HistoricalImportTargetGuardTest extends TestCase
     {
         $config = $this->localConfig();
         $config['database'] = 'bluemarketing_v2_ci';
-        V2HistoricalImportTargetGuard::assertAllowed($config, 'testing', true);
+        HistoricalImportTargetGuard::assertAllowed($config, 'testing', true);
         $this->addToAssertionCount(1);
     }
 
@@ -62,7 +62,7 @@ final class V2HistoricalImportTargetGuardTest extends TestCase
         ];
         foreach ($cases as $label => [$config, $environment, $synthetic]) {
             try {
-                V2HistoricalImportTargetGuard::assertAllowed(
+                HistoricalImportTargetGuard::assertAllowed(
                     $config, $environment, $synthetic
                 );
                 $this->fail('Unsafe source import config was allowed: ' . $label);

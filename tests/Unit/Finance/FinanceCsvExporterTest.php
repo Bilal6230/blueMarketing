@@ -2,11 +2,11 @@
 
 namespace Tests\Unit\Finance;
 
-use App\Services\Finance\V2FinanceCsvExporter;
+use App\Services\Finance\FinanceCsvExporter;
 use PHPUnit\Framework\TestCase;
 
 /** Deferred end-stage unit tests; not executed during feature implementation. */
-final class V2FinanceCsvExporterTest extends TestCase
+final class FinanceCsvExporterTest extends TestCase
 {
     public function test_trial_balance_csv_contains_exact_account_totals(): void
     {
@@ -19,7 +19,7 @@ final class V2FinanceCsvExporterTest extends TestCase
                 'closing_balance' => '0.00',
             ]],
         ];
-        $csv = (new V2FinanceCsvExporter())->trialBalance($report);
+        $csv = (new FinanceCsvExporter())->trialBalance($report);
         $this->assertStringContainsString('account_id,opening_balance,period_debit', $csv);
         $this->assertStringContainsString('101,125.50,0.00,125.50,0.00', $csv);
     }
@@ -37,7 +37,7 @@ final class V2FinanceCsvExporterTest extends TestCase
                 'running_balance' => '0.00',
             ]],
         ];
-        $csv = (new V2FinanceCsvExporter())->accountStatement($report);
+        $csv = (new FinanceCsvExporter())->accountStatement($report);
         $this->assertStringContainsString("'=1+1", $csv);
         $this->assertStringNotContainsString(',=1+1,', $csv);
     }
@@ -45,7 +45,7 @@ final class V2FinanceCsvExporterTest extends TestCase
     public function test_rejects_unknown_source_scope(): void
     {
         $this->expectException(\DomainException::class);
-        (new V2FinanceCsvExporter())->trialBalance([
+        (new FinanceCsvExporter())->trialBalance([
             'scope' => 'unverified_legacy_ledgers', 'accounts' => [],
         ]);
     }

@@ -2,13 +2,13 @@
 
 namespace Tests\Feature\Finance;
 
-use App\Services\Finance\V2PlotEntryWriter;
+use App\Services\Finance\PlotEntryWriter;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
-class V2PlotEntryWriterTest extends TestCase
+class PlotEntryWriterTest extends TestCase
 {
     protected function setUp(): void
     {
@@ -84,7 +84,7 @@ class V2PlotEntryWriterTest extends TestCase
 
     public function test_multi_plot_receipt_posts_once_and_exposes_separate_plot_allocations(): void
     {
-        $writer = new V2PlotEntryWriter();
+        $writer = new PlotEntryWriter();
         $data = ['date' => '2026-11-05', 'receipt_number' => 'PR-TEST-1', 'amount' => '100.00',
             'cash_account_id' => 101, 'narration' => 'Two plot payment', 'allocations' => [
                 ['booking_id' => 31, 'plot_id' => 11, 'receivable_account_id' => 102, 'amount' => '60.00'],
@@ -99,13 +99,13 @@ class V2PlotEntryWriterTest extends TestCase
         $this->assertSame(100.0, (float) DB::table('finance_posting_lines')->where('posting_batch_id', $created['posting_batch_id'])->where('project_head_subhead_id', 101)->value('debit'));
         $details = $writer->receipt(1, $created['source_id']);
         $this->assertSame(['A-11', 'A-12'], $details['allocations']->pluck('plot_name')->all());
-        $register = (new \App\Services\Finance\V2PostingGateway())->voucherRegister(1);
+        $register = (new \App\Services\Finance\PostingGateway())->voucherRegister(1);
         $this->assertSame('PR-TEST-1', collect($register)->firstWhere('source_kind', 'plot_receipt')['source_reference']);
     }
 
     public function test_single_plot_receipt_posts_balanced_and_details_are_project_scoped(): void
     {
-        $writer = new V2PlotEntryWriter();
+        $writer = new PlotEntryWriter();
         $payload = [
             'date' => '2026-11-14',
             'receipt_number' => 'PR-SINGLE-PLOT',
@@ -143,7 +143,7 @@ class V2PlotEntryWriterTest extends TestCase
 
     public function test_zero_plot_allocations_rejected_without_financial_posting(): void
     {
-        $writer = new V2PlotEntryWriter();
+        $writer = new PlotEntryWriter();
         try {
             $writer->receive(1, 5, 'PLOT-ZERO-REQUEST-00001', [
                 'date' => '2026-11-14', 'receipt_number' => 'PR-EMPTY',
@@ -160,7 +160,7 @@ class V2PlotEntryWriterTest extends TestCase
 
     public function test_plot_purchase_posts_inventory_cost_to_seller_and_is_idempotent(): void
     {
-        $writer = new V2PlotEntryWriter();
+        $writer = new PlotEntryWriter();
         $data = ['date' => '2026-11-05', 'purchase_number' => 'PP-TEST-1', 'seller_account_id' => 102,
             'narration' => 'Land purchase', 'items' => [
                 ['plot_code' => 'LAND-1', 'description' => 'Parcel one', 'area' => '1.2500', 'unit' => 'Kanal', 'type' => 1, 'road_id' => 1, 'facing_id' => 1, 'is_corner' => false, 'unit_rate' => '100.00', 'inventory_account_id' => 104],
@@ -171,7 +171,7 @@ class V2PlotEntryWriterTest extends TestCase
         $lines = DB::table('finance_posting_lines')->where('posting_batch_id', $created['posting_batch_id'])->get()->keyBy('project_head_subhead_id');
         $this->assertSame(125.0, (float) $lines[104]->debit);
         $this->assertSame(125.0, (float) $lines[102]->credit);
-        $this->assertSame('PP-TEST-1', collect((new \App\Services\Finance\V2PostingGateway())->voucherRegister(1))
+        $this->assertSame('PP-TEST-1', collect((new \App\Services\Finance\PostingGateway())->voucherRegister(1))
             ->firstWhere('source_kind', 'plot_purchase')['source_reference']);
         $this->assertEquals(1.25, (float) $writer->purchaseDetails(1, $created['source_id'])['items'][0]->area);
         $legacyPlotId = (int) $writer->purchaseDetails(1, $created['source_id'])['items'][0]->legacy_plot_id;
@@ -182,7 +182,7 @@ class V2PlotEntryWriterTest extends TestCase
 
     public function test_foreign_project_plot_booking_and_unallocated_amounts_fail_without_writes(): void
     {
-        $writer = new V2PlotEntryWriter();
+        $writer = new PlotEntryWriter();
         $data = ['date' => '2026-11-05', 'receipt_number' => 'PR-TEST-2', 'amount' => '100.00', 'cash_account_id' => 101,
             'narration' => 'Invalid receipt', 'allocations' => [
                 ['booking_id' => 31, 'plot_id' => 11, 'receivable_account_id' => 102, 'amount' => '60'],
@@ -206,7 +206,7 @@ class V2PlotEntryWriterTest extends TestCase
                 ['booking_id' => 31, 'plot_id' => 11, 'receivable_account_id' => 102, 'amount' => '40.00'],
             ]];
         try {
-            (new V2PlotEntryWriter())->receive(1, 5, 'PLOT-RECEIPT-DUPLICATE-PLOT', $data, 7);
+            (new PlotEntryWriter())->receive(1, 5, 'PLOT-RECEIPT-DUPLICATE-PLOT', $data, 7);
             $this->fail('A single plot cannot appear twice in a multi-plot receipt.');
         } catch (\DomainException $error) {
             $this->assertSame('V2_PLOT_ALLOCATION_INVALID', $error->getMessage());
@@ -217,7 +217,7 @@ class V2PlotEntryWriterTest extends TestCase
 
     public function test_plot_purchase_cancellation_is_append_only_and_reverses_exact_posting(): void
     {
-        $writer = new V2PlotEntryWriter();
+        $writer = new PlotEntryWriter();
         $created = $writer->purchase(1, 'PLOT-PURCHASE-REQUEST-REV1', [
             'date' => '2026-11-05', 'purchase_number' => 'PP-REV-1', 'seller_account_id' => 102,
             'narration' => 'Reversible purchase', 'items' => [[
@@ -226,7 +226,7 @@ class V2PlotEntryWriterTest extends TestCase
                 'unit_rate' => '100', 'inventory_account_id' => 104,
             ]],
         ], 7);
-        $reversal = (new \App\Services\Finance\V2PlotEntryLifecycleService())->reverse(
+        $reversal = (new \App\Services\Finance\PlotEntryLifecycleService())->reverse(
             1, 'plot_purchase', $created['source_id'], 'PLOT-VOID-REQUEST-0001',
             '2026-11-05', 'Purchase cancelled by review', 7
         );
@@ -243,7 +243,7 @@ class V2PlotEntryWriterTest extends TestCase
 
     public function test_purchase_reversal_is_rejected_if_legacy_plot_has_booking_history(): void
     {
-        $writer = new V2PlotEntryWriter();
+        $writer = new PlotEntryWriter();
         $created = $writer->purchase(1, 'PLOT-PURCHASE-REQUEST-BOOKED', [
             'date' => '2026-11-05', 'purchase_number' => 'PP-BOOKED-1', 'seller_account_id' => 102,
             'narration' => 'Booked purchase', 'items' => [[
@@ -255,7 +255,7 @@ class V2PlotEntryWriterTest extends TestCase
         $plotId = (int) DB::table('finance_plot_purchase_items')->where('purchase_id', $created['source_id'])->value('legacy_plot_id');
         DB::table('bookings')->insert(['id' => 51, 'project_id' => 1, 'customer_id' => 5, 'plot_id' => $plotId, 'status' => 'active', 'cancel_status' => '0']);
         try {
-            (new \App\Services\Finance\V2PlotEntryLifecycleService())->reverse(
+            (new \App\Services\Finance\PlotEntryLifecycleService())->reverse(
                 1, 'plot_purchase', $created['source_id'], 'PLOT-VOID-REQUEST-BOOKED',
                 '2026-11-05', 'Must remain bookable', 7
             );
@@ -286,7 +286,7 @@ class V2PlotEntryWriterTest extends TestCase
         $this->assertTrue(Schema::hasTable('finance_plot_receipts'));
         $this->assertTrue(Schema::hasTable('finance_plot_receipt_allocations'));
         $this->assertTrue(Schema::hasTable('finance_plot_receipt_postings'));
-        $writer = new V2PlotEntryWriter();
+        $writer = new PlotEntryWriter();
         $payload = ['date' => '2026-11-05', 'receipt_number' => 'PR-LOCAL-GATE-1',
             'amount' => '75.00', 'cash_account_id' => 101,
             'narration' => 'Isolated two plot receipt', 'allocations' => [
@@ -334,7 +334,7 @@ class V2PlotEntryWriterTest extends TestCase
     {
         $migration = file_get_contents(base_path('database/local_pilot_migrations/2026_11_14_000100_create_v2_plot_receipt_storage.php'));
         $repair = file_get_contents(base_path('database/local_pilot_migrations/2026_11_14_000101_repair_v2_plot_receipt_claim_fk.php'));
-        $audit = file_get_contents(app_path('Console/Commands/AuditV2PlotReceiptReadiness.php'));
+        $audit = file_get_contents(app_path('Console/Commands/AuditPlotReceiptReadiness.php'));
         $this->assertLessThanOrEqual(64, strlen('v2_plot_rcpt_post_claim_fk'));
         $this->assertStringContainsString("'v2_plot_rcpt_post_claim_fk'", $migration);
         $this->assertStringContainsString("'v2_plot_rcpt_post_claim_fk'", $repair);
@@ -344,7 +344,7 @@ class V2PlotEntryWriterTest extends TestCase
 
     public function test_phase08_read_only_purchase_reconciliation_matches_inventory_seller_and_project(): void
     {
-        $created = (new V2PlotEntryWriter())->purchase(1, 'PLOT-RECONCILE-REQUEST-0001', [
+        $created = (new PlotEntryWriter())->purchase(1, 'PLOT-RECONCILE-REQUEST-0001', [
             'date'=>'2026-11-14', 'purchase_number'=>'PP-AUDIT-01',
             'seller_account_id'=>102, 'narration'=>'Audit pilot',
             'items'=>[[
@@ -354,7 +354,7 @@ class V2PlotEntryWriterTest extends TestCase
                 'unit_rate'=>'100.00', 'inventory_account_id'=>104,
             ]],
         ], 7);
-        $audit = new \App\Services\Finance\V2PlotPurchaseReconciliation();
+        $audit = new \App\Services\Finance\PlotPurchaseReconciliation();
         $rows = $audit->audit(1);
         $this->assertCount(1,$rows);
         $this->assertTrue($rows[0]['ok'], implode(', ', $rows[0]['issues']));
@@ -371,7 +371,7 @@ class V2PlotEntryWriterTest extends TestCase
 
     public function test_phase08_purchase_reconciliation_detects_corrupted_seller_credit_without_repairing(): void
     {
-        $created = (new V2PlotEntryWriter())->purchase(1, 'PLOT-RECONCILE-REQUEST-0002', [
+        $created = (new PlotEntryWriter())->purchase(1, 'PLOT-RECONCILE-REQUEST-0002', [
             'date'=>'2026-11-14', 'purchase_number'=>'PP-AUDIT-02',
             'seller_account_id'=>102, 'narration'=>'Audit pilot',
             'items'=>[[
@@ -384,7 +384,7 @@ class V2PlotEntryWriterTest extends TestCase
         DB::table('finance_posting_lines')
             ->where('posting_batch_id',$created['posting_batch_id'])
             ->where('project_head_subhead_id',102)->update(['credit'=>'40.00']);
-        $rows = (new \App\Services\Finance\V2PlotPurchaseReconciliation())->audit(1);
+        $rows = (new \App\Services\Finance\PlotPurchaseReconciliation())->audit(1);
         $this->assertFalse($rows[0]['ok']);
         $this->assertContains('PURCHASE_OR_SELLER_AMOUNT_MISMATCH',$rows[0]['issues']);
         $this->assertContains('POSTING_UNBALANCED_OR_LINE_COUNT',$rows[0]['issues']);
@@ -408,7 +408,7 @@ class V2PlotEntryWriterTest extends TestCase
         $this->assertTrue(Schema::hasTable('finance_plot_purchase_items'));
         $this->assertTrue(Schema::hasTable('finance_plot_purchase_postings'));
 
-        $created = (new V2PlotEntryWriter())->purchase(1, 'PLOT-PURCHASE-PHASE08-TEST-0001', [
+        $created = (new PlotEntryWriter())->purchase(1, 'PLOT-PURCHASE-PHASE08-TEST-0001', [
             'date' => '2026-11-14', 'purchase_number' => 'PP-PHASE08-001',
             'seller_account_id' => 102, 'narration' => 'Phase 08 isolated pilot purchase',
             'items' => [[
