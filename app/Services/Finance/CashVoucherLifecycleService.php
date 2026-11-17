@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
  * Immutable correction of an original typed customer-ledger cash source.
  * The source identity is customer_ledger.id, never its display type_id.
  */
-final class V2CashVoucherLifecycleService
+final class CashVoucherLifecycleService
 {
     public function reverse(
         int $projectId,
@@ -18,7 +18,7 @@ final class V2CashVoucherLifecycleService
         string $reason,
         ?int $actorId = null
     ): int {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         if ($projectId < 1 || $sourceId < 1) {
             throw new \DomainException('V2_CASH_REVERSE_IDENTITY_INVALID');
         }
@@ -54,7 +54,7 @@ final class V2CashVoucherLifecycleService
                 throw new \DomainException('V2_CASH_REVERSE_INACTIVE_SOURCE');
             }
 
-            $reversalId = (new V2PostingGateway())->reversePostedBatch(
+            $reversalId = (new PostingGateway())->reversePostedBatch(
                 $projectId, (int) $source->posting_batch_id,
                 $requestKey, $effectiveDate, $reason, $actorId
             );

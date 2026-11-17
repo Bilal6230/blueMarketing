@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Schema;
  * V2-ONLY CR/CP writer. Not wired to legacy endpoints.
  * Requires explicit, approved account allocation for both sides.
  */
-final class V2CashPostingWriter
+final class CashPostingWriter
 {
     private function cents($amount): int
     {
@@ -34,7 +34,7 @@ final class V2CashPostingWriter
         ?string $expectedSeries = null
     ): int
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         foreach (['projects', 'customer_ledger', 'project_head_subheads',
                   'finance_posting_batches', 'finance_posting_source_claims',
                   'finance_posting_cash_sources', 'finance_posting_lines'] as $table) {

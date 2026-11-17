@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /** Isolated V2 bank deposit/withdrawal writer; never called by legacy routes. */
-final class V2BankTransferWriter
+final class BankTransferWriter
 {
     private function cents(mixed $value): int
     {
@@ -29,7 +29,7 @@ final class V2BankTransferWriter
     public function post(int $projectId, int $bankAccountId, string $kind, string $key, string $date,
         string $amount, string $narration, array $allocations, ?int $actor = null, ?int $chequeSourceId = null): array
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         if (!in_array($kind, ['deposit', 'withdrawal'], true) || $projectId < 1 || $bankAccountId < 1
             || !preg_match('/^[A-Za-z0-9_-]{16,128}$/D', $key) || trim($narration) === '' || count($allocations) < 1) {
             throw new \DomainException('V2_BANK_TRANSFER_INPUT_INVALID');
@@ -71,7 +71,7 @@ final class V2BankTransferWriter
                     ->where('is_active', 1)->where('passing_status', 1)->lockForUpdate()->first();
                 $custody = $cheque ? DB::table('finance_original_customer_requests')->where('project_id', $projectId)
                     ->where('customer_ledger_id', $chequeSourceId)->first() : null;
-                if (!$cheque || !$custody || !hash_equals((string) $custody->source_sha256, V2OriginalCustomerWorkflow::fingerprint($cheque))) {
+                if (!$cheque || !$custody || !hash_equals((string) $custody->source_sha256, OriginalCustomerWorkflow::fingerprint($cheque))) {
                     throw new \DomainException('V2_BANK_TRANSFER_CHEQUE_NOT_VERIFIED');
                 }
                 // Do not post a second cash movement for a previously posted

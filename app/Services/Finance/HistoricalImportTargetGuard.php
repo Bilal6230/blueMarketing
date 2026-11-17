@@ -7,7 +7,7 @@ namespace App\Services\Finance;
  * A CLI import must never trust its DB_DATABASE prefix alone: remote endpoints,
  * replicas, URLs or a test/production environment mismatch fail closed.
  */
-final class V2HistoricalImportTargetGuard
+final class HistoricalImportTargetGuard
 {
     public static function assertAllowed(array $config, string $environment, bool $synthetic): void
     {

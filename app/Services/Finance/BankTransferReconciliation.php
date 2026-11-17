@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
  * Read-only audit of isolated V2 Bank Deposit / Withdrawal batches.
  * Never reconciles by mutating a voucher, source or posting line.
  */
-final class V2BankTransferReconciliation
+final class BankTransferReconciliation
 {
     /** @return array<int,array<string,mixed>> */
     public function audit(int $projectId): array
@@ -16,7 +16,7 @@ final class V2BankTransferReconciliation
         if ($projectId < 1) {
             throw new \InvalidArgumentException('Positive project id is required.');
         }
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
 
         $sources = DB::table('finance_bank_transfer_sources as transfer')
             ->leftJoin('finance_posting_batches as batch', 'batch.id', '=', 'transfer.posting_batch_id')

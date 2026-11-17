@@ -7,7 +7,7 @@ namespace App\Services\Finance;
  * Uses fixed columns, safely quotes all fields, and prevents spreadsheet
  * formula execution from any unexpected source strings.
  */
-final class V2FinanceCsvExporter
+final class FinanceCsvExporter
 {
     private function safe(mixed $value): string
     {

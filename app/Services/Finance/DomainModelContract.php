@@ -2,7 +2,7 @@
 
 namespace App\Services\Finance;
 
-use App\Models\V2\ImportedHistoricalModel;
+use App\Models\Finance\ImportedHistoricalModel;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\DB;
@@ -15,36 +15,36 @@ use RuntimeException;
  * stock and labour source evidence. Does not certify V1 CRUD compatibility.
  * No original business row is altered or exposed.
  */
-final class V2DomainModelContract
+final class DomainModelContract
 {
     public const MODELS = [
-        \App\Models\V2\ImportedJournalVoucher::class,
-        \App\Models\V2\ImportedJournalVoucherDetail::class,
-        \App\Models\V2\ImportedLedger::class,
-        \App\Models\V2\ImportedProjectAccount::class,
-        \App\Models\V2\ImportedCustomerLedger::class,
-        \App\Models\V2\ImportedBookingVoucher::class,
-        \App\Models\V2\ImportedBooking::class,
-        \App\Models\V2\ImportedCommissionVoucher::class,
-        \App\Models\V2\ImportedCommissionVoucherDetail::class,
-        \App\Models\V2\ImportedStockEntry::class,
-        \App\Models\V2\ImportedStockEntryLine::class,
-        \App\Models\V2\ImportedStockBill::class,
-        \App\Models\V2\ImportedStockBillLine::class,
-        \App\Models\V2\ImportedStockParty::class,
-        \App\Models\V2\ImportedStockItem::class,
-        \App\Models\V2\ImportedLabourLedger::class,
-        \App\Models\V2\ImportedLabour::class,
-        \App\Models\V2\ImportedLabourAttendance::class,
-        \App\Models\V2\ImportedLead::class,
-        \App\Models\V2\ImportedPlot::class,
-        \App\Models\V2\ImportedStockCounter::class,
-        \App\Models\V2\ImportedStockItemBalance::class,
+        \App\Models\Finance\ImportedJournalVoucher::class,
+        \App\Models\Finance\ImportedJournalVoucherDetail::class,
+        \App\Models\Finance\ImportedLedger::class,
+        \App\Models\Finance\ImportedProjectAccount::class,
+        \App\Models\Finance\ImportedCustomerLedger::class,
+        \App\Models\Finance\ImportedBookingVoucher::class,
+        \App\Models\Finance\ImportedBooking::class,
+        \App\Models\Finance\ImportedCommissionVoucher::class,
+        \App\Models\Finance\ImportedCommissionVoucherDetail::class,
+        \App\Models\Finance\ImportedStockEntry::class,
+        \App\Models\Finance\ImportedStockEntryLine::class,
+        \App\Models\Finance\ImportedStockBill::class,
+        \App\Models\Finance\ImportedStockBillLine::class,
+        \App\Models\Finance\ImportedStockParty::class,
+        \App\Models\Finance\ImportedStockItem::class,
+        \App\Models\Finance\ImportedLabourLedger::class,
+        \App\Models\Finance\ImportedLabour::class,
+        \App\Models\Finance\ImportedLabourAttendance::class,
+        \App\Models\Finance\ImportedLead::class,
+        \App\Models\Finance\ImportedPlot::class,
+        \App\Models\Finance\ImportedStockCounter::class,
+        \App\Models\Finance\ImportedStockItemBalance::class,
     ];
 
     public function inspect(): array
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         $results = [];
         $totalRelations = 0;
         $totalCasts = 0;

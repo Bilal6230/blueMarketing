@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Schema;
  * Isolated V2 commission draft lifecycle. No legacy ledger writes.
  * Drafts may be edited only before approval; posted data is immutable.
  */
-final class V2CommissionDraftWorkflow
+final class CommissionDraftWorkflow
 {
     private function cents(mixed $value): int
     {
@@ -68,7 +68,7 @@ final class V2CommissionDraftWorkflow
         int $projectId, string $number, string $date, array $lines,
         ?int $actorId = null, array $metadata = []
     ): int {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         if ($projectId < 1 || !preg_match('/^[A-Za-z0-9_-]{1,64}$/D', $number)
             || !($d = \DateTimeImmutable::createFromFormat('!Y-m-d', $date))
             || $d->format('Y-m-d') !== $date) {
@@ -112,7 +112,7 @@ final class V2CommissionDraftWorkflow
     public function updateDraft(
         int $projectId, int $sourceId, string $date, array $lines, array $metadata = []
     ): void {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         $d = \DateTimeImmutable::createFromFormat('!Y-m-d', $date);
         if ($projectId < 1 || $sourceId < 1 || !$d || $d->format('Y-m-d') !== $date) {
             throw new \DomainException('V2_CV_INVALID_HEADER');
@@ -150,7 +150,7 @@ final class V2CommissionDraftWorkflow
 
     public function cancelDraft(int $projectId, int $sourceId): void
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         DB::transaction(function () use ($projectId, $sourceId): void {
             if (!DB::table('projects')->where('id', $projectId)->lockForUpdate()->exists()) {
                 throw new \DomainException('V2_CV_PROJECT_MISSING');
@@ -175,7 +175,7 @@ final class V2CommissionDraftWorkflow
     public function approveAndPost(
         int $projectId, int $sourceId, string $requestKey, ?int $actorId = null
     ): int {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         return DB::transaction(function () use ($projectId, $sourceId, $requestKey, $actorId): int {
             DB::table('projects')->where('id', $projectId)->lockForUpdate()->firstOrFail();
             $source = DB::table('commision_vouchers')
@@ -198,7 +198,7 @@ final class V2CommissionDraftWorkflow
                     ->update(['status' => 'approved', 'updated_at' => now()]);
             }
             // Nested DB transaction: a failed posting rolls back approval too.
-            return (new V2PostingGateway())->postCommission(
+            return (new PostingGateway())->postCommission(
                 $projectId, $sourceId, $requestKey, $actorId
             );
         }, 3);

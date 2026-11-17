@@ -4,11 +4,11 @@ namespace App\Services\Finance;
 
 use Illuminate\Support\Facades\DB;
 
-final class V2CustomerApprovalWorkflow
+final class CustomerApprovalWorkflow
 {
     public function approveAndPost(int $projectId, int $sourceId, string $key, array $lines, ?int $actorId): int
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         return DB::transaction(function () use ($projectId, $sourceId, $key, $lines, $actorId): int {
             DB::table('projects')->where('id', $projectId)->lockForUpdate()->firstOrFail();
             $source = DB::table('customer_ledger')->where('id', $sourceId)
@@ -22,7 +22,7 @@ final class V2CustomerApprovalWorkflow
                 throw new \DomainException('V2_CUSTOMER_LEGACY_POSTING_EXISTS');
             }
             DB::table('customer_ledger')->where('id', $sourceId)->update(['is_approve' => 1]);
-            $gateway = new V2PostingGateway();
+            $gateway = new PostingGateway();
             return in_array($source->transaction_type, ['CR', 'CP'], true)
                 ? $gateway->postCash($projectId, $sourceId, $key, $lines, $actorId)
                 : $gateway->postCustomerVoucher($projectId, $sourceId, $source->transaction_type, $key, $lines, $actorId);

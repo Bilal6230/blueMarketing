@@ -10,7 +10,7 @@ namespace App\Services\Finance;
  * implementation. Authentication, permissions and project authorization are
  * enforced by the workflow layer, not by a database-name allowlist.
  */
-final class V2IsolatedConnectionGuard
+final class FinanceConnectionGuard
 {
     public static function isAllowed(): bool
     {

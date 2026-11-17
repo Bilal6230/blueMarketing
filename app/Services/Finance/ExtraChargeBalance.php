@@ -5,16 +5,16 @@ namespace App\Services\Finance;
 use App\Models\CustomerLedger;
 use Illuminate\Support\Facades\DB;
 
-final class V2ExtraChargeBalance
+final class ExtraChargeBalance
 {
     private function cents(mixed $amount): int
     {
-        return (int) str_replace('.', '', V2OriginalCustomerWorkflow::money($amount));
+        return (int) str_replace('.', '', OriginalCustomerWorkflow::money($amount));
     }
 
     public function read(CustomerLedger $charge): array
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         if ($charge->transaction_type !== 'EC' || (int) $charge->is_active !== 1
             || !DB::table('finance_extra_charge_sources')->where('customer_ledger_id', $charge->id)->exists()) {
             throw new \DomainException('V2_EXTRA_CHARGE_NOT_VERIFIED');
@@ -22,7 +22,7 @@ final class V2ExtraChargeBalance
         // The checked reader also verifies exact account-wise reversals and
         // physical source links. Do not infer settled money from status alone.
         $totals = [];
-        foreach ((new V2PostingGateway())->postingLines((int) $charge->project_id) as $line) {
+        foreach ((new PostingGateway())->postingLines((int) $charge->project_id) as $line) {
             if ($line['source_kind'] !== 'cash') { continue; }
             $id = (int) $line['source_id']; $batch = (int) $line['posting_batch_id'];
             $totals[$id][$batch] ??= ['amount' => 0, 'reverse' => $line['is_reversal']];

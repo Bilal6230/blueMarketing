@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
  * Source varchar voucher_number is kept in payload, NEVER coerced to an ID.
  * V2-only, original source rows are locked but never modified.
  */
-final class V2CommissionPostingWriter
+final class CommissionPostingWriter
 {
     private function cents(mixed $v): int
     {
@@ -29,7 +29,7 @@ final class V2CommissionPostingWriter
 
     public function post(int $projectId, int $commissionVoucherId, string $key, ?int $actorId = null): int
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         if ($projectId < 1 || $commissionVoucherId < 1
             || !preg_match('/^[A-Za-z0-9_-]{16,128}$/D', $key)) {
             throw new \DomainException('V2_CV_INVALID_IDENTITY');
