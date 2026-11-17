@@ -364,12 +364,16 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status'])->group(functio
         Route::get('finance/voucher/plot-receipt/options', 'plotReceiptOptions')->middleware(['permission:read voucher'])->name('finance.voucher.plot-receipt.options');
         Route::get('finance/voucher/plot-receipt/history', 'plotReceiptHistory')->middleware(['permission:read voucher'])->name('finance.voucher.plot-receipt.history');
         Route::post('finance/voucher/plot-receipt', 'postPlotReceipt')->middleware(['permission:read voucher'])->name('finance.voucher.plot-receipt.post');
+        Route::post('finance/voucher/plot-receipt/{receiptId}/reverse', 'reversePlotReceipt')->whereNumber('receiptId')
+            ->middleware(['permission:delete voucher','throttle:10,1'])->name('finance.voucher.plot-receipt.reverse');
         Route::get('finance/voucher/plot-receipt/{receiptId}', 'plotReceiptDetails')->whereNumber('receiptId')->middleware(['permission:read voucher'])->name('finance.voucher.plot-receipt.details');
         Route::get('finance/voucher/plot-receipt/{receiptId}/plots/{plotId}/print', 'printPlotReceipt')->whereNumber('receiptId')->whereNumber('plotId')->middleware(['permission:read voucher'])->name('finance.voucher.plot-receipt.print');
         Route::get('finance/voucher/plot-purchase', 'plotPurchaseWorkspace')->middleware(['permission:read voucher'])->name('finance.voucher.plot-purchase.workspace');
         Route::get('finance/voucher/plot-purchase/options', 'plotPurchaseOptions')->middleware(['permission:read voucher'])->name('finance.voucher.plot-purchase.options');
         Route::get('finance/voucher/plot-purchase/history', 'plotPurchaseHistory')->middleware(['permission:read voucher'])->name('finance.voucher.plot-purchase.history');
         Route::post('finance/voucher/plot-purchase', 'postPlotPurchase')->middleware(['permission:read voucher'])->name('finance.voucher.plot-purchase.post');
+        Route::post('finance/voucher/plot-purchase/{purchaseId}/reverse', 'reversePlotPurchase')->whereNumber('purchaseId')
+            ->middleware(['permission:delete voucher','throttle:10,1'])->name('finance.voucher.plot-purchase.reverse');
         Route::get('finance/voucher/plot-purchase/{purchaseId}/print', 'printPlotPurchase')->whereNumber('purchaseId')->middleware(['permission:read voucher'])->name('finance.voucher.plot-purchase.print');
         Route::get('finance/voucher/plot-purchase/{purchaseId}', 'plotPurchaseDetails')->whereNumber('purchaseId')->middleware(['permission:read voucher'])->name('finance.voucher.plot-purchase.details');
         Route::get('finance/voucher/data', 'cash_out_data')->middleware(['permission:read voucher'])->name('voucher.cash_out.data');
