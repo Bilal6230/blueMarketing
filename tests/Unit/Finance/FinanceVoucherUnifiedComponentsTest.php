@@ -491,4 +491,24 @@ class FinanceVoucherUnifiedComponentsTest extends TestCase
         $this->assertStringContainsString("Correction reversal:", file_get_contents(app_path('Http/Controllers/JournalVoucherController.php')));
     }
 
+    public function test_local_normal_erp_preserves_typed_extra_charge_sources_and_routes_payments_to_the_original_writer(): void
+    {
+        $booking=file_get_contents(app_path('Http/Controllers/BookingController.php'));
+        $balance=file_get_contents(app_path('Services/Finance/ExtraChargeBankSettlement.php'));
+        $guard=file_get_contents(app_path('Services/Finance/V2IsolatedConnectionGuard.php'));
+
+        // A normal ERP switch must NOT make existing V2 EC/ECP amounts look
+        // unpaid or write replacement legacy ledger legs for their sources.
+        $this->assertStringContainsString("finance_extra_charge_sources as ec", $booking);
+        $this->assertStringContainsString("finance_extra_charge_payment_sources as ecp", $booking);
+        $this->assertStringContainsString('V2OriginalBookingDepositWorkflow', $booking);
+        $this->assertStringContainsString('V2OriginalBankWorkflow', $booking);
+        $this->assertStringContainsString('NORMAL-EC-BANK-', $booking);
+        $this->assertStringContainsString('NORMAL-EC-', $booking);
+        $this->assertStringContainsString('V2ExtraChargeBalance', $balance);
+        $this->assertStringContainsString('finance_extra_charge_sources', $balance);
+        $this->assertStringContainsString("config('finance.normal_erp_mode') === true", $guard);
+        $this->assertStringContainsString('&& $database === \'bluenew\'', $guard);
+    }
+
 }
