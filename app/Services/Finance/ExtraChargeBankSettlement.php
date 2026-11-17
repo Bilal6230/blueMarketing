@@ -64,12 +64,12 @@ final class ExtraChargeBankSettlement
         // after the operator switches the LOCAL UI back to standard ERP mode.
         // These claims are not represented by legacy ledgers. A global flag
         // must never make an already-posted V2 charge look unpaid again.
-        if (V2OriginalWorkflowAccess::selected() || (
+        if (FinanceWorkflowAccess::selected() || (
             \Illuminate\Support\Facades\Schema::hasTable('finance_extra_charge_sources')
             && DB::table('finance_extra_charge_sources')
                 ->where('customer_ledger_id', (int) $charge->id)->exists()
         )) {
-            return (new V2ExtraChargeBalance())->read($charge);
+            return (new ExtraChargeBalance())->read($charge);
         }
         $due = $this->cents($charge->amount_in);
         $paid = 0;
