@@ -49,13 +49,13 @@ class BankTransferWriterTest extends TestCase
             $t->id(); $t->unsignedBigInteger('project_id'); $t->unsignedBigInteger('head_accounting_id');
             $t->unsignedBigInteger('subhead_accounting_id'); $t->unique(['id', 'project_id']);
         });
-        (require base_path('database/v2_migrations/2026_10_30_000100_create_v2_finance_posting_core.php'))->up();
+        (require base_path('database/finance_legacy_migrations/2026_10_30_000100_create_finance_finance_posting_core.php'))->up();
         Schema::create('project_bank_accounts', function (Blueprint $t): void {
             $t->id(); $t->unsignedBigInteger('project_id'); $t->unsignedBigInteger('account_mapping_id');
             $t->boolean('is_active')->default(true); $t->unique(['id', 'project_id']);
             $t->foreign(['account_mapping_id', 'project_id'])->references(['id', 'project_id'])->on('project_head_subheads');
         });
-        (require base_path('database/v2_migrations/2026_11_05_000200_create_v2_bank_transfer_sources.php'))->up();
+        (require base_path('database/finance_legacy_migrations/2026_11_05_000200_create_finance_bank_transfer_sources.php'))->up();
         DB::table('projects')->insert([['id' => 1], ['id' => 2]]);
         DB::table('head_accountings')->insert([['id' => 10, 'name' => 'Bank Account'], ['id' => 20, 'name' => 'Cash in Hand']]);
         DB::table('subhead_accountings')->insert([['id' => 10], ['id' => 20]]);

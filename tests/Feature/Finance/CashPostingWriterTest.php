@@ -44,7 +44,7 @@ class CashPostingWriterTest extends TestCase
             $t->decimal('amount_out', 18, 2)->default(0);
             $t->boolean('is_active')->default(true);
         });
-        $migration = require base_path('database/v2_migrations/2026_10_30_000100_create_v2_finance_posting_core.php');
+        $migration = require base_path('database/finance_legacy_migrations/2026_10_30_000100_create_finance_finance_posting_core.php');
         $migration->up();
 
         DB::table('projects')->insert([['id' => 1], ['id' => 2]]);
