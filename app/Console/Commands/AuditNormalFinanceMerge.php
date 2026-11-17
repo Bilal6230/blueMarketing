@@ -79,6 +79,47 @@ final class AuditNormalFinanceMerge extends Command
             return self::FAILURE;
         }
 
+        // The typed reader has already verified each posting batch is balanced
+        // and every reversal is an exact inverse. Independently reconcile
+        // mixed detail rows with their same-account grouped report totals.
+        $grouped = $service->totals($mixed, 'project_head_subheads_id');
+        $moneyCents = static function (mixed $raw): int {
+            $value = str_replace(',', '', (string) $raw);
+            if (!preg_match('/^(-?)([0-9]+)(?:\\.([0-9]{1,2}))?$/D', $value, $m)) {
+                throw new \DomainException('AUDIT_NORMAL_MERGE_INVALID_AMOUNT');
+            }
+            $cents = (int) $m[2] * 100 + (int) str_pad($m[3] ?? '', 2, '0');
+            return $m[1] === '-' ? -$cents : $cents;
+        };
+        try {
+            $detailDebit = $detailCredit = $groupDebit = $groupCredit = 0;
+            foreach ($mixed as $row) {
+                $detailDebit += $moneyCents($row['amount_in']);
+                $detailCredit += $moneyCents($row['amount_out']);
+            }
+            foreach ($grouped as $row) {
+                $groupDebit += $moneyCents($row['total_amount_in']);
+                $groupCredit += $moneyCents($row['total_amount_out']);
+            }
+        } catch (\DomainException $e) {
+            $this->error($e->getMessage());
+            return self::FAILURE;
+        }
+        if ($detailDebit !== $groupDebit || $detailCredit !== $groupCredit) {
+            $this->error('FAIL: mixed ledger detail and grouped account totals differ.');
+            return self::FAILURE;
+        }
+        $format = static function (int $amount): string {
+            return ($amount < 0 ? '-' : '').intdiv(abs($amount), 100).'.'
+                .str_pad((string) (abs($amount) % 100), 2, '0', STR_PAD_LEFT);
+        };
+        $this->info('PASS: mixed detail-to-account grouping and typed batch/reversal integrity (read-only).');
+        $this->table(['Account reconciliation', 'Value'], [
+            ['Account groups', (string) count($grouped)],
+            ['Mixed debit / cash in', $format($detailDebit)],
+            ['Mixed credit / cash out', $format($detailCredit)],
+            ['Net mixed balance', $format($detailDebit - $detailCredit)],
+        ]);
         $this->info('PASS: normal ERP mixed ledger source coverage (read-only).');
         $this->table(['Metric', 'Count'], [
             ['Project', (string) $projectId],
