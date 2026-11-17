@@ -4,11 +4,11 @@ namespace App\Services\Finance;
 
 use Illuminate\Support\Facades\DB;
 
-final class V2OriginalCashReport
+final class OriginalCashReport
 {
     public function documents(int $project, bool $incoming, ?string $from, ?string $through): array
     {
-        $reader = new V2OriginalLedgerReport();
+        $reader = new OriginalLedgerReport();
         $lines = collect($reader->rows($project, $from, $through))->where('source_kind', 'cash');
         $sources = DB::table('customer_ledger')->where('project_id', $project)->whereIn('id', $lines->pluck('source_id'))
             ->whereIn('transaction_type', $incoming ? ['CR', 'PPR', 'ECP'] : ['CP'])->get()->keyBy('id');

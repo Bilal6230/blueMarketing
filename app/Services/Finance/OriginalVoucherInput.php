@@ -4,7 +4,7 @@ namespace App\Services\Finance;
 
 use Illuminate\Http\Request;
 
-final class V2OriginalVoucherInput
+final class OriginalVoucherInput
 {
     public static function settlement(Request $request): array
     {

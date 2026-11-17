@@ -4,7 +4,7 @@ namespace App\Services\Finance;
 
 use Illuminate\Support\Facades\DB;
 
-final class V2OriginalLedgerReport
+final class OriginalLedgerReport
 {
     public function money(mixed $value): string
     {
@@ -16,7 +16,7 @@ final class V2OriginalLedgerReport
 
     public function rows(int $projectId, ?string $from, ?string $through): array
     {
-        $lines = (new V2PostingGateway())->postingLines($projectId, $from, $through);
+        $lines = (new PostingGateway())->postingLines($projectId, $from, $through);
         $accounts = \App\Models\ProjectHeadSubhead::withTrashed()->with(['headAccounting', 'subheadAccounting', 'project'])
             ->where('project_id', $projectId)->whereIn('id', array_column($lines, 'project_head_subhead_id'))->get()->keyBy('id');
         $batches = DB::table('finance_posting_batches')->where('project_id', $projectId)

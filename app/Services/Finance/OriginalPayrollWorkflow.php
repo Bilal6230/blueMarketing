@@ -4,11 +4,11 @@ namespace App\Services\Finance;
 
 use Illuminate\Support\Facades\DB;
 
-final class V2OriginalPayrollWorkflow
+final class OriginalPayrollWorkflow
 {
     public function pay(int $projectId, string $key, string $date, string $week, array $workers, array $legs, ?int $actor, ?int $contractorId = null): array
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         return DB::transaction(function () use ($projectId, $key, $date, $week, $workers, $legs, $actor, $contractorId): array {
             DB::table('projects')->where('id', $projectId)->lockForUpdate()->firstOrFail();
             $contractor = null;
@@ -24,7 +24,7 @@ final class V2OriginalPayrollWorkflow
                     ->where('project_id', $projectId)->lockForUpdate()->first(['id'])) {
                     throw new \DomainException('V2_PAYROLL_WORKER_INVALID');
                 }
-                $amount = V2OriginalCustomerWorkflow::money($worker['amount']);
+                $amount = OriginalCustomerWorkflow::money($worker['amount']);
                 if ($amount === '0.00') { throw new \DomainException('V2_PAYROLL_AMOUNT_INVALID'); }
                 $canonical[$id] = ['id' => $id, 'amount' => $amount];
                 $total += (int) str_replace('.', '', $amount);
@@ -34,8 +34,8 @@ final class V2OriginalPayrollWorkflow
                 $contractorDebit = $contractorCredit = 0;
                 foreach ($legs as $leg) {
                     if ((int) ($leg['account_id'] ?? 0) !== (int) $contractor->project_head_subhead_id) continue;
-                    $debit = V2OriginalCustomerWorkflow::money($leg['debit'] ?? '');
-                    $credit = V2OriginalCustomerWorkflow::money($leg['credit'] ?? '');
+                    $debit = OriginalCustomerWorkflow::money($leg['debit'] ?? '');
+                    $credit = OriginalCustomerWorkflow::money($leg['credit'] ?? '');
                     $contractorDebit += (int) str_replace('.', '', $debit);
                     $contractorCredit += (int) str_replace('.', '', $credit);
                 }
@@ -52,7 +52,7 @@ final class V2OriginalPayrollWorkflow
                 'request_context' => $requestContext,
             ];
             if ($contractorId !== null) $source['contractor_id'] = $contractorId;
-            $result = (new V2OriginalCustomerWorkflow())->create($projectId, 'CP', $key, $source, $legs, $actor);
+            $result = (new OriginalCustomerWorkflow())->create($projectId, 'CP', $key, $source, $legs, $actor);
             if ($result['replayed']) {
                 $stored = DB::table('finance_labour_payment_members as member')->join('labour_ledgers as line', 'line.id', '=', 'member.labour_ledger_id')
                     ->where('member.customer_ledger_id', $result['source_id'])->orderBy('line.labour_id')
@@ -63,7 +63,7 @@ final class V2OriginalPayrollWorkflow
                         || (int) ($line->contractor_id ?? 0) !== (int) ($contractorId ?? 0)) {
                         throw new \DomainException('V2_PAYROLL_REPLAY_CHANGED');
                     }
-                    $actual[] = ['id' => (int) $line->labour_id, 'amount' => V2OriginalCustomerWorkflow::money($line->amount)];
+                    $actual[] = ['id' => (int) $line->labour_id, 'amount' => OriginalCustomerWorkflow::money($line->amount)];
                 }
                 if ($actual !== array_values($canonical)) { throw new \DomainException('V2_PAYROLL_REPLAY_CHANGED'); }
                 return $result;

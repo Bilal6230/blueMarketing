@@ -4,7 +4,7 @@ namespace App\Services\Finance;
 
 use Illuminate\Support\Facades\DB;
 
-final class V2OriginalCustomerWorkflow
+final class OriginalCustomerWorkflow
 {
     public static function fingerprint(object $source): string
     {
@@ -31,7 +31,7 @@ final class V2OriginalCustomerWorkflow
 
     public function create(int $projectId, string $series, string $key, array $source, array $legs, ?int $actor): array
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         if (!in_array($series, ['CR', 'CP', 'PPR', 'EC', 'ECP'], true)
             || !preg_match('/^[A-Za-z0-9_-]{16,128}$/D', $key)) {
             throw new \DomainException('V2_SOURCE_REQUEST_INVALID');
@@ -139,7 +139,7 @@ final class V2OriginalCustomerWorkflow
 
     public function post(int $projectId, int $id, string $series, string $key, array $legs, ?int $actor): int
     {
-        $gateway = new V2PostingGateway();
+        $gateway = new PostingGateway();
         return in_array($series, ['CR', 'CP'], true)
             ? $gateway->postCash($projectId, $id, $key, $legs, $actor)
             : $gateway->postCustomerVoucher($projectId, $id, $series, $key, $legs, $actor);

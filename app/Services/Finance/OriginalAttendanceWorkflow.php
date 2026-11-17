@@ -4,11 +4,11 @@ namespace App\Services\Finance;
 
 use Illuminate\Support\Facades\DB;
 
-final class V2OriginalAttendanceWorkflow
+final class OriginalAttendanceWorkflow
 {
     public function post(int $projectId, array $data, array $ids, ?int $actor): int
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         return DB::transaction(function () use ($projectId, $data, $ids, $actor): int {
             DB::table('projects')->where('id', $projectId)->lockForUpdate()->firstOrFail();
             $site = DB::table('sites')->where('id', $data['site_id'])->where('project_id', $projectId)->lockForUpdate()->first();
@@ -28,12 +28,12 @@ final class V2OriginalAttendanceWorkflow
                 if (!\App\Models\Labour::query()->whereKey($row->labour_id)->where('project_id', $projectId)->lockForUpdate()->first(['id'])) {
                     throw new \DomainException('V2_ATTENDANCE_WORKER_INVALID');
                 }
-                $amount = V2OriginalCustomerWorkflow::money($row->amount);
+                $amount = OriginalCustomerWorkflow::money($row->amount);
                 if ($amount === '0.00') { throw new \DomainException('V2_ATTENDANCE_AMOUNT_INVALID'); }
                 $total += (int) str_replace('.', '', $amount);
             }
             $amount = intdiv($total, 100).'.'.str_pad((string) ($total % 100), 2, '0', STR_PAD_LEFT);
-            if (V2OriginalCustomerWorkflow::money($data['amount']) !== $amount) { throw new \DomainException('V2_ATTENDANCE_TOTAL_MISMATCH'); }
+            if (OriginalCustomerWorkflow::money($data['amount']) !== $amount) { throw new \DomainException('V2_ATTENDANCE_TOTAL_MISMATCH'); }
             $mapped = DB::table('finance_labour_attendance_journals')->whereIn('labour_attendance_id', $ids)->lockForUpdate()->get();
             if ($mapped->isNotEmpty()) {
                 if ($mapped->count() !== count($ids) || $rows->contains(fn ($row) => $row->voucher_status !== 'created')
@@ -54,7 +54,7 @@ final class V2OriginalAttendanceWorkflow
                 $account = \App\Models\ProjectHeadSubhead::availableForPosting()
                     ->whereKey($leg['account_id'])->where('project_id', $projectId)->lockForUpdate()->first();
                 if (!$account) { throw new \DomainException('V2_ATTENDANCE_ACCOUNT_INVALID'); }
-                $dr = V2OriginalCustomerWorkflow::money($leg['debit']); $cr = V2OriginalCustomerWorkflow::money($leg['credit']);
+                $dr = OriginalCustomerWorkflow::money($leg['debit']); $cr = OriginalCustomerWorkflow::money($leg['credit']);
                 $debitTotal += (int) str_replace('.', '', $dr); $creditTotal += (int) str_replace('.', '', $cr);
                 $hasSiteAccount = $hasSiteAccount || ((int) $account->id === (int) $site->subhead_accounting_id && $cr === $amount && $dr === '0.00');
                 $hasContractorAccount = $hasContractorAccount || ((int) $account->id === (int) $contractor?->project_head_subhead_id && $dr === $amount && $cr === '0.00');
@@ -68,7 +68,7 @@ final class V2OriginalAttendanceWorkflow
                 }
                 $input['contractor_id'] = (int) $contractor->id;
             }
-            $journal = (new V2OriginalJournalWorkflow())->createAndPost($projectId, $data['request_key'], $input, $actor);
+            $journal = (new OriginalJournalWorkflow())->createAndPost($projectId, $data['request_key'], $input, $actor);
             if ($mapped->isEmpty()) {
                 foreach ($ids as $id) {
                     DB::table('finance_labour_attendance_journals')->insert([

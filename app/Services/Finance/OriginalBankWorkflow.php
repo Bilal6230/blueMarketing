@@ -4,7 +4,7 @@ namespace App\Services\Finance;
 
 use Illuminate\Support\Facades\DB;
 
-final class V2OriginalBankWorkflow
+final class OriginalBankWorkflow
 {
     private function cents(mixed $value): int
     {
@@ -21,7 +21,7 @@ final class V2OriginalBankWorkflow
     }
     public function settle(int $projectId, int $id, int $status, string $key, string $date, string $note, array $legs, ?int $actor, ?int $bankAccountId = null): array
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         if (!in_array($status, [1, 2, 3], true) || trim($note) === '' || !preg_match('/^[A-Za-z0-9_-]{16,128}$/D', $key)) { throw new \DomainException('V2_BANK_INPUT_INVALID'); }
         if ($status === 1) {
             $calendar = \DateTimeImmutable::createFromFormat('!Y-m-d', $date);
@@ -35,7 +35,7 @@ final class V2OriginalBankWorkflow
             $custody = DB::table('finance_original_customer_requests')->where('customer_ledger_id', $id)->where('project_id', $projectId)->first();
             if (!$source || !in_array((int) $source->payment_type, [2, 3], true)
                 || !in_array($source->transaction_type, ['CR', 'CP', 'PPR', 'ECP'], true)
-                || !$custody || !hash_equals($custody->source_sha256, V2OriginalCustomerWorkflow::fingerprint($source))) {
+                || !$custody || !hash_equals($custody->source_sha256, OriginalCustomerWorkflow::fingerprint($source))) {
                 throw new \DomainException('V2_BANK_SOURCE_NOT_VERIFIED');
             }
             if (DB::table('ledgers')->where('customer_ledger_id', $id)->exists()) {
@@ -81,7 +81,7 @@ final class V2OriginalBankWorkflow
                     if ((int) $source->passing_status !== 1 || (string) $source->note !== $note || substr((string) $source->bank_post_at, 0, 10) !== $date) {
                         throw new \DomainException('V2_BANK_REPLAY_CHANGED');
                     }
-                    $batch = (new V2OriginalCustomerWorkflow())->post($projectId, $id, $source->transaction_type, $key, $legs, $actor);
+                    $batch = (new OriginalCustomerWorkflow())->post($projectId, $id, $source->transaction_type, $key, $legs, $actor);
                     if ((int) $event->posting_batch_id !== $batch) { throw new \DomainException('V2_BANK_REPLAY_CHANGED'); }
                 }
                 return ['source_id' => $id, 'posting_batch_id' => $event->posting_batch_id ? (int) $event->posting_batch_id : null,
@@ -99,7 +99,7 @@ final class V2OriginalBankWorkflow
                     'updated_at' => now(),
                 ]);
             }
-            $batch = $status === 1 ? (new V2OriginalCustomerWorkflow())->post(
+            $batch = $status === 1 ? (new OriginalCustomerWorkflow())->post(
                 $projectId, $id, $source->transaction_type, $key, $legs, $actor
             ) : null;
             // Preserve a unique, project-scoped bank source link for the
@@ -130,7 +130,7 @@ final class V2OriginalBankWorkflow
                 $chargeId = DB::table('finance_extra_charge_payment_sources')->where('customer_ledger_id', $id)->value('charge_customer_ledger_id');
                 $charge = $chargeId ? \App\Models\CustomerLedger::query()->whereKey($chargeId)->where('project_id', $projectId)->first() : null;
                 if (!$charge) { throw new \DomainException('V2_BANK_CHARGE_CUSTODY_MISSING'); }
-                (new V2ExtraChargeBalance())->read($charge);
+                (new ExtraChargeBalance())->read($charge);
             }
             $event = [
                 'project_id' => $projectId, 'customer_ledger_id' => $id, 'actor_id' => $actor, 'posting_batch_id' => $batch,

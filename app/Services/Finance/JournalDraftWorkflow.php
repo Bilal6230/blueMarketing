@@ -9,12 +9,12 @@ use Illuminate\Support\Facades\Schema;
  * Only unposted, unlinked isolated JV drafts can be corrected.
  * Never touches V1 ledgers or already approved V2 posting history.
  */
-final class V2JournalDraftWorkflow
+final class JournalDraftWorkflow
 {
     public function updateUnposted(
         int $projectId, int $sourceId, string $date, array $lines
     ): void {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         $dateValue = \DateTimeImmutable::createFromFormat('!Y-m-d', $date);
         if ($projectId < 1 || $sourceId < 1 || !$dateValue
             || $dateValue->format('Y-m-d') !== $date || count($lines) < 2

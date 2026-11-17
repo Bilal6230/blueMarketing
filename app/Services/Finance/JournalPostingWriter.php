@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Schema;
  * ISOLATED V2 PILOT ONLY. No production routes call this service.
  * All posting identities come from persisted exact JV detail IDs, not type_id.
  */
-final class V2JournalPostingWriter
+final class JournalPostingWriter
 {
     private function cents($value): int
     {
@@ -27,7 +27,7 @@ final class V2JournalPostingWriter
 
     private function assertIsolated(): void
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         foreach (['finance_posting_batches', 'finance_posting_lines',
                   'finance_posting_source_claims', 'finance_posting_journal_sources', 'finance_journal_line_sources'] as $table) {
             if (!Schema::hasTable($table)) {

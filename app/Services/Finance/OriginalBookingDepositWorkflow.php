@@ -4,11 +4,11 @@ namespace App\Services\Finance;
 
 use Illuminate\Support\Facades\DB;
 
-final class V2OriginalBookingDepositWorkflow
+final class OriginalBookingDepositWorkflow
 {
     public function create(int $project, string $series, int $customer, int $plot, array $data, ?int $actor): array
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         return DB::transaction(function () use ($project, $series, $customer, $plot, $data, $actor): array {
             DB::table('projects')->where('id', $project)->lockForUpdate()->firstOrFail();
             $bookings = \App\Models\Booking::query()->where('project_id', $project)->where('customer_id', $customer)
@@ -28,21 +28,21 @@ final class V2OriginalBookingDepositWorkflow
                     throw new \DomainException('V2_PAYMENT_CHARGE_NOT_VERIFIED');
                 }
                 $retry = DB::table('finance_original_customer_requests')->where('project_id', $project)->where('request_key', $data['request_key'])->exists();
-                $amount = (int) str_replace('.', '', V2OriginalCustomerWorkflow::money($data['amount']));
-                if (!$retry && $amount > (new V2ExtraChargeBalance())->read($charge)['available_cents']) {
+                $amount = (int) str_replace('.', '', OriginalCustomerWorkflow::money($data['amount']));
+                if (!$retry && $amount > (new ExtraChargeBalance())->read($charge)['available_cents']) {
                     throw new \DomainException('V2_PAYMENT_EXCEEDS_CHARGE');
                 }
             }
-            $source = V2OriginalVoucherInput::source($data) + ['customer_id' => $customer, 'plot_id' => $plot,
+            $source = OriginalVoucherInput::source($data) + ['customer_id' => $customer, 'plot_id' => $plot,
                 'request_context' => ['booking_id' => (int) $booking->id, 'charge_type_id' => $data['charge_type_id'] ?? null, 'charge_id' => $data['charge_id'] ?? null]];
             if ($charge) { $source['reference'] = 'EC_PAYMENT#'.$charge->id.'#'.$data['reference']; }
-            $result = (new V2OriginalCustomerWorkflow())->create($project, $series, $data['request_key'], $source, $data['posting_lines'] ?? [], $actor);
+            $result = (new OriginalCustomerWorkflow())->create($project, $series, $data['request_key'], $source, $data['posting_lines'] ?? [], $actor);
             $id = $result['source_id'];
             if ($series === 'PPR') {
                 $row = DB::table('booking_vouchers')->where('customer_ledger_id', $id)->lockForUpdate()->first();
                 if ($row && ((int) $row->booking_id !== (int) $booking->id || (int) $row->project_id !== $project
                     || (int) $row->customer_id !== $customer || (int) $row->plot_id !== $plot || $row->voucher_series !== 'PPR'
-                    || V2OriginalCustomerWorkflow::money($row->amount) !== V2OriginalCustomerWorkflow::money($data['amount'])
+                    || OriginalCustomerWorkflow::money($row->amount) !== OriginalCustomerWorkflow::money($data['amount'])
                     || (string) $row->receipt_date !== $data['date'] || (string) $row->slip_reference !== $data['reference'])) {
                     throw new \DomainException('V2_RECEIPT_CUSTODY_CHANGED');
                 }
@@ -52,7 +52,7 @@ final class V2OriginalBookingDepositWorkflow
                         'booking_id' => $booking->id, 'project_id' => $project, 'customer_id' => $customer, 'plot_id' => $plot,
                         'customer_ledger_id' => $id, 'ledger_id' => null, 'voucher_series' => 'PPR',
                         'voucher_number' => DB::table('customer_ledger')->where('id', $id)->value('type_id'),
-                        'amount' => V2OriginalCustomerWorkflow::money($data['amount']), 'receipt_date' => $data['date'],
+                        'amount' => OriginalCustomerWorkflow::money($data['amount']), 'receipt_date' => $data['date'],
                         'description' => $data['detail'], 'slip_reference' => $data['reference'], 'payment_type' => $data['payment_type'],
                         'is_active' => 1, 'is_approve' => $result['pending_bank'] ? 0 : 1,
                         'create_by' => $actor, 'created_at' => now(), 'updated_at' => now(),

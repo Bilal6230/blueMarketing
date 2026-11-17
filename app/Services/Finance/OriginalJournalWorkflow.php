@@ -4,7 +4,7 @@ namespace App\Services\Finance;
 
 use Illuminate\Support\Facades\DB;
 
-final class V2OriginalJournalWorkflow
+final class OriginalJournalWorkflow
 {
     private function money(mixed $value): string
     {
@@ -18,7 +18,7 @@ final class V2OriginalJournalWorkflow
 
     public function createAndPost(int $projectId, string $key, array $input, ?int $actorId): int
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         if (!preg_match('/^[A-Za-z0-9_-]{16,128}$/D', $key)) {
             throw new \DomainException('V2_JV_REQUEST_KEY_REQUIRED');
         }
@@ -62,7 +62,7 @@ final class V2OriginalJournalWorkflow
                     || $stored !== $lines) {
                     throw new \DomainException('V2_JV_REQUEST_CONFLICT');
                 }
-                (new V2PostingGateway())->postJournal($projectId, (int) $sourceId, $key, $actorId);
+                (new PostingGateway())->postJournal($projectId, (int) $sourceId, $key, $actorId);
                 return (int) $sourceId;
             }
             $id = DB::table('journal_vouchers')->insertGetId([
@@ -83,7 +83,7 @@ final class V2OriginalJournalWorkflow
                     'created_at' => now(), 'updated_at' => now(),
                 ]);
             }
-            (new V2PostingGateway())->postJournal($projectId, (int) $id, $key, $actorId);
+            (new PostingGateway())->postJournal($projectId, (int) $id, $key, $actorId);
             return (int) $id;
         }, 3);
     }

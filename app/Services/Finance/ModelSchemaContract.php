@@ -10,7 +10,7 @@ use RuntimeException;
  * V2 only: verify model ↔ physical schema contracts without reading or
  * changing business rows. Never invoked by existing V1 posting paths.
  */
-final class V2ModelSchemaContract
+final class ModelSchemaContract
 {
     public const MODEL_CLASSES = [
         \App\Models\JournalVoucher::class,
