@@ -146,9 +146,9 @@ class CommissionVoucherController extends Controller
         $x['accounts'] = $data_list;
         $x['nextCommissionNumber'] = \App\Services\Finance\CommissionVoucherNumber::next((int) $selectedProjectId);
         $x['commissionPilotCreateAllowed'] =
-            (\App\Services\Finance\V2OriginalWorkflowAccess::enabled()
-                || \App\Services\Finance\V2OriginalWorkflowAccess::mergedWriterAllowed())
-            && \App\Services\Finance\V2IsolatedConnectionGuard::isAllowed();
+            (\App\Services\Finance\FinanceWorkflowAccess::enabled()
+                || \App\Services\Finance\FinanceWorkflowAccess::mergedWriterAllowed())
+            && \App\Services\Finance\FinanceConnectionGuard::isAllowed();
 
 
         return view('admin.reports.vouchers.commision_voucher', $x);
@@ -161,11 +161,11 @@ class CommissionVoucherController extends Controller
         // Original browser form may write ONLY in the explicitly isolated
         // local V2 pilot. Never enable this against an existing V1 database.
         abort_unless(
-            \App\Services\Finance\V2OriginalWorkflowAccess::enabled()
-                || \App\Services\Finance\V2OriginalWorkflowAccess::mergedWriterAllowed(),
+            \App\Services\Finance\FinanceWorkflowAccess::enabled()
+                || \App\Services\Finance\FinanceWorkflowAccess::mergedWriterAllowed(),
             409, 'Commission voucher creation is temporarily disabled to protect accounting history.'
         );
-        \App\Services\Finance\V2IsolatedConnectionGuard::assertAllowed();
+        \App\Services\Finance\FinanceConnectionGuard::assertAllowed();
 
         $data = $request->validate([
             'voucher_number' => ['required', 'string', 'max:64'],
@@ -198,7 +198,7 @@ class CommissionVoucherController extends Controller
         if ($projectId < 1) {
             abort(403, 'Select a project before creating a commission voucher.');
         }
-        \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+        \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
         $accounts = ProjectHeadSubhead::availableForPosting()
             ->where('project_id', $projectId)
             ->whereIn('id', $data['sub_accounts'])
@@ -220,7 +220,7 @@ class CommissionVoucherController extends Controller
             ];
         }
         try {
-            $id = (new \App\Services\Finance\V2CommissionDraftWorkflow())
+            $id = (new \App\Services\Finance\CommissionDraftWorkflow())
                 ->createDraft($projectId, $data['voucher_number'], $data['date'],
                     $lines, (int) Auth::id(), [
                         'reference' => $data['reference'] ?? null, 'description' => $data['description'] ?? null,
@@ -260,12 +260,12 @@ class CommissionVoucherController extends Controller
     public function approve(Request $request, $id)
     {
         $projectId = (int) getSelectedTown();
-        \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+        \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
         $data = $request->validate([
             'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
         ]);
         try {
-            (new \App\Services\Finance\V2CommissionDraftWorkflow())->approveAndPost(
+            (new \App\Services\Finance\CommissionDraftWorkflow())->approveAndPost(
                 $projectId, (int) $id, $data['request_key'], (int) Auth::id()
             );
         } catch (\DomainException $e) {
@@ -280,7 +280,7 @@ class CommissionVoucherController extends Controller
     /** Keep the typed writer for commission sources created in the old V2 flow. */
     private function isMergedTypedCommission(int $projectId, int $voucherId): bool
     {
-        if (!\App\Services\Finance\V2OriginalWorkflowAccess::mergedWriterAllowed()) {
+        if (!\App\Services\Finance\FinanceWorkflowAccess::mergedWriterAllowed()) {
             return false;
         }
         $voucher = CommisionVoucher::query()->where('project_id', $projectId)
@@ -300,14 +300,14 @@ class CommissionVoucherController extends Controller
     {
         $projectId = (int) getSelectedTown();
         abort_if($projectId < 1, 403, 'Select a project.');
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()
+        if (\App\Services\Finance\FinanceWorkflowAccess::selected()
             || $this->isMergedTypedCommission($projectId, (int) $id)) {
-            \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+            \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
             $typedDraft = CommisionVoucher::query()->where('project_id', $projectId)
                 ->whereKey((int) $id)->where('status', 'draft')->exists();
             if ($typedDraft) {
                 try {
-                    (new \App\Services\Finance\V2CommissionDraftWorkflow())->cancelDraft($projectId, (int) $id);
+                    (new \App\Services\Finance\CommissionDraftWorkflow())->cancelDraft($projectId, (int) $id);
                 } catch (\DomainException $exception) {
                     abort(409, 'Commission draft cancellation rejected to protect accounting history.');
                 }
@@ -324,7 +324,7 @@ class CommissionVoucherController extends Controller
             $data['reason'] = trim((string) ($data['reason'] ?? 'Operator void'));
             abort_if($data['reason'] === '', 422, 'A reversal reason is required.');
             try {
-                (new \App\Services\Finance\V2VoucherLifecycleService())->reverse(
+                (new \App\Services\Finance\VoucherLifecycleService())->reverse(
                     $projectId, 'commission', (int) $id, $data['request_key'],
                     $data['effective_date'], $data['reason'], (int) Auth::id()
                 );
@@ -446,11 +446,11 @@ class CommissionVoucherController extends Controller
             ]);
         }
 
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()
+        if (\App\Services\Finance\FinanceWorkflowAccess::selected()
             || $this->isMergedTypedCommission($projectId, (int) $id)) {
-            \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+            \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
             try {
-                (new \App\Services\Finance\V2CommissionDraftWorkflow())
+                (new \App\Services\Finance\CommissionDraftWorkflow())
                     ->updateDraft($projectId, (int) $id, $data['date'], $lines,
                         array_intersect_key($data, array_flip(['reference', 'description'])));
             } catch (\DomainException $e) {

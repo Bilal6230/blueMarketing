@@ -40,7 +40,7 @@ class MobileStockController extends BaseMobileController
     public function approveFinance(Request $request, string $kind, int $sourceId): JsonResponse
     {
         $projectId = (int) $this->resolveStockProjectId($request, $request->user(), true);
-        \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+        \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
         $data = $request->validate([
             'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
             'evidence_reference' => ['required', 'string', 'min:12', 'max:128'],
@@ -50,7 +50,7 @@ class MobileStockController extends BaseMobileController
             'posting_lines.*.credit' => ['required', 'regex:/^\d{1,9}(?:\.[0-9]{1,2})?$/D'],
         ]);
         try {
-            $batch = (new \App\Services\Finance\V2StockApprovalWorkflow())->approveAndPost(
+            $batch = (new \App\Services\Finance\StockApprovalWorkflow())->approveAndPost(
                 $projectId, $kind, $sourceId, $data['request_key'], $data['evidence_reference'], $data['posting_lines'], (int) $request->user()->id
             );
         } catch (\DomainException $e) {
@@ -450,8 +450,8 @@ class MobileStockController extends BaseMobileController
 
         $projectId = $this->resolveStockProjectId($request, $user, true);
         abort_unless($projectId !== null && Schema::hasTable('stock_project_item_balances'), 409, 'Project stock balances are not installed yet.');
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
-            \App\Services\Finance\V2OriginalWorkflowAccess::authorize((int) $projectId);
+        if (\App\Services\Finance\FinanceWorkflowAccess::selected()) {
+            \App\Services\Finance\FinanceWorkflowAccess::authorize((int) $projectId);
         }
         $linesInput = $validated['lines'];
         $itemIds = collect($linesInput)->pluck('item_id')->unique()->values()->all();
@@ -613,7 +613,7 @@ class MobileStockController extends BaseMobileController
         $message = $flow === 'IN'
             ? 'Stock in entry saved successfully.'
             : 'Stock out entry saved successfully.';
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+        if (\App\Services\Finance\FinanceWorkflowAccess::selected()) {
             $message .= ' Finance approval is required.';
         }
 
@@ -974,8 +974,8 @@ class MobileStockController extends BaseMobileController
         int $projectId,
         int $userId
     ): void {
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
-            \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+        if (\App\Services\Finance\FinanceWorkflowAccess::selected()) {
+            \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
             return;
         }
         if ($projectId <= 0) {

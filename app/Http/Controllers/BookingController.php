@@ -1932,8 +1932,8 @@ class BookingController extends Controller
         ]);
         $projectId = (int) getSelectedTown();
         abort_if($projectId < 1, 403, 'Select a project.');
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
-            \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+        if (\App\Services\Finance\FinanceWorkflowAccess::selected()) {
+            \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
             abort_unless((int) $data['is_approve'] === 1, 409, 'Posted vouchers require reversal.');
             $posting = $request->validate([
                 'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
@@ -1947,7 +1947,7 @@ class BookingController extends Controller
             abort_if(Ledger::query()->where('customer_ledger_id',(int)$data['id'])->exists(),
                 409,'This voucher already has ledger entries. Approval cannot be repeated; use the authorized reversal workflow.');
             try {
-                (new \App\Services\Finance\V2CustomerApprovalWorkflow())->approveAndPost(
+                (new \App\Services\Finance\CustomerApprovalWorkflow())->approveAndPost(
                     $projectId, (int) $data['id'], $posting['request_key'], $posting['posting_lines'], (int) Auth::id()
                 );
             } catch (\DomainException $e) {
@@ -1960,7 +1960,7 @@ class BookingController extends Controller
         // A typed/claim-backed source may already be posted without any
         // legacy ledgers. Never turn it into an unposted voucher merely by
         // changing is_approve in the standard ERP approval dialog.
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::normalErpMode()
+        if (\App\Services\Finance\FinanceWorkflowAccess::normalErpMode()
             && \Illuminate\Support\Facades\Schema::hasTable('finance_posting_cash_sources')
             && DB::table('finance_posting_cash_sources as typed')
                 ->join('customer_ledger as source', 'source.id', '=', 'typed.customer_ledger_id')
@@ -2676,8 +2676,8 @@ class BookingController extends Controller
             ->where('line.debit', '>', 0)->where('line.credit', 0)
             ->get(['line.project_head_subhead_id', 'line.debit']);
         if ($lines->count() !== 1 ||
-            \App\Services\Finance\V2OriginalCustomerWorkflow::money($lines->first()->debit)
-                !== \App\Services\Finance\V2OriginalCustomerWorkflow::money($source->amount_in)) {
+            \App\Services\Finance\OriginalCustomerWorkflow::money($lines->first()->debit)
+                !== \App\Services\Finance\OriginalCustomerWorkflow::money($source->amount_in)) {
             throw new \DomainException('EC_ORIGINAL_RECEIVABLE_ACCOUNT_AMBIGUOUS');
         }
         return (int) $lines->first()->project_head_subhead_id;
@@ -2689,7 +2689,7 @@ class BookingController extends Controller
         // posting history. A previously V2-created EC/ECP retains its
         // claim-backed financial writer, while fresh ECs use the standard
         // legacy controller below. Never re-post the same source in ledgers.
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::normalErpMode()
+        if (\App\Services\Finance\FinanceWorkflowAccess::normalErpMode()
             && \Illuminate\Support\Facades\Schema::hasTable('finance_extra_charge_sources')
             && \Illuminate\Support\Facades\Schema::hasTable('finance_extra_charge_payment_sources')) {
             $project = (int) getSelectedTown();
@@ -2730,7 +2730,7 @@ class BookingController extends Controller
                                     $project, (int) $context['extra_charge_id']);
                                 $cash = app(\App\Services\Finance\ExtraChargeAccounts::class)
                                     ->settlementAccount($project, 'Cash');
-                                $amount = \App\Services\Finance\V2OriginalCustomerWorkflow::money(
+                                $amount = \App\Services\Finance\OriginalCustomerWorkflow::money(
                                     str_replace(',', '', (string) $context['amount'])
                                 );
                                 $request->merge(['posting_lines' => [
@@ -2739,9 +2739,9 @@ class BookingController extends Controller
                                 ]]);
                             });
                         }
-                        $data = \App\Services\Finance\V2OriginalVoucherInput::read($request);
+                        $data = \App\Services\Finance\OriginalVoucherInput::read($request);
                         $data['charge_id'] = $typedCharge;
-                        $result = (new \App\Services\Finance\V2OriginalBookingDepositWorkflow())->create(
+                        $result = (new \App\Services\Finance\OriginalBookingDepositWorkflow())->create(
                             $project, 'ECP', (int) $context['customer_id'], (int) $context['plot_id'],
                             $data, (int) Auth::id()
                         );
@@ -2769,7 +2769,7 @@ class BookingController extends Controller
                             abort_unless($bank, 422, 'Select an active project bank account.');
                             $receivable = $this->typedExtraChargeReceivableAccount(
                                 $project, (int) $charge->id);
-                            $amount = \App\Services\Finance\V2OriginalCustomerWorkflow::money($payment->amount_in);
+                            $amount = \App\Services\Finance\OriginalCustomerWorkflow::money($payment->amount_in);
                             $legs = [
                                 ['account_id' => (int) $bank->account_mapping_id, 'debit' => $amount, 'credit' => '0.00'],
                                 ['account_id' => $receivable, 'debit' => '0.00', 'credit' => $amount],
@@ -2778,7 +2778,7 @@ class BookingController extends Controller
                         $note = trim((string) ($decision['note'] ?? '')) ?: 'Extra Charge bank decision';
                         $key = 'NORMAL-EC-BANK-'.substr(hash('sha256',
                             $project.'|'.$typedPayment.'|'.$decision['passing_status']), 0, 40);
-                        $result = (new \App\Services\Finance\V2OriginalBankWorkflow())->settle(
+                        $result = (new \App\Services\Finance\OriginalBankWorkflow())->settle(
                             $project, $typedPayment, (int) $decision['passing_status'], $key,
                             $decision['bank_post_at'] ?? '', $note, $legs, (int) Auth::id(),
                             $bank ? (int) $bank->id : null
@@ -2800,17 +2800,17 @@ class BookingController extends Controller
                     : back()->with('success', 'Extra Charge payment saved.');
             }
         }
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+        if (\App\Services\Finance\FinanceWorkflowAccess::selected()) {
             $project = (int) getSelectedTown();
-            \App\Services\Finance\V2OriginalWorkflowAccess::authorize($project);
+            \App\Services\Finance\FinanceWorkflowAccess::authorize($project);
             if ($request->input('action') === 'extra_charge_clearance') {
                 abort_unless(Auth::user()->can('can approve'), 403);
                 $request->validate(['extra_charge_payment_id' => ['required', 'integer', 'min:1']]);
                 $id = (int) $request->input('extra_charge_payment_id');
                 abort_unless(CustomerLedger::query()->whereKey($id)->where('project_id', $project)->where('transaction_type', 'ECP')->exists(), 404);
-                $decision = \App\Services\Finance\V2OriginalVoucherInput::settlement($request);
+                $decision = \App\Services\Finance\OriginalVoucherInput::settlement($request);
                 try {
-                    $result = (new \App\Services\Finance\V2OriginalBankWorkflow())->settle(
+                    $result = (new \App\Services\Finance\OriginalBankWorkflow())->settle(
                         $project, $id, (int) $decision['passing_status'], $decision['request_key'],
                         $decision['bank_post_at'] ?? '', $decision['note'], $decision['posting_lines'] ?? [], (int) Auth::id(),
                         isset($decision['bank_account_id']) ? (int) $decision['bank_account_id'] : null
@@ -2823,7 +2823,7 @@ class BookingController extends Controller
                 abort_if($request->filled('charge_id') && (int) $request->input('charge_id') !== (int) $request->input('extra_charge_id'), 422, 'Charge identities must match.');
                 $request->merge(['charge_id' => $request->input('extra_charge_id')]);
             }
-            $data = \App\Services\Finance\V2OriginalVoucherInput::read($request);
+            $data = \App\Services\Finance\OriginalVoucherInput::read($request);
             $context = $request->validate([
                 'action' => ['required', 'in:deposit,extra_charge,extra_charge_payment'],
                 'customer_id' => ['required', 'integer', 'min:1'], 'plot_id' => ['required', 'integer', 'min:1'],
@@ -2833,7 +2833,7 @@ class BookingController extends Controller
             ]);
             $series = match ($context['action']) { 'deposit' => 'PPR', 'extra_charge' => 'EC', 'extra_charge_payment' => 'ECP' };
             try {
-                $result = (new \App\Services\Finance\V2OriginalBookingDepositWorkflow())->create(
+                $result = (new \App\Services\Finance\OriginalBookingDepositWorkflow())->create(
                     $project, $series, (int) $context['customer_id'], (int) $context['plot_id'], $data + $context, (int) Auth::id()
                 );
             } catch (\DomainException $e) {
