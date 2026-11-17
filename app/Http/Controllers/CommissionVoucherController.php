@@ -277,11 +277,31 @@ class CommissionVoucherController extends Controller
         )->with('success', 'Commission voucher approved and posted.');
     }
 
+    /** Keep the typed writer for commission sources created in the old V2 flow. */
+    private function isMergedTypedCommission(int $projectId, int $voucherId): bool
+    {
+        if (!\App\Services\Finance\V2OriginalWorkflowAccess::mergedWriterAllowed()) {
+            return false;
+        }
+        $voucher = CommisionVoucher::query()->where('project_id', $projectId)
+            ->whereKey($voucherId)->first();
+        if (!$voucher) {
+            return false;
+        }
+        if ((string) $voucher->status === 'draft') {
+            return true;
+        }
+        return \Illuminate\Support\Facades\Schema::hasTable('finance_posting_commission_sources')
+            && DB::table('finance_posting_commission_sources')
+                ->where('commision_voucher_id', $voucherId)->exists();
+    }
+
     public function destroy($id)
     {
         $projectId = (int) getSelectedTown();
         abort_if($projectId < 1, 403, 'Select a project.');
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()
+            || $this->isMergedTypedCommission($projectId, (int) $id)) {
             \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
             $data = request()->validate([
                 'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
@@ -407,7 +427,8 @@ class CommissionVoucherController extends Controller
             ]);
         }
 
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()
+            || $this->isMergedTypedCommission($projectId, (int) $id)) {
             \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
             try {
                 (new \App\Services\Finance\V2CommissionDraftWorkflow())
