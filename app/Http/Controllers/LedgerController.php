@@ -33,12 +33,12 @@ class LedgerController extends Controller
     private function typedReport(Request $request, ?string $group = null)
     {
         $project = (int) getSelectedTown();
-        \App\Services\Finance\V2OriginalWorkflowAccess::authorizeRead($project);
+        \App\Services\Finance\FinanceWorkflowAccess::authorizeRead($project);
         $data = $request->validate([
             'start_date' => ['nullable', 'date_format:Y-m-d'],
             'end_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:start_date'],
         ]);
-        $report = new \App\Services\Finance\V2OriginalLedgerReport();
+        $report = new \App\Services\Finance\OriginalLedgerReport();
         try {
             $rows = $report->rows($project, $data['start_date'] ?? null, $data['end_date'] ?? null);
         } catch (\DomainException $e) { abort(409, 'Ledger report integrity checks failed.'); }
@@ -92,13 +92,13 @@ class LedgerController extends Controller
         }
         // Isolated V2 posting is a different writer and cannot consume legacy management claims.
         if($request->filled('passed_source_method')||$request->filled('passed_source_id')) {
-            abort_if(\App\Services\Finance\V2OriginalWorkflowAccess::selected(),409,
+            abort_if(\App\Services\Finance\FinanceWorkflowAccess::selected(),409,
                 'Selected management sources require the audited standard voucher writer.');
         }
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+        if (\App\Services\Finance\FinanceWorkflowAccess::selected()) {
             $project = (int) getSelectedTown();
-            \App\Services\Finance\V2OriginalWorkflowAccess::authorize($project);
-            $data = \App\Services\Finance\V2OriginalVoucherInput::read($request);
+            \App\Services\Finance\FinanceWorkflowAccess::authorize($project);
+            $data = \App\Services\Finance\OriginalVoucherInput::read($request);
             $labels = $request->validate([
                 'voucher' => ['required', 'regex:/^(CR|CP)-[1-9][0-9]*$/D'],
                 'voucher_number' => ['required', 'same:voucher'],
@@ -120,11 +120,11 @@ class LedgerController extends Controller
                 $receipt = CustomerLedger::query()->whereKey($settlement['selected_pending_payment_id'])
                     ->where('project_id', $project)->where('payment_type', $data['payment_type'])
                     ->whereIn('transaction_type', ['CR', 'PPR'])->first();
-                abort_unless($receipt && \App\Services\Finance\V2OriginalCustomerWorkflow::money($data['amount'])
-                    === \App\Services\Finance\V2OriginalCustomerWorkflow::money(max($receipt->amount_in, $receipt->amount_out))
+                abort_unless($receipt && \App\Services\Finance\OriginalCustomerWorkflow::money($data['amount'])
+                    === \App\Services\Finance\OriginalCustomerWorkflow::money(max($receipt->amount_in, $receipt->amount_out))
                     && (string) $receipt->t_number === (string) $data['t_number'] && (int) $receipt->bank_id === (int) $data['bank_id'], 409, 'Selected receipt does not match the clearance.');
                 try {
-                    $result = (new \App\Services\Finance\V2OriginalBankWorkflow())->settle(
+                    $result = (new \App\Services\Finance\OriginalBankWorkflow())->settle(
                         $project, (int) $receipt->id, (int) $settlement['pending_status'], $data['request_key'],
                         $data['passing_date'], $data['detail'], $data['posting_lines'] ?? [], (int) Auth::id(),
                         isset($settlement['bank_account_id']) ? (int) $settlement['bank_account_id'] : null
@@ -136,9 +136,9 @@ class LedgerController extends Controller
                 abort_unless(collect($data['posting_lines'])->contains(fn ($line) => (int) $line['account_id'] === (int) $account->id), 422, 'Posting allocation must include the selected account.');
             }
             try {
-                $result = (new \App\Services\Finance\V2OriginalCustomerWorkflow())->create(
+                $result = (new \App\Services\Finance\OriginalCustomerWorkflow())->create(
                     $project, substr($labels['voucher'], 0, 2), $data['request_key'],
-                    \App\Services\Finance\V2OriginalVoucherInput::source($data), $data['posting_lines'] ?? [], (int) Auth::id()
+                    \App\Services\Finance\OriginalVoucherInput::source($data), $data['posting_lines'] ?? [], (int) Auth::id()
                 );
             } catch (\DomainException $e) {
                 abort(409, 'Cash voucher could not be posted.');
@@ -1591,7 +1591,7 @@ class LedgerController extends Controller
 
     public function fetch_data_url(Request $request)
     {
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+        if (\App\Services\Finance\FinanceWorkflowAccess::selected()) {
             return $this->typedReport($request);
         }
         if ((new \App\Services\Finance\UnifiedNormalLedgerReport())->available()) {
@@ -1759,7 +1759,7 @@ class LedgerController extends Controller
 
     public function fetch_data_by_party(Request $request)
     {
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+        if (\App\Services\Finance\FinanceWorkflowAccess::selected()) {
             return $this->typedReport($request, 'project_head_subheads_id');
         }
         if ((new \App\Services\Finance\UnifiedNormalLedgerReport())->available()) {
@@ -1804,7 +1804,7 @@ class LedgerController extends Controller
 
     public function fetch_data_by_head(Request $request)
     {
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+        if (\App\Services\Finance\FinanceWorkflowAccess::selected()) {
             return $this->typedReport($request, $request->input('account_type') === 'account' ? 'acct_type' : 'head_accounting_id');
         }
         if ((new \App\Services\Finance\UnifiedNormalLedgerReport())->available()) {

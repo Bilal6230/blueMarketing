@@ -113,9 +113,9 @@ class LabourController extends Controller
 
     public function labourPayment(Request $request)
     {
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+        if (\App\Services\Finance\FinanceWorkflowAccess::selected()) {
             $projectId = (int) getSelectedTown();
-            \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+            \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
             $data = $request->validate([
                 'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
                 'date' => ['required', 'date_format:Y-m-d'], 'week' => ['required', 'regex:/^[0-9]{4}-W(0[1-9]|[1-4][0-9]|5[0-3])$/D'],
@@ -129,7 +129,7 @@ class LabourController extends Controller
                 'posting_lines.*.credit' => ['required', 'regex:/^[0-9]{1,10}(?:\.[0-9]{1,2})?$/D'],
             ]);
             try {
-                $result = (new \App\Services\Finance\V2OriginalPayrollWorkflow())->pay(
+                $result = (new \App\Services\Finance\OriginalPayrollWorkflow())->pay(
                     $projectId, $data['request_key'], $data['date'], $data['week'], $data['labours'], $data['posting_lines'], (int) Auth::id(),
                     isset($data['contractor_id']) ? (int) $data['contractor_id'] : null
                 );
@@ -840,9 +840,9 @@ class LabourController extends Controller
 
     public function createVoucher(Request $request)
     {
-        if (\App\Services\Finance\V2OriginalWorkflowAccess::selected()) {
+        if (\App\Services\Finance\FinanceWorkflowAccess::selected()) {
             $projectId = (int) getSelectedTown();
-            \App\Services\Finance\V2OriginalWorkflowAccess::authorize($projectId);
+            \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
             $data = $request->validate([
                 'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
                 'date' => ['required', 'date_format:Y-m-d'], 'site_id' => ['required', 'integer', 'min:1'],
@@ -858,7 +858,7 @@ class LabourController extends Controller
             $ids = array_map('intval', explode(',', $data['attendance_ids']));
             abort_unless(count($ids) <= 1000 && count(array_unique($ids)) === count($ids), 422, 'Attendance IDs must be unique.');
             try {
-                $journal = (new \App\Services\Finance\V2OriginalAttendanceWorkflow())->post($projectId, $data, $ids, (int) Auth::id());
+                $journal = (new \App\Services\Finance\OriginalAttendanceWorkflow())->post($projectId, $data, $ids, (int) Auth::id());
             } catch (\DomainException $e) { abort(409, 'Attendance voucher could not be posted.'); }
             return response()->json(['success' => true, 'voucher_id' => $journal, 'toLedgerData' => null, 'fromLedgerData' => null]);
         }
