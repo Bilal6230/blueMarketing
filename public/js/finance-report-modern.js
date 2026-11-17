@@ -13,7 +13,12 @@
    data:key,name:key,defaultContent:'',title:names[index],render:$.fn.dataTable.render.text()
   };});
   var $search=$('#financeReportSearch'),searchTimer=null,widget=null,opened=-1;
-  var busy=false;
+  var loading=false;
+  function closeSkeleton(){
+   loading=false;
+   if($.financeVoucherFeedback&&$.financeVoucherFeedback.tableSkeleton)
+    $.financeVoucherFeedback.tableSkeleton($table,false);
+  }
   function notify(message){
    $error.text(message).toggleClass('d-none',!message);
    if(message&&$.financeVoucherFeedback&&$.financeVoucherFeedback.error)
@@ -40,8 +45,10 @@
   }
   if($.financeVoucherFeedback&&$.financeVoucherFeedback.bindTableSkeleton)
    $.financeVoucherFeedback.bindTableSkeleton('#financeReportTable');
+  $table.on('xhr.dt.fvrReport draw.dt.fvrReport error.dt.fvrReport',function(){closeSkeleton();});
   var api=$table.DataTable({
    processing:true,serverSide:false,autoWidth:false,deferRender:true,
+   orderMulti:false,
    pageLength:25,lengthMenu:[[10,25,50,100],[10,25,50,100]],
    order:[[0,'asc']],columns:fields,dom:'Brtip',
    buttons:[
@@ -59,14 +66,13 @@
     },
     dataSrc:function(result){notify('');return result.data||[];},
     error:function(xhr){
-     busy=false;
+     closeSkeleton();
      var message=xhr.status===403?'You do not have permission to view this report.':
       xhr.status===419?'Session expired. Please refresh the page.':
       'Unable to load this ledger report. Please retry.';
      notify(message);
      $root.find('.dataTables_processing').hide();
-     if($.financeVoucherFeedback&&$.financeVoucherFeedback.tableSkeleton)
-      $.financeVoucherFeedback.tableSkeleton($table,false);
+
     }
    },
    createdRow:function(row,data){paint($(row),data);},
@@ -82,6 +88,10 @@
       .toggleClass('fvr-negative',totals[2]<0);
    },
    initComplete:function(){
+    closeSkeleton();
+    // Only the shared column popover owns sorting; remove DataTables' native
+    // heading click/keyboard sort handlers, but preserve API-driven sorting.
+    $table.find('thead th').off('click.DT keypress.DT');
     var $buttons=$root.find('.dt-buttons').first();
     if($buttons.length)$buttons.appendTo('#financeReportExports');
     if($.financeVoucherComponents&&$.financeVoucherComponents.attachDataTablePager)
@@ -104,7 +114,7 @@
      $(this).toggleClass('bm-column-active',!!filters[n]);
     });
    }
-   $table.find('thead th').each(function(index){
+   $table.find('thead th').off('click.DT keypress.DT').each(function(index){
     var $th=$(this),title=names[index];
     var $button=$('<button>',{type:'button','class':'fvr-heading-filter fvd-column-trigger',
       'aria-label':'Filter or sort '+title,'aria-haspopup':'dialog','aria-expanded':'false','data-index':index})
@@ -130,11 +140,6 @@
     if(!$(e.target).closest($popup).length&&!$(e.target).closest('.fvr-heading-filter').length)close();
    }).on('keydown.fvr',function(e){if(e.key==='Escape')close();});
   }
-  $('#financeReportClear').on('click',function(){
-   $search.val('');api.search('');api.columns().search('');api.order([[0,'asc']]);
-   filters={};$('#financeReportLength').val('25');api.page.len(25).draw();
-   $table.find('.fvr-heading-filter').removeClass('bm-column-active');
-   if(widget)widget.close();opened=-1;notify('');
-  });
+
  });
 })(jQuery);
