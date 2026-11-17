@@ -38,7 +38,7 @@ $tables=array_map(static fn($r)=>(string)$r->table_name,$db->select(
 $check(count($tables)===147,'147 restored tables');
 $check(in_array('migrations',$tables,true),'Migration history table present');
 $history=(int)$db->table('migrations')->count();
-$check($history===148,"148 migrations; actual=$history");
+$check($history===149,"149 migrations; actual=$history");
 $counts=[];
 foreach($tables as $table) {
     if($table==='migrations')continue;
