@@ -55,6 +55,20 @@ return new class extends Migration
             }
             $plan[]=[$table,$column,$parent,$pk,$constraint];
         }
+        // Cross-project accounts are logically invalid even if all referenced
+        // row IDs exist. Block any DDL rather than legitimizing bad relations.
+        foreach ([
+            ['journal_voucher_details','journal_voucher_id','journal_vouchers'],
+            ['commision_voucher_details','commision_voucher_id','commision_vouchers'],
+        ] as [$detailTable,$headerId,$headerTable]) {
+            $mismatch=(int)DB::table($detailTable.' as d')
+                ->join($headerTable.' as h','h.id','=','d.'.$headerId)
+                ->join('project_head_subheads as a','a.id','=','d.account_id')
+                ->whereColumn('a.project_id','!=','h.project_id')->count();
+            if ($mismatch) throw new \RuntimeException(
+                $detailTable.' has '.$mismatch.' cross-project account links; FK installation stopped.'
+            );
+        }
         foreach ($plan as [$table,$column,$parent,$pk,$constraint]) {
             // RESTRICT: logical deletion must never cascade a physical delete.
             Schema::table($table,function($blueprint)use($column,$parent,$pk,$constraint) {
