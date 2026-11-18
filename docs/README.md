@@ -76,6 +76,14 @@ php artisan finance:diagnose-edit --role="Data Operator" --series=CR
 
 If the role grant is YES and the browser still has no Edit for an eligible cash voucher, inspect the authenticated user's actual role/effective grant, relevant source identity, and listing JSON (Network -> daily-vouchers/data -> `edit_url`). If the role's grant is NO, use role editor to save that role's CR Edit. **Do not enable unsafe edit on Pending, cleared online/cheque or broken ledger-linked rows without implementing and testing the corresponding atomic lifecycle edit workflow.**
 
+## 2026-11-18 Owner local diagnostic PASS — CR Edit grant and project 5 voucher eligibility
+
+Owner executed commit `2b2325ed` on local DB `bluenew_clean_final`. **Local confirmed:** `FinanceVoucherEditDiagnosticTest` 2 passed / 13 assertions; `FinanceVoucherEditPermissionParityTest` 4 passed / 21 assertions. The role `Data Operator` (ID 5) holds `finance cr edit`; 9 users assigned and **all 9 can the ability**; legacy `update voucher` is NO and must NOT be required. **With `--project=5 --limit=25`: every returned CR source (IDs 5635 through 5550 in the inspected sample) is active=1, payment_type=1 (cash), posted and has one linked ledger — status is `LISTING EDIT ELIGIBLE`.** These facts rule out role grant and basic voucher eligibility as explanations for those records. However the owner has not reported a new browser reload/inspection after this local pull; the UI Edit flow is NOT yet accepted.
+
+**Important correction:** The previous suggestion `DB::table('projects')->get(['id','name'])` failed because this schema's `projects` table does not have `name`; do not repeat. Owner supplied project 5 directly, so no project discovery is needed.
+
+**Next decisive verification:** With the same logged-in Data Operator and project 5, hard-refresh `/admin/finance/daily-vouchers?type=CR`, open an eligible **Posted cash CR** row in the Actions + menu; verify Edit exists and opens its embedded form. If missing, inspect Chrome DevTools Network request to `finance/daily-vouchers/data`, locate the matching row's `number`, `type`, `status`, `edit_url`, `revise_url`, and the request's HTTP status. If `edit_url` is non-null but menu omits Edit, fix JS/blue action menu. If `edit_url` is null despite an eligible source and correct role, inspect **authenticated user / selected project / source series / source approval state** on that exact request. Do not guess additional database gates or alter accounting safety rules. User's permission-audit JSON is still not uploaded.
+
 ## Next actions — Milestone 02 acceptance
 
 Owner run in Windows PowerShell, on the intended local DB only:
