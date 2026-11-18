@@ -133,9 +133,12 @@ final class PlotVoucherEditor
             if ($lines->count()!==$old->count()+1) {
                 throw new \DomainException('Existing Plot Receipt posting does not match active allocations.');
             }
-            if ($old->count()!==count($data['allocations'])
-                && !Schema::hasColumn('finance_plot_receipt_allocations','is_active')) {
-                throw new \DomainException('Apply Plot line lifecycle migration before changing allocation count.');
+            $oldBookingIds=$old->pluck('booking_id')->map(fn($id)=>(int)$id)->sort()->values()->all();
+            $newBookingIds=array_map(static fn(array $row): int => (int)$row['booking_id'],$data['allocations']);
+            sort($newBookingIds);
+            if (!Schema::hasColumn('finance_plot_receipt_allocations','is_active')
+                && $oldBookingIds!==$newBookingIds) {
+                throw new \DomainException('Apply Plot line lifecycle migration before changing allocation bookings.');
             }
             $customer=(int)$data['customer_id'];$cash=(int)$data['cash_account_id'];
             if (!DB::table('leads')->where('id',$customer)->where('project_id',$project)->exists())
