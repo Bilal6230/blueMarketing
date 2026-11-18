@@ -66,9 +66,24 @@ final class AuditVoucherSchema extends Command
                 'present'=>$present,'constraint'=>$fk?->constraint_name,
                 'orphan_count'=>$orphans];
         }
+        $crossProject=[];
+        foreach ([
+            ['journal_voucher_details','journal_voucher_id','journal_vouchers'],
+            ['commision_voucher_details','commision_voucher_id','commision_vouchers'],
+        ] as [$details,$sourceFk,$source]) {
+            $count=null;
+            if (in_array($details,$tables,true)&&in_array($source,$tables,true)
+                && in_array('project_head_subheads',$tables,true)) {
+                $count=(int)DB::table($details.' as detail')
+                    ->join($source.' as header','header.id','=','detail.'.$sourceFk)
+                    ->join('project_head_subheads as account','account.id','=','detail.account_id')
+                    ->whereColumn('account.project_id','!=','header.project_id')->count();
+            }
+            $crossProject[]=['details'=>$details,'cross_project_rows'=>$count];
+        }
         $report=['database'=>$database,'read_only'=>true,'tables_total'=>count($tables),
             'tables_with_neither'=>array_values(array_filter($rows,fn($r)=>$r['neither'])),
-            'all_tables'=>$rows,'relationships'=>$relations,
+            'all_tables'=>$rows,'relationships'=>$relations,'cross_project_detail_links'=>$crossProject,
             'note'=>'Not every technical/log/history table should receive a deleted_at or is_active column. Review business tables before migration. ledgers.type_id is polymorphic and must never get a single-target FK.'];
         if ($this->option('json')) {
             $this->line(json_encode($report,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
@@ -80,6 +95,8 @@ final class AuditVoucherSchema extends Command
                 array_map(fn($r)=>[$r['child'],$r['column'],$r['parent'],
                     $r['constraint']??($r['present']?'MISSING':'TABLE/COLUMN MISSING'),
                     $r['orphan_count']===null?'N/A':$r['orphan_count']],$relations));
+            $this->table(['Voucher details','Cross-project account links'],
+                array_map(fn($r)=>[$r['details'],$r['cross_project_rows']??'N/A'],$crossProject));
         }
         return self::SUCCESS;
     }
