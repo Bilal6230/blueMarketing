@@ -10,10 +10,39 @@
 | # | Milestone | Truth / Gate |
 |---|---|---|
 | 01 | Global nonblocking loader and voucher-colored skeletons | **COMPLETE: owner browser PASS and 8 local PHPUnit tests PASS** on 2026-11-18 (6 + 2 test methods, 71 assertions total). |
-| 02 | Separate permissions for every Daily Entries voucher and action | **IMPLEMENTED IN CODE; PENDING LOCAL MIGRATION, TESTS AND BROWSER PERMISSION ACCEPTANCE.** CURRENT active milestone. |
+| 02 | Separate permissions for every Daily Entries voucher and action | **GRANULAR BACKEND TESTS PASS (OWNER); ROLE UI REDESIGN COMMITTED, NEW UI QA AND PERMISSION INVENTORY PENDING.** CURRENT active milestone. |
 | 03 | Relationship-safe voucher create/edit/logical delete and missing FK/deleted_at/is_active audit | **PENDING** after Milestone 02 owner PASS. |
 | 04 | Edit/delete cleared cheque and online sources with correct linked-voucher/ledger cascade | **PENDING** after Milestone 03. |
 | 05 | Reversal ON/OFF setting for posted/approved vouchers and full regression | **PENDING** after Milestone 04. |
+
+## 2026-11-18 Role Management UX / permission inventory batch — ACTIVE
+
+**Owner verification:** `FinanceActionPermissionMatrixTest` **6 PASS / 365 assertions**, `VoucherAuthenticatedPermissionIntegrationTest` **2 PASS / 19 assertions**, view cache PASS, initial permissions migration ran on `bluenew_clean_final`. Owner screenshot showed an overly tall legacy Roles modal, duplicated generic voucher permissions in General and finance sections, and unreadable permissions string in roles listing.
+
+**Committed changes:**
+- `resources/views/admin/role.blade.php` rewritten into the common compact CR/DR-inspired design: six columns **ID, Name, Guard, Updated, Updated By, Actions**; no concatenated permissions table column or legacy DataTables sorting; first-frame server rows; search, guard, column-filter popovers, sort, page size, shared `$.blueVoucherPagination`, and shared `$.blueActionMenu` for modern actions.
+- One centered, scroll-contained, searchable Create/Edit modal; module sidebar, relevant action checkboxes only, selected counter, section select/clear, safe form error messages, and AJAX create/update without page reload. Delete is a separate modern confirmation modal using AJAX.
+- `app/Support/Finance/RolePermissionCatalog.php` centralizes module labels and applicable actions. Old generic `read voucher`, `create voucher`, `update voucher`, `delete voucher` and old JV names are **hidden in editor** to avoid duplicate choices, **not deleted/revoked**. Existing role grants are retained automatically during edits while old routes may depend on them. The backend rejects newly granting those retired names from the modern role editor.
+- `app/Http/Controllers/RoleController.php` now returns refreshable JSON rows for AJAX, validates distinct permissions/role names, prevents guard changes on an existing role, protects superadmin, archives assigned-user-free roles via SoftDeletes (no hard delete), and preserves hidden historical permissions.
+- New idempotent migration `2026_11_18_140000_add_updated_by_to_roles.php` adds nullable `roles.updated_by` and index (historical unknown actors display —). Requires local run once.
+- New **read-only** `php artisan permissions:audit --json` command inventories every actual permission, guard, role-grant count, direct-user-grant count, and classification without mutating records; do NOT delete or rename until owner shares the output and usage map is confirmed.
+- Added `tests/Unit/RoleManagementModernizationTest.php` for duplicate classification, applicable actions, six-column UI, modal and preservation contracts.
+
+**Unverified:** new migration, role-page Blade compile, new tests, modern role editor create/edit/delete behavior on browser, permission-use inventory. **Keep milestone 02 open.** Do not start milestone 03 until owner verifies.
+
+**New verification / safe audit:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan migrate --path=database/migrations/2026_11_18_140000_add_updated_by_to_roles.php
+php artisan view:cache
+php artisan test --filter=RoleManagementModernizationTest
+php artisan test --filter=FinanceActionPermissionMatrixTest
+php artisan test --filter=VoucherAuthenticatedPermissionIntegrationTest
+php artisan permissions:audit --json | Set-Content -Path .\storage\app\permission-audit.json -Encoding UTF8
+```
+Upload `storage/app/permission-audit.json` for the next targeted duplicate/unused permission review. This JSON reports permission names and **counts** but not user personal details. Browser: open `/admin/role`, confirm six columns and filter/action UX; create a disposable role with CR View only; edit to add CR Create and ensure old grants persist on existing roles; test guards and archive on unassigned disposable role. No production data changes.
 
 ## 2026-11-18 Local regression repair after owner's first terminal run
 
