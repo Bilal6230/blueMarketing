@@ -49,10 +49,17 @@ final class VoucherLifecycleService
             if (!$batch) {
                 throw new \DomainException('V2_VOUCHER_LIFECYCLE_SOURCE_NOT_POSTED');
             }
-            return (new PostingGateway())->reversePostedBatch(
+            $reversal=(new PostingGateway())->reversePostedBatch(
                 $projectId, (int) $batch->id, $requestKey,
                 $effectiveDate, $reason, $actorId
             );
+            if ($kind === 'commission') {
+                // The same posted accounting legs also appear in the legacy
+                // ledger report. Reverse must retire that projection in the
+                // identical transaction or balances would remain overstated.
+                app(CommissionLedgerSynchronizer::class)->deactivate($projectId,$sourceId);
+            }
+            return $reversal;
         }, 3);
     }
 }
