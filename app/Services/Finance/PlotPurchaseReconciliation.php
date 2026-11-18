@@ -20,6 +20,12 @@ final class PlotPurchaseReconciliation
             ->leftJoin('finance_plot_purchase_postings as link', 'link.source_id', '=', 'p.id')
             ->leftJoin('finance_posting_batches as batch', 'batch.id', '=', 'link.posting_batch_id')
             ->where('p.project_id', $projectId)
+            // Deleted sources retain evidence and offsetting reversal batches,
+            // but must not be counted as active inventory reconciliation.
+            ->when(Schema::hasColumn('finance_plot_purchases','is_active'),
+                fn($q)=>$q->where('p.is_active',1))
+            ->when(Schema::hasColumn('finance_plot_purchases','deleted_at'),
+                fn($q)=>$q->whereNull('p.deleted_at'))
             ->orderBy('p.id')
             ->get([
                 'p.id', 'p.purchase_number', 'p.amount', 'p.seller_account_id',
