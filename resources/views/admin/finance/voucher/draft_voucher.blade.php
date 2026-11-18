@@ -142,7 +142,8 @@
                                                 </div>
 
                                                 <!-- Table -->
-                                                <div class="table-responsive bm-draft-scroll">
+                                                <div class="table-responsive bm-draft-scroll bm-voucher-initial-pending">
+                                                    <div class="bm-voucher-initial-skeleton" role="status" aria-label="Loading draft vouchers"><table class="table table-bordered w-100" aria-hidden="true"><tbody id="draftVoucherInitialSkeleton"></tbody></table></div>
                                                     <table id="bmDraftTable" class="table bm-table table-bordered table-hover align-middle mb-0 w-100">
                                                         <thead class="table-light border-bottom">
                                                             <tr>
@@ -258,6 +259,17 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
+        $(function(){
+            if($.blueTableSkeleton && $('#draftVoucherInitialSkeleton').length){
+                $.blueTableSkeleton.show('#draftVoucherInitialSkeleton',{rows:10,columns:$('#bmDraftTable thead th').length});
+            }
+        });
+        $(document).on('init.dt',function(event,settings){
+            if(settings && settings.nTable && settings.nTable.id==='bmDraftTable'){
+                $('#bmDraftTable').closest('.bm-draft-scroll').removeClass('bm-voucher-initial-pending')
+                    .find('.bm-voucher-initial-skeleton').remove();
+            }
+        });
         $(function () {
             // Draft edit handlers access .tomselect immediately after fetching
             // a record, so initialize once up front with the shared finance
