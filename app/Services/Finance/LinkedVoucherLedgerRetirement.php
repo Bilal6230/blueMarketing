@@ -67,6 +67,8 @@ final class LinkedVoucherLedgerRetirement
             $key=$signature($leg->project_head_subheads_id,$leg->amount_in,$leg->amount_out);
             $actual[$key]=($actual[$key]??0)+1;
         }
+        ksort($expected);
+        ksort($actual);
         if ($expected!==$actual) {
             throw new \DomainException('Voucher detail/ledger amounts or ownership mismatch; no rows modified.');
         }
