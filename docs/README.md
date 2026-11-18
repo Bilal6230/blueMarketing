@@ -84,6 +84,10 @@ Owner executed commit `2b2325ed` on local DB `bluenew_clean_final`. **Local conf
 
 **Next decisive verification:** With the same logged-in Data Operator and project 5, hard-refresh `/admin/finance/daily-vouchers?type=CR`, open an eligible **Posted cash CR** row in the Actions + menu; verify Edit exists and opens its embedded form. If missing, inspect Chrome DevTools Network request to `finance/daily-vouchers/data`, locate the matching row's `number`, `type`, `status`, `edit_url`, `revise_url`, and the request's HTTP status. If `edit_url` is non-null but menu omits Edit, fix JS/blue action menu. If `edit_url` is null despite an eligible source and correct role, inspect **authenticated user / selected project / source series / source approval state** on that exact request. Do not guess additional database gates or alter accounting safety rules. User's permission-audit JSON is still not uploaded.
 
+## 2026-11-18 — Owner browser verification: CR Edit visible
+
+Owner screenshot confirms **CR-834 Edit Voucher** is now present in the shared Actions floating menu for project 5, after previous granular permission fixes. Role grant and listing eligibility had already passed local diagnostics. **CR Edit action visibility: BROWSER PASS.** Editing form opening, successful safe save, and negative authorization/revocation test are still unverified. Do not mark all Milestone 02 complete; continue remaining action-permission/browser acceptance. No code changes required for this confirmation.
+
 ## Next actions — Milestone 02 acceptance
 
 Owner run in Windows PowerShell, on the intended local DB only:
