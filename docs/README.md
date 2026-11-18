@@ -510,3 +510,30 @@ php artisan finance:audit-posting-balances
 ```
 
 `finance:audit-posting-balances --project=N` remains optional and read-only. Do not demand project 3 or a specific database name. Browser test and migration are not required for this command-only change. Milestone 03 cross-family CRUD acceptance remains pending.
+
+
+## 2026-11-18 — Owner verified 48/48, six-project posting audit and shared Daily Voucher Directory correction
+
+**Verified by owner:** `PlotEntryWriterTest` **43 PASS / 291 assertions**, `PlotFullVoucherEditContractTest` **5 PASS / 88 assertions**: **48 PASS / 379 assertions**, zero failures. PHP lint PASS. `php artisan finance:audit-posting-balances` checked **all 6 projects on current configured database**, zero imbalanced/invalid active posting batches. All-project default behavior is now verified and no per-project special casing required. Earlier Plot browser acceptance is still PASS.
+
+**Next actual application code batch, GitHub committed (new local verification pending):**
+- Fixed shared `DailyVoucherDirectoryController` Plot Receipt/Purchase listing to exclude logically archived source rows (`is_active=0` / `deleted_at` present), avoiding deleted vouchers showing as active records in the unified Daily Voucher Directory. Existing source and accounting evidence remains in storage.
+- Fixed account filters in typed bank-transfer and Plot Receipt/Purchase directory sections to consider **only active finance posting lines**; previously an archived line could still match an account filter and produce misleading results after full voucher Edit.
+- Fixed `postingLines()` used by the shared directory's voucher detail output to exclude inactive financial legs so retired credit/debit rows do not display as active. Project/account join constraints remain.
+- Added `DailyVoucherDirectoryPostingLifecycleContractTest` to prevent regression of archived-source and inactive-line filters in both typed source listing and directory detail output. No new database tables, migrations, hard delete, or DB-name/project-specific behavior.
+
+**New verification commands (not run locally by GitHub connector):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php -l app/Http/Controllers/Finance/DailyVoucherDirectoryController.php
+php -l tests/Unit/Finance/DailyVoucherDirectoryPostingLifecycleContractTest.php
+php artisan test --filter=DailyVoucherDirectoryPostingLifecycleContractTest
+php artisan test --filter=PlotEntryWriterTest
+php artisan test --filter=PlotFullVoucherEditContractTest
+php artisan finance:audit-posting-balances
+```
+
+**Focused browser check required** because the unified Daily Voucher Directory listing/filter UI is affected: open that page in a disposable local project with an archived Plot Receipt/Purchase and an active edited voucher containing retired finance legs; confirm logically archived voucher is absent in active register, account filters ignore retired legs and voucher detail lines only show active posting legs. Previous Plot create/edit/delete browser tests need not be repeated.
+
+**Reality check:** Milestone 03 is still partial across other voucher CRUD families (JV/CV, cash, stock, cheque/bank, extra charges), and Milestones 04 and 05 are not accepted. A clean balance audit does not prove those Create/Edit/Delete paths. Do not claim the entire remaining batch has been completed.
