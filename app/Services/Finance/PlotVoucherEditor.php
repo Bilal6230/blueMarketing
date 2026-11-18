@@ -222,8 +222,8 @@ final class PlotVoucherEditor
             }
             $byPlot=$old->keyBy('legacy_plot_id');
             $plots=[];$total=0;$newLines=[];$usedCodes=[];$usedIds=[];
-            foreach ($data['items'] as $item) {
-                $legacyId=(int)($item['legacy_plot_id']??0);
+            foreach ($data['items'] as $index=>$item) {
+                $legacyId=(int)($item['legacy_plot_id']??($old[$index]->legacy_plot_id??0));
                 if ($legacyId && (isset($usedIds[$legacyId]) || !$byPlot->has($legacyId))) {
                     throw new \DomainException('Purchased plot is not linked to this source.');
                 }
