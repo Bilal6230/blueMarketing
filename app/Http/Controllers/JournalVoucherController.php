@@ -1112,27 +1112,11 @@ class JournalVoucherController extends Controller
                     ->assertLegacyMutationAllowed($projectId, 'journal_vouchers', (int) $voucher->id);
                 $oldDetails = JournalVoucherDetail::where('journal_voucher_id', $voucher->id)
                     ->lockForUpdate()->get();
-                $oldLedgers = Ledger::query()->withoutGlobalScopes()->where('type', 'JV')
-                    ->where('type_id', $voucher->id)->where('is_active', 1)
-                    ->whereIn('project_head_subheads_id', ProjectHeadSubhead::where('project_id', $projectId)->select('id'))
-                    ->lockForUpdate()->get();
-                abort_if($oldLedgers->isEmpty(), 409, 'JV ledger entries are missing; update stopped without changes.');
                 $typed = app(\App\Services\Finance\FinancePostingSchemaGate::class)->mode() === 'typed';
-
-                // Append exact opposite legs first. The original posted history is
-                // retained; reports see original + reversal + corrected posting.
-                foreach ($oldLedgers as $old) {
-                    $reversal = Ledger::create([
-                        'voucher_number' => $voucher->voucher_number, 'type' => 'JV', 'type_id' => $voucher->id,
-                        'project_head_subheads_id' => $old->project_head_subheads_id,
-                        'reference' => $voucher->reference, 'amount_in' => $old->amount_out,
-                        'amount_out' => $old->amount_in,
-                        'detail' => 'Correction reversal: '.($old->detail ?: $voucher->description),
-                        'create_by' => Auth::id(), 'is_active' => 1, 'status' => '0', 'date' => $data['date'],
-                    ]);
-                    if ($typed) app(\App\Services\Finance\LedgerSourceAttributionWriter::class)
-                        ->recordNewPosting((int) $reversal->id, $projectId, 'journal_voucher', (int) $voucher->id);
-                }
+                // Preserve old detail/ledger history; only retire legs attached to
+                // the same source ID, then create corrected details and active legs.
+                app(\App\Services\Finance\LinkedVoucherLedgerRetirement::class)
+                    ->retire($projectId, 'JV', (int)$voucher->id);
 
                 foreach ($oldDetails as $detail) $detail->delete();
                 $voucher->update([
