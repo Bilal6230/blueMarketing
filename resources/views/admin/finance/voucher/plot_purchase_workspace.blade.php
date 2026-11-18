@@ -53,7 +53,7 @@
       @endforeach
       <th>Actions</th>
     </tr></thead>
-    <tbody id="ppHistory"><tr><td colspan="8" class="text-center text-muted p-4">Loading purchases…</td></tr></tbody>
+    <tbody id="ppHistory" aria-busy="true">@include('components.finance.voucher-skeleton-rows', ['columns' => 8])</tbody>
    </table>
   </div>
   <div class="bm-voucher-table-footer"><small id="ppSummary" class="bm-voucher-count">Loading records…</small><div id="ppPages" class="d-flex align-items-center flex-wrap" style="gap:4px"></div></div>
