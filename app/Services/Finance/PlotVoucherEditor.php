@@ -148,6 +148,20 @@ final class PlotVoucherEditor
             if ($lines->count()!==$old->count()+1) {
                 throw new \DomainException('Existing Plot Receipt posting does not match active allocations.');
             }
+            // Refuse to edit mismatched historical evidence. The related
+            // receivable posting must still point at the same project's
+            // customer/plot account and carry the allocation's amount.
+            $priorCredits=$lines->filter(fn($line)=>(float)$line->credit>0)->values();
+            foreach ($old->values() as $index=>$allocation) {
+                $leg=$priorCredits[$index]??null;
+                if (!$leg || $this->cents($leg->credit)!==$this->cents($allocation->amount)
+                    || !DB::table('project_head_subheads')
+                        ->where('id',$leg->project_head_subhead_id)->where('project_id',$project)
+                        ->where('customer_id',$source->customer_id)
+                        ->where('plot_id',$allocation->plot_id)->exists()) {
+                    throw new \DomainException('Existing receipt allocation posting relationship mismatch.');
+                }
+            }
             $oldBookingIds=$old->pluck('booking_id')->map(fn($id)=>(int)$id)->sort()->values()->all();
             $newBookingIds=array_map(static fn(array $row): int => (int)$row['booking_id'],$data['allocations']);
             sort($newBookingIds);
@@ -255,6 +269,18 @@ final class PlotVoucherEditor
             if ($old->count()!==count($data['items'])
                 && !Schema::hasColumn('finance_plot_purchase_items','is_active')) {
                 throw new \DomainException('Apply Plot line lifecycle migration before adding/removing purchased plots.');
+            }
+            // Preserve the identity and amount of each linked inventory leg.
+            // Never overwrite a posting that no longer matches its source.
+            $priorDebits=$lines->filter(fn($line)=>(float)$line->debit>0)->values();
+            foreach ($old->values() as $index=>$item) {
+                $leg=$priorDebits[$index]??null;
+                if (!$leg || (int)$leg->project_head_subhead_id!==(int)$item->inventory_account_id
+                    || $this->cents($leg->debit)!==$this->cents($item->amount)
+                    || !DB::table('plots')->where('id',$item->legacy_plot_id)
+                        ->where('project_id',$project)->exists()) {
+                    throw new \DomainException('Existing purchase inventory posting relationship mismatch.');
+                }
             }
             $seller=(int)$data['seller_account_id'];$this->account($project,$seller);
             $number=trim((string)$data['purchase_number']);
