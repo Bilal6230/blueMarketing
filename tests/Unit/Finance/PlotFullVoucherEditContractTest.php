@@ -27,6 +27,11 @@ final class PlotFullVoucherEditContractTest extends TestCase
         self::assertStringContainsString('updatePlotPurchase(Request $request',$controller);
         self::assertStringContainsString("finance.voucher.plot-receipt.update",$routes);
         self::assertStringContainsString("finance.voucher.plot-purchase.update",$routes);
+        $permissionCatalog=file_get_contents($root.'/app/Support/Finance/FinanceActionPermission.php');
+        foreach(['plot-receipt','plot-purchase'] as $kind) {
+            self::assertStringContainsString("finance.voucher.{$kind}.update",$permissionCatalog);
+            self::assertStringContainsString("finance.voucher.{$kind}.delete",$permissionCatalog);
+        }
     }
 
     public function test_plot_voucher_delete_is_independent_of_reverse_and_keeps_original_source_evidence(): void
