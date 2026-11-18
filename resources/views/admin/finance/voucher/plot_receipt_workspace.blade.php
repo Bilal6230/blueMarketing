@@ -193,10 +193,10 @@
    $row.append($('<td>').text(r.customer),$('<td>').text(r.narration));
    $row.append($('<td>',{'class':'text-right'}).text(money(r.amount)),$('<td>').text(r.reversed?'Reversed':'Posted'));
    var $actions=$('<td>',{'class':'blue-actions-cell'}).append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pr-detail','data-id':r.id,text:'Details'}));
-   @can('finance plot-receipt reverse')
    @can('finance plot-receipt edit')
    if(!r.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pr-narration ml-1','data-id':r.id,text:'Edit narration'}));
    @endcan
+   @can('finance plot-receipt reverse')
    if(!r.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pr-void ml-1','data-id':r.id,text:'Reverse'}));
    @endcan
    $row.append($actions);
