@@ -55,7 +55,7 @@ final class PlotVoucherNarrationEditor
             // JSON snapshots to avoid collisions across source-table IDs.
             DB::table('daily_voucher_edit_snapshots')->insert([
                 'project_id'=>$projectId,'source_id'=>$sourceId,'approval_id'=>null,
-                'status'=>'approved',
+                'status'=>'plot_note',
                 'before_snapshot'=>json_encode(['source_kind'=>$kind,'source_id'=>$sourceId,
                     'narration'=>$before],JSON_THROW_ON_ERROR),
                 'proposed_snapshot'=>json_encode(['source_kind'=>$kind,'source_id'=>$sourceId,
