@@ -1306,6 +1306,39 @@ class PlotEntryWriterTest extends TestCase
         $this->assertDatabaseCount('finance_posting_batches',1);
     }
 
+    public function test_posting_balance_command_defaults_to_all_projects_and_retains_optional_filter(): void
+    {
+        $created=(new PlotEntryWriter())->receive(1,5,'POSTING-AUDIT-ALL-PROJECTS-001',[
+            'date'=>'2026-11-05','receipt_number'=>'PR-AUDIT-ALL','amount'=>'70.00',
+            'cash_account_id'=>101,'narration'=>'All-project audit',
+            'allocations'=>[['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,
+                'amount'=>'70.00']],
+        ],7);
+        $artisan=\Illuminate\Support\Facades\Artisan::class;
+        $this->assertSame(0,$artisan::call('finance:audit-posting-balances',['--json'=>true]));
+        $all=json_decode(trim($artisan::output()),true,512,JSON_THROW_ON_ERROR);
+        $this->assertNull($all['project_id']);
+        $this->assertSame(2,$all['project_count']);
+        $this->assertSame(0,$all['finding_count']);
+
+        DB::table('finance_posting_lines')->where('posting_batch_id',$created['posting_batch_id'])
+            ->where('credit','>',0)->update(['credit'=>'71.00']);
+        $this->assertSame(1,$artisan::call('finance:audit-posting-balances',['--json'=>true]));
+        $all=json_decode(trim($artisan::output()),true,512,JSON_THROW_ON_ERROR);
+        $this->assertSame(1,$all['finding_count']);
+        $this->assertSame(1,$all['findings'][0]['project_id']);
+        $this->assertContains('POSTING_UNBALANCED',$all['findings'][0]['issues']);
+
+        $this->assertSame(0,$artisan::call('finance:audit-posting-balances',
+            ['--project'=>2,'--json'=>true]));
+        $filtered=json_decode(trim($artisan::output()),true,512,JSON_THROW_ON_ERROR);
+        $this->assertSame(2,$filtered['project_id']);
+        $this->assertSame(1,$filtered['project_count']);
+        $this->assertSame(0,$filtered['finding_count']);
+        $this->assertSame(1,$artisan::call('finance:audit-posting-balances',
+            ['--project'=>'not-a-number']));
+    }
+
     public function test_shared_posting_balance_audit_checks_all_series_and_ignores_archived_legs(): void
     {
         $receipt=(new PlotEntryWriter())->receive(1,5,'POSTING-AUDIT-RECEIPT-001',[
