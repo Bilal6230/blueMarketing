@@ -636,4 +636,68 @@ class PlotEntryWriterTest extends TestCase
         $this->assertDatabaseCount('finance_posting_batches',1);
         $this->assertSame(1,(int)DB::table('plots')->where('id',$plotId)->value('is_active'));
     }
+
+    public function test_plot_receipt_narration_edit_is_transactional_audited_and_preserves_accounting(): void
+    {
+        (require base_path('database/migrations/2026_11_18_170000_create_plot_voucher_edit_audits_table.php'))->up();
+        $payload=[
+            'date'=>'2026-11-05','receipt_number'=>'PR-NARRATION-1','amount'=>'75.00',
+            'cash_account_id'=>101,'narration'=>'Before receipt edit',
+            'allocations'=>[['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'75.00']],
+        ];
+        $created=(new PlotEntryWriter())->receive(1,5,'PLOT-RECEIPT-NARRATION-0001',$payload,7);
+        $before=DB::table('finance_posting_lines')->where('posting_batch_id',$created['posting_batch_id'])->get()->toArray();
+        $result=(new \App\Services\Finance\PlotVoucherNarrationEditor())
+            ->update(1,'plot_receipt',$created['source_id'],'Updated receipt note',7);
+        $this->assertTrue($result['changed']);
+        $this->assertSame('Updated receipt note',DB::table('finance_plot_receipts')
+            ->where('id',$created['source_id'])->value('narration'));
+        $this->assertSame($before,DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$created['posting_batch_id'])->get()->toArray());
+        $this->assertDatabaseHas('finance_plot_voucher_edit_audits',[
+            'project_id'=>1,'source_kind'=>'plot_receipt','source_id'=>$created['source_id'],
+            'previous_narration'=>'Before receipt edit','updated_narration'=>'Updated receipt note','edited_by'=>7,
+        ]);
+        $this->assertDatabaseCount('finance_posting_batches',1);
+        $this->assertSame(1,DB::table('finance_plot_receipt_allocations')->count());
+        try{
+            (new \App\Services\Finance\PlotVoucherNarrationEditor())
+                ->update(2,'plot_receipt',$created['source_id'],'Cross project',7);
+            $this->fail('Project ownership must reject the edit');
+        }catch(\DomainException $error){
+            $this->assertStringContainsString('not found',$error->getMessage());
+        }
+        $this->assertDatabaseCount('finance_plot_voucher_edit_audits',1);
+    }
+
+    public function test_plot_purchase_narration_edit_rejects_reversed_source_without_changes(): void
+    {
+        (require base_path('database/migrations/2026_11_18_170000_create_plot_voucher_edit_audits_table.php'))->up();
+        $created=(new PlotEntryWriter())->purchase(1,'PLOT-PURCHASE-NARRATION-0001',[
+            'date'=>'2026-11-05','purchase_number'=>'PP-NARRATION-1','seller_account_id'=>102,
+            'narration'=>'Original purchase note','items'=>[[
+                'plot_code'=>'LAND-NARRATION-1','description'=>'Plot','area'=>'1',
+                'unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
+                'unit_rate'=>'100','inventory_account_id'=>104,
+            ]],
+        ],7);
+        $editor=new \App\Services\Finance\PlotVoucherNarrationEditor();
+        $result=$editor->update(1,'plot_purchase',$created['source_id'],'New purchase note',7);
+        $this->assertTrue($result['changed']);
+        $this->assertDatabaseCount('finance_plot_voucher_edit_audits',1);
+        (new \App\Services\Finance\PlotEntryLifecycleService())->reverse(
+            1,'plot_purchase',$created['source_id'],'PLOT-PURCHASE-NARRATION-VOID1',
+            '2026-11-05','Close purchase',7
+        );
+        try{
+            $editor->update(1,'plot_purchase',$created['source_id'],'Not allowed after reverse',7);
+            $this->fail('Reversed purchase must not be editable');
+        }catch(\DomainException $error){
+            $this->assertStringContainsString('reversed',$error->getMessage());
+        }
+        $this->assertSame('New purchase note',DB::table('finance_plot_purchases')
+            ->where('id',$created['source_id'])->value('narration'));
+        $this->assertDatabaseCount('finance_plot_voucher_edit_audits',1);
+        $this->assertDatabaseCount('finance_posting_batches',2);
+    }
 }
