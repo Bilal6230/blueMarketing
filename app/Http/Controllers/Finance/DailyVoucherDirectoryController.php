@@ -379,17 +379,15 @@ final class DailyVoucherDirectoryController extends Controller
                                 && (int) $source->payment_type === 1 && (int) $source->is_active === 1))
                         ? route('ledger.destroy') : null,
                     'delete_id' => $ledgerId,
+                    // Editable posted/untracked and approved cash vouchers use the same source ID.
+                    // Role Edit is independent of the original submitter; financial lifecycle
+                    // validation still runs inside the transactional revision service.
                     'edit_url' => $ledgerId && $canEdit
-                        && ($sourceApprovals[$source->id]['status'] ?? '') === 'approved'
-                        && (int) ($source->payment_type ?? 0) === 1
-                        && (int) ($source->is_active ?? 0) === 1
-                        && (\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())
-                            || (int)auth()->user()->project_id===$projectId)
-                        ? route('finance.daily-vouchers.revise.edit',['customerLedger'=>$source->id])
-                        : ($ledgerId && empty($sourceApprovals[$source->id]) && $canEdit
-                            && in_array((string) $source->transaction_type, ['CR','CP','CCR','CDR'],true)
-                            && (int)$source->is_active === 1
-                            ? route('finance.daily-vouchers.revise.edit', ['customerLedger'=>$source->id]) : null),
+                        && in_array((string)$source->transaction_type,['CR','CP','CCR','CDR'],true)
+                        && (int)$source->is_active===1
+                        && (int)$source->payment_type===1
+                        && in_array((string)($sourceApprovals[$source->id]['status']??'posted'),['posted','approved'],true)
+                        ? route('finance.daily-vouchers.revise.edit',['customerLedger'=>$source->id]) : null,
                     'url' => $ledgerId
                         ? route('finance.voucher.print', ['id' => $ledgerId])
                         : route('finance.daily-vouchers.source.print', ['customerLedger' => $source->id]),
