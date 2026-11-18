@@ -170,7 +170,13 @@ class VoucherController extends Controller
 
     protected function authorizeFinanceApproval(?User $user = null): void
     {
-        abort_unless(self::canAccessFinanceApprovalsForUser($user ?? Auth::user()), 403);
+        $user ??= Auth::user();
+        $scope = \App\Support\Finance\FinanceActionPermission::forRequest(request());
+        if ($scope !== null && in_array($scope[1], ['approve','reject'],true)) {
+            abort_unless($user?->can(\App\Support\Finance\FinanceActionPermission::name($scope[0],$scope[1])),403);
+            return;
+        }
+        abort_unless(self::canAccessFinanceApprovalsForUser($user),403);
     }
 
     protected function resolveFinancePendingModel(string $tableName)
