@@ -161,6 +161,42 @@ php artisan schema:audit-unused-tables
 
 Expected new classification: `landing_pages` **ELOQUENT_MODEL_DEPENDENT**, `legacy_migration_history` and `personal_access_tokens` **FRAMEWORK_OR_HISTORY_PROTECTED**. In this verified set there is **nothing safe to remove**; do not create a cleanup migration. The previously completed Plot-only redundant audit table cleanup remains successful. Browser test for Plot narration Edit is **still pending**, but this scanner fix requires no browser testing.
 
+## 2026-11-18 — Milestone 03: Plot Receipt/Purchase same-ID full-field Edit (LATEST)
+
+**Owner directive:** Stop shipping narration-only edit as if it were full voucher Edit. Speed up actual CRUD completion, reuse the existing Create forms and finance tables, keep one canonical handoff, report any browser test. **No new MySQL table or migration** in this batch.
+
+**Code implemented on GitHub (owner acceptance pending):**
+- New `app/Services/Finance/PlotVoucherEditor.php` updates **same source ID, posting batch ID, and posting line IDs** in one DB transaction; validates project ownership, active source, unreversed posting, active project accounts, balanced debit/credit, unique voucher numbers, valid bookings and inventory relationships.
+- **Receipt:** updates voucher number/date/customer/amount/narration, cash account posting, each linked plot allocation and receivable credit posting. Requires same count of allocations as prior source. Snapshot of source/allocations/prior posting lines saved to existing `daily_voucher_edit_snapshots` with `status=plot_edit`; no new audit table.
+- **Purchase:** updates number/date/seller/narration, area/rate/cost/inventory account/plot metadata and linked purchase-item and posting rows; locks actual existing plot IDs, refuses sold/booked/unavailable inventory, and keeps existing purchased plot count. Prior source/items/plots/posting lines captured in shared snapshot; no new table. No new physical plots or duplicate posting batch inserted.
+- `VoucherController` has PATCH `updatePlotReceipt`/`updatePlotPurchase` with **separate Edit permissions**. Existing detail responses expose the source cash account and existing purchased-plot dimensions/definitions for form prefill. `routes/web.php` has source-scoped PATCH routes.
+- Both Plot workspace templates use their **full existing Create modal** to load fields for **Edit voucher**, show Save voucher, AJAX PATCH and refresh listing, while keeping independent Create/Reverse authorization. The earlier narration-only endpoint remains for backward compatibility but is no longer the primary Edit button.
+- Prior original Create request key no longer replays stale payload after same-source full Edit (`PlotEntryWriter::existingReplay` guards the shared `plot_edit` snapshot status).
+- Added `PlotFullVoucherEditContractTest`, three integrated scenarios in `PlotEntryWriterTest` for receipt full-field rewrite/balance, purchase inventory/amount, rejected allocation-cardinality change with rollback, plus stale replay assertion.
+
+**Honest limitations:** Editing **the number of allocated plot lines or purchased inventory rows** is not yet supported: those operations currently fail with a clear 409 and roll back without partial writes. Neither ordinary Plot Delete nor other remaining voucher families' full CRUD is delivered in this commit. Existing exact financial posting lines are modified **in place** under a transaction and before-image snapshot rather than physically deleted; this changes their original amounts, so accounting/provenance acceptance must explicitly confirm it meets owner policy before live deployment. No claim of completed Milestone 03 yet. Browser acceptance required for each full Edit flow.
+
+**Owner local gate:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php -l app/Services/Finance/PlotVoucherEditor.php
+php -l app/Http/Controllers/Finance/VoucherController.php
+php artisan test --filter=PlotFullVoucherEditContractTest
+php artisan test --filter=PlotEntryWriterTest
+php artisan finance:audit-voucher-schema --require-fks
+```
+
+**BROWSER TEST REQUIRED** *after local tests PASS*, only with disposable local vouchers on selected project:
+1. `/admin/finance/voucher/plot-receipt` → Actions → **Edit voucher**. Verify full existing fields prefill; change number/date/amount and a plot's allocation amount (do not add/remove allocation rows yet). **Save voucher** should close modal, update history by AJAX without page reload, preserve source ID and balanced account register.
+2. `/admin/finance/voucher/plot-purchase` → Actions → **Edit voucher**. Verify full purchased-plot fields prefill; change plot description/area/rate, seller and date, Save; confirm amount/inventory metadata updated and original plot ID retained. Do not test on booked/sold real inventory.
+3. Edit permission OFF while Reverse ON must hide Edit button, direct PATCH 403; wrong-project ID must reject. Changing number of allocation/plot rows should show 409 without changing original source or lines.
+4. Report screenshots/logs for errors; owner browser PASS not yet received.
+
+**Follow-on:** finish safe add/remove allocation/item line lifecycle, plot ordinary logical Delete, other voucher CRUD, then Milestone 04 linked cheque/online and 05 configurable reversal. Do not add new tables for these unless evidence demonstrates existing schema cannot safely represent source and history.
+
 ## Remaining Milestone 03 work — do not mark complete yet
 
 1. Rerun `PlotEntryWriterTest` on local; resolve any subsequent actual assertion failures. Verify Plot History/Details/Replay after root logical archive.
