@@ -493,4 +493,50 @@ class PlotEntryWriterTest extends TestCase
         $this->assertFalse(Schema::hasTable('finance_plot_receipt_postings'));
     }
 
+
+    public function test_archived_plot_receipt_is_not_available_in_details_or_idempotent_replay(): void
+    {
+        // The existing test fixture represents the baseline before the new
+        // source lifecycle migration. Add only the root lifecycle columns.
+        Schema::table('finance_plot_receipts', function (Blueprint $table): void {
+            $table->boolean('is_active')->default(true);
+            $table->softDeletes();
+        });
+        $writer = new PlotEntryWriter();
+        $payload = [
+            'date' => '2026-11-14',
+            'receipt_number' => 'PR-ARCHIVE-TEST',
+            'amount' => '75.50',
+            'cash_account_id' => 101,
+            'narration' => 'Archived source must stay hidden',
+            'allocations' => [[
+                'booking_id' => 31, 'plot_id' => 11,
+                'receivable_account_id' => 102, 'amount' => '75.50',
+            ]],
+        ];
+        $created = $writer->receive(1,5,'PLOT-ARCHIVE-IDEMPOTENCY-0001',$payload,7);
+        $this->assertSame(1, (int) DB::table('finance_plot_receipts')
+            ->where('id',$created['source_id'])->value('is_active'));
+
+        DB::table('finance_plot_receipts')->where('id',$created['source_id'])
+            ->update(['is_active'=>0,'deleted_at'=>now()]);
+        $this->assertDatabaseCount('finance_plot_receipts',1);
+        $this->assertDatabaseCount('finance_posting_batches',1);
+
+        try {
+            $writer->receipt(1,$created['source_id']);
+            $this->fail('Archived source must not be readable as an active receipt.');
+        } catch (\DomainException $error) {
+            $this->assertSame('V2_PLOT_RECEIPT_NOT_FOUND',$error->getMessage());
+        }
+
+        try {
+            $writer->receive(1,5,'PLOT-ARCHIVE-IDEMPOTENCY-0001',$payload,7);
+            $this->fail('Idempotency replay must not resurrect archived sources.');
+        } catch (\DomainException $error) {
+            $this->assertSame('PLOT_SOURCE_ARCHIVED',$error->getMessage());
+        }
+        $this->assertDatabaseCount('finance_posting_batches',1);
+        $this->assertDatabaseCount('finance_plot_receipt_allocations',1);
+    }
 }
