@@ -12,7 +12,7 @@
 |---|---|---|
 | 01 | Nonblocking loading and voucher-tinted skeletons | **COMPLETE** — owner browser + PHP tests PASS |
 | 02 | Action-specific permissions, Roles page and backend enforcement | **PARTIAL ACCEPTANCE** — implemented, tests PASS, owner confirmed CR Edit visibly works; complete cross-module browser permission matrix not yet accepted |
-| **03** | FK/relationship integrity, safe Create/Edit/Delete, lifecycle columns | **ACTIVE — PARTIAL**. MySQL FK + Plot lifecycle migrations PASS, major CRUD workflows pending; current Plot feature-test repair committed, **latest local rerun pending** |
+| **03** | FK/relationship integrity, safe Create/Edit/Delete, lifecycle columns | **ACTIVE — PARTIAL**. MySQL FK + Plot lifecycle migrations PASS, major CRUD workflows pending; Plot fixture repair and 28 tests **owner PASS**; archived-source reversal guard added, **new local rerun pending** |
 | 04 | Cheque/Online edit/delete with cleared linked-voucher cascade | **NOT STARTED under new rules** |
 | 05 | Reversal settings ON/OFF and full regression | **NOT STARTED under new rules** |
 
@@ -25,14 +25,31 @@
 - JV/CV **legacy branch** transactional Edit/Delete: linked old ledger rows deactivated with exact project/source/detail/amount checks; previous details/header soft-deleted where appropriate; no business hard deletion. Draft Delete archives the project-scoped draft.
 - Plot History/Details hide inactive/deleted source roots. Old request-key replay now rejects an archived Plot Receipt/Purchase instead of returning it as active.
 
-**Latest owner failure (important, do NOT claim feature suite PASS):**
+**Prior owner failure (RESOLVED):**
 - `PlotEntryWriterTest` reported **23 FAILED / 0 assertions**, all due to the **same setup exception**: `Class "App\\Services\\Finance\\V2IsolatedConnectionGuard" not found`, triggered by `database/finance_legacy_migrations/2026_11_05_000300_create_finance_plot_receipt_purchase.php:11`. This is a leftover historical dependency after the user already merged old V2 architecture into the normal application. The failure happened in test fixture setup, before test assertions; it does **not** establish that all 23 Plot posting operations have functional bugs.
 
-**This turn's GitHub fix, awaiting local rerun:**
+**Previous GitHub fix, now owner verified PASS:**
 - Replaced the deleted `V2IsolatedConnectionGuard` with existing **`FinanceConnectionGuard`** in all **four** Plot storage fixture/recovery migrations: `database/finance_legacy_migrations/2026_11_05_000300_create_finance_plot_receipt_purchase.php` and three files under `database/local_finance_migrations/2026_11_14_*`. They now use the application's configured DB; no DB-name prefix or environment isolation check. Existing required-table, no-overwrite, partial-schema refusal, driver-specific MySQL FK recovery and RESTRICT FKs remain.
 - Replaced three old Plot feature-test assertions that specifically demanded **`V2_ISOLATED_CONNECTION_REQUIRED`** with assertions that verify already-installed storage is preserved regardless of environment and that MySQL-only FK repair still refuses SQLite.
 - Added `tests/Unit/Finance/PlotLegacyMigrationCompatibilityTest.php` to prevent reintroduction of the deleted guard dependency.
-- **No fresh local PHP/feature tests have been executed by the assistant.** Owner must report actual PASS/FAIL; if new failures surface after setup, fix the specific next error, not blanket-disable tests.
+- **Owner terminal confirmed FIX PASS:** `PlotLegacyMigrationCompatibilityTest` **2 / 24 assertions**, `PlotEntryWriterTest` **23 / 121 assertions**, `PlotVoucherLifecycleColumnsTest` **3 / 23 assertions**. **Total: 28 tests, 168 assertions PASS.** The configured `bluenew_clean_final` FK integrity audit also remains **8/8 FKs, zero orphans, zero cross-project JV/CV account links**. No need to repeat older FK/Plot schema migrations.
+
+## 2026-11-18 — Owner test PASS and subsequent Plot archive/reversal safety batch
+
+The last owner terminal output confirms **all 23 PlotEntryWriterTest methods PASS (121 assertions)**, legacy migration compatibility **2 PASS / 24 assertions**, and Plot lifecycle **3 PASS / 23 assertions**; total **28 PASS / 168 assertions**. The earlier deleted V2 class fixture blocker is closed. DB read-only FK audit still **8/8 and clean**.
+
+**Additional code committed after this owner PASS:** `PlotEntryLifecycleService::reverse` now checks the source root's **is_active=1** and **deleted_at IS NULL** (when columns exist) in the same project-scoped locked transaction. Previously an archived source could still produce a second financial mutation via the separate reversal endpoint even though Details/History/Replay hid it. New isolated SQLite integration tests cover both archived Plot Receipt (no new posting batch or lines) and archived Plot Purchase (no new batch, original inventory still active), in `PlotEntryWriterTest`. This blocks a conflicted action; it is **not** an implementation of ordinary Edit/Delete or a reversal-only substitute. No business rows are deleted or archived by this code batch.
+
+**Latest code is committed, but the two NEW regression tests have not yet been run locally.** Next commands:
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php -l app/Services/Finance/PlotEntryLifecycleService.php
+php artisan test --filter=PlotEntryWriterTest
+php artisan test --filter=PlotLegacyMigrationCompatibilityTest
+php artisan finance:audit-voucher-schema --require-fks
+```
 
 ## Remaining Milestone 03 work — do not mark complete yet
 
