@@ -9,8 +9,8 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Same-ID Plot voucher editing. Preserves source IDs, purchased plot IDs and
  * existing posting batch/line IDs. Shared voucher snapshots retain before/after.
- * Item/plot allocation cardinality is fixed until soft-deletable line lifecycle
- * is available; never physically delete finance evidence.
+ * Line cardinality changes use lifecycle flags; old rows are archived,
+ * original financial before-images preserved, never hard-deleted.
  */
 final class PlotVoucherEditor
 {
@@ -53,8 +53,10 @@ final class PlotVoucherEditor
         if (DB::table('finance_posting_batches')->where('reversal_of_batch_id',$link->id)->exists()) {
             throw new \DomainException('Reversed voucher cannot be edited.');
         }
-        $lines=DB::table('finance_posting_lines')->where('posting_batch_id',$link->id)
-            ->orderBy('id')->lockForUpdate()->get();
+        $linesQuery=DB::table('finance_posting_lines')->where('posting_batch_id',$link->id);
+        if (Schema::hasColumn('finance_posting_lines','is_active')) $linesQuery->where('is_active',1);
+        $lines=$linesQuery->orderBy('id')->lockForUpdate()->get()
+            ->sortBy(fn($line)=>(float)$line->debit>0?0:1)->values();
         return [$source,$link,$lines];
     }
 
@@ -74,21 +76,48 @@ final class PlotVoucherEditor
 
     private function replaceLines(int $project,int $batchId,$old,array $new): void
     {
-        if ($old->count()!==count($new)) {
-            throw new \DomainException('Changing plot/allocations count requires line lifecycle support; existing links were not changed.');
-        }
         $debit=0;$credit=0;
         foreach ($new as $line) {
             $this->account($project,(int)$line['account']);
             $debit+=$this->cents($line['debit']);$credit+=$this->cents($line['credit']);
         }
         if ($debit<1 || $debit!==$credit) throw new \DomainException('Unbalanced posting rejected.');
-        foreach ($old->values() as $index=>$line) {
-            if ((int)$line->posting_batch_id!==$batchId) throw new \DomainException('Posting identity mismatch.');
-            DB::table('finance_posting_lines')->where('id',$line->id)->where('posting_batch_id',$batchId)
-                ->update(['project_head_subhead_id'=>$new[$index]['account'],
-                    'debit'=>$new[$index]['debit'],'credit'=>$new[$index]['credit'],
-                    'description'=>$new[$index]['description'],'updated_at'=>now()]);
+        $hasLifecycle=Schema::hasColumn('finance_posting_lines','is_active');
+        if (!$hasLifecycle && $old->count()!==count($new)) {
+            throw new \DomainException('Apply Plot line lifecycle migration before changing line count.');
+        }
+        // Keep the existing cash/seller leg ID and match debit-to-debit and
+        // credit-to-credit. New legs append to same original posting batch.
+        foreach (['debit','credit'] as $side) {
+            $prior=$old->filter(fn($line)=>(float)$line->$side>0)->values();
+            $next=collect($new)->filter(fn($line)=>(float)$line[$side]>0)->values();
+            for($i=0;$i<max($prior->count(),$next->count());$i++) {
+                $line=$prior[$i]??null;$target=$next[$i]??null;
+                if ($line && (int)$line->posting_batch_id!==$batchId) {
+                    throw new \DomainException('Posting identity mismatch.');
+                }
+                if ($line && $target) {
+                    DB::table('finance_posting_lines')->where('id',$line->id)
+                        ->where('posting_batch_id',$batchId)
+                        ->update(['project_head_subhead_id'=>$target['account'],
+                            'debit'=>$target['debit'],'credit'=>$target['credit'],
+                            'description'=>$target['description'],'updated_at'=>now()]);
+                } elseif ($line) {
+                    // Financial contribution is zeroed, never physically
+                    // deleted; full previous values remain in the snapshot.
+                    DB::table('finance_posting_lines')->where('id',$line->id)
+                        ->where('posting_batch_id',$batchId)
+                        ->update(['debit'=>'0.00','credit'=>'0.00','is_active'=>0,
+                            'updated_at'=>now()]);
+                } elseif ($target) {
+                    DB::table('finance_posting_lines')->insert([
+                        'posting_batch_id'=>$batchId,'project_head_subhead_id'=>$target['account'],
+                        'debit'=>$target['debit'],'credit'=>$target['credit'],
+                        'description'=>$target['description'],'is_active'=>1,
+                        'created_at'=>now(),'updated_at'=>now(),
+                    ]);
+                }
+            }
         }
     }
 
