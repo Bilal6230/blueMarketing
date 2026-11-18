@@ -469,18 +469,22 @@ class CommissionVoucherController extends Controller
                     'total_credit' => $this->centsToMoney($totalCreditCents), 'updated_by' => Auth::id(),
                 ]);
                 foreach ($lines as $line) {
-                    CommisionVoucherDetail::create([
+                    $detail = CommisionVoucherDetail::create([
                         'commision_voucher_id' => $voucher->id, 'account_id' => $line['account_id'],
                         'debit' => $line['debit'], 'credit' => $line['credit'],
                         'description' => $line['description'],
                     ]);
-                    $ledger = Ledger::create([
+                    $attributes = [
                         'voucher_number' => $voucher->voucher_number, 'type' => 'CV', 'type_id' => $voucher->id,
                         'project_head_subheads_id' => $line['account_id'], 'reference' => $data['reference'] ?? null,
                         'amount_in' => $line['debit'], 'amount_out' => $line['credit'],
                         'detail' => $line['description'], 'create_by' => Auth::id(), 'is_active' => 1,
                         'status' => '0', 'date' => $data['date'],
-                    ]);
+                    ];
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('ledgers','commision_voucher_detail_id')) {
+                        $attributes['commision_voucher_detail_id'] = $detail->id;
+                    }
+                    $ledger = Ledger::create($attributes);
                     if ($typed) app(\App\Services\Finance\LedgerSourceAttributionWriter::class)
                         ->recordNewPosting((int) $ledger->id, $projectId, 'commission_voucher', (int) $voucher->id);
                 }
