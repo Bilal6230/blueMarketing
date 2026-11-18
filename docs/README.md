@@ -401,3 +401,28 @@ php artisan test --filter=PlotFullVoucherEditContractTest
 ```
 
 Do not report 43 PASS until terminal output confirms. No migration or browser re-test needed for this test-only correction.
+
+
+## 2026-11-18 — Milestone 03 relationship integrity continuation (code batch; owner gate pending)
+
+**Previous owner pass:** PlotEntryWriterTest 39 PASS / 248 assertions and PlotFullVoucherEditContractTest 4 PASS / 78 assertions, combined 43 PASS / 326 assertions. This pass preceded the changes below.
+
+**Implemented and committed:**
+- Plot Receipt Details AJAX prefill no longer derives receivable accounts from posting-line array offsets. It selects active posting legs scoped to the same source batch and project, matches credit account by actual customer and plot relationship, and resolves cash leg separately. A missing/ambiguous leg returns a JSON 409 rather than silently pre-filling another plot's account. This fixes a potential wrong-account Edit after source rows are removed and new posting legs are appended.
+- Plot Receipt/Purchase full Edit now verifies old active posting amounts and related account/plot identity against active allocation and inventory item rows before changing anything. A corrupted historical linkage throws a business conflict inside the existing transaction, preserving the source and audit history. This specifically guards against overwriting an unrelated record in a corrupted or reordered source.
+- Added two isolated SQLite integration regression tests: corrupt Receipt credit account/plot relationship and corrupt Purchase inventory debit amount both refuse Edit, preserve original source, and create no edit snapshot or second batch. Added a contract regression ensuring Receipt AJAX prefill never uses posting array indexing.
+- Reused existing source, financial tables and lifecycle columns; no new migration or table, no destructive edits. Previous full Plot browser acceptance remains recorded, but this batch affects prefill so a focused browser check may be warranted after local tests.
+
+**New owner verification (NOT YET EXECUTED):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php -l app/Services/Finance/PlotVoucherEditor.php
+php -l app/Http/Controllers/Finance/VoucherController.php
+php -l tests/Feature/Finance/PlotEntryWriterTest.php
+php artisan test --filter=PlotEntryWriterTest
+php artisan test --filter=PlotFullVoucherEditContractTest
+```
+
+**Remaining scope:** overall Milestone 03 cross-family voucher CRUD and shared financial reporting regression are still not certified complete. Do not imply this focused integrity batch completes those unrelated modules. No new DB migration needed.
