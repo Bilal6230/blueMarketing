@@ -81,7 +81,9 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
                 <div class="bt-filter-actions">
                     <button class="btn btn-primary btn-sm" type="submit" id="applyTransferFilters"><i class="fas fa-filter mr-1"></i> Apply</button>
                     <button type="button" class="btn btn-outline-secondary btn-sm" id="clearTransferFilters">Reset</button>
+                    @can('finance bank-'.$kind.' create')
                     <button type="button" class="btn btn-success btn-sm" id="openTransferCreate" data-toggle="modal" data-target="#bankTransferCreateModal"><i class="fas fa-plus mr-1"></i> New voucher</button>
+                    @endcan
                 </div>
             </form>
     </x-finance.voucher-filter-card>
@@ -168,7 +170,7 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
             <a id="transferViewPrint" target="_blank" rel="noopener" class="btn btn-primary">Print voucher</a></div>
     </div></div>
 </div>
-@can('delete voucher')
+@can('finance bank-'.$kind.' reverse')
 <div class="modal fade fvc-modern-modal bt-modern-modal" style="--fvc-modal-accent:{{ $kind === 'deposit' ? '#128044' : '#bd3140' }};--fvc-modal-tint:{{ $kind === 'deposit' ? '#e9f8ef' : '#fff0f1' }}" id="bankTransferReverseModal" tabindex="-1" aria-labelledby="bankTransferReverseTitle" aria-hidden="true">
  <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
   <div class="modal-header"><h5 id="bankTransferReverseTitle" class="modal-title">Reverse Bank Voucher</h5>
@@ -284,7 +286,7 @@ $(function () {
             var $actions=$('<td class="blue-actions-cell">');
             $('<button type="button" class="btn btn-sm btn-outline-secondary bt-view" data-blue-action-type="view">View</button>').attr('data-id',batch).appendTo($actions);
             $('<a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" data-blue-action-type="print">Print</a>').attr('href',printUrl(batch)).appendTo($actions);
-            @can('delete voucher')
+            @can('finance bank-'.$kind.' reverse')
             if(r.can_reverse)$('<button type="button" class="btn btn-sm btn-outline-danger bt-reverse" data-blue-action-type="delete">Reverse</button>').attr('data-id',batch).appendTo($actions);
             @endcan
             $actions.appendTo($tr);
@@ -366,7 +368,7 @@ $(function () {
         $('#transferViewPrint').attr('href',printUrl(id));
         $('#bankTransferViewModal').modal('show');
     });
-    @can('delete voucher')
+    @can('finance bank-'.$kind.' reverse')
     $('#transferRows').on('click','.bt-reverse',function(){
         var batch=Number($(this).attr('data-id'));
         var row=$.grep(allRows,function(r){return Number(r.posting_batch_id)===batch;})[0];
