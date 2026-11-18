@@ -384,3 +384,20 @@ php artisan test --filter=PlotFullVoucherEditContractTest
 ```
 
 No additional migration and no repeated browser gate unless relevant UI regression appears.
+
+
+## 2026-11-18 — Owner regression follow-up: booked Purchase test identity corrected
+
+**Owner latest local gate on preceding commit:** PlotEntryWriterTest 38 PASS / 1 FAIL (244 assertions), PlotFullVoucherEditContractTest 4 PASS / 78 assertions; PHP lint passed. The only failure was the booked-plot edit test's expected DomainException text. After positional fallback removal, this test submitted an existing purchased plot without its `legacy_plot_id`, so the service correctly interpreted it as new inventory and refused to remove the booked original, producing a different business error. This is a test payload mismatch, not evidence that booked inventory was mutated.
+
+**Targeted correction committed:** Updated booked-plot regression input to pass the actual linked `legacy_plot_id`. This exercises the intended existing-plot edit branch and verifies the explicit booked-plot guard, rollback of source and posting balance, and no audit snapshot. Application service and database schema were not changed in this batch. Owner retest is pending.
+
+**Local gate:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan test --filter=PlotEntryWriterTest
+php artisan test --filter=PlotFullVoucherEditContractTest
+```
+
+Do not report 43 PASS until terminal output confirms. No migration or browser re-test needed for this test-only correction.
