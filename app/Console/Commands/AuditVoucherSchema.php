@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Schema;
  */
 final class AuditVoucherSchema extends Command
 {
-    protected $signature = 'finance:audit-voucher-schema {--json : Print a JSON report including tables with neither lifecycle column}';
+    protected $signature = 'finance:audit-voucher-schema {--json : Print a JSON report including tables with neither lifecycle column} {--require-fks : Exit with failure unless all audited FKs exist and relationships are clean}';
     protected $description = 'Read-only audit of foreign keys, linked voucher integrity and missing deleted_at/is_active';
 
     private const RELATIONS = [
@@ -81,9 +81,15 @@ final class AuditVoucherSchema extends Command
             }
             $crossProject[]=['details'=>$details,'cross_project_rows'=>$count];
         }
+        $invalidReferences=collect($relations)->filter(fn($r)=>!$r['present'] || $r['orphan_count'] !== 0);
+        $missingForeignKeys=collect($relations)->filter(fn($r)=>$r['present'] && empty($r['constraint']));
+        $invalidProjectLinks=collect($crossProject)->filter(fn($r)=>$r['cross_project_rows'] === null || $r['cross_project_rows'] > 0);
         $report=['database'=>$database,'read_only'=>true,'tables_total'=>count($tables),
             'tables_with_neither'=>array_values(array_filter($rows,fn($r)=>$r['neither'])),
             'all_tables'=>$rows,'relationships'=>$relations,'cross_project_detail_links'=>$crossProject,
+            'integrity'=>['missing_foreign_keys'=>$missingForeignKeys->count(),
+                'invalid_references'=>$invalidReferences->count(),
+                'invalid_project_links'=>$invalidProjectLinks->count()],
             'note'=>'Not every technical/log/history table should receive a deleted_at or is_active column. Review business tables before migration. ledgers.type_id is polymorphic and must never get a single-target FK.'];
         if ($this->option('json')) {
             $this->line(json_encode($report,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
@@ -97,6 +103,10 @@ final class AuditVoucherSchema extends Command
                     $r['orphan_count']===null?'N/A':$r['orphan_count']],$relations));
             $this->table(['Voucher details','Cross-project account links'],
                 array_map(fn($r)=>[$r['details'],$r['cross_project_rows']??'N/A'],$crossProject));
+        }
+        if ($this->option('require-fks') && ($missingForeignKeys->isNotEmpty() || $invalidReferences->isNotEmpty() || $invalidProjectLinks->isNotEmpty())) {
+            $this->error('Voucher schema integrity gate FAILED. See relationships and cross-project rows above.');
+            return self::FAILURE;
         }
         return self::SUCCESS;
     }
