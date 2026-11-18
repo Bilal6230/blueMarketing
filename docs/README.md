@@ -357,3 +357,30 @@ php artisan test --filter=PlotFullVoucherEditContractTest
 ```
 
 **Milestone 03 is still PARTIAL**: shared posting-line inactive handling and cross-family reports need verification, and other voucher families require lifecycle CRUD completion. Do not repeat prior Plot browser acceptance without relevant UI change. Do not claim new tests have passed before the owner runs them.
+
+
+## 2026-11-18 — Plot full Edit related-record identity hardening (new local gate)
+
+**Owner verified preceding batch:** PlotEntryWriterTest 37 PASS / 231 assertions, PlotFullVoucherEditContractTest 4 PASS / 78 assertions, total 41 PASS / 309 assertions, plus previous Plot browser acceptance. This predates the following code changes.
+
+**Implemented on GitHub:**
+- Posting legs are matched by original source identity: booking_id for Plot Receipt credit legs, legacy_plot_id for Plot Purchase debit legs. Row reordering no longer overwrites another source's active posting line. Unchanged sources retain same posting line ID; truly new related sources append within the original batch; removed legs are deactivated, not hard-deleted.
+- Existing Plot Purchase items require their explicit legacy_plot_id on Edit. Missing ID signifies a genuinely new item and no longer silently reuses an existing plot by array index. This avoids writing changes to an unrelated plot when the form is reordered.
+- Plot Receipt Details prefill now excludes inactive posting lines so archived credit legs are not treated as active accounts.
+- Added SQLite integration regression tests for repeated reordered Plot Receipt/Purchase edits, unchanged source IDs, allocation/item/plot IDs and posting line IDs, balanced amounts and no duplicate posting batch. Existing replacement test now expects archived old and appended new credit leg instead of recycling its ID, and existing purchase edit test supplies explicit related plot ID.
+
+**Scope/limitations:** no new table or migration. An identical Save may still create an additional audit snapshot (not an additional business voucher or posting batch). Previously archived posting lines are not reactivated when a removed booking is reintroduced; an additional active leg may be created while inactive history is retained. A persistent allocation-to-posting-line association would be needed to safely reactivate the exact historical line across arbitrary account changes. Broader financial reports and other voucher CRUD flows remain pending.
+
+**New code requires owner local tests (NOT verified locally by this assistant):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php -l app/Services/Finance/PlotVoucherEditor.php
+php -l app/Http/Controllers/Finance/VoucherController.php
+php -l tests/Feature/Finance/PlotEntryWriterTest.php
+php artisan test --filter=PlotEntryWriterTest
+php artisan test --filter=PlotFullVoucherEditContractTest
+```
+
+No additional migration and no repeated browser gate unless relevant UI regression appears.
