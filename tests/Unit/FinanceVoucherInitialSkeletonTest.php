@@ -35,4 +35,32 @@ final class FinanceVoucherInitialSkeletonTest extends TestCase
         self::assertStringContainsString("settings.nTable.id==='example1'", $view);
         self::assertStringContainsString("removeClass('bm-extra-list-pending')", $view);
     }
+    public function test_shared_skeleton_takes_voucher_theme_color_and_preserves_credit_debit_tones(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $css = file_get_contents($root.'/public/css/blue-table-skeleton.css');
+        self::assertIsString($css);
+        self::assertStringContainsString('--voucher-accent', $css);
+        self::assertStringContainsString('.bm-skeleton-neutral', $css);
+        self::assertStringContainsString('.bm-skeleton-credit', $css);
+        self::assertStringContainsString('.bm-skeleton-debit', $css);
+    }
+
+    public function test_draft_and_extra_initial_rows_stay_concealed_until_datatables_ready(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $draft = file_get_contents($root.'/resources/views/admin/finance/voucher/draft_voucher.blade.php');
+        $extra = file_get_contents($root.'/resources/views/admin/booking/extra_charge.blade.php');
+        $css = file_get_contents($root.'/public/css/finance-voucher-components.css');
+        self::assertIsString($draft);
+        self::assertIsString($extra);
+        self::assertIsString($css);
+        self::assertStringContainsString('draftVoucherInitialSkeleton', $draft);
+        self::assertStringContainsString("settings.nTable.id==='bmDraftTable'", $draft);
+        self::assertStringContainsString('extraChargeInitialSkeleton', $extra);
+        self::assertStringContainsString("settings.nTable.id==='example1'", $extra);
+        self::assertStringContainsString('bm-voucher-initial-pending', $css);
+        self::assertStringContainsString('bm-voucher-initial-skeleton', $css);
+    }
+
 }
