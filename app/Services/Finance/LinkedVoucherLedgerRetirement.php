@@ -32,9 +32,12 @@ final class LinkedVoucherLedgerRetirement
         }
         // Include all linked legs (including already inactive ones) so that
         // foreign-project or mismatched detail references cannot be overlooked.
+        $legFields=['id','project_head_subheads_id','journal_voucher_detail_id',
+            'amount_in','amount_out','is_active'];
+        $hasCommissionDetailLink=Schema::hasColumn('ledgers','commision_voucher_detail_id');
+        if ($hasCommissionDetailLink) $legFields[]='commision_voucher_detail_id';
         $legs=DB::table('ledgers')->where('type',$type)->where('type_id',$voucherId)
-            ->lockForUpdate()->get(['id','project_head_subheads_id','journal_voucher_detail_id',
-                'amount_in','amount_out','is_active']);
+            ->lockForUpdate()->get($legFields);
         $active=$legs->filter(fn($l)=>(int)$l->is_active===1);
         if ($active->isEmpty()) throw new \DomainException('No active ledger legs; nothing to retire.');
         $accountIds=$legs->pluck('project_head_subheads_id')->unique()->all();
@@ -50,6 +53,20 @@ final class LinkedVoucherLedgerRetirement
                 if ($detail && !in_array($detail,$detailIds,true)) {
                     throw new \DomainException('Journal ledger points to a different voucher detail; no rows modified.');
                 }
+            }
+        }
+        if ($type==='CV' && $hasCommissionDetailLink) {
+            $detailIds=$activeDetails->pluck('id')->map(fn($id)=>(int)$id)->all();
+            $seenLinked=[];
+            foreach ($active as $leg) {
+                $detailId=(int)($leg->commision_voucher_detail_id??0);
+                // NULL means a historical CV leg from before the FK existed.
+                // It remains covered by the exact account/amount multiset.
+                if (!$detailId) continue;
+                if (!in_array($detailId,$detailIds,true) || isset($seenLinked[$detailId])) {
+                    throw new \DomainException('Commission ledger points to a different or duplicate voucher detail; no rows modified.');
+                }
+                $seenLinked[$detailId]=true;
             }
         }
         // A ledger set with old reversal legs or unrelated rows must not be
