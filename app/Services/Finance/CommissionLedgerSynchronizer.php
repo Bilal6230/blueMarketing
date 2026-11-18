@@ -21,6 +21,25 @@ final class CommissionLedgerSynchronizer
         if (!Schema::hasColumn('ledgers','commision_voucher_detail_id')) {
             throw new \DomainException('Commission ledger detail foreign key migration is required.');
         }
+        // A similarly named column without an actual database FK is not a
+        // relationship. Never write new financial legs on such a schema.
+        if (DB::connection()->getDriverName()==='mysql') {
+            $constraint=DB::selectOne(
+                'SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+                 WHERE TABLE_SCHEMA=? AND TABLE_NAME=? AND COLUMN_NAME=?
+                   AND REFERENCED_TABLE_NAME=? AND REFERENCED_COLUMN_NAME=? LIMIT 1',
+                [DB::connection()->getDatabaseName(),'ledgers','commision_voucher_detail_id',
+                    'commision_voucher_details','id']
+            );
+            if (!$constraint) throw new \DomainException('Commission ledger foreign key is not enforced.');
+        } elseif (DB::connection()->getDriverName()==='sqlite') {
+            $keys=DB::select('PRAGMA foreign_key_list(ledgers)');
+            $matched=collect($keys)->contains(fn($fk)=>
+                ($fk->from??null)==='commision_voucher_detail_id'
+                && ($fk->table??null)==='commision_voucher_details'
+                && ($fk->to??null)==='id');
+            if (!$matched) throw new \DomainException('Commission ledger foreign key is not enforced.');
+        }
     }
 
     private function money(mixed $value): string
@@ -130,6 +149,12 @@ final class CommissionLedgerSynchronizer
             ->whereNull('batch.reversal_of_batch_id')->whereNotNull('batch.posted_at')
             ->exists();
         if (!$posted) throw new \DomainException('Commission ledger cannot activate without posted financial batch.');
+        $reversed=DB::table('finance_posting_batches as reversal')
+            ->join('finance_posting_commission_sources as source',
+                'source.posting_batch_id','=','reversal.reversal_of_batch_id')
+            ->where('source.commision_voucher_id',$voucherId)
+            ->where('reversal.project_id',$projectId)->exists();
+        if ($reversed) throw new \DomainException('Reversed Commission posting cannot reactivate ledger rows.');
         $ids=$details->pluck('id')->map(fn($id)=>(int)$id)->all();
         foreach ($linked as $detailId=>$leg) {
             if (!in_array((int)$detailId,$ids,true) && (int)$leg->is_active!==0) {
