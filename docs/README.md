@@ -576,3 +576,37 @@ php artisan finance:audit-posting-balances
 - Commission draft no-op guard now uses `array_key_exists` when resolving optional `reference` / `description`, so deliberately clearing a field to `null` is recognized as a real change rather than skipped.
 - The Commission relation contract test was corrected to use literal PHP variable tokens in its static string assertions and now checks that nullable draft metadata is handled explicitly.
 - No extra migration was added after the single additive `2026_11_18_220000_link_commission_details_to_ledger.php` migration listed above. The new code has not yet passed owner-local lint/test/migration gates; do not claim full Milestone 03 complete.
+
+
+## 2026-11-18 — Commission Voucher draft/approval Ledger parity with JV (code batch; owner validation pending)
+
+**User evidence:** Owner's local phpMyAdmin screenshot shows `commision_vouchers.id=1` in status `draft`, two active `commision_voucher_details` rows (1000 debit, 1000 credit), and zero `ledgers` rows for `type='CV'` / `type_id=1`. Code review confirms `CommissionDraftWorkflow::createDraft()` previously persisted only header + details; `CommissionPostingWriter::post()` posted to `finance_posting_lines` without creating legacy `ledgers` legs. This was a genuine functional gap relative to the requested JV-like three-table design.
+
+**Implementation committed:**
+- Added `CommissionLedgerSynchronizer` to mirror CV detail rows into `ledgers` with a **real enforced database FK** `commision_voucher_detail_id` (column added by the already owner-applied migration `2026_11_18_220000_link_commission_details_to_ledger.php`). MySQL `information_schema` and SQLite FK metadata checks refuse work when FK is not actually enforced. It validates the source project, exact voucher-detail ownership, account, amount and unique detail identity, never matching simply by row order.
+- Draft Create now stores header + detail rows + one inactive (`is_active=0`) legacy ledger row per active detail in the same transaction. Draft Update keeps the same ledger and detail IDs on a no-op; a real detail edit archives old detail rows, retains their inactive ledger evidence, writes new details, and inserts new inactive FK-linked ledgers. Draft Cancel checks relationships and logically deletes source/details; no hard deletion of linked ledgers.
+- Approve/Post uses existing immutable `finance_posting_batches` / `finance_posting_lines` writer, then validates/activates the exact current CV legacy ledger legs (`is_active=1`) in **the same transaction**. Retry does not duplicate the legacy ledger IDs. A failed posting or failed FK/amount integrity check rolls back approval and ledger transition together; a reversed CV cannot be reactivated through this path.
+- Posted CV Reversal also deactivates that CV's FK-linked active legacy ledger legs in the same reversal transaction, retaining both posting and ledger history. This is required so legacy ledger balance readers don't keep counting a reversed CV.
+- Added `finance:sync-commission-draft-ledgers` (default read-only preview, optional `--apply` to create only missing inactive rows for existing unposted drafts, across all projects in configured DB; `--project=N` optional). The already-existing CV ID 1 in screenshot can be repaired this way without any SQL inserts or hardcoded database names. The command acquires project/voucher locks, is idempotent per detail FK, and reports any integrity failure without cross-source mutation.
+- Added isolated `CommissionLedgerSynchronizerTest` covering Draft Create, exact FK, no-op Edit, changed Draft Edit, activation after posted batch, duplicate prevention, reversal deactivation, existing draft backfill and command dry-run/idempotency, plus `CommissionLedgerActivationContractTest` for workflow integration. These new tests are **not yet locally verified**; do not mark them PASS until owner output is supplied.
+
+**Owner commands (no new migration; previous Commission ledger FK migration already DONE):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php -l app/Services/Finance/CommissionLedgerSynchronizer.php
+php -l app/Services/Finance/CommissionDraftWorkflow.php
+php -l app/Services/Finance/VoucherLifecycleService.php
+php -l app/Console/Commands/SyncCommissionDraftLedgers.php
+php artisan test --filter=CommissionLedgerSynchronizerTest
+php artisan test --filter=CommissionLedgerActivationContractTest
+php artisan test --filter=CommissionVoucherDetailRelationContractTest
+php artisan finance:sync-commission-draft-ledgers
+php artisan finance:sync-commission-draft-ledgers --apply
+php artisan finance:audit-posting-balances
+```
+
+**Browser acceptance to follow after green local tests:** On a disposable CV draft, Create should generate exactly two inactive FK-linked ledger legs; repeated unchanged Edit should not add rows; changed Edit should archive old details and create two new inactive ledger legs; after approval exactly current two become `is_active=1`, and repeating approval with the original request key must not add new rows. Existing Drafts can be synchronized via the opt-in command. A posted CV's *full amendment Edit* is still protected by the separate approved-posting reversal workflow; this batch aligns Draft Edit + Approve/Post + Reverse, not arbitrary mutation of an immutable posted financial batch.
+
+**Milestone 03:** This targeted CV three-table lifecycle and FK requirement is code-implemented but owner-local tests/browser acceptance are still pending. Other voucher-family lifecycle completion and permission acceptance should not be marked complete based on these tests. Do not re-run the already accepted Plot browser gates.
