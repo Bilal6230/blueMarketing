@@ -101,6 +101,21 @@
  </div></div>
 </div>
 @endcan
+@can('finance plot-purchase delete')
+<div class="modal fade" id="ppDeleteModal" tabindex="-1" role="dialog" aria-label="Delete voucher">
+ <div class="modal-dialog modal-dialog-centered"><div class="modal-content fvc-modern-modal">
+  <div class="modal-header"><h5 class="modal-title">Delete voucher</h5><button type="button" class="close" data-dismiss="modal"><span>&times;</span></button></div>
+  <form id="ppDeleteForm"><div class="modal-body">
+   <p class="small text-muted">The voucher is archived, not permanently erased. Linked financial entries are offset to keep balances consistent.</p>
+   <label for="ppDeleteReason">Reason</label><textarea id="ppDeleteReason" class="form-control" required minlength="3" maxlength="200" rows="3"></textarea>
+   <div id="ppDeleteError" class="alert alert-danger d-none mt-2" role="alert"></div>
+  </div><div class="modal-footer">
+   <button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button>
+   <button id="ppDeleteSubmit" type="submit" class="btn btn-danger btn-sm">Delete voucher</button>
+  </div></form>
+ </div></div>
+</div>
+@endcan
 @can('finance plot-purchase reverse')
 <div class="modal fade" id="ppVoidModal" tabindex="-1" role="dialog" aria-labelledby="ppVoidTitle" aria-hidden="true">
  <div class="modal-dialog modal-dialog-centered"><div class="modal-content fvc-modern-modal">
@@ -190,6 +205,9 @@
      if(!x.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pp-edit ml-1','data-id':x.id,text:'Edit voucher'}));
      @endcan
      @can('finance plot-purchase reverse')
+     @can('finance plot-purchase delete')
+     if(!x.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pp-delete ml-1','data-id':x.id,text:'Delete'}));
+     @endcan
      if(!x.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pp-void ml-1','data-id':x.id,text:'Reverse'}));
      @endcan
      $tr.append($actions);
@@ -301,6 +319,31 @@
   @endcan
   $('#ppHistory').on('click','.pp-detail',function(){details($(this).attr('data-id'));});
  @can('finance plot-purchase reverse')
+ @can('finance plot-purchase delete')
+ $('#ppHistory').on('click','.pp-delete',function(){
+  $('#ppDeleteForm').data('source-id',$(this).attr('data-id'));
+  $('#ppDeleteReason').val('');$('#ppDeleteError').addClass('d-none').text('');
+  $('#ppDeleteModal').modal('show');
+ });
+ $('#ppDeleteForm').on('submit',function(event){
+  event.preventDefault();
+  var id=$(this).data('source-id'),$button=$('#ppDeleteSubmit');
+  if(!id||$button.prop('disabled'))return;
+  $button.prop('disabled',true);
+  $.ajax({
+   url:$('#plotPurchaseApp').attr('data-details-base')+'/'+encodeURIComponent(id),
+   type:'DELETE',contentType:'application/json',dataType:'json',
+   headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')},
+   data:JSON.stringify({reason:$.trim($('#ppDeleteReason').val())})
+  }).done(function(response){
+   $('#ppDeleteModal').modal('hide');
+   alert('success',response.message||'Voucher deleted');
+   loadHistory();
+  }).fail(function(xhr){
+   $('#ppDeleteError').removeClass('d-none').text(xhr.responseJSON&&xhr.responseJSON.message||'Unable to delete voucher');
+  }).always(function(){$button.prop('disabled',false);});
+ });
+@endcan
  $('#ppHistory').on('click','.pp-void',function(){
   $('#ppVoidForm').data('source-id',$(this).attr('data-id'));
   $('#ppVoidReason').val('');$('#ppVoidError').addClass('d-none').text('');
