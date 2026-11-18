@@ -64,6 +64,16 @@
     <link rel="stylesheet" href="{{ asset('css/blue-design-system.css') }}?v=4">
 <link rel="stylesheet" href="{{ asset('css/finance-voucher-compact.css') }}?v=1">
     <link rel="stylesheet" href="{{ asset('css/blue-action-menu.css') }}?v=2">
+    {{-- Critical first-frame table rules MUST arrive in HEAD before initial HTML is painted. --}}
+    <style>
+      .bm-voucher-directory .bm-voucher-initial-pending {position:relative!important;min-height:420px!important}
+      .bm-voucher-directory .bm-voucher-initial-pending>table[id] {position:absolute!important;visibility:hidden!important;pointer-events:none!important}
+      .bm-voucher-directory .bm-voucher-initial-skeleton {display:block;min-height:420px;width:100%}
+      .bm-voucher-directory .bm-voucher-initial-skeleton table {width:100%;table-layout:fixed;margin:0}
+      .bm-voucher-directory .bm-skeleton-row td {height:44px;padding:8px 7px;vertical-align:middle}
+      .bm-voucher-directory .bm-skeleton-neutral .bm-skeleton-bar {display:block;height:12px;border-radius:5px;background:linear-gradient(90deg,color-mix(in srgb,var(--voucher-accent,#1769e0) 13%,white) 22%,color-mix(in srgb,var(--voucher-accent,#1769e0) 5%,white) 42%,color-mix(in srgb,var(--voucher-accent,#1769e0) 13%,white) 67%);background-size:220% 100%;animation:bm-skeleton-pulse 1.3s ease-in-out infinite}
+      @media(prefers-reduced-motion:reduce){.bm-voucher-directory .bm-skeleton-neutral .bm-skeleton-bar{animation:none}}
+    </style>
     @stack('style')
     <style>
                 .card-loader-overlay {
