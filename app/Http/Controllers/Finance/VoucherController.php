@@ -1213,7 +1213,10 @@ class VoucherController extends Controller
             ->leftJoin('finance_plot_receipt_postings as typed', 'typed.source_id', '=', 'receipt.id')
             ->leftJoin('finance_posting_batches as void_batch', 'void_batch.reversal_of_batch_id', '=', 'typed.posting_batch_id')
             ->leftJoin('leads as customer', 'customer.id', '=', 'receipt.customer_id')
-            ->where('receipt.project_id', $projectId)->orderByDesc('receipt.receipt_date')->orderByDesc('receipt.id')
+            ->where('receipt.project_id', $projectId)
+            ->when(Schema::hasColumn('finance_plot_receipts','is_active'), fn ($query) => $query->where('receipt.is_active',1))
+            ->when(Schema::hasColumn('finance_plot_receipts','deleted_at'), fn ($query) => $query->whereNull('receipt.deleted_at'))
+            ->orderByDesc('receipt.receipt_date')->orderByDesc('receipt.id')
             ->limit(250)->get(['receipt.id', 'receipt.receipt_number', 'receipt.receipt_date', 'receipt.amount', 'receipt.narration',
                 'customer.first_name', 'customer.last_name', 'customer.business', 'void_batch.id as reversal_batch_id']);
         return response()->json(['data' => $rows->map(fn ($row) => [
@@ -1354,7 +1357,10 @@ class VoucherController extends Controller
             ->join('project_head_subheads as seller', function ($join) use ($projectId) {
             $join->on('seller.id', '=', 'purchase.seller_account_id')->where('seller.project_id', '=', $projectId);
         })->leftJoin('subhead_accountings as sub', 'sub.id', '=', 'seller.subhead_accounting_id')
-            ->where('purchase.project_id', $projectId)->orderByDesc('purchase.purchase_date')->orderByDesc('purchase.id')->limit(250)
+            ->where('purchase.project_id', $projectId)
+            ->when(Schema::hasColumn('finance_plot_purchases','is_active'), fn ($query) => $query->where('purchase.is_active',1))
+            ->when(Schema::hasColumn('finance_plot_purchases','deleted_at'), fn ($query) => $query->whereNull('purchase.deleted_at'))
+            ->orderByDesc('purchase.purchase_date')->orderByDesc('purchase.id')->limit(250)
             ->get(['purchase.id', 'purchase.purchase_number', 'purchase.purchase_date', 'purchase.amount', 'purchase.narration', 'sub.name as seller', 'void_batch.id as reversal_batch_id']);
         return response()->json(['data' => $rows->map(fn ($row) => [
             'id' => (int) $row->id, 'number' => (string) $row->purchase_number, 'date' => substr((string) $row->purchase_date, 0, 10),
