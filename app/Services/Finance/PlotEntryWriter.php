@@ -4,7 +4,6 @@ namespace App\Services\Finance;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Schema;
 
 /** Isolated, append-only plot receipts and plot purchase posting. */
 final class PlotEntryWriter
