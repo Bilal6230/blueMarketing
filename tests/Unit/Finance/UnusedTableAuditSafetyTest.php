@@ -32,4 +32,23 @@ final class UnusedTableAuditSafetyTest extends TestCase
         self::assertStringContainsString("['app','routes','resources/views','resources/js','public/js','config']",$source);
         self::assertStringNotContainsString('DB_DATABASE=',$source);
     }
+    public function test_eloquent_implicit_tables_and_framework_owned_tables_are_never_auto_delete_candidates(): void
+    {
+        $root=dirname(__DIR__,3);
+        $audit=file_get_contents($root.'/app/Console/Commands/AuditUnusedTables.php');
+        $landingModel=file_get_contents($root.'/app/Models/LandingPage.php');
+        $landingController=file_get_contents($root.'/app/Http/Controllers/LandingPageAdminController.php');
+        $sanctumRegression=file_get_contents($root.'/tests/Feature/Api/SanctumTokenRegressionTest.php');
+        self::assertIsString($audit);
+        self::assertStringContainsString('class LandingPage extends Model',$landingModel);
+        self::assertStringContainsString('LandingPage::query()', $landingController);
+        self::assertStringContainsString("'ELOQUENT_MODEL_DEPENDENT'", $audit);
+        self::assertStringContainsString('Str::snake(Str::pluralStudly($class))',$audit);
+        self::assertStringContainsString("'personal_access_tokens' =>", $audit);
+        self::assertStringContainsString("'legacy_migration_history' =>", $audit);
+        self::assertStringContainsString("'FRAMEWORK_OR_HISTORY_PROTECTED'",$audit);
+        self::assertStringContainsString("createToken('regression_test')",$sanctumRegression);
+        self::assertStringContainsString('&& !$modelReferences && !$frameworkReason',$audit);
+    }
+
 }
