@@ -69,6 +69,7 @@ class Kernel extends HttpKernel
         'check.user.status' => \App\Http\Middleware\CheckUserStatus::class,
         'form.token.auth' => \App\Http\Middleware\FormTokenAuth::class,
         'finance.action' => \App\Http\Middleware\AuthorizeFinanceAction::class,
+        'booking.deposit.action' => \App\Http\Middleware\AuthorizeBookingDeposit::class,
 
     ];
 }
