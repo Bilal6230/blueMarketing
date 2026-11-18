@@ -225,7 +225,9 @@
                   <select id="dv-type" name="type" class="form-control">
                     <option value="">All voucher types</option>
                     @foreach(['CR','DR','CCR','CDR','BOR','BOP','CP','PPR','JV','CV','BR','BO','BW','BD','PR','PP'] as $type)
+                      @if(auth()->user()->can('finance '.\App\Support\Finance\FinanceActionPermission::moduleForSeries($type).' view'))
                       <option value="{{ $type }}">{{ $type }}</option>
+                      @endif
                     @endforeach
                   </select>
                 </div>
@@ -235,7 +237,9 @@
                 <div class="daily-voucher-actions">
                     <button class="btn btn-primary" type="submit"><i class="fas fa-filter mr-1"></i> Apply</button>
                     <button class="btn btn-outline-secondary" type="button" id="dv-reset-filters">Reset</button>
+                    @if($presetType ? auth()->user()->can('finance '.\App\Support\Finance\FinanceActionPermission::moduleForSeries($presetType).' create') : collect(['CR','DR','CCR','CDR','BOR','BOP'])->contains(fn($series)=>auth()->user()->can('finance '.strtolower($series).' create')))
                     <button class="btn btn-success" type="button" id="dv-create-voucher"><i class="fas fa-plus mr-1"></i> New voucher</button>
+                    @endif
                 </div>
             </form>
             <div class="d-none" aria-hidden="true">
@@ -247,7 +251,9 @@
                     'BOR' => ['Bank Receipt Voucher (BOR)', route('finance.voucher.in', ['series'=>'BOR','embed'=>1])],
                     'BOP' => ['Bank Payment Voucher (BOP)', route('finance.voucher.out', ['series'=>'BOP','embed'=>1])],
                 ] as $series => [$label, $url])
+                    @if(auth()->user()->can('finance '.strtolower($series).' create'))
                     <button type="button" class="dv-create" data-url="{{$url}}" data-cheque-url="{{ in_array($series, ['BOR','BOP'], true) ? route($series === 'BOR' ? 'finance.voucher.in.method' : 'finance.voucher.out.method', ['method'=>'cheque','series'=>$series,'embed'=>1]) : '' }}" data-title="{{$label}}" data-series="{{$series}}"></button>
+                    @endif
                 @endforeach
             </div>
         </x-finance.voucher-filter-card>
@@ -286,7 +292,7 @@
     </div></section>
 </div>
 <x-finance.voucher-column-filters />
-@can('delete voucher')
+@if(collect(['cr','dr','cp','ccr','cdr','bor','bop','jv','cv','ppr','plot-receipt','plot-purchase'])->contains(fn($module) => auth()->user()->can('finance '.$module.' delete') || auth()->user()->can('finance '.$module.' reverse')))
 <div class="modal fade" id="dvTypedReverseModal" tabindex="-1" aria-labelledby="dvTypedReverseTitle" aria-hidden="true">
  <div class="modal-dialog modal-dialog-centered"><div class="modal-content fvc-modern-modal">
   <div class="modal-header"><h5 id="dvTypedReverseTitle" class="modal-title">Reverse Cash Voucher</h5>
@@ -304,7 +310,7 @@
   </div></form>
  </div></div>
 </div>
-@endcan
+@endif
 <div class="modal fade" id="dv-detail-modal" tabindex="-1" role="dialog" aria-labelledby="dv-detail-title" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-scrollable" role="document"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="dv-detail-title">Voucher details</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div><div class="modal-body"><div class="dv-common-print-heading"><h3 class="mb-1">Voucher Details</h3><div id="dv-print-identity" class="small text-muted"></div><div class="small">Read-only voucher record · not a new accounting posting</div></div><dl class="row mb-0" id="dv-detail-fields"></dl><div id="dv-detail-lines-wrap" class="mt-3 d-none"><h6>Voucher lines</h6><div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>Account</th><th>Description</th><th class="text-right">Debit</th><th class="text-right">Credit</th></tr></thead><tbody id="dv-detail-lines"></tbody></table></div></div><div id="dv-detail-prints-wrap" class="mt-3 d-none"><h6>Plot receipt print views</h6><div id="dv-detail-prints" class="d-flex flex-wrap" style="gap:.5rem"></div></div><div id="dv-detail-audit-wrap" class="mt-3 d-none"><h6>Payment and audit information</h6><dl class="row mb-0" id="dv-detail-audit"></dl></div></div><div class="modal-footer"><button type="button" class="btn btn-outline-primary dv-common-print-button" id="dv-common-print"><i class="fas fa-print mr-1"></i> Print Details (A4)</button><a id="dv-detail-print" class="btn btn-primary" target="_blank" rel="noopener"><i class="fas fa-print mr-1"></i> Open print view</a><span id="dv-no-print" class="small text-muted d-none">No posted print record is available.</span><button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button></div></div></div></div>
 <div class="modal fade" id="dv-entry-modal" tabindex="-1" role="dialog" aria-labelledby="dv-entry-title" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
