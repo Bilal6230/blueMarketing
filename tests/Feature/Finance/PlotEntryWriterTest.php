@@ -539,4 +539,44 @@ class PlotEntryWriterTest extends TestCase
         $this->assertDatabaseCount('finance_posting_batches',1);
         $this->assertDatabaseCount('finance_plot_receipt_allocations',1);
     }
+
+    public function test_archived_plot_purchase_is_inaccessible_without_erasing_inventory_or_posting(): void
+    {
+        Schema::table('finance_plot_purchases', function (Blueprint $table): void {
+            $table->boolean('is_active')->default(true);
+            $table->softDeletes();
+        });
+        $writer = new PlotEntryWriter();
+        $payload = [
+            'date' => '2026-11-05',
+            'purchase_number' => 'PP-ARCHIVE-TEST',
+            'seller_account_id' => 102,
+            'narration' => 'Archive guard test',
+            'items' => [[
+                'plot_code'=>'LAND-ARCHIVE-1',
+                'description'=>'Temporary test plot',
+                'area'=>'1.0000','unit'=>'Kanal','type'=>1,
+                'road_id'=>1,'facing_id'=>1,'is_corner'=>false,
+                'unit_rate'=>'100.00','inventory_account_id'=>104,
+            ]],
+        ];
+        $created=$writer->purchase(1,'PLOT-ARCHIVE-PURCHASE-0001',$payload,7);
+        DB::table('finance_plot_purchases')->where('id',$created['source_id'])
+            ->update(['is_active'=>0,'deleted_at'=>now()]);
+        try {
+            $writer->purchaseDetails(1,$created['source_id']);
+            $this->fail('Archived purchase must not be available as a live voucher.');
+        } catch (\DomainException $error) {
+            $this->assertSame('V2_PLOT_PURCHASE_NOT_FOUND',$error->getMessage());
+        }
+        try {
+            $writer->purchase(1,'PLOT-ARCHIVE-PURCHASE-0001',$payload,7);
+            $this->fail('Archived purchase idempotency key must not revive it.');
+        } catch (\DomainException $error) {
+            $this->assertSame('PLOT_SOURCE_ARCHIVED',$error->getMessage());
+        }
+        $this->assertDatabaseCount('finance_posting_batches',1);
+        $this->assertDatabaseCount('finance_plot_purchase_items',1);
+        $this->assertDatabaseCount('finance_plot_purchases',1);
+    }
 }
