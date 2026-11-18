@@ -127,10 +127,15 @@ final class PlotVoucherEditor
         if ($project<1 || $id<1 || $actor<1) throw new \DomainException('Invalid source.');
         return DB::transaction(function()use($project,$id,$data,$actor){
             [$source,$batch,$lines]=$this->locked($project,'plot_receipt',$id);
-            $old=DB::table('finance_plot_receipt_allocations')->where('receipt_id',$id)
-                ->orderBy('id')->lockForUpdate()->get();
-            if ($old->count()!==count($data['allocations']) || $lines->count()!==$old->count()+1) {
-                throw new \DomainException('Plot allocation count cannot change in this edit.');
+            $allocQuery=DB::table('finance_plot_receipt_allocations')->where('receipt_id',$id);
+            if (Schema::hasColumn('finance_plot_receipt_allocations','is_active')) $allocQuery->where('is_active',1);
+            $old=$allocQuery->orderBy('id')->lockForUpdate()->get();
+            if ($lines->count()!==$old->count()+1) {
+                throw new \DomainException('Existing Plot Receipt posting does not match active allocations.');
+            }
+            if ($old->count()!==count($data['allocations'])
+                && !Schema::hasColumn('finance_plot_receipt_allocations','is_active')) {
+                throw new \DomainException('Apply Plot line lifecycle migration before changing allocation count.');
             }
             $customer=(int)$data['customer_id'];$cash=(int)$data['cash_account_id'];
             if (!DB::table('leads')->where('id',$customer)->where('project_id',$project)->exists())
@@ -166,9 +171,20 @@ final class PlotVoucherEditor
             $before=['voucher'=>(array)$source,'allocations'=>$old->map(fn($r)=>(array)$r)->all(),
                 'posting_lines'=>$lines->map(fn($r)=>(array)$r)->all()];
             $this->replaceLines($project,(int)$batch->id,$lines,$newLines);
-            foreach ($old->values() as $index=>$row) {
-                DB::table('finance_plot_receipt_allocations')->where('id',$row->id)
-                    ->where('receipt_id',$id)->update($newAllocations[$index]+['updated_at'=>now()]);
+            for ($i=0;$i<max($old->count(),count($newAllocations));$i++) {
+                $row=$old[$i]??null;$allocation=$newAllocations[$i]??null;
+                if ($row && $allocation) {
+                    DB::table('finance_plot_receipt_allocations')->where('id',$row->id)
+                        ->where('receipt_id',$id)->update($allocation+['updated_at'=>now()]);
+                } elseif ($row) {
+                    DB::table('finance_plot_receipt_allocations')->where('id',$row->id)
+                        ->where('receipt_id',$id)->update(['is_active'=>0,'updated_at'=>now()]);
+                } elseif ($allocation) {
+                    DB::table('finance_plot_receipt_allocations')->insert(
+                        $allocation+['receipt_id'=>$id,'is_active'=>1,
+                            'created_at'=>now(),'updated_at'=>now()]
+                    );
+                }
             }
             DB::table('finance_plot_receipts')->where('id',$id)->where('project_id',$project)->update([
                 'receipt_number'=>$number,'receipt_date'=>$data['date'],'customer_id'=>$customer,
