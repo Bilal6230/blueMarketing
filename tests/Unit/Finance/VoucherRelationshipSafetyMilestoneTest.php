@@ -22,6 +22,9 @@ final class VoucherRelationshipSafetyMilestoneTest extends TestCase
         self::assertStringContainsString('tables_with_neither',$audit);
         self::assertStringContainsString('orphan_count',$audit);
         self::assertStringContainsString('cross_project_detail_links',$audit);
+        self::assertStringContainsString('require-fks', $audit);
+        self::assertStringContainsString('Voucher schema integrity gate FAILED', $audit);
+        self::assertStringContainsString("'missing_foreign_keys'", $audit);
         foreach (['->insert(', '->update(', '->delete(', 'DB::statement(', 'DB::unprepared('] as $writer) {
             self::assertStringNotContainsString($writer,$audit);
         }
