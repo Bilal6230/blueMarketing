@@ -416,7 +416,7 @@ final class ChequeIntakeController extends Controller
 
     public function store(Request $request)
     {
-        abort_unless($request->user()?->can('finance cheque clear'), 403);
+        abort_unless($request->user()?->can('finance cheque create'), 403);
         $this->ready();
         $project = $this->project();
         $data = $request->validate([
