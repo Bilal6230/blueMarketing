@@ -135,6 +135,20 @@ final class LinkedVoucherLedgerRetirementTest extends TestCase
         self::assertSame(2,DB::table('commision_voucher_details')->whereNull('deleted_at')->count());
     }
 
+    public function test_commission_swapped_detail_links_reject_even_if_voucher_total_balances(): void
+    {
+        $this->seedVoucher('CV');
+        DB::table('ledgers')->where('id',201)->update(['commision_voucher_detail_id'=>102]);
+        DB::table('ledgers')->where('id',202)->update(['commision_voucher_detail_id'=>101]);
+        try {
+            DB::transaction(fn()=>app(LinkedVoucherLedgerRetirement::class)->retire(5,'CV',33));
+            self::fail('Swapped CV detail identifiers must not be accepted.');
+        } catch (\DomainException $e) {
+            self::assertStringContainsString('detail account or amount mismatch',$e->getMessage());
+        }
+        self::assertSame(2,DB::table('ledgers')->where('is_active',1)->count());
+    }
+
     public function test_legacy_null_commission_detail_links_remain_retirable_by_exact_amounts(): void
     {
         $this->seedVoucher('CV');
