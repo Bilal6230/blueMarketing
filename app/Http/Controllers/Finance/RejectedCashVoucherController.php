@@ -33,10 +33,9 @@ final class RejectedCashVoucherController extends Controller
                 'Approved bank/cheque voucher correction requires a separately audited bank reversal.');
         }
         $actor=auth()->user();
-        abort_unless($actor?->can('update voucher'),403);
-        if ($approval) abort_unless(VoucherApproverAccess::isSuperAdmin($actor)
-            || ((int)$approval->submitted_by===(int)$actor->id
-                && (int)$actor->project_id===$project),403);
+        $module = \App\Support\Finance\FinanceActionPermission::sourceModule($customerLedger);
+        abort_unless($actor?->can('finance '.$module.' edit'),403);
+        // The Edit grant is independent of voucher creator; project scope is enforced below.
         abort_unless(VoucherApproverAccess::isSuperAdmin($actor)
             || (int)$actor->project_id===$project,403);
         $voucherDisplay=app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)
@@ -95,13 +94,12 @@ final class RejectedCashVoucherController extends Controller
         $data=array_merge($data,$request->only(['t_number','bank_id','passing_date','cheque_purpose']));
         $project=(int)getSelectedTown();
         $actor=auth()->user();
-        abort_unless($actor?->can('update voucher') &&
+        $module = \App\Support\Finance\FinanceActionPermission::sourceModule($customerLedger);
+        abort_unless($actor?->can('finance '.$module.' edit') &&
             (VoucherApproverAccess::isSuperAdmin($actor) || (int)$actor->project_id===$project),403);
         $tracked=DailyVoucherApproval::query()->where('project_id',$project)
             ->where('source_table','customer_ledger')->where('source_id',$source->id)->first();
-        if ($tracked) abort_unless(VoucherApproverAccess::isSuperAdmin($actor)
-            || ((int)$tracked->submitted_by===(int)$actor->id
-                && (int)$actor->project_id===$project),403);
+        // Finance Edit permission is role-based, not limited to original submitter.
         $path=null;
         if ($request->hasFile('attachment')) {
             // Shared private attachment lifecycle for all six voucher series.
