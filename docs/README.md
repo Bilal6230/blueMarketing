@@ -1,130 +1,70 @@
-# BlueMarketing — Active Development Handoff
+# BlueMarketing — Current Development Handoff
 
 **Updated:** 2026-11-18  
 **Branch:** `upgrade/laravel-framework`  
-**Local project:** `C:\laragon\www\blueMarketing`  
-**Configured database:** User verified `bluenew_clean_final`; **never hard-code this name**, always follow `.env`.  
-**Documentation policy:** This is the **one** current status/handoff file. Update after **every implementation batch**; do not create another roadmap/handoff document. `docs/BLUEMARKETING_POINT03_DAILY_ENTRIES_REQUIREMENTS_ROMAN_URDU.md` holds original client requirements. Superseded documents are recoverable in Git history.
+**Local application:** `C:\laragon\www\blueMarketing`  
+**Database:** whichever database is configured in `.env`. Owner currently uses `bluenew_clean_final`. Never hard-code database names, introduce separate V2 finance, or reinstate V2 isolation.
+**Documentation policy:** Update **this single document after every code batch**. Do not open new milestone/handoff documents. Historic requirements: `docs/BLUEMARKETING_POINT03_DAILY_ENTRIES_REQUIREMENTS_ROMAN_URDU.md`. Earlier superseded handoffs are not authoritative.
 
-## The only active roadmap — five milestones
+## Roadmap — only five milestones
 
-| # | Milestone | Status / next gate |
+| # | Milestone | Verified status |
 |---|---|---|
-| 01 | Nonblocking global loaders and color-matched voucher skeletons | **COMPLETE — owner browser PASS + 8 PHP tests PASS** |
-| 02 | Individual module/action permissions; modern Roles UI | **Code implemented, tests PASS; owner browser CR Edit visibility PASS.** Full cross-module Edit/Delete/Approve/Reject/Print acceptance not yet established; avoid claiming full completion. |
-| **03** | Voucher relationships, safe Create/Edit/Delete, FK and soft-delete / is_active inventory | **CURRENT — PARTIALLY IMPLEMENTED.** Owner confirmed 7/7 targeted tests PASS and MySQL FK/orphan audit PASS (7 FKs present, 1 missing; zero orphans, zero cross-project account links). Missing FK migration and broader CRUD acceptance pending. |
-| 04 | Cleared cheque/online edit/delete plus linked-voucher cascade | **NOT STARTED under new rules.** |
-| 05 | Configurable reversal ON/OFF and full application regressions | **NOT STARTED under new rules.** |
+| 01 | Nonblocking loading and voucher-tinted skeletons | **COMPLETE** — owner browser + PHP tests PASS |
+| 02 | Action-specific permissions, Roles page and backend enforcement | **PARTIAL ACCEPTANCE** — implemented, tests PASS, owner confirmed CR Edit visibly works; complete cross-module browser permission matrix not yet accepted |
+| **03** | FK/relationship integrity, safe Create/Edit/Delete, lifecycle columns | **ACTIVE — PARTIAL**. MySQL FK + Plot lifecycle migrations PASS, major CRUD workflows pending; current Plot feature-test repair committed, **latest local rerun pending** |
+| 04 | Cheque/Online edit/delete with cleared linked-voucher cascade | **NOT STARTED under new rules** |
+| 05 | Reversal settings ON/OFF and full regression | **NOT STARTED under new rules** |
 
-## Current Milestone 03: committed code
+## Milestone 03 — Verified work
 
-**1. Real schema / orphan audit, read-only.** `app/Console/Commands/AuditVoucherSchema.php` implements `php artisan finance:audit-voucher-schema` and `--json`. Lists **all tables with neither `deleted_at` nor `is_active`**, 8 exact foreign-key candidates, orphan counts and cross-project JV/CV detail/account mismatches in the **configured** database. It does **not** alter data. **Owner ran this on `bluenew_clean_final`: missing-column inventory is known from terminal output.** Technical/append-only event/history tables should not indiscriminately be assigned business delete semantics.
+**Owner-confirmed on `bluenew_clean_final`:**
+- `2026_11_18_150000_enforce_voucher_source_foreign_keys.php` migrated. Read-only `finance:audit-voucher-schema --require-fks` PASS: **8 of 8 FKs present**, zero orphan references, zero cross-project JV/CV detail/account links.
+- `2026_11_18_160000_add_plot_voucher_lifecycle_columns.php` migrated. `finance_plot_receipts` and `finance_plot_purchases` now have `is_active` and `deleted_at`. Existing source records preserved.
+- `VoucherRelationshipSafetyMilestoneTest`: **4 PASS / 57 assertions**, `LinkedVoucherLedgerRetirementTest`: **3 PASS / 10 assertions** (earlier owner run), `PlotVoucherLifecycleColumnsTest`: **3 PASS / 23 assertions** in latest run. PHP lint `PlotEntryWriter.php` PASS; view cache PASS.
+- JV/CV **legacy branch** transactional Edit/Delete: linked old ledger rows deactivated with exact project/source/detail/amount checks; previous details/header soft-deleted where appropriate; no business hard deletion. Draft Delete archives the project-scoped draft.
+- Plot History/Details hide inactive/deleted source roots. Old request-key replay now rejects an archived Plot Receipt/Purchase instead of returning it as active.
 
-**2. Exact foreign keys, staged not yet applied.** `database/migrations/2026_11_18_150000_enforce_voucher_source_foreign_keys.php` adds missing single-target FKs only after preflighting all orphan references and cross-project detail/account links; uses **RESTRICT** for physical DELETE/UPDATE (never cascade). Candidate relationships:
-- `journal_voucher_details.journal_voucher_id → journal_vouchers.id`
-- `commision_voucher_details.commision_voucher_id → commision_vouchers.id`
-- `journal_voucher_details.account_id → project_head_subheads.id`
-- `commision_voucher_details.account_id → project_head_subheads.id`
-- `ledgers.journal_voucher_detail_id → journal_voucher_details.id`
-- `ledgers.customer_ledger_id → customer_ledger.id`
-- `ledgers.project_head_subheads_id → project_head_subheads.id`
-- `ledger_source_attributions.ledger_id → ledgers.id`
+**Latest owner failure (important, do NOT claim feature suite PASS):**
+- `PlotEntryWriterTest` reported **23 FAILED / 0 assertions**, all due to the **same setup exception**: `Class "App\\Services\\Finance\\V2IsolatedConnectionGuard" not found`, triggered by `database/finance_legacy_migrations/2026_11_05_000300_create_finance_plot_receipt_purchase.php:11`. This is a leftover historical dependency after the user already merged old V2 architecture into the normal application. The failure happened in test fixture setup, before test assertions; it does **not** establish that all 23 Plot posting operations have functional bugs.
 
-`ledgers.type/type_id` is **polymorphic**; never add one misleading FK to it. Existing matching FKs are reused. **Owner migration PASS:** 8/8 target FKs are now present including `fk_attribution_ledger`; 0 orphan rows, 0 cross-project JV/CV detail links. Strict `--require-fks` command exited successfully. No rows are silently deleted or relinked.
+**This turn's GitHub fix, awaiting local rerun:**
+- Replaced the deleted `V2IsolatedConnectionGuard` with existing **`FinanceConnectionGuard`** in all **four** Plot storage fixture/recovery migrations: `database/finance_legacy_migrations/2026_11_05_000300_create_finance_plot_receipt_purchase.php` and three files under `database/local_finance_migrations/2026_11_14_*`. They now use the application's configured DB; no DB-name prefix or environment isolation check. Existing required-table, no-overwrite, partial-schema refusal, driver-specific MySQL FK recovery and RESTRICT FKs remain.
+- Replaced three old Plot feature-test assertions that specifically demanded **`V2_ISOLATED_CONNECTION_REQUIRED`** with assertions that verify already-installed storage is preserved regardless of environment and that MySQL-only FK repair still refuses SQLite.
+- Added `tests/Unit/Finance/PlotLegacyMigrationCompatibilityTest.php` to prevent reintroduction of the deleted guard dependency.
+- **No fresh local PHP/feature tests have been executed by the assistant.** Owner must report actual PASS/FAIL; if new failures surface after setup, fix the specific next error, not blanket-disable tests.
 
-**3. Legacy JV / CV safe linked lifecycle.** `app/Services/Finance/LinkedVoucherLedgerRetirement.php` validates parent project, locks header/details/linked ledgers, compares every active debit/credit/account leg as a multiset, rejects cross-project or contradictory rows, and deactivates **only the voucher's exact linked old ledgers** (`is_active=0`). Legacy JV/CV Delete controller transactions now soft-delete voucher header and details after retiring those ledger rows. Legacy JV/CV Edit transactions retire old ledger legs and soft-delete old details, then create correctly linked replacement details/active ledger legs under the **same voucher ID**. Previously posted ledger history remains as inactive rows instead of creating duplicate compensating entries in these **legacy branches**. CV AJAX Edit/Delete and JV delete messages updated.
+## Remaining Milestone 03 work — do not mark complete yet
 
-**4. Draft voucher delete.** `LedgerController::draftDestroy` now requires `finance draft delete`, scopes the draft to selected project, sets `is_active=0`, uses its existing `deleted_at` soft-delete within a transaction, and supports AJAX JSON. The old `direct-update` / queued `PendingUpdate` path is no longer used for this action.
+1. Rerun `PlotEntryWriterTest` on local; resolve any subsequent actual assertion failures. Verify Plot History/Details/Replay after root logical archive.
+2. Implement **real atomic Plot Receipt/Purchase Create/Edit/Delete** across sources, receipt allocations, purchased plot inventory, linked finance posting batches/lines and downstream balances. The current `PlotEntryLifecycleService::reverse` is a **separate reversal operation**, not a substitute for ordinary delete. No new V2 isolation, no hard deletes of business records and no silent reversal-only restriction.
+3. Review and implement remaining editable/soft-deletable **Bank Deposit/Withdrawal, Extra Charges, typed JV/CV, SV, CR/DR/CCR/CDR/BOR/BOP** workflows, including project-scoped linked relationships and independent action permissions. Retain immutable audit/history evidence.
+4. Classify other tables that lack both lifecycle columns, but add them **only where business operations need logical deletion**; audit/event/metadata tables should not be blanket altered.
+5. Run representative browser Create/Edit/Delete and financial balance/relationship checks; get owner PASS. Milestone 02's remaining permission browser acceptance also stays explicit.
 
-**5. Regression tests:** Previous Milestone 03 tests owner PASS (2026-11-18).
-- `tests/Unit/Finance/VoucherRelationshipSafetyMilestoneTest.php`: FK preflight, no-hard-delete contracts, JV/CV and Draft source logic.
-- `tests/Feature/Finance/LinkedVoucherLedgerRetirementTest.php`: isolated in-memory SQLite transaction tests for JV/CV success, cross-project rejection and amount mismatch rollback. Does not write to `bluenew_clean_final`.
-
-## Owner-confirmed Milestone 03 verification (2026-11-18)
-
-- `VoucherRelationshipSafetyMilestoneTest`: **4 PASS, 54 assertions**.
-- `LinkedVoucherLedgerRetirementTest`: **3 PASS, 10 assertions**.
-- `php artisan view:cache`: PASS. DB audit connected to `bluenew_clean_final`.
-- **7/8** exact source/detail/account relationships already have actual FKs, even though initial baseline DDL showed only index definitions. **Only `ledger_source_attributions.ledger_id → ledgers.id` missing**. **8/8 orphan counts = 0**, JV and CV cross-project detail links **0**. Do not introduce duplicate FK constraints; retain names already applied.
-- The audit's “neither `deleted_at` nor `is_active`” table list includes immutable events/audits such as `daily_voucher_approval_events`, `finance_online_lifecycle_events`, `finance_cheque_lifecycle_events`, `ledger_source_attributions` (mapping evidence), and infrastructure tables such as `migrations` and `failed_jobs`. **Do not blanket-add lifecycle flags to these.** Potentially mutable business roots warranting later per-module migrations and CRUD review include `finance_plot_receipts`, `finance_plot_purchases`, `finance_cheque_intakes`, `finance_online_intakes`, `finance_bank_transfer_sources`, `finance_extra_charge_sources`, `finance_extra_charge_payment_sources`, `charge_types`, `account_types`, and related operational stock/employee records. Some are part of future Milestone 04; creating an `is_active` column alone does not implement logical deletion and should not masquerade as completed CRUD.
-- The new `finance:audit-voucher-schema --require-fks` read-only gate returns nonzero if any targeted FK is missing, any orphan exists, or a cross-project JV/CV detail link exists. It is expected to FAIL **before** the missing FK migration and PASS **after** that migration (provided no schema changes introduce new issues). Full MySQL migration execution and this new gate have not yet been run by owner.
-
-## 2026-11-18 Owner FK gate PASS + next Plot lifecycle foundation
-
-**Owner ran** `php artisan migrate --path=database/migrations/2026_11_18_160000_add_plot_voucher_lifecycle_columns.php`: **DONE** on configured `bluenew_clean_final`. `php artisan finance:audit-voucher-schema --require-fks` **PASS**, showing **8/8 FK constraints**, **0 orphans**, **0 cross-project account links**. `VoucherRelationshipSafetyMilestoneTest` **4 PASS / 57 assertions**. This closes the **FK subset** of Milestone 03, not the whole milestone. **Do not rerun FK migration or seek another database isolation.** The large `db:show` output included unrelated MySQL schemas but the active Laravel database is unambiguously `bluenew_clean_final`.
-
-**New code delivered in this batch:** `2026_11_18_160000_add_plot_voucher_lifecycle_columns.php` adds idempotent `is_active` default true and `deleted_at` to the two mutable roots `finance_plot_receipts` and `finance_plot_purchases`. Existing source records stay active and are not deleted. `VoucherController` History and `PlotEntryWriter` Details use schema-aware active/not-deleted filters, preserving behavior until migration. This only establishes logical archive support; **it does not provide linked accounting Edit/Delete yet**. Posting batches, allocations and audit evidence remain untouched. Added `PlotVoucherLifecycleColumnsTest`.
-
-**Owner has now verified this migration and its initial tests PASS. New archived replay guards/tests still require local verification.**
+## Exact next commands for local Windows PowerShell
 
 ```powershell
 cd C:\laragon\www\blueMarketing
 git pull --ff-only origin upgrade/laravel-framework
 php artisan optimize:clear
-php artisan view:cache
-php artisan test --filter=PlotVoucherLifecycleColumnsTest
-php artisan test --filter=VoucherRelationshipSafetyMilestoneTest
-php artisan db:show
-# Only on your intended local DB, if previous tests pass:
-php artisan migrate --path=database/migrations/2026_11_18_160000_add_plot_voucher_lifecycle_columns.php
-php artisan finance:audit-voucher-schema --require-fks
-```
-
-Next coding: implement full project-scoped atomic Plot source Edit/Delete, associated posting and inventory consequences; then remaining bank/extra, typed JV/CV and CR/DR lifecycle flows. Avoid merely setting `is_active` without synchronizing posting/accounting claims. **Milestone 03 is not yet complete.**
-
-## 2026-11-18 — Owner PASS: Plot lifecycle migration; archived source regression repair
-
-**Owner local confirmation:**
-- `bluenew_clean_final` selected in `php artisan db:show`.
-- `php artisan migrate --path=database/migrations/2026_11_18_160000_add_plot_voucher_lifecycle_columns.php` **DONE** (339.92ms).
-- `PlotVoucherLifecycleColumnsTest` **2 PASS, 19 assertions**; `VoucherRelationshipSafetyMilestoneTest` **4 PASS, 57 assertions**; view cache PASS.
-- `finance:audit-voucher-schema --require-fks` **PASS**: all **8/8 FKs** present, **0 orphans**, **0 cross-project JV/CV detail links**.
-- `finance_plot_receipts` and `finance_plot_purchases` have dropped out of the “neither `deleted_at` nor `is_active`” report. Their lifecycle-column subset is therefore **complete on local MySQL**. Do **not** rerun these migrations on that database.
-
-**This same-turn code repair:** Direct code inspection found duplicate `use Illuminate\\Support\\Facades\\Schema;` imports in `app/Services/Finance/PlotEntryWriter.php`; removed the duplicate to avoid a PHP class-load failure that static unit tests missed. The plot writer's idempotent replay now rejects an already archived or inactive plot receipt/purchase source (`PLOT_SOURCE_ARCHIVED`) rather than returning it as active, with selected-project scoping. Added isolated feature tests to `PlotEntryWriterTest` covering both receipt and purchase archived detail/replay rejection while preserving original posting and child records, plus an import/replay regression in `PlotVoucherLifecycleColumnsTest`. **These new tests are committed but not locally executed.** The earlier 6/76 owner PASS does **not** cover these new changes.
-
-**Important distinction:** Direct source archives are not yet implemented as an end-user Edit/Delete workflow; the new tests simulate the archived root to validate consumers and idempotency. `PlotEntryLifecycleService` currently implements reversal; it must **not** be called an ordinary logical delete. Full transactional Plot Edit/Delete with finance postings and purchased-plot inventory remains open in Milestone 03. No forced reversal added in this batch.
-
-**Next local command:**
-```powershell
-cd C:\laragon\www\blueMarketing
-git pull --ff-only origin upgrade/laravel-framework
-php artisan optimize:clear
-php -l app/Services/Finance/PlotEntryWriter.php
-php artisan test --filter=PlotVoucherLifecycleColumnsTest
+php -l database/finance_legacy_migrations/2026_11_05_000300_create_finance_plot_receipt_purchase.php
+php -l database/local_finance_migrations/2026_11_14_000100_create_finance_plot_receipt_storage.php
+php -l database/local_finance_migrations/2026_11_14_000101_repair_finance_plot_receipt_claim_fk.php
+php -l database/local_finance_migrations/2026_11_14_000200_create_finance_plot_purchase_storage.php
+php artisan test --filter=PlotLegacyMigrationCompatibilityTest
 php artisan test --filter=PlotEntryWriterTest
+php artisan test --filter=PlotVoucherLifecycleColumnsTest
 php artisan finance:audit-voucher-schema --require-fks
 ```
 
-## What is still required before marking Milestone 03 COMPLETE
+**No database migration required for this latest fixture/test repair.** Do not run `migrate:fresh`, `db:wipe`, destructive rollbacks, or prior one-off Plot/FK migrations again. The feature test fixture uses in-memory SQLite; it should not mutate local MySQL.
 
-- **FK gate complete:** owner applied missing FK and strict schema integrity command PASS; no further FK action on this database. Continue verified business lifecycle migrations and linked-transactional CRUD implementation.
-- **Non-legacy and remaining modules:** Posted/typed JV/CV (some existing controllers still require reversal or draft-only corrections), SV and the other CR/DR/CCR/CDR/BOR/BOP/Bank/Plot/Extra Charges source-write paths require full relationship-safe create/edit/logical-delete review, implementation and tests. Do not silently weaken linked accounting or project ownership. Milestone 04's cheque/online cascades stay separately tracked.
-- **Acceptance:** latest code PHP lint/view cache + both tests + representative browser create/edit/delete and ledger balance checks have **NOT** been performed by assistant. Do not claim completed until those pass.
+## Requirements every next turn must respect
 
-## Next local verification (owner's Windows PowerShell)
-
-```powershell
-cd C:\laragon\www\blueMarketing
-git pull --ff-only origin upgrade/laravel-framework
-php artisan optimize:clear
-php artisan view:cache
-php artisan test --filter=VoucherRelationshipSafetyMilestoneTest
-php artisan test --filter=LinkedVoucherLedgerRetirementTest
-php artisan finance:audit-voucher-schema
-php artisan finance:audit-voucher-schema --json | Set-Content -Path .\storage\app\voucher-schema-audit.json -Encoding UTF8
-# Owner audit verified zero orphans and cross-project issues. After reconfirming local DB:
-php artisan db:show
-php artisan migrate --path=database/migrations/2026_11_18_150000_enforce_voucher_source_foreign_keys.php
-php artisan finance:audit-voucher-schema --require-fks
-```
-
-The audit command is **read-only**. **FK migration already ran successfully on the verified local database.** Do not apply to live/staging without separate authorization. The remaining business lifecycle columns and CRUD flows are pending. Browser testing of any updated JV/CV must use disposable data in local database, not actual production vouchers.
-
-## Nonnegotiable instructions for every next batch/chat
-
-1. Read this file and root `AGENTS.md`; inspect current code, **implement real functionality and regression tests**, update this exact README in the **same turn**, and give a pull command. Do not return after merely updating documents.
-2. Per-action authorization is server-enforced; independently grant each voucher's View/Create/Edit/Delete/Approve/Reject/Reverse/Print and specialized actions. No generic permission should silently override a specific denied action.
-3. First-party UI DOM/AJAX uses **jQuery only**. Follow shared CR/DR compact cards, tables, filters, Tom Select, colored skeletons, nonblocking loading, modern modal/toast and floating row-action styles.
-4. Business/finance records: **no hard deletes**. Prefer `deleted_at` where present; otherwise `is_active=0`; transactional updates only to proven source-linked rows. Validate selected-project ownership and exact source/detail/ledger references. Do not bind polymorphic `type_id` to a single FK. Avoid introducing database-name isolation.
-5. Report **separately** code committed, local tests, actual DB audit/migration and owner browser PASS. Full Milestone 03 is not yet accepted.
+- Implement **code and tests first**, then update this exact handoff in the same response; do not return with only progress text or another status document.
+- Server-side granular voucher permissions for View/Create/Edit/Delete/Approve/Reject/Reverse/Print etc. No old generic grant silently overriding an independently denied action.
+- First-party DOM/AJAX uses jQuery only; shared CR/DR design system, colored skeleton loading, compact table cards/filters, Tom Select, modal/toast errors, AJAX CRUD, no whole-page loader/reload.
+- Any configured database should work via `.env` without special database-name isolation, custom V2 modules, or renamed copies of finance.
+- Financial mutations must be transactional, source-linked, project-scoped, and never hard-delete business rows. Maintain account/ledger integrity and preserve immutable evidence.
+- Separate code-committed, user terminal PASS, browser PASS, and pending acceptance in the progress report.
