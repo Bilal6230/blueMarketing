@@ -236,7 +236,9 @@ final class PlotEntryWriter
             ->join('bookings as b','b.id','=','a.booking_id')->join('leads as customer','customer.id','=','b.customer_id')
             ->where('a.receipt_id',$id)->where('p.project_id',$project)->where('b.project_id',$project)
             ->where('b.customer_id',(int) $source->customer_id)->where('customer.project_id',$project)
-            ->whereColumn('b.plot_id','a.plot_id')->orderBy('a.id')
+            ->whereColumn('b.plot_id','a.plot_id')
+            ->when(Schema::hasColumn('finance_plot_receipt_allocations','is_active'),fn($q)=>$q->where('a.is_active',1))
+            ->orderBy('a.id')
             ->get(['a.plot_id','p.name as plot_name','a.booking_id','a.amount','customer.first_name','customer.last_name','customer.business']);
         return ['receipt'=>$source,'allocations'=>$allocations];
     }
@@ -248,6 +250,8 @@ final class PlotEntryWriter
             ->when(Schema::hasColumn('finance_plot_purchases','is_active'),fn($q)=>$q->where('is_active',1))
             ->when(Schema::hasColumn('finance_plot_purchases','deleted_at'),fn($q)=>$q->whereNull('deleted_at'))->first();
         if(!$source) throw new \DomainException('V2_PLOT_PURCHASE_NOT_FOUND');
-        return ['purchase'=>$source,'items'=>DB::table('finance_plot_purchase_items')->where('purchase_id',$id)->orderBy('id')->get()];
+        return ['purchase'=>$source,'items'=>DB::table('finance_plot_purchase_items')->where('purchase_id',$id)
+            ->when(Schema::hasColumn('finance_plot_purchase_items','is_active'),fn($q)=>$q->where('is_active',1))
+            ->orderBy('id')->get()];
     }
 }
