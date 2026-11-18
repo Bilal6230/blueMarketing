@@ -11,13 +11,25 @@ final class FinanceActionPermission
 {
     public const MODULES = [
         'cr', 'dr', 'cp', 'ccr', 'cdr', 'bor', 'bop', 'jv', 'sv', 'cv',
-        'bank-deposit', 'bank-withdrawal', 'plot-receipt', 'plot-purchase',
+        'bank-deposit', 'bank-withdrawal', 'plot-receipt', 'plot-purchase', 'directory', 'ppr', 'ecp',
         'draft', 'extra-charge', 'cheque', 'online',
     ];
     public const ACTIONS = [
         'view', 'create', 'edit', 'delete', 'approve', 'reject', 'reverse', 'print',
         'history', 'details', 'confirm', 'clear', 'return', 'withdraw', 'release', 'resubmit',
     ];
+
+    public static function moduleForSeries(string $type): ?string
+    {
+        $type = strtolower(trim($type));
+        $alias = [
+            'pr'=>'plot-receipt', 'pp'=>'plot-purchase', 'bd'=>'bank-deposit',
+            'bw'=>'bank-withdrawal', 'br'=>'bor', 'bo'=>'bop',
+            'ec'=>'extra-charge',
+        ];
+        $module = $alias[$type] ?? $type;
+        return in_array($module, self::MODULES, true) ? $module : null;
+    }
 
     public static function name(string $module, string $action): string
     {
@@ -112,14 +124,14 @@ final class FinanceActionPermission
             return [str_contains($name,'plot-receipt')?'plot-receipt':'plot-purchase',$plot[$name]];
         }
 
-        $series = strtoupper((string)($route->parameter('series') ?: $request->input('series', $request->query('series',''))));
+        $series = strtoupper((string)($route->parameter('series') ?: $request->input('type', $request->input('series', $request->query('series','')))));
         $daily = [
             'finance.daily-vouchers.index'=>'view',
             'finance.daily-vouchers.data'=>'view',
             'finance.daily-vouchers.source.print'=>'print',
         ];
-        if (isset($daily[$name]) && in_array(strtolower($series), self::MODULES, true)) {
-            return [strtolower($series),$daily[$name]];
+        if (isset($daily[$name])) {
+            return [self::moduleForSeries($series) ?? 'directory', $daily[$name]];
         }
         return null;
     }
