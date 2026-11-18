@@ -421,7 +421,9 @@
   $.ajax({url:url,type:editReceiptId?'PATCH':'POST',contentType:'application/json',dataType:'json',
    headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')},
    data:JSON.stringify(payload)}).done(function(res){
+   var wasEdit=!!editReceiptId;
    pendingKey=null;editReceiptId=null;editAllocations=[];$('#plotReceiptCreateModal').modal('hide');$('#prNumber,#prNarration').val('');
+   notify('success',res.message||(wasEdit?'Plot Receipt updated.':'Plot Receipt posted.'));
    $('#prCustomer').val('');$('#prSearch').val('');drawBookings();loadHistory();
   }).fail(function(xhr){
    var error=xhr.responseJSON||{};
