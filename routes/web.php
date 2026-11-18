@@ -576,7 +576,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         Route::post('/get-plots-list', 'getCustomerPlots')->middleware(['permission:read plot'])->name('get-plots-list');
         Route::post('/get-plot-customer', 'getPlotCustomer')->middleware(['permission:read plot'])->name('get-plot-customer');
 
-        Route::post('booking/plot/voucher/', 'deposit')->middleware(['permission:create plot'])->name('booking.customer.deposit');
+        Route::post('booking/plot/voucher/', 'deposit')->middleware(['booking.deposit.action'])->name('booking.customer.deposit');
         Route::delete('booking/plot/destroy', 'destroy')->middleware(['permission:delete slip'])->name('booking.customer.destroy');
         Route::post('booking/plot/show', 'fatch_voucher')->middleware(['permission:can approve'])->name('booking.voucher.show');
         Route::post('booking/plot/approve', 'approve')->middleware(['permission:can approve'])->name('booking.customer.approve');
