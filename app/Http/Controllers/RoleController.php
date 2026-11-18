@@ -51,6 +51,11 @@ class RoleController extends Controller
                 'category'=>RolePermissionCatalog::category((string)$p->name),
             ])->values()->all(),
             'legacyCount'=>$permissions->filter(fn($p)=>RolePermissionCatalog::isLegacyVoucher((string)$p->name))->count(),
+            'financeDefinitions'=>collect(\App\Support\Finance\FinanceActionPermission::MODULES)->map(fn($module)=>[
+                'module'=>$module,
+                'label'=>RolePermissionCatalog::moduleLabel($module),
+                'actions'=>RolePermissionCatalog::moduleActions($module),
+            ])->all(),
         ]);
     }
 
