@@ -1331,6 +1331,7 @@ class VoucherController extends Controller
             'purchase_number' => ['required', 'string', 'max:64'], 'date' => ['required', 'date_format:Y-m-d'],
             'seller_account_id' => ['required', 'integer', 'min:1'], 'narration' => ['required', 'string', 'max:2000'],
             'items' => ['required', 'array', 'min:1', 'max:100'],
+            'items.*.legacy_plot_id'=>['nullable','integer','min:1'],
             'items.*.plot_code' => ['required', 'string', 'max:64'], 'items.*.description' => ['required', 'string', 'max:255'],
             'items.*.area' => ['required', 'regex:/^(0|[1-9][0-9]{0,13})(?:\\.[0-9]{1,4})?$/D'],
             'items.*.unit' => ['required', 'string', 'max:24'], 'items.*.type' => ['required', 'integer', \Illuminate\Validation\Rule::in([1, 2])],
@@ -1491,7 +1492,8 @@ class VoucherController extends Controller
         return response()->json(['data' => $rows->map(fn ($row) => [
             'id' => (int) $row->id, 'number' => (string) $row->purchase_number, 'date' => substr((string) $row->purchase_date, 0, 10),
             'seller' => (string) ($row->seller ?? 'Seller account'), 'amount' => (string) $row->amount, 'narration' => (string) $row->narration,
-            'items' => (int) DB::table('finance_plot_purchase_items')->where('purchase_id', $row->id)->count(),
+            'items' => (int) DB::table('finance_plot_purchase_items')->where('purchase_id', $row->id)
+                ->when(Schema::hasColumn('finance_plot_purchase_items','is_active'),fn($q)=>$q->where('is_active',1))->count(),
             'reversed' => $row->reversal_batch_id !== null,
         ])]);
     }
@@ -1510,6 +1512,7 @@ class VoucherController extends Controller
         $details['items'] = DB::table('finance_plot_purchase_items as item')
             ->join('plots as plot','plot.id','=','item.legacy_plot_id')
             ->where('item.purchase_id',$purchaseId)->where('plot.project_id',$projectId)
+            ->when(Schema::hasColumn('finance_plot_purchase_items','is_active'),fn($q)=>$q->where('item.is_active',1))
             ->orderBy('item.id')->get($plotFields);
         $details['purchase']->seller = DB::table('project_head_subheads as account')->leftJoin('subhead_accountings as sub', 'sub.id', '=', 'account.subhead_accounting_id')
             ->where('account.project_id', $projectId)->where('account.id', $details['purchase']->seller_account_id)->value('sub.name');
