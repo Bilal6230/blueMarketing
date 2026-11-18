@@ -873,6 +873,56 @@ class PlotEntryWriterTest extends TestCase
         $this->assertDatabaseCount('finance_posting_batches',1);
     }
 
+    public function test_purchase_reordering_preserves_plot_and_posting_ids_across_repeated_edits(): void
+    {
+        $this->installFullPlotEditHistory();
+        $created=(new PlotEntryWriter())->purchase(1,'PLOT-PURCHASE-REORDER-EDIT-001',[
+            'date'=>'2026-11-05','purchase_number'=>'PP-ORDER-1','seller_account_id'=>102,
+            'narration'=>'Initial','items'=>[
+                ['plot_code'=>'LAND-ORDER-A','description'=>'A','area'=>'1',
+                    'unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
+                    'unit_rate'=>'100','inventory_account_id'=>104],
+                ['plot_code'=>'LAND-ORDER-B','description'=>'B','area'=>'1',
+                    'unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
+                    'unit_rate'=>'200','inventory_account_id'=>104],
+            ],
+        ],7);
+        $source=$created['source_id'];
+        $batch=$created['posting_batch_id'];
+        $beforeItems=DB::table('finance_plot_purchase_items')->where('purchase_id',$source)
+            ->orderBy('id')->get();
+        $beforeLines=DB::table('finance_posting_lines')->where('posting_batch_id',$batch)
+            ->orderBy('id')->get();
+        $form=[
+            'date'=>'2026-11-06','purchase_number'=>'PP-ORDER-1','seller_account_id'=>102,
+            'narration'=>'Reordered','items'=>[
+                ['legacy_plot_id'=>$beforeItems[1]->legacy_plot_id,
+                    'plot_code'=>'LAND-ORDER-B','description'=>'B revised','area'=>'1',
+                    'unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
+                    'unit_rate'=>'225','inventory_account_id'=>104],
+                ['legacy_plot_id'=>$beforeItems[0]->legacy_plot_id,
+                    'plot_code'=>'LAND-ORDER-A','description'=>'A revised','area'=>'1',
+                    'unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
+                    'unit_rate'=>'125','inventory_account_id'=>104],
+            ],
+        ];
+        $editor=new \App\Services\Finance\PlotVoucherEditor();
+        $editor->purchase(1,$source,$form,7);
+        $editor->purchase(1,$source,$form,7);
+        $afterLines=DB::table('finance_posting_lines')->where('posting_batch_id',$batch)
+            ->orderBy('id')->get();
+        $this->assertSame($beforeLines->pluck('id')->all(),$afterLines->pluck('id')->all());
+        $this->assertSame(125.0,(float)$afterLines[0]->debit);
+        $this->assertSame(225.0,(float)$afterLines[1]->debit);
+        $this->assertSame(350.0,(float)$afterLines[2]->credit);
+        $this->assertSame($beforeItems->pluck('id')->all(),
+            DB::table('finance_plot_purchase_items')->where('purchase_id',$source)
+                ->orderBy('id')->pluck('id')->all());
+        $this->assertSame(2,DB::table('plots')
+            ->whereIn('id',$beforeItems->pluck('legacy_plot_id')->all())->count());
+        $this->assertDatabaseCount('finance_posting_batches',1);
+    }
+
     public function test_full_receipt_edit_rejects_duplicate_booking_id_without_financial_writes(): void
     {
         $this->installFullPlotEditHistory();
