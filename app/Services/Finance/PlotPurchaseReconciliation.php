@@ -3,6 +3,7 @@
 namespace App\Services\Finance;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /** Read-only isolated-project PP posting integrity audit; never fixes entries. */
 final class PlotPurchaseReconciliation
@@ -42,12 +43,16 @@ final class PlotPurchaseReconciliation
             $items = DB::table('finance_plot_purchase_items as item')
                 ->leftJoin('project_head_subheads as account', 'account.id', '=', 'item.inventory_account_id')
                 ->leftJoin('plots as plot', 'plot.id', '=', 'item.legacy_plot_id')
-                ->where('item.purchase_id', $purchase->id)->orderBy('item.id')
+                ->where('item.purchase_id', $purchase->id)
+                ->when(Schema::hasColumn('finance_plot_purchase_items','is_active'),fn($q)=>$q->where('item.is_active',1))
+                ->orderBy('item.id')
                 ->get(['item.id','item.amount','item.inventory_account_id','item.legacy_plot_id',
                     'account.project_id as inventory_project_id','plot.project_id as plot_project_id']);
             $lines = $batchId ? DB::table('finance_posting_lines as line')
                 ->leftJoin('project_head_subheads as account', 'account.id', '=', 'line.project_head_subhead_id')
-                ->where('line.posting_batch_id', $batchId)->orderBy('line.id')
+                ->where('line.posting_batch_id', $batchId)
+                ->when(Schema::hasColumn('finance_posting_lines','is_active'),fn($q)=>$q->where('line.is_active',1))
+                ->orderBy('line.id')
                 ->get(['line.project_head_subhead_id','line.debit','line.credit',
                     'account.project_id as account_project_id']) : collect();
             $debit = 0; $credit = 0; $sellerCredits = 0;
