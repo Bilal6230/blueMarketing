@@ -77,7 +77,7 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
   <div class="online-heading bm-page-heading d-flex justify-content-between align-items-center flex-wrap">
    <div><h4 class="mb-0">Online Transaction Management</h4><small class="text-muted">Selected project records · Pending Source Register</small></div>
    <x-finance.voucher-directory-actions>
-    @can('finance online confirm')<button class="btn btn-success btn-sm" type="button" id="online-add"><i class="fas fa-plus mr-1"></i> Add Transaction</button>@endcan
+    @can('finance online create')<button class="btn btn-success btn-sm" type="button" id="online-add"><i class="fas fa-plus mr-1"></i> Add Transaction</button>@endcan
    </x-finance.voucher-directory-actions>
   </div>
   <div class="online-filter bm-card bm-filter mt-2">
@@ -359,11 +359,11 @@ $(function(){
   $('<td>').addClass('text-right').text(Number(x.amount).toLocaleString('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2})).appendTo($r);
   $('<td>').append($('<span>').addClass('online-badge online-'+x.status).text(x.status||'pending')).appendTo($r);
   var $proof=$('<td>');
-  if(x.has_proof && x.proof_url)$('<a>').attr({href:x.proof_url,target:'_blank',rel:'noopener'}).text('Download').addClass('btn btn-outline-primary btn-sm').appendTo($proof);
+  if(@json(auth()->user()->can('finance online print')) && x.has_proof && x.proof_url)$('<a>').attr({href:x.proof_url,target:'_blank',rel:'noopener'}).text('Download').addClass('btn btn-outline-primary btn-sm').appendTo($proof);
   else $proof.addClass('text-muted').text('—');
   $proof.appendTo($r);
   var $actions=$('<td>').addClass('blue-actions-cell');
-  @can('finance online create')
+  @can('finance online confirm')
   if(x.status==='pending' && @json(auth()->user()->can('finance online confirm'))){
    $('<button type="button">').addClass('btn btn-outline-success btn-sm mr-1 online-confirm-button')
     .attr({'data-id':x.id,'data-reference':x.reference,'data-amount':x.amount,
@@ -531,7 +531,7 @@ $(function(){
     $body.empty().append($('<tr>').append($('<td colspan="6" class="text-danger">').text(msg)));
    });
  });
- @can('finance online create')
+ @can('finance online confirm')
  $rows.on('click','.online-confirm-button',function(){
   var $button=$(this);
   confirmRecord={id:String($button.attr('data-id')),type:$button.attr('data-type'),
