@@ -4,6 +4,7 @@ namespace App\Services\Finance;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Schema;
 
 /** Isolated, append-only plot receipts and plot purchase posting. */
 final class PlotEntryWriter
@@ -211,7 +212,9 @@ final class PlotEntryWriter
     public function receipt(int $project,int $id): array
     {
         FinanceConnectionGuard::assertAllowed();
-        $source=DB::table('finance_plot_receipts')->where('project_id',$project)->where('id',$id)->first();
+        $source=DB::table('finance_plot_receipts')->where('project_id',$project)->where('id',$id)
+            ->when(Schema::hasColumn('finance_plot_receipts','is_active'),fn($q)=>$q->where('is_active',1))
+            ->when(Schema::hasColumn('finance_plot_receipts','deleted_at'),fn($q)=>$q->whereNull('deleted_at'))->first();
         if(!$source) throw new \DomainException('V2_PLOT_RECEIPT_NOT_FOUND');
         $allocations=DB::table('finance_plot_receipt_allocations as a')->join('plots as p','p.id','=','a.plot_id')
             ->join('bookings as b','b.id','=','a.booking_id')->join('leads as customer','customer.id','=','b.customer_id')
@@ -225,7 +228,9 @@ final class PlotEntryWriter
     public function purchaseDetails(int $project,int $id): array
     {
         FinanceConnectionGuard::assertAllowed();
-        $source=DB::table('finance_plot_purchases')->where('project_id',$project)->where('id',$id)->first();
+        $source=DB::table('finance_plot_purchases')->where('project_id',$project)->where('id',$id)
+            ->when(Schema::hasColumn('finance_plot_purchases','is_active'),fn($q)=>$q->where('is_active',1))
+            ->when(Schema::hasColumn('finance_plot_purchases','deleted_at'),fn($q)=>$q->whereNull('deleted_at'))->first();
         if(!$source) throw new \DomainException('V2_PLOT_PURCHASE_NOT_FOUND');
         return ['purchase'=>$source,'items'=>DB::table('finance_plot_purchase_items')->where('purchase_id',$id)->orderBy('id')->get()];
     }
