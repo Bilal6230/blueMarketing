@@ -837,6 +837,69 @@ class PlotEntryWriterTest extends TestCase
         $this->assertDatabaseCount('daily_voucher_edit_snapshots',1);
     }
 
+    public function test_full_receipt_edit_refuses_corrupt_allocation_posting_relationship(): void
+    {
+        $this->installFullPlotEditHistory();
+        $created=(new PlotEntryWriter())->receive(1,5,'PLOT-RECEIPT-REL-GUARD-001',[
+            'date'=>'2026-11-05','receipt_number'=>'PR-REL-GUARD','amount'=>'70.00',
+            'cash_account_id'=>101,'narration'=>'Original',
+            'allocations'=>[['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'70.00']],
+        ],7);
+        DB::table('finance_posting_lines')->where('posting_batch_id',$created['posting_batch_id'])
+            ->where('credit','>',0)->update(['project_head_subhead_id'=>103]);
+        try {
+            (new \App\Services\Finance\PlotVoucherEditor())->receipt(1,$created['source_id'],[
+                'customer_id'=>5,'receipt_number'=>'PR-REL-MUTATED','date'=>'2026-11-06',
+                'amount'=>'70.00','cash_account_id'=>101,'narration'=>'Should reject',
+                'allocations'=>[['booking_id'=>31,'plot_id'=>11,
+                    'receivable_account_id'=>102,'amount'=>'70.00']],
+            ],7);
+            $this->fail('Corrupt linked credit account must refuse edits.');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString('relationship mismatch',$e->getMessage());
+        }
+        $this->assertSame('PR-REL-GUARD',DB::table('finance_plot_receipts')
+            ->where('id',$created['source_id'])->value('receipt_number'));
+        $this->assertSame(0,DB::table('daily_voucher_edit_snapshots')
+            ->where('status','plot_edit')->count());
+        $this->assertDatabaseCount('finance_posting_batches',1);
+    }
+
+    public function test_full_purchase_edit_refuses_corrupt_inventory_posting_relationship(): void
+    {
+        $this->installFullPlotEditHistory();
+        $created=(new PlotEntryWriter())->purchase(1,'PLOT-PURCHASE-REL-GUARD-001',[
+            'date'=>'2026-11-05','purchase_number'=>'PP-REL-GUARD','seller_account_id'=>102,
+            'narration'=>'Original','items'=>[[
+                'plot_code'=>'LAND-REL-GUARD','description'=>'Original','area'=>'1',
+                'unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
+                'unit_rate'=>'100','inventory_account_id'=>104,
+            ]],
+        ],7);
+        $plotId=(int)DB::table('finance_plot_purchase_items')
+            ->where('purchase_id',$created['source_id'])->value('legacy_plot_id');
+        DB::table('finance_posting_lines')->where('posting_batch_id',$created['posting_batch_id'])
+            ->where('debit','>',0)->update(['debit'=>'101.00']);
+        try {
+            (new \App\Services\Finance\PlotVoucherEditor())->purchase(1,$created['source_id'],[
+                'date'=>'2026-11-06','purchase_number'=>'PP-REL-MUTATED','seller_account_id'=>102,
+                'narration'=>'Should reject','items'=>[[
+                    'legacy_plot_id'=>$plotId,'plot_code'=>'LAND-REL-GUARD',
+                    'description'=>'Invalid','area'=>'1','unit'=>'Kanal','type'=>1,
+                    'road_id'=>1,'facing_id'=>1,'unit_rate'=>'150','inventory_account_id'=>104,
+                ]],
+            ],7);
+            $this->fail('Corrupt inventory posting leg must refuse edits.');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString('relationship mismatch',$e->getMessage());
+        }
+        $this->assertSame('PP-REL-GUARD',DB::table('finance_plot_purchases')
+            ->where('id',$created['source_id'])->value('purchase_number'));
+        $this->assertSame(0,DB::table('daily_voucher_edit_snapshots')
+            ->where('status','plot_edit')->count());
+        $this->assertDatabaseCount('finance_posting_batches',1);
+    }
+
     public function test_receipt_reordering_keeps_booking_posting_line_ids_and_does_not_duplicate_rows(): void
     {
         $this->installFullPlotEditHistory();
