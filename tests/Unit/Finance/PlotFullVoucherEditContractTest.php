@@ -34,6 +34,27 @@ final class PlotFullVoucherEditContractTest extends TestCase
         }
     }
 
+    public function test_plot_line_lifecycle_adds_columns_not_tables_and_reconciliation_ignores_archived_rows(): void
+    {
+        $root=dirname(__DIR__,3);
+        $migration=file_get_contents($root.'/database/migrations/2026_11_18_190000_add_plot_detail_lifecycle_columns.php');
+        $editor=file_get_contents($root.'/app/Services/Finance/PlotVoucherEditor.php');
+        $reversal=file_get_contents($root.'/app/Services/Finance/PostingReversalWriter.php');
+        $audit=file_get_contents($root.'/app/Services/Finance/PlotPurchaseReconciliation.php');
+        self::assertIsString($migration);
+        self::assertStringNotContainsString('Schema::create(', $migration);
+        foreach(['finance_plot_receipt_allocations','finance_plot_purchase_items','finance_posting_lines'] as $table) {
+            self::assertStringContainsString("'".$table."'",$migration);
+        }
+        self::assertStringContainsString("->boolean('is_active')->default(true)",$migration);
+        self::assertStringContainsString("->update(['debit'=>'0.00','credit'=>'0.00','is_active'=>0",$editor);
+        self::assertStringContainsString("'is_active'=>0",$editor);
+        self::assertStringContainsString("'is_active'=>1",$editor);
+        self::assertStringContainsString("where('is_active',1)",$reversal);
+        self::assertStringContainsString("item.is_active",$audit);
+        self::assertStringContainsString("line.is_active",$audit);
+    }
+
     public function test_plot_voucher_delete_is_independent_of_reverse_and_keeps_original_source_evidence(): void
     {
         $root=dirname(__DIR__,3);
