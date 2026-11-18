@@ -15,6 +15,26 @@
 | 04 | Edit/delete cleared cheque and online sources with correct linked-voucher/ledger cascade | **PENDING** after Milestone 03. |
 | 05 | Reversal ON/OFF setting for posted/approved vouchers and full regression | **PENDING** after Milestone 04. |
 
+## 2026-11-18 Local regression repair after owner's first terminal run
+
+- Owner confirmed `bluenew_clean_final` in `php artisan db:show`; the 2026-11-18 granular finance permission migration **ran successfully**. DO NOT rerun or roll it back just to test these code repairs.
+- The first local permission test attempt found **2 failures** in `FinanceActionPermissionMatrixTest` and **1 failure** in `VoucherAuthenticatedPermissionIntegrationTest`.
+- Fixed the unit test's unbound synthetic Laravel route using `Route::bind($request)`, so the daily directory type parameter check can execute.
+- Fixed the actual Plot Purchase create button Blade defect: the stray `@endcan` had no opening `@can`. The button is now enclosed by `@can('finance plot-purchase create')`.
+- Updated the authenticated feature regression to differentiate the actual form validation response from the former blanket `409` assertion: invalid AJAX form payloads should receive validation `422`, and delete without a selected project should receive `403`. This does not weaken unauthorized action denial tests.
+- GitHub source reinspection verified the Plot Purchase guard exists and `@can`/`@endcan` counts are balanced; **local tests and browser QA have not yet been rerun**. Do not mark Milestone 02 accepted on source review alone.
+
+### Rerun after repairs (local only)
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php artisan test --filter=FinanceActionPermissionMatrixTest
+php artisan test --filter=VoucherAuthenticatedPermissionIntegrationTest
+```
+After PASS, verify Role Create/Edit and granular finance menus using the same project with a separate test staff account. Start with the CR series: View-only role shows list but cannot Create/Edit/Delete/Reverse; add Create and verify only Create becomes available; grant Edit independently; grant Delete independently; test Approve, Reject and Print separately. Repeat for CCR/CDR/DR/BOR/BOP/CP, CV/JV/SV, Cheque/Online, Plot Receipt/Purchase, Bank Deposit/Withdrawal, Draft and Extra Charge. Direct disallowed endpoints must respond 403. No edits to real production data. Record any failures against Milestone 02.
+
 ## Milestone 02 — What is committed
 
 - Central action matrix: `app/Support/Finance/FinanceActionPermission.php`. Voucher/module names: CR, DR, CP, CCR, CDR, BOR, BOP, JV, SV, CV, Bank Deposit/Withdrawal, Plot Receipt/Purchase, Draft Voucher, Extra Charges, Cheque Management, Online Management and applicable directory/source types.
