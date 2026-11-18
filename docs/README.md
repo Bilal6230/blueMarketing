@@ -537,3 +537,35 @@ php artisan finance:audit-posting-balances
 **Focused browser check required** because the unified Daily Voucher Directory listing/filter UI is affected: open that page in a disposable local project with an archived Plot Receipt/Purchase and an active edited voucher containing retired finance legs; confirm logically archived voucher is absent in active register, account filters ignore retired legs and voucher detail lines only show active posting legs. Previous Plot create/edit/delete browser tests need not be repeated.
 
 **Reality check:** Milestone 03 is still partial across other voucher CRUD families (JV/CV, cash, stock, cheque/bank, extra charges), and Milestones 04 and 05 are not accepted. A clean balance audit does not prove those Create/Edit/Delete paths. Do not claim the entire remaining batch has been completed.
+
+
+## 2026-11-18 — Owner verified Daily Voucher directory contract; JV/CV related-update hardening batch
+
+**Owner verification carried forward:** new `DailyVoucherDirectoryPostingLifecycleContractTest` **1 PASS / 12 assertions**, Daily Voucher Directory PHP lint PASS. `php artisan finance:audit-posting-balances` checked **all 6 projects, zero imbalance/invalid active posted batches**. Prior Plot tests **48 PASS / 379 assertions** and all three Plot browser cases PASS. The new contract PASS does not certify the changed directory browser UI; its focused browser gate remains open.
+
+**New code committed this batch:**
+- Legacy JV and CV Update now call `VoucherUnchangedUpdateDetector` after locking current voucher/its details, before retiring related ledger rows. Identical repeated Save preserves same existing header, detail and active ledger IDs instead of creating another generation of financial/history rows. A changed date, reference, narration, account, side, amount or line order still invokes the existing audited transactional correction path. Validator also checks stored header debit and credit totals if available.
+- Normal Commission draft `updateDraft` now applies the same no-op check before archiving active draft details and re-inserting replacements, preventing unnecessary duplicate history on identical repeated Edit. No-op keeps existing detail identities; material edits still archive/replace as before.
+- Added nullable `ledgers.commision_voucher_detail_id` with a MySQL RESTRICT FK to `commision_voucher_details` via additive migration `2026_11_18_220000_link_commission_details_to_ledger.php`. Existing ledger rows and tables remain intact; old CV ledger rows with a NULL detail link are supported through existing exact account/amount matching. No V2 database isolation or database hard-coding. The down migration intentionally preserves the accounting link rather than dropping history.
+- Legacy Commission Update now persists each new ledger leg's specific newly created commission detail ID (when column exists), matching JV detail linkage. `LinkedVoucherLedgerRetirement` validates the attached CV detail belongs to that voucher, is unique across active legs, and has the same account and debit/credit values, before any retirement. Legacy NULL details continue to validate through exact account/amount multiset.
+- Added `VoucherUnchangedUpdateDetectorTest`, `CommissionVoucherDetailRelationContractTest`, and extended `LinkedVoucherLedgerRetirementTest` to cover exact CV detail IDs, swapped/duplicate detail links and legacy NULL fallback. New tests and migration have NOT been executed locally by GitHub connector. Do not claim this batch PASS before the owner runs it.
+
+**New migration needed once on local DB before browser verification:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php -l app/Services/Finance/VoucherUnchangedUpdateDetector.php
+php -l app/Services/Finance/LinkedVoucherLedgerRetirement.php
+php -l app/Services/Finance/CommissionDraftWorkflow.php
+php -l app/Http/Controllers/JournalVoucherController.php
+php -l app/Http/Controllers/CommissionVoucherController.php
+php -l database/migrations/2026_11_18_220000_link_commission_details_to_ledger.php
+php artisan test --filter=VoucherUnchangedUpdateDetectorTest
+php artisan test --filter=CommissionVoucherDetailRelationContractTest
+php artisan test --filter=LinkedVoucherLedgerRetirementTest
+php artisan migrate --path=database/migrations/2026_11_18_220000_link_commission_details_to_ledger.php
+php artisan finance:audit-posting-balances
+```
+
+**Acceptance:** after local tests and migration, test normal JV/CV and Commission draft Edit with identical Save twice, then actual value change, confirming no extra details or active ledgers on no-op; original IDs preserved. Milestone 03 overall remains PARTIAL: additional cash/bank/stock/extra-charge lifecycle and cross-module permission/browser acceptance are not yet complete. Milestones 04 and 05 pending. Do not re-run old Plot browser tests.
