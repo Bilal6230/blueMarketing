@@ -68,6 +68,7 @@ class Kernel extends HttpKernel
         'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
         'check.user.status' => \App\Http\Middleware\CheckUserStatus::class,
         'form.token.auth' => \App\Http\Middleware\FormTokenAuth::class,
+        'finance.action' => \App\Http\Middleware\AuthorizeFinanceAction::class,
 
     ];
 }
