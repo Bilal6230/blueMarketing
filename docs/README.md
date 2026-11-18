@@ -338,3 +338,22 @@ php artisan finance:audit-voucher-schema --require-fks
 **Owner reports Plot Receipt and Plot Purchase browser tests PASS.** Treat their full Edit/Delete browser acceptance as owner-confirmed. Do not request the same browser gate again without a new change that affects it. This does not independently establish that all shared financial reports were regression-tested or that remaining voucher families have complete CRUD acceptance.
 
 **Next engineering priorities:** (1) inspect readers and reporters of shared `finance_posting_lines` and validate inactive-row semantics and balances across unrelated voucher families; (2) proceed with Milestone 03 remaining voucher Create/Edit/Delete workflows and project-scoped account integrity; (3) keep full application AJAX, common modal/filter/dropdown/skeleton/toast patterns consistent; (4) update this single README after each actual implementation batch. **Milestone 03 remains PARTIAL overall.**
+
+
+## 2026-11-18 — Milestone 03 continuation: Plot Receipt duplicate booking guard
+
+**Owner acceptance carried forward:** Plot Receipt/Purchase full Edit/Delete browser tests PASS; configured `bluenew_clean_final` lifecycle migration `2026_11_18_190000` DONE; 8/8 FK integrity, no orphans or cross-project JV/CV links; 40/40 automated Plot tests (304 assertions) passed **before this new code batch**.
+
+**Code change committed:** `PlotVoucherEditor::receipt` now detects duplicate `booking_id` values in an Edit allocation payload even if the repeated booking appears with a different plot. Previously the code checked duplicated `plot_id` only; a repeated booking could reach the `(receipt_id, booking_id)` unique constraint, leading to a database exception rather than a clear business validation error. The editor now throws a `DomainException` before writing the updated lines, and the existing transaction protects financial state. `PlotEntryWriterTest` includes a new integration regression that asserts a duplicate-booking edit refuses the write and leaves voucher number, allocation rows, posting lines and edit snapshots unchanged. **No DB schema migration, new table, or UI change.**
+
+**Verification required (not yet locally executed for this new regression):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php -l app/Services/Finance/PlotVoucherEditor.php
+php -l tests/Feature/Finance/PlotEntryWriterTest.php
+php artisan test --filter=PlotEntryWriterTest
+php artisan test --filter=PlotFullVoucherEditContractTest
+```
+
+**Milestone 03 is still PARTIAL**: shared posting-line inactive handling and cross-family reports need verification, and other voucher families require lifecycle CRUD completion. Do not repeat prior Plot browser acceptance without relevant UI change. Do not claim new tests have passed before the owner runs them.
