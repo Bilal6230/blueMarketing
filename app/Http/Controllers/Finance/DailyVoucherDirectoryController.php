@@ -282,7 +282,6 @@ final class DailyVoucherDirectoryController extends Controller
                 $canDelete = $module !== null && auth()->user()?->can('finance '.$module.' delete');
                 $canReverse = $module !== null && auth()->user()?->can('finance '.$module.' reverse');
                 $canRelease = $module !== null && auth()->user()?->can('finance '.$module.' release');
-                $canResubmit = $module !== null && auth()->user()?->can('finance '.$module.' resubmit');
                 $linkedLines = DB::table('ledgers as linked')
                     ->join('project_head_subheads as a', 'a.id', '=', 'linked.project_head_subheads_id')
                     ->leftJoin('head_accountings as h', 'h.id', '=', 'a.head_accounting_id')
@@ -356,7 +355,7 @@ final class DailyVoucherDirectoryController extends Controller
                                 && in_array(($sourceApprovals[$source->id]['status']??'posted'),
                                     ['posted','approved'],true))
                         )
-                        && $canDelete
+                        && $canRelease
                         && \App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())
                         ? route('finance.daily-vouchers.bank-allocation.release',
                             ['customerLedger'=>$source->id]) : null,
@@ -365,13 +364,12 @@ final class DailyVoucherDirectoryController extends Controller
                         && in_array((string)$source->transaction_type,['CR','CP','CCR','CDR'],true)
                         && $canEdit
                         && (\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())
-                            || ((int)($sourceApprovals[$source->id]['submitted_by'] ?? 0)===(int)auth()->id()
-                                && (int)auth()->user()->project_id===$projectId))
+                            || (int)auth()->user()->project_id===$projectId)
                         ? route('finance.daily-vouchers.revise.edit',['customerLedger'=>$source->id]) : null,
                     'reverse_url' => $typedPosting && !$typedPosting->reversal_id
                         && in_array((int) ($source->payment_type ?? 1), [0,1], true)
                         && !$pendingEdits->has($source->id)
-                        && $canDelete
+                        && $canReverse
                         ? route('finance.daily-vouchers.sources.reverse', ['customerLedger' => $source->id]) : null,
                     'delete_url' => !$bankAllocations->has($source->id)
                         && $ledgerId && $canDelete
@@ -386,8 +384,7 @@ final class DailyVoucherDirectoryController extends Controller
                         && (int) ($source->payment_type ?? 0) === 1
                         && (int) ($source->is_active ?? 0) === 1
                         && (\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())
-                            || ((int)($sourceApprovals[$source->id]['submitted_by'] ?? 0)===(int)auth()->id()
-                                && (int)auth()->user()->project_id===$projectId))
+                            || (int)auth()->user()->project_id===$projectId)
                         ? route('finance.daily-vouchers.revise.edit',['customerLedger'=>$source->id])
                         : ($ledgerId && empty($sourceApprovals[$source->id]) && $canEdit
                             && in_array((string) $source->transaction_type, ['CR','CP','CCR','CDR'],true)
@@ -634,7 +631,7 @@ final class DailyVoucherDirectoryController extends Controller
             return $module !== null && $viewer?->can('finance '.$module.' view');
         })->map(function (array $row) use ($viewer): array {
             $module = \App\Support\Finance\FinanceActionPermission::moduleForSeries((string)($row['type'] ?? ''));
-            foreach (['edit_url'=>'edit', 'revise_url'=>'resubmit', 'delete_url'=>'delete',
+            foreach (['edit_url'=>'edit', 'revise_url'=>'edit', 'delete_url'=>'delete',
                 'reverse_url'=>'reverse', 'release_url'=>'release', 'url'=>'print'] as $field=>$action) {
                 if (!$viewer->can('finance '.$module.' '.$action)) $row[$field] = null;
             }
