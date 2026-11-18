@@ -69,6 +69,11 @@ class RoleController extends Controller
         ]);
         $name = trim($data['name']);
         $guard = $data['guard_name'];
+        if ($role && $role->guard_name !== $guard) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'guard_name'=>'A role guard cannot be changed while editing. Create a new role for the other guard.',
+            ]);
+        }
         $duplicate = Role::where('name',$name)->where('guard_name',$guard)
             ->when($role,fn($q)=>$q->where('id','!=',$role->id))->exists();
         if ($duplicate) {
@@ -77,6 +82,11 @@ class RoleController extends Controller
             ]);
         }
         $selected = array_values(array_unique($data['permissions'] ?? []));
+        if (array_filter($selected, fn($name)=>RolePermissionCatalog::isLegacyVoucher($name))) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'permissions'=>'Legacy voucher permissions cannot be added through the modern role editor.',
+            ]);
+        }
         $available = Permission::where('guard_name',$guard)->whereIn('name',$selected)
             ->pluck('name')->all();
         if (count($available) !== count($selected)) {
