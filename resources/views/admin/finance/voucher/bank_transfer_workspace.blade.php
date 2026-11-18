@@ -100,7 +100,7 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
                         <button type="button" class="dv-excel-trigger" data-column="{{ $field }}" aria-label="Sort or filter {{ $label }}" aria-expanded="false" aria-haspopup="dialog" title="Sort and filter {{ $label }}"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
                     @endforeach
                     <th>Actions</th></tr></thead>
-                <tbody id="transferRows"><tr><td colspan="9" class="text-center text-muted py-4">Loading vouchers…</td></tr></tbody>
+                <tbody id="transferRows" aria-busy="true">@include('components.finance.voucher-skeleton-rows', ['columns' => 9])</tbody>
             </table>
         </div>
         <div class="bt-footer">
