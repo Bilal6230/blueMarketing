@@ -20,11 +20,11 @@ final class PlotVoucherNarrationEditor
             default=>throw new \DomainException('Unsupported plot voucher type.'),
         };
         $narration=trim($narration);
-        if ($projectId<1 || $sourceId<1 || $narration==='' || mb_strlen($narration)>2000) {
+        if ($projectId<1 || $sourceId<1 || !$actorId || $actorId<1 || $narration==='' || mb_strlen($narration)>2000) {
             throw new \DomainException('Invalid voucher narration.');
         }
-        if (!Schema::hasTable('finance_plot_voucher_edit_audits')) {
-            throw new \RuntimeException('Plot voucher edit audit table is not installed.');
+        if (!Schema::hasTable('daily_voucher_edit_snapshots')) {
+            throw new \RuntimeException('Shared voucher edit history is not installed.');
         }
 
         return DB::transaction(function () use ($projectId,$kind,$sourceId,$narration,$actorId,$table) {
@@ -51,10 +51,18 @@ final class PlotVoucherNarrationEditor
             $updated=DB::table($table)->where('id',$sourceId)->where('project_id',$projectId)
                 ->update(['narration'=>$narration,'updated_at'=>now()]);
             if ($updated!==1) throw new \DomainException('Concurrent plot voucher modification.');
-            DB::table('finance_plot_voucher_edit_audits')->insert([
-                'project_id'=>$projectId,'source_kind'=>$kind,'source_id'=>$sourceId,
-                'previous_narration'=>$before,'updated_narration'=>$narration,
-                'edited_by'=>$actorId,'created_at'=>now(),'updated_at'=>now(),
+            // Shared voucher edit history; source kind is embedded in both
+            // JSON snapshots to avoid collisions across source-table IDs.
+            DB::table('daily_voucher_edit_snapshots')->insert([
+                'project_id'=>$projectId,'source_id'=>$sourceId,'approval_id'=>null,
+                'status'=>'approved',
+                'before_snapshot'=>json_encode(['source_kind'=>$kind,'source_id'=>$sourceId,
+                    'narration'=>$before],JSON_THROW_ON_ERROR),
+                'proposed_snapshot'=>json_encode(['source_kind'=>$kind,'source_id'=>$sourceId,
+                    'narration'=>$narration],JSON_THROW_ON_ERROR),
+                'reason'=>'Plot voucher narration edited',
+                'submitted_by'=>$actorId,'decided_by'=>$actorId,
+                'created_at'=>now(),'updated_at'=>now(),
             ]);
             return ['changed'=>true,'source_id'=>$sourceId,'narration'=>$narration];
         },3);
